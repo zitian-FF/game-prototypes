@@ -37,12 +37,15 @@ class DiggerScene extends Phaser.Scene {
       this.anims.create({
         key,
         frames: config.frames.map((frame) => ({ key: 'atlas', frame })),
-        frameRate: 8,
+        frameRate: 20,
         repeat: -1,
+        yoyo: false,
       });
     }
 
-    const ship = this.add.sprite(400, 300, 'atlas', animations.player_ship.frames[0]);
+    const shipX = this.scale.width / 2;
+    const shipY = this.scale.height * 0.3;
+    const ship = this.add.sprite(shipX, shipY, 'atlas', animations.player_ship.frames[0]);
     ship.play('player_ship');
 
     this.add.text(16, 16, `build ${__GIT_SHA__}`, {
@@ -56,8 +59,12 @@ class DiggerScene extends Phaser.Scene {
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
-  width: 800,
-  height: 600,
   backgroundColor: '#111111',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 390,
+    height: 844,
+  },
   scene: DiggerScene,
 });
