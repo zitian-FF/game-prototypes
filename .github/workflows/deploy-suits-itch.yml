@@ -1,0 +1,65 @@
+name: Deploy suits to itch.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/suits/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-suits-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-suits
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # itch.io serves each upload from a build-specific path, so asset URLs
+      # must be relative rather than the "/game-prototypes/" absolute base
+      # the Pages build uses. Overriding --base here does not touch the
+      # Pages build or vite.config.ts.
+      - name: Build (relative base for itch.io)
+        run: npx vite build --base ./
+
+      # dist/ contains the hub page and both prototypes because Vite builds
+      # all entry points together. Only suits's page (and the shared
+      # assets/ chunks it references) needs to ship to suits's itch
+      # project, so drop the rest. This also leaves exactly one HTML file
+      # in the upload, which itch.io auto-selects as the played file.
+      - name: Prune build to suits only
+        run: |
+          rm -f dist/index.html
+          rm -rf dist/prototypes/digger
+
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -o butler.zip -d butler
+          chmod +x butler/butler
+          ./butler/butler -V
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: ./butler/butler push dist zitian-ff/suits:html5
