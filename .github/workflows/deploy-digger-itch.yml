@@ -1,0 +1,88 @@
+name: Deploy digger to itch.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/digger/**'
+      - 'scripts/fetch-assets.js'
+      - 'scripts/pack-assets.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-digger-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-digger
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get digger art ETag
+        id: digger-etag
+        run: |
+          etag=$(curl -fsSI "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/digger_assets.zip" \
+            | grep -i '^etag:' | sed -E 's/[Ee][Tt][Aa][Gg]: *"?([^"\r]*)"?.*/\1/')
+          echo "etag=$etag" >> "$GITHUB_OUTPUT"
+
+      - name: Cache digger art
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/digger.etag
+            prototypes/digger/assets-src
+          key: digger-art-${{ steps.digger-etag.outputs.etag }}
+
+      - name: Fetch digger assets
+        run: npm run fetch:assets digger
+
+      - name: Pack digger assets
+        run: npm run pack:assets digger
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # itch.io serves each upload from a build-specific path, so asset URLs
+      # must be relative rather than the "/game-prototypes/" absolute base
+      # the Pages build uses. Overriding --base here does not touch the
+      # Pages build or vite.config.ts.
+      - name: Build (relative base for itch.io)
+        run: npx vite build --base ./
+
+      # dist/ contains the hub page and both prototypes because Vite builds
+      # all entry points together. Only digger's page (and the shared
+      # assets/ chunks it references) needs to ship to digger's itch
+      # project, so drop the rest. This also leaves exactly one HTML file
+      # in the upload, which itch.io auto-selects as the played file.
+      - name: Prune build to digger only
+        run: |
+          rm -f dist/index.html
+          rm -rf dist/prototypes/suits
+
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -o butler.zip -d butler
+          chmod +x butler/butler
+          ./butler/butler -V
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: ./butler/butler push dist zitian-ff/digger:html5
