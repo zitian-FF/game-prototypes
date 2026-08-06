@@ -44,20 +44,16 @@ async function buildNameEntry(): Promise<void> {
     inputs.push(input);
   }
 
-  const error = document.createElement('div');
-  error.style.color = '#f88';
-  error.style.fontSize = '0.85rem';
-  error.style.minHeight = '1.2em';
-  container.appendChild(error);
+  const hint = document.createElement('div');
+  hint.style.color = '#888';
+  hint.style.fontSize = '0.8rem';
+  hint.textContent = 'Leave a name blank to default to "Player 1".."Player 4" by seat order.';
+  container.appendChild(hint);
 
   const startButton = document.createElement('button');
   startButton.textContent = 'Start Game';
   startButton.addEventListener('click', () => {
-    const names = inputs.map((input) => input.value.trim());
-    if (names.some((name) => name.length === 0)) {
-      error.textContent = 'All 4 names are required.';
-      return;
-    }
+    const names = inputs.map((input, i) => input.value.trim() || `Player ${i + 1}`);
     startGame(names as [string, string, string, string]);
   });
   container.appendChild(startButton);

@@ -1,4 +1,4 @@
-import type { CardDef, God, Rank, Team } from './types';
+import type { CardDef, CardId, God, Rank, Team } from './types';
 
 // Reference data from the design document's card list table. Card names are
 // flavour text only; they carry no mechanical meaning beyond god + rank.
@@ -73,6 +73,28 @@ export const SUIT_CYCLE: readonly God[] = ['YogSothoth', 'Cthulhu', 'ShubNiggura
 
 export const ALL_GODS: readonly God[] = SUIT_CYCLE;
 
+// Teams are fixed god-pairs, so knowing your own god always tells you your
+// teammate's god (not their identity, just which colour to look for).
+export const TEAMMATE_GOD: Record<God, God> = {
+  Cthulhu: 'Nyarlathotep',
+  Nyarlathotep: 'Cthulhu',
+  ShubNiggurath: 'YogSothoth',
+  YogSothoth: 'ShubNiggurath',
+};
+
+const RANK_SORT_ORDER: Record<Rank, number> = {
+  2: 0,
+  3: 1,
+  4: 2,
+  5: 3,
+  6: 4,
+  7: 5,
+  8: 6,
+  9: 7,
+  10: 8,
+  Ace: 9,
+};
+
 export function cardId(god: God, rank: Rank): string {
   return `${god}-${rank}`;
 }
@@ -102,4 +124,17 @@ export function nextSuit(god: God): God {
 export function suitAfterSteps(god: God, steps: number): God {
   const idx = SUIT_CYCLE.indexOf(god);
   return SUIT_CYCLE[(idx + steps) % SUIT_CYCLE.length];
+}
+
+// Display-only ordering: groups a hand by suit (in SUIT_CYCLE order), then
+// ascending rank within each suit. Never mutates or reorders game state —
+// callers pass the result straight to rendering.
+export function sortCardIds(ids: readonly CardId[]): CardId[] {
+  return [...ids].sort((a, b) => {
+    const cardA = cardById(a);
+    const cardB = cardById(b);
+    const suitDiff = SUIT_CYCLE.indexOf(cardA.god) - SUIT_CYCLE.indexOf(cardB.god);
+    if (suitDiff !== 0) return suitDiff;
+    return RANK_SORT_ORDER[cardA.rank] - RANK_SORT_ORDER[cardB.rank];
+  });
 }

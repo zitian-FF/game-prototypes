@@ -46,6 +46,7 @@ export interface RedistributionGift {
 export interface ReceivedRecord {
   readonly cardIds: CardId[];
   readonly fromPlayerId: PlayerId;
+  readonly trickNumber: number;
 }
 
 export type Phase =
@@ -91,5 +92,10 @@ export interface GameState {
   readonly pendingDistributorId: PlayerId | null;
   readonly pendingWinnerId: PlayerId | null;
   readonly lastReceived: Partial<Record<PlayerId, ReceivedRecord>>;
+  // Cumulative, per-recipient history of every redistribution received so
+  // far this game (unlike lastReceived, which only ever holds the latest).
+  // Powers the toggleable redistribution log; scoped per-player so it never
+  // reveals another player's receipts.
+  readonly receivedLog: Partial<Record<PlayerId, ReceivedRecord[]>>;
   readonly winner: WinInfo | null;
 }
