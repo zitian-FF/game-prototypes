@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suit of Madness Prototype</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        height: 100%;
+        overflow: hidden;
+        font-family: monospace;
+      }
+      #app {
+        width: 100%;
+        height: 100%;
+      }
+      #name-entry {
+        position: fixed;
+        inset: 0;
+        background: #111;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px;
+        box-sizing: border-box;
+        overflow-y: auto;
+      }
+      #name-entry h1 {
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      #name-entry p {
+        font-size: 0.85rem;
+        color: #999;
+        margin: 0 0 4px;
+      }
+      #name-entry input {
+        font-size: 1rem;
+        padding: 8px;
+        width: 220px;
+        box-sizing: border-box;
+      }
+      #name-entry button {
+        font-size: 1rem;
+        padding: 10px 16px;
+        cursor: pointer;
+      }
+      #name-entry .debug-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 16px;
+        border-top: 1px solid #444;
+        padding-top: 12px;
+        width: 220px;
+      }
+      #name-entry .debug-row button {
+        background: #553311;
+        color: #ffd27a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="name-entry"></div>
+    <div id="app"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
