@@ -97,6 +97,7 @@ export function initGame(names: [string, string, string, string], forced?: Force
     pendingDistributorId: null,
     pendingWinnerId: null,
     lastReceived: {},
+    receivedLog: {},
     winner: null,
   };
 }
@@ -349,6 +350,7 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
 
   const remainingWinnerHand = winnerHand.filter((id) => !giftedIds.has(id));
   const lastReceived = { ...state.lastReceived };
+  const receivedLog = { ...state.receivedLog };
   let players = state.players.map((p) =>
     p.id === winnerId ? { ...p, hand: remainingWinnerHand } : p
   ) as GameState['players'];
@@ -357,7 +359,9 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     players = players.map((p) =>
       p.id === gift.toPlayerId ? { ...p, hand: [...p.hand, ...gift.cardIds] } : p
     ) as GameState['players'];
-    lastReceived[gift.toPlayerId] = { cardIds: gift.cardIds, fromPlayerId: winnerId };
+    const record = { cardIds: gift.cardIds, fromPlayerId: winnerId, trickNumber: state.trickNumber };
+    lastReceived[gift.toPlayerId] = record;
+    receivedLog[gift.toPlayerId] = [...(receivedLog[gift.toPlayerId] ?? []), record];
   }
 
   const win = checkSuitCompletion(players);
@@ -366,6 +370,7 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
       ...state,
       players,
       lastReceived,
+      receivedLog,
       phase: 'gameOver',
       pendingBlocker: null,
       winner: win,
@@ -377,6 +382,7 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     ...state,
     players,
     lastReceived,
+    receivedLog,
     leaderId: newLeaderId,
     trickNumber: state.trickNumber + 1,
     pendingWinnerId: null,
