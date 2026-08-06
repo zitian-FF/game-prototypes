@@ -1,0 +1,105 @@
+import type { CardDef, God, Rank, Team } from './types';
+
+// Reference data from the design document's card list table. Card names are
+// flavour text only; they carry no mechanical meaning beyond god + rank.
+const CARD_NAMES: Record<God, ReadonlyArray<readonly [Rank, string]>> = {
+  Cthulhu: [
+    [2, 'Tentacles'],
+    [3, 'Dream-Drift'],
+    [4, 'Drowned Cultist'],
+    [5, "Murmurs from R'lyeh"],
+    [6, 'Depthborn Servant'],
+    [7, 'Ancient Leviathan'],
+    [8, 'Abyssal Chant'],
+    [9, 'Eye of the Sleeper'],
+    [10, 'The Great Slumber'],
+    ['Ace', 'Heart of Cthulhu'],
+  ],
+  Nyarlathotep: [
+    [2, 'Whispering Masks'],
+    [3, 'Mirage Walker'],
+    [4, 'Cult of the Crawling Chaos'],
+    [5, 'Black Wind'],
+    [6, 'Veil of Illusions'],
+    [7, 'Harbinger of Madness'],
+    [8, 'Thousand Forms'],
+    [9, 'Eyes in the Void'],
+    [10, 'The Living Chaos'],
+    ['Ace', 'Aspect of Nyarlathotep'],
+  ],
+  ShubNiggurath: [
+    [2, 'Root-Tangle Spawn'],
+    [3, 'Bleeding Grove'],
+    [4, "Goat's Whisper"],
+    [5, 'Fertile Rot'],
+    [6, 'Fungal Surge'],
+    [7, 'The Thousand Young'],
+    [8, 'Unnatural Bloom'],
+    [9, 'Forest That Devours'],
+    [10, "Black Goat's Awakening"],
+    ['Ace', 'Seed of Shub-Niggurath'],
+  ],
+  YogSothoth: [
+    [2, 'Flicker of the Void'],
+    [3, 'Timeless Observer'],
+    [4, 'Astral Pulse'],
+    [5, 'Orb-Watcher'],
+    [6, 'Portal Lattice'],
+    [7, 'Voice Through Dimensions'],
+    [8, 'Keeper of Keys'],
+    [9, 'Star-Fused Knowledge'],
+    [10, 'Gate Beyond All Time'],
+    ['Ace', 'Core of Yog-Sothoth'],
+  ],
+};
+
+export const GOD_DISPLAY_NAME: Record<God, string> = {
+  Cthulhu: 'Cthulhu',
+  Nyarlathotep: 'Nyarlathotep',
+  ShubNiggurath: 'Shub-Niggurath',
+  YogSothoth: 'Yog-Sothoth',
+};
+
+export const GOD_TEAM: Record<God, Team> = {
+  Cthulhu: 'Chaos',
+  Nyarlathotep: 'Chaos',
+  ShubNiggurath: 'Cosmos',
+  YogSothoth: 'Cosmos',
+};
+
+// Fixed suit rotation cycle: Yog-Sothoth -> Cthulhu -> Shub-Niggurath ->
+// Nyarlathotep -> repeat.
+export const SUIT_CYCLE: readonly God[] = ['YogSothoth', 'Cthulhu', 'ShubNiggurath', 'Nyarlathotep'];
+
+export const ALL_GODS: readonly God[] = SUIT_CYCLE;
+
+export function cardId(god: God, rank: Rank): string {
+  return `${god}-${rank}`;
+}
+
+export const CARD_DEFS: readonly CardDef[] = (Object.keys(CARD_NAMES) as God[]).flatMap((god) =>
+  CARD_NAMES[god].map(([rank, name]) => ({
+    id: cardId(god, rank),
+    god,
+    rank,
+    name,
+  }))
+);
+
+const CARD_BY_ID: ReadonlyMap<string, CardDef> = new Map(CARD_DEFS.map((c) => [c.id, c]));
+
+export function cardById(id: string): CardDef {
+  const card = CARD_BY_ID.get(id);
+  if (!card) throw new Error(`unknown card id: ${id}`);
+  return card;
+}
+
+export function nextSuit(god: God): God {
+  const idx = SUIT_CYCLE.indexOf(god);
+  return SUIT_CYCLE[(idx + 1) % SUIT_CYCLE.length];
+}
+
+export function suitAfterSteps(god: God, steps: number): God {
+  const idx = SUIT_CYCLE.indexOf(god);
+  return SUIT_CYCLE[(idx + steps) % SUIT_CYCLE.length];
+}
