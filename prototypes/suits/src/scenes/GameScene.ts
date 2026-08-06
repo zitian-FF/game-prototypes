@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { bindSelectIntent } from '../input/intents';
-import { GOD_DISPLAY_NAME, cardById } from '../rules/cards';
+import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds } from '../rules/cards';
 import {
   activePlayerId,
   advanceBlocker,
@@ -53,6 +53,8 @@ export class GameScene extends Phaser.Scene {
   private redistributionKey: string | null = null;
 
   private roleGuesses: Partial<Record<PlayerId, God>> = {};
+
+  private showRedistributionLog = false;
 
   constructor() {
     super('Game');
@@ -172,6 +174,90 @@ export class GameScene extends Phaser.Scene {
     return startY + rows * (CARD_H + CARD_GAP);
   }
 
+  // Small colour + rank chip, used wherever a card must be shown without
+  // revealing its name (trick-in-progress log, redistribution log).
+  private renderCardChip(x: number, y: number, id: CardId): number {
+    const def = cardById(id);
+    const w = 30;
+    const h = 20;
+    const rect = this.add.rectangle(x + w / 2, y + h / 2, w, h, GOD_COLOR[def.god], 1);
+    rect.setStrokeStyle(1, 0xffffff, 0.6);
+    const label = def.rank === 'Ace' ? 'A' : String(def.rank);
+    const t = this.add
+      .text(x + w / 2, y + h / 2, label, { fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' })
+      .setOrigin(0.5);
+    this.layer!.add([rect, t]);
+    return x + w;
+  }
+
+  // Faction HUD: shown while it's a specific player's turn. Only reveals
+  // colours, never identities — teammate colour is derivable from the
+  // fixed team/god pairing, not from knowing who the teammate actually is.
+  private renderFactionHud(playerId: PlayerId, y: number): number {
+    const player = this.state.players[playerId];
+    const team = GOD_TEAM[player.god];
+    const teammateGod = TEAMMATE_GOD[player.god];
+    const swatch = 18;
+
+    this.text(16, y, `Faction: ${team}`, { size: 13, color: '#ffe066' });
+
+    const swatchY = y + 20;
+    const drawSwatch = (x: number, color: number, label: string) => {
+      const rect = this.add.rectangle(x + swatch / 2, swatchY + swatch / 2, swatch, swatch, color, 1);
+      rect.setStrokeStyle(1, 0xffffff, 0.7);
+      this.layer!.add(rect);
+      this.text(x + swatch + 6, swatchY + 2, label, { size: 12, color: '#cccccc' });
+    };
+    drawSwatch(16, GOD_COLOR[player.god], 'You');
+    drawSwatch(120, GOD_COLOR[teammateGod], 'Ally');
+
+    return swatchY + swatch + 10;
+  }
+
+  // Bottom-right toggle for the cumulative, per-viewer redistribution log.
+  // Hidden by default each turn; reset in the blocker's advance handler.
+  private renderRedistributionLogToggle(playerId: PlayerId): void {
+    if (this.showRedistributionLog) {
+      this.layer!.add(this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x050505, 0.96));
+      this.text(16, 16, `Redistribution log — ${this.state.players[playerId].name}`, {
+        size: 15,
+        color: '#ffe066',
+        wrap: WIDTH - 32,
+      });
+
+      const entries = this.state.receivedLog[playerId] ?? [];
+      let cursor = 52;
+      if (entries.length === 0) {
+        this.text(16, cursor, 'No redistributions received yet this game.', { size: 12, color: '#888888' });
+      } else {
+        for (const entry of entries) {
+          const fromName = this.state.players[entry.fromPlayerId].name;
+          this.text(16, cursor, `Trick #${entry.trickNumber}: received`, { size: 12, color: '#cccccc' });
+          cursor += 18;
+          let chipX = 16;
+          for (const id of entry.cardIds) chipX = this.renderCardChip(chipX, cursor, id) + 4;
+          this.text(chipX + 4, cursor + 3, `from ${fromName}`, { size: 12, color: '#88bbff' });
+          cursor += 30;
+        }
+      }
+    }
+
+    const btnW = 116;
+    const btnH = 36;
+    this.button(
+      WIDTH - btnW - 12,
+      HEIGHT - btnH - 12,
+      btnW,
+      btnH,
+      this.showRedistributionLog ? 'Close Log' : 'Redist. Log',
+      () => {
+        this.showRedistributionLog = !this.showRedistributionLog;
+        this.render();
+      },
+      { color: this.showRedistributionLog ? 0x663333 : 0x334455 }
+    );
+  }
+
   // --- top-level render dispatch --------------------------------------
 
   private render(): void {
@@ -226,6 +312,7 @@ export class GameScene extends Phaser.Scene {
     this.text(24, HEIGHT - 80, 'Tap anywhere to continue', { size: 13, color: '#666666' });
 
     this.registerHit(0, 0, WIDTH, HEIGHT, () => {
+      this.showRedistributionLog = false;
       if (
         this.state.pendingBlocker?.next === 'redistribution' &&
         this.redistributionKey !==
@@ -250,14 +337,16 @@ export class GameScene extends Phaser.Scene {
     }
     for (const play of plays) {
       const name = this.state.players[play.playerId].name;
-      const cardNames = play.cardIds.map((id) => cardById(id).name).join(' + ');
+      const nameText = this.text(x, cursor + 3, `${name}:`, { size: 12, color: '#dddddd' });
+      let chipX = x + nameText.width + 8;
+      for (const id of play.cardIds) {
+        chipX = this.renderCardChip(chipX, cursor, id) + 4;
+      }
       const kindLabel = playKindLabel(play.kind);
-      const line = this.text(x, cursor, `${name}: ${cardNames}${kindLabel ? ` (${kindLabel})` : ''}`, {
-        size: 12,
-        color: '#dddddd',
-        wrap: WIDTH - x - 16,
-      });
-      cursor += line.height + 4;
+      if (kindLabel) {
+        this.text(chipX, cursor + 3, `(${kindLabel})`, { size: 11, color: '#999999' });
+      }
+      cursor += 26;
     }
     return cursor;
   }
@@ -272,9 +361,10 @@ export class GameScene extends Phaser.Scene {
     const requiredSuit = currentRequiredSuit(this.state);
 
     this.text(16, 8, `Trick #${this.state.trickNumber}`, { size: 13, color: '#888888' });
-    this.text(16, 26, `${player.name}'s turn`, { size: 20, color: '#ffffff' });
+    const heading = this.text(16, 26, `${player.name}'s turn`, { size: 20, color: '#ffffff', wrap: WIDTH - 32 });
 
-    let cursor = this.renderTrickLog(16, 56, this.state.plays);
+    const hudBottom = this.renderFactionHud(playerId, heading.y + heading.height + 6);
+    let cursor = this.renderTrickLog(16, hudBottom + 6, this.state.plays);
 
     const received = this.state.lastReceived[playerId];
     if (received) {
@@ -312,8 +402,9 @@ export class GameScene extends Phaser.Scene {
     cursor += 34;
 
     const highlightSet = new Set(isLeader || !opts.mustPlaySuit ? player.hand : opts.suitCards);
+    const sortedHand = sortCardIds(player.hand);
 
-    const gridBottom = this.cardGrid(player.hand, 16, cursor, 4, (id) => ({
+    const gridBottom = this.cardGrid(sortedHand, 16, cursor, 4, (id) => ({
       dim: !highlightSet.has(id),
       onTap: highlightSet.has(id)
         ? () => this.setState(playCard(this.state, playerId, [id]))
@@ -325,7 +416,7 @@ export class GameScene extends Phaser.Scene {
       this.text(16, dCursor, 'Play a double (always beats singles):', { size: 13, color: '#ffe066' });
       dCursor += 22;
       for (const rank of opts.doubleRanks) {
-        const rankCards = player.hand.filter((id) => cardById(id).rank === rank);
+        const rankCards = sortCardIds(player.hand.filter((id) => cardById(id).rank === rank));
         if (rankCards.length === 2) {
           const [a, b] = rankCards;
           const label = `Double ${rank === 'Ace' ? 'Ace' : rank}: ${cardById(a).name} + ${cardById(b).name}`;
@@ -359,6 +450,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    this.renderRedistributionLogToggle(playerId);
   }
 
   // --- role guess -----------------------------------------------------
@@ -367,15 +460,21 @@ export class GameScene extends Phaser.Scene {
     const playerId = this.state.leaderId;
     const player = this.state.players[playerId];
 
-    this.text(16, 8, `${player.name}: guess every player's god`, { size: 17, color: '#ffe066', wrap: WIDTH - 32 });
-    this.text(16, 34, 'Fully correct wins the game for your team. Wrong uses up your one attempt.', {
+    const heading = this.text(16, 8, `${player.name}: guess every player's god`, {
+      size: 17,
+      color: '#ffe066',
+      wrap: WIDTH - 32,
+    });
+    const desc = this.text(16, heading.y + heading.height + 4, 'Fully correct wins the game for your team. Wrong uses up your one attempt.', {
       size: 12,
       color: '#cccccc',
       wrap: WIDTH - 32,
     });
 
+    const hudBottom = this.renderFactionHud(playerId, desc.y + desc.height + 8);
+
     const gods: God[] = ['Cthulhu', 'Nyarlathotep', 'ShubNiggurath', 'YogSothoth'];
-    let cursor = 70;
+    let cursor = hudBottom + 8;
 
     for (const p of this.state.players) {
       this.text(16, cursor, p.name, { size: 14, color: '#ffffff' });
@@ -422,6 +521,8 @@ export class GameScene extends Phaser.Scene {
     this.button(16, cursor + 58, WIDTH - 32, 36, 'Cancel — play a card instead', () => {
       this.setState(cancelRoleGuess(this.state));
     });
+
+    this.renderRedistributionLogToggle(playerId);
   }
 
   // --- trick result ----------------------------------------------------
@@ -450,14 +551,16 @@ export class GameScene extends Phaser.Scene {
     const winnerId = this.state.pendingWinnerId!;
     const winner = this.state.players[winnerId];
 
-    this.text(16, 8, `${winner.name} won with a double.`, { size: 17, color: '#ffe066', wrap: WIDTH - 32 });
-    this.text(16, 36, 'You must choose someone else to redistribute your cards on your behalf:', {
-      size: 13,
-      color: '#cccccc',
-      wrap: WIDTH - 32,
-    });
+    const heading = this.text(16, 8, `${winner.name} won with a double.`, { size: 17, color: '#ffe066', wrap: WIDTH - 32 });
+    const hudBottom = this.renderFactionHud(winnerId, heading.y + heading.height + 8);
+    const instruction = this.text(
+      16,
+      hudBottom + 6,
+      'You must choose someone else to redistribute your cards on your behalf:',
+      { size: 13, color: '#cccccc', wrap: WIDTH - 32 }
+    );
 
-    let cursor = 90;
+    let cursor = instruction.y + instruction.height + 16;
     for (const p of this.state.players) {
       if (p.id === winnerId) continue;
       this.button(16, cursor, WIDTH - 32, 44, p.name, () => {
@@ -465,6 +568,8 @@ export class GameScene extends Phaser.Scene {
       });
       cursor += 54;
     }
+
+    this.renderRedistributionLogToggle(winnerId);
   }
 
   // --- redistribution -----------------------------------------------------
@@ -476,17 +581,18 @@ export class GameScene extends Phaser.Scene {
     const distributor = this.state.players[distributorId];
     const result = this.state.lastTrickResult!;
 
-    this.text(16, 8, `${distributor.name} redistributes ${winner.name}'s cards`, {
+    const heading = this.text(16, 8, `${distributor.name} redistributes ${winner.name}'s cards`, {
       size: 15,
       color: '#ffffff',
       wrap: WIDTH - 32,
     });
+    const hudBottom = this.renderFactionHud(distributorId, heading.y + heading.height + 8);
 
     const gifted = new Set(Object.values(this.pendingGifts).flat());
-    const available = winner.hand.filter((id) => !gifted.has(id));
+    const available = sortCardIds(winner.hand.filter((id) => !gifted.has(id)));
 
-    this.text(16, 40, 'Tap a card, then tap who receives it:', { size: 12, color: '#999999' });
-    const gridBottom = this.cardGrid(available, 16, 62, 4, (id) => ({
+    this.text(16, hudBottom + 6, 'Tap a card, then tap who receives it:', { size: 12, color: '#999999' });
+    const gridBottom = this.cardGrid(available, 16, hudBottom + 28, 4, (id) => ({
       selected: id === this.selectedForGift,
       onTap: () => {
         this.selectedForGift = this.selectedForGift === id ? null : id;
@@ -519,16 +625,19 @@ export class GameScene extends Phaser.Scene {
       );
       cursor += 40;
       if (assigned.length > 0) {
-        cursor = this.cardGrid(assigned, 16, cursor, 4, (id) => ({
-          onTap: () => {
+        let chipX = 16;
+        for (const id of assigned) {
+          const chipStart = chipX;
+          chipX = this.renderCardChip(chipX, cursor, id) + 4;
+          this.registerHit(chipStart, cursor, chipX - chipStart, 20, () => {
             this.pendingGifts = {
               ...this.pendingGifts,
               [play.playerId]: assigned.filter((cid) => cid !== id),
             };
             this.render();
-          },
-        }));
-        cursor += 8;
+          });
+        }
+        cursor += 28;
       }
     }
 
@@ -549,6 +658,8 @@ export class GameScene extends Phaser.Scene {
       },
       { disabled: !allAssigned, color: 0x226622 }
     );
+
+    this.renderRedistributionLogToggle(distributorId);
   }
 
   // --- game over -----------------------------------------------------
