@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { bindSelectIntent } from './input/intents';
+import tune from '../tune.json';
 
 interface AnimationConfig {
   frameCount: number;
@@ -11,7 +13,20 @@ interface ManifestEntry {
   fetchedAt: string;
 }
 
+interface Tile {
+  sprite: Phaser.GameObjects.Image;
+  durability: number;
+}
+
+const GRID_COLS = 5;
+const GRID_ROWS = 6;
+const GRID_MARGIN_X = 24;
+const GRID_MARGIN_TOP = 56;
+const SHIP_SPACING = 40;
+
 class DiggerScene extends Phaser.Scene {
+  private tiles: Tile[] = [];
+
   preload(): void {
     this.load.json('manifest', 'assets/manifest.json');
     this.load.once('filecomplete-json-manifest', () => {
@@ -43,15 +58,83 @@ class DiggerScene extends Phaser.Scene {
       });
     }
 
-    const shipX = this.scale.width / 2;
-    const shipY = this.scale.height * 0.3;
-    const ship = this.add.sprite(shipX, shipY, 'atlas', animations.player_ship.frames[0]);
-    ship.play('player_ship');
-
-    this.add.text(16, 16, `build ${__GIT_SHA__}`, {
+    const buildText = this.add.text(16, 16, `build ${__GIT_SHA__}`, {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#ffffff',
+    });
+
+    // Tile world size = the art's native pixels; the camera zoom (computed
+    // below) is what shrinks the grid to fit the portrait canvas.
+    const tileNativeFrame = this.textures.get('tile_grass').get();
+    const tileNativeWidth = tileNativeFrame.width;
+    const tileNativeHeight = tileNativeFrame.height;
+
+    const gridScreenWidth = this.scale.width - GRID_MARGIN_X * 2;
+    const tileScreenWidth = gridScreenWidth / GRID_COLS;
+    const tileScreenHeight = tileScreenWidth * (tileNativeHeight / tileNativeWidth);
+    const gridScreenHeight = tileScreenHeight * GRID_ROWS;
+    const zoom = tileScreenWidth / tileNativeWidth;
+
+    // Phaser's camera zoom pivots around the viewport center (not the
+    // origin), so screen->world conversion must account for that offset.
+    const camCenterX = this.scale.width / 2;
+    const camCenterY = this.scale.height / 2;
+    const toWorldX = (screenX: number) => (screenX - camCenterX) / zoom + camCenterX;
+    const toWorldY = (screenY: number) => (screenY - camCenterY) / zoom + camCenterY;
+
+    const worldGridLeft = toWorldX(GRID_MARGIN_X);
+    const worldGridTop = toWorldY(GRID_MARGIN_TOP);
+
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        const worldX = worldGridLeft + (col + 0.5) * tileNativeWidth;
+        const worldY = worldGridTop + (row + 0.5) * tileNativeHeight;
+        const sprite = this.add.image(worldX, worldY, 'tile_grass');
+        this.tiles.push({ sprite, durability: Phaser.Math.Between(1, 3) });
+      }
+    }
+
+    const shipFrame = this.textures.get('atlas').get(animations.player_ship.frames[0]);
+    const shipScreenY =
+      GRID_MARGIN_TOP + gridScreenHeight + SHIP_SPACING + (shipFrame.height * zoom) / 2;
+    const shipWorldX = toWorldX(this.scale.width / 2);
+    const shipWorldY = toWorldY(shipScreenY);
+
+    const ship = this.add.sprite(shipWorldX, shipWorldY, 'atlas', animations.player_ship.frames[0]);
+    ship.play('player_ship');
+
+    // tune.json amplitude is in on-screen pixels; convert to world units so
+    // it reads the same regardless of the gameplay camera's zoom.
+    const bobAmplitudeWorld = tune.shipBobAmplitudePx / zoom;
+    this.tweens.add({
+      targets: ship,
+      y: shipWorldY - bobAmplitudeWorld,
+      duration: tune.shipBobDurationMs / 2,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.cameras.main.setZoom(zoom);
+
+    // Second camera at zoom 1 keeps screen-space UI (the build tag) readable
+    // and unaffected by the gameplay camera's zoom.
+    const uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.cameras.main.ignore(buildText);
+    uiCamera.ignore([...this.tiles.map((tile) => tile.sprite), ship]);
+
+    bindSelectIntent(this, (worldX, worldY) => {
+      for (const tile of this.tiles) {
+        if (tile.durability <= 0) continue;
+        if (!tile.sprite.getBounds().contains(worldX, worldY)) continue;
+
+        tile.durability -= 1;
+        if (tile.durability <= 0) {
+          tile.sprite.setTexture('tile_hole');
+        }
+        break;
+      }
     });
   }
 }
