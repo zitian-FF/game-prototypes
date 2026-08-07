@@ -4,6 +4,21 @@ import type { ForcedDeal } from './rules/types';
 
 const isDebug = new URLSearchParams(location.search).get('debug') === '1';
 
+const BASE_WIDTH = 390;
+const BASE_HEIGHT = 844;
+
+// Phaser 3 dropped the old global `resolution` game-config option, so
+// there's no single knob for "render at device pixel density" anymore.
+// The equivalent today: size the canvas backing store at
+// devicePixelRatio, then have the scene's camera zoom to the same factor
+// so every existing pixel-coordinate in GameScene still lines up exactly
+// (390x844 logical units, unchanged) while each unit now maps to more
+// actual pixels. Capped at 2x — many phones report 3x+, and this scene
+// rebuilds its whole object tree on every tap, so uncapped DPR would add
+// real fill-rate cost for sharpness that's barely visible at this UI's
+// font sizes.
+export const PIXEL_RATIO = Math.min(Math.ceil(window.devicePixelRatio || 1), 2);
+
 function startGame(playerNames: [string, string, string, string], forcedDeal?: ForcedDeal): void {
   document.getElementById('name-entry')?.remove();
 
@@ -14,12 +29,12 @@ function startGame(playerNames: [string, string, string, string], forcedDeal?: F
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: 390,
-      height: 844,
+      width: BASE_WIDTH * PIXEL_RATIO,
+      height: BASE_HEIGHT * PIXEL_RATIO,
     },
   });
 
-  game.scene.add('Game', GameScene, true, { playerNames, forcedDeal });
+  game.scene.add('Game', GameScene, true, { playerNames, forcedDeal, pixelRatio: PIXEL_RATIO });
 }
 
 async function buildNameEntry(): Promise<void> {

@@ -81,12 +81,17 @@ FIRST MOVE OF THE GAME
 export interface GameSceneInitData {
   playerNames: [string, string, string, string];
   forcedDeal?: ForcedDeal;
+  // Device pixel ratio (capped) computed once at game init in main.ts. See
+  // the comment there for why this replaces the old Phaser `resolution`
+  // game-config option.
+  pixelRatio?: number;
 }
 
 export class GameScene extends Phaser.Scene {
   private state!: GameState;
   private layer: Phaser.GameObjects.Container | null = null;
   private hitRegions: { rect: Phaser.Geom.Rectangle; onTap: () => void }[] = [];
+  private pixelRatio = 1;
 
   private pendingGifts: Partial<Record<PlayerId, CardId[]>> = {};
   private selectedForGift: CardId | null = null;
@@ -103,9 +108,21 @@ export class GameScene extends Phaser.Scene {
 
   init(data: GameSceneInitData): void {
     this.state = initGame(data.playerNames, data.forcedDeal);
+    this.pixelRatio = data.pixelRatio ?? 1;
   }
 
   create(): void {
+    // The canvas backing store is sized at pixelRatio in main.ts (see the
+    // comment there). Zooming the camera by the same factor, then
+    // re-centering it on the logical 390x844 world, makes the camera's
+    // world view exactly [0,390]x[0,844] again — every existing x/y
+    // coordinate below still lines up exactly, now rendered at the
+    // device's actual pixel density. Camera zoom auto-sizes the viewport
+    // to the (now larger) canvas, which shifts its world-space center;
+    // centerOn() pulls it back to the original logical center point.
+    this.cameras.main.setZoom(this.pixelRatio);
+    this.cameras.main.centerOn(WIDTH / 2, HEIGHT / 2);
+
     bindSelectIntent(this, (worldX, worldY) => {
       for (const region of this.hitRegions) {
         if (region.rect.contains(worldX, worldY)) {
@@ -140,6 +157,7 @@ export class GameScene extends Phaser.Scene {
       color: opts?.color ?? '#eeeeee',
       align: opts?.align ?? 'left',
       wordWrap: opts?.wrap ? { width: opts.wrap } : undefined,
+      resolution: this.pixelRatio,
     });
     this.layer!.add(t);
     return t;
@@ -164,6 +182,7 @@ export class GameScene extends Phaser.Scene {
         color: '#ffffff',
         align: 'center',
         wordWrap: { width: w - 10 },
+        resolution: this.pixelRatio,
       })
       .setOrigin(0.5);
     this.layer!.add([rect, t]);
@@ -192,6 +211,7 @@ export class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
         color: '#ffffff',
         align: 'center',
+        resolution: this.pixelRatio,
       })
       .setOrigin(0.5)
       .setAlpha(opts?.dim ? 0.6 : 1);
@@ -227,7 +247,12 @@ export class GameScene extends Phaser.Scene {
     rect.setStrokeStyle(1, 0xffffff, 0.6);
     const label = def.rank === 'Ace' ? 'A' : String(def.rank);
     const t = this.add
-      .text(x + w / 2, y + h / 2, label, { fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' })
+      .text(x + w / 2, y + h / 2, label, {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#ffffff',
+        resolution: this.pixelRatio,
+      })
       .setOrigin(0.5);
     this.layer!.add([rect, t]);
     return x + w;
