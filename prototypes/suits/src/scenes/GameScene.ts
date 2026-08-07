@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { bindSelectIntent } from '../input/intents';
-import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds } from '../rules/cards';
+import { CARD_DEFS, GOD_DISPLAY_NAME, GOD_TEAM, SUIT_CYCLE, TEAMMATE_GOD, cardById, cardId, sortCardIds } from '../rules/cards';
 import {
   activePlayerId,
   advanceBlocker,
@@ -38,6 +38,46 @@ function playKindLabel(kind: TrickPlay['kind']): string {
   return '';
 }
 
+// Rules overlay content (item 5). Wording, headings and bullets are exactly
+// as specified; only the incidental mid-sentence line wraps from the source
+// brief (sized for a much wider column than this 390px canvas) are removed
+// so Phaser's own wordWrap can reflow each line correctly here.
+const RULES_TEXT = `SUIT OF MADNESS — QUICK RULES
+
+GOAL
+Collect 10 cards of your own suit (shown in your win-condition tracker), or reach 40 tricks won as your team (alternate win).
+
+EACH TRICK
+- First player may lead with any suit.
+- Suits rotate each trick, follow the suit cycle shown at the top.
+
+FOLLOWING SUIT
+- If you have an on-suit single, you must play it.
+- Only if you have no on-suit singles may you instead play:
+  - a double (off-suit override), or
+  - a single face-down (shown as a grey X on the cards played this trick, cannot win the trick)
+
+RANK & TIES
+- Highest rank wins the trick.
+- If two cards tie in rank, whichever was played later wins.
+- Ace beats a 10 only if played after it in the same trick.
+
+PLAYING SINGLES
+- Winning the trick with an on-suit single: you get to redistribute cards yourself.
+
+PLAYING DOUBLES (OFF-SUIT OVERRIDE)
+- A double (two matching cards) does not need to follow the led suit, only playable when you have no on-suit singles.
+- An off-suit double always beats any single card in the trick, regardless of rank.
+- If two doubles clash, higher rank wins, later play wins ties.
+- Winning the trick with a double triggers mandatory redistribution delegation: you must hand off the redistribution decision to someone else, shown in the redistribution log, bottom right toggle.
+
+TEAMS
+- You have one teammate. Their identity/colour is shown at the top during your turn.
+- Cards collected by either you or your teammate count toward your team's win condition.
+
+FIRST MOVE OF THE GAME
+- The very first player of the very first trick must lead with the Blue 2.`;
+
 export interface GameSceneInitData {
   playerNames: [string, string, string, string];
   forcedDeal?: ForcedDeal;
@@ -55,6 +95,7 @@ export class GameScene extends Phaser.Scene {
   private roleGuesses: Partial<Record<PlayerId, God>> = {};
 
   private showRedistributionLog = false;
+  private showRulesOverlay = false;
 
   constructor() {
     super('Game');
@@ -141,14 +182,16 @@ export class GameScene extends Phaser.Scene {
     const alpha = opts?.dim ? 0.28 : 1;
     const rect = this.add.rectangle(x + w / 2, y + h / 2, w, h, GOD_COLOR[def.god], alpha);
     rect.setStrokeStyle(opts?.selected ? 3 : 1, opts?.selected ? 0xffe066 : 0xffffff, opts?.dim ? 0.25 : 0.7);
-    const label = `${def.name}\n${GOD_DISPLAY_NAME[def.god]} ${def.rank === 'Ace' ? 'A' : def.rank}`;
+    // Number + colour only — no flavour name or god label, large text to
+    // fill the box for at-a-glance legibility.
+    const label = def.rank === 'Ace' ? 'A' : String(def.rank);
     const t = this.add
       .text(x + w / 2, y + h / 2, label, {
         fontFamily: 'monospace',
-        fontSize: '9px',
+        fontSize: '36px',
+        fontStyle: 'bold',
         color: '#ffffff',
         align: 'center',
-        wordWrap: { width: w - 6 },
       })
       .setOrigin(0.5)
       .setAlpha(opts?.dim ? 0.6 : 1);
@@ -258,6 +301,96 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  // Public suit-cycle strip: shown at the top of every turn screen. An
+  // arrow marks the active player's own suit within the fixed rotation;
+  // the first player of each trick sees "start with any suit" instead,
+  // since they aren't following anyone.
+  private renderSuitCycleBar(playerId: PlayerId, isLeader: boolean, y: number): number {
+    const ownGod = this.state.players[playerId].god;
+    const swatch = 44;
+    const gap = 8;
+    const totalW = SUIT_CYCLE.length * swatch + (SUIT_CYCLE.length - 1) * gap;
+    const startX = (WIDTH - totalW) / 2;
+    const rowY = y + 4;
+
+    SUIT_CYCLE.forEach((god, i) => {
+      const x = startX + i * (swatch + gap);
+      const rect = this.add.rectangle(x + swatch / 2, rowY + swatch / 2, swatch, swatch, GOD_COLOR[god], 1);
+      rect.setStrokeStyle(god === ownGod ? 3 : 1, god === ownGod ? 0xffe066 : 0xffffff, 0.85);
+      this.layer!.add(rect);
+    });
+
+    const belowY = rowY + swatch + 2;
+    if (isLeader) {
+      this.text(startX, belowY, 'start with any suit', {
+        size: 12,
+        color: '#ffe066',
+        align: 'center',
+        wrap: totalW,
+      });
+    } else {
+      const idx = SUIT_CYCLE.indexOf(ownGod);
+      const arrowX = startX + idx * (swatch + gap);
+      this.text(arrowX, belowY, '▲', { size: 20, color: '#ffe066', align: 'center', wrap: swatch });
+    }
+
+    return belowY + 22;
+  }
+
+  // Always-visible win-condition banner: the viewing player's own progress
+  // toward collecting all 10 cards of their identity suit (own suit only,
+  // not the required suit they're currently following).
+  private renderWinBanner(playerId: PlayerId, y: number): number {
+    const player = this.state.players[playerId];
+    const total = CARD_DEFS.filter((c) => c.god === player.god).length;
+    const owned = CARD_DEFS.filter((c) => c.god === player.god && player.hand.includes(c.id)).length;
+    const h = 30;
+
+    const rect = this.add.rectangle(WIDTH / 2, y + h / 2, WIDTH - 16, h, GOD_COLOR[player.god], 0.22);
+    rect.setStrokeStyle(1, GOD_COLOR[player.god], 0.9);
+    this.layer!.add(rect);
+    this.text(24, y + 8, `Win: collect 10 of your suit — ${owned}/${total}`, { size: 13, color: '#ffe066' });
+
+    return y + h + 6;
+  }
+
+  // Bottom-left toggle for the quick-rules reference overlay (item 5).
+  private renderRulesOverlayToggle(): void {
+    if (this.showRulesOverlay) {
+      this.layer!.add(this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x050505, 0.97));
+      const isHeadingLine = (line: string) => line.length > 0 && line === line.toUpperCase() && /[A-Z]/.test(line);
+      let cursor = 10;
+      for (const line of RULES_TEXT.split('\n')) {
+        if (line === '') {
+          cursor += 6;
+          continue;
+        }
+        const heading = isHeadingLine(line);
+        const t = this.text(14, cursor, line, {
+          size: heading ? 11 : 9.5,
+          color: heading ? '#ffe066' : '#dddddd',
+          wrap: WIDTH - 28,
+        });
+        cursor += t.height + (heading ? 4 : 2);
+      }
+    }
+
+    const btnW = 116;
+    const btnH = 36;
+    this.button(
+      12,
+      HEIGHT - btnH - 12,
+      btnW,
+      btnH,
+      this.showRulesOverlay ? 'Close Rules' : 'Rules',
+      () => {
+        this.showRulesOverlay = !this.showRulesOverlay;
+        this.render();
+      },
+      { color: this.showRulesOverlay ? 0x663333 : 0x334455 }
+    );
+  }
+
   // --- top-level render dispatch --------------------------------------
 
   private render(): void {
@@ -359,12 +492,18 @@ export class GameScene extends Phaser.Scene {
     const position = this.state.plays.length;
     const isLeader = position === 0;
     const requiredSuit = currentRequiredSuit(this.state);
+    // The very first trick of the whole game is exactly trickNumber === 1
+    // (it only ever increments) combined with being the leader's turn.
+    const isFirstTrickOpener = isLeader && this.state.trickNumber === 1;
 
-    this.text(16, 8, `Trick #${this.state.trickNumber}`, { size: 13, color: '#888888' });
-    const heading = this.text(16, 26, `${player.name}'s turn`, { size: 20, color: '#ffffff', wrap: WIDTH - 32 });
+    let cursor = this.renderSuitCycleBar(playerId, isLeader, 6);
+    cursor = this.renderWinBanner(playerId, cursor + 4);
+
+    this.text(16, cursor + 4, `Trick #${this.state.trickNumber}`, { size: 13, color: '#888888' });
+    const heading = this.text(16, cursor + 22, `${player.name}'s turn`, { size: 20, color: '#ffffff', wrap: WIDTH - 32 });
 
     const hudBottom = this.renderFactionHud(playerId, heading.y + heading.height + 6);
-    let cursor = this.renderTrickLog(16, hudBottom + 6, this.state.plays);
+    cursor = this.renderTrickLog(16, hudBottom + 6, this.state.plays);
 
     const received = this.state.lastReceived[playerId];
     if (received) {
@@ -391,7 +530,9 @@ export class GameScene extends Phaser.Scene {
     const opts = legalOptions(player.hand, requiredSuit);
 
     let instruction: string;
-    if (isLeader) {
+    if (isFirstTrickOpener) {
+      instruction = 'First trick of the game — you must lead with the Blue 2:';
+    } else if (isLeader) {
       instruction = 'Lead the trick — play any card:';
     } else if (opts.mustPlaySuit) {
       instruction = `Required suit: ${GOD_DISPLAY_NAME[opts.mustPlaySuit]} — highlighted cards are legal:`;
@@ -401,7 +542,9 @@ export class GameScene extends Phaser.Scene {
     this.text(16, cursor, instruction, { size: 13, color: '#cccccc', wrap: WIDTH - 32 });
     cursor += 34;
 
-    const highlightSet = new Set(isLeader || !opts.mustPlaySuit ? player.hand : opts.suitCards);
+    const highlightSet = new Set(
+      isFirstTrickOpener ? [cardId('YogSothoth', 2)] : isLeader || !opts.mustPlaySuit ? player.hand : opts.suitCards
+    );
     const sortedHand = sortCardIds(player.hand);
 
     const gridBottom = this.cardGrid(sortedHand, 16, cursor, 4, (id) => ({
@@ -452,6 +595,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.renderRedistributionLogToggle(playerId);
+    this.renderRulesOverlayToggle();
   }
 
   // --- role guess -----------------------------------------------------
