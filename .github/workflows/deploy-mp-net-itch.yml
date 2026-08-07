@@ -1,0 +1,89 @@
+name: Deploy mp-net to itch.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/mp-net/**'
+      - 'scripts/generate-versions.js'
+      - 'scripts/bump-version.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-mp-net-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-mp-net
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Bumps the deploy counter (see "Version stamping" in root CLAUDE.md)
+      # in-place, without committing yet - the commit only happens after a
+      # successful push to itch.io below, so a failed deploy doesn't burn a
+      # version number.
+      - name: Bump version stamp counter
+        run: node scripts/bump-version.js mp-net
+
+      # itch.io serves each upload from a build-specific path, so asset URLs
+      # must be relative rather than the "/game-prototypes/" absolute base
+      # the Pages build uses. Overriding --base here does not touch the
+      # Pages build or vite.config.ts.
+      - name: Build (relative base for itch.io)
+        run: npx vite build --base ./
+
+      # dist/ contains the hub page and every prototype because Vite builds
+      # all entry points together. Only mp-net's page (and the shared
+      # assets/ chunks it references) needs to ship to mp-net's itch
+      # project, so drop the rest. This also leaves exactly one HTML file
+      # in the upload, which itch.io auto-selects as the played file.
+      - name: Prune build to mp-net only
+        run: |
+          rm -f dist/index.html
+          rm -rf dist/prototypes/digger
+          rm -rf dist/prototypes/suits
+          rm -rf dist/prototypes/mp-base
+
+      - name: Set up butler
+        uses: jdno/setup-butler@v1
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push dist zitian-ff/mp-net:web
+
+      - name: Commit version stamp bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add prototypes/mp-net/version.json
+          if git diff --cached --quiet; then
+            echo "No version bump to commit"
+            exit 0
+          fi
+          git commit -m "Bump mp-net version stamp counter"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
