@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { PIXEL_RATIO } from './render/pixelRatio';
 import { getOrCreateClientId } from './net/clientId';
 import { createNetworkRoom } from './net/room';
 import { createNetworkActions } from './net/actions';
@@ -39,8 +40,8 @@ const game = new Phaser.Game({
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: WIDTH,
-    height: HEIGHT,
+    width: WIDTH * PIXEL_RATIO,
+    height: HEIGHT * PIXEL_RATIO,
   },
 });
 

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 
 export type ExpectedOrientation = 'landscape' | 'portrait';
 
@@ -7,8 +8,12 @@ export type ExpectedOrientation = 'landscape' | 'portrait';
 // on iOS Safari for plain web pages) - instead an overlay covers the scene
 // whenever the device's actual orientation doesn't match what it expects.
 export function createOrientationGuard(scene: Phaser.Scene, expected: ExpectedOrientation): void {
-  const width = scene.scale.width;
-  const height = scene.scale.height;
+  // scene.scale.width/height are the actual canvas backing-store size,
+  // which is logical size * PIXEL_RATIO (see main.ts); divide back out so
+  // this overlay is laid out in the same logical/CSS pixel space as
+  // everything else, unaffected by device pixel ratio.
+  const width = scene.scale.width / PIXEL_RATIO;
+  const height = scene.scale.height / PIXEL_RATIO;
 
   const overlay = scene.add.container(0, 0).setDepth(10000);
   const bg = scene.add.rectangle(0, 0, width, height, 0x000000, 0.94).setOrigin(0);
@@ -19,6 +24,7 @@ export function createOrientationGuard(scene: Phaser.Scene, expected: ExpectedOr
       color: '#ffffff',
       align: 'center',
       wordWrap: { width: width - 40 },
+      resolution: PIXEL_RATIO,
     })
     .setOrigin(0.5);
   overlay.add([bg, text]);

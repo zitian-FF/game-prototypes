@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import QRCode from 'qrcode';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { Roster, SharedNetData } from '../net/types';
 
 export class HostLobbyScene extends Phaser.Scene {
@@ -15,14 +16,19 @@ export class HostLobbyScene extends Phaser.Scene {
     addVersionStamp(this);
     createOrientationGuard(this, 'landscape');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
+
     const { room, actions, lobbyCode } = data;
-    const width = this.scale.width;
 
     this.add
       .text(width / 2, 24, 'mp-base host', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -31,6 +37,7 @@ export class HostLobbyScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '28px',
         color: '#ffd27a',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -41,13 +48,14 @@ export class HostLobbyScene extends Phaser.Scene {
       },
     );
     this.textures.once(Phaser.Textures.Events.ADD_KEY + 'qr-code', () => {
-      this.add.image(140, this.scale.height / 2 + 20, 'qr-code');
+      this.add.image(140, height / 2 + 20, 'qr-code');
     });
 
     this.add.text(280, 110, 'Players:', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#aaaaaa',
+      resolution: PIXEL_RATIO,
     });
 
     const playerListText = this.add.text(280, 136, '(no players yet)', {
@@ -55,13 +63,15 @@ export class HostLobbyScene extends Phaser.Scene {
       fontSize: '15px',
       color: '#eeeeee',
       lineSpacing: 6,
+      resolution: PIXEL_RATIO,
     });
 
     const startButton = this.add
-      .text(width / 2, this.scale.height - 40, '[ Start Game ]', {
+      .text(width / 2, height - 40, '[ Start Game ]', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#88ff88',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setAlpha(0.4);

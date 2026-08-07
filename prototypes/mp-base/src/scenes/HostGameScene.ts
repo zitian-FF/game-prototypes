@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { Roster, SharedNetData } from '../net/types';
 
 interface Row {
@@ -25,16 +26,22 @@ export class HostGameScene extends Phaser.Scene {
     addVersionStamp(this);
     createOrientationGuard(this, 'landscape');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
+
     const { actions, roster } = data;
     this.roster = roster;
     this.rows.clear();
     this.peerToClient.clear();
 
     this.add
-      .text(this.scale.width / 2, 24, 'Players', {
+      .text(width / 2, 24, 'Players', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -86,11 +93,13 @@ export class HostGameScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#eeeeee',
+      resolution: PIXEL_RATIO,
     });
     const counterText = this.add.text(LIST_LEFT + 220, y, '0', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#88ff88',
+      resolution: PIXEL_RATIO,
     });
     this.rows.set(clientId, { label, counterText });
   }
