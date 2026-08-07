@@ -75,14 +75,10 @@ jobs:
           rm -f dist/index.html
           rm -rf dist/prototypes/suits
 
-      - name: Install butler
-        run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
-          unzip -o butler.zip -d butler
-          chmod +x butler/butler
-          ./butler/butler -V
+      - name: Set up butler
+        uses: jdno/setup-butler@v1
 
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: ./butler/butler push dist zitian-ff/digger:html5
+        run: butler push dist zitian-ff/digger:html5
