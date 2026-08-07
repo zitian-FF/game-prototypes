@@ -6,3 +6,4 @@ dist/
 .cache/
 public/
 prototypes/*/assets-src/
+prototypes/*/src/version.generated.ts

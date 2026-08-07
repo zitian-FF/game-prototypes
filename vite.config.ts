@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { generateVersionStamps } from './scripts/generate-versions.js';
 
 function getGitSha(): string {
   try {
@@ -25,6 +26,8 @@ function getPrototypeEntries(): Record<string, string> {
   }
   return entries;
 }
+
+generateVersionStamps(__dirname);
 
 export default defineConfig({
   base: '/game-prototypes/',
