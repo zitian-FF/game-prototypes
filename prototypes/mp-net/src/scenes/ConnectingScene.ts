@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createNetworkRoom } from '../net/room';
 import { createNetworkActions } from '../net/actions';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import tune from '../../tune.json';
 import type { BootData, PlayerSessionData } from '../net/playerSession';
 
@@ -29,8 +30,10 @@ export class ConnectingScene extends Phaser.Scene {
 
   create(data: ConnectingSceneData): void {
     addVersionStamp(this);
-    const width = this.scale.width;
-    const height = this.scale.height;
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
 
     const statusText = this.add
       .text(width / 2, height / 2 - 20, `Connecting to ${data.code}...`, {
@@ -39,6 +42,7 @@ export class ConnectingScene extends Phaser.Scene {
         color: '#eeeeee',
         align: 'center',
         wordWrap: { width: width - 60 },
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -47,6 +51,7 @@ export class ConnectingScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#88aaff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setVisible(false)
