@@ -106,6 +106,25 @@ copies current values to the clipboard as JSON.
 Do not change tuned values unless explicitly asked. Those numbers were
 set by a human playing the game and are not yours to optimise.
 
+## Version stamping
+
+Every prototype displays a version stamp in the top-left corner of the
+canvas: tiny font, low-contrast, unobtrusive.
+
+- Format: `DDMMYYrXXXX` (e.g. `070826r0001`). `XXXX` is a zero-padded
+  4-digit running count.
+- The counter is per-prototype: it lives inside that prototype's own
+  folder (e.g. `prototypes/<name>/version.json`), not shared across the
+  repo, and starts at `0000`.
+- It increments automatically on every deploy of that prototype. No
+  manual step, and never hand-edit the counter. The date portion is
+  recomputed fresh on every deploy rather than stored.
+- Implementation is up to the prototype: typically a small counter file
+  read and incremented by the deploy workflow, injected into the boot
+  scene as a version string.
+- This rule applies to this prototype and all future ones going
+  forward. Do not retrofit prototypes that predate this rule.
+
 ## Verification before reporting done
 
 Run all of these. Do not report a task complete if any fail.
