@@ -4,6 +4,7 @@ import { createOrientationGuard } from '../orientation/orientation';
 import { createNetworkRoom } from '../net/room';
 import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
 import type { Roster } from '../net/types';
@@ -24,14 +25,18 @@ export class HostLobbyScene extends Phaser.Scene {
 
   create(data: BootData): void {
     addVersionStamp(this);
-    this.scale.resize(LANDSCAPE_WIDTH, LANDSCAPE_HEIGHT);
+    this.scale.resize(LANDSCAPE_WIDTH * PIXEL_RATIO, LANDSCAPE_HEIGHT * PIXEL_RATIO);
     createOrientationGuard(this, 'landscape');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    this.cameras.main.centerOn(LANDSCAPE_WIDTH / 2, LANDSCAPE_HEIGHT / 2);
+
     const statusText = this.add
-      .text(this.scale.width / 2, this.scale.height / 2, 'Setting up room...', {
+      .text(LANDSCAPE_WIDTH / 2, LANDSCAPE_HEIGHT / 2, 'Setting up room...', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#eeeeee',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -83,13 +88,14 @@ export class HostLobbyScene extends Phaser.Scene {
     code: string,
     hostClientId: string,
   ): void {
-    const width = this.scale.width;
+    const width = LANDSCAPE_WIDTH;
 
     this.add
       .text(width / 2, 24, 'mp-net host', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -98,6 +104,7 @@ export class HostLobbyScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '30px',
         color: '#ffd27a',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -110,6 +117,7 @@ export class HostLobbyScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#aaaaaa',
+      resolution: PIXEL_RATIO,
     });
 
     const playerListText = this.add.text(30, 172, '', {
@@ -117,6 +125,7 @@ export class HostLobbyScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#eeeeee',
       lineSpacing: 5,
+      resolution: PIXEL_RATIO,
     });
 
     const renderRoster = (): void => {
@@ -128,10 +137,11 @@ export class HostLobbyScene extends Phaser.Scene {
     renderRoster();
 
     const startButton = this.add
-      .text(width / 2, this.scale.height - 30, '[ Start Game ]', {
+      .text(width / 2, LANDSCAPE_HEIGHT - 30, '[ Start Game ]', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#88ff88',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
@@ -199,6 +209,7 @@ export class HostLobbyScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#88aaff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });

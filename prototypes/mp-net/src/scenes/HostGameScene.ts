@@ -3,9 +3,16 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
 import { bindPrimaryIntent } from '../input/intents';
 import { createDeltaSender } from '../net/deltaSender';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { createNetworkRoom } from '../net/room';
 import type { createNetworkActions } from '../net/actions';
 import type { Roster } from '../net/types';
+
+// Matches HostLobbyScene's LANDSCAPE_WIDTH/HEIGHT - this scene is only ever
+// reached from there, after that scene has already resized the canvas to
+// landscape.
+const LANDSCAPE_WIDTH = 844;
+const LANDSCAPE_HEIGHT = 390;
 
 export interface HostGameData {
   room: ReturnType<typeof createNetworkRoom>;
@@ -37,6 +44,9 @@ export class HostGameScene extends Phaser.Scene {
     addVersionStamp(this);
     createOrientationGuard(this, 'landscape');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    this.cameras.main.centerOn(LANDSCAPE_WIDTH / 2, LANDSCAPE_HEIGHT / 2);
+
     const { actions, roster, hostClientId } = data;
     this.roster = roster;
     this.rows.clear();
@@ -52,6 +62,7 @@ export class HostGameScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -101,13 +112,14 @@ export class HostGameScene extends Phaser.Scene {
     };
 
     const button = this.add
-      .rectangle(this.scale.width - 100, this.scale.height / 2, BUTTON_SIZE, BUTTON_SIZE, 0x2266cc)
+      .rectangle(LANDSCAPE_WIDTH - 100, LANDSCAPE_HEIGHT / 2, BUTTON_SIZE, BUTTON_SIZE, 0x2266cc)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(this.scale.width - 100, this.scale.height / 2, 'PRESS', {
+      .text(LANDSCAPE_WIDTH - 100, LANDSCAPE_HEIGHT / 2, 'PRESS', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -136,11 +148,13 @@ export class HostGameScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#eeeeee',
+      resolution: PIXEL_RATIO,
     });
     const counterText = this.add.text(LIST_LEFT + 230, y, '0', {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#88ff88',
+      resolution: PIXEL_RATIO,
     });
     this.rows.set(clientId, { label, counterText });
   }

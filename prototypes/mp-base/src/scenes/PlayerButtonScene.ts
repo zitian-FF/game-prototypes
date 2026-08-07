@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
 import { bindPrimaryIntent } from '../input/intents';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { SharedNetData } from '../net/types';
 
 const BUTTON_SIZE = 220;
@@ -16,9 +17,12 @@ export class PlayerButtonScene extends Phaser.Scene {
     addVersionStamp(this);
     createOrientationGuard(this, 'portrait');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
+
     const { actions } = data;
-    const width = this.scale.width;
-    const height = this.scale.height;
 
     const overlay = this.add.container(0, 0).setDepth(20000).setVisible(false);
     const overlayBg = this.add.rectangle(0, 0, width, height, 0x000000, 0.94).setOrigin(0);
@@ -28,6 +32,7 @@ export class PlayerButtonScene extends Phaser.Scene {
         fontSize: '18px',
         color: '#ffffff',
         align: 'center',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
     overlay.add([overlayBg, overlayText]);
@@ -40,6 +45,7 @@ export class PlayerButtonScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#ffffff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 

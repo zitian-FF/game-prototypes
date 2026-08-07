@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../net/lobbyCode';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { BootData } from '../net/playerSession';
 
 // Manual room-code entry. Uses a plain DOM <input> overlay (Phaser has no
@@ -13,14 +14,17 @@ export class JoinEntryScene extends Phaser.Scene {
 
   create(data: BootData): void {
     addVersionStamp(this);
-    const width = this.scale.width;
-    const height = this.scale.height;
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
 
     this.add
       .text(width / 2, height / 2 - 160, 'Enter room code', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#eeeeee',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 
@@ -41,6 +45,7 @@ export class JoinEntryScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#88ff88',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setAlpha(0.4);
@@ -67,6 +72,7 @@ export class JoinEntryScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#88aaff',
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });

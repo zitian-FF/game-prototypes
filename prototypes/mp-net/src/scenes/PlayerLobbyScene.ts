@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
+import { PIXEL_RATIO } from '../render/pixelRatio';
 import type { PlayerSessionData } from '../net/playerSession';
 
 export class PlayerLobbyScene extends Phaser.Scene {
@@ -12,9 +13,12 @@ export class PlayerLobbyScene extends Phaser.Scene {
     addVersionStamp(this);
     createOrientationGuard(this, 'portrait');
 
+    this.cameras.main.setZoom(PIXEL_RATIO);
+    const width = this.scale.width / PIXEL_RATIO;
+    const height = this.scale.height / PIXEL_RATIO;
+    this.cameras.main.centerOn(width / 2, height / 2);
+
     const { actions, room } = data;
-    const width = this.scale.width;
-    const height = this.scale.height;
 
     const statusText = this.add
       .text(width / 2, height / 2, 'Waiting for host to start...', {
@@ -23,6 +27,7 @@ export class PlayerLobbyScene extends Phaser.Scene {
         color: '#eeeeee',
         align: 'center',
         wordWrap: { width: width - 60 },
+        resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5);
 

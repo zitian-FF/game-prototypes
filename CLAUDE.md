@@ -125,6 +125,40 @@ canvas: tiny font, low-contrast, unobtrusive.
 - This rule applies to this prototype and all future ones going
   forward. Do not retrofit prototypes that predate this rule.
 
+## Device pixel ratio / canvas sharpness
+
+Every prototype's canvas rendering resolution must account for
+`window.devicePixelRatio`, not just the CSS/logical display size.
+Without this, text and thin graphics render soft/blurry on
+high-density mobile screens (effectively all modern phones), even
+when layout and scaling (e.g. `Phaser.Scale.FIT`) are otherwise
+correct.
+
+- The game's actual pixel buffer must be sized at logical size ×
+  devicePixelRatio, then scaled back down via CSS/Scale Manager to
+  the intended display size. Phaser 3 dropped the old global
+  `resolution` game-config option, so there is no single knob for
+  this: size the game config's `width`/`height` at
+  logical-size × devicePixelRatio (capped, since many phones report
+  3x+ and uncapped ratios add real fill-rate cost for sharpness
+  that's barely visible), keep all gameplay/layout code working in
+  the unchanged logical coordinate space, and compensate with camera
+  zoom (`camera.setZoom(devicePixelRatio)` plus `camera.centerOn(...)`
+  on the logical center, for every camera the scene uses) so existing
+  pixel-coordinate math still lines up exactly.
+- Phaser Text objects need `resolution` set individually in their
+  style/config; the game-level pixel buffer size does not by itself
+  sharpen text. Verify visually, per prototype and per Phaser version
+  in use.
+- This is a rendering-quality fix only: it must not change layout,
+  logical coordinates, or game logic. Positioning math written in
+  logical/CSS pixel space (e.g. `x = width / 2`) stays unaffected.
+- This rule applies to this prototype and all future ones going
+  forward, and unlike most rules in this file, it has been
+  retroactively applied to prototypes that predate it (digger, suits,
+  mp-base, mp-net) since the visual quality gap on high-DPI phones was
+  considered a bug rather than a missed feature.
+
 ## Verification before reporting done
 
 Run all of these. Do not report a task complete if any fail.
