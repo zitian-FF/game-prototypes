@@ -82,9 +82,12 @@ const multiDoubleWins: ForcedDeal = {
 // no doubles in play, wins the trick, and collecting S7 completes all 10
 // Shub cards in hand -- the win should fire immediately on collection,
 // before any redistribution UI.
+// trickNumber is bumped off 1 so the forced Blue-2 opener (only enforced on
+// the very first trick of the game) doesn't block this scenario's S7 lead.
 const suitCompletion: ForcedDeal = {
   leaderId: 0,
   gods: ['YogSothoth', 'Nyarlathotep', 'ShubNiggurath', 'Cthulhu'],
+  trickNumber: 2,
   hands: [
     [Y(2), Y(3), Y(4), Y(5), Y(6), Y(7), Y(8), Y(10), Y('Ace'), S(7)],
     [N(2), N(3), N(4), N(5), N(6), N(7), N(8), N(9), N(10), N('Ace')],
