@@ -41,6 +41,11 @@ export class HostGameScene extends Phaser.Scene {
     this.roster = roster;
     this.rows.clear();
     this.peerToClient.clear();
+    // Deliberately no room.onPeerLeave here: unlike the pre-game lobby, a
+    // mid-game disconnect preserves the roster slot and counter indefinitely
+    // for reconnect (Part 4/6 of BRIEF.md), so there's nothing to react to.
+    // HostLobbyScene clears its own debounced-removal handler before
+    // transitioning here so it can't reach back in and delete this entry.
 
     this.add
       .text(160, 24, 'Players', {

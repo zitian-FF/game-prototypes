@@ -177,6 +177,17 @@ export class HostLobbyScene extends Phaser.Scene {
     // Presence alone counts as ready, and the host itself is always a
     // participant, so Start is available as soon as the lobby exists.
     startButton.on('pointerdown', () => {
+      // Cancel any removals still pending debounce - once the game starts, a
+      // disconnect preserves the roster slot instead (see Part 4/6 of
+      // BRIEF.md), so nothing scheduled here should go on to delete it.
+      for (const timer of pendingRemoval.values()) clearTimeout(timer);
+      pendingRemoval.clear();
+      // HostGameScene owns room.onPeerLeave from here (it intentionally does
+      // nothing - a mid-game disconnect preserves the slot for reconnect) so
+      // this lobby-scoped handler doesn't keep running against a Map that's
+      // no longer meant to lose entries.
+      room.onPeerLeave = null;
+
       void actions.hostUI.send({ type: 'gameStarted' });
       this.scene.start('HostGame', { room, actions, roster: this.roster, hostClientId });
     });
