@@ -25,7 +25,12 @@ Fixed. Do not add, swap, or upgrade any of these without asking first.
 - Atlas packing: free-tex-packer-cli
 - Debug UI: Tweakpane
 - Visual verification: Playwright
-- Hosting: GitHub Pages
+- Hosting: not uniform. The hub/index page still deploys to GitHub Pages.
+  Individual game prototypes (starting with digger and suits) instead
+  deploy to itch.io via Butler, due to a known deploy-pages@v4
+  polling/timeout reliability issue on GitHub Pages. New prototypes
+  should default to the itch.io/Butler path; only use GitHub Pages if a
+  prototype specifically needs it.
 - Art storage: Cloudflare R2
 
 Do not add dependencies to solve problems the stack already solves.
@@ -87,6 +92,20 @@ secondary, pause. Devices bind to intents. Logic reads intents.
 Every prototype must be playable on a phone, even when the brief
 targets desktop. Remote playtesting happens on mobile. Crude touch
 bindings are acceptable; absent ones are not.
+
+## Networking
+
+Prototypes using Trystero's Nostr strategy for WebRTC signaling
+(mp-base, mp-net) must pin `relayConfig.urls` to a small set of
+well-established, widely-used public relays (e.g. `relay.damus.io`,
+`nos.lol`, `relay.mostr.pub`, `purplerelay.com`, `nostr.data.haus`)
+rather than relying on Trystero's default relay selection. That
+default derives relays deterministically from a hash of `appId`,
+which can land on small hobbyist relays with no uptime guarantee -
+if none of the derived relays are reachable, peers can never
+discover each other, surfacing as a "no host found" style error
+regardless of network conditions on either end. See mp-net's fix in
+PR #14.
 
 ## Placeholder-first
 
@@ -177,6 +196,10 @@ as working.
 - Small, single-purpose PRs. Do not bundle unrelated changes.
 - Never force-push to main.
 - Commit messages: imperative mood, one line, no trailing period.
+- mp-base and mp-net specifically have auto-merge enabled on their
+  PRs (CI-pass-gated, no manual review required) - a deliberate,
+  explicit exception to the general expectation of review elsewhere
+  in this repo.
 
 ## Scope discipline
 
