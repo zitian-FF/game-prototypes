@@ -1,0 +1,6 @@
+{
+  "connectionTimeoutMs": 8000,
+  "hostOccupancyCheckMs": 1500,
+  "disconnectDebounceMs": 2500,
+  "turnFetchTimeoutMs": 4000
+}

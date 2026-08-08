@@ -51,6 +51,7 @@ jobs:
         run: |
           rm -f dist/index.html
           rm -rf dist/prototypes/digger
+          rm -rf dist/prototypes/suits-mp
 
       - name: Set up butler
         uses: jdno/setup-butler@v1
