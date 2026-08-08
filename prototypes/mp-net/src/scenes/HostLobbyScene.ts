@@ -25,7 +25,13 @@ export class HostLobbyScene extends Phaser.Scene {
 
   create(data: BootData): void {
     addVersionStamp(this);
-    this.scale.resize(LANDSCAPE_WIDTH * PIXEL_RATIO, LANDSCAPE_HEIGHT * PIXEL_RATIO);
+    // scale.resize() is documented as NONE-mode-only: it resizes the canvas
+    // but leaves the FIT-mode aspect ratio locked to the initial portrait
+    // config, so the browser keeps CSS-fitting this landscape content as if
+    // it were still 390x844 (stretched/cropped instead of a small centered
+    // landscape box). setGameSize() is the scale-mode-aware equivalent - it
+    // additionally updates that locked aspect ratio to match.
+    this.scale.setGameSize(LANDSCAPE_WIDTH * PIXEL_RATIO, LANDSCAPE_HEIGHT * PIXEL_RATIO);
     createOrientationGuard(this, 'landscape');
 
     this.cameras.main.setZoom(PIXEL_RATIO);
