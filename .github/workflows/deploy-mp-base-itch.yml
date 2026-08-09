@@ -84,6 +84,20 @@ jobs:
             exit 0
           fi
           git commit -m "Bump mp-base version stamp counter"
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+
+          # Other prototypes' itch.io deploys can trigger on the same push
+          # (they share root files like package.json in their own path
+          # filters) and race this same commit-and-push step, so a plain
+          # push can be rejected as non-fast-forward. Retry a few times
+          # rather than losing the version bump silently.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to push version stamp bump after retries" >&2
+          exit 1
