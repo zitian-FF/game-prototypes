@@ -1,21 +1,21 @@
-name: Deploy mp-base to itch.io
+name: Deploy suits-mp to itch.io
 
 on:
   push:
     branches: [main]
     paths:
-      - 'prototypes/mp-base/**'
+      - 'prototypes/suits-mp/**'
       - 'scripts/generate-versions.js'
       - 'scripts/bump-version.js'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.ts'
       - 'tsconfig.json'
-      - '.github/workflows/deploy-mp-base-itch.yml'
+      - '.github/workflows/deploy-suits-mp-itch.yml'
   workflow_dispatch:
 
 concurrency:
-  group: itch-mp-base
+  group: itch-suits-mp
   cancel-in-progress: true
 
 permissions:
@@ -45,7 +45,7 @@ jobs:
       # successful push to itch.io below, so a failed deploy doesn't burn a
       # version number.
       - name: Bump version stamp counter
-        run: node scripts/bump-version.js mp-base
+        run: node scripts/bump-version.js suits-mp
 
       # itch.io serves each upload from a build-specific path, so asset URLs
       # must be relative rather than the "/game-prototypes/" absolute base
@@ -55,16 +55,17 @@ jobs:
         run: npx vite build --base ./
 
       # dist/ contains the hub page and every prototype because Vite builds
-      # all entry points together. Only mp-base's page (and the shared
-      # assets/ chunks it references) needs to ship to mp-base's itch
+      # all entry points together. Only suits-mp's page (and the shared
+      # assets/ chunks it references) needs to ship to suits-mp's itch
       # project, so drop the rest. This also leaves exactly one HTML file
       # in the upload, which itch.io auto-selects as the played file.
-      - name: Prune build to mp-base only
+      - name: Prune build to suits-mp only
         run: |
           rm -f dist/index.html
           rm -rf dist/prototypes/digger
           rm -rf dist/prototypes/suits
-          rm -rf dist/prototypes/suits-mp
+          rm -rf dist/prototypes/mp-base
+          rm -rf dist/prototypes/mp-net
 
       - name: Set up butler
         uses: jdno/setup-butler@v1
@@ -72,18 +73,32 @@ jobs:
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist zitian-ff/mp-base:web
+        run: butler push dist zitian-ff/suits-mp:html5
 
       - name: Commit version stamp bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add prototypes/mp-base/version.json
+          git add prototypes/suits-mp/version.json
           if git diff --cached --quiet; then
             echo "No version bump to commit"
             exit 0
           fi
-          git commit -m "Bump mp-base version stamp counter"
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          git commit -m "Bump suits-mp version stamp counter"
+
+          # Other prototypes' itch.io deploys can trigger on the same push
+          # (they share root files like package.json in their own path
+          # filters) and race this same commit-and-push step, so a plain
+          # push can be rejected as non-fast-forward. Retry a few times
+          # rather than losing the version bump silently.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to push version stamp bump after retries" >&2
+          exit 1

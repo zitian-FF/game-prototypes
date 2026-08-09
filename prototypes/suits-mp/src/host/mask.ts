@@ -1,0 +1,108 @@
+import { cardById } from '../rules/cards';
+import { activePlayerId, currentRequiredSuit, isRoleGuessEligible } from '../rules/engine';
+import type { GameState, God, PlayerId } from '../rules/types';
+import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
+import type { NetPlayerId } from '../net/netPlayerId';
+import type { MaskedState, MaskedTrickPlay, TurnPhase } from '../net/actions';
+
+function turnPhaseFor(state: GameState): TurnPhase {
+  switch (state.phase) {
+    case 'turn':
+      return 'play';
+    case 'roleGuess':
+      return 'roleGuess';
+    case 'chooseDelegate':
+      return 'selectDelegate';
+    case 'redistribution':
+      return 'redistribute';
+    case 'gameOver':
+      return 'gameOver';
+    // 'blocker' and 'trickResult' are hotseat-only pass-device moments with
+    // no suits-mp equivalent (every player has their own device/screen) -
+    // gameHost.settleAutoPhases() always resolves through them before a
+    // masked state is ever built, so this is unreachable in practice. Falls
+    // back to 'play' rather than throwing, since a masked payload must
+    // always be constructible.
+    default:
+      return 'play';
+  }
+}
+
+// Builds the one masked view of `state` visible to `forSlot`. Never
+// includes another player's hand or an unrevealed identity - see
+// net/actions.ts's MaskedState doc comments for what each field is allowed
+// to carry and why.
+export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedState {
+  const yourSlotNet = toNetPlayerId(forSlot);
+  const gameOver = state.phase === 'gameOver';
+
+  const revealedGods: Partial<Record<NetPlayerId, God>> = {};
+  if (gameOver) {
+    for (const player of state.players) {
+      revealedGods[toNetPlayerId(player.id)] = player.god;
+    }
+  }
+
+  const currentTrick: MaskedTrickPlay[] = state.plays.map((play) => ({
+    player: toNetPlayerId(play.playerId),
+    cards: play.cardIds,
+    kind: play.kind,
+  }));
+
+  const active = activePlayerId(state);
+  const leadSuit = state.plays.length > 0 ? cardById(state.plays[0].cardIds[0]).god : null;
+
+  let redistribution: MaskedState['redistribution'] = null;
+  if (state.phase === 'redistribution' && state.pendingDistributorId === forSlot && state.lastTrickResult) {
+    const winnerId = state.pendingWinnerId;
+    const contributionMap = new Map<PlayerId, number>();
+    for (const play of state.lastTrickResult.plays) {
+      if (play.playerId !== winnerId) {
+        contributionMap.set(play.playerId, (contributionMap.get(play.playerId) ?? 0) + play.cardIds.length);
+      }
+    }
+    redistribution = {
+      // All of this trick's cards were played face-up and are already
+      // public - a deliberate restriction to that pool (rather than the
+      // ported engine's own, more permissive "anything from the winner's
+      // whole hand") so a delegate never needs to see the winner's
+      // unrelated hand contents. See net/actions.ts's RedistributionContext
+      // doc comment.
+      candidateCards: state.lastTrickResult.plays.flatMap((p) => p.cardIds),
+      contributions: [...contributionMap.entries()].map(([playerId, count]) => ({
+        player: toNetPlayerId(playerId),
+        count,
+      })),
+    };
+  }
+
+  let delegateChoices: MaskedState['delegateChoices'] = null;
+  if (state.phase === 'chooseDelegate' && state.pendingWinnerId === forSlot) {
+    delegateChoices = ALL_NET_PLAYER_IDS.filter((id) => id !== yourSlotNet);
+  }
+
+  const receivedByMe = state.receivedLog[forSlot] ?? [];
+
+  return {
+    yourSlot: yourSlotNet,
+    yourHand: state.players[forSlot].hand,
+    revealedGods,
+    currentTrick,
+    currentTurn: active === null ? null : toNetPlayerId(active),
+    turnPhase: turnPhaseFor(state),
+    trickNumber: state.trickNumber,
+    leadSuit,
+    requiredSuit: currentRequiredSuit(state),
+    roleGuessEligible: isRoleGuessEligible(state, forSlot),
+    guessUsed: state.players[forSlot].guessUsed,
+    redistribution,
+    delegateChoices,
+    redistributionLog: receivedByMe.map((record) => ({
+      trickNumber: record.trickNumber,
+      toPlayer: yourSlotNet,
+      fromPlayer: toNetPlayerId(record.fromPlayerId),
+      count: record.cardIds.length,
+    })),
+    winner: state.winner ? { team: state.winner.team, reason: state.winner.reason, detail: state.winner.detail } : null,
+  };
+}
