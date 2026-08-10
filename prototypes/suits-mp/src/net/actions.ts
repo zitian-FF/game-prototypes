@@ -11,15 +11,11 @@ export type HostUIMessage =
   | { type: 'roomFull' };
 
 // --- Client -> host game actions -------------------------------------------
-// Exactly four action types. playCard/selectDelegate/redistribute are the
-// three specified by the brief, sent on player confirm at the end of each
-// turn. declareRoleGuess is a deliberate addition beyond that "exactly
-// three": the brief also locks in the trick-40+ Role Revelation win
-// condition and a role-guess UI prompt as in-scope for this stage, and
-// there is no way to submit a guess to the host without a network action
-// for it. It carries the full guess in one shot (declare + submit as a
-// single confirm) rather than round-tripping a separate "declare intent"
-// message first.
+// Three action types, sent on player confirm at the end of each turn. (A
+// follow-up task removed the trick-40+ role-guess feature this prototype
+// briefly had, and with it the fourth `declareRoleGuess` action - trick 40
+// is now an automatic host-computed forced end, not a player-submitted
+// action. See rules/engine.ts's resolveTrick40ForcedEnd.)
 
 export type PlayType = 'single' | 'double' | 'facedownSingle';
 
@@ -32,8 +28,7 @@ export const PLAY_TYPE_TO_KIND: Record<PlayType, PlayKind> = {
 export type ClientAction =
   | { action: 'playCard'; playType: PlayType; cards: CardId[] }
   | { action: 'selectDelegate'; targetPlayer: NetPlayerId }
-  | { action: 'redistribute'; assignments: { toPlayer: NetPlayerId; cards: CardId[] }[] }
-  | { action: 'declareRoleGuess'; guesses: Record<NetPlayerId, God> };
+  | { action: 'redistribute'; assignments: { toPlayer: NetPlayerId; cards: CardId[] }[] };
 
 // --- Host -> peer masked game state -----------------------------------------
 // Always sent via a targeted per-peer send (see net/room.ts callers) -
@@ -79,7 +74,7 @@ export type RedistributionLogEntry = {
   count: number;
 };
 
-export type TurnPhase = 'play' | 'selectDelegate' | 'redistribute' | 'roleGuess' | 'gameOver';
+export type TurnPhase = 'play' | 'selectDelegate' | 'redistribute' | 'gameOver';
 
 export type NetWinInfo = {
   team: Team | null;
@@ -101,8 +96,6 @@ export type MaskedState = {
   trickNumber: number;
   leadSuit: God | null;
   requiredSuit: God | null;
-  roleGuessEligible: boolean;
-  guessUsed: boolean;
   redistribution: RedistributionContext | null;
   delegateChoices: NetPlayerId[] | null;
   redistributionLog: RedistributionLogEntry[];

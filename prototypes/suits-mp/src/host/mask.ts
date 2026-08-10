@@ -1,5 +1,5 @@
 import { cardById } from '../rules/cards';
-import { activePlayerId, currentRequiredSuit, isRoleGuessEligible } from '../rules/engine';
+import { activePlayerId, currentRequiredSuit } from '../rules/engine';
 import type { GameState, God, PlayerId } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
@@ -9,8 +9,6 @@ function turnPhaseFor(state: GameState): TurnPhase {
   switch (state.phase) {
     case 'turn':
       return 'play';
-    case 'roleGuess':
-      return 'roleGuess';
     case 'chooseDelegate':
       return 'selectDelegate';
     case 'redistribution':
@@ -93,8 +91,6 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
     trickNumber: state.trickNumber,
     leadSuit,
     requiredSuit: currentRequiredSuit(state),
-    roleGuessEligible: isRoleGuessEligible(state, forSlot),
-    guessUsed: state.players[forSlot].guessUsed,
     redistribution,
     delegateChoices,
     redistributionLog: receivedByMe.map((record) => ({

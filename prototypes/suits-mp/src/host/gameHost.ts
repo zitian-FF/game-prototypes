@@ -2,17 +2,13 @@ import {
   advanceBlocker,
   chooseDelegate,
   currentPlayerId,
-  declareRoleGuess,
   initGame,
-  isRoleGuessEligible,
   playCard,
   proceedFromTrickResult,
   redistribute,
-  submitRoleGuess,
 } from '../rules/engine';
-import type { God, GameState, PlayerId, RedistributionGift } from '../rules/types';
+import type { GameState, PlayerId, RedistributionGift } from '../rules/types';
 import { fromNetPlayerId } from '../net/netPlayerId';
-import type { NetPlayerId } from '../net/netPlayerId';
 import type { ClientAction } from '../net/actions';
 
 const SEAT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4'] as const;
@@ -43,16 +39,19 @@ export interface ApplyResult {
   readonly error?: string;
 }
 
-// Applies one client-submitted action from `fromSlot`, authoritatively.
-// Every legality check the ported rules engine already performs (whose
-// turn it is, what phase the game is in, follow-suit/double legality,
-// redistribution count-matching, guess bijection, etc.) runs unchanged
-// inside the engine calls below - this function's own job is just routing
-// the four wire action shapes to the right engine call and catching
-// illegal attempts instead of letting them throw past the network
-// boundary. A rejected action leaves `state` untouched; there is no nack
-// message back to the sender (not one of the four action types), so a
-// client that sends something illegal simply sees no state change.
+// Applies one submitted action from `fromSlot`, authoritatively. Every
+// legality check the ported rules engine already performs (whose turn it
+// is, what phase the game is in, follow-suit/double legality,
+// redistribution count-matching, the double-winner never selecting
+// themselves as delegate, etc.) runs unchanged inside the engine calls
+// below - this function's own job is just routing the three wire action
+// shapes to the right engine call and catching illegal attempts instead of
+// letting them throw past the caller. A rejected action leaves `state`
+// untouched; there is no nack message back to the sender (not one of the
+// three action types), so a client that sends something illegal simply
+// sees no state change. Used identically for real peer actions and for
+// host-local bot actions (see host/botAI.ts) - both go through this same
+// function, never a separate bot-specific path.
 export function applyAction(state: GameState, fromSlot: PlayerId, action: ClientAction): ApplyResult {
   try {
     let next: GameState;
@@ -71,6 +70,8 @@ export function applyAction(state: GameState, fromSlot: PlayerId, action: Client
         if (state.phase !== 'chooseDelegate' || fromSlot !== state.pendingWinnerId) {
           return { state, ok: false, error: 'not this player\'s delegate to choose' };
         }
+        // chooseDelegate() itself rejects targetPlayer === the winner
+        // (mandatory delegation, no self-selection) - see rules/engine.ts.
         next = chooseDelegate(state, fromNetPlayerId(action.targetPlayer));
         break;
       }
@@ -85,25 +86,9 @@ export function applyAction(state: GameState, fromSlot: PlayerId, action: Client
         next = redistribute(state, gifts);
         break;
       }
-      case 'declareRoleGuess': {
-        if (!isRoleGuessEligible(state, fromSlot)) {
-          return { state, ok: false, error: 'not eligible to declare a role guess' };
-        }
-        const guesses = netGuessesToEngine(action.guesses);
-        next = submitRoleGuess(declareRoleGuess(state, fromSlot), fromSlot, guesses);
-        break;
-      }
     }
     return { state: settleAutoPhases(next), ok: true };
   } catch (err) {
     return { state, ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-}
-
-function netGuessesToEngine(guesses: Record<NetPlayerId, God>): Record<PlayerId, God> {
-  const out = {} as Record<PlayerId, God>;
-  for (const [netId, god] of Object.entries(guesses) as [NetPlayerId, God][]) {
-    out[fromNetPlayerId(netId)] = god;
-  }
-  return out;
 }

@@ -16,11 +16,15 @@ export interface SharedNetData {
 // transient peerId) so a reconnect can be matched back to the same slot.
 // `slot` is the fixed seat assignment ("p0".."p3", host is always "p0")
 // used both for turn order and for every masked-state/action payload.
+// `isBot` marks a host-local AI seat (see host/botAI.ts) - it has no real
+// network peer, so `peerId` is a harmless placeholder never used for
+// sending.
 export interface RosterEntry {
   clientId: string;
   peerId: string;
   slot: NetPlayerId;
   isHost: boolean;
+  isBot?: boolean;
 }
 
 export type Roster = Map<string, RosterEntry>;

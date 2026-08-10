@@ -22,7 +22,6 @@ export interface PlayerState {
   readonly name: string;
   readonly god: God;
   readonly hand: CardId[];
-  readonly guessUsed: boolean;
 }
 
 export interface TrickPlay {
@@ -52,7 +51,6 @@ export interface ReceivedRecord {
 export type Phase =
   | 'blocker'
   | 'turn'
-  | 'roleGuess'
   | 'trickResult'
   | 'chooseDelegate'
   | 'redistribution'
@@ -67,7 +65,11 @@ export interface PendingBlocker {
 
 export interface WinInfo {
   readonly team: Team | null;
-  readonly reason: 'suit' | 'roleGuess' | 'stalemate';
+  // 'trick40': the automatic forced end at the close of trick 40 with no
+  // suit completed (see engine.ts's resolveTrick40ForcedEnd). 'stalemate'
+  // covers only that forced end's own tie case now - the old role-guess
+  // exhaustion stalemate was removed along with role-guess entirely.
+  readonly reason: 'suit' | 'trick40' | 'stalemate';
   readonly detail: string;
 }
 

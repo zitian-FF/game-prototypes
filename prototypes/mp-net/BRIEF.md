@@ -47,8 +47,21 @@ expected to matter in practice with a 32^5 code space).
 
 Once settled, the host lands in the lobby: room code, a "copy code"
 button, a "copy invite link" button (current page URL + `?lobby=<code>`),
-and a live player list. The host counts as a participant, so **Start
-Game** is available immediately, even with nobody else in the room yet.
+a "Refresh code" button, and a live player list. The host counts as a
+participant, so **Start Game** is available immediately, even with
+nobody else in the room yet.
+
+**Refresh code** (manual only, pre-game only, no background timer): if
+the host sits idle long enough, the Trystero/Nostr room announcement can
+lapse, making the code silently undiscoverable to new joiners even
+though the host's own session is still alive. Tapping Refresh code
+leaves and rejoins the Trystero room under the same code first (the
+closest equivalent to "re-announce presence" the public Trystero API
+allows), running the same occupancy check as initial hosting; if that
+code is now occupied by someone else, it falls back to generating a new
+code with the same collision-retry logic as the initial setup. Real
+peer connections don't survive the room switch, so their roster entries
+are dropped (they'd need to reconnect); the host's own slot survives.
 
 ### Joining
 

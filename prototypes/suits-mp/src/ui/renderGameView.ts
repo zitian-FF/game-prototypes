@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { ALL_GODS, GOD_DISPLAY_NAME, cardById } from '../rules/cards';
+import { GOD_DISPLAY_NAME, cardById } from '../rules/cards';
 import { legalOptions } from '../rules/engine';
-import type { CardId, God } from '../rules/types';
+import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
@@ -16,43 +16,63 @@ function cardLabel(id: CardId): string {
   return `${card.name} [${GOD_DISPLAY_NAME[card.god]} ${card.rank}]`;
 }
 
-// Local-only selection state for whatever action is in progress. Reset on
-// every fresh masked state, since a server-confirmed change always starts
-// the next decision from scratch.
+// Local-only selection state for whatever action is in progress (which
+// card(s) are tapped so far, redistribution assignments made so far). Must
+// survive re-renders triggered by the player's own taps (see `rerender`
+// below) - it only resets when a genuinely new masked state arrives from
+// the host, which is a fresh decision point. Getting this wrong (rebuilding
+// a fresh ViewState on every re-render, including ones caused by the
+// player's own selection taps) was the bug behind the Stage 1+2 build
+// looking "non-interactive": a tap would register, trigger a re-render to
+// show the selection, and that re-render would immediately discard the
+// selection it was trying to show.
 interface ViewState {
   selectedCards: CardId[];
-  guessingRoles: boolean;
-  guessAssignment: Record<NetPlayerId, God>;
   redistributeAssignment: Partial<Record<NetPlayerId, CardId[]>>;
 }
 
 function freshViewState(): ViewState {
-  const guessAssignment = {} as Record<NetPlayerId, God>;
-  ALL_NET_PLAYER_IDS.forEach((slot, i) => {
-    guessAssignment[slot] = ALL_GODS[i];
-  });
-  return { selectedCards: [], guessingRoles: false, guessAssignment, redistributeAssignment: {} };
+  return { selectedCards: [], redistributeAssignment: {} };
 }
 
 type LineFn = (text: string, color?: string, size?: number) => Phaser.GameObjects.Text;
 type ButtonFn = (text: string, onTap: () => void, color?: string) => Phaser.GameObjects.Text;
 
-// Rebuilds the entire placeholder text-dump view for one masked state -
-// this is Stage 2's whole UI: your hand, whose turn, the trick so far, the
-// current turn phase, and (when applicable) tap targets to submit an
-// action. Real visuals are Stage 3; everything here is monospace text and
-// tappable rows. Shared between HostGameScene (host's own perspective,
-// rendered locally with no network round trip) and PlayerGameScene (a
-// remote peer's perspective, rendered from a received `state` message).
+// Entry point: always starts a fresh ViewState, since a new masked state
+// (the only thing that triggers a top-level call to this function - see
+// HostGameScene/PlayerGameScene) is a fresh decision point with nothing
+// carried over from before.
 export function renderGameView(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
   state: MaskedState,
   sendAction: (action: ClientAction) => void,
 ): void {
+  renderWithView(scene, container, state, sendAction, freshViewState());
+}
+
+// Rebuilds the entire placeholder text-dump view for one masked state -
+// this is Stage 2's whole UI: your hand, whose turn, the trick so far, the
+// current turn phase, and (when applicable) tap targets to submit an
+// action. Real visuals are Stage 3; everything here is monospace text and
+// tappable rows, all routed through the intent layer (bindTapIntent), not
+// raw pointer events. Shared between HostGameScene (host's own
+// perspective, rendered locally with no network round trip) and
+// PlayerGameScene (a remote peer's perspective, rendered from a received
+// `state` message).
+function renderWithView(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  state: MaskedState,
+  sendAction: (action: ClientAction) => void,
+  view: ViewState,
+): void {
   container.removeAll(true);
-  const view = freshViewState();
-  const rerender = (): void => renderGameView(scene, container, state, sendAction);
+  // Local re-renders (triggered by the player's own taps, to show an
+  // updated selection before they've confirmed anything) reuse this same
+  // `view` object rather than calling the exported renderGameView, which
+  // would hand back a fresh one and discard whatever was selected so far.
+  const rerender = (): void => renderWithView(scene, container, state, sendAction, view);
   let y = 20;
 
   const line: LineFn = (text, color = '#eeeeee', size = 13) => {
@@ -80,6 +100,13 @@ export function renderGameView(
     bindTapIntent(t, onTap);
     container.add(t);
     y += t.height + 6;
+    return t;
+  };
+
+  const tappableLine = (text: string, color: string, onTap: () => void): Phaser.GameObjects.Text => {
+    const t = line(text, color);
+    t.setInteractive({ useHandCursor: true });
+    bindTapIntent(t, onTap);
     return t;
   };
 
@@ -154,9 +181,7 @@ export function renderGameView(
       button(`Delegate to ${target}`, () => sendAction({ action: 'selectDelegate', targetPlayer: target }));
     }
   } else if (state.turnPhase === 'redistribute') {
-    renderRedistributePhase(state, view, sendAction, rerender, line, button);
-  } else if (state.turnPhase === 'roleGuess') {
-    line('(role guess in progress)', '#666666');
+    renderRedistributePhase(state, view, sendAction, rerender, line, button, tappableLine);
   }
 }
 
@@ -173,7 +198,7 @@ function renderPlayPhase(
   const opts = legalOptions(state.yourHand, leading ? null : state.requiredSuit);
 
   state.yourHand.forEach((id, i) => {
-    handRows[i].on('pointerdown', () => {
+    bindTapIntent(handRows[i], () => {
       const idx = view.selectedCards.indexOf(id);
       if (idx >= 0) view.selectedCards.splice(idx, 1);
       else if (view.selectedCards.length < 2) view.selectedCards.push(id);
@@ -207,50 +232,6 @@ function renderPlayPhase(
   } else {
     line('(select a legal card / pair to enable Play)', '#666666', 11);
   }
-
-  if (state.roleGuessEligible && !view.guessingRoles) {
-    button(
-      'Declare Role Guess (forfeit your lead)',
-      () => {
-        view.guessingRoles = true;
-        renderRoleGuessPicker(view, sendAction, rerender, line, button);
-      },
-      '#ff8888',
-    );
-  }
-}
-
-function renderRoleGuessPicker(
-  view: ViewState,
-  sendAction: (action: ClientAction) => void,
-  rerender: () => void,
-  line: LineFn,
-  button: ButtonFn,
-): void {
-  line('Assign a god to every seat (tap to cycle), then submit:', '#ff8888');
-
-  for (const slot of ALL_NET_PLAYER_IDS) {
-    const t = line(`  ${slot}: ${GOD_DISPLAY_NAME[view.guessAssignment[slot]]}`, '#ffffff');
-    t.setInteractive({ useHandCursor: true });
-    t.on('pointerdown', () => {
-      const current = view.guessAssignment[slot];
-      const nextGod = ALL_GODS[(ALL_GODS.indexOf(current) + 1) % ALL_GODS.length];
-      const swapSlot = ALL_NET_PLAYER_IDS.find((s) => view.guessAssignment[s] === nextGod)!;
-      view.guessAssignment[slot] = nextGod;
-      view.guessAssignment[swapSlot] = current;
-      rerender();
-    });
-  }
-
-  button('Submit Guess', () => sendAction({ action: 'declareRoleGuess', guesses: { ...view.guessAssignment } }), '#ff8888');
-  button(
-    'Cancel',
-    () => {
-      view.guessingRoles = false;
-      rerender();
-    },
-    '#888888',
-  );
 }
 
 function renderRedistributePhase(
@@ -260,6 +241,7 @@ function renderRedistributePhase(
   rerender: () => void,
   line: LineFn,
   button: ButtonFn,
+  tappableLine: (text: string, color: string, onTap: () => void) => Phaser.GameObjects.Text,
 ): void {
   const ctx = state.redistribution;
   if (!ctx) {
@@ -286,10 +268,11 @@ function renderRedistributePhase(
   line('Candidate cards:', '#aaaaaa');
   for (const id of ctx.candidateCards) {
     const used = assigned.has(id);
-    const t = line(`  ${used ? '(assigned) ' : ''}${cardLabel(id)}`, used ? '#555555' : '#dddddd');
-    if (!used) {
-      t.setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => {
+    const text = `  ${used ? '(assigned) ' : ''}${cardLabel(id)}`;
+    if (used) {
+      line(text, '#555555');
+    } else {
+      tappableLine(text, '#dddddd', () => {
         const target = currentTarget();
         if (!target) return;
         const list = view.redistributeAssignment[target] ?? [];
