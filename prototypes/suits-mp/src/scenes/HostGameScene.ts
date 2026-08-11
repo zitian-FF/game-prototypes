@@ -6,12 +6,14 @@ import { createInitialState, applyAction } from '../host/gameHost';
 import { chooseBotAction } from '../host/botAI';
 import { buildMaskedState } from '../host/mask';
 import { activePlayerId } from '../rules/engine';
-import { renderGameView } from '../ui/renderGameView';
+import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
+import type { PersistentUIState } from '../ui/renderGameView';
 import { fromNetPlayerId, toNetPlayerId } from '../net/netPlayerId';
 import type { createNetworkRoom } from '../net/room';
 import type { createNetworkActions, ClientAction } from '../net/actions';
 import type { Roster, RosterEntry } from '../net/types';
 import type { GameState, PlayerId } from '../rules/types';
+import tune from '../../tune.json';
 
 export interface HostGameData {
   // null in Single Player mode: no Trystero room/actions exist at all, since
@@ -42,6 +44,9 @@ export class HostGameScene extends Phaser.Scene {
   private actions!: ReturnType<typeof createNetworkActions> | null;
   private state!: GameState;
   private container!: Phaser.GameObjects.Container;
+  // One instance for the scene's whole lifetime, not rebuilt per masked
+  // state - see ui/renderGameView.ts's PersistentUIState doc comment.
+  private uiState: PersistentUIState = createPersistentUIState();
 
   constructor() {
     super('HostGame');
@@ -128,13 +133,24 @@ export class HostGameScene extends Phaser.Scene {
   // turns happening rather than jumping straight to the next human
   // decision. Stops as soon as the active seat isn't a bot, or the game is
   // over.
-  private driveBotsIfNeeded(): void {
-    for (let i = 0; i < MAX_BOT_STEPS && this.state.phase !== 'gameOver'; i++) {
-      const active = activePlayerId(this.state);
-      if (active === null) return;
-      const entry = this.entryForSlot(active);
-      if (!entry?.isBot) return;
+  //
+  // Each step is delayed by tune.json's botActionDelayMs (see
+  // debug/debugPanel.ts for how that's tunable via ?debug=1) so a human
+  // player can visually follow what a bot just did before the next one
+  // acts - presentation timing only, applied uniformly to every bot action
+  // type (playCard/selectDelegate/redistribute); chooseBotAction's own
+  // decision logic is untouched. Recursion happens across Phaser timer
+  // callbacks, not the call stack, so `step` (mirroring the old loop's
+  // MAX_BOT_STEPS cap) is threaded through explicitly rather than relying
+  // on a loop counter.
+  private driveBotsIfNeeded(step = 0): void {
+    if (step >= MAX_BOT_STEPS || this.state.phase === 'gameOver') return;
+    const active = activePlayerId(this.state);
+    if (active === null) return;
+    const entry = this.entryForSlot(active);
+    if (!entry?.isBot) return;
 
+    this.time.delayedCall(tune.botActionDelayMs, () => {
       const action = chooseBotAction(this.state, active);
       const result = applyAction(this.state, active, action);
       if (!result.ok) {
@@ -143,7 +159,8 @@ export class HostGameScene extends Phaser.Scene {
       }
       this.state = result.state;
       this.broadcastAll();
-    }
+      this.driveBotsIfNeeded(step + 1);
+    });
   }
 
   private sendMaskedStateTo(entry: RosterEntry): void {
@@ -153,7 +170,7 @@ export class HostGameScene extends Phaser.Scene {
     const slot = fromNetPlayerId(entry.slot);
     const masked = buildMaskedState(this.state, slot);
     if (entry.isHost) {
-      renderGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action));
+      renderGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState);
     } else if (this.actions) {
       // Structurally unreachable in Single Player mode: its roster is only
       // ever the host plus bots, both handled above.

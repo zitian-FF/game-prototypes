@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { renderGameView } from '../ui/renderGameView';
+import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PlayerSessionData } from '../net/playerSession';
 
 export class PlayerGameScene extends Phaser.Scene {
@@ -20,6 +20,9 @@ export class PlayerGameScene extends Phaser.Scene {
 
     const { actions, room } = data;
     const container = this.add.container(0, 0);
+    // One instance for the scene's whole lifetime, not rebuilt per masked
+    // state - see ui/renderGameView.ts's PersistentUIState doc comment.
+    const uiState = createPersistentUIState();
 
     const overlay = this.add.container(0, 0).setDepth(20000).setVisible(false);
     const overlayBg = this.add.rectangle(0, 0, width, height, 0x000000, 0.94).setOrigin(0);
@@ -39,7 +42,7 @@ export class PlayerGameScene extends Phaser.Scene {
     // ui/renderGameView.ts) since real presentation is Stage 3.
     actions.state.onMessage = (masked, context) => {
       data.hostPeerId.current = context.peerId;
-      renderGameView(this, container, masked, (action) => void actions.gameAction.send(action));
+      renderGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState);
     };
 
     room.onPeerLeave = (peerId) => {
