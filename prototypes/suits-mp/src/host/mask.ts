@@ -47,6 +47,19 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
     kind: play.kind,
   }));
 
+  // `state.lastTrickResult` is overwritten only when a trick actually
+  // resolves (see rules/engine.ts's playCard), so it already holds exactly
+  // "the trick before this one" for the log's whole lifetime - null before
+  // trick 1's resolution, then replaced wholesale each time a new trick
+  // completes, including across the redistribution phase that follows.
+  const previousTrick: MaskedTrickPlay[] | null = state.lastTrickResult
+    ? state.lastTrickResult.plays.map((play) => ({
+        player: toNetPlayerId(play.playerId),
+        cards: play.cardIds,
+        kind: play.kind,
+      }))
+    : null;
+
   const active = activePlayerId(state);
   const leadSuit = state.plays.length > 0 ? cardById(state.plays[0].cardIds[0]).god : null;
 
@@ -87,8 +100,10 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
   return {
     yourSlot: yourSlotNet,
     yourHand: state.players[forSlot].hand,
+    yourGod: state.players[forSlot].god,
     revealedGods,
     currentTrick,
+    previousTrick,
     currentTurn: active === null ? null : toNetPlayerId(active),
     turnPhase: turnPhaseFor(state),
     trickNumber: state.trickNumber,

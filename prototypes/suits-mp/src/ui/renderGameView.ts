@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GOD_DISPLAY_NAME, cardById } from '../rules/cards';
+import { GOD_DISPLAY_NAME, GOD_TEAM, cardById } from '../rules/cards';
 import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -36,6 +36,21 @@ function freshViewState(): ViewState {
   return { selectedCards: [], redistributeAssignment: {} };
 }
 
+// Unlike ViewState above, this is a UI preference (is the log open?), not
+// something tied to a particular decision point - it must survive across
+// every new masked state that arrives (i.e. every action any player takes,
+// not just the local player's own taps), so callers (HostGameScene,
+// PlayerGameScene) own one instance for the whole scene lifetime and pass
+// it into every renderGameView call, rather than it being rebuilt fresh
+// per masked state the way ViewState is.
+export interface PersistentUIState {
+  logOpen: boolean;
+}
+
+export function createPersistentUIState(): PersistentUIState {
+  return { logOpen: false };
+}
+
 type LineFn = (text: string, color?: string, size?: number) => Phaser.GameObjects.Text;
 type ButtonFn = (text: string, onTap: () => void, color?: string) => Phaser.GameObjects.Text;
 
@@ -48,8 +63,9 @@ export function renderGameView(
   container: Phaser.GameObjects.Container,
   state: MaskedState,
   sendAction: (action: ClientAction) => void,
+  ui: PersistentUIState,
 ): void {
-  renderWithView(scene, container, state, sendAction, freshViewState());
+  renderWithView(scene, container, state, sendAction, freshViewState(), ui);
 }
 
 // Rebuilds the entire placeholder text-dump view for one masked state -
@@ -67,13 +83,14 @@ function renderWithView(
   state: MaskedState,
   sendAction: (action: ClientAction) => void,
   view: ViewState,
+  ui: PersistentUIState,
 ): void {
   container.removeAll(true);
   // Local re-renders (triggered by the player's own taps, to show an
   // updated selection before they've confirmed anything) reuse this same
   // `view` object rather than calling the exported renderGameView, which
   // would hand back a fresh one and discard whatever was selected so far.
-  const rerender = (): void => renderWithView(scene, container, state, sendAction, view);
+  const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui);
   let y = 20;
 
   const line: LineFn = (text, color = '#eeeeee', size = 13) => {
@@ -114,6 +131,21 @@ function renderWithView(
   const isYourTurn = state.currentTurn === state.yourSlot;
 
   line(`suits-mp - you are ${state.yourSlot}`, '#88aaff', 12);
+  // Persistent own-identity reminder (item 4) - visible on every render,
+  // every phase, through to game end. Own god/team only; every other
+  // player's identity stays hidden until `revealedGods` reveals it on
+  // suit completion, per the existing hidden-role rule.
+  line(`You are: ${GOD_DISPLAY_NAME[state.yourGod]} - Team ${GOD_TEAM[state.yourGod]}`, '#ffcc66', 12);
+  button(ui.logOpen ? 'Close Log' : 'Log', () => {
+    ui.logOpen = !ui.logOpen;
+    rerender();
+  }, '#88aaff');
+
+  if (ui.logOpen) {
+    renderLogView(state, line);
+    return;
+  }
+
   line(`Trick ${state.trickNumber}  |  Turn phase: ${state.turnPhase}  |  Current turn: ${state.currentTurn ?? '-'}`);
   if (state.leadSuit) {
     const required = state.requiredSuit ? `  Required: ${GOD_DISPLAY_NAME[state.requiredSuit]}` : '';
@@ -237,6 +269,23 @@ function renderPlayPhase(
     button('Play', () => sendAction({ action: 'playCard', playType: type, cards }));
   } else {
     line('(select a legal card / pair to enable Play)', '#666666', 11);
+  }
+}
+
+// Item 2: shows only the trick immediately before the one in progress, with
+// per-card player attribution, in play order - never full game history.
+// `state.previousTrick` already carries exactly that (see host/mask.ts),
+// so this is pure presentation. Every card here was already played
+// face-up, so this reveals nothing that wasn't already visible live; it
+// only lets a player review it after the fact.
+function renderLogView(state: MaskedState, line: LineFn): void {
+  line('Previous trick:', '#aaaaaa');
+  if (!state.previousTrick) {
+    line('  No previous trick yet.', '#666666');
+    return;
+  }
+  for (const play of state.previousTrick) {
+    line(`  ${play.player}: ${play.cards.map(cardLabel).join(' + ')} (${play.kind})`);
   }
 }
 

@@ -244,6 +244,21 @@ strategy, explicitly deferred to a future task):
 - Bots that win via suit completion or via the trick-40 forced end just
   end the game like anyone else - no special-casing.
 
+**Bot pacing (follow-up task):** each bot step is delayed by
+`tune.json`'s `botActionDelayMs` (default 1000ms, tunable via `?debug=1`
+per the root "Tuning" rule) before it's applied and broadcast, so a human
+player can visually follow what a bot just did rather than seeing an
+entire multi-bot sequence resolve instantly. `HostGameScene
+.driveBotsIfNeeded()` implements this with `this.time.delayedCall(...)`
+scheduling the next step recursively rather than a synchronous loop - the
+old `MAX_BOT_STEPS` safety cap is threaded through as an explicit `step`
+parameter instead of a loop counter, since the recursion now happens
+across Phaser timer callbacks, not the JS call stack. Presentation-timing
+only: `chooseBotAction()`'s decision logic (still Level 1 legal-random)
+is completely unchanged, and the delay applies uniformly to every bot
+action type (playCard/selectDelegate/redistribute). Does not apply to
+human actions, which stay immediate on confirm.
+
 ## Single Player mode
 
 The landing screen has a third option alongside Host/Join: **Single
@@ -357,6 +372,40 @@ This note carries over unchanged when real card art eventually replaces
 the placeholder text (per this task's own brief): only the rendering
 (text color vs. sprite/texture state) needs re-skinning, not the
 underlying `computeHandLegality`/`nextSelectionAfterTap` logic.
+
+**Previous-trick log toggle and own-identity display (follow-up task):**
+
+- A `[ Log ]` button is always rendered near the top of the view (every
+  phase, including the game-over screen). Tapping it swaps the whole view
+  for a log showing only the trick immediately before the one in
+  progress - each card played, which player played it, and in play order
+  - or "No previous trick yet." during trick 1. Tapping the button again
+  (now labeled `[ Close Log ]`) returns to the normal game view.
+- The data comes from `MaskedState.previousTrick`, built in
+  `host/mask.ts` straight from `state.lastTrickResult`: the engine
+  already overwrites that field only when a trick actually resolves (see
+  `playCard()`), so it holds exactly "the trick before this one" for its
+  whole lifetime - null before trick 1 resolves, then replaced wholesale
+  each time a new trick completes, including across the redistribution
+  phase that follows. Every card in it was already played face-up, so
+  exposing it (with attribution) to every player reveals nothing that
+  wasn't already visible live.
+- Unlike the per-decision-point `ViewState` (hand selection, redistribute
+  assignment - reset on every new masked state), whether the log is open
+  is a UI preference that must survive every masked state push from any
+  player's action, not just the local player's own taps. It lives in a
+  separate `PersistentUIState` object (`ui/renderGameView.ts`) that
+  `HostGameScene`/`PlayerGameScene` each own for their whole scene
+  lifetime and pass into every `renderGameView` call, rather than being
+  rebuilt fresh per masked state the way `ViewState` is.
+- A persistent `You are: <god> - Team <team>` line renders on every
+  render, every phase, from deal through game end - a reminder of your
+  own hidden identity, which was previously only ever shown once (at
+  reveal/deal time, before this task). `MaskedState.yourGod` carries this
+  (a player's own identity is never secret to themself); team is derived
+  client-side via the existing `GOD_TEAM` lookup. Every other player's
+  identity stays hidden until `revealedGods` reveals it on suit
+  completion, unchanged.
 
 ## Out of scope
 

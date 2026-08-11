@@ -85,12 +85,24 @@ export type NetWinInfo = {
 export type MaskedState = {
   yourSlot: NetPlayerId;
   yourHand: CardId[];
+  // A player's own identity is never secret to themself - only to everyone
+  // else, until suit completion (see `revealedGods` below). Powers a
+  // persistent "You are: <god> - Team <team>" display so a player always
+  // has a reminder of their own hidden role, not just at deal time.
+  yourGod: God;
   // Populated only once the game is over (suit-completion/role-guess wins
   // are always simultaneously game-ending, so there is no mid-game moment
   // where a completed suit reveals an identity without also ending the
   // game).
   revealedGods: Partial<Record<NetPlayerId, God>>;
   currentTrick: MaskedTrickPlay[];
+  // The trick immediately before `currentTrick` - null until the first
+  // trick of the game has completed. Every card in it was already played
+  // face-up, so showing it (with player attribution) reveals nothing a
+  // player couldn't already have seen live; this just lets them review it
+  // via the log toggle after the fact. Replaced wholesale, never
+  // accumulated, each time a new trick resolves - see host/mask.ts.
+  previousTrick: MaskedTrickPlay[] | null;
   currentTurn: NetPlayerId | null;
   turnPhase: TurnPhase;
   trickNumber: number;
