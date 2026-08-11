@@ -9,10 +9,13 @@ import type {
   PlayerState,
   Rank,
   RedistributionGift,
+  Team,
   TrickPlay,
   TrickResult,
   WinInfo,
 } from './types';
+
+const TRICK_40_FORCED_END = 40;
 
 // --- Randomness -------------------------------------------------------
 // Always genuinely random for real play. Forced deals (debug-only) bypass
@@ -82,7 +85,6 @@ export function initGame(names: [string, string, string, string], forced?: Force
       name,
       god: gods[i],
       hand: hands[i],
-      guessUsed: false,
     })
   ) as [PlayerState, PlayerState, PlayerState, PlayerState];
 
@@ -132,16 +134,6 @@ export function legalOptions(hand: readonly CardId[], requiredSuit: God | null):
   }
   const doubleRanks = [...groupByRank(hand).entries()].filter(([, ids]) => ids.length >= 2).map(([rank]) => rank);
   return { mustPlaySuit: null, suitCards: [], offsuitAvailable: true, doubleRanks };
-}
-
-export function isRoleGuessEligible(state: GameState, playerId: PlayerId): boolean {
-  return (
-    state.phase === 'turn' &&
-    state.plays.length === 0 &&
-    state.trickNumber >= 40 &&
-    state.leaderId === playerId &&
-    !state.players[playerId].guessUsed
-  );
 }
 
 // --- Playing a card -----------------------------------------------------
@@ -377,6 +369,25 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     };
   }
 
+  // Trick-40 forced end (replaces the old role-guess win condition): if no
+  // suit was completed by the end of trick 40's own redistribution, the
+  // game ends automatically here - no player action triggers it, and it
+  // fires identically regardless of whether this redistribution was
+  // self-performed or delegated. See resolveTrick40ForcedEnd below.
+  if (state.trickNumber === TRICK_40_FORCED_END) {
+    return {
+      ...state,
+      players,
+      lastReceived,
+      receivedLog,
+      phase: 'gameOver',
+      pendingBlocker: null,
+      pendingWinnerId: null,
+      pendingDistributorId: null,
+      winner: resolveTrick40ForcedEnd(players),
+    };
+  }
+
   const newLeaderId = state.pendingDistributorId;
   return {
     ...state,
@@ -392,72 +403,44 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
   };
 }
 
-// --- Role Revelation ------------------------------------------------------
+// --- Trick-40 forced end ---------------------------------------------------
 
-export function declareRoleGuess(state: GameState, playerId: PlayerId): GameState {
-  if (!isRoleGuessEligible(state, playerId)) throw new Error('not eligible to declare a role guess');
-  return { ...state, phase: 'roleGuess' };
+function suitCompletionCount(player: PlayerState): number {
+  return godCardIds(player.god).filter((id) => player.hand.includes(id)).length;
 }
 
-export function cancelRoleGuess(state: GameState): GameState {
-  if (state.phase !== 'roleGuess') throw new Error('not in roleGuess phase');
-  return { ...state, phase: 'turn' };
-}
+// Chaos = Cthulhu + Nyarlathotep, Cosmos = Shub-Niggurath + Yog-Sothoth
+// (same fixed pairing as GOD_TEAM). Compares each team's best player's
+// suit-completion count, then their other player's as a tiebreak, then
+// falls back to a stalemate. See root BRIEF.md item 2 of the follow-up
+// task for the exact rule this implements.
+function resolveTrick40ForcedEnd(players: readonly PlayerState[]): WinInfo {
+  const byTeam: Record<Team, PlayerState[]> = { Chaos: [], Cosmos: [] };
+  for (const p of players) byTeam[GOD_TEAM[p.god]].push(p);
 
-export function submitRoleGuess(
-  state: GameState,
-  playerId: PlayerId,
-  guesses: Record<PlayerId, God>
-): GameState {
-  if (state.phase !== 'roleGuess' || playerId !== state.leaderId) throw new Error('not this player\'s guess to make');
+  const chaosCounts = byTeam.Chaos.map(suitCompletionCount).sort((a, b) => b - a);
+  const cosmosCounts = byTeam.Cosmos.map(suitCompletionCount).sort((a, b) => b - a);
 
-  const guessedGods = state.players.map((p) => guesses[p.id]);
-  const isBijection = new Set(guessedGods).size === 4 && guessedGods.every((g) => ALL_GODS.includes(g));
-  if (!isBijection) throw new Error('guess must assign each god to exactly one player');
-
-  const correct = state.players.every((p) => guesses[p.id] === p.god);
-  const players = state.players.map((p) =>
-    p.id === playerId ? { ...p, guessUsed: true } : p
-  ) as GameState['players'];
-
-  if (correct) {
-    const guesser = players[playerId];
+  if (chaosCounts[0] !== cosmosCounts[0]) {
+    const winningTeam: Team = chaosCounts[0] > cosmosCounts[0] ? 'Chaos' : 'Cosmos';
     return {
-      ...state,
-      players,
-      phase: 'gameOver',
-      pendingBlocker: null,
-      winner: {
-        team: GOD_TEAM[guesser.god],
-        reason: 'roleGuess',
-        detail: `${guesser.name} correctly guessed all four roles.`,
-      },
+      team: winningTeam,
+      reason: 'trick40',
+      detail: `Trick 40 ended with no suit completed - ${winningTeam}'s best player held more of their own suit (${Math.max(chaosCounts[0], cosmosCounts[0])} vs ${Math.min(chaosCounts[0], cosmosCounts[0])}).`,
     };
   }
-
-  const stalemate = players.every((p) => p.guessUsed);
-  if (stalemate) {
+  if (chaosCounts[1] !== cosmosCounts[1]) {
+    const winningTeam: Team = chaosCounts[1] > cosmosCounts[1] ? 'Chaos' : 'Cosmos';
     return {
-      ...state,
-      players,
-      phase: 'gameOver',
-      pendingBlocker: null,
-      winner: {
-        team: null,
-        reason: 'stalemate',
-        detail: 'Every player has attempted and failed a role guess.',
-      },
+      team: winningTeam,
+      reason: 'trick40',
+      detail: `Trick 40 ended with no suit completed - both teams tied on their best player, ${winningTeam}'s other player held more of their own suit (${Math.max(chaosCounts[1], cosmosCounts[1])} vs ${Math.min(chaosCounts[1], cosmosCounts[1])}).`,
     };
   }
-
-  const newLeaderId = (((playerId + 1) % 4) as PlayerId);
   return {
-    ...state,
-    players,
-    leaderId: newLeaderId,
-    trickNumber: state.trickNumber + 1,
-    phase: 'blocker',
-    pendingBlocker: { forPlayerId: newLeaderId, next: 'turn' },
+    team: null,
+    reason: 'stalemate',
+    detail: 'Trick 40 ended with no suit completed and both teams tied on both players.',
   };
 }
 
@@ -467,8 +450,6 @@ export function activePlayerId(state: GameState): PlayerId | null {
   switch (state.phase) {
     case 'turn':
       return currentPlayerId(state);
-    case 'roleGuess':
-      return state.leaderId;
     case 'chooseDelegate':
       return state.pendingWinnerId;
     case 'redistribution':

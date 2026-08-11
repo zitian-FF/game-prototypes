@@ -3,9 +3,11 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { createInitialState, applyAction } from '../host/gameHost';
+import { chooseBotAction } from '../host/botAI';
 import { buildMaskedState } from '../host/mask';
+import { activePlayerId } from '../rules/engine';
 import { renderGameView } from '../ui/renderGameView';
-import { fromNetPlayerId } from '../net/netPlayerId';
+import { fromNetPlayerId, toNetPlayerId } from '../net/netPlayerId';
 import type { createNetworkRoom } from '../net/room';
 import type { createNetworkActions, ClientAction } from '../net/actions';
 import type { Roster, RosterEntry } from '../net/types';
@@ -17,13 +19,21 @@ export interface HostGameData {
   roster: Roster;
 }
 
+// Safety cap on the bot-driving loop below - the game state always makes
+// forward progress (a card is played, a trick resolves, the game ends), so
+// this is only a guard against an unforeseen bug looping forever, not
+// something expected to matter in practice.
+const MAX_BOT_STEPS = 1000;
+
 // Runs the authoritative game host: owns the one canonical GameState,
 // applies every incoming action through gameHost.applyAction, and after
 // each change computes and sends a fresh masked payload to every peer via
 // a targeted per-peer `state.send` - never a shared broadcast (see
 // net/actions.ts). The host's own screen renders the exact same masked
 // view of its own slot, just built and applied locally instead of over the
-// network.
+// network. Bot-filled seats (see HostLobbyScene's "Fill with bots") are
+// driven the same way: driveBotsIfNeeded feeds their moves through the
+// exact same applyAction path a real peer's action takes.
 export class HostGameScene extends Phaser.Scene {
   private roster!: Roster;
   private actions!: ReturnType<typeof createNetworkActions>;
@@ -73,11 +83,22 @@ export class HostGameScene extends Phaser.Scene {
     };
 
     this.broadcastAll();
+    // Covers the case where the very first leader (whoever holds Yog-2) is
+    // itself a bot seat.
+    this.driveBotsIfNeeded();
   }
 
   private entryForPeer(peerId: string): RosterEntry | undefined {
     for (const entry of this.roster.values()) {
       if (entry.peerId === peerId) return entry;
+    }
+    return undefined;
+  }
+
+  private entryForSlot(slot: PlayerId): RosterEntry | undefined {
+    const net = toNetPlayerId(slot);
+    for (const entry of this.roster.values()) {
+      if (entry.slot === net) return entry;
     }
     return undefined;
   }
@@ -90,9 +111,37 @@ export class HostGameScene extends Phaser.Scene {
     }
     this.state = result.state;
     this.broadcastAll();
+    this.driveBotsIfNeeded();
+  }
+
+  // Feeds one bot move at a time through the exact same applyAction path a
+  // real peer's action takes (see host/botAI.ts), broadcasting after each
+  // so the host's own screen and any connected human peers can observe bot
+  // turns happening rather than jumping straight to the next human
+  // decision. Stops as soon as the active seat isn't a bot, or the game is
+  // over.
+  private driveBotsIfNeeded(): void {
+    for (let i = 0; i < MAX_BOT_STEPS && this.state.phase !== 'gameOver'; i++) {
+      const active = activePlayerId(this.state);
+      if (active === null) return;
+      const entry = this.entryForSlot(active);
+      if (!entry?.isBot) return;
+
+      const action = chooseBotAction(this.state, active);
+      const result = applyAction(this.state, active, action);
+      if (!result.ok) {
+        console.warn(`suits-mp host: bot action rejected for slot ${active}: ${result.error}`);
+        return;
+      }
+      this.state = result.state;
+      this.broadcastAll();
+    }
   }
 
   private sendMaskedStateTo(entry: RosterEntry): void {
+    // Bots have no observer (no real network peer, and nothing renders
+    // their perspective) - nothing to build or send.
+    if (entry.isBot) return;
     const slot = fromNetPlayerId(entry.slot);
     const masked = buildMaskedState(this.state, slot);
     if (entry.isHost) {

@@ -9,8 +9,10 @@ itch.io page.
 
 This file documents Stage 1 (networking skeleton) + Stage 2 (rules
 engine + masking), combined per an explicit user decision to not further
-split this task. Stage 3 (real visual UI, turn indicator animation) is a
-separate future task.
+split this task, plus a follow-up task (AI bots, room code refresh, a
+trick-40 rule change, a UI interactivity fix, and dropping role-guess -
+see "Follow-up task" below). Stage 3 (real visual UI, turn indicator
+animation) is a separate future task.
 
 ## Stack
 
@@ -62,29 +64,27 @@ trust model as a physical card game's dealer.
 
 ## Networking: action types
 
-Four action types, all sent on player confirm, over one `gameAction`
+Three action types, all sent on player confirm, over one `gameAction`
 channel (`net/actions.ts`):
 
 - `playCard` - `{ playType: "single"|"double"|"facedownSingle", cards }`.
   `playType` is informational; the host's ported `playCard()` derives the
   actual legality/kind from the cards and current required suit itself.
 - `selectDelegate` - `{ targetPlayer }`, valid only immediately after a
-  double win.
+  double win. Mandatory: `selectDelegate` always fires on a double win (no
+  path lets the winner redistribute themself), and the ported
+  `chooseDelegate()` rejects `targetPlayer` equal to the winner - see
+  "Rules engine" below.
 - `redistribute` - `{ assignments: [{ toPlayer, cards }] }`, explicit
   manual assignment. Host-side validation (via the ported
   `redistribute()`) rejects the action unless every contributing player's
   returned card count exactly matches their contribution to that trick.
-- `declareRoleGuess` - `{ guesses: { p0: God, p1: God, p2: God, p3: God } }`.
 
-**On `declareRoleGuess`:** the original task brief specified "exactly
-three" action types (playCard/selectDelegate/redistribute), but also
-locked in porting the trick-40+ Role Revelation win condition and a
-role-guess UI prompt as in-scope for this stage - there is no way to
-submit a guess to the host without a network action for it. Resolved by
-explicit user decision: add this as a fourth action type rather than
-stub the feature. It carries the full guess in one shot (declare +
-submit as a single confirm) rather than round-tripping a separate
-"declare intent" message first.
+(A fourth action, `declareRoleGuess`, existed briefly during Stage 1+2 to
+carry the original design doc's trick-40+ role-guess win condition. A
+follow-up task dropped role-guess entirely in favor of an automatic
+trick-40 forced end with no player action involved - see "Trick-40 forced
+end" below - so that action type no longer exists.)
 
 There is no action-rejection/nack message type. An illegal action (per
 the ported engine's own checks) is simply dropped host-side with a
@@ -92,8 +92,8 @@ console warning; the sender's screen just doesn't change. After every
 applied action, the host recomputes and re-sends a fresh masked payload
 to all four seats - there is no separate "it's your turn" message. Each
 client reads `turnPhase` (`"play" | "selectDelegate" | "redistribute" |
-"roleGuess" | "gameOver"`) to decide which action UI to show, and
-`currentTurn` to decide whose turn it is.
+"gameOver"`) to decide which action UI to show, and `currentTurn` to
+decide whose turn it is.
 
 Reconnect reuses mp-net's identity-matched handshake; a successful
 re-match additionally triggers an immediate re-send of that peer's
@@ -117,10 +117,15 @@ needs the winner's unrelated hand contents to make their decision. See
 
 ## Rules engine
 
-`src/rules/{types,cards,engine}.ts` are a direct, unmodified copy of
-`prototypes/suits/src/rules/{types,cards,engine}.ts` - the rules are
-locked and ported exactly, not reinterpreted. `src/host/gameHost.ts`
-drives them host-side:
+`src/rules/{types,cards,engine}.ts` started as a direct, unmodified copy
+of `prototypes/suits/src/rules/{types,cards,engine}.ts` at Stage 1+2 - the
+hotseat `suits` prototype's own copy is untouched and this file no longer
+claims suits-mp's copy is identical to it, since a follow-up task
+explicitly authorized diverging suits-mp's own rules engine (role-guess
+removal, the trick-40 forced end below). Everything else about the
+ported logic (deal, suit rotation, follow-suit/double legality, trick
+resolution, redistribution count-matching) is still exactly as ported,
+not reinterpreted. `src/host/gameHost.ts` drives it host-side:
 
 - `createInitialState()` deals via the engine's own `initGame()` (genuine
   shuffle, Blue-2-holder leads trick 1, exactly as before).
@@ -131,10 +136,114 @@ drives them host-side:
   everything else hidden appropriately), so they're resolved
   automatically and never appear over the network - `turnPhase` in a
   masked payload is always one of `play`/`selectDelegate`/`redistribute`/
-  `roleGuess`/`gameOver`.
-- `applyAction()` routes each of the four wire actions to the matching
+  `gameOver`.
+- `applyAction()` routes each of the three wire actions to the matching
   engine call, with an authorization check (right phase, right seat) on
-  top of whatever the engine itself already enforces.
+  top of whatever the engine itself already enforces. Used identically
+  for real peer actions and host-local bot actions (see "AI bot mode"
+  below) - there is no separate/parallel bot rules path.
+
+### Mandatory delegation on double-win
+
+The ported engine already modeled this as mandatory from the start:
+`proceedFromTrickResult()` routes every double-win (`wonByDouble`)
+through the `chooseDelegate` phase unconditionally - there is no branch
+where a double-winner redistributes themself - and `chooseDelegate()`
+itself throws if `delegateId === pendingWinnerId`. A follow-up task's
+brief asked to make this mandatory and non-self-selectable "for every
+player, not optional, and not AI-specific"; auditing the existing code
+confirmed both properties already held with zero code changes needed.
+Verified with a 300-game bot-vs-bot simulation plus an adversarial probe
+that explicitly attempts self-delegation on every double-win and confirms
+it's rejected every time (see "Verification status").
+
+### Trick-40 forced end (replaces role-guess)
+
+A follow-up task removed the original design doc's trick-40+ role-guess
+win condition entirely from suits-mp (the `declareRoleGuess` action, the
+`roleGuess` phase/turnPhase, `PlayerState.guessUsed`, all gone) and
+replaced it with an automatic forced end, computed host-side with no
+player action involved: `redistribute()` now checks, right after
+finishing trick 40's own redistribution (whether self-performed or
+delegated) and finding no suit completed, which team's **best** player
+(by count of their own suit's cards currently held) is ahead; ties break
+on each team's **other** player; a full tie is a stalemate. See
+`rules/engine.ts`'s `resolveTrick40ForcedEnd`. `WinInfo.reason` gained a
+`'trick40'` value for this (distinct from `'suit'`); `'stalemate'` now
+means only this specific tie, not the old role-guess-exhaustion stalemate.
+
+## AI bot mode
+
+A permanent single-player test mode (not `?debug=1`-gated): `HostLobbyScene`
+shows a "Fill with bots" button (routed through the intent layer, like
+every other tappable game-decision element - see `input/intents.ts`'s
+`bindTapIntent`) whenever the roster has fewer than 4 seats filled. It
+fills every remaining empty seat with a bot roster entry (`RosterEntry
+.isBot`) and lets Start Game become available immediately, so a solo host
+can exercise the full 4-player flow alone.
+
+Bots run entirely host-local, never over the network: `HostGameScene
+.driveBotsIfNeeded()` checks after every state change whether the active
+seat is a bot, and if so asks `host/botAI.ts`'s `chooseBotAction()` for a
+move and feeds it through the exact same `gameHost.applyAction()` every
+real peer action goes through - there is no separate bot rules path, so
+bot play is a genuine exercise of the same validation a human's actions
+get. This repeats (broadcasting after each step, so a human host watching
+can see bot turns happen) until a human seat's turn comes up or the game
+ends.
+
+Bot behavior is Level 1 - legal-random only (no suit/team-awareness, no
+strategy, explicitly deferred to a future task):
+
+- **Playing a card**: uniformly at random over the full set of
+  currently-legal moves - each required-suit card is one option when
+  following suit is possible; otherwise each individual off-suit card is
+  one option and each rank with a matching pair in hand is one additional
+  double option.
+- **Choosing a delegate** (after winning via double): uniformly at random
+  among the other 3 seats (self-selection is already impossible - see
+  "Mandatory delegation" above).
+- **Redistributing** (whether self-performed or as a delegate): the
+  required count per contributing recipient is filled with a random
+  sample from the *winner's entire hand* - not restricted to just the
+  trick's cards the way a human distributor's UI is (see "Redistribution
+  and delegate masking" above). That restriction exists purely to avoid a
+  human delegate needing visibility into another player's hand over the
+  network; a host-local bot already has full canonical-state access, so
+  it's free to use the engine's actual, more permissive pool exactly as
+  the brief for this behavior specified.
+- Bots that win via suit completion or via the trick-40 forced end just
+  end the game like anyone else - no special-casing.
+
+## Room code refresh (suits-mp and mp-net)
+
+Both prototypes share the same underlying issue: if the host sits idle in
+an empty lobby for a while, the Trystero/Nostr room announcement can
+lapse, making the room code silently undiscoverable to new joiners even
+though the host's session is still alive. `HostLobbyScene` in both now has
+a manual-only "Refresh code" button (pre-game only; there's no equivalent
+mid-game, and no passive/background refresh timer). On tap it:
+
+1. Leaves the current Trystero room and rejoins under the *same* code -
+   the closest equivalent to "re-announce presence" achievable through
+   Trystero's public API, which exposes no lower-level reannounce
+   primitive.
+2. Runs the same occupancy check the initial host setup uses; if that
+   comes back occupied (another room claimed the code in the meantime),
+   falls back to generating a brand new code with the same retry loop the
+   initial setup uses.
+3. Updates the displayed code, the copy-code/copy-invite-link values (now
+   read via a getter closure instead of a captured string, so they always
+   reflect the current code), and re-wires the identity/peer-leave
+   handlers onto the new room.
+
+Real peer connections don't survive the `room.leave()` this requires, so
+their roster entries are dropped on refresh (they'd need to reconnect on
+the possibly-new code); the host's own slot survives, and in suits-mp,
+bot seats survive too (they were never real network peers). This is a
+known, accepted trade-off given the failure scenario the button exists
+for is specifically "no one has successfully joined yet" - it isn't
+addressed further since it wasn't asked for.
 
 ## UI (placeholder / text-dump, Stage 2 scope)
 
@@ -143,36 +252,75 @@ and tappable rows, shared between `HostGameScene` (the host's own
 perspective, rendered locally with no network round trip for its own
 actions) and `PlayerGameScene` (a remote peer's perspective, rendered
 from a received `state` message). Shows: your hand, whose turn, the
-current trick in play order, the current turn phase, a role-guess prompt
-when eligible, and enough tap targets to actually play a full game
-(select cards, confirm a play, pick a delegate, assign redistribution
-cards, submit a role guess). The redistribution log and rules overlay are
-stubbed with placeholder text, per Stage 2 scope - real presentation is
-Stage 3. No turn-indicator animation, no real visual hand/trick/HUD
-layout - also Stage 3.
+current trick in play order, and the current turn phase, with tap targets
+to actually play a full game (select cards, confirm a play, pick a
+delegate, assign redistribution cards). The redistribution log and rules
+overlay are stubbed with placeholder text, per Stage 2 scope - real
+presentation is Stage 3. No turn-indicator animation, no real visual
+hand/trick/HUD layout - also Stage 3.
+
+**Interactivity fix (follow-up task):** the Stage 1+2 build looked
+non-interactive because `rerender()` called the top-level exported
+`renderGameView`, which constructs a brand new `ViewState` on every call -
+so a tap that selected a card (or assigned a redistribution card)
+immediately triggered a re-render that discarded the very selection it
+was showing. Fixed by splitting an internal `renderWithView()` that
+reuses one `ViewState` object across re-renders triggered by the player's
+own taps, with only the exported entry point (called when a genuinely new
+masked state arrives) starting a fresh one. Also switched the remaining
+raw `.on('pointerdown', ...)` handlers (hand-card selection,
+redistribution card assignment) to go through `input/intents.ts`'s
+`bindTapIntent`, matching every other tappable element.
 
 ## Out of scope (this task)
 
 Any real visual UI, turn indicator animation, spectator mode,
-fewer/more-than-4-player support, and anything already merged as a
-housekeeping item (CLAUDE.md deploy-path doc, relay-pinning doc, mp-base
-relay fix). No changes to the existing hotseat `suits` prototype.
+fewer/more-than-4-player support, Level 2/3 AI sophistication
+(suit/team-awareness - explicitly deferred), and anything already merged
+as a housekeeping item (CLAUDE.md deploy-path doc, relay-pinning doc,
+mp-base relay fix). No changes to the existing hotseat `suits` prototype.
 
 ## Verification status
 
-Automated (this task): `npm run typecheck` and `npm run build` both pass.
-A Playwright boot check confirms the landing screen renders with the
-version stamp visible and no uncaught JS exceptions, and that clicking
-Host successfully creates a Trystero room and renders the lobby (room
-code, seat list, disabled Start Game at 1/4) with no uncaught exceptions.
-Console does show `Failed to load resource` network errors from the TURN
-worker fetch in this sandboxed environment - identical to mp-net's own
-landing page under the same network conditions, and swallowed internally
-by `fetchTurnIceServers()`'s own try/catch (never blocks the flow); not a
-suits-mp-specific regression.
+Automated: `npm run typecheck` and `npm run build` both pass (across both
+suits-mp and mp-net). A Playwright boot check confirms the landing screen
+renders with the version stamp visible and no uncaught JS exceptions, and
+that clicking Host successfully creates a Trystero room and renders the
+lobby (room code, seat list, "Fill with bots"/"Refresh code" buttons,
+disabled Start Game at 1/4) with no uncaught exceptions - same for
+mp-net's own host lobby with its new Refresh code button. Console does
+show `Failed to load resource` network errors from the TURN worker fetch
+in this sandboxed environment - identical to mp-net's own landing page
+under the same network conditions pre-existing this task, and swallowed
+internally by `fetchTurnIceServers()`'s own try/catch (never blocks the
+flow); not a regression from this work.
 
-**Not automated-verified, needs the user's own multi-device test after
-deploy:** masking correctness across 4 real peers, turn rotation, suit
-legality end-to-end over the network, redistribution count validation,
-delegate flow, role-guess win/stalemate, and reconnect mid-game. A single
-Playwright browser cannot exercise 4 concurrent connected clients.
+**Bot-mode end-to-end (this follow-up task's own verification item):**
+300 full bot-vs-bot games (host + 3 bots, `chooseBotAction` on every seat)
+were run directly against the shipped `gameHost.applyAction` /
+`rules/engine` / `host/botAI` modules via a scripted simulation (not
+committed - ad hoc, run with `tsx` against the real source). All 300
+completed without a single rejected action or stuck state: 0 via suit
+completion, 273 via the trick-40 forced end, 27 as trick-40 stalemates
+(suit completion is expectedly rare under purely random Level 1 play -
+this incidentally gave heavy real coverage of the new trick-40 path). An
+adversarial probe attempted self-delegation on every one of the 339
+double-wins that occurred across those games (both directly against
+`chooseDelegate()` and via the network-shaped `applyAction`); all 339
+were correctly rejected. Separately, a live Playwright run through the
+real browser UI (Host -> Fill with bots -> Start Game -> tap-select a
+card -> Play) confirmed a human-seat tap survives the ViewState fix,
+enables Play correctly, and that the resulting play carries a bot-driven
+game forward through trick resolution and redistribution (observed
+reaching trick 2 with a populated redistribution-log line) with zero
+console page errors throughout.
+
+**Not automated-verified, needs the user's own test after deploy:**
+masking correctness across 4 *real* human peers, turn rotation and suit
+legality end-to-end over a real network, redistribution/delegate flow
+with real human input, reconnect mid-game, and - specific to this
+follow-up task - the room-code refresh button's actual behavior against a
+genuinely lapsed Trystero/Nostr announcement (that failure mode is
+relay-timing-dependent and wasn't reproducible in this environment; the
+refresh code path itself was exercised in isolation only insofar as it
+typechecks, builds, and renders without crashing).
