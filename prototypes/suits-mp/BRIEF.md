@@ -9,10 +9,13 @@ itch.io page.
 
 This file documents Stage 1 (networking skeleton) + Stage 2 (rules
 engine + masking), combined per an explicit user decision to not further
-split this task, plus a follow-up task (AI bots, room code refresh, a
-trick-40 rule change, a UI interactivity fix, and dropping role-guess -
-see "Follow-up task" below). Stage 3 (real visual UI, turn indicator
-animation) is a separate future task.
+split this task; a first follow-up task (AI bots, room code refresh, a
+trick-40 rule change, a UI interactivity bug fix, and dropping
+role-guess); and a second follow-up task (a trick-1 forced-opener bug
+fix, moving bot-testing to its own Single Player main-menu entry, and
+legal/illegal hand-card styling with a full off-suit selection UX).
+Stage 3 (real visual UI, turn indicator animation) is a separate future
+task.
 
 ## Stack
 
@@ -157,6 +160,23 @@ Verified with a 300-game bot-vs-bot simulation plus an adversarial probe
 that explicitly attempts self-delegation on every double-win and confirms
 it's rejected every time (see "Verification status").
 
+### Trick-1 forced opener (bug fix)
+
+Only the *player* leading trick 1 was ever constrained to whoever holds
+the 2 of Yog-Sothoth - the *card* they opened with was not, which let a
+bot (or, in principle, a human) open trick 1 with a different card
+entirely (observed: a bot opening with Astral Pulse instead of Flicker
+of the Void). Fixed by `rules/engine.ts`'s `isForcedTrick1Opener(trickNumber,
+position)` / `forcedTrick1Opener(state)`: trick 1's leading play must be
+exactly the 2 of Yog-Sothoth, checked inside `playCard()`'s own
+validation. This is the single source of truth for the restriction -
+`playCard()`'s authoritative check, `host/botAI.ts`'s move choice, and
+`ui/handLegality.ts`'s client-side legal/illegal highlighting (see "UI"
+below) all call it, so there's no separate human/bot/UI copy that could
+drift. Every trick after the first is unaffected: its leader (whoever
+performed the prior redistribution) may open with any single card, same
+as before.
+
 ### Trick-40 forced end (replaces role-guess)
 
 A follow-up task removed the original design doc's trick-40+ role-guess
@@ -174,13 +194,14 @@ means only this specific tie, not the old role-guess-exhaustion stalemate.
 
 ## AI bot mode
 
-A permanent single-player test mode (not `?debug=1`-gated): `HostLobbyScene`
-shows a "Fill with bots" button (routed through the intent layer, like
-every other tappable game-decision element - see `input/intents.ts`'s
-`bindTapIntent`) whenever the roster has fewer than 4 seats filled. It
-fills every remaining empty seat with a bot roster entry (`RosterEntry
-.isBot`) and lets Start Game become available immediately, so a solo host
-can exercise the full 4-player flow alone.
+A permanent test mode (not `?debug=1`-gated), entered via the landing
+screen's own **Single Player (play with bots)** button - see "Single
+Player mode" below for how that entry point works. (An earlier version
+of this feature was a "Fill with bots" button inside the regular Host
+lobby, letting a partially-full room top up with bots; a follow-up task
+moved bot-testing to its own dedicated entry point and removed that
+button entirely - a Host-lobby game is now always either full of real
+joined players or waiting for them, never a human/bot mix.)
 
 Bots run entirely host-local, never over the network: `HostGameScene
 .driveBotsIfNeeded()` checks after every state change whether the active
@@ -199,7 +220,10 @@ strategy, explicitly deferred to a future task):
   currently-legal moves - each required-suit card is one option when
   following suit is possible; otherwise each individual off-suit card is
   one option and each rank with a matching pair in hand is one additional
-  double option.
+  double option. On trick 1's opening play specifically, the "legal move
+  set" is a single forced option (see "Trick-1 forced opener" above) - the
+  bot asks the same `forcedTrick1Opener()` the host validates against,
+  rather than picking randomly and risking rejection.
 - **Choosing a delegate** (after winning via double): uniformly at random
   among the other 3 seats (self-selection is already impossible - see
   "Mandatory delegation" above).
@@ -214,6 +238,31 @@ strategy, explicitly deferred to a future task):
   the brief for this behavior specified.
 - Bots that win via suit completion or via the trick-40 forced end just
   end the game like anyone else - no special-casing.
+
+## Single Player mode
+
+The landing screen has a third option alongside Host/Join: **Single
+Player (play with bots)**. Tapping it skips every networking step
+entirely - no lobby, no room code, no TURN fetch, no Trystero room - and
+drops straight into trick 1: `LandingScene.startSinglePlayer()` builds a
+roster directly (the tapping player as host/`p0`, the other three seats
+as bots) and starts `HostGameScene` with `room: null, actions: null`.
+
+`HostGameScene`/`HostGameData` treat `room`/`actions` as nullable
+specifically for this: every place that would talk to real peers
+(`gameAction`/`identity` message handlers, the `state.send` branch in
+`sendMaskedStateTo`) is guarded to skip cleanly when there's no network
+layer at all, while the host's own local rendering and the bot-driving
+loop (`driveBotsIfNeeded`) run completely unchanged - Single Player is
+the same authoritative host loop every other mode uses, just never wired
+to a Trystero room.
+
+The TURN-servers fetch that normally fires eagerly at boot is instead
+lazy and memoized (`BootData.getIceServers`, only invoked by
+`HostLobbyScene`/`ConnectingScene`) specifically so Single Player - which
+never calls it - makes zero network requests of any kind. Verified by
+recording every outbound request a full page load + Single Player click
+produces: zero, in every run (see "Verification status").
 
 ## Room code refresh (suits-mp and mp-net)
 
@@ -259,7 +308,7 @@ overlay are stubbed with placeholder text, per Stage 2 scope - real
 presentation is Stage 3. No turn-indicator animation, no real visual
 hand/trick/HUD layout - also Stage 3.
 
-**Interactivity fix (follow-up task):** the Stage 1+2 build looked
+**Interactivity fix (first follow-up task):** the Stage 1+2 build looked
 non-interactive because `rerender()` called the top-level exported
 `renderGameView`, which constructs a brand new `ViewState` on every call -
 so a tap that selected a card (or assigned a redistribution card)
@@ -272,55 +321,125 @@ raw `.on('pointerdown', ...)` handlers (hand-card selection,
 redistribution card assignment) to go through `input/intents.ts`'s
 `bindTapIntent`, matching every other tappable element.
 
-## Out of scope (this task)
+**Legal/illegal hand-card styling (second follow-up task):** during the
+play phase, every card in hand is now colored by whether it's currently
+legal to play - white/tappable if legal, gray/inert (no tap handler at
+all) if not - recomputed after every selection change. The state machine
+behind this lives in `src/ui/handLegality.ts` (`computeHandLegality`,
+`nextSelectionAfterTap`), deliberately kept free of any Phaser/DOM import
+(unlike `renderGameView.ts` itself) so it can be unit-tested directly in
+plain Node - see "Verification status". Four cases, most to least
+restrictive:
 
-Any real visual UI, turn indicator animation, spectator mode,
-fewer/more-than-4-player support, Level 2/3 AI sophistication
-(suit/team-awareness - explicitly deferred), and anything already merged
-as a housekeeping item (CLAUDE.md deploy-path doc, relay-pinning doc,
-mp-base relay fix). No changes to the existing hotseat `suits` prototype.
+1. **Trick 1's forced opener**: only the 2 of Yog-Sothoth is legal.
+2. **Leading (any other trick), or required to follow suit**: only the
+   legal pool (any single when leading, the suit cards when following)
+   is legal; still single-select, no doubles. Tapping a different legal
+   card *replaces* the current selection rather than accumulating one.
+3. **Off-suit, nothing selected yet**: every card is legal (any of them
+   could become a facedown single or start a double).
+4. **Off-suit, one card selected**: that card shows as selected (amber);
+   same-rank cards get a distinct highlight color (`partner` - still
+   legal, tapping one *completes* a Twin Awakening double) while every
+   other card stays plain legal (a facedown single with just the one
+   card is still a valid confirm - selecting one card doesn't yet lock
+   in "double" as the play type). Tapping a second, *different*-rank
+   card replaces the selection rather than forming an invalid mismatched
+   pair. Once two matching cards are selected, the double is complete and
+   every other card locks to illegal until one of the two is deselected.
+
+This note carries over unchanged when real card art eventually replaces
+the placeholder text (per this task's own brief): only the rendering
+(text color vs. sprite/texture state) needs re-skinning, not the
+underlying `computeHandLegality`/`nextSelectionAfterTap` logic.
+
+## Out of scope
+
+Any real visual/sprite card rendering (still placeholder/text this task -
+only the legal/illegal *state logic* is defined), turn indicator
+animation, spectator mode, fewer/more-than-4-player support, Level 2/3 AI
+sophistication (suit/team-awareness - explicitly deferred), any change to
+when-suit-must-be-followed logic, any change to redistribution/delegate
+UI or logic, and anything already merged as a housekeeping item (CLAUDE.md
+deploy-path doc, relay-pinning doc, mp-base relay fix). No changes to the
+existing hotseat `suits` prototype.
 
 ## Verification status
 
 Automated: `npm run typecheck` and `npm run build` both pass (across both
 suits-mp and mp-net). A Playwright boot check confirms the landing screen
-renders with the version stamp visible and no uncaught JS exceptions, and
-that clicking Host successfully creates a Trystero room and renders the
-lobby (room code, seat list, "Fill with bots"/"Refresh code" buttons,
-disabled Start Game at 1/4) with no uncaught exceptions - same for
-mp-net's own host lobby with its new Refresh code button. Console does
-show `Failed to load resource` network errors from the TURN worker fetch
-in this sandboxed environment - identical to mp-net's own landing page
-under the same network conditions pre-existing this task, and swallowed
-internally by `fetchTurnIceServers()`'s own try/catch (never blocks the
-flow); not a regression from this work.
+renders with the version stamp visible, all three buttons (Host/Join/
+Single Player), and no uncaught JS exceptions; that clicking Host
+successfully creates a Trystero room and renders the lobby (room code,
+seat list, Refresh code button, disabled Start Game at 1/4) with no
+uncaught exceptions - same for mp-net's own host lobby with its Refresh
+code button. Console does show `Failed to load resource` network errors
+from the TURN worker fetch in this sandboxed environment - identical to
+mp-net's own landing page under the same network conditions pre-existing
+this task, and swallowed internally by `fetchTurnIceServers()`'s own
+try/catch (never blocks the flow); not a regression from this work.
 
-**Bot-mode end-to-end (this follow-up task's own verification item):**
-300 full bot-vs-bot games (host + 3 bots, `chooseBotAction` on every seat)
-were run directly against the shipped `gameHost.applyAction` /
-`rules/engine` / `host/botAI` modules via a scripted simulation (not
-committed - ad hoc, run with `tsx` against the real source). All 300
-completed without a single rejected action or stuck state: 0 via suit
-completion, 273 via the trick-40 forced end, 27 as trick-40 stalemates
-(suit completion is expectedly rare under purely random Level 1 play -
-this incidentally gave heavy real coverage of the new trick-40 path). An
-adversarial probe attempted self-delegation on every one of the 339
-double-wins that occurred across those games (both directly against
-`chooseDelegate()` and via the network-shaped `applyAction`); all 339
-were correctly rejected. Separately, a live Playwright run through the
-real browser UI (Host -> Fill with bots -> Start Game -> tap-select a
-card -> Play) confirmed a human-seat tap survives the ViewState fix,
-enables Play correctly, and that the resulting play carries a bot-driven
-game forward through trick resolution and redistribution (observed
-reaching trick 2 with a populated redistribution-log line) with zero
-console page errors throughout.
+**Bot-mode end-to-end, including the trick-1 fix:** 350 full bot-vs-bot
+games total across two scripted simulations (host + 3 bots,
+`chooseBotAction` on every seat, run directly against the shipped
+`gameHost.applyAction` / `rules/engine` / `host/botAI` modules via `tsx` -
+not committed, ad hoc) - all completed with zero rejected actions or
+stuck states. Every single game's trick 1 opened with exactly Flicker of
+the Void [Yog-Sothoth 2], regardless of which seat held it. An
+adversarial probe attempted self-delegation on every double-win that
+occurred (93 total across both runs, both directly against
+`chooseDelegate()` and via the network-shaped `applyAction`); all were
+correctly rejected. Outcome mix: suit-completion wins are rare-to-absent
+under purely random Level 1 play, so most games ended via the trick-40
+forced end or a trick-40 stalemate - expected, and it incidentally gives
+heavy real coverage of that path.
+
+**Card-selection state machine (item 3/4):** `computeHandLegality` and
+`nextSelectionAfterTap` were extracted into `src/ui/handLegality.ts`
+specifically so they could be unit-tested directly in plain Node (the
+rest of `renderGameView.ts` imports Phaser, which needs a browser `window`
+and can't be loaded standalone). A scripted test (not committed) walked
+the exact 0 -> 1-selected -> 2-selected-matching -> deselect sequence
+against hand-built fixtures and asserted every card's classification at
+each step (legal/partner/selected/illegal) and the resulting `playType`
+matched this brief's spec precisely - all steps passed.
+
+**Live browser confirmation:** multiple Playwright runs through Single
+Player's real UI, each starting a fresh shuffled game, confirmed: (a) the
+forced-opener case rendering correctly (only Flicker of the Void
+white/tappable, the other 9 cards gray/inert) in both a bot-led and a
+human-led trick 1; (b) the must-follow-suit case's white/gray split
+matching the required suit; (c) tapping between multiple different legal
+cards correctly replaces the selection each time (single-select
+contexts) and enables Play once a legal choice is selected; and (d),
+in one run, a full successful round trip - selecting a legal card,
+confirming Play, the bot-driven trick resolving with the human player
+winning it, and the view correctly transitioning into the redistribution
+phase with the right candidate cards and contribution counts shown - all
+with zero console page errors. Coordinate-guessing against Phaser's
+canvas-rendered text (no real DOM to query) made this slower than a
+DOM-based UI to drive, but every interaction actually exercised was a
+real tap through the real intent-layer handlers, not a simulated event.
+
+**Single Player makes no networking calls:** verified by recording every
+outbound request (excluding the page's own local asset loads) across a
+full page load and Single Player click - zero, every time, confirming
+the lazy `getIceServers` never fires and no Trystero room is ever joined
+in this mode.
 
 **Not automated-verified, needs the user's own test after deploy:**
 masking correctness across 4 *real* human peers, turn rotation and suit
 legality end-to-end over a real network, redistribution/delegate flow
-with real human input, reconnect mid-game, and - specific to this
-follow-up task - the room-code refresh button's actual behavior against a
-genuinely lapsed Trystero/Nostr announcement (that failure mode is
-relay-timing-dependent and wasn't reproducible in this environment; the
-refresh code path itself was exercised in isolation only insofar as it
-typechecks, builds, and renders without crashing).
+with real human input, reconnect mid-game, and the room-code refresh
+button's actual behavior against a genuinely lapsed Trystero/Nostr
+announcement (that failure mode is relay-timing-dependent and wasn't
+reproducible in this environment; the refresh code path itself was
+exercised in isolation only insofar as it typechecks, builds, and renders
+without crashing). Also not exercised in this pass specifically: the full
+manual on-device tap sequence for the off-suit double-selection UX end to
+end by a real user (the state machine driving it was verified directly,
+per "Card-selection state machine" above, and its rendering was confirmed
+correct for the forced-opener and must-follow-suit cases live - the
+off-suit case's *live rendering* specifically would benefit from the
+user's own phone pass, since engineering that exact hand/suit combination
+via scripted bot play wasn't practical in this pass).

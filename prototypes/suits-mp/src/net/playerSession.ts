@@ -12,5 +12,9 @@ export interface PlayerSessionData extends SharedNetData {
 
 export interface BootData {
   clientId: string;
-  iceServersPromise: Promise<RTCIceServer[] | undefined>;
+  // Lazy and memoized (see main.ts) rather than an eagerly-started promise:
+  // Single Player mode never calls this at all, so it must not fire a TURN
+  // fetch just because the app booted - only Host/Join paths that actually
+  // need ICE servers call it, on demand.
+  getIceServers: () => Promise<RTCIceServer[] | undefined>;
 }

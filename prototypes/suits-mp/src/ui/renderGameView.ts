@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { GOD_DISPLAY_NAME, cardById } from '../rules/cards';
-import { legalOptions } from '../rules/engine';
 import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
-import type { ClientAction, MaskedState, PlayType } from '../net/actions';
+import type { ClientAction, MaskedState } from '../net/actions';
+import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLegality';
+import type { HandLegality } from './handLegality';
 
 const FONT = 'monospace';
 const WIDTH = 390;
@@ -150,31 +151,43 @@ function renderWithView(
     line(`(redistribution log: ${n} entr${n === 1 ? 'y' : 'ies'} received - see Stage 3)`, '#666666', 11);
   }
 
+  const canAct = isYourTurn && state.turnPhase !== 'gameOver';
+  const inPlayPhase = canAct && state.turnPhase === 'play';
+
+  // Legal/illegal card state (item 3/4) only applies while it's your turn
+  // to play a card; every other phase (or waiting your turn) just shows the
+  // hand plainly, matching before.
+  const legality = inPlayPhase ? computeHandLegality(state, view.selectedCards) : null;
+
   line(`Your hand (${state.yourHand.length}):`, '#aaaaaa');
   const handRows: Phaser.GameObjects.Text[] = [];
   for (const id of state.yourHand) {
-    const selected = view.selectedCards.includes(id);
-    const t = scene.add
-      .text(16, y, `${selected ? '> ' : '  '}${cardLabel(id)}`, {
-        fontFamily: FONT,
-        fontSize: '13px',
-        color: selected ? '#ffd27a' : '#dddddd',
-        resolution: PIXEL_RATIO,
-      })
-      .setInteractive({ useHandCursor: true });
+    // Outside the play phase (not your turn, or a different action pending)
+    // the hand is shown plainly, with no legal/illegal distinction to make.
+    const cardState = legality?.states.get(id) ?? null;
+    const marker = cardState === 'selected' ? '> ' : '  ';
+    const color = cardState ? colorFor(cardState) : '#dddddd';
+    const t = scene.add.text(16, y, `${marker}${cardLabel(id)}`, {
+      fontFamily: FONT,
+      fontSize: '13px',
+      color,
+      resolution: PIXEL_RATIO,
+    });
+    if (legality && cardState !== 'illegal') {
+      t.setInteractive({ useHandCursor: true });
+    }
     container.add(t);
     handRows.push(t);
     y += t.height + 2;
   }
 
-  const canAct = isYourTurn && state.turnPhase !== 'gameOver';
   if (!canAct) {
     line(state.currentTurn ? `Waiting for ${state.currentTurn}...` : 'Waiting...', '#666666');
     return;
   }
 
-  if (state.turnPhase === 'play') {
-    renderPlayPhase(state, handRows, view, sendAction, rerender, line, button);
+  if (state.turnPhase === 'play' && legality) {
+    renderPlayPhase(state, handRows, legality, view, sendAction, rerender, line, button);
   } else if (state.turnPhase === 'selectDelegate') {
     line('You won by Twin Awakening - choose who redistributes:', '#ffd27a');
     for (const target of state.delegateChoices ?? []) {
@@ -188,47 +201,40 @@ function renderWithView(
 function renderPlayPhase(
   state: MaskedState,
   handRows: Phaser.GameObjects.Text[],
+  legality: HandLegality,
   view: ViewState,
   sendAction: (action: ClientAction) => void,
   rerender: () => void,
   line: LineFn,
   button: ButtonFn,
 ): void {
-  const leading = state.currentTrick.length === 0;
-  const opts = legalOptions(state.yourHand, leading ? null : state.requiredSuit);
-
   state.yourHand.forEach((id, i) => {
+    const cardState = legality.states.get(id);
+    if (cardState === 'illegal' || !cardState) return; // no handler at all - not interactable.
+
     bindTapIntent(handRows[i], () => {
-      const idx = view.selectedCards.indexOf(id);
-      if (idx >= 0) view.selectedCards.splice(idx, 1);
-      else if (view.selectedCards.length < 2) view.selectedCards.push(id);
+      view.selectedCards = nextSelectionAfterTap(view.selectedCards, id, cardState, legality);
       rerender();
     });
   });
 
-  if (leading) {
+  if (legality.forcedOpener) {
+    line('Trick 1 must open with Flicker of the Void [Yog-Sothoth 2] - tap it, then Play.', '#aaaaaa');
+  } else if (legality.leading) {
     line('Leading this trick: tap exactly one card, then Play.', '#aaaaaa');
-  } else if (opts.mustPlaySuit) {
-    line(`Must follow suit (${GOD_DISPLAY_NAME[opts.mustPlaySuit]}): tap exactly one, then Play.`, '#aaaaaa');
+  } else if (legality.mustPlaySuit) {
+    line(`Must follow suit (${state.requiredSuit ? GOD_DISPLAY_NAME[state.requiredSuit] : ''}): tap exactly one, then Play.`, '#aaaaaa');
   } else {
     line(
-      'No cards of the required suit - tap 1 for a facedown single, or 2 matching ranks for a Twin Awakening double.',
+      'No cards of the required suit - tap 1 for a facedown single, or a same-rank pair for a Twin Awakening double.',
       '#aaaaaa',
     );
   }
 
-  const selection = view.selectedCards;
-  let playType: PlayType | null = null;
-  if (selection.length === 1) {
-    playType = leading || opts.mustPlaySuit ? 'single' : 'facedownSingle';
-  } else if (selection.length === 2 && !leading && !opts.mustPlaySuit) {
-    const [a, b] = selection;
-    if (cardById(a).rank === cardById(b).rank) playType = 'double';
-  }
-
-  if (playType) {
-    const type = playType;
-    button('Play', () => sendAction({ action: 'playCard', playType: type, cards: [...selection] }));
+  if (legality.playType) {
+    const type = legality.playType;
+    const cards = [...view.selectedCards];
+    button('Play', () => sendAction({ action: 'playCard', playType: type, cards }));
   } else {
     line('(select a legal card / pair to enable Play)', '#666666', 11);
   }

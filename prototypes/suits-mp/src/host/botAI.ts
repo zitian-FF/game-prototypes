@@ -1,5 +1,5 @@
 import { cardById } from '../rules/cards';
-import { currentRequiredSuit, legalOptions } from '../rules/engine';
+import { currentRequiredSuit, forcedTrick1Opener, legalOptions } from '../rules/engine';
 import type { CardId, GameState, PlayerId } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, PlayType } from '../net/actions';
@@ -36,7 +36,11 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
   const opts = legalOptions(hand, requiredSuit);
 
   if (leading) {
-    return { action: 'playCard', playType: 'single', cards: [pickRandom(hand)] };
+    // Trick 1 only: the leader has exactly one legal opening card (the 2 of
+    // Yog-Sothoth), same restriction playCard() itself enforces - see
+    // rules/engine.ts's forcedTrick1Opener.
+    const forcedOpener = forcedTrick1Opener(state);
+    return { action: 'playCard', playType: 'single', cards: [forcedOpener ?? pickRandom(hand)] };
   }
   if (opts.mustPlaySuit) {
     return { action: 'playCard', playType: 'single', cards: [pickRandom(opts.suitCards)] };

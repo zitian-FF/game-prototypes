@@ -14,8 +14,11 @@ import type { Roster, RosterEntry } from '../net/types';
 import type { GameState, PlayerId } from '../rules/types';
 
 export interface HostGameData {
-  room: ReturnType<typeof createNetworkRoom>;
-  actions: ReturnType<typeof createNetworkActions>;
+  // null in Single Player mode: no Trystero room/actions exist at all, since
+  // that mode is host + 3 host-local bots with no real peers to network
+  // with (see LandingScene's Single Player entry).
+  room: ReturnType<typeof createNetworkRoom> | null;
+  actions: ReturnType<typeof createNetworkActions> | null;
   roster: Roster;
 }
 
@@ -36,7 +39,7 @@ const MAX_BOT_STEPS = 1000;
 // exact same applyAction path a real peer's action takes.
 export class HostGameScene extends Phaser.Scene {
   private roster!: Roster;
-  private actions!: ReturnType<typeof createNetworkActions>;
+  private actions!: ReturnType<typeof createNetworkActions> | null;
   private state!: GameState;
   private container!: Phaser.GameObjects.Container;
 
@@ -62,25 +65,30 @@ export class HostGameScene extends Phaser.Scene {
     // there's nothing to react to. HostLobbyScene clears its own
     // debounced-removal handler before transitioning here.
 
-    data.actions.gameAction.onMessage = (action, context) => {
-      const entry = this.entryForPeer(context.peerId);
-      if (!entry) return;
-      this.applyAndBroadcast(fromNetPlayerId(entry.slot), action);
-    };
+    // Single Player mode passes actions: null - no real peers exist to wire
+    // these handlers for.
+    if (data.actions) {
+      const actions = data.actions;
+      actions.gameAction.onMessage = (action, context) => {
+        const entry = this.entryForPeer(context.peerId);
+        if (!entry) return;
+        this.applyAndBroadcast(fromNetPlayerId(entry.slot), action);
+      };
 
-    data.actions.identity.onMessage = (clientId, context) => {
-      const entry = this.roster.get(clientId);
-      if (!entry) {
-        // No roster slot for this client ID: a stranger, not a reconnect.
-        void data.actions.hostUI.send({ type: 'alreadyInProgress' }, { target: context.peerId });
-        return;
-      }
-      entry.peerId = context.peerId;
-      void data.actions.hostUI.send({ type: 'gameStarted' }, { target: context.peerId });
-      // Reconnect: immediately re-send this peer's current masked payload
-      // rather than waiting for the next game-state change.
-      this.sendMaskedStateTo(entry);
-    };
+      actions.identity.onMessage = (clientId, context) => {
+        const entry = this.roster.get(clientId);
+        if (!entry) {
+          // No roster slot for this client ID: a stranger, not a reconnect.
+          void actions.hostUI.send({ type: 'alreadyInProgress' }, { target: context.peerId });
+          return;
+        }
+        entry.peerId = context.peerId;
+        void actions.hostUI.send({ type: 'gameStarted' }, { target: context.peerId });
+        // Reconnect: immediately re-send this peer's current masked payload
+        // rather than waiting for the next game-state change.
+        this.sendMaskedStateTo(entry);
+      };
+    }
 
     this.broadcastAll();
     // Covers the case where the very first leader (whoever holds Yog-2) is
@@ -146,7 +154,9 @@ export class HostGameScene extends Phaser.Scene {
     const masked = buildMaskedState(this.state, slot);
     if (entry.isHost) {
       renderGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action));
-    } else {
+    } else if (this.actions) {
+      // Structurally unreachable in Single Player mode: its roster is only
+      // ever the host plus bots, both handled above.
       void this.actions.state.send(masked, { target: entry.peerId });
     }
   }

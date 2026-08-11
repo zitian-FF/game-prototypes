@@ -5,7 +5,6 @@ import { createNetworkRoom } from '../net/room';
 import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { bindTapIntent } from '../input/intents';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
@@ -36,7 +35,6 @@ export class HostLobbyScene extends Phaser.Scene {
   private codeText!: Phaser.GameObjects.Text;
   private playerListText!: Phaser.GameObjects.Text;
   private startButton!: Phaser.GameObjects.Text;
-  private fillBotsButton!: Phaser.GameObjects.Text;
   private refreshButton!: Phaser.GameObjects.Text;
   private copyCodeButton!: Phaser.GameObjects.Text;
   private copyInviteButton!: Phaser.GameObjects.Text;
@@ -79,7 +77,7 @@ export class HostLobbyScene extends Phaser.Scene {
     width: number,
     height: number,
   ): Promise<void> {
-    this.iceServers = await data.iceServersPromise;
+    this.iceServers = await data.getIceServers();
 
     let code = randomLobbyCode();
     let room = createNetworkRoom(code, { iceServers: this.iceServers });
@@ -167,17 +165,6 @@ export class HostLobbyScene extends Phaser.Scene {
       resolution: PIXEL_RATIO,
     });
 
-    this.fillBotsButton = this.add
-      .text(width / 2, height - 110, '[ Fill with bots ]', {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ff8888',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    bindTapIntent(this.fillBotsButton, () => this.fillWithBots());
-
     this.startButton = this.add
       .text(width / 2, height - 60, '[ Start Game ]', {
         fontFamily: 'monospace',
@@ -246,15 +233,6 @@ export class HostLobbyScene extends Phaser.Scene {
     };
   }
 
-  private fillWithBots(): void {
-    while (this.roster.size < ROOM_CAPACITY) {
-      const slot = nextAvailableSlot(this.roster);
-      const clientId = `bot:${slot}`;
-      this.roster.set(clientId, { clientId, peerId: 'bot', slot, isHost: false, isBot: true });
-    }
-    this.renderRoster();
-  }
-
   private startGame(): void {
     if (this.roster.size !== ROOM_CAPACITY) return;
 
@@ -281,8 +259,8 @@ export class HostLobbyScene extends Phaser.Scene {
   // now occupied by someone else, falls back to generating a new one, same
   // rules as the initial host setup. Real peer connections don't survive a
   // room.leave() switch, so their roster entries are dropped (they'll need
-  // to reconnect on the possibly-new code); the host's own slot and any
-  // bot seats (which were never real network peers) are preserved.
+  // to reconnect on the possibly-new code); only the host's own slot
+  // survives.
   private async refreshRoomCode(): Promise<void> {
     if (this.refreshing) return;
     this.refreshing = true;
@@ -293,7 +271,7 @@ export class HostLobbyScene extends Phaser.Scene {
       await this.room.leave();
 
       for (const [clientId, entry] of [...this.roster.entries()]) {
-        if (!entry.isHost && !entry.isBot) this.roster.delete(clientId);
+        if (!entry.isHost) this.roster.delete(clientId);
       }
       for (const timer of this.pendingRemoval.values()) clearTimeout(timer);
       this.pendingRemoval.clear();
@@ -336,21 +314,13 @@ export class HostLobbyScene extends Phaser.Scene {
 
   private renderRoster(): void {
     const bySlot = [...this.roster.values()].sort((a, b) => a.slot.localeCompare(b.slot));
-    const lines = bySlot.map((entry) => {
-      const label = entry.isHost ? ' (You, Host)' : entry.isBot ? ' (Bot)' : '';
-      return `${entry.slot}: ${shortId(entry.clientId)}${label}`;
-    });
+    const lines = bySlot.map((entry) => `${entry.slot}: ${shortId(entry.clientId)}${entry.isHost ? ' (You, Host)' : ''}`);
     this.playerListText.setText(lines.join('\n'));
 
     const ready = this.roster.size === ROOM_CAPACITY;
     this.startButton.setAlpha(ready ? 1 : 0.4);
     if (ready) this.startButton.setInteractive({ useHandCursor: true });
     else this.startButton.disableInteractive();
-
-    const canFill = this.roster.size < ROOM_CAPACITY;
-    this.fillBotsButton.setAlpha(canFill ? 1 : 0.4);
-    if (canFill) this.fillBotsButton.setInteractive({ useHandCursor: true });
-    else this.fillBotsButton.disableInteractive();
   }
 
   private makeCopyButton(x: number, y: number, label: string, getValue: () => string): Phaser.GameObjects.Text {
