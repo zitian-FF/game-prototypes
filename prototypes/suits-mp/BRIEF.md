@@ -105,18 +105,23 @@ than waiting for the next game-state change.
 
 ### Redistribution and delegate masking (implementation note)
 
-The ported engine (`redistribute()`) lets a self-redistributing winner
-hand back *any* card from their own hand, not just cards from the trick
-just won - by card-count validation only, not card-identity. That's fine
-when the winner redistributes themself (it's their own hand). It's a
-problem for a delegate: a delegate has no legitimate way to see the
-winner's whole hand over a real network (masking forbids it), so
-`host/mask.ts` restricts the `candidateCards` offered to a distributor
-(winner or delegate alike) to that trick's own cards - already public,
-since they were played face-up. This is a tighter restriction than the
-locked engine itself enforces, chosen specifically so a delegate never
-needs the winner's unrelated hand contents to make their decision. See
-`net/actions.ts`'s `RedistributionContext` doc comment.
+Per the GDD, the trick winner adds all trick cards to their hand *first*,
+then redistributes one facedown card per contributing player from that
+whole hand - not just the cards from the trick just won. The ported
+engine (`redistribute()`) already matches this: it lets a
+self-redistributing winner hand back any card from their own hand, by
+card-count validation only, not card-identity. `host/mask.ts`'s
+`candidateCards` mirrors that: it's the redistributor's (winner's or
+delegate's) full current hand at redistribution time, already inclusive
+of the just-won trick cards (`playCard()` merges them into the winner's
+hand immediately on trick resolution, before the redistribute phase is
+ever reached).
+
+This does mean a delegate (on a double-win) sees the winner's full hand
+contents in this one screen, not just the trick's own cards - an
+intentional trade-off to match the GDD's actual redistribution pool
+rather than a narrower, invented restriction. See `net/actions.ts`'s
+`RedistributionContext` doc comment.
 
 ## Rules engine
 
