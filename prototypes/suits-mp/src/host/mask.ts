@@ -60,13 +60,16 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
       }
     }
     redistribution = {
-      // All of this trick's cards were played face-up and are already
-      // public - a deliberate restriction to that pool (rather than the
-      // ported engine's own, more permissive "anything from the winner's
-      // whole hand") so a delegate never needs to see the winner's
-      // unrelated hand contents. See net/actions.ts's RedistributionContext
-      // doc comment.
-      candidateCards: state.lastTrickResult.plays.flatMap((p) => p.cardIds),
+      // Per the GDD: the trick winner adds all trick cards to their hand
+      // FIRST, then redistributes one facedown card per contributing
+      // player - so the candidate pool is the redistributor's full current
+      // hand at this point (already inclusive of the just-won trick cards;
+      // playCard() merges them in immediately on trick resolution, before
+      // this phase is ever reached), not just the cards from that trick.
+      // This applies identically whether the winner is redistributing
+      // themself or a delegate is doing it on their behalf - see
+      // net/actions.ts's RedistributionContext doc comment.
+      candidateCards: state.players[winnerId!].hand,
       contributions: [...contributionMap.entries()].map(([playerId, count]) => ({
         player: toNetPlayerId(playerId),
         count,
