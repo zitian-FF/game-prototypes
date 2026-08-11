@@ -59,7 +59,7 @@ export class ConnectingScene extends Phaser.Scene {
       .setVisible(false)
       .setInteractive({ useHandCursor: true });
     backButton.on('pointerdown', () => {
-      this.scene.start('Landing', { clientId: data.clientId, iceServersPromise: data.iceServersPromise });
+      this.scene.start('Landing', { clientId: data.clientId, getIceServers: data.getIceServers });
     });
 
     let settled = false;
@@ -92,7 +92,7 @@ export class ConnectingScene extends Phaser.Scene {
       this.scene.start(toGameScreen ? 'PlayerGame' : 'PlayerLobby', sessionData);
     };
 
-    void data.iceServersPromise.then((iceServers) => {
+    void data.getIceServers().then((iceServers) => {
       if (settled) return;
 
       const activeRoom = createNetworkRoom(data.code, {

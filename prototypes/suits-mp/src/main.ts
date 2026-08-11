@@ -15,12 +15,21 @@ import type { BootData } from './net/playerSession';
 
 mountDebugPanelIfRequested();
 
+// Lazy and memoized: the fetch only fires the first time a Host/Join path
+// actually calls this (so it's ready by the time that flow needs it,
+// without blocking the landing screen from rendering), and never at all
+// for Single Player, which has no networking of any kind.
+function lazyIceServers(): () => Promise<RTCIceServer[] | undefined> {
+  let promise: Promise<RTCIceServer[] | undefined> | undefined;
+  return () => {
+    if (!promise) promise = fetchTurnIceServers();
+    return promise;
+  };
+}
+
 const bootData: BootData = {
   clientId: getOrCreateClientId(),
-  // Kicked off immediately so it's ready (or has failed and fallen back) by
-  // the time the user actually hosts or joins, without blocking the landing
-  // screen from rendering.
-  iceServersPromise: fetchTurnIceServers(),
+  getIceServers: lazyIceServers(),
 };
 
 const lobbyParam = new URLSearchParams(location.search).get('lobby');

@@ -56,6 +56,27 @@ export function currentRequiredSuit(state: GameState): God | null {
   return requiredSuitForPosition(position, leadGod);
 }
 
+// Trick 1's leader (whoever holds the 2 of Yog-Sothoth) must open with
+// exactly that card - not just any Yog-Sothoth card, and not any other
+// single. Every other trick's leader may open with any single card, as
+// before. `isForcedTrick1Opener` takes just the two primitive values the
+// condition needs so ui/renderGameView.ts's client-side legal/illegal
+// highlighting (which only has a MaskedState, not a full GameState) can
+// import and reuse the exact same condition, not a hand-copied
+// re-derivation of it. `forcedTrick1Opener(state)` is the GameState-shaped
+// convenience wrapper `playCard()`'s validation and host/botAI.ts's bot
+// move choice both call - returns null whenever the restriction doesn't
+// apply, so callers can use `forcedTrick1Opener(state) ?? <normal leading
+// logic>` uniformly. Either way, this is the single source of truth for
+// the rule - there is no separate human/bot/UI copy to drift out of sync.
+export function isForcedTrick1Opener(trickNumber: number, position: number): boolean {
+  return trickNumber === 1 && position === 0;
+}
+
+export function forcedTrick1Opener(state: GameState): CardId | null {
+  return isForcedTrick1Opener(state.trickNumber, state.plays.length) ? cardId('YogSothoth', 2) : null;
+}
+
 // --- Setup ----------------------------------------------------------------
 
 export function initGame(names: [string, string, string, string], forced?: ForcedDeal): GameState {
@@ -149,7 +170,14 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
 
   let kind: PlayKind;
   if (position === 0) {
-    if (cardIds.length !== 1 || !player.hand.includes(cardIds[0])) throw new Error('leader must play exactly one card from hand');
+    const forcedOpener = forcedTrick1Opener(state);
+    if (forcedOpener) {
+      if (cardIds.length !== 1 || cardIds[0] !== forcedOpener) {
+        throw new Error('trick 1 must open with the 2 of Yog-Sothoth');
+      }
+    } else if (cardIds.length !== 1 || !player.hand.includes(cardIds[0])) {
+      throw new Error('leader must play exactly one card from hand');
+    }
     kind = 'normal';
   } else if (opts.mustPlaySuit) {
     if (cardIds.length !== 1 || !opts.suitCards.includes(cardIds[0])) throw new Error('must play a required-suit card');
