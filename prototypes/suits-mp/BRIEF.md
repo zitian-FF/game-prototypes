@@ -105,22 +105,27 @@ than waiting for the next game-state change.
 
 ### Redistribution and delegate masking (implementation note)
 
-Per the GDD, the trick winner adds all trick cards to their hand *first*,
-then redistributes one facedown card per contributing player from that
-whole hand - not just the cards from the trick just won. The ported
-engine (`redistribute()`) already matches this: it lets a
-self-redistributing winner hand back any card from their own hand, by
-card-count validation only, not card-identity. `host/mask.ts`'s
-`candidateCards` mirrors that: it's the redistributor's (winner's or
-delegate's) full current hand at redistribution time, already inclusive
-of the just-won trick cards (`playCard()` merges them into the winner's
-hand immediately on trick resolution, before the redistribute phase is
-ever reached).
+Per the GDD, whoever ends up holding a trick's cards adds them to their
+hand *first*, then redistributes one facedown card per contributing
+player from that whole hand - not just the cards from the trick just won.
+`redistribute()` lets the redistributor hand back any card from their own
+hand, by card-count validation only, not card-identity. `host/mask.ts`'s
+`candidateCards` mirrors that: it's the redistributor's own full current
+hand at redistribution time, already inclusive of the just-collected
+trick cards.
 
-This does mean a delegate (on a double-win) sees the winner's full hand
-contents in this one screen, not just the trick's own cards - an
-intentional trade-off to match the GDD's actual redistribution pool
-rather than a narrower, invented restriction. See `net/actions.ts`'s
+Who "ends up holding" the trick's cards depends on whether it was a
+single-card or double-card (Twin Awakening) win - see "Double-win card
+ownership (bug fix)" under Rules engine below for the fix that made this
+true uniformly. Before that fix, the winner always collected the cards
+even when they'd mandatorily delegated redistribution to someone else -
+this section originally documented that as an accepted trade-off ("a
+delegate does see the winner's hand contents"), but it was actually a
+state-correctness bug, not a trade-off: the delegate was redistributing
+cards they didn't hold, silently breaking the 10-cards-per-player
+invariant on every double win. The fix removes the trade-off entirely -
+a delegate now only ever sees their own hand, exactly like a
+self-redistributing winner does. See `net/actions.ts`'s
 `RedistributionContext` doc comment.
 
 ## Rules engine
@@ -164,6 +169,63 @@ confirmed both properties already held with zero code changes needed.
 Verified with a 300-game bot-vs-bot simulation plus an adversarial probe
 that explicitly attempts self-delegation on every double-win and confirms
 it's rejected every time (see "Verification status").
+
+### Double-win card ownership (bug fix)
+
+`playCard()` collected every trick's cards into the *winner's* hand
+unconditionally, including double wins - but a double win mandatorily
+delegates redistribution to a different player (see above), and that
+delegate redistributes from their *own* hand, not the winner's. The
+winner ending up holding cards the delegate was supposed to be handing
+out broke the 10-cards-per-player invariant on every double win: the
+winner sat on an unredistributed surplus while the players who
+contributed to the trick never got their share back, and the delegate's
+own attempted "redistribution" pulled cards out of a hand (the winner's)
+that the engine was never checking against theirs. `host/mask.ts` and
+`host/botAI.ts` each carried a matching copy of the same assumption
+(reading `pendingWinnerId` instead of `pendingDistributorId` for both the
+candidate-card pool and the contribution-count exclusion).
+
+Fixed by making collection track *who actually performs the
+redistribution*, not who won the trick:
+
+- `playCard()`'s trick-resolution branch now only collects into the
+  winner's hand when the win wasn't by double (`!wonByDouble`) - a self-
+  redistributed win is completely unaffected by this fix. On a double
+  win, the trick's cards are left uncollected (in neither `state.plays`
+  nor any hand - `lastTrickResult` still has the full record) until a
+  delegate is chosen.
+- `chooseDelegate()` now collects the trick's cards into the *delegate's*
+  hand at the moment they're chosen, mirroring `playCard()`'s own
+  single-win precedent of checking suit completion immediately on
+  collection, before any redistribution UI.
+- `redistribute()`, `host/mask.ts`'s masked `candidateCards`/
+  `contributions`, and `host/botAI.ts`'s bot redistribution logic all now
+  key off `pendingDistributorId` instead of `pendingWinnerId` - for a
+  self-redistributed win these are the same player, so nothing changes
+  there; for a delegated win, gifts are now correctly drawn from and
+  validated against the delegate's own hand, and the contribution map
+  correctly excludes the *distributor's* own play (not the winner's) -
+  which now correctly includes the original winner as a gift recipient
+  when they aren't the one distributing. The exact card-count math this
+  invariant depends on: the distributor's hand after collecting
+  equals `10 + sum of every OTHER player's contribution to that trick`;
+  giving each of them back exactly what they contributed brings the
+  distributor to exactly 10 with nothing left to separately give
+  themselves.
+
+Verified with a 50-game bot-vs-bot simulation (28 games containing at
+least one double-win, 62 double-win redistributions total) asserting,
+after every single action: every player holds exactly 10 cards at the
+start of every trick, and total cards across all hands plus any
+cards "in the trick" (including a double win's collected-but-not-yet-
+delegated cards, before the delegate is chosen) always sums to 40. Also
+directly asserted, on every delegate selection, that the delegate's hand
+grew by exactly the trick's collected count and the winner's hand was
+untouched. Confirmed the test itself would have caught the bug: running
+the same simulation against the pre-fix code reproduced it exactly
+(delegate hand unchanged on collection) before the fix was reapplied. See
+"Verification status" for the full numbers.
 
 ### Trick-1 forced opener (bug fix)
 

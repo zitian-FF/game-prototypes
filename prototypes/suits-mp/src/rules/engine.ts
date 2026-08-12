@@ -211,8 +211,32 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
     };
   }
 
-  // Fourth play: resolve, collect, check win.
+  // Fourth play: resolve, then collect - but only when the trick will be
+  // self-redistributed. A double win mandates delegation (see
+  // chooseDelegate below), and the delegate isn't chosen until after this
+  // point, so the trick's cards can't be collected into anyone's hand yet
+  // - they stay "in the trick" (not in `plays` and not in any hand) until
+  // chooseDelegate() collects them into the delegate's own hand, since
+  // that's the hand redistribute() will actually draw gifts from. Collecting
+  // into the winner's hand unconditionally here was the bug: a delegate
+  // redistributing cards they never held broke the 10-cards-per-player
+  // invariant on every double win. Single wins are unaffected - the winner
+  // still collects (and can still win outright on collection) exactly as
+  // before.
   const trickResult = resolveTrick(newPlays);
+  if (trickResult.wonByDouble) {
+    return {
+      ...state,
+      players: newPlayers,
+      plays: [],
+      phase: 'trickResult',
+      pendingBlocker: null,
+      lastTrickResult: trickResult,
+      pendingWinnerId: trickResult.winnerId,
+      pendingDistributorId: null,
+    };
+  }
+
   const collectedCardIds = newPlays.flatMap((p) => p.cardIds);
   const winnerHand = [...newPlayers[trickResult.winnerId].hand, ...collectedCardIds];
   const collectedPlayers = newPlayers.map((p) =>
@@ -321,11 +345,38 @@ export function proceedFromTrickResult(state: GameState): GameState {
   };
 }
 
+// The delegate - not the winner - collects the trick's cards here, since
+// they're the one about to redistribute from their own hand (see
+// playCard()'s doc comment on the double-win branch). Mirrors playCard()'s
+// own single-win precedent of checking suit completion immediately on
+// collection, before any redistribution UI - same rule, just applied to
+// whoever actually ends up holding the cards.
 export function chooseDelegate(state: GameState, delegateId: PlayerId): GameState {
   if (state.phase !== 'chooseDelegate' || state.pendingWinnerId === null) throw new Error('not choosing a delegate');
   if (delegateId === state.pendingWinnerId) throw new Error('the double-winner may not redistribute their own trick');
+  if (!state.lastTrickResult) throw new Error('no trick result to collect');
+
+  const collectedCardIds = state.lastTrickResult.plays.flatMap((p) => p.cardIds);
+  const delegateHand = [...state.players[delegateId].hand, ...collectedCardIds];
+  const players = state.players.map((p) =>
+    p.id === delegateId ? { ...p, hand: delegateHand } : p
+  ) as GameState['players'];
+
+  const win = checkSuitCompletion(players);
+  if (win) {
+    return {
+      ...state,
+      players,
+      pendingDistributorId: delegateId,
+      phase: 'gameOver',
+      pendingBlocker: null,
+      winner: win,
+    };
+  }
+
   return {
     ...state,
+    players,
     pendingDistributorId: delegateId,
     phase: 'blocker',
     pendingBlocker: { forPlayerId: delegateId, next: 'redistribution' },
@@ -339,16 +390,29 @@ export function advanceBlocker(state: GameState): GameState {
   return { ...state, phase: state.pendingBlocker.next, pendingBlocker: null };
 }
 
+// Draws gifts from `pendingDistributorId`'s hand, not the winner's - on a
+// self-redistributed (single-card) win these are the same player, so this
+// is unchanged from before; on a delegated (double-card) win, the
+// distributor is whoever chooseDelegate() picked, and only *they* hold
+// the trick's collected cards (see that function), so they're the only
+// valid source. `contribution` correspondingly excludes the distributor's
+// own play rather than the winner's: every player who isn't the
+// distributor gets back exactly what they contributed to the trick
+// (including the winner themself, when the winner isn't the distributor)
+// - the distributor needs no gift back, since the cards they don't give
+// away already equal their own contribution once everyone else's share is
+// deducted from the collected pool. See BRIEF.md's "double-win card
+// ownership" fix for the worked-through card-count math.
 export function redistribute(state: GameState, gifts: readonly RedistributionGift[]): GameState {
   if (state.phase !== 'redistribution' || state.pendingWinnerId === null || state.pendingDistributorId === null) {
     throw new Error('not in redistribution phase');
   }
   if (!state.lastTrickResult) throw new Error('no trick result to redistribute from');
 
-  const winnerId = state.pendingWinnerId;
+  const distributorId = state.pendingDistributorId;
   const contribution = new Map<PlayerId, number>();
   for (const play of state.lastTrickResult.plays) {
-    if (play.playerId !== winnerId) contribution.set(play.playerId, play.cardIds.length);
+    if (play.playerId !== distributorId) contribution.set(play.playerId, play.cardIds.length);
   }
 
   const giftedIds = new Set<CardId>();
@@ -363,23 +427,23 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
   }
   if (gifts.length !== contribution.size) throw new Error('every contributing player must receive a gift');
 
-  const winnerHand = state.players[winnerId].hand;
+  const distributorHand = state.players[distributorId].hand;
   for (const id of giftedIds) {
-    if (!winnerHand.includes(id)) throw new Error('gifted card is not in the winner\'s hand');
+    if (!distributorHand.includes(id)) throw new Error('gifted card is not in the distributor\'s hand');
   }
 
-  const remainingWinnerHand = winnerHand.filter((id) => !giftedIds.has(id));
+  const remainingDistributorHand = distributorHand.filter((id) => !giftedIds.has(id));
   const lastReceived = { ...state.lastReceived };
   const receivedLog = { ...state.receivedLog };
   let players = state.players.map((p) =>
-    p.id === winnerId ? { ...p, hand: remainingWinnerHand } : p
+    p.id === distributorId ? { ...p, hand: remainingDistributorHand } : p
   ) as GameState['players'];
 
   for (const gift of gifts) {
     players = players.map((p) =>
       p.id === gift.toPlayerId ? { ...p, hand: [...p.hand, ...gift.cardIds] } : p
     ) as GameState['players'];
-    const record = { cardIds: gift.cardIds, fromPlayerId: winnerId, trickNumber: state.trickNumber };
+    const record = { cardIds: gift.cardIds, fromPlayerId: distributorId, trickNumber: state.trickNumber };
     lastReceived[gift.toPlayerId] = record;
     receivedLog[gift.toPlayerId] = [...(receivedLog[gift.toPlayerId] ?? []), record];
   }

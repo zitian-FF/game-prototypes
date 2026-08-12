@@ -68,24 +68,28 @@ function chooseDelegateAction(slot: PlayerId): ClientAction {
 }
 
 // Splits the required count for each contributing recipient randomly among
-// the cards in the winner's hand (not just this trick's cards - unlike the
-// masked payload shown to a human distributor, a bot has full host-local
-// access to the canonical state, so it's free to use the engine's actual,
-// more permissive pool). Same logic whether the distributor is the winner
-// themself or a delegate - the cards always come from the winner's hand.
+// the cards in the acting distributor's hand (not just this trick's cards
+// - unlike the masked payload shown to a human distributor, a bot has full
+// host-local access to the canonical state, so it's free to use the
+// engine's actual, more permissive pool). On a self-redistributed win the
+// distributor is the winner; on a delegated (double) win it's the
+// delegate, who is the one who actually collected the trick's cards - see
+// rules/engine.ts's chooseDelegate/redistribute for where that hand-
+// ownership fix lives. Using the winner's hand unconditionally here would
+// reproduce the same bug for bot-driven delegated redistributions.
 function chooseRedistributeAction(state: GameState): ClientAction {
-  const winnerId = state.pendingWinnerId;
+  const distributorId = state.pendingDistributorId;
   const trickResult = state.lastTrickResult;
-  if (winnerId === null || !trickResult) throw new Error('bot: no trick result to redistribute from');
+  if (distributorId === null || !trickResult) throw new Error('bot: no trick result to redistribute from');
 
   const contribution = new Map<PlayerId, number>();
   for (const play of trickResult.plays) {
-    if (play.playerId !== winnerId) {
+    if (play.playerId !== distributorId) {
       contribution.set(play.playerId, (contribution.get(play.playerId) ?? 0) + play.cardIds.length);
     }
   }
 
-  const pool = shuffled(state.players[winnerId].hand);
+  const pool = shuffled(state.players[distributorId].hand);
   const assignments: { toPlayer: ReturnType<typeof toNetPlayerId>; cards: CardId[] }[] = [];
   let idx = 0;
   for (const [playerId, count] of contribution) {
