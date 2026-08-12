@@ -314,19 +314,17 @@ known, accepted trade-off given the failure scenario the button exists
 for is specifically "no one has successfully joined yet" - it isn't
 addressed further since it wasn't asked for.
 
-## UI (placeholder / text-dump, Stage 2 scope)
+## UI (Phaser primitives, Stage 3a scope)
 
-`src/ui/renderGameView.ts` is the entire UI this stage: monospace text
-and tappable rows, shared between `HostGameScene` (the host's own
-perspective, rendered locally with no network round trip for its own
-actions) and `PlayerGameScene` (a remote peer's perspective, rendered
-from a received `state` message). Shows: your hand, whose turn, the
-current trick in play order, and the current turn phase, with tap targets
-to actually play a full game (select cards, confirm a play, pick a
-delegate, assign redistribution cards). The redistribution log and rules
-overlay are stubbed with placeholder text, per Stage 2 scope - real
-presentation is Stage 3. No turn-indicator animation, no real visual
-hand/trick/HUD layout - also Stage 3.
+`src/ui/renderGameView.ts` is the entire UI, shared between
+`HostGameScene` (the host's own perspective, rendered locally with no
+network round trip for its own actions) and `PlayerGameScene` (a remote
+peer's perspective, rendered from a received `state` message). Stage 2's
+monospace text-dump has been fully replaced (Stage 3a) with a laid-out
+screen built from Phaser primitives (rectangles, circles, text) - still
+placeholder-first per root CLAUDE.md, no sprites or art. The Rules
+overlay and full Redistribution-log content are still stubs; real design
+for both comes from Claude Design as DOM overlays in a later stage (3c).
 
 **Interactivity fix (first follow-up task):** the Stage 1+2 build looked
 non-interactive because `rerender()` called the top-level exported
@@ -373,50 +371,154 @@ the placeholder text (per this task's own brief): only the rendering
 (text color vs. sprite/texture state) needs re-skinning, not the
 underlying `computeHandLegality`/`nextSelectionAfterTap` logic.
 
-**Previous-trick log toggle and own-identity display (follow-up task):**
+**Previous-trick log and own-identity display (carried over, re-skinned in
+Stage 3a):** the log toggle button now sits top-left of the top bar
+(mirroring Rules, top-right); tapping either swaps the whole screen for
+that overlay's content, with a `[ Close ]` button to return. The
+previous-trick log's content and masking rules are unchanged from the
+follow-up task that introduced them (see `MaskedState.previousTrick`,
+sourced from `state.lastTrickResult`). Own-identity now lives in "Your
+row"'s team tag (see below) instead of a standalone text line, showing
+the same `MaskedState.yourGod` data. `PersistentUIState` (still owned per
+scene, still surviving every masked-state push - see Stage 3a section
+below) generalized from a single `logOpen: boolean` to an `overlay:
+'none' | 'log' | 'rules' | 'redistLog'` enum to cover the two new stub
+screens, plus a `sortMode` field for the fan's suit/rank toggle.
 
-- A `[ Log ]` button is always rendered near the top of the view (every
-  phase, including the game-over screen). Tapping it swaps the whole view
-  for a log showing only the trick immediately before the one in
-  progress - each card played, which player played it, and in play order
-  - or "No previous trick yet." during trick 1. Tapping the button again
-  (now labeled `[ Close Log ]`) returns to the normal game view.
-- The data comes from `MaskedState.previousTrick`, built in
-  `host/mask.ts` straight from `state.lastTrickResult`: the engine
-  already overwrites that field only when a trick actually resolves (see
-  `playCard()`), so it holds exactly "the trick before this one" for its
-  whole lifetime - null before trick 1 resolves, then replaced wholesale
-  each time a new trick completes, including across the redistribution
-  phase that follows. Every card in it was already played face-up, so
-  exposing it (with attribution) to every player reveals nothing that
-  wasn't already visible live.
-- Unlike the per-decision-point `ViewState` (hand selection, redistribute
-  assignment - reset on every new masked state), whether the log is open
-  is a UI preference that must survive every masked state push from any
-  player's action, not just the local player's own taps. It lives in a
-  separate `PersistentUIState` object (`ui/renderGameView.ts`) that
-  `HostGameScene`/`PlayerGameScene` each own for their whole scene
-  lifetime and pass into every `renderGameView` call, rather than being
-  rebuilt fresh per masked state the way `ViewState` is.
-- A persistent `You are: <god> - Team <team>` line renders on every
-  render, every phase, from deal through game end - a reminder of your
-  own hidden identity, which was previously only ever shown once (at
-  reveal/deal time, before this task). `MaskedState.yourGod` carries this
-  (a player's own identity is never secret to themself); team is derived
-  client-side via the existing `GOD_TEAM` lookup. Every other player's
-  identity stays hidden until `revealedGods` reveals it on suit
-  completion, unchanged.
+## Stage 3a: core gameplay screen
+
+Replaces the whole Stage 2 layout with Phaser primitives per the fixed
+screen spec below - presentation/layout only, built entirely on the
+already-correct game logic from earlier stages (no rules engine, bot AI,
+networking, or masking changes, except the presentation-only safeguard
+noted at the end of this section).
+
+**Seating model** (`src/ui/seating.ts`, Phaser-free/unit-testable): seats
+are drawn egocentrically - the local player is always at the bottom
+("P3"), with the other three placed by their distance in turn order, not
+their absolute `NetPlayerId`. Since turn order already proceeds clockwise
+(`rules/engine.ts`'s `turnOrder` increments `PlayerId` by 1 mod 4), and
+walking the physical seats clockwise from "you" goes bottom -> left ->
+top -> right -> bottom, the mapping is: the next player to act after you
+sits left (P4), the player two turns from you (opposite) sits top (P1),
+and the player who acted right before you sits right (P2). `seatFor`/
+`seatLabelFor`/`buildSeatMap` implement this once; every other piece of
+Stage 3a (name tags, play areas, delegate targets, the Suit Cycle HUD)
+reads seat position through them rather than re-deriving it.
+
+**Suit Cycle HUD** (`computeSuitRing` in `ui/seating.ts`): a ring with one
+node per seat. The trick's leader and lead god are derived from data
+already in `MaskedState` - no new masked-state field needed: mid-trick,
+the leader is `currentTrick[0].player` and the lead god is the existing
+`leadSuit` field; before the leader's first card is committed, only *who*
+will lead is known (`currentTurn`), not yet the suit; between tricks
+(selectDelegate/redistribute/gameOver) no trick is in progress and every
+node comes back undetermined. Each seat's suit is `suitAfterSteps(leadGod,
+offsetFromLeader)`, reusing the same fixed rotation the rules engine
+already enforces for follow-suit requirements - this HUD is a
+visualization of that existing rule, not new logic.
+
+*Live preview, accepted scope resolution:* the original design note
+wanted the ring to update the instant the leader taps a card, before
+committing, so everyone else can see what they'll need to follow - but
+broadcasting an unconfirmed selection to other peers before commit would
+be a masking/networking change, out of scope for this presentation-only
+stage. Flagged to the user during implementation; the accepted resolution
+splits the difference: the leader's own screen previews the lead god
+immediately from their local (already-known-to-them, never-networked)
+selection - `renderPlayerCluster` passes `view.selectedCards` into
+`computeSuitRing` as `previewCardId`, and the previewed node renders with
+a lighter/thinner outline than a confirmed leader - while every other
+player's ring still only updates once the play is confirmed and
+broadcast, matching the brief's own stated fallback.
+
+**Play areas and name tags:** each seat shows the card played this trick
+(masked - see below), and a name tag with independent turn (green dot)
+and trick-starter (amber dot) markers, both can be lit at once. During
+`selectDelegate`, opponent tags become tap targets *only* on the actual
+double-winner's own screen - gated on `state.delegateChoices !== null`,
+which `host/mask.ts` already only populates for that one player, so no
+new masking logic was needed. During `redistribute`, the acting
+distributor's own screen swaps the three opponent boxes from "card played"
+to a "have/need" counter and tap target, gated the same way on
+`state.redistribution !== null`.
+
+**Redistribution flow:** tapping a candidate card in the fan stages it
+(reuses `view.selectedCards`, holding 0 or 1 id, styled with the same
+`selected` color as the play-phase selection); tapping an unfulfilled
+opponent box assigns the staged card to that recipient and clears the
+staging. This two-step (stage-then-target) flow replaces the earlier
+auto-assign-to-first-needer text-dump interaction, per this stage's own
+brief - the underlying `redistribute` action shape and host-side
+validation are unchanged.
+
+**Card fan** (`src/ui/cardFan.ts`, Phaser-free/unit-testable): an arc
+radiating from a pivot point below the visible area, computed from
+`tune.json`'s `handFanPerCardStepDeg`/`handFanMaxSpreadDeg`/
+`handFanRadius`/`handFanCardWidth`/`handFanCardHeight` (per-card spread
+scales with hand size, capped so a full 13-card hand still fits the
+390px canvas - the cap had to fold in the card's own rotated bounding box
+width, not just its center-point offset, since the outer cards' rotation
+pushes their edges further out than their centers). Reuses
+`computeHandLegality`/`nextSelectionAfterTap`/`colorFor` from
+`ui/handLegality.ts` completely unchanged for the play phase; redistribute
+gets its own much simpler card-state function (`redistributeCardState` -
+assigned/staged/available, no suits or doubles involved) that reuses the
+same `legal`/`illegal`/`selected` color vocabulary for visual consistency,
+per this stage's "reuse the existing state logic" instruction (which,
+read in context, is specifically about the play phase's
+suit/double/pair-partner mechanic that redistribute has no equivalent
+of).
+
+**Sort button:** toggles the fan's display order between `sortCardIds`
+(suit-cycle order, existing) and the new `sortCardIdsByRank` (ascending
+rank, ties broken by suit-cycle order) - both in `rules/cards.ts`,
+ascending-only per this stage's brief. Display-only; selection/legality
+state is keyed by card id, not position, so re-sorting never disturbs it.
+
+**Action button:** single full-width button below the fan, relabelled and
+re-enabled per `turnPhase` and the local `ViewState` (which grew a
+`delegateChoice: NetPlayerId | null` field alongside the pre-existing
+`selectedCards`/`redistributeAssignment`, for the same stage-then-confirm
+delegate flow as playing a card or redistributing).
+
+**Facedown-card masking (presentation-layer safeguard):** the brief
+requires "never reveal another player's actual card" for offsuit
+(facedown) plays. Auditing `host/mask.ts` while implementing this
+surfaced a pre-existing gap: `currentTrick`/`previousTrick` currently
+carry the *real* card id for offsuit plays too, for every peer, not just
+the player who made the play - a masking bug that predates this stage and
+is out of scope to fix here (Stage 3a is presentation-only; masking fixes
+belong in `host/mask.ts`, a separate task). `maskedPlayText()` in
+`renderGameView.ts` works around it at the UI layer: any offsuit play
+that isn't the local player's own is always rendered as a generic
+"Facedown card" placeholder, regardless of what the payload actually
+contains, applied consistently to both the live play-area boxes and the
+previous-trick log. This satisfies the brief's UI-visible requirement
+without touching masking/networking, but the underlying payload leak
+itself still needs a real fix in a follow-up task.
 
 ## Out of scope
 
-Any real visual/sprite card rendering (still placeholder/text this task -
-only the legal/illegal *state logic* is defined), turn indicator
-animation, spectator mode, fewer/more-than-4-player support, Level 2/3 AI
+Any real visual/sprite card rendering (still placeholder/primitives -
+Stage 3a laid out the screen with rectangles/circles/text, not art),
+spectator mode, fewer/more-than-4-player support, Level 2/3 AI
 sophistication (suit/team-awareness - explicitly deferred), any change to
-when-suit-must-be-followed logic, any change to redistribution/delegate
-UI or logic, and anything already merged as a housekeeping item (CLAUDE.md
-deploy-path doc, relay-pinning doc, mp-base relay fix). No changes to the
-existing hotseat `suits` prototype.
+when-suit-must-be-followed logic or the underlying redistribute/
+selectDelegate action validation, and anything already merged as a
+housekeeping item (CLAUDE.md deploy-path doc, relay-pinning doc, mp-base
+relay fix). No changes to the existing hotseat `suits` prototype.
+(Superseded: an earlier draft of this list also excluded "any change to
+redistribution/delegate UI" - Stage 3a's own brief explicitly asked for a
+new redistribution *UI* interaction model, which is now implemented; the
+constraint that still holds is no change to the validation/action shape
+underneath it.)
+
+Stage 3a's own out-of-scope items: full Rules overlay content and full
+Redistribution-log content (both stubbed - real design comes from Claude
+Design + DOM overlays in a later Stage 3c), turn-indicator *animation*
+polish beyond the plain dot markers, and a win-tracker/suit-completion
+progress display (not requested by Stage 3a's brief).
 
 ## Verification status
 
@@ -497,3 +599,43 @@ correct for the forced-opener and must-follow-suit cases live - the
 off-suit case's *live rendering* specifically would benefit from the
 user's own phone pass, since engineering that exact hand/suit combination
 via scripted bot play wasn't practical in this pass).
+
+**Stage 3a (core gameplay screen):** `npm run typecheck` and `npm run
+build` both pass; a Playwright boot check shows zero console page errors.
+Live browser confirmation via an interactive Playwright session (screenshot
+-> read -> click -> repeat, since coordinate-guessing needed the actual
+rendered layout, not a blind script) played 14 real tricks end to end in
+Single Player, confirming: the Suit Cycle HUD's per-seat suit assignment
+mathematically cross-checked correct against the actual leader/lead-suit
+for many different leader seats across those tricks; the local live-preview
+HUD update (the accepted resolution for the live-preview design note - see
+"Stage 3a" section above) visibly lighting up the correct seat/suit the
+instant a card was tapped, before Play was even pressed; three full
+redistribution cycles as the acting distributor (stage a card, tap a
+target box, watch the have/need counter update and turn green on
+fulfillment, Action button correctly gating on all-fulfilled) with the
+resulting state changes broadcasting correctly to advance to the next
+trick; turn and starter dot markers moving correctly across every
+turn/trick transition; the Sort button toggling fan order between
+`sortCardIds` and `sortCardIdsByRank` with the displayed cards visibly
+reordering; all three overlay stubs (previous-trick log, Rules,
+Redistribution log) opening and closing correctly, including the log
+correctly listing a completed trick's plays with attribution; and,
+critically, the facedown-card masking safeguard - an actual bot offsuit
+play rendered as "Facedown card" in both the live play-area box and the
+previous-trick log, confirmed by the exact screenshot rather than just
+reasoned about. **Not exercised live in this pass:** the off-suit
+double-selection UX's fan rendering specifically (same gap as the prior
+task's own note above - 14 tricks of bot-shuffled hands never happened to
+leave the human seat void of the required suit with a same-rank pair
+available) and the `selectDelegate` phase (no double-win occurred in the
+games played). Both reuse code paths already exercised elsewhere in this
+pass or a prior one: the off-suit/pair color and tap-handler wiring in
+`renderCardFan` is generic across all four `CardVisualState` values, not
+special-cased per state, and `computeHandLegality`/`nextSelectionAfterTap`
+themselves are byte-for-byte unchanged from the prior task's own verified
+version; the delegate tap-to-stage/Action-button-commit flow is the same
+two-step pattern already live-verified for redistribution, just gated on
+`state.delegateChoices` instead of `state.redistribution`. Recommend the
+user's own phone pass specifically target a double-win (two same-rank
+cards led) and an empty-required-suit hand to see both live.

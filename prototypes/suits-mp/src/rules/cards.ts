@@ -60,6 +60,15 @@ export const GOD_DISPLAY_NAME: Record<God, string> = {
   YogSothoth: 'Yog-Sothoth',
 };
 
+// Short codes for space-constrained UI (the card-fan boxes and Suit Cycle
+// HUD ring nodes are too small for GOD_DISPLAY_NAME's full names).
+export const GOD_ABBR: Record<God, string> = {
+  Cthulhu: 'CTH',
+  Nyarlathotep: 'NYA',
+  ShubNiggurath: 'SHU',
+  YogSothoth: 'YOG',
+};
+
 export const GOD_TEAM: Record<God, Team> = {
   Cthulhu: 'Chaos',
   Nyarlathotep: 'Chaos',
@@ -136,5 +145,19 @@ export function sortCardIds(ids: readonly CardId[]): CardId[] {
     const suitDiff = SUIT_CYCLE.indexOf(cardA.god) - SUIT_CYCLE.indexOf(cardB.god);
     if (suitDiff !== 0) return suitDiff;
     return RANK_SORT_ORDER[cardA.rank] - RANK_SORT_ORDER[cardB.rank];
+  });
+}
+
+// Display-only ordering: ascending rank first, ties broken by SUIT_CYCLE
+// order for a stable, deterministic fan layout (the brief's Sort button
+// offers only this and sortCardIds, both ascending-only - see BRIEF.md's
+// "Sort button" section). Never mutates or reorders game state.
+export function sortCardIdsByRank(ids: readonly CardId[]): CardId[] {
+  return [...ids].sort((a, b) => {
+    const cardA = cardById(a);
+    const cardB = cardById(b);
+    const rankDiff = RANK_SORT_ORDER[cardA.rank] - RANK_SORT_ORDER[cardB.rank];
+    if (rankDiff !== 0) return rankDiff;
+    return SUIT_CYCLE.indexOf(cardA.god) - SUIT_CYCLE.indexOf(cardB.god);
   });
 }
