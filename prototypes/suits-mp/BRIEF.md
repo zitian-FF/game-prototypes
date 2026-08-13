@@ -187,44 +187,64 @@ that the engine was never checking against theirs. `host/mask.ts` and
 candidate-card pool and the contribution-count exclusion).
 
 Fixed by making collection track *who actually performs the
-redistribution*, not who won the trick:
+redistribution*, not who won the trick - and by collecting at one single
+point rather than branching on win type:
 
-- `playCard()`'s trick-resolution branch now only collects into the
-  winner's hand when the win wasn't by double (`!wonByDouble`) - a self-
-  redistributed win is completely unaffected by this fix. On a double
-  win, the trick's cards are left uncollected (in neither `state.plays`
-  nor any hand - `lastTrickResult` still has the full record) until a
-  delegate is chosen.
-- `chooseDelegate()` now collects the trick's cards into the *delegate's*
-  hand at the moment they're chosen, mirroring `playCard()`'s own
-  single-win precedent of checking suit completion immediately on
-  collection, before any redistribution UI.
+- `playCard()`'s trick-resolution branch no longer collects at all, for
+  either win type. It just resolves the trick, records `lastTrickResult`/
+  `pendingWinnerId`, and moves to `trickResult` - the cards stay
+  uncollected (in neither `state.plays` nor any hand) until a distributor
+  is known.
+- `proceedFromTrickResult()` (unchanged) sets `pendingDistributorId` to
+  the winner directly on a self-redistributed win, or routes to
+  `chooseDelegate` on a double win. `chooseDelegate()` (simplified) now
+  only records who's delegating - it no longer touches any hand.
+- `advanceBlocker()` is the one place collection actually happens: the
+  specific transition into the `redistribution` phase collects
+  `lastTrickResult`'s cards into `pendingDistributorId`'s hand and checks
+  suit completion right there, before the phase change takes effect. By
+  the time either path (self-redistribution or delegation) reaches this
+  transition, `pendingDistributorId` already names the right player, so
+  one code path now covers both - no more duplicated collect-then-check-
+  win logic split across `playCard()` and `chooseDelegate()`. This is
+  safe because `'blocker'`/`'trickResult'` are hotseat-only pass-device
+  beats with no suits-mp equivalent (see `host/mask.ts`'s
+  `turnPhaseFor()`) - `gameHost.settleAutoPhases()` always chains through
+  them in one host tick before any masked state is ever built, so no
+  client ever observes an intermediate state where the distributor's hand
+  doesn't yet include the trick they're about to redistribute.
 - `redistribute()`, `host/mask.ts`'s masked `candidateCards`/
-  `contributions`, and `host/botAI.ts`'s bot redistribution logic all now
-  key off `pendingDistributorId` instead of `pendingWinnerId` - for a
-  self-redistributed win these are the same player, so nothing changes
-  there; for a delegated win, gifts are now correctly drawn from and
-  validated against the delegate's own hand, and the contribution map
-  correctly excludes the *distributor's* own play (not the winner's) -
-  which now correctly includes the original winner as a gift recipient
-  when they aren't the one distributing. The exact card-count math this
-  invariant depends on: the distributor's hand after collecting
-  equals `10 + sum of every OTHER player's contribution to that trick`;
-  giving each of them back exactly what they contributed brings the
-  distributor to exactly 10 with nothing left to separately give
-  themselves.
+  `contributions`, and `host/botAI.ts`'s bot redistribution logic all key
+  off `pendingDistributorId` instead of `pendingWinnerId` - for a self-
+  redistributed win these are the same player, so nothing changes there;
+  for a delegated win, gifts are correctly drawn from and validated
+  against the delegate's own hand, and the contribution map correctly
+  excludes the *distributor's* own play (not the winner's) - which
+  correctly includes the original winner as a gift recipient when they
+  aren't the one distributing. The exact card-count math this invariant
+  depends on: the distributor's hand after collecting equals `10 + sum of
+  every OTHER player's contribution to that trick`; giving each of them
+  back exactly what they contributed brings the distributor to exactly 10
+  with nothing left to separately give themselves.
 
-Verified with a 50-game bot-vs-bot simulation (28 games containing at
-least one double-win, 62 double-win redistributions total) asserting,
-after every single action: every player holds exactly 10 cards at the
-start of every trick, and total cards across all hands plus any
-cards "in the trick" (including a double win's collected-but-not-yet-
-delegated cards, before the delegate is chosen) always sums to 40. Also
-directly asserted, on every delegate selection, that the delegate's hand
-grew by exactly the trick's collected count and the winner's hand was
-untouched. Confirmed the test itself would have caught the bug: running
-the same simulation against the pre-fix code reproduced it exactly
-(delegate hand unchanged on collection) before the fix was reapplied. See
+(An earlier version of this fix collected in two separate places -
+`playCard()` for single wins, `chooseDelegate()` for double wins - each
+with its own copy of the collect-then-check-suit-completion logic. Moved
+to the single `advanceBlocker()` site above once it became clear both
+paths already converge there before any client-visible state exists,
+making the duplication avoidable.)
+
+Verified with a 50-game bot-vs-bot simulation asserting, after every
+single action: every player holds exactly 10 cards at the start of every
+trick, and total cards across all hands plus any cards "in the trick"
+(including a double win's collected-but-not-yet-delegated cards, before
+the distributor transition) always sums to 40. 30 of the 50 games
+contained at least one double-win, 51 double-win redistributions total,
+zero failures. Confirmed the test itself would have caught the bug by
+temporarily reintroducing it (collecting into `pendingWinnerId` instead of
+`pendingDistributorId` at the `advanceBlocker()` collection site) and
+rerunning: 1466 invariant failures, reproducing the exact predicted
+symptom (hand sizes drifting from 10 as the game progressed). See
 "Verification status" for the full numbers.
 
 ### Trick-1 forced opener (bug fix)

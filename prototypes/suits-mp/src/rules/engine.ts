@@ -211,54 +211,21 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
     };
   }
 
-  // Fourth play: resolve, then collect - but only when the trick will be
-  // self-redistributed. A double win mandates delegation (see
-  // chooseDelegate below), and the delegate isn't chosen until after this
-  // point, so the trick's cards can't be collected into anyone's hand yet
-  // - they stay "in the trick" (not in `plays` and not in any hand) until
-  // chooseDelegate() collects them into the delegate's own hand, since
-  // that's the hand redistribute() will actually draw gifts from. Collecting
-  // into the winner's hand unconditionally here was the bug: a delegate
-  // redistributing cards they never held broke the 10-cards-per-player
-  // invariant on every double win. Single wins are unaffected - the winner
-  // still collects (and can still win outright on collection) exactly as
-  // before.
+  // Fourth play: resolve, but don't collect yet. Whoever ends up
+  // redistributing the trick - the winner themself on a single-card win,
+  // or a delegate on a double-card (Twin Awakening) win, chosen only
+  // after this point via chooseDelegate() - is the one who should
+  // collect its cards into their own hand, since that's the hand
+  // redistribute() draws gifts from. Collecting into the winner's hand
+  // unconditionally here, before a delegate is even chosen, was a bug: a
+  // delegate redistributing cards they never held broke the
+  // 10-cards-per-player invariant on every double win. Collection happens
+  // uniformly for both cases in advanceBlocker(), right before phase
+  // becomes 'redistribution' - see that function's doc comment.
   const trickResult = resolveTrick(newPlays);
-  if (trickResult.wonByDouble) {
-    return {
-      ...state,
-      players: newPlayers,
-      plays: [],
-      phase: 'trickResult',
-      pendingBlocker: null,
-      lastTrickResult: trickResult,
-      pendingWinnerId: trickResult.winnerId,
-      pendingDistributorId: null,
-    };
-  }
-
-  const collectedCardIds = newPlays.flatMap((p) => p.cardIds);
-  const winnerHand = [...newPlayers[trickResult.winnerId].hand, ...collectedCardIds];
-  const collectedPlayers = newPlayers.map((p) =>
-    p.id === trickResult.winnerId ? { ...p, hand: winnerHand } : p
-  ) as GameState['players'];
-
-  const win = checkSuitCompletion(collectedPlayers);
-  if (win) {
-    return {
-      ...state,
-      players: collectedPlayers,
-      plays: [],
-      phase: 'gameOver',
-      pendingBlocker: null,
-      lastTrickResult: trickResult,
-      winner: win,
-    };
-  }
-
   return {
     ...state,
-    players: collectedPlayers,
+    players: newPlayers,
     plays: [],
     phase: 'trickResult',
     pendingBlocker: null,
@@ -345,38 +312,14 @@ export function proceedFromTrickResult(state: GameState): GameState {
   };
 }
 
-// The delegate - not the winner - collects the trick's cards here, since
-// they're the one about to redistribute from their own hand (see
-// playCard()'s doc comment on the double-win branch). Mirrors playCard()'s
-// own single-win precedent of checking suit completion immediately on
-// collection, before any redistribution UI - same rule, just applied to
-// whoever actually ends up holding the cards.
+// Just records who's redistributing - collection happens later, uniformly
+// for both win types, in advanceBlocker() (see its doc comment).
 export function chooseDelegate(state: GameState, delegateId: PlayerId): GameState {
   if (state.phase !== 'chooseDelegate' || state.pendingWinnerId === null) throw new Error('not choosing a delegate');
   if (delegateId === state.pendingWinnerId) throw new Error('the double-winner may not redistribute their own trick');
-  if (!state.lastTrickResult) throw new Error('no trick result to collect');
-
-  const collectedCardIds = state.lastTrickResult.plays.flatMap((p) => p.cardIds);
-  const delegateHand = [...state.players[delegateId].hand, ...collectedCardIds];
-  const players = state.players.map((p) =>
-    p.id === delegateId ? { ...p, hand: delegateHand } : p
-  ) as GameState['players'];
-
-  const win = checkSuitCompletion(players);
-  if (win) {
-    return {
-      ...state,
-      players,
-      pendingDistributorId: delegateId,
-      phase: 'gameOver',
-      pendingBlocker: null,
-      winner: win,
-    };
-  }
 
   return {
     ...state,
-    players,
     pendingDistributorId: delegateId,
     phase: 'blocker',
     pendingBlocker: { forPlayerId: delegateId, next: 'redistribution' },
@@ -385,9 +328,46 @@ export function chooseDelegate(state: GameState, delegateId: PlayerId): GameStat
 
 // --- Redistribution -----------------------------------------------------
 
+// Generic blocker advance, except for one special case: the step into
+// 'redistribution' is also where the trick's cards actually get collected,
+// into pendingDistributorId's hand - the single point that's true for both
+// a self-redistributing winner and a delegate, since by the time either
+// path reaches here `pendingDistributorId` already names the right player
+// (set directly in proceedFromTrickResult() for a single win, or by
+// chooseDelegate() for a double win). Collecting here instead of at
+// trick-resolution/delegate-choice time means playCard() and
+// chooseDelegate() don't need their own near-duplicate collect-then-check-
+// win logic - there's exactly one place cards move into a hand and exactly
+// one place the resulting suit-completion win gets checked. This is safe
+// precisely because 'blocker'/'trickResult' are hotseat-only pass-device
+// beats with no suits-mp equivalent (see host/mask.ts's turnPhaseFor) -
+// gameHost.settleAutoPhases() always chains through them in one host tick
+// before any masked state is ever built, so no client ever observes an
+// intermediate state where the distributor's hand doesn't yet include the
+// trick they're about to redistribute.
 export function advanceBlocker(state: GameState): GameState {
   if (state.phase !== 'blocker' || !state.pendingBlocker) throw new Error('not at a blocker');
-  return { ...state, phase: state.pendingBlocker.next, pendingBlocker: null };
+  const next = state.pendingBlocker.next;
+
+  if (next !== 'redistribution') {
+    return { ...state, phase: next, pendingBlocker: null };
+  }
+
+  if (state.pendingDistributorId === null || !state.lastTrickResult) {
+    throw new Error('missing distributor or trick result for redistribution');
+  }
+  const distributorId = state.pendingDistributorId;
+  const collectedCardIds = state.lastTrickResult.plays.flatMap((p) => p.cardIds);
+  const players = state.players.map((p) =>
+    p.id === distributorId ? { ...p, hand: [...p.hand, ...collectedCardIds] } : p
+  ) as GameState['players'];
+
+  const win = checkSuitCompletion(players);
+  if (win) {
+    return { ...state, players, phase: 'gameOver', pendingBlocker: null, winner: win };
+  }
+
+  return { ...state, players, phase: next, pendingBlocker: null };
 }
 
 // Draws gifts from `pendingDistributorId`'s hand, not the winner's - on a
