@@ -6,8 +6,14 @@
   "botActionDelayMs": 1000,
   "handFanPerCardStepDeg": 6,
   "handFanMaxSpreadDeg": 58,
-  "handFanRadius": 260,
-  "handFanCardWidth": 48,
-  "handFanCardHeight": 66,
+  "handFanRadius": 240,
+  "handFanPopOutDistance": 24,
+  "handFanPopOutScale": 1.08,
+  "cardStandardWidth": 42,
+  "cardStandardHeight": 82,
+  "cardStandardFontSize": 11,
+  "cardMiniWidth": 18,
+  "cardMiniHeight": 35,
+  "cardMiniFontSize": 7,
   "suitCycleHudRadius": 62
 }

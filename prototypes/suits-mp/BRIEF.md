@@ -639,3 +639,94 @@ two-step pattern already live-verified for redistribution, just gated on
 `state.delegateChoices` instead of `state.redistribution`. Recommend the
 user's own phone pass specifically target a double-win (two same-rank
 cards led) and an empty-required-suit hand to see both live.
+
+## Stage 3a amendment: unified card component
+
+A presentation-only follow-up to Stage 3a, addressing six items: a single
+reusable card-rendering component instead of per-context drawing code, a
+slimmer "Air Deck" card proportion, a pop-out visual for selected fan
+cards (including both cards of a Twin Awakening pair), facedown mini
+card-back progress stacks for the redistribution flow, a previous-trick
+log that shows real (masked) cards instead of plain text, and the sort
+button repositioned onto the fan's own top edge. No rules/legality logic
+changed - `ui/handLegality.ts` is untouched.
+
+**Shared card component** (`src/ui/cardComponent.ts`): `drawCard()` is the
+one place any card - hand fan, all four play areas, redistribution
+stacks, previous-trick log - gets drawn. It takes a `CardFace`
+(`faceup`/`facedown`/`empty`) and a caller-supplied `CardStyle` (fill,
+border, text color); it has no opinion on what a visual state *means*
+(legal/illegal/selected/assigned/etc.) - callers in `renderGameView.ts`
+own that via small style-preset functions (`handCardStyle`,
+`playAreaStyle`, `emptySlotStyle`, `stackFilledStyle`, `stackNeededStyle`,
+`logCardStyle`). Face-up cards show the 2-letter god abbreviation (`YS` /
+`CT` / `SN` / `NY`) over the rank (`A` for Ace), facedown cards get a
+placeholder diagonal-stripe pattern, and empty slots get a dashed
+outline - all primitives, no art. A `dims: CardDimensions` parameter
+(`width`/`height`/`fontSize`) drives both the "standard" (hand/play-area)
+and "mini" (redistribution stacks, log) size variants from the same
+drawing code.
+
+**Air Deck proportions:** `tune.json`'s `cardStandardWidth`/
+`cardStandardHeight` (42x82) and `cardMiniWidth`/`cardMiniHeight` (18x35)
+replace the old `handFanCardWidth`/`handFanCardHeight` keys - noticeably
+narrower relative to height than a standard poker card, applied
+everywhere through the shared component so every card context stays
+visually consistent. The whole player-cluster vertical layout
+(box/tag/HUD-ring/fan-baseline positions) was recomputed from scratch to
+fit the taller card without colliding with the Suit Cycle HUD;
+`handFanRadius` dropped from 260 to 240 to compensate.
+
+**Selection pop-out** (`renderCardFan` in `renderGameView.ts`): entries
+are split into non-selected and selected groups and drawn in two passes -
+non-selected first, selected last - so selected card(s) render on top of
+their neighbors with no overlap, translated up by
+`tune.handFanPopOutDistance` and scaled by `tune.handFanPopOutScale`. The
+same two-pass split naturally covers both a single selection and a
+completed Twin Awakening pair (both cards carry the `selected` state at
+that point), with no special-casing for the pair case.
+
+**Redistribution progress stacks** (`renderRedistributionStack`): each
+opponent's play-area box, during `redistribute`, now shows a row of small
+facedown mini cards - one per card they're owed - dimmed
+(`stackNeededStyle`) until assigned and filled/accented
+(`stackFilledStyle`) once staged, alongside a small "have/need" text
+label. The stage-a-card/tap-a-box interaction is unchanged from Stage 3a,
+just re-skinned onto the shared component.
+
+**Previous-trick log:** now renders each entry as the seat label plus its
+play's card(s) via the shared component and the same `maskedPlayFaces`
+masking used by the live play-area boxes (`drawCardRow`, shared between
+both), instead of the old plain-text row - same play order, same masking
+guarantees.
+
+**Sort button:** moved from its own row above the player cluster to sit
+directly on the card fan's top edge (`SORT_BUTTON_Y`, rendered
+immediately before `renderCardFan`) - positioning only, behavior
+unchanged.
+
+**Verification:** `npm run typecheck` and `npm run build` both pass. A
+Playwright boot check across the hub, `suits`, and `suits-mp` all show
+the same single pre-existing `Failed to load resource: 404` console
+message (present before this change too, on every prototype and the hub
+page alike - not a regression from this work, most likely a missing
+favicon); no other console errors on boot. Live interactive verification
+via the screenshot-read-click Playwright loop played a real Single Player
+game through several tricks and captured: a single card selected in the
+fan popping out on top of its neighbors; a same-rank pair (`SN 4` /
+`NY 4`) both showing the cyan "partner" highlight before the second tap
+and both popping out together as "Commit: Twin Awakening" after,
+including that double actually winning the trick and correctly
+transitioning into `selectDelegate`; the redistribution flow's stacks
+rendering as dimmed "0/1" facedown minis and turning into filled/accented
+"1/1" ones as each recipient was assigned, then the resulting "Commit:
+Redistribute"; and the previous-trick log open, showing all four seats'
+real played cards (own card face-up, matching Stage 3a's existing
+masking behavior for others). Four additional full/mostly-automated
+Single Player games (bot-vs-bot with a scripted, blind coordinate-sweep
+human turn) ran end to end with zero console errors beyond the
+pre-existing 404, two of them progressing through multiple tricks with
+hands correctly re-rendering after redistribution gains - confirming
+stability beyond the one hand-driven session, on top of that session's
+own direct pixel confirmation of the redistribution-stack and log
+rendering correctness.
