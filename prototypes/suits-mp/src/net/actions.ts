@@ -55,13 +55,15 @@ export type RedistributionContribution = {
 };
 
 // Only populated in the masked payload sent to the acting distributor
-// (winner or delegate). `candidateCards` is the winner's full current hand
-// at redistribution time - per the GDD, the trick winner adds all trick
-// cards to their hand first, then redistributes from that whole hand, not
-// just the cards from the trick just won. Applies identically whether the
-// distributor is the winner themself or a delegate acting on their behalf
-// (a delegate does see the winner's hand contents here - see BRIEF.md for
-// that trade-off). See host/mask.ts for where this is built.
+// (winner or delegate). `candidateCards` is the *distributor's own* full
+// current hand at redistribution time - per the GDD, whoever ends up
+// holding the trick's collected cards redistributes from their whole hand,
+// not just the cards from the trick just won. On a self-redistributed win
+// that's the winner (playCard() collects into their hand); on a delegated
+// (double) win it's the delegate (chooseDelegate() collects into theirs
+// instead - see rules/engine.ts). A delegate never sees the winner's hand
+// here - they're redistributing their own. See host/mask.ts for where
+// this is built.
 export type RedistributionContext = {
   candidateCards: CardId[];
   contributions: RedistributionContribution[];

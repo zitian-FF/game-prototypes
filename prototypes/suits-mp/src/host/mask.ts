@@ -65,24 +65,23 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
 
   let redistribution: MaskedState['redistribution'] = null;
   if (state.phase === 'redistribution' && state.pendingDistributorId === forSlot && state.lastTrickResult) {
-    const winnerId = state.pendingWinnerId;
+    // `forSlot` is guaranteed to be the distributor by the guard above -
+    // on a self-redistributed win that's the winner (playCard() already
+    // collected the trick's cards into their hand); on a delegated
+    // (double) win it's the delegate, who now holds those cards instead
+    // (see rules/engine.ts's chooseDelegate) - so `candidateCards` is
+    // always the acting distributor's own full hand, never the winner's.
+    // A delegate no longer needs any visibility into the winner's hand at
+    // all - see net/actions.ts's RedistributionContext doc comment.
+    const distributorId = forSlot;
     const contributionMap = new Map<PlayerId, number>();
     for (const play of state.lastTrickResult.plays) {
-      if (play.playerId !== winnerId) {
+      if (play.playerId !== distributorId) {
         contributionMap.set(play.playerId, (contributionMap.get(play.playerId) ?? 0) + play.cardIds.length);
       }
     }
     redistribution = {
-      // Per the GDD: the trick winner adds all trick cards to their hand
-      // FIRST, then redistributes one facedown card per contributing
-      // player - so the candidate pool is the redistributor's full current
-      // hand at this point (already inclusive of the just-won trick cards;
-      // playCard() merges them in immediately on trick resolution, before
-      // this phase is ever reached), not just the cards from that trick.
-      // This applies identically whether the winner is redistributing
-      // themself or a delegate is doing it on their behalf - see
-      // net/actions.ts's RedistributionContext doc comment.
-      candidateCards: state.players[winnerId!].hand,
+      candidateCards: state.players[distributorId].hand,
       contributions: [...contributionMap.entries()].map(([playerId, count]) => ({
         player: toNetPlayerId(playerId),
         count,
