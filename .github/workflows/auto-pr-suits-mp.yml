@@ -1,0 +1,71 @@
+name: Auto-open PR for suits-mp Claude branches
+
+# Claude Code cloud sessions push commits to auto-named `claude/**`
+# branches but don't always open a PR for them, leaving suits-mp work
+# undeployed until someone remembers to ask for one. This closes that
+# gap for suits-mp only: the moment a `claude/**` branch gets a commit
+# touching prototypes/suits-mp/**, open a PR against main (if one isn't
+# already open for that branch) and merge it immediately - there is no
+# PR-triggered CI in this repo to gate on (see root CLAUDE.md's "Git"
+# section; suits-mp PRs have so far been manually verified and manually
+# merged by whichever session opened them), so "merge immediately"
+# matches today's actual suits-mp workflow rather than inventing a new
+# one. Scoped to claude/** specifically (not proto/** or other manually-
+# named branches) since a human collaborator pushing their own branch
+# should not get auto-PR'd.
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'prototypes/suits-mp/**'
+
+concurrency:
+  group: auto-pr-suits-mp-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for an existing open PR for this branch
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --base main --state open --json number --jq 'length')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      # Idempotent: a branch that already has an open PR is left alone,
+      # so repeated pushes to the same branch never open duplicates.
+      - name: Open PR
+        if: steps.existing.outputs.count == '0'
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="$(git log -1 --pretty=%s)"
+          body="$(git log -1 --pretty=%b)"
+          if [ -z "$body" ]; then
+            body="Auto-opened for suits-mp branch \`$GITHUB_REF_NAME\`."
+          fi
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$GITHUB_REF_NAME" --title "$title" --body "$body"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      # No PR-triggered CI exists in this repo to wait on (see comment at
+      # top of file) - merging immediately reproduces the same hands-off
+      # result a manually-opened suits-mp PR gets today.
+      - name: Merge PR
+        if: steps.open.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --merge
