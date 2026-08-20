@@ -190,6 +190,32 @@ Run all of these. Do not report a task complete if any fail.
 Report what you actually verified. Do not describe untested behaviour
 as working.
 
+## Session status file
+
+Every prototype folder (`prototypes/<name>/`) has its own
+`BUILD_STATUS.md`, read by a separate design-discussion chat the user
+works in, not by you. At the end of any session that touches a given
+prototype, overwrite that prototype's `BUILD_STATUS.md` (create it if it
+doesn't exist yet) using this exact structure:
+
+    ## Current milestone
+    ## What was implemented
+    ## Key technical decisions
+    ## Open questions
+    ## Known issues
+    ## Next proposed step
+
+Always overwrite the whole file, never append - it reflects only the
+latest state of that prototype, not a running log.
+
+If you had to ask the user something mid-session because `BRIEF.md` was
+ambiguous or silent on it, add a line under "Open questions" flagging
+that `BRIEF.md` itself may need updating to cover it - don't just resolve
+it silently and move on.
+
+This is a universal rule: it applies to every prototype folder,
+including ones with no `BUILD_STATUS.md` yet.
+
 ## Git
 
 - One branch per task, named proto/<name>/<short-description>.
