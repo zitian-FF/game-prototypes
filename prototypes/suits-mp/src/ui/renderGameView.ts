@@ -104,14 +104,14 @@ function toColorString(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`;
 }
 
-// Never reveals another player's facedown (offsuit) card, regardless of
-// what `play.cards` technically contains. host/mask.ts currently sends
-// the real card id for offsuit plays to every peer (a pre-existing
-// masking gap that predates Stage 3a - fixing it belongs in mask.ts,
-// out of scope here). This is a presentation-only safeguard so play areas
-// and the log don't visually leak it even though the payload already has
-// it. Your own plays are always shown plainly - no privacy concern in
-// seeing your own card. Returns one CardFace per card in the play (1 for
+// Never reveals another player's facedown (offsuit) card. host/mask.ts is
+// the actual source of truth for this masking - it strips the real card id
+// from `play.cards` before the payload ever leaves the host, for every
+// recipient except the player who made the play. This function is a
+// harmless redundant safeguard on top of that (defense in depth for the
+// rendering layer), not the enforcement point itself. Your own plays are
+// always shown plainly - no privacy concern in seeing your own card.
+// Returns one CardFace per card in the play (1 for
 // a normal/offsuit single, 2 for a double) - the shared card component
 // (ui/cardComponent.ts) draws whichever face this resolves to, so both
 // the live play-area boxes and the previous-trick log render identically

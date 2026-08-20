@@ -1,152 +1,103 @@
 ## Current milestone
 
-Stage 3a (core gameplay screen) plus its follow-up "unified card
-component" amendment are complete. This is a true-multiplayer rebuild of
-the hotseat `prototypes/suits` on mp-net's networking foundation
-(Trystero/Nostr, identity handshake, TURN fallback), now with a laid-out
-Phaser-primitives gameplay screen (seating, card fan, Suit Cycle HUD,
-redistribution stacks, previous-trick log) replacing the original Stage
-2 text-dump. Stage 3 real visual/sprite card art and turn-indicator
-animation polish are explicitly future work, not started. Version stamp
-counter is at 8 (`version.json`).
+Stage 3a (core gameplay screen) plus its "unified card component"
+amendment remain complete, as before. This session's task was a targeted
+security fix, not a new milestone: the facedown-card masking payload leak
+in `host/mask.ts`, previously only patched cosmetically at the UI layer,
+is now fixed at its actual source. Version stamp counter is at 9
+(`version.json`).
 
 ## What was implemented
 
-- Networking: ported from mp-net (landing screen, 5-char room code,
-  copy-code/copy-invite-link, `?lobby=XXXXX` auto-join, TURN-servers
-  fetch, debounced disconnect, identity-matched reconnect), with room
-  capacity hard-locked to exactly 4 (host `p0` + peers `p1`-`p3`), a
-  `roomFull` rejection for a 5th joiner, and a "Refresh code" button
-  matching mp-net's (real peer roster entries dropped on refresh; bot
-  seats survive since they're not real network peers).
-- Masking architecture (`host/mask.ts`): the one deliberate divergence
-  from mp-base/mp-net's broadcast pattern - host holds one canonical
-  `GameState`, computes a per-seat `MaskedState`, every send is targeted
-  (`{ target: peerId }`), no unmasked broadcast path exists.
-- Three wire actions (`playCard`, `selectDelegate`, `redistribute`) over
-  one `gameAction` channel; illegal actions are dropped host-side with a
-  console warning, no nack message type. A `declareRoleGuess` action
-  existed early on but was removed (see trick-40 forced end, below).
-- Rules engine (`src/rules/{types,cards,engine}.ts`): started as a
-  direct copy of hotseat `suits`'s engine, has since diverged
-  (role-guess removal, trick-40 forced end). `host/gameHost.ts` drives
-  it: `createInitialState()` deals, `settleAutoPhases()` auto-resolves
-  the hotseat-only `blocker`/`trickResult` phases (no suits-mp
-  equivalent), `applyAction()` routes wire actions through the engine
-  with an authorization check on top.
-- Bug fix - double-win card ownership: trick cards used to collect into
-  the winner's hand even on a double win, which mandatorily delegates
-  redistribution to someone else - breaking the 10-cards-per-player
-  invariant. Fixed by collecting at one site (`advanceBlocker()`'s
-  transition into the redistribution phase) keyed on
-  `pendingDistributorId` rather than `pendingWinnerId`. Verified via a
-  50-game bot simulation (zero invariant failures) plus a reproduction
-  of the original bug by temporarily reintroducing the pre-fix ordering
-  (1466 failures), confirming the test would have caught it.
-- Bug fix - trick-1 forced opener: the *player* leading trick 1 was
-  constrained to whoever holds the 2 of Yog-Sothoth, but not the *card*
-  they opened with. Fixed via `isForcedTrick1Opener`/
-  `forcedTrick1Opener` in `rules/engine.ts`, used as the single source
-  of truth by `playCard()`'s validation, `host/botAI.ts`'s move choice,
-  and `ui/handLegality.ts`'s legal/illegal highlighting.
-- Trick-40 forced end (replaces role-guess): `redistribute()` checks
-  after trick 40's redistribution finishes with no suit completed, which
-  team's best player (by own-suit cards held) is ahead; ties break on
-  the other teammate; full tie = stalemate. `WinInfo.reason` gained
-  `'trick40'`.
-- AI bot mode: permanent (not `?debug=1`-gated), entered via a
-  standalone **Single Player (play with bots)** landing-screen button
-  (skips all networking - no lobby, no room code, no TURN fetch, no
-  Trystero room). Bots run host-local through the exact same
-  `gameHost.applyAction()` path as real peers - Level 1 (legal-random)
-  only, no suit/team-awareness. Bot steps are paced by `tune.json`'s
-  `botActionDelayMs` (1000ms default) so a human can follow bot turns.
-- Stage 3a gameplay screen (`src/ui/renderGameView.ts`): egocentric
-  seating (`src/ui/seating.ts`, you always bottom), Suit Cycle HUD with
-  a leader's-own-screen live preview of the lead god before commit, play
-  areas + name tags with turn/starter dot markers, a stage-then-target
-  redistribution flow, a card fan (`src/ui/cardFan.ts`) with
-  legal/illegal/partner coloring driven by `src/ui/handLegality.ts`
-  (Phaser-free, unit-testable), a rank/suit-cycle sort toggle, and a
-  presentation-layer safeguard (`maskedPlayText()`) that renders any
-  other player's offsuit play as a generic "Facedown card" regardless of
-  what the payload actually contains (see Known issues).
-- Stage 3a amendment - unified card component (`src/ui/cardComponent.ts`):
-  one shared `drawCard()` used everywhere (hand fan, play areas,
-  redistribution stacks, previous-trick log), narrower "Air Deck"
-  proportions (`tune.json`'s `cardStandardWidth/Height`,
-  `cardMiniWidth/Height`), a selection pop-out effect for selected fan
-  cards (including both cards of a Twin Awakening pair), facedown mini
-  card-back progress stacks for redistribution, a previous-trick log
-  showing real masked cards instead of plain text, and the sort button
-  repositioned onto the fan's top edge.
+- **Facedown-card masking leak fix (`host/mask.ts`):** `buildMaskedState()`
+  previously sent the real card id for a facedown off-suit single play
+  (`kind === 'offsuit'`) to every connected peer, not just the player who
+  made the play - only patched cosmetically at the UI rendering layer
+  (`maskedPlayText()`/`maskedPlayFaces()` in `renderGameView.ts`), which
+  meant the real card was directly visible in the payload via
+  devtools/network inspection despite rendering as "Facedown card" on
+  screen. Fixed with a new `maskTrickPlay()` helper, used identically for
+  both `currentTrick` and `previousTrick` construction, that replaces
+  `cards` with `[]` for any `offsuit` play when the recipient isn't the
+  player who made it - the playing peer still sees their own real card in
+  their own payload. Because both trick-history fields go through the
+  same helper on every `buildMaskedState()` call (not just at trick
+  resolution), an entry stays masked for as long as it lives in
+  `previousTrick`, not just while `currentTrick`. Legal follow-suit
+  singles and Twin Awakening doubles (`kind` `'normal'`/`'double'`) are
+  untouched. The UI-layer patch was left in place as a harmless redundant
+  safeguard (its doc comment now says so explicitly, rather than
+  describing it as the fix).
 
 ## Key technical decisions
 
-- Masking is per-target-peer send, not broadcast-then-filter - there is
-  structurally no unmasked broadcast path to disable by mistake.
-- Bots share the exact same validation path as human actions
-  (`gameHost.applyAction()`); no parallel/simplified bot rules path.
-- Redistribution candidate pool for a human is restricted to that
-  trick's cards (avoids needing visibility into another player's hand
-  over the network); a host-local bot uses the engine's more permissive
-  full-hand pool instead, since it already has full canonical-state
-  access.
-- Facedown-card masking is patched at the UI layer
-  (`maskedPlayText()`) rather than in `host/mask.ts` itself, since the
-  actual payload-level leak (see Known issues) was judged out of scope
-  for the presentation-only Stage 3a task that surfaced it.
-- Live-preview Suit Cycle HUD scope: broadcasting an unconfirmed
-  selection pre-commit would be a masking/networking change, out of
-  scope for a presentation-only stage - resolved by previewing only on
-  the leader's own screen from their local (never-networked) selection.
-  This was flagged to the user mid-implementation before landing on
-  that resolution (see Open questions).
+- Reused the existing `kind === 'offsuit'` flag already carried on every
+  `TrickPlay`/`MaskedTrickPlay` (and already mapped from the wire
+  `PlayType.facedownSingle` via `PLAY_TYPE_TO_KIND`) to detect which
+  entries need masking, rather than introducing a new detection
+  mechanism - this is exactly what the task brief asked for.
+- Masked entries get `cards: []`, not a placeholder card id - avoids any
+  risk of a fake id accidentally round-tripping through `cardById()`
+  somewhere and either throwing or leaking synthetic-but-suggestive data.
+  `maskedPlayFaces()` in the UI layer never inspects `cards` for a masked
+  `offsuit` play anyway (it short-circuits to `{ kind: 'facedown' }`
+  before touching it), so this has no rendering impact.
+- One shared `maskTrickPlay()` helper for both `currentTrick` and
+  `previousTrick`, rather than separate masking logic per field - this is
+  what makes the "stays masked once it becomes trick history" requirement
+  automatic rather than something that could regress if the two fields'
+  construction ever drifted apart.
+- Verification followed the same convention as the earlier double-win
+  card-ownership fix: an ad hoc, not-committed `tsx` bot-simulation
+  script run directly against the shipped `gameHost`/`rules/engine`/
+  `botAI`/`mask` modules, asserting against the raw `MaskedTrickPlay`
+  payload object (not UI output) for every peer after every action, at
+  scale (200 games), plus a stash-the-fix-and-rerun pass confirming the
+  same script fails loudly (17,595 failures) against the pre-fix code.
+  Full numbers are in `BRIEF.md`'s new "Facedown-card masking leak fix"
+  section.
 
 ## Open questions
 
-- The Stage 3a live-preview HUD scope question above was raised to the
-  user mid-implementation rather than resolved silently; BRIEF.md now
-  documents the accepted resolution in full, so no outstanding decision
-  remains, but future sessions touching the Suit Cycle HUD should be
-  aware this constraint (no pre-commit broadcast) was a deliberate
-  scope call, not an oversight.
-- No other outstanding questions. (Flagging per the new CLAUDE.md rule:
-  no BRIEF.md ambiguity surfaced in the reviewed history that wasn't
-  already written back into BRIEF.md itself.)
+No new ambiguity surfaced this session - the brief's "use whatever
+existing flag the rules engine already tracks" instruction was
+unambiguous once `kind: 'offsuit'` was located, and the UI-layer-patch
+disposition ("simplify, remove, or leave as a harmless redundant
+safeguard - use your judgment") was explicitly left to judgment by the
+brief itself, so leaving it in place with an updated comment isn't a
+silently-resolved ambiguity.
 
 ## Known issues
 
-- **Facedown-card masking leak (payload level):** `host/mask.ts`'s
-  `currentTrick`/`previousTrick` still carry the *real* card id for
-  offsuit plays to every peer, not just the player who made the play -
-  only patched at the UI rendering layer (`maskedPlayText()`), not at
-  the source. A real fix belongs in `host/mask.ts` as its own task.
-- Not live-verified against real human peers (only against bots/typecheck/
-  build): masking correctness across 4 real peers, turn rotation and
-  suit legality over a real network, redistribution/delegate flow with
-  real human input, mid-game reconnect, and the room-code refresh
-  button against a genuinely lapsed Nostr room announcement (relay-
-  timing-dependent, not reproducible in the dev sandbox).
+- Not live-verified against real human peers (only against bots/
+  typecheck/build): masking correctness across 4 real peers, turn
+  rotation and suit legality over a real network, redistribution/
+  delegate flow with real human input, mid-game reconnect, and the
+  room-code refresh button against a genuinely lapsed Nostr room
+  announcement (relay-timing-dependent, not reproducible in the dev
+  sandbox). This predates this session's fix and is unrelated to it.
 - Not live-exercised in any pass so far: the off-suit double-selection
   fan rendering with a real empty-required-suit + same-rank-pair hand,
-  and the `selectDelegate` phase's live rendering (no double-win
-  occurred in the sessions where live browser verification was done).
-  The underlying state-machine logic for both was unit- or
-  simulation-verified; only the live pixel rendering is unconfirmed.
+  and the `selectDelegate` phase's live rendering (no double-win occurred
+  in the sessions where live browser verification was done). Also
+  predates this session.
 - TURN worker fetch shows a `Failed to load resource` console error in
   the dev sandbox network environment - pre-existing, swallowed
   internally by `fetchTurnIceServers()`'s try/catch, not a regression,
-  matches mp-net's own landing page under the same conditions.
+  matches mp-net's own landing page under the same conditions. Observed
+  again during this session's own boot check, unchanged.
 
 ## Next proposed step
 
 Recommend a user phone/live pass specifically targeting a double-win
 (two same-rank cards led, to exercise `selectDelegate` live) and an
 empty-required-suit hand (to exercise the off-suit double-selection fan
-UX live) - both are logic-verified but not pixel-verified. Separately,
-the `host/mask.ts` facedown-card payload leak should get a real fix
-(currently only patched at the UI layer) before this prototype is
-considered network-security-complete. Stage 3 (real visual/sprite card
-art, turn-indicator animation) remains unstarted and out of scope until
+UX live) - both are logic-verified but not pixel-verified; this is
+unchanged from before this session. With the payload-level masking leak
+now fixed, a real human-peer live pass (see Known issues above) would
+also be a good opportunity to informally confirm no other player's
+network traffic exposes an opponent's facedown card, though the
+automated payload-assertion simulation is the actual verification of
+record for that property. Stage 3 (real visual/sprite card art,
+turn-indicator animation) remains unstarted and out of scope until
 explicitly requested.

@@ -1,6 +1,6 @@
 import { cardById } from '../rules/cards';
 import { activePlayerId, currentRequiredSuit } from '../rules/engine';
-import type { GameState, God, PlayerId } from '../rules/types';
+import type { GameState, God, PlayerId, TrickPlay } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { MaskedState, MaskedTrickPlay, TurnPhase } from '../net/actions';
@@ -26,6 +26,26 @@ function turnPhaseFor(state: GameState): TurnPhase {
   }
 }
 
+// Masks a single trick-history entry for the peer receiving `forSlot`'s
+// payload: a facedown off-suit single (`kind === 'offsuit'`) has its real
+// card id(s) stripped to an empty array for everyone except the player who
+// made the play - they already know their own card, so it's shown back to
+// them plainly. This is the actual source-of-truth mask; UI-layer code
+// (`maskedPlayText()`/`maskedPlayFaces()` in ui/renderGameView.ts) must
+// never be relied on as the only place this is enforced, since the raw
+// payload is directly inspectable via devtools/network traffic. Applies
+// identically to `currentTrick` (live) and `previousTrick` (resolved trick
+// log) - once masked, an entry must stay masked for as long as it exists in
+// either field, so this same helper is used for both.
+function maskTrickPlay(play: TrickPlay, forSlot: PlayerId): MaskedTrickPlay {
+  const isSecretFacedown = play.kind === 'offsuit' && play.playerId !== forSlot;
+  return {
+    player: toNetPlayerId(play.playerId),
+    cards: isSecretFacedown ? [] : play.cardIds,
+    kind: play.kind,
+  };
+}
+
 // Builds the one masked view of `state` visible to `forSlot`. Never
 // includes another player's hand or an unrevealed identity - see
 // net/actions.ts's MaskedState doc comments for what each field is allowed
@@ -41,11 +61,7 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
     }
   }
 
-  const currentTrick: MaskedTrickPlay[] = state.plays.map((play) => ({
-    player: toNetPlayerId(play.playerId),
-    cards: play.cardIds,
-    kind: play.kind,
-  }));
+  const currentTrick: MaskedTrickPlay[] = state.plays.map((play) => maskTrickPlay(play, forSlot));
 
   // `state.lastTrickResult` is overwritten only when a trick actually
   // resolves (see rules/engine.ts's playCard), so it already holds exactly
@@ -53,11 +69,7 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
   // trick 1's resolution, then replaced wholesale each time a new trick
   // completes, including across the redistribution phase that follows.
   const previousTrick: MaskedTrickPlay[] | null = state.lastTrickResult
-    ? state.lastTrickResult.plays.map((play) => ({
-        player: toNetPlayerId(play.playerId),
-        cards: play.cardIds,
-        kind: play.kind,
-      }))
+    ? state.lastTrickResult.plays.map((play) => maskTrickPlay(play, forSlot))
     : null;
 
   const active = activePlayerId(state);

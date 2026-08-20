@@ -576,9 +576,47 @@ belong in `host/mask.ts`, a separate task). `maskedPlayText()` in
 that isn't the local player's own is always rendered as a generic
 "Facedown card" placeholder, regardless of what the payload actually
 contains, applied consistently to both the live play-area boxes and the
-previous-trick log. This satisfies the brief's UI-visible requirement
-without touching masking/networking, but the underlying payload leak
-itself still needs a real fix in a follow-up task.
+previous-trick log. This satisfied the brief's UI-visible requirement
+without touching masking/networking at the time, but the underlying
+payload leak itself needed a real fix - see the follow-up task directly
+below.
+
+### Facedown-card masking leak at the source (bug fix, `host/mask.ts`)
+
+Fixed the payload-level leak flagged above: `buildMaskedState()` in
+`host/mask.ts` now masks any trick-history entry whose `kind === 'offsuit'`
+(a facedown off-suit single - the same flag `PLAY_TYPE_TO_KIND` already
+maps `'facedownSingle'` onto, no new detection mechanism needed) down to
+an empty `cards: []` for every recipient except the player who made that
+play, via a new `maskTrickPlay()` helper shared by both `currentTrick` and
+`previousTrick` construction. The playing peer still gets their own real
+card back in their own payload - there's no leak in showing it to them.
+Because both fields are built through the same helper on every
+`buildMaskedState()` call (not just at the moment a trick resolves), a
+facedown entry stays masked for as long as it lives in `previousTrick`,
+not just while it's still `currentTrick`. Legal follow-suit singles and
+Twin Awakening doubles are untouched (`kind` is `'normal'`/`'double'`,
+neither of which trips the mask). `maskedPlayText()`/`maskedPlayFaces()`
+in `renderGameView.ts` are left in place as a harmless redundant
+rendering-layer safeguard, updated to note they're no longer the actual
+enforcement point.
+
+Verified with a 200-game bot-vs-bot simulation (`tsx`, not committed, same
+convention as the double-win fix) that, after every applied action,
+builds all 4 peers' masked payloads from the host's live canonical state
+and directly asserts against the raw `MaskedTrickPlay.cards` field (not
+UI output): for every `offsuit` play in both `currentTrick` and
+`previousTrick`, every non-playing peer's payload carries `cards: []` and
+the playing peer's own payload still carries the real card id(s); for
+every `normal`/`double` play, every peer's payload carries the real card
+id(s) unchanged. 193/200 games contained at least one facedown play;
+3,544 facedown-play payload checks against `currentTrick` and 18,476
+against `previousTrick`, plus 188,456 and 615,780 public-play (unmasked)
+payload checks respectively - zero failures. Re-ran the identical
+simulation against the pre-fix `mask.ts` (stashed the fix, kept the
+script) to confirm it actually catches the bug: 17,595 leak failures,
+reproducing the exact predicted symptom (non-owner peers' `cards` field
+holding the real suit/rank).
 
 ## Out of scope
 
@@ -812,3 +850,26 @@ hands correctly re-rendering after redistribution gains - confirming
 stability beyond the one hand-driven session, on top of that session's
 own direct pixel confirmation of the redistribution-stack and log
 rendering correctness.
+
+## Facedown-card masking leak fix (host/mask.ts)
+
+See "Facedown-card masking leak at the source" above (in the Stage 3a
+gameplay-screen section) for the fix itself and its bot-simulation
+verification numbers.
+
+**Verification:** `npm run typecheck` and `npm run build` both pass. A
+Playwright boot check (390x844 portrait viewport, matching the
+orientation-gated landing screen) loaded the landing screen (version
+stamp visible, Host/Join/Single Player all rendered) and clicked into
+Single Player, reaching the live gameplay screen (Trick 1, Suit Cycle
+HUD, seat labels, hand fan, "Select a card to play") with zero uncaught
+page errors; the only console message was the same pre-existing
+`Failed to load resource: 404` from the TURN worker fetch noted
+elsewhere in this doc (swallowed internally, not a regression). The
+payload-level masking assertion itself (200 bot-vs-bot games, 22,020
+facedown-play payload checks, 804,236 public-play payload checks, zero
+failures, confirmed to catch the pre-fix bug with 17,595 failures when
+re-run against the stashed original `mask.ts`) is the actual security
+verification for this task - see the section above for the full numbers;
+the Playwright pass here only confirms the fix didn't break rendering or
+introduce a console error.
