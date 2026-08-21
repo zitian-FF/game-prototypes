@@ -107,6 +107,26 @@ discover each other, surfacing as a "no host found" style error
 regardless of network conditions on either end. See mp-net's fix in
 PR #14.
 
+## Persistence
+
+Prototypes that need to remember state across page loads (idle/save
+mechanics, progress, settings) use `localStorage` directly. No backend,
+no accounts, no cross-device sync — single-browser only, matching the
+scope of a prototype.
+
+- One versioned key per prototype (e.g. `<proto-name>:save:v1`), holding
+  a single JSON blob rather than many scattered keys. Bump the version
+  suffix on any breaking save-shape change rather than trying to
+  migrate old saves.
+- Save on every state-changing action, not just on unload/beforeunload.
+  Mobile tabs can be discarded by the OS without a clean unload event,
+  so unload-only saving silently loses progress.
+- If a prototype tracks something that accrues over real time while the
+  tab is closed (energy, resources, timers), store a timestamp
+  alongside the value and compute elapsed progress from
+  `Date.now() - savedTimestamp` on load, rather than relying on any
+  timer that only runs while the tab is open.
+
 ## Placeholder-first
 
 Build all mechanics with coloured rectangles first. Do not wait on

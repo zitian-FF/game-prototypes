@@ -1,4 +1,19 @@
 {
   "shipBobAmplitudePx": 14,
-  "shipBobDurationMs": 3000
+  "shipBobDurationMs": 3000,
+  "energyMax": 32,
+  "energyRegenMs": 60000,
+  "gridCols": 5,
+  "gridRowsBase": 6,
+  "gridRowsGrowthPerDepth": 1,
+  "baseTileHp": 3,
+  "tileHpDepthMultiplier": 1.15,
+  "baseDamage": 1,
+  "damagePerLevel": 1,
+  "upgradeCostBase": 10,
+  "upgradeCostGrowth": 1.5,
+  "lootChance": 0.3,
+  "lootValueBaseMin": 2,
+  "lootValueBaseMax": 5,
+  "lootValueDepthMultiplier": 1.1
 }
