@@ -242,10 +242,9 @@ including ones with no `BUILD_STATUS.md` yet.
 - Small, single-purpose PRs. Do not bundle unrelated changes.
 - Never force-push to main.
 - Commit messages: imperative mood, one line, no trailing period.
-- mp-base and mp-net specifically have auto-merge enabled on their
-  PRs (CI-pass-gated, no manual review required) - a deliberate,
-  explicit exception to the general expectation of review elsewhere
-  in this repo.
+- Auto-merge is enabled on every PR in this repo (CI-pass-gated, no
+  manual review required) - this is the default going forward for
+  all prototypes, not just mp-base and mp-net.
 
 ## Scope discipline
 
