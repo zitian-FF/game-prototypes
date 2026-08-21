@@ -1,126 +1,148 @@
 ## Current milestone
 
-Bootstrap/placeholder stage only. Digger has a working R2 asset
-pipeline, a DPR-aware mobile-portrait canvas, and one interactive
-mechanic: tap a grid tile to deplete its durability until it becomes a
-hole. There is no BRIEF.md for this prototype (see Open questions) and
-no game loop beyond that single tap interaction — no scoring, no depth
-progression, no win/lose condition, no ship movement or control. This
-reads as very early placeholder-mechanic work, consistent with the
-house "placeholder-first" rule.
+BRIEF.md now exists and digger implements it in full: a working idle-
+clicker mining loop with energy, currency, ship upgrades, depth
+descent, a scrollable board camera, and localStorage persistence
+(including offline energy regen). A Tweakpane debug panel exposing all
+17 tunables (old + new) is wired up for the first time. This replaces
+the previous bootstrap/placeholder-only state (a static 5x6 grid with
+random durability and no game loop).
 
 ## What was implemented
 
-- `src/main.ts` (`DiggerScene`, the entire prototype so far):
-  - Loads `assets/manifest.json` (from `pack-assets.js`), then
-    generically loads every `loose/` entry by filename-minus-extension
-    as a texture key, and one shared atlas (`assets/atlas/atlas.png` +
-    `.json`) plus `assets/atlas/animations.json`. Animation configs are
-    derived from atlas folder names/frame counts read out of
-    `animations.json`, never hand-maintained, per the house art-pipeline
-    rule.
-  - A 5x6 tile grid (`GRID_COLS`/`GRID_ROWS`) of `tile_grass` sprites,
-    each given a random durability of 1-3 (`Phaser.Math.Between(1, 3)`).
-    Tapping a tile (via the shared select-intent pattern) decrements its
-    durability; at 0 it swaps texture to `tile_hole` and stops
-    responding to further taps.
-  - A `player_ship` sprite positioned below the grid, playing its atlas
-    animation and bobbing vertically via a tween. Bob amplitude/duration
-    are read from `tune.json` (`shipBobAmplitudePx`, `shipBobDurationMs`)
-    and the pixel amplitude is converted into world units by dividing by
-    the art-scale zoom so it reads the same regardless of zoom level.
-  - Two-camera setup: a gameplay camera zoomed to fit the tile art into
-    the 390x844 logical canvas, plus a second UI camera (ignoring the
-    game world, ignored by the game world) so the `build <sha>` debug
-    text in the top-left stays sharp and unaffected by the gameplay
-    camera's art-scale zoom.
-  - Device-pixel-ratio handling: canvas backing store sized at
-    `WIDTH/HEIGHT * PIXEL_RATIO` (capped at 2x), both cameras additionally
-    zoomed by `PIXEL_RATIO` and re-centered on the logical world center,
-    so all existing logical-pixel layout math is unaffected (added in
-    the DPR retrofit pass applied repo-wide to pre-existing prototypes).
-- `src/input/intents.ts`: a single `select` intent
-  (`bindSelectIntent` — pointerdown -> world coordinates -> callback).
-  Byte-identical to `prototypes/suits`'s copy, intentionally not shared
-  per the house "no shared code library, copy until the third instance"
-  rule.
-- `tune.json`: exactly two tuned values, `shipBobAmplitudePx` (14) and
-  `shipBobDurationMs` (3000). Both are read by `main.ts`; neither is
-  exposed through a Tweakpane panel (see Known issues).
-- Asset pipeline (shared, not digger-specific, but digger is the only
-  prototype currently exercising it): `scripts/fetch-assets.js`
-  downloads and caches `digger_assets.zip` from R2 keyed on response
-  ETag; `scripts/pack-assets.js` atlas-packs `assets-src/packed/*`
-  with free-tex-packer-cli (one folder = one animation key), copies
-  `assets-src/loose/*` through untouched, and writes a
-  hash-and-timestamp manifest — all matching the house art-pipeline
-  rules (never keyed on filename, never hand-maintained animation
-  lists, loose files never packed).
-- CI: `.github/workflows/deploy-digger-itch.yml` fetches+packs digger
-  art, typechecks, builds with a relative base, prunes the build down
-  to digger's own output, and pushes to itch.io (`zitian-ff/digger`)
-  via Butler on any push to `main` touching digger or the shared build
-  pipeline. `deploy.yml` (GitHub Pages) also fetches/packs digger's art
-  and ships digger as part of the full multi-prototype Pages build
-  (hub `index.html` links to `prototypes/digger/`).
+- `prototypes/digger/BRIEF.md`: written per the task (idle-clicker
+  mining spec — core loop, grid/board generation, energy, currency/
+  upgrades, persistence, reuse-existing-code constraints, tuning
+  seed values, house-rule restatements, out-of-scope list).
+- `CLAUDE.md`: added a new `## Persistence` house-rule section
+  (localStorage-only, versioned single-key JSON blob, save on every
+  state-changing action, timestamp-based offline-progress pattern),
+  inserted between `## Networking` and `## Placeholder-first`.
+- `src/state/types.ts`: `TileState` (`hp`, `loot`, `revealed`) and
+  `GameState` (energy/timestamp, currency, shipLevel, depth, grid
+  dimensions, tiles array) — the full save shape.
+- `src/state/board.ts`: `generateBoard(depth)` (per-tile HP =
+  `baseTileHp * tileHpDepthMultiplier^depth` with the same +/-1 jitter
+  spread as the original `Phaser.Math.Between(1,3)` placeholder; loot
+  rolled independently per tile at `lootChance`, valued in a range
+  that scales by `lootValueDepthMultiplier^depth`), `rowsForDepth`,
+  `shipDamage`, `upgradeCost`.
+- `src/state/energy.ts`: `applyEnergyRegen` — timestamp-anchored,
+  idempotent regen catch-up. Only advances the saved timestamp by
+  whole intervals actually applied toward the cap, so time spent
+  capped is never lost; safe to call on every load and on a live
+  1s ticker without needing to be the sole source of truth for
+  correctness.
+- `src/state/persistence.ts`: `loadState`/`saveState` against
+  `localStorage['digger:save:v1']`, single JSON blob, fresh-state
+  fallback (depth 0, full energy) when no save exists or it fails to
+  parse.
+- `src/input/intents.ts`: `bindSelectIntent` byte-identical to before
+  (untouched, per the brief). Added `bindVerticalDragIntent` (new,
+  reports raw pointermove delta while the pointer is down) for the
+  board-pan gesture — this keeps all pointer/touch reads inside the
+  intent layer rather than scene code reading events directly.
+- `src/debug/debugPanel.ts`: Tweakpane panel (mirrors mp-net's
+  `mountDebugPanelIfRequested` pattern), gated on `?debug=1`, exposing
+  all 17 `tune.json` values with per-key slider ranges and a
+  "Copy JSON" clipboard button. Edits a local copy for inspection/
+  export only, same as the existing mp-net/suits-mp panels — it does
+  not feed live back into gameplay.
+- `src/main.ts` (`DiggerScene`, rewritten): loads/regen-catches-up
+  state on `create()`; two-camera split — `cameras.main` stays the
+  fixed logical-pixel camera (build tag, ship, all HUD, used for
+  select-intent hit-testing, exactly like every other prototype's main
+  camera) and a new `boardCamera` (via `cameras.add`) renders only the
+  tile grid, clipped to a fixed-height viewport near the top and
+  scrollable vertically, ignoring/ignored-by the other camera's
+  objects — the same UI-camera-ignoring-game-world split the build tag
+  already used, now applied symmetrically in both directions. Tap
+  hit-testing (both HUD buttons and board tiles) is done with plain
+  screen-space arithmetic against `cameras.main`'s coordinates (which,
+  at `zoom = PIXEL_RATIO` centered on the logical center, are
+  numerically identical to logical screen pixels) rather than juggling
+  two different `getWorldPoint` results, since `bindSelectIntent`
+  only ever exposes one camera's world point.
+  - Board generation, energy no-op-on-empty, loot-on-clear, descend-
+    when-fully-revealed, and ship-upgrade-cost/damage all match the
+    brief.
+  - Ship kept as decorative HUD-adjacent art below the board viewport,
+    object-scaled by `artZoom` (rather than camera-zoomed) so it still
+    renders at its original apparent size while living in the
+    fixed camera; bob tween amplitude is now used directly in logical
+    pixels (no zoom-conversion needed, since the fixed camera's world
+    units already equal logical pixels).
+  - `tile_grass`/`tile_hole` swap kept as-is.
 
 ## Key technical decisions
 
-- Tile world size is the art's native pixel size; a computed `zoom`
-  (screen tile width / native tile width) shrinks the grid to fit the
-  390-wide portrait canvas, and PIXEL_RATIO stacks on top of that same
-  zoom rather than being a separate transform.
-- Screen-to-world conversion accounts for Phaser's camera zoom pivoting
-  around the viewport center, not the origin (`toWorldX`/`toWorldY`
-  helpers), rather than assuming a naive linear mapping.
-- Tile durability is randomized per tile at grid-build time (1-3),
-  not read from `tune.json` or any level data — there is no level
-  data/config source at all yet, everything is generated in `create()`.
+- **Hit-testing decoupled from the board camera's transform.** Rather
+  than calling `getWorldPoint` against whichever camera currently owns
+  the tap, tile taps are resolved with manual row/col arithmetic
+  (screen Y -> board-native world Y via the tracked pan offset and
+  `artZoom`) against `cameras.main`'s already-fixed logical
+  coordinates. This was necessary because `bindSelectIntent` (kept
+  unchanged per the brief) always reads `scene.cameras.main`, and
+  `cameras.main` needed to stay the fixed/HUD camera so HUD button
+  hit-testing could stay simple.
+- **Persistence writes only on the three listed state-changing
+  actions** (tap, upgrade, descend), not on every 1-second regen tick.
+  Because `applyEnergyRegen` is timestamp-anchored and idempotent, an
+  unsaved live regen tick is never lost data — the next load (however
+  much later) recomputes correctly from whatever `(energy, timestamp)`
+  pair was last actually saved. Verified via Playwright: seeding a
+  save 5.5 regen-intervals in the past produced the expected in-memory
+  `10 -> 15` energy catch-up on load.
+- **Tile HP jitter** reuses the original code's absolute +/-1 spread
+  (`Phaser.Math.Between(-1, 1)` added to the rounded depth-scaled
+  base) rather than inventing a new percentage-based jitter, per
+  "randomized... the same way the current 1-3 randomization works."
+- **Known crude-input tradeoff**: since `bindSelectIntent` fires on
+  raw `pointerdown` (unchanged, per the brief) and the new drag-pan
+  intent also starts from a `pointerdown`, starting a pan gesture over
+  the board always also registers as a tap on whatever tile is under
+  the initial touch point. This is a real but minor rough edge (costs
+  at most 1 energy/1 tap-worth of damage per drag start), and
+  disambiguating tap-vs-drag would require changing
+  `bindSelectIntent`'s trigger event, which the brief explicitly says
+  to keep unchanged. Left as-is, consistent with the house rule that
+  "crude touch bindings are acceptable."
 
 ## Open questions
 
-- **No `BRIEF.md` exists for this prototype at all** — not an
-  unresolved ambiguity inside an existing brief, but a total absence of
-  the source-of-truth spec the house rules say every prototype must
-  have ("Each prototype is specified by its own BRIEF.md. The brief is
-  the source of truth."). Every design decision above (grid size,
-  durability range, what "digging" ultimately means, whether the ship
-  moves/controls anything, win condition, scope) was inferred from the
-  current code, not verified against any written spec. Flagging this
-  as the single most important open item: a `BRIEF.md` should be
-  written (or recovered, if one existed outside the repo) before
-  further feature work, so scope discipline has something to check
-  against.
+- The brief doesn't specify exact HUD layout/spacing (energy bar
+  style, button sizing, "Loot" label placement) — I designed this
+  freely within "functional clarity," matching the existing suits
+  prototype's text/button visual conventions (monospace, dark
+  rectangles, white stroke). Flagging in case BRIEF.md should be
+  amended with more specific HUD guidance for consistency across
+  future prototypes with similar HUDs.
+- The brief specifies the board viewport as "a fixed-height viewport
+  region near the top of the canvas" without an exact pixel height. I
+  chose 340px (leaving room below for the ship + HUD stack within the
+  844px canvas) — this is a layout guess, not a tuned value, so it
+  isn't in `tune.json`. Worth confirming during playtesting whether
+  more or less board is wanted on-screen at once.
 
 ## Known issues
 
-- **No Tweakpane panel**, despite `tune.json` existing with tunable
-  values — the house Tuning rule requires "every prototype ships a
-  Tweakpane panel exposing these values, available in production
-  builds via `?debug=1`". Digger currently has no `?debug=1` handling,
-  no Tweakpane import, and no way to inspect/copy the two tuned values
-  at runtime. (Unlike `suits`, which has an explicit BRIEF.md line
-  marking Tweakpane/tune.json out of scope, digger has no brief to
-  grant this exemption — see Open questions.)
-- No version stamp (`version.json` / `version.generated.ts`) — this is
-  expected and correct per the house rule ("do not retrofit prototypes
-  that predate this rule"), not a bug, but noted here so it isn't
-  mistaken for an oversight in a future session.
-- The ship sprite is purely decorative: it bobs on a tween but is not
-  wired to any input or game state. There is no movement, digging
-  depth, resource collection, scoring, or end condition — tapping a
-  tile down to a hole has no further consequence.
-- Not verified in a real browser/Playwright this session (this session
-  was docs-only per its task scope; no code was touched). `npm run
-  typecheck` and `npm run build` both pass cleanly as of this snapshot,
-  but visual/behavioral correctness on-device was not re-checked here.
+- See "Known crude-input tradeoff" above — a drag-to-pan gesture also
+  costs 1 tap at its start point.
+- No automated tests beyond manual Playwright interaction scripts run
+  this session (tap/clear/loot, drag-pan pixel-diff, offline energy
+  regen, descend, upgrade, debug panel) — none of these are checked
+  into the repo, per the prototype's placeholder-first/disposable
+  nature and the absence of any existing test infra in this repo.
+- Board viewport height (340px) and margin values are layout constants
+  in `src/main.ts`, not `tune.json` — they're screen-layout decisions
+  rather than "game feel" values per the house Tuning rule's own
+  definition (speeds, gravity, friction, durations, easing, cooldowns).
 
 ## Next proposed step
 
-Write `prototypes/digger/BRIEF.md` first — the prototype currently has
-no written spec to build against. Once scope is defined, likely next
-implementation steps (pending that brief) are: give the ship an actual
-digging/movement mechanic tied to the tile grid, decide what "durability
-1-3" should mean for the player (visual feedback, sound cue placeholder,
-progress bar?), and add the Tweakpane debug panel the house Tuning rule
-requires.
+Playtest to tune `tune.json`'s starting values (loot chance/value,
+tile HP scaling, upgrade cost curve) — they're seeded placeholders per
+the brief, not yet human-tuned. After that, the most natural next
+scope (if wanted — not requested by this brief) would be surfacing
+depth/progress more prominently in the HUD, since currently depth is
+only visible via the "Descend to depth N" button label.
