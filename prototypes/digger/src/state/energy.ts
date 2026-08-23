@@ -1,10 +1,10 @@
 import tune from '../../tune.json';
 
-// Advances energy/timestamp from elapsed real time. Only advances the
-// timestamp by whole regen intervals actually applied toward the cap, so
-// time spent capped isn't lost — the next call (whenever it happens) still
-// sees the full elapsed gap from the last real interval consumed. Safe to
-// call repeatedly (idempotent for any elapsed < one regen interval).
+// Advances energy/timestamp from elapsed real time. Time spent sitting at
+// the cap is discarded, not banked: once energy reaches energyMax, the
+// timestamp snaps to `now` rather than staying frozen, so no backlog of
+// elapsed time can build up behind it and get redeemed as a free refill
+// the moment energy next drops below the cap.
 export function applyEnergyRegen(
   energy: number,
   timestamp: number,
@@ -13,9 +13,8 @@ export function applyEnergyRegen(
   const elapsedMs = Math.max(0, now - timestamp);
   const pointsAvailable = Math.floor(elapsedMs / tune.energyRegenMs);
   const pointsApplied = Math.min(pointsAvailable, tune.energyMax - energy);
-  if (pointsApplied <= 0) return { energy, timestamp };
-  return {
-    energy: energy + pointsApplied,
-    timestamp: timestamp + pointsApplied * tune.energyRegenMs,
-  };
+  const newEnergy = energy + pointsApplied;
+  const newTimestamp =
+    newEnergy >= tune.energyMax ? now : timestamp + pointsApplied * tune.energyRegenMs;
+  return { energy: newEnergy, timestamp: newTimestamp };
 }
