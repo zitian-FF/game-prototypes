@@ -1,7 +1,7 @@
 {
   "shipBobAmplitudePx": 14,
   "shipBobDurationMs": 3000,
-  "energyMax": 32,
+  "energyMax": 31,
   "energyRegenMs": 60000,
   "gridCols": 5,
   "gridRowsBase": 6,

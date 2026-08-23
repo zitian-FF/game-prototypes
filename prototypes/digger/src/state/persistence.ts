@@ -22,7 +22,12 @@ export function loadState(): GameState {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return freshState();
   try {
-    return JSON.parse(raw) as GameState;
+    const state = JSON.parse(raw) as GameState;
+    // Safety net for saves written before energyMax was lowered (e.g. from
+    // 32): clamp so a returning player's energy can't sit permanently above
+    // the current cap, which would otherwise never regenerate further.
+    state.energy = Math.min(state.energy, tune.energyMax);
+    return state;
   } catch {
     return freshState();
   }

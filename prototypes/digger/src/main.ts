@@ -332,7 +332,7 @@ class DiggerScene extends Phaser.Scene {
     value: string,
     size: number,
     color: string,
-    align: 'left' | 'right' = 'left'
+    align: 'left' | 'right' | 'center' = 'left'
   ): Phaser.GameObjects.Text {
     const t = this.add.text(x, y, value, {
       fontFamily: 'monospace',
@@ -341,6 +341,7 @@ class DiggerScene extends Phaser.Scene {
       resolution: PIXEL_RATIO,
     });
     if (align === 'right') t.setOrigin(1, 0);
+    else if (align === 'center') t.setOrigin(0.5, 0);
     this.dynamicHud!.add(t);
     return t;
   }
@@ -382,15 +383,44 @@ class DiggerScene extends Phaser.Scene {
 
     let y = this.hudBottom;
 
-    const barW = WIDTH - 32;
-    const barH = 16;
-    const bg = this.add.rectangle(WIDTH / 2, y + barH / 2, barW, barH, 0x222222, 1);
-    bg.setStrokeStyle(1, 0xffffff, 0.4);
-    const fillW = Math.max(0, barW * (this.state.energy / tune.energyMax));
-    const fill = this.add.rectangle(16 + fillW / 2, y + barH / 2, fillW, barH, 0x33aaff, 1);
-    this.dynamicHud.add([bg, fill]);
+    // ui_ammo is a 32-frame belt sprite, one frame per possible energy
+    // value (energyMax = 31 -> 0..31 inclusive = 32 values). Frame order
+    // is reversed from the naive guess: frame 0 (ui_ammo0001) renders
+    // nearly-fully "loaded" (full), frame 31 (ui_ammo0032) renders
+    // nearly-fully "empty" — verified by measuring the loaded/empty
+    // fill-boundary position across all 32 source frames, which moves
+    // monotonically left-to-right as the frame index rises. So frame
+    // index = energyMax - energy, not energy directly.
+    const ammoFrames = this.animations.ui_ammo.frames;
+    const ammoNativeFrame = this.textures.get('atlas').get(ammoFrames[0]);
+    const ammoScale = (WIDTH * 0.6) / ammoNativeFrame.width;
+    const ammoScaledWidth = ammoNativeFrame.width * ammoScale;
+    const ammoScaledHeight = ammoNativeFrame.height * ammoScale;
+    const ammoFrameIndex = tune.energyMax - this.state.energy;
 
-    this.hudText(16, y + barH + 4, `Energy: ${this.state.energy}/${tune.energyMax}`, 13, '#dddddd');
+    const ammoSprite = this.add.image(WIDTH / 2, y + ammoScaledHeight / 2, 'atlas', ammoFrames[ammoFrameIndex]);
+    ammoSprite.setScale(ammoScale);
+    this.dynamicHud.add(ammoSprite);
+
+    // Energy count, centered in the sprite's circular badge. Badge center
+    // measured directly from the source art (frame 1) as a fraction of the
+    // native frame: ~9.9% in from the left edge, dead center vertically.
+    const AMMO_BADGE_CX_FRAC = 0.099;
+    const AMMO_BADGE_CY_FRAC = 0.5;
+    const badgeX = WIDTH / 2 - ammoScaledWidth / 2 + AMMO_BADGE_CX_FRAC * ammoScaledWidth;
+    const badgeY = y + AMMO_BADGE_CY_FRAC * ammoScaledHeight;
+    const badgeText = this.add
+      .text(badgeX, badgeY, `${this.state.energy}/${tune.energyMax}`, {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#000000',
+        align: 'center',
+        resolution: PIXEL_RATIO,
+      })
+      .setOrigin(0.5, 0.5);
+    this.dynamicHud.add(badgeText);
+
+    y += ammoScaledHeight + 4;
 
     const nextInText =
       this.state.energy >= tune.energyMax
@@ -398,9 +428,9 @@ class DiggerScene extends Phaser.Scene {
         : `Next in ${Math.ceil(
             Math.max(0, tune.energyRegenMs - (Date.now() - this.state.energyTimestamp)) / 1000
           )}s`;
-    this.hudText(WIDTH - 16, y + barH + 4, nextInText, 13, '#888888', 'right');
+    this.hudText(WIDTH / 2, y, nextInText, 13, '#888888', 'center');
 
-    y += barH + 26;
+    y += 26;
 
     this.hudText(16, y, `Loot: ${this.state.currency}`, 16, '#ffe066');
     y += 30;
