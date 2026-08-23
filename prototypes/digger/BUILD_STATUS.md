@@ -3,11 +3,13 @@
 BRIEF.md is implemented in full: a working idle-clicker mining loop
 with energy, currency, ship upgrades, depth descent, a scrollable
 board camera, and localStorage persistence (including offline energy
-regen). This session swapped the placeholder rectangle energy bar for
-the real `ui_ammo` sprite (32-frame belt art) and lowered `energyMax`
-from 32 to 31 so energy's 32 possible values (0-31 inclusive) map
-1:1 onto the sprite's 32 frames — the first placeholder-art swap-in
-for digger's HUD. No other mechanics changed.
+regen). The prior session swapped the placeholder rectangle energy bar
+for the real `ui_ammo` sprite (32-frame belt art) and lowered
+`energyMax` from 32 to 31 so energy's 32 possible values (0-31
+inclusive) map 1:1 onto the sprite's 32 frames. This session corrected
+the frame-index mapping per an explicit follow-up instruction — see
+"Key technical decisions" for the frame-order finding and the
+unresolved visual-semantics flag this raised.
 
 ## What was implemented
 
@@ -96,25 +98,30 @@ for digger's HUD. No other mechanics changed.
   possible energy value. With `energyMax = 31`, energy ranges over
   0-31 inclusive — exactly 32 distinct values, a clean 1:1 mapping to
   the 32 frames. This was specified by the task, not derived.
-- **`ui_ammo` frame order is reversed from the naive guess** — this
-  was the open question the task flagged for visual verification, and
-  it resolved to the reversed case. Frame `ui_ammo0001` (array index
-  0) renders a nearly-fully **loaded/dark** belt; frame `ui_ammo0032`
-  (array index 31) renders a nearly-fully **empty/light** belt. The
-  "loaded" portion visually grows from the belt's far (right) end
-  leftward as the frame index falls. Confirmed two ways: (1)
-  numerically, by measuring each of the 32 source PNGs' light/dark
-  fill-boundary x-position directly (a Python script decoding each
-  frame's raw pixels found the boundary moving monotonically from 2.5%
-  of belt width at frame 1 to 95.4% at frame 32 — i.e. frame 1 is
-  almost entirely dark/filled, frame 32 almost entirely
-  light/empty); (2) visually, via Playwright screenshots at
-  energy = 0, 1, 15, and 31 with the resulting `frames[energyMax -
-  energy]` indexing, all matching expectations (31/31 = fully loaded,
-  0/31 = fully empty, 15/31 = half-and-half split down the middle).
-  So the frame index used is **`tune.energyMax - state.energy`**, per
-  the task's own documented fallback for the reversed case — not
-  `energy` directly.
+- **`ui_ammo` frame index = `state.energy` directly, ascending, no
+  reversal** — `energy 0 -> frames[0]` (`ui_ammo0001`), `energy 31 ->
+  frames[31]` (`ui_ammo0032`). This is the mapping a follow-up
+  instruction explicitly confirmed as correct-as-written, overriding
+  what the prior session had shipped.
+  - **Flag carried over from the prior session, now sharper**: direct
+    pixel measurement of all 32 source PNGs (decoding raw RGBA data)
+    found the belt's loaded/dark-vs-empty/light fill boundary moving
+    monotonically from 2.5% of belt width at frame 1 to 95.4% at frame
+    32 — i.e. frame `ui_ammo0001` renders nearly-fully **loaded/dark**
+    and frame `ui_ammo0032` renders nearly-fully **empty/light**. With
+    the ascending mapping now in place, this means **energy = 0
+    displays as a nearly-full-looking belt, and energy = 31 (max)
+    displays as a nearly-empty-looking belt** — confirmed via
+    Playwright screenshots at both extremes. That's inverted from
+    every conventional meter/gauge reading (fuller = more resource),
+    and from what the prior session's `energyMax - energy` indexing
+    produced (which matched conventional reading: full energy visually
+    full, empty energy visually empty). This was surfaced explicitly
+    and the ascending mapping was reconfirmed as wanted before
+    shipping it, so it's implemented as instructed — but it's flagged
+    here in case that confirmation was made without seeing these
+    screenshots, since reverting is a one-line change
+    (`ammoFrameIndex = tune.energyMax - this.state.energy`).
 - **Ammo badge text coordinates**: the sprite's circular badge center
   (where the `X/energyMax` count is drawn) was measured directly from
   `ui_ammo0001.png`'s raw pixel data (the badge's white interior blob
@@ -170,10 +177,15 @@ for digger's HUD. No other mechanics changed.
 - The board viewport's fixed pixel height (340px) was chosen freely,
   not specified by the brief; not in `tune.json` since it's a layout
   constant, not a "game feel" value.
-- No open question from this session — the one thing flagged for
-  verification (ammo sprite frame order) was resolved definitively
-  by direct pixel measurement plus Playwright screenshots, not left
-  as a guess.
+- **Ammo frame-order semantics** (see "Key technical decisions"): the
+  ascending mapping now shipped makes energy = 0 look full and energy
+  = 31 look empty, the reverse of conventional meter reading and of
+  what direct pixel measurement of the source art would suggest for a
+  "fuller = more" convention. This was explicitly confirmed as wanted
+  after being flagged with screenshots, so it's implemented as
+  instructed rather than left unresolved — but flagging again here per
+  the house rule, since it's a real, deliberate departure from the
+  usual convention and worth double-checking during a human playtest.
 
 ## Known issues
 
