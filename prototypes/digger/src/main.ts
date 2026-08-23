@@ -384,19 +384,16 @@ class DiggerScene extends Phaser.Scene {
     let y = this.hudBottom;
 
     // ui_ammo is a 32-frame belt sprite, one frame per possible energy
-    // value (energyMax = 31 -> 0..31 inclusive = 32 values). Frame order
-    // is reversed from the naive guess: frame 0 (ui_ammo0001) renders
-    // nearly-fully "loaded" (full), frame 31 (ui_ammo0032) renders
-    // nearly-fully "empty" — verified by measuring the loaded/empty
-    // fill-boundary position across all 32 source frames, which moves
-    // monotonically left-to-right as the frame index rises. So frame
-    // index = energyMax - energy, not energy directly.
+    // value (energyMax = 31 -> 0..31 inclusive = 32 values). Frame index
+    // maps directly to energy, ascending, no reversal: energy 0 -> frame 0
+    // (ui_ammo0001), energy 31 -> frame 31 (ui_ammo0032), confirmed as the
+    // intended mapping.
     const ammoFrames = this.animations.ui_ammo.frames;
     const ammoNativeFrame = this.textures.get('atlas').get(ammoFrames[0]);
     const ammoScale = (WIDTH * 0.6) / ammoNativeFrame.width;
     const ammoScaledWidth = ammoNativeFrame.width * ammoScale;
     const ammoScaledHeight = ammoNativeFrame.height * ammoScale;
-    const ammoFrameIndex = tune.energyMax - this.state.energy;
+    const ammoFrameIndex = this.state.energy;
 
     const ammoSprite = this.add.image(WIDTH / 2, y + ammoScaledHeight / 2, 'atlas', ammoFrames[ammoFrameIndex]);
     ammoSprite.setScale(ammoScale);
