@@ -4,11 +4,14 @@ BRIEF.md is implemented in full: a working idle-clicker mining loop
 with energy, currency, ship upgrades, depth descent, a scrollable
 board camera, and localStorage persistence (including offline energy
 regen). Placeholder-art swap-ins are underway: the energy bar now uses
-the real `ui_ammo` sprite, and this session added a projectile-laser
+the real `ui_ammo` sprite, and a prior session added a projectile-laser
 hit effect firing from the ship to the tapped tile on every successful
-damage tap. Fixing the laser's visibility required a camera
-render-order fix (see "Key technical decisions") — otherwise unrelated
-to this session's actual feature.
+damage tap (which required a camera render-order fix to actually be
+visible). This session applied three follow-up tweaks to that laser
+effect: a claimed start/end reversal that did not reproduce on
+verification (see "Key technical decisions"), a width-lerp added to
+its fade tween, and a frame-rate override so it animates slower than
+the other sprites.
 
 ## What was implemented
 
@@ -73,25 +76,59 @@ to this session's actual feature.
     decisions"), with the `${energy}/${energyMax}` count rendered
     inside its circular badge and the "Next in Ns"/"Energy full"
     countdown on its own centered line below.
-  - **This session**: `setUpCameras()` now reorders
-    `this.cameras.cameras` so `cameras.main` renders last (see "Key
-    technical decisions" — required for the laser, and for any future
-    HUD-layer effect that visually crosses into the board viewport,
-    to actually be visible there). New private method `fireLaser(fromX,
-    fromY, toX, toY)`: spawns a `projectile_laser` sprite at the ship's
-    current screen position, rotated/scaled to reach the target point,
-    playing the (already auto-generated) 2-frame looped animation,
-    tweened to `alpha: 0` over `tune.laserFadeMs` and destroyed on
-    completion. Called from `onTapBoard()` immediately after the
+  - `setUpCameras()` reorders `this.cameras.cameras` so `cameras.main`
+    renders last (required for the laser, and for any future HUD-layer
+    effect that visually crosses into the board viewport, to actually
+    be visible there). Private method `fireLaser(fromX, fromY, toX,
+    toY)`: spawns a `projectile_laser` sprite at the ship's current
+    screen position, rotated/scaled to reach the target point, playing
+    its looped animation, tweened to `alpha: 0` (and, **this session**,
+    `scaleY: 0`) over `tune.laserFadeMs` and destroyed on completion.
+    Called from `onTapBoard()` immediately after the
     `tile.hp -= shipDamage(...)` line, so it fires on every successful
     damage tap (not just kills), passing `this.ship.x/y` and the
     tapped tile's screen position (computed by mirroring the existing
     hit-test math in reverse, using the same `col`/`row`,
     `tileScreenWidth`, and `scrollTopWorldY` already in scope rather
     than rederiving them).
+  - **This session**: `create()`'s generic per-key animation loop
+    (`frameRate: 20` for every key found in `animations.json`) now
+    excludes `projectile_laser`, which gets its own `anims.create` call
+    right after the loop with `frameRate: 15` instead. This can't be
+    done as an "override after the fact" (create it generically, then
+    call `anims.create` again for the same key to replace it) — Phaser's
+    `AnimationManager.create()` refuses to replace an existing key; it
+    just logs `console.warn('AnimationManager key already exists: ...')`
+    and returns the original, unchanged animation. Confirmed by reading
+    `node_modules/phaser/src/animations/AnimationManager.js` directly
+    rather than assuming. `player_ship` and `ui_ammo` (not currently
+    animated, but would go through the same loop if it ever were) are
+    unaffected — still 20fps.
 
 ## Key technical decisions
 
+- **Claimed laser start/end reversal did not reproduce — verified, not
+  assumed fixed.** A follow-up task asserted the beam's anchor
+  (`fromX`/`fromY`) and stretched end (`toX`/`toY`) were swapped, and
+  gave two possible causes to check in order: (1) the `fireLaser` call
+  site in `onTapBoard` passing tile coordinates before ship
+  coordinates, or (2) `sprite.setOrigin(0, 0.5)` anchoring the wrong
+  edge, fixable by flipping to `setOrigin(1, 0.5)`. Checked (1) first:
+  the call site already reads `fireLaser(this.ship.x, this.ship.y,
+  tileScreenX, tileScreenY)` — ship first, correct. Checked (2) via
+  Playwright screenshots (per the task's own "verify via screenshot,
+  don't guess blindly" instruction) rather than blindly applying the
+  suggested `setOrigin(1, 0.5)` swap: a straight-up shot (tile directly
+  above the ship) and a diagonal shot to the top-left corner tile both
+  showed the beam correctly spanning from the ship's position to the
+  tapped tile, angled correctly toward off-center targets, with no
+  reversal in either test. `setOrigin(0, 0.5)` was left unchanged — the
+  `setOrigin(1, 0.5)` fallback would have actively introduced a
+  reversal, not fixed one. The `projectile_laser` art itself is
+  left-right symmetric (arrow/spike shapes at both ends, confirmed by
+  measuring the opacity envelope of both edges of the source PNG), so
+  this was not something a screenshot's shape alone could rule out by
+  eye — the position/angle tests above were the real verification.
 - **Camera render order had to be fixed for the laser to be visible at
   all — this was the real work of this session, not the sprite math.**
   `boardCamera` is created via `this.cameras.add()` after
@@ -222,10 +259,13 @@ to this session's actual feature.
 - The ammo badge text is small (8px font) to fit the circular badge's
   limited diameter — legible in testing at up to 2 digits per side,
   but worth a human eye check on an actual phone screen.
-- The laser's fade is alpha-only (no scale/color change), and its
-  scale is a simple `distance / nativeFrameWidth` stretch with no
-  perspective or thickness tuning beyond `artZoom` on the Y axis —
-  functional, not polished, per "mechanics-first" scope for this task.
+- The laser's fade now animates both `alpha` and `scaleY` (thickness)
+  to 0 over `tune.laserFadeMs`, confirmed via a mid-fade screenshot
+  (~220ms into the 300ms default) showing a visibly thinner, fainter
+  beam than at t=0. `scaleX` (length) stays fixed at its initial
+  `distance / nativeFrameWidth` value for the whole lifetime — no
+  perspective or independent length tuning — functional, not polished,
+  per "mechanics-first" scope.
 
 ## Next proposed step
 

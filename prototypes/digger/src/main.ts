@@ -91,7 +91,13 @@ class DiggerScene extends Phaser.Scene {
 
   create(): void {
     this.animations = this.cache.json.get('animations') as Record<string, AnimationConfig>;
+    // projectile_laser runs at its own frame rate (below); excluded here
+    // rather than overridden after the fact, since anims.create() refuses
+    // to replace an already-existing key (it just warns and keeps the
+    // original), so a second call for the same key would silently do
+    // nothing.
     for (const [key, config] of Object.entries(this.animations)) {
+      if (key === 'projectile_laser') continue;
       this.anims.create({
         key,
         frames: config.frames.map((frame) => ({ key: 'atlas', frame })),
@@ -100,6 +106,13 @@ class DiggerScene extends Phaser.Scene {
         yoyo: false,
       });
     }
+    this.anims.create({
+      key: 'projectile_laser',
+      frames: this.animations.projectile_laser.frames.map((frame) => ({ key: 'atlas', frame })),
+      frameRate: 15,
+      repeat: -1,
+      yoyo: false,
+    });
 
     this.state = loadState();
     this.applyRegenCatchup();
@@ -339,6 +352,7 @@ class DiggerScene extends Phaser.Scene {
     this.tweens.add({
       targets: sprite,
       alpha: 0,
+      scaleY: 0,
       duration: tune.laserFadeMs,
       onComplete: () => sprite.destroy(),
     });
