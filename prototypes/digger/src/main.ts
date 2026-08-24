@@ -148,6 +148,16 @@ class DiggerScene extends Phaser.Scene {
     );
     this.boardCamera.setZoom(this.artZoom * PIXEL_RATIO);
     this.boardCamera.setBackgroundColor(0x0a0a0a);
+
+    // Cameras render in the order they appear in this.cameras.cameras, and
+    // boardCamera was just appended after main, so without this it would
+    // draw on top and its opaque background/tiles would occlude anything
+    // in hudLayer wherever it visually overlaps the board viewport (e.g.
+    // the laser effect's endpoint, which lands on a tile by design). Move
+    // main to the end so the fixed HUD camera always renders last/on top.
+    const cameraList = this.cameras.cameras;
+    cameraList.splice(cameraList.indexOf(this.cameras.main), 1);
+    cameraList.push(this.cameras.main);
   }
 
   private buildBoard(): void {
@@ -286,6 +296,15 @@ class DiggerScene extends Phaser.Scene {
 
     this.state.energy -= 1;
     tile.hp -= shipDamage(this.state.shipLevel);
+
+    // Tile screen position, in the same fixed screen space as the ship —
+    // mirrors the board-hit-test math above exactly (rather than rederiving
+    // it) so the laser lands pixel-accurate on the tile that was tapped.
+    const tileScreenX = GRID_MARGIN_X + (col + 0.5) * tileScreenWidth;
+    const tileWorldYCenter = (row + 0.5) * this.tileNativeHeight;
+    const tileScreenY = BOARD_VIEWPORT_TOP + (tileWorldYCenter - scrollTopWorldY) * this.artZoom;
+    this.fireLaser(this.ship.x, this.ship.y, tileScreenX, tileScreenY);
+
     if (tile.hp <= 0) {
       tile.hp = 0;
       tile.revealed = true;
@@ -295,6 +314,34 @@ class DiggerScene extends Phaser.Scene {
 
     saveState(this.state);
     this.renderHud();
+  }
+
+  // Ship-to-tile hit effect on every successful damage tap. Both endpoints
+  // are already in the fixed HUD-camera's screen space (this.ship.x/y
+  // directly; the tapped tile converted by the caller), so the sprite
+  // lives in hudLayer alongside the ship — fixed screen space, ignored by
+  // boardCamera, unclipped by the board viewport it visually crosses.
+  private fireLaser(fromX: number, fromY: number, toX: number, toY: number): void {
+    const frames = this.animations.projectile_laser.frames;
+    const nativeFrame = this.textures.get('atlas').get(frames[0]);
+
+    const sprite = this.add.sprite(fromX, fromY, 'atlas', frames[0]);
+    sprite.setOrigin(0, 0.5); // left edge anchors at fromX/fromY
+    sprite.play('projectile_laser');
+
+    const distance = Phaser.Math.Distance.Between(fromX, fromY, toX, toY);
+    const angle = Phaser.Math.Angle.Between(fromX, fromY, toX, toY);
+    sprite.setRotation(angle);
+    sprite.setScale(distance / nativeFrame.width, this.artZoom);
+
+    this.hudLayer.add(sprite);
+
+    this.tweens.add({
+      targets: sprite,
+      alpha: 0,
+      duration: tune.laserFadeMs,
+      onComplete: () => sprite.destroy(),
+    });
   }
 
   private onUpgrade(): void {

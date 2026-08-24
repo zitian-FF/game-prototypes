@@ -24,6 +24,7 @@ const RANGE: Partial<Record<TuneKey, { min: number; max: number; step: number }>
   lootValueBaseMin: { min: 0, max: 100, step: 1 },
   lootValueBaseMax: { min: 0, max: 100, step: 1 },
   lootValueDepthMultiplier: { min: 1, max: 3, step: 0.01 },
+  laserFadeMs: { min: 50, max: 2000, step: 50 },
 };
 
 // Tweakpane panel exposing tune.json's values, available in production
