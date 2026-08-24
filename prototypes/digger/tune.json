@@ -15,5 +15,6 @@
   "lootChance": 0.3,
   "lootValueBaseMin": 2,
   "lootValueBaseMax": 5,
-  "lootValueDepthMultiplier": 1.1
+  "lootValueDepthMultiplier": 1.1,
+  "laserFadeMs": 300
 }
