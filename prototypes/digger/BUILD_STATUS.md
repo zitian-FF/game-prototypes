@@ -3,15 +3,11 @@
 BRIEF.md is implemented in full: a working idle-clicker mining loop
 with energy, currency, ship upgrades, depth descent, a scrollable
 board camera, and localStorage persistence (including offline energy
-regen). Placeholder-art swap-ins are underway: the energy bar now uses
-the real `ui_ammo` sprite, and a prior session added a projectile-laser
-hit effect firing from the ship to the tapped tile on every successful
-damage tap (which required a camera render-order fix to actually be
-visible). This session applied three follow-up tweaks to that laser
-effect: a claimed start/end reversal that did not reproduce on
-verification (see "Key technical decisions"), a width-lerp added to
-its fade tween, and a frame-rate override so it animates slower than
-the other sprites.
+regen). Placeholder-art swap-ins are underway: the energy bar uses the
+real `ui_ammo` sprite, a projectile-laser hit effect fires from the
+ship to the tapped tile, and this session added a pooled debris
+particle burst (weak on every damaging hit, strong additionally on the
+hit that clears a tile) using Phaser's built-in `ParticleEmitter`.
 
 ## What was implemented
 
@@ -27,9 +23,11 @@ the other sprites.
   mp-base/mp-net.
 - `tune.json`: `energyMax` is 31 (was 32) so energy's 32 possible
   values map 1:1 onto the `ui_ammo` sprite's 32 frames — see "Key
-  technical decisions" below. **This session**: added `laserFadeMs:
-  300`, the projectile laser's fade-out duration, Tweakpane-exposed
-  like every other tunable.
+  technical decisions" below. `laserFadeMs: 300` for the projectile
+  laser's fade-out duration. **This session**: added 14 `debris*`
+  tunables (scale/lifespan/cone-angle/speed/gravity/rotation-speed
+  ranges, plus separate weak/strong particle-count ranges) — see
+  "Trigger points" below for weak vs. strong. All Tweakpane-exposed.
 - `src/state/types.ts`: `TileState` (`hp`, `loot`, `revealed`) and
   `GameState` (energy/timestamp, currency, shipLevel, depth, grid
   dimensions, tiles array) — the full save shape.
@@ -55,8 +53,8 @@ the other sprites.
   session.
 - `src/debug/debugPanel.ts`: Tweakpane panel gated on `?debug=1`,
   exposing all `tune.json` values with per-key slider ranges and a
-  "Copy JSON" clipboard button. **This session**: added a `laserFadeMs`
-  range entry (`min: 50, max: 2000, step: 50`).
+  "Copy JSON" clipboard button. **This session**: added range entries
+  for all 14 new `debris*` tunables.
 - `src/main.ts` (`DiggerScene`): two-camera split — `cameras.main`
   stays the fixed logical-pixel camera (build tag, ship, all HUD, used
   for select-intent hit-testing) and `boardCamera` (via `cameras.add`)
@@ -91,22 +89,78 @@ the other sprites.
     hit-test math in reverse, using the same `col`/`row`,
     `tileScreenWidth`, and `scrollTopWorldY` already in scope rather
     than rederiving them).
-  - **This session**: `create()`'s generic per-key animation loop
-    (`frameRate: 20` for every key found in `animations.json`) now
-    excludes `projectile_laser`, which gets its own `anims.create` call
-    right after the loop with `frameRate: 15` instead. This can't be
-    done as an "override after the fact" (create it generically, then
-    call `anims.create` again for the same key to replace it) — Phaser's
-    `AnimationManager.create()` refuses to replace an existing key; it
-    just logs `console.warn('AnimationManager key already exists: ...')`
-    and returns the original, unchanged animation. Confirmed by reading
-    `node_modules/phaser/src/animations/AnimationManager.js` directly
-    rather than assuming. `player_ship` and `ui_ammo` (not currently
-    animated, but would go through the same loop if it ever were) are
-    unaffected — still 20fps.
+  - `create()`'s generic per-key animation loop (`frameRate: 20` for
+    every key found in `animations.json`) excludes `projectile_laser`,
+    which gets its own `anims.create` call right after the loop with
+    `frameRate: 15` instead — Phaser's `AnimationManager.create()`
+    refuses to replace an existing key (just warns and keeps the
+    original), so this can't be done as an "override after the fact."
+  - **This session**: `buildDebrisEmitter()` (called once from
+    `create()`, not per-hit) creates a single persistent
+    `this.debrisEmitter` via `this.add.particles(0, 0, 'atlas', {...})`
+    using `fx_debris`'s 5 frames, ignored by `cameras.main` the same
+    way `tileSprites` are (board-world space, not `hudLayer` — debris
+    never needs to leave the board, unlike the laser). `onTapBoard()`
+    calls `this.debrisEmitter.explode(count, tileWorldX, tileWorldY)`
+    twice: a weak burst (`debrisWeakCountMin`-`Max` particles) on every
+    successful damage hit, right after the existing `fireLaser` call,
+    using the tile's board-world center (same formula `buildBoard`
+    uses to place `tileSprites`, reusing the already-computed `col`/
+    `row`); and, additionally, a strong burst
+    (`debrisStrongCountMin`-`Max`) inside the `tile.hp <= 0` block, so
+    a killing hit fires both. Continuous per-particle rotation (both
+    direction and speed randomized, animating over the whole lifespan
+    rather than a single static angle) uses the emitter's `rotate`
+    onEmit/onUpdate custom-op pair — see "Key technical decisions" for
+    why a plain `rotate: {min, max}` range doesn't do this and how the
+    per-particle spin rate is threaded from onEmit to onUpdate.
 
 ## Key technical decisions
 
+- **Debris continuous rotation: onEmit/onUpdate custom-op pair worked,
+  no cleaner built-in alternative found in 3.90 docs.** A plain
+  `rotate: { min, max }` range only assigns one static angle per
+  particle at emit time — it doesn't animate over the lifespan, so it
+  can't produce "visibly tumbling" particles. Used the documented
+  `EmitterOpCustomUpdateConfig` shape instead: `onEmit(particle)` rolls
+  a random deg-per-lifespan spin rate via
+  `Phaser.Math.Between(debrisRotationSpeedMinDeg, debrisRotationSpeedMaxDeg)`
+  and stores it; `onUpdate(particle, key, t)` returns `spinRate * t`
+  every frame, where `t` is Phaser's own 0-1 lifetime progress — so
+  each particle spins continuously at its own random rate and
+  direction (negative values spin one way, positive the other) for its
+  whole life. The per-particle spin rate is threaded from onEmit to
+  onUpdate via `debrisSpinRates`, a `WeakMap<Particle, number>` keyed
+  by the particle instance itself, rather than stashing an untyped
+  custom field directly on Phaser's `Particle` object (`particle.data`
+  exists but is reserved for internal ease-equation state, not general
+  custom data — confirmed by reading `Particle.js`). Verified visually,
+  not assumed: a Playwright screenshot series at 70ms intervals shows a
+  single particle's internal facet lines at a clearly different angle
+  in each successive frame (not one fixed angle), confirming genuine
+  continuous rotation.
+- **Debris frame randomization needed no onEmit fallback — confirmed
+  by reading Phaser's source, then re-confirmed visually.**
+  `frame: this.animations.fx_debris.frames` (a plain array) hits
+  `ParticleEmitter.setEmitterFrame`, whose `pickRandom` parameter
+  defaults to `true` for an array input (`this.randomFrame = pickRandom`
+  in `ParticleEmitter.js`) — so per-particle frame randomization is the
+  default, no `Phaser.Utils.Array.GetRandom` onEmit fallback needed.
+  Confirmed visually too: bursts show multiple distinct `fx_debris`
+  shapes (round rock, angular shard, diamond/kite) simultaneously
+  rather than one repeated shape or an obviously sequential cycle.
+- **Debris burst position is board-world, not screen space — no
+  cross-camera conversion needed, unlike the laser.** `tileWorldX =
+  (col + 0.5) * this.tileNativeWidth` and the pre-existing
+  `tileWorldYCenter = (row + 0.5) * this.tileNativeHeight` (already
+  computed for the laser's screen-Y conversion) are exactly the
+  formula `buildBoard` uses to place `tileSprites`, so
+  `debrisEmitter.explode(count, tileWorldX, tileWorldYCenter)` lands
+  precisely on the tapped tile. `this.debrisEmitter` is added to
+  `cameras.main`'s ignore list the same way `tileSprites` is — it only
+  ever renders via `boardCamera`, scrolling/clipping with the board
+  automatically, with no need for the fixed-camera screen-space
+  conversion `fireLaser` requires to reach the ship.
 - **Claimed laser start/end reversal did not reproduce — verified, not
   assumed fixed.** A follow-up task asserted the beam's anchor
   (`fromX`/`fromY`) and stretched end (`toX`/`toY`) were swapped, and
@@ -214,15 +268,25 @@ the other sprites.
   rather than a percentage-based jitter.
 - **Known crude-input tradeoff**: starting a pan-drag gesture over the
   board also registers as a tap (costs at most 1 energy, and now also
-  fires a laser) on whatever tile is under the initial touch point,
-  since `bindSelectIntent` fires on raw `pointerdown` and is kept
-  unchanged per the brief.
+  fires a laser and a debris burst) on whatever tile is under the
+  initial touch point, since `bindSelectIntent` fires on raw
+  `pointerdown` and is kept unchanged per the brief.
 - **Multiple simultaneous lasers are independent by design** — each
   `fireLaser()` call spawns its own sprite/tween with no shared state,
   so rapid tapping produces overlapping beams that each fade and
   self-destroy on their own timer. Confirmed via Playwright: three
   rapid taps on three different tiles produced three simultaneous
   beams at correct, independent angles/lengths in a single screenshot.
+- **One persistent debris emitter, not one per hit — this is the
+  actual point of using Phaser's `ParticleEmitter` over hand-rolled
+  sprites.** `buildDebrisEmitter()` runs once in `create()`; every
+  burst reuses the same `this.debrisEmitter` via `.explode()`, which
+  Phaser internally pools/batches into very few draw calls against the
+  shared atlas. Digger is a clicker — rapid tapping is the normal case,
+  not an edge case — so creating a fresh emitter game object per tap
+  (as a naive per-hit implementation might) would generate real
+  per-frame garbage and defeat the reason for using the built-in
+  particle system at all.
 
 ## Open questions
 
@@ -266,12 +330,17 @@ the other sprites.
   `distance / nativeFrameWidth` value for the whole lifetime — no
   perspective or independent length tuning — functional, not polished,
   per "mechanics-first" scope.
+- The 14 `debris*` tunables are seeded placeholders (per the task),
+  not yet human-tuned — verified functionally correct (bursts fire at
+  the right trigger points, particles move/rotate/fade/randomize
+  frame), but the actual feel (speed, spread, gravity, lifespan,
+  particle counts) hasn't been played with yet.
 
 ## Next proposed step
 
 Playtest to tune `tune.json`'s starting values (loot chance/value,
-tile HP scaling, upgrade cost curve, and now `laserFadeMs`) — they're
-seeded placeholders, not yet human-tuned. Beyond that, the
-currency/loot HUD row (still a plain text line, "Loot: N") remains the
-next obvious placeholder-art swap-in candidate if/when matching art
-exists.
+tile HP scaling, upgrade cost curve, `laserFadeMs`, and now the 14
+`debris*` values) — they're seeded placeholders, not yet human-tuned.
+Beyond that, the currency/loot HUD row (still a plain text line,
+"Loot: N") remains the next obvious placeholder-art swap-in candidate
+if/when matching art exists.
