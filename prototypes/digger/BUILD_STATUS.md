@@ -5,9 +5,12 @@ with energy, currency, ship upgrades, depth descent, a scrollable
 board camera, and localStorage persistence (including offline energy
 regen). Placeholder-art swap-ins are underway: the energy bar uses the
 real `ui_ammo` sprite, a projectile-laser hit effect fires from the
-ship to the tapped tile, and this session added a pooled debris
-particle burst (weak on every damaging hit, strong additionally on the
-hit that clears a tile) using Phaser's built-in `ParticleEmitter`.
+ship to the tapped tile, and a pooled debris particle burst (weak on
+every damaging hit, strong additionally on the hit that clears a tile)
+uses Phaser's built-in `ParticleEmitter`. This session applied two
+tuning tweaks to that debris effect's `tune.json` values (longer max
+lifespan, tripled launch speed) — pure number changes, no code
+changes, since both were already reading live from `tune.json`.
 
 ## What was implemented
 
@@ -24,10 +27,19 @@ hit that clears a tile) using Phaser's built-in `ParticleEmitter`.
 - `tune.json`: `energyMax` is 31 (was 32) so energy's 32 possible
   values map 1:1 onto the `ui_ammo` sprite's 32 frames — see "Key
   technical decisions" below. `laserFadeMs: 300` for the projectile
-  laser's fade-out duration. **This session**: added 14 `debris*`
-  tunables (scale/lifespan/cone-angle/speed/gravity/rotation-speed
-  ranges, plus separate weak/strong particle-count ranges) — see
-  "Trigger points" below for weak vs. strong. All Tweakpane-exposed.
+  laser's fade-out duration. 14 `debris*` tunables (scale/lifespan/
+  cone-angle/speed/gravity/rotation-speed ranges, plus separate weak/
+  strong particle-count ranges), all Tweakpane-exposed. **This
+  session**: two of those retuned — `debrisLifespanMaxMs` 1000 -> 1500
+  (min unchanged at 500, so the range widens rather than shifts) and
+  `debrisSpeedMin`/`debrisSpeedMax` both tripled, 80/160 -> 240/480 —
+  for more visual impact on the burst. `debrisConeHalfAngleDeg` and
+  `debrisGravityY` deliberately left untouched, per the task: the
+  stronger launch speed now reads as under-gravitied (particles fly
+  higher/further before falling) but that's an expected, known
+  consequence of this change, not something to auto-correct with a
+  guessed compensating gravity value — left for deliberate retuning
+  later if wanted.
 - `src/state/types.ts`: `TileState` (`hp`, `loot`, `revealed`) and
   `GameState` (energy/timestamp, currency, shipLevel, depth, grid
   dimensions, tiles array) — the full save shape.
@@ -117,6 +129,20 @@ hit that clears a tile) using Phaser's built-in `ParticleEmitter`.
 
 ## Key technical decisions
 
+- **Debris lifespan/speed tuning tweak confirmed already live-wired,
+  not hardcoded — no code change needed, only the two `tune.json`
+  numbers.** Checked `buildDebrisEmitter()` before touching anything:
+  `lifespan: { min: tune.debrisLifespanMinMs, max: tune.debrisLifespanMaxMs }`
+  and `speed: { min: tune.debrisSpeedMin, max: tune.debrisSpeedMax }`
+  already read from `tune.json` directly (as they should have from the
+  original implementation), so this task really was just the two
+  number edits. Verified the new values render correctly via
+  Playwright, not just that the JSON changed: a screenshot at ~315ms
+  after a tile-clearing tap shows debris already flown far outside the
+  origin tile (impossible at the old 80-160 speed range in that short
+  a window), and a screenshot at ~1.3s shows faint particles still
+  alive/fading (impossible under the old 1000ms lifespan max, only
+  possible now that it's 1500ms).
 - **Debris continuous rotation: onEmit/onUpdate custom-op pair worked,
   no cleaner built-in alternative found in 3.90 docs.** A plain
   `rotate: { min, max }` range only assigns one static angle per
@@ -330,11 +356,14 @@ hit that clears a tile) using Phaser's built-in `ParticleEmitter`.
   `distance / nativeFrameWidth` value for the whole lifetime — no
   perspective or independent length tuning — functional, not polished,
   per "mechanics-first" scope.
-- The 14 `debris*` tunables are seeded placeholders (per the task),
-  not yet human-tuned — verified functionally correct (bursts fire at
-  the right trigger points, particles move/rotate/fade/randomize
-  frame), but the actual feel (speed, spread, gravity, lifespan,
-  particle counts) hasn't been played with yet.
+- Most of the 14 `debris*` tunables are still seeded placeholders, not
+  yet human-tuned — `debrisLifespanMaxMs` and the `debrisSpeed*` pair
+  got a deliberate first tuning pass this session, but
+  `debrisConeHalfAngleDeg`, `debrisGravityY`, and the rotation/count
+  ranges have not. The stronger launch speed now reads as
+  under-gravitied relative to the original `debrisGravityY: 300`
+  (particles fly higher/further before falling) — expected from the
+  speed change alone, left as-is rather than guessed at, per the task.
 
 ## Next proposed step
 
