@@ -28,6 +28,20 @@ const BOARD_VIEWPORT_TOP = 56;
 const BOARD_VIEWPORT_HEIGHT = 340;
 const SHIP_SPACING = 40;
 
+// Explicit depths for everything rendered in board-world space (via
+// boardCamera): without these, Phaser stacks same-depth siblings by
+// insertion order, and buildBoard() destroys/recreates tile sprites on
+// every respawn (including descend), re-inserting them at the end of the
+// display list — i.e. on top of anything created earlier, like
+// debrisEmitter (built once in create()). Giving the board a fixed low
+// depth and effects a fixed higher one makes the stacking independent of
+// creation/recreation order. Any future board-camera-space game object
+// should default to EFFECTS_DEPTH (or higher), not BOARD_DEPTH, so it
+// stays above the board regardless of when it or the board was last
+// rebuilt.
+const BOARD_DEPTH = 0;
+const EFFECTS_DEPTH = 10;
+
 const WIDTH = 390;
 const HEIGHT = 844;
 
@@ -198,6 +212,7 @@ class DiggerScene extends Phaser.Scene {
       const worldY = (row + 0.5) * this.tileNativeHeight;
       const tile = this.state.tiles[i];
       const sprite = this.add.image(worldX, worldY, tile.revealed ? 'tile_hole' : 'tile_grass');
+      sprite.setDepth(BOARD_DEPTH);
       this.tileSprites.push(sprite);
     }
     this.cameras.main.ignore(this.tileSprites);
@@ -241,6 +256,7 @@ class DiggerScene extends Phaser.Scene {
       },
       emitting: false,
     });
+    this.debrisEmitter.setDepth(EFFECTS_DEPTH);
     this.cameras.main.ignore(this.debrisEmitter);
   }
 
