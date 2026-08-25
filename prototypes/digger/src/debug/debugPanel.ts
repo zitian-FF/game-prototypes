@@ -25,6 +25,20 @@ const RANGE: Partial<Record<TuneKey, { min: number; max: number; step: number }>
   lootValueBaseMax: { min: 0, max: 100, step: 1 },
   lootValueDepthMultiplier: { min: 1, max: 3, step: 0.01 },
   laserFadeMs: { min: 50, max: 2000, step: 50 },
+  debrisScaleMin: { min: 0.1, max: 3, step: 0.05 },
+  debrisScaleMax: { min: 0.1, max: 3, step: 0.05 },
+  debrisLifespanMinMs: { min: 50, max: 3000, step: 50 },
+  debrisLifespanMaxMs: { min: 50, max: 3000, step: 50 },
+  debrisConeHalfAngleDeg: { min: 0, max: 180, step: 1 },
+  debrisSpeedMin: { min: 0, max: 500, step: 5 },
+  debrisSpeedMax: { min: 0, max: 500, step: 5 },
+  debrisGravityY: { min: -1000, max: 1000, step: 10 },
+  debrisRotationSpeedMinDeg: { min: -720, max: 720, step: 10 },
+  debrisRotationSpeedMaxDeg: { min: -720, max: 720, step: 10 },
+  debrisWeakCountMin: { min: 0, max: 30, step: 1 },
+  debrisWeakCountMax: { min: 0, max: 30, step: 1 },
+  debrisStrongCountMin: { min: 0, max: 30, step: 1 },
+  debrisStrongCountMax: { min: 0, max: 30, step: 1 },
 };
 
 // Tweakpane panel exposing tune.json's values, available in production

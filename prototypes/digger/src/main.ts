@@ -61,6 +61,18 @@ class DiggerScene extends Phaser.Scene {
   private boardCamera!: Phaser.Cameras.Scene2D.Camera;
   private tileSprites: Phaser.GameObjects.Image[] = [];
 
+  // Single persistent emitter, reused for every debris burst via .explode()
+  // rather than one emitter per hit — Phaser pools/batches particles per
+  // emitter, so reusing it is what keeps rapid tapping cheap. Lives in
+  // board-world space alongside tileSprites (ignored by cameras.main), not
+  // hudLayer, since it never needs to reach anything outside the board.
+  private debrisEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
+  // Per-particle random spin rate (deg over its full lifespan), keyed by
+  // the Particle instance itself so the rotate onUpdate op can look it up
+  // every frame. A WeakMap avoids stashing untyped custom fields directly
+  // on Phaser's Particle objects.
+  private debrisSpinRates = new WeakMap<Phaser.GameObjects.Particles.Particle, number>();
+
   // World-space (board-native-pixel) Y the board camera is centered on;
   // clamped so the viewport never scrolls past the grid's top or bottom.
   private panCenterY = 0;
@@ -127,6 +139,7 @@ class DiggerScene extends Phaser.Scene {
 
     this.setUpCameras();
     this.buildBoard();
+    this.buildDebrisEmitter();
     this.buildHud();
 
     bindSelectIntent(this, (worldX, worldY) => this.onTap(worldX, worldY));
@@ -191,6 +204,44 @@ class DiggerScene extends Phaser.Scene {
 
     this.panCenterY = this.clampPanCenterY(0);
     this.applyPan();
+  }
+
+  // Created once; every hit reuses this same emitter via .explode() rather
+  // than spawning a new one, so pooling/batching actually pays off under
+  // rapid tapping. Frame array randomizes per-particle by default (Phaser's
+  // setEmitterFrame defaults pickRandom to true for an array of frames) —
+  // verified visually, no onEmit fallback needed. Continuous per-particle
+  // spin (direction and speed both randomized) isn't expressible via a
+  // plain rotate: {min,max} range, which only assigns one static value at
+  // emit time — instead rotate uses the onEmit/onUpdate custom-op pair:
+  // onEmit rolls a random deg-per-lifespan spin rate and stashes it in
+  // debrisSpinRates, onUpdate reads it back and scales it by the
+  // particle's lifetime progress (t, 0-1) every frame.
+  private buildDebrisEmitter(): void {
+    this.debrisEmitter = this.add.particles(0, 0, 'atlas', {
+      frame: this.animations.fx_debris.frames,
+      scale: { min: tune.debrisScaleMin, max: tune.debrisScaleMax },
+      lifespan: { min: tune.debrisLifespanMinMs, max: tune.debrisLifespanMaxMs },
+      alpha: { start: 1, end: 0 },
+      // Phaser particle angle: 0deg = right, increasing clockwise (screen
+      // space, Y-down) -- so "up" is -90deg, and a cone half-angle widens
+      // symmetrically around that.
+      angle: { min: -90 - tune.debrisConeHalfAngleDeg, max: -90 + tune.debrisConeHalfAngleDeg },
+      speed: { min: tune.debrisSpeedMin, max: tune.debrisSpeedMax },
+      gravityY: tune.debrisGravityY,
+      rotate: {
+        onEmit: (particle) => {
+          if (particle) {
+            const spinRate = Phaser.Math.Between(tune.debrisRotationSpeedMinDeg, tune.debrisRotationSpeedMaxDeg);
+            this.debrisSpinRates.set(particle, spinRate);
+          }
+          return 0;
+        },
+        onUpdate: (particle, _key, t) => (this.debrisSpinRates.get(particle) ?? 0) * t,
+      },
+      emitting: false,
+    });
+    this.cameras.main.ignore(this.debrisEmitter);
   }
 
   private buildHud(): void {
@@ -318,11 +369,26 @@ class DiggerScene extends Phaser.Scene {
     const tileScreenY = BOARD_VIEWPORT_TOP + (tileWorldYCenter - scrollTopWorldY) * this.artZoom;
     this.fireLaser(this.ship.x, this.ship.y, tileScreenX, tileScreenY);
 
+    // Tile board-world position (same space as tileSprites, and the same
+    // formula buildBoard uses to place them) for the debris burst, which
+    // stays entirely within the board and needs no cross-camera conversion.
+    const tileWorldX = (col + 0.5) * this.tileNativeWidth;
+    this.debrisEmitter.explode(
+      Phaser.Math.Between(tune.debrisWeakCountMin, tune.debrisWeakCountMax),
+      tileWorldX,
+      tileWorldYCenter
+    );
+
     if (tile.hp <= 0) {
       tile.hp = 0;
       tile.revealed = true;
       this.state.currency += tile.loot;
       this.tileSprites[index].setTexture('tile_hole');
+      this.debrisEmitter.explode(
+        Phaser.Math.Between(tune.debrisStrongCountMin, tune.debrisStrongCountMax),
+        tileWorldX,
+        tileWorldYCenter
+      );
     }
 
     saveState(this.state);

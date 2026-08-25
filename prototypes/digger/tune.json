@@ -16,5 +16,19 @@
   "lootValueBaseMin": 2,
   "lootValueBaseMax": 5,
   "lootValueDepthMultiplier": 1.1,
-  "laserFadeMs": 300
+  "laserFadeMs": 300,
+  "debrisScaleMin": 0.5,
+  "debrisScaleMax": 1,
+  "debrisLifespanMinMs": 500,
+  "debrisLifespanMaxMs": 1000,
+  "debrisConeHalfAngleDeg": 15,
+  "debrisSpeedMin": 80,
+  "debrisSpeedMax": 160,
+  "debrisGravityY": 300,
+  "debrisRotationSpeedMinDeg": -360,
+  "debrisRotationSpeedMaxDeg": 360,
+  "debrisWeakCountMin": 3,
+  "debrisWeakCountMax": 7,
+  "debrisStrongCountMin": 7,
+  "debrisStrongCountMax": 15
 }
