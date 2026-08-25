@@ -7,10 +7,14 @@ regen). Placeholder-art swap-ins are underway: the energy bar uses the
 real `ui_ammo` sprite, a projectile-laser hit effect fires from the
 ship to the tapped tile, and a pooled debris particle burst (weak on
 every damaging hit, strong additionally on the hit that clears a tile)
-uses Phaser's built-in `ParticleEmitter`. This session applied two
-tuning tweaks to that debris effect's `tune.json` values (longer max
-lifespan, tripled launch speed) — pure number changes, no code
-changes, since both were already reading live from `tune.json`.
+uses Phaser's built-in `ParticleEmitter`. This session fixed a Z-order
+bug: debris rendered *underneath* the tile grid on every board after
+the first (i.e. after any descend), since `buildBoard()` destroys and
+recreates tile sprites on every respawn, and Phaser stacks same-depth
+siblings by insertion order — the recreated tiles were re-inserted
+after (on top of) `debrisEmitter`, which is only ever created once.
+Fixed with explicit persistent depths (`BOARD_DEPTH` / `EFFECTS_DEPTH`)
+instead of relying on creation order — see "Key technical decisions."
 
 ## What was implemented
 
@@ -29,17 +33,15 @@ changes, since both were already reading live from `tune.json`.
   technical decisions" below. `laserFadeMs: 300` for the projectile
   laser's fade-out duration. 14 `debris*` tunables (scale/lifespan/
   cone-angle/speed/gravity/rotation-speed ranges, plus separate weak/
-  strong particle-count ranges), all Tweakpane-exposed. **This
-  session**: two of those retuned — `debrisLifespanMaxMs` 1000 -> 1500
-  (min unchanged at 500, so the range widens rather than shifts) and
-  `debrisSpeedMin`/`debrisSpeedMax` both tripled, 80/160 -> 240/480 —
-  for more visual impact on the burst. `debrisConeHalfAngleDeg` and
-  `debrisGravityY` deliberately left untouched, per the task: the
-  stronger launch speed now reads as under-gravitied (particles fly
-  higher/further before falling) but that's an expected, known
-  consequence of this change, not something to auto-correct with a
-  guessed compensating gravity value — left for deliberate retuning
-  later if wanted.
+  strong particle-count ranges), all Tweakpane-exposed.
+  `debrisLifespanMaxMs` (500-1500, was 500-1000) and
+  `debrisSpeedMin`/`debrisSpeedMax` (240/480, was 80/160, tripled) got
+  a first deliberate tuning pass in a prior session; the rest are still
+  seeded placeholders. `debrisConeHalfAngleDeg` and `debrisGravityY`
+  are deliberately untouched — the stronger launch speed now reads as
+  a bit under-gravitied (particles fly higher/further before falling),
+  an expected consequence of the speed change alone, left for
+  deliberate retuning later rather than guessed at.
 - `src/state/types.ts`: `TileState` (`hp`, `loot`, `revealed`) and
   `GameState` (energy/timestamp, currency, shipLevel, depth, grid
   dimensions, tiles array) — the full save shape.
@@ -51,22 +53,18 @@ changes, since both were already reading live from `tune.json`.
   `shipDamage`, `upgradeCost`.
 - `src/state/energy.ts`: `applyEnergyRegen` — timestamp-anchored regen
   catch-up; snaps `timestamp` to `now` once energy reaches the cap so
-  no unbounded backlog can accumulate past full. Untouched this
-  session.
+  no unbounded backlog can accumulate past full.
 - `src/state/persistence.ts`: `loadState`/`saveState` against
   `localStorage['digger:save:v1']`, single JSON blob, fresh-state
   fallback (depth 0, full energy) when no save exists or it fails to
   parse, and clamps a loaded save's `energy` to `Math.min(energy,
-  tune.energyMax)` as a safety net for pre-cap-change saves. Untouched
-  this session.
+  tune.energyMax)` as a safety net for pre-cap-change saves.
 - `src/input/intents.ts`: `bindSelectIntent` byte-identical to the
   original placeholder version (untouched, per the original brief).
-  `bindVerticalDragIntent` for the board-pan gesture. Untouched this
-  session.
+  `bindVerticalDragIntent` for the board-pan gesture.
 - `src/debug/debugPanel.ts`: Tweakpane panel gated on `?debug=1`,
   exposing all `tune.json` values with per-key slider ranges and a
-  "Copy JSON" clipboard button. **This session**: added range entries
-  for all 14 new `debris*` tunables.
+  "Copy JSON" clipboard button, including all 14 `debris*` tunables.
 - `src/main.ts` (`DiggerScene`): two-camera split — `cameras.main`
   stays the fixed logical-pixel camera (build tag, ship, all HUD, used
   for select-intent hit-testing) and `boardCamera` (via `cameras.add`)
@@ -92,57 +90,90 @@ changes, since both were already reading live from `tune.json`.
     be visible there). Private method `fireLaser(fromX, fromY, toX,
     toY)`: spawns a `projectile_laser` sprite at the ship's current
     screen position, rotated/scaled to reach the target point, playing
-    its looped animation, tweened to `alpha: 0` (and, **this session**,
-    `scaleY: 0`) over `tune.laserFadeMs` and destroyed on completion.
-    Called from `onTapBoard()` immediately after the
-    `tile.hp -= shipDamage(...)` line, so it fires on every successful
-    damage tap (not just kills), passing `this.ship.x/y` and the
-    tapped tile's screen position (computed by mirroring the existing
-    hit-test math in reverse, using the same `col`/`row`,
-    `tileScreenWidth`, and `scrollTopWorldY` already in scope rather
-    than rederiving them).
+    its looped animation, tweened to `alpha: 0` and `scaleY: 0` over
+    `tune.laserFadeMs` and destroyed on completion. Called from
+    `onTapBoard()` immediately after the `tile.hp -= shipDamage(...)`
+    line, so it fires on every successful damage tap (not just kills),
+    passing `this.ship.x/y` and the tapped tile's screen position
+    (computed by mirroring the existing hit-test math in reverse,
+    using the same `col`/`row`, `tileScreenWidth`, and
+    `scrollTopWorldY` already in scope rather than rederiving them).
   - `create()`'s generic per-key animation loop (`frameRate: 20` for
     every key found in `animations.json`) excludes `projectile_laser`,
     which gets its own `anims.create` call right after the loop with
     `frameRate: 15` instead — Phaser's `AnimationManager.create()`
     refuses to replace an existing key (just warns and keeps the
     original), so this can't be done as an "override after the fact."
-  - **This session**: `buildDebrisEmitter()` (called once from
-    `create()`, not per-hit) creates a single persistent
-    `this.debrisEmitter` via `this.add.particles(0, 0, 'atlas', {...})`
-    using `fx_debris`'s 5 frames, ignored by `cameras.main` the same
-    way `tileSprites` are (board-world space, not `hudLayer` — debris
-    never needs to leave the board, unlike the laser). `onTapBoard()`
-    calls `this.debrisEmitter.explode(count, tileWorldX, tileWorldY)`
-    twice: a weak burst (`debrisWeakCountMin`-`Max` particles) on every
-    successful damage hit, right after the existing `fireLaser` call,
-    using the tile's board-world center (same formula `buildBoard`
-    uses to place `tileSprites`, reusing the already-computed `col`/
-    `row`); and, additionally, a strong burst
-    (`debrisStrongCountMin`-`Max`) inside the `tile.hp <= 0` block, so
-    a killing hit fires both. Continuous per-particle rotation (both
-    direction and speed randomized, animating over the whole lifespan
-    rather than a single static angle) uses the emitter's `rotate`
-    onEmit/onUpdate custom-op pair — see "Key technical decisions" for
-    why a plain `rotate: {min, max}` range doesn't do this and how the
-    per-particle spin rate is threaded from onEmit to onUpdate.
+  - `buildDebrisEmitter()` (called once from `create()`, not per-hit)
+    creates a single persistent `this.debrisEmitter` via
+    `this.add.particles(0, 0, 'atlas', {...})` using `fx_debris`'s 5
+    frames, ignored by `cameras.main` the same way `tileSprites` are
+    (board-world space, not `hudLayer` — debris never needs to leave
+    the board, unlike the laser). `onTapBoard()` calls
+    `this.debrisEmitter.explode(count, tileWorldX, tileWorldY)` twice:
+    a weak burst (`debrisWeakCountMin`-`Max` particles) on every
+    successful damage hit, right after the `fireLaser` call, using the
+    tile's board-world center (same formula `buildBoard` uses to place
+    `tileSprites`, reusing the already-computed `col`/`row`); and,
+    additionally, a strong burst (`debrisStrongCountMin`-`Max`) inside
+    the `tile.hp <= 0` block, so a killing hit fires both. Continuous
+    per-particle rotation (both direction and speed randomized,
+    animating over the whole lifespan rather than a single static
+    angle) uses the emitter's `rotate` onEmit/onUpdate custom-op pair
+    — see "Key technical decisions."
+  - **This session**: `BOARD_DEPTH = 0` / `EFFECTS_DEPTH = 10`
+    constants near the top of the file. `buildBoard()` calls
+    `sprite.setDepth(BOARD_DEPTH)` on every tile sprite as it's
+    created. `buildDebrisEmitter()` calls
+    `this.debrisEmitter.setDepth(EFFECTS_DEPTH)` right after creating
+    it. See "Key technical decisions" for why and for the convention
+    future board-space effects should follow.
 
 ## Key technical decisions
 
+- **Board Z-order fix: explicit persistent depths, not creation
+  order.** Tile sprites (`this.add.image` in `buildBoard()`) and
+  `debrisEmitter` (`this.add.particles` in `buildDebrisEmitter()`) both
+  render via `boardCamera` with no explicit depth set on either — so
+  Phaser fell back to stacking them by insertion order into the scene's
+  display list. `debrisEmitter` is created exactly once, in `create()`,
+  early. `buildBoard()` runs again on every descend, destroying and
+  recreating every tile sprite, which re-inserts them at the *end* of
+  the display list — after, i.e. visually on top of, `debrisEmitter`.
+  So the very first board (built before `debrisEmitter` existed)
+  correctly showed debris on top of tiles, but every board after a
+  descend showed debris hidden underneath the freshly-rebuilt tiles.
+  Fix: two named constants, `BOARD_DEPTH = 0` and `EFFECTS_DEPTH = 10`,
+  with tile sprites calling `.setDepth(BOARD_DEPTH)` in `buildBoard()`
+  and `debrisEmitter` calling `.setDepth(EFFECTS_DEPTH)` once in
+  `buildDebrisEmitter()`. Explicit depth makes the stacking independent
+  of when either was created or how many times the board's been
+  rebuilt. **Convention for future board-camera-space effects**: default
+  to `EFFECTS_DEPTH` (or higher), never `BOARD_DEPTH` — that constant
+  is reserved for the board's own tile sprites, so anything meant to
+  render above the board should use `EFFECTS_DEPTH` or introduce a
+  higher one if layering among multiple effect types is ever needed.
+  Verified via Playwright, specifically provoking the bug's actual
+  trigger: seeded a fully-cleared depth-0 board, tapped Descend, then
+  tapped a tile on the *new* (post-descend) board and screenshotted
+  immediately — before the fix this would have shown nothing (debris
+  hidden under the tiles); after the fix, a zoomed crop clearly shows
+  multiple debris chunks rendered on top of the new board's tiles, one
+  even bleeding across the tile boundary into the row above. Also
+  re-verified the original (pre-descend) board and a plain no-tap boot
+  screenshot both still render correctly — no regression.
 - **Debris lifespan/speed tuning tweak confirmed already live-wired,
-  not hardcoded — no code change needed, only the two `tune.json`
-  numbers.** Checked `buildDebrisEmitter()` before touching anything:
-  `lifespan: { min: tune.debrisLifespanMinMs, max: tune.debrisLifespanMaxMs }`
-  and `speed: { min: tune.debrisSpeedMin, max: tune.debrisSpeedMax }`
-  already read from `tune.json` directly (as they should have from the
-  original implementation), so this task really was just the two
-  number edits. Verified the new values render correctly via
-  Playwright, not just that the JSON changed: a screenshot at ~315ms
-  after a tile-clearing tap shows debris already flown far outside the
+  not hardcoded.** `buildDebrisEmitter()`'s `lifespan` and `speed`
+  configs read `tune.debrisLifespanMinMs`/`MaxMs` and
+  `tune.debrisSpeedMin`/`Max` directly — confirmed before a prior
+  session's tuning task touched anything, so that task really was just
+  two `tune.json` number edits, no code changes. Verified the new
+  values render correctly via Playwright: a screenshot at ~315ms after
+  a tile-clearing tap showed debris already flown far outside the
   origin tile (impossible at the old 80-160 speed range in that short
-  a window), and a screenshot at ~1.3s shows faint particles still
+  a window), and a screenshot at ~1.3s showed faint particles still
   alive/fading (impossible under the old 1000ms lifespan max, only
-  possible now that it's 1500ms).
+  possible at 1500ms).
 - **Debris continuous rotation: onEmit/onUpdate custom-op pair worked,
   no cleaner built-in alternative found in 3.90 docs.** A plain
   `rotate: { min, max }` range only assigns one static angle per
@@ -196,13 +227,12 @@ changes, since both were already reading live from `tune.json`.
   edge, fixable by flipping to `setOrigin(1, 0.5)`. Checked (1) first:
   the call site already reads `fireLaser(this.ship.x, this.ship.y,
   tileScreenX, tileScreenY)` — ship first, correct. Checked (2) via
-  Playwright screenshots (per the task's own "verify via screenshot,
-  don't guess blindly" instruction) rather than blindly applying the
-  suggested `setOrigin(1, 0.5)` swap: a straight-up shot (tile directly
-  above the ship) and a diagonal shot to the top-left corner tile both
-  showed the beam correctly spanning from the ship's position to the
-  tapped tile, angled correctly toward off-center targets, with no
-  reversal in either test. `setOrigin(0, 0.5)` was left unchanged — the
+  Playwright screenshots rather than blindly applying the suggested
+  `setOrigin(1, 0.5)` swap: a straight-up shot (tile directly above the
+  ship) and a diagonal shot to the top-left corner tile both showed the
+  beam correctly spanning from the ship's position to the tapped tile,
+  angled correctly toward off-center targets, with no reversal in
+  either test. `setOrigin(0, 0.5)` was left unchanged — the
   `setOrigin(1, 0.5)` fallback would have actively introduced a
   reversal, not fixed one. The `projectile_laser` art itself is
   left-right symmetric (arrow/spike shapes at both ends, confirmed by
@@ -210,8 +240,7 @@ changes, since both were already reading live from `tune.json`.
   this was not something a screenshot's shape alone could rule out by
   eye — the position/angle tests above were the real verification.
 - **Camera render order had to be fixed for the laser to be visible at
-  all — this was the real work of this session, not the sprite math.**
-  `boardCamera` is created via `this.cameras.add()` after
+  all.** `boardCamera` is created via `this.cameras.add()` after
   `cameras.main` already exists, and Phaser renders cameras in
   `this.cameras.cameras` array order — so `boardCamera` was drawing
   *after*, i.e. on top of, `cameras.main`. Combined with
@@ -221,18 +250,13 @@ changes, since both were already reading live from `tune.json`.
   lands on a tile — was fully hidden wherever it crossed into the
   board viewport's screen region (y 56-396), even though the laser was
   correctly positioned and unclipped in Phaser's logical/update sense.
-  Confirmed with a before/after Playwright screenshot: before the fix,
-  a zoomed crop of the board-viewport region during an active laser
-  showed the tile grid completely undisturbed (laser invisible); after
-  reordering `cameras.main` to the end of `this.cameras.cameras`
-  (`setUpCameras()`), the same tap produced a laser clearly visible on
-  top of the tiles, and a follow-up screenshot 500ms later confirmed
-  it still fades and destroys itself correctly. No visible regression
-  in the normal (no-tap) boot screenshot from this reorder — the
-  board's own tiles/background still render identically; only
-  hudLayer content's stacking relative to the board viewport changed,
-  which is exactly the fix needed. **If a future effect needs to
-  render *behind* the board instead, this order will need to be
+  Fixed by reordering `cameras.main` to the end of
+  `this.cameras.cameras` (`setUpCameras()`), which is a *different*
+  mechanism from the board Z-order fix above: this reorders whole
+  *cameras* (main vs. board), while the board fix sets *depth* among
+  siblings within a single camera's render (board tiles vs. debris,
+  both drawn only by `boardCamera`). **If a future effect needs to
+  render *behind* the board instead, this camera order will need to be
   reverted or made conditional** — currently it's a blanket "HUD always
   wins" rule.
 - **Ship-to-tile coordinate conversion for cross-camera effects**
@@ -284,12 +308,10 @@ changes, since both were already reading live from `tune.json`.
   `cameras.main`'s fixed logical coordinates rather than calling
   `getWorldPoint` against whichever camera currently owns the tap,
   since `bindSelectIntent` (kept unchanged) always reads
-  `scene.cameras.main`. (This is also why the laser's tile-position
-  math above mirrors that same arithmetic rather than using a
-  camera's own coordinate conversion.)
+  `scene.cameras.main`.
 - **Persistence writes only on state-changing actions** (tap, upgrade,
-  descend), not on every 1-second regen tick — the laser is a purely
-  visual side effect and doesn't affect this.
+  descend), not on every 1-second regen tick — the laser/debris are
+  purely visual side effects and don't affect this.
 - **Tile HP jitter** reuses the original code's absolute +/-1 spread
   rather than a percentage-based jitter.
 - **Known crude-input tradeoff**: starting a pan-drag gesture over the
@@ -300,9 +322,7 @@ changes, since both were already reading live from `tune.json`.
 - **Multiple simultaneous lasers are independent by design** — each
   `fireLaser()` call spawns its own sprite/tween with no shared state,
   so rapid tapping produces overlapping beams that each fade and
-  self-destroy on their own timer. Confirmed via Playwright: three
-  rapid taps on three different tiles produced three simultaneous
-  beams at correct, independent angles/lengths in a single screenshot.
+  self-destroy on their own timer.
 - **One persistent debris emitter, not one per hit — this is the
   actual point of using Phaser's `ParticleEmitter` over hand-rolled
   sprites.** `buildDebrisEmitter()` runs once in `create()`; every
@@ -310,9 +330,8 @@ changes, since both were already reading live from `tune.json`.
   Phaser internally pools/batches into very few draw calls against the
   shared atlas. Digger is a clicker — rapid tapping is the normal case,
   not an edge case — so creating a fresh emitter game object per tap
-  (as a naive per-hit implementation might) would generate real
-  per-frame garbage and defeat the reason for using the built-in
-  particle system at all.
+  would generate real per-frame garbage and defeat the reason for
+  using the built-in particle system at all.
 
 ## Open questions
 
@@ -329,7 +348,7 @@ changes, since both were already reading live from `tune.json`.
   instructed — but flagging again here since it's a deliberate
   departure from convention worth a second look during a human
   playtest, not something to silently "fix" back.
-- **Camera render-order is now a blanket "HUD renders on top of board"
+- **Camera render-order is a blanket "HUD renders on top of board"
   rule** (see "Key technical decisions"). This was the correct fix for
   the laser, but nothing in the codebase currently *wants* HUD content
   to render behind the board — if that's ever needed (e.g. a future
@@ -339,7 +358,8 @@ changes, since both were already reading live from `tune.json`.
 ## Known issues
 
 - See "Known crude-input tradeoff" above — a drag-to-pan gesture also
-  costs 1 tap (and now fires a laser) at its start point.
+  costs 1 tap (and now fires a laser and a debris burst) at its start
+  point.
 - No automated tests are checked into the repo — verification relies
   on manual Playwright interaction scripts run locally each session,
   per the prototype's placeholder-first/disposable nature and the
@@ -349,27 +369,30 @@ changes, since both were already reading live from `tune.json`.
 - The ammo badge text is small (8px font) to fit the circular badge's
   limited diameter — legible in testing at up to 2 digits per side,
   but worth a human eye check on an actual phone screen.
-- The laser's fade now animates both `alpha` and `scaleY` (thickness)
-  to 0 over `tune.laserFadeMs`, confirmed via a mid-fade screenshot
-  (~220ms into the 300ms default) showing a visibly thinner, fainter
-  beam than at t=0. `scaleX` (length) stays fixed at its initial
+- The laser's fade animates both `alpha` and `scaleY` (thickness) to 0
+  over `tune.laserFadeMs`; `scaleX` (length) stays fixed at its initial
   `distance / nativeFrameWidth` value for the whole lifetime — no
   perspective or independent length tuning — functional, not polished,
   per "mechanics-first" scope.
 - Most of the 14 `debris*` tunables are still seeded placeholders, not
   yet human-tuned — `debrisLifespanMaxMs` and the `debrisSpeed*` pair
-  got a deliberate first tuning pass this session, but
-  `debrisConeHalfAngleDeg`, `debrisGravityY`, and the rotation/count
-  ranges have not. The stronger launch speed now reads as
-  under-gravitied relative to the original `debrisGravityY: 300`
-  (particles fly higher/further before falling) — expected from the
-  speed change alone, left as-is rather than guessed at, per the task.
+  got a first tuning pass, but `debrisConeHalfAngleDeg`,
+  `debrisGravityY`, and the rotation/count ranges have not. The
+  stronger launch speed reads as under-gravitied relative to the
+  original `debrisGravityY: 300` — expected from the speed change
+  alone, left as-is rather than guessed at.
+- `EFFECTS_DEPTH = 10` currently has only one occupant (`debrisEmitter`)
+  — if/when a second board-space effect is added, it'll need its own
+  thought about whether it belongs at the same depth as debris (draw
+  order between the two would then again fall back to insertion order,
+  same underlying issue as this session's bug) or a distinct depth
+  above it.
 
 ## Next proposed step
 
 Playtest to tune `tune.json`'s starting values (loot chance/value,
-tile HP scaling, upgrade cost curve, `laserFadeMs`, and now the 14
-`debris*` values) — they're seeded placeholders, not yet human-tuned.
-Beyond that, the currency/loot HUD row (still a plain text line,
-"Loot: N") remains the next obvious placeholder-art swap-in candidate
-if/when matching art exists.
+tile HP scaling, upgrade cost curve, `laserFadeMs`, and the remaining
+un-tuned `debris*` values) — they're seeded placeholders, not yet
+human-tuned. Beyond that, the currency/loot HUD row (still a plain
+text line, "Loot: N") remains the next obvious placeholder-art swap-in
+candidate if/when matching art exists.
