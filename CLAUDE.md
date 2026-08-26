@@ -8,6 +8,12 @@ This repo holds small browser-based game prototypes. Prototypes are
 disposable. Favour clarity and speed of iteration over robustness,
 abstraction, or reuse.
 
+Before starting any task, check CHANGELOG.md at the repo root
+for entries newer than the prototype's own last-touched date.
+If a relevant base-level change exists that the current task
+should account for, apply it as part of the task and note that
+you did so.
+
 ## Roles
 
 - The user writes design briefs and produces all artwork.
@@ -32,6 +38,12 @@ Fixed. Do not add, swap, or upgrade any of these without asking first.
   should default to the itch.io/Butler path; only use GitHub Pages if a
   prototype specifically needs it.
 - Art storage: Cloudflare R2
+
+React and Tailwind CSS are locked additions, used exclusively for
+UI chrome layered over the Phaser canvas (see UI implementation
+split below). Added via @vitejs/plugin-react. Do not use React
+for game-world rendering, Phaser owns the canvas and play
+surface.
 
 Do not add dependencies to solve problems the stack already solves.
 If a new dependency seems necessary, ask before installing it.
@@ -132,6 +144,25 @@ scope of a prototype.
 Build all mechanics with coloured rectangles first. Do not wait on
 artwork, and do not treat missing art as a blocker. Art is swapped in
 only after the loop is confirmed working.
+
+## UI implementation split
+
+Gameplay/render logic and UI chrome are built separately.
+
+- UI chrome (HUD, menus, lobby/join screens, hand/card displays,
+  logs, overlays) is designed visually in Claude Design (React +
+  Tailwind) and handed off as a mockup.
+- Claude Code wires that mockup's components directly to game
+  state (e.g. suits-mp's masked publicState payload) as a DOM
+  layer over the Phaser canvas. No translation to vanilla
+  HTML/CSS, React ships in the repo.
+- Game-world elements requiring WebGL effects (particles,
+  shaders, Post FX, anything that's part of the play surface
+  itself) stay in-canvas via Phaser and are NOT candidates for
+  the React UI layer.
+- This applies to all prototypes going forward, retroactively.
+  Existing UI code in any prototype is not force-migrated; a
+  prototype adopts this pattern the next time it does UI work.
 
 ## Tuning
 
