@@ -4,9 +4,25 @@ House rules for this repository. Read fully before starting any task.
 
 ## Purpose
 
-This repo holds small browser-based game prototypes. Prototypes are
-disposable. Favour clarity and speed of iteration over robustness,
-abstraction, or reuse.
+This repo holds small browser-based game prototypes. Individual
+prototypes are still fast to stand up and free to abandon, but
+this repo is also building durable, reusable infrastructure over
+time (networking, UI patterns, and similar systems that prove
+useful across more than one prototype).
+
+Actively look for opportunities to extract reusable packages
+rather than waiting for a rule-of-three. If something built for
+one prototype looks likely to be useful in another, propose
+extracting it into a shared package instead of leaving it
+duplicated. See STACK.md for what's already available to reuse.
+
+A prototype must always be able to start with zero shared
+packages and add any shared package later as a normal opt-in
+dependency, without restructuring. A prototype that has not
+opted into a given shared package must never break because that
+package changed elsewhere in the repo. Shared packages are
+versioned; a prototype pins the version it depends on and only
+moves to a newer version deliberately, never automatically.
 
 Before starting any task, check CHANGELOG.md at the repo root
 for entries newer than the prototype's own last-touched date.
@@ -57,8 +73,16 @@ prototypes/<name>/     One self-contained prototype
 scripts/               Build, pack, fetch, screenshot
 .github/workflows/     CI
 
-No shared code library. If something is needed in two prototypes, copy
-it. Only propose extracting shared code after the third copy exists.
+Shared, reusable code lives in packages/<name>/, imported by any
+prototype that opts in. Prototype-specific code stays local to
+that prototype's own folder and is not shared by default. See
+STACK.md for the current list of shared packages and what each
+one provides.
+
+(Note: packages/ does not exist yet as of this brief. This
+section describes where shared packages will live once workspace
+conversion happens in a later task. Do not create packages/ or
+move any code as part of this brief.)
 
 ## Art pipeline
 
