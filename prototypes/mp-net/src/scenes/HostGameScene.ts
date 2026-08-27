@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { matchRosterEntryForReconnect } from 'mp-core';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
 import { bindPrimaryIntent } from '../input/intents';
@@ -92,7 +93,7 @@ export class HostGameScene extends Phaser.Scene {
     };
 
     actions.identity.onMessage = (clientId, context) => {
-      const entry = this.roster.get(clientId);
+      const entry = matchRosterEntryForReconnect(this.roster, clientId, context.peerId);
       if (!entry) {
         // Game already started and this client ID has no roster slot: a
         // stranger, not a reconnect. Reject rather than let them in silently.
@@ -100,7 +101,6 @@ export class HostGameScene extends Phaser.Scene {
         return;
       }
 
-      entry.peerId = context.peerId;
       this.peerToClient.set(context.peerId, clientId);
       this.addRow(clientId, entry.isHost);
       this.renderRow(clientId);

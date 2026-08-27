@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { matchRosterEntryForReconnect } from 'mp-core';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -81,13 +82,12 @@ export class HostGameScene extends Phaser.Scene {
       };
 
       actions.identity.onMessage = (clientId, context) => {
-        const entry = this.roster.get(clientId);
+        const entry = matchRosterEntryForReconnect(this.roster, clientId, context.peerId);
         if (!entry) {
           // No roster slot for this client ID: a stranger, not a reconnect.
           void actions.hostUI.send({ type: 'alreadyInProgress' }, { target: context.peerId });
           return;
         }
-        entry.peerId = context.peerId;
         void actions.hostUI.send({ type: 'gameStarted' }, { target: context.peerId });
         // Reconnect: immediately re-send this peer's current masked payload
         // rather than waiting for the next game-state change.

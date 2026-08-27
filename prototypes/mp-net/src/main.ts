@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO } from './render/pixelRatio';
-import { getOrCreateClientId } from './net/clientId';
+import { getOrCreateClientId } from 'mp-core';
 import { fetchTurnIceServers } from './turn/turnConfig';
 import { normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
@@ -16,7 +16,7 @@ import type { BootData } from './net/playerSession';
 mountDebugPanelIfRequested();
 
 const bootData: BootData = {
-  clientId: getOrCreateClientId(),
+  clientId: getOrCreateClientId('mp-net:clientId'),
   // Kicked off immediately so it's ready (or has failed and fallen back) by
   // the time the user actually hosts or joins, without blocking the landing
   // screen from rendering.

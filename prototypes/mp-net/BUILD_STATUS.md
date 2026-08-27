@@ -7,6 +7,15 @@ connection failure states, and a "game already in progress" rejection.
 It's the networking foundation suits-mp was later built on top of. No
 open work in flight. Version stamp counter is at 6 (`version.json`).
 
+This session's change is infrastructure-only: mp-net's client ID
+generation, generic Trystero action-channel creation (`identity`/
+`hostUI`/`input`/`analogInput`/`inputDelta`), and identity-matched
+reconnect handshake (debounced disconnect + roster match-or-create /
+match-for-reconnect) now come from the new shared `packages/mp-core`
+workspace package instead of a locally duplicated copy also present in
+suits-mp. No gameplay, UI, or wire-protocol behavior changed - see "Key
+technical decisions" below.
+
 ## What was implemented
 
 - Landing screen: **Host** or **Join**; `?lobby=XXXXX` invite links skip
@@ -66,6 +75,17 @@ open work in flight. Version stamp counter is at 6 (`version.json`).
   rebroadcasts) replaces mp-base's simpler bitmask `input` for this
   prototype's test mechanic, specifically to prove round-trip delivery
   under real network latency rather than a local optimistic update.
+- mp-core extraction (this session): `packages/mp-core` was scoped down
+  from the repo brief's initial assumption. suits-mp turned out *not* to
+  share the generic `input`/`analogInput`/`inputDelta` bitmask channels
+  at all (it uses its own `gameAction`/`state` channels instead) - only
+  `identity`/`hostUI` channel creation and the identity-matched
+  reconnect handshake (debounce + roster match) are genuinely shared
+  between mp-net and suits-mp, so that's what actually moved into the
+  package. mp-net still composes the full generic channel set locally
+  via mp-core's per-channel creators. mp-base is intentionally *not*
+  wired to mp-core yet (separate later brief, alongside its rename to
+  mp-console) - it keeps its own local copy of the same logic for now.
 
 ## Open questions
 
@@ -83,4 +103,8 @@ No further work planned on mp-net itself. It now mainly serves as the
 networking/TURN/room-code-refresh reference that suits-mp ported from -
 see suits-mp's own BUILD_STATUS.md for what diverged (masking
 architecture) and what's still shared verbatim (TURN relay, room code
-refresh, identity/reconnect pattern).
+refresh, identity/reconnect pattern - the latter two now literally
+shared via `packages/mp-core`, not just parallel copies). mp-base is a
+candidate to also wire onto `packages/mp-core` in a future brief
+(alongside its planned rename to mp-console), but that's explicitly out
+of scope for this session.

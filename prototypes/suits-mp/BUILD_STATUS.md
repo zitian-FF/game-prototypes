@@ -10,6 +10,15 @@ redistribution stacks, previous-trick log) replacing the original Stage
 animation polish are explicitly future work, not started. Version stamp
 counter is at 8 (`version.json`).
 
+This session's change is infrastructure-only: suits-mp's client ID
+generation, `identity`/`hostUI` action-channel creation, and
+identity-matched reconnect handshake (debounced disconnect + roster
+match-or-create with the room-capacity/slot-assignment check preserved
+as a local callback, plus match-for-reconnect mid-game) now come from
+the new shared `packages/mp-core` workspace package instead of a
+locally duplicated copy also present in mp-net. No gameplay, UI, or
+wire-protocol behavior changed - see "Key technical decisions" below.
+
 ## What was implemented
 
 - Networking: ported from mp-net (landing screen, 5-char room code,
@@ -102,6 +111,18 @@ counter is at 8 (`version.json`).
   the leader's own screen from their local (never-networked) selection.
   This was flagged to the user mid-implementation before landing on
   that resolution (see Open questions).
+- mp-core extraction (this session): only `identity`/`hostUI` channel
+  creation and the identity-matched reconnect handshake moved into
+  `packages/mp-core` - suits-mp's own `gameAction`/`state` channels,
+  masking, capacity check, and slot assignment all stay local (the repo
+  brief for this had assumed suits-mp's action set was close to a
+  superset of mp-net's generic `input`/`analogInput`/`inputDelta`
+  channels; on inspection it isn't a superset at all - suits-mp never
+  used those channels, they were replaced wholesale by the turn-based
+  `gameAction`/`state` pair). The room-full/slot-assignment check that
+  used to run inline in the identity handler is now passed as a
+  `createEntry` callback into mp-core's `matchOrCreateRosterEntry`,
+  preserving the exact same reject-vs-create behavior.
 
 ## Open questions
 
@@ -149,4 +170,6 @@ the `host/mask.ts` facedown-card payload leak should get a real fix
 (currently only patched at the UI layer) before this prototype is
 considered network-security-complete. Stage 3 (real visual/sprite card
 art, turn-indicator animation) remains unstarted and out of scope until
-explicitly requested.
+explicitly requested. See mp-net's own BUILD_STATUS.md for what's next
+on the shared `packages/mp-core` side (mp-base is a candidate to also
+wire onto it in a future brief).
