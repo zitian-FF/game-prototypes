@@ -1,0 +1,8 @@
+{
+  "name": "mp-console-prototype",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "mp-core": "^0.1.0"
+  }
+}

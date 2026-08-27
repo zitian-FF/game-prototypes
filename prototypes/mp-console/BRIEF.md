@@ -1,4 +1,4 @@
-# mp-base
+# mp-console
 
 Peer-to-peer multiplayer session base. This is infrastructure, not a game:
 it establishes host/player connection, lobby, and a generic messaging layer
@@ -20,7 +20,7 @@ Phaser 3 + TypeScript + Vite, same as the other prototypes, plus:
    - Host generates a 5-character alphanumeric lobby code.
    - Enters lobby scene: shows lobby code, a QR code encoding the current
      page URL + `?lobby=<code>`, and a live list of joined players.
-   - Host calls `joinRoom({appId: 'mp-base'}, lobbyCode)` from trystero.
+   - Host calls `joinRoom({appId: 'mp-console'}, lobbyCode)` from trystero.
 
 2. Visiting with `?lobby=XXXXX` = PLAYER.
    - Immediately joins that room via the lobby code.
@@ -34,7 +34,7 @@ The reusable part future prototypes will build on:
   on change, not every frame.
 - `analogInput`: small `{x, y}` pair, for continuous input, separate from
   the bitmask channel. Defined here for future prototypes; unused by
-  mp-base's own test mechanic.
+  mp-console's own test mechanic.
 - `hostUI`: plain object, host -> player(s), for pushing UI/state updates
   to a specific player's device.
 - `identity`: handshake action. On join, player sends a persistent client
@@ -48,7 +48,7 @@ code/QR, the `identity` handshake lets host match them to their existing
 roster slot instead of creating a new one. Actual game-state resync
 beyond the roster/counter is a hook (`onPlayerReconnect`-shaped: the host
 re-sends `hostUI: {type: 'gameStarted'}` targeted at the reconnecting
-peer once identified) that future game layers extend; mp-base only wires
+peer once identified) that future game layers extend; mp-console only wires
 up the counter state described below.
 
 If the peer that leaves is the host, players detect this specifically

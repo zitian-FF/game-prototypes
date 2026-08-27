@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
+import { matchOrCreateRosterEntry } from 'mp-core';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -24,7 +25,7 @@ export class HostLobbyScene extends Phaser.Scene {
     const { room, actions, lobbyCode } = data;
 
     this.add
-      .text(width / 2, 24, 'mp-base host', {
+      .text(width / 2, 24, 'mp-console host', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#ffffff',
@@ -86,12 +87,12 @@ export class HostLobbyScene extends Phaser.Scene {
     };
 
     actions.identity.onMessage = (clientId, context) => {
-      const existing = this.roster.get(clientId);
-      if (existing) {
-        existing.peerId = context.peerId;
-      } else {
-        this.roster.set(clientId, { clientId, peerId: context.peerId, counter: 0, lastInputMask: 0 });
-      }
+      matchOrCreateRosterEntry(this.roster, clientId, context.peerId, () => ({
+        clientId,
+        peerId: context.peerId,
+        counter: 0,
+        lastInputMask: 0,
+      }));
       renderRoster();
     };
 

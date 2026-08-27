@@ -32,10 +32,10 @@ Two networking foundations exist, both built on Trystero
 (WebRTC via Nostr signaling relays, pinned to a known-reliable
 relay set, see CLAUDE.md's Networking section):
 
-- mp-console (formerly mp-base): local/couch multiplayer. One
-  stationary host device (landscape), other players join by
-  scanning a QR code shown on the host's screen. No internet NAT
-  traversal concerns, all players are physically nearby.
+- mp-console: local/couch multiplayer. One stationary host device
+  (landscape), other players join by scanning a QR code shown on
+  the host's screen. No internet NAT traversal concerns, all
+  players are physically nearby.
 - mp-net: remote/internet multiplayer. Any device can host
   (portrait for everyone, including host), players join via a
   typed room code or invite link. Adds TURN relay fallback (a
@@ -43,15 +43,17 @@ relay set, see CLAUDE.md's Networking section):
   where STUN-based peer-to-peer connection fails on its own
   (mainly symmetric NAT / mobile carrier CGNAT).
 
-Both share the same underlying reusable primitives: an intent-
-style action set (input, analogInput, inputDelta, hostUI,
-identity) and an identity-matched reconnect handshake.
+Both build on the same shared package, packages/mp-core: client-ID
+generation, identity/hostUI channel creation, generic input/
+analogInput/inputDelta channel creators, and an identity-matched
+reconnect handshake. Not every consumer uses every piece - e.g.
+mp-console has no inputDelta channel, and its reconnect handling
+differs from mp-net's in shape (see packages/mp-core/README.md and
+each prototype's own BUILD_STATUS.md for the specifics).
 
-Status: currently implemented as separate, duplicated code across
-mp-base, mp-net, and suits-mp. Extraction into a shared
-packages/mp-core package, consumed by all three, is planned as a
-near-term follow-up. This document will be updated once that
-lands.
+Status: mp-net, suits-mp, and mp-console are all wired onto
+packages/mp-core now - no prototype carries its own duplicated copy
+of this logic anymore.
 
 ## What "available to a prototype" means in practice
 
@@ -59,9 +61,9 @@ A new prototype starts with just the core engine stack above and
 adds shared packages only as needed:
 
 - Need couch/local multiplayer? Depend on mp-console (or
-  packages/mp-core directly, once it exists).
+  packages/mp-core directly).
 - Need internet multiplayer? Depend on mp-net (or packages/mp-core
-  directly, once it exists).
+  directly).
 - Need UI chrome? Use the React + Tailwind DOM overlay pattern.
 - Need none of the above? Build with just Phaser/TS/Vite, same as
   digger does today.
