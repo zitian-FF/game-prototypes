@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { createReconnectDebouncer, matchOrCreateRosterEntry } from 'mp-core';
+import type { ReconnectDebouncer } from 'mp-core';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { createNetworkRoom } from '../net/room';
@@ -9,7 +11,7 @@ import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
 import { ROOM_CAPACITY } from '../net/types';
-import type { Roster } from '../net/types';
+import type { Roster, RosterEntry } from '../net/types';
 
 // Safety cap on the collision-retry loop; with a 32-character, 5-slot
 // alphabet a real collision run this long is not expected in practice,
@@ -41,8 +43,12 @@ export class HostLobbyScene extends Phaser.Scene {
 
   // Debounces roster removal on disconnect (mobile connections blip
   // constantly) and is cancelled if the same client ID reappears before
-  // the timer fires.
-  private pendingRemoval = new Map<string, ReturnType<typeof setTimeout>>();
+  // the timer fires. See packages/mp-core.
+  private reconnectDebouncer: ReconnectDebouncer<RosterEntry> = createReconnectDebouncer(
+    this.roster,
+    tune.disconnectDebounceMs,
+    () => this.renderRoster(),
+  );
 
   constructor() {
     super('HostLobby');
@@ -188,48 +194,29 @@ export class HostLobbyScene extends Phaser.Scene {
   // again after swapping in a new room.
   private wireRoomHandlers(): void {
     this.actions.identity.onMessage = (clientId, context) => {
-      const pending = this.pendingRemoval.get(clientId);
-      if (pending) {
-        clearTimeout(pending);
-        this.pendingRemoval.delete(clientId);
-      }
+      this.reconnectDebouncer.cancelPending(clientId);
 
-      const existing = this.roster.get(clientId);
-      if (existing) {
-        existing.peerId = context.peerId;
-        void this.actions.hostUI.send({ type: 'lobbyJoined' }, { target: context.peerId });
-        this.renderRoster();
-        return;
-      }
+      const result = matchOrCreateRosterEntry(this.roster, clientId, context.peerId, () => {
+        if (this.roster.size >= ROOM_CAPACITY) return null;
+        return {
+          clientId,
+          peerId: context.peerId,
+          slot: nextAvailableSlot(this.roster),
+          isHost: false,
+        };
+      });
 
-      if (this.roster.size >= ROOM_CAPACITY) {
+      if (result.kind === 'rejected') {
         void this.actions.hostUI.send({ type: 'roomFull' }, { target: context.peerId });
         return;
       }
 
-      this.roster.set(clientId, {
-        clientId,
-        peerId: context.peerId,
-        slot: nextAvailableSlot(this.roster),
-        isHost: false,
-      });
       void this.actions.hostUI.send({ type: 'lobbyJoined' }, { target: context.peerId });
       this.renderRoster();
     };
 
     this.room.onPeerLeave = (peerId) => {
-      for (const entry of this.roster.values()) {
-        if (entry.peerId !== peerId || entry.isHost) continue;
-        this.pendingRemoval.set(
-          entry.clientId,
-          setTimeout(() => {
-            this.roster.delete(entry.clientId);
-            this.pendingRemoval.delete(entry.clientId);
-            this.renderRoster();
-          }, tune.disconnectDebounceMs),
-        );
-        break;
-      }
+      this.reconnectDebouncer.scheduleRemovalOnLeave(peerId, (entry) => entry.isHost);
     };
   }
 
@@ -239,8 +226,7 @@ export class HostLobbyScene extends Phaser.Scene {
     // Cancel any removals still pending debounce - once the game starts, a
     // disconnect preserves the roster slot instead, so nothing scheduled
     // here should go on to delete it.
-    for (const timer of this.pendingRemoval.values()) clearTimeout(timer);
-    this.pendingRemoval.clear();
+    this.reconnectDebouncer.clearAll();
     // HostGameScene owns room.onPeerLeave from here (a mid-game disconnect
     // preserves the slot for reconnect) so this lobby-scoped handler
     // doesn't keep running against a Map that's no longer meant to lose
@@ -273,8 +259,7 @@ export class HostLobbyScene extends Phaser.Scene {
       for (const [clientId, entry] of [...this.roster.entries()]) {
         if (!entry.isHost) this.roster.delete(clientId);
       }
-      for (const timer of this.pendingRemoval.values()) clearTimeout(timer);
-      this.pendingRemoval.clear();
+      this.reconnectDebouncer.clearAll();
 
       let code = this.code;
       let room = createNetworkRoom(code, { iceServers: this.iceServers });

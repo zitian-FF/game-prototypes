@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO } from './render/pixelRatio';
-import { getOrCreateClientId } from './net/clientId';
+import { getOrCreateClientId } from 'mp-core';
 import { fetchTurnIceServers } from './turn/turnConfig';
 import { normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
@@ -28,7 +28,7 @@ function lazyIceServers(): () => Promise<RTCIceServer[] | undefined> {
 }
 
 const bootData: BootData = {
-  clientId: getOrCreateClientId(),
+  clientId: getOrCreateClientId('suits-mp:clientId'),
   getIceServers: lazyIceServers(),
 };
 

@@ -3,11 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": ["prototypes/*", "packages/*"],
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build:packages && vite",
+    "build:packages": "npm run build --workspaces --if-present",
+    "prebuild": "npm run build:packages",
     "build": "vite build",
     "preview": "vite preview",
-    "pretypecheck": "node scripts/generate-versions.js",
+    "pretypecheck": "node scripts/generate-versions.js && npm run build:packages",
     "typecheck": "tsc --noEmit",
     "fetch:assets": "node scripts/fetch-assets.js",
     "pack:assets": "node scripts/pack-assets.js"
