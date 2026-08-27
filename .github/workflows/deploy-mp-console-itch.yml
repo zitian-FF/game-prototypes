@@ -1,21 +1,21 @@
-name: Deploy mp-base to itch.io
+name: Deploy mp-console to itch.io
 
 on:
   push:
     branches: [main]
     paths:
-      - 'prototypes/mp-base/**'
+      - 'prototypes/mp-console/**'
       - 'scripts/generate-versions.js'
       - 'scripts/bump-version.js'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.ts'
       - 'tsconfig.json'
-      - '.github/workflows/deploy-mp-base-itch.yml'
+      - '.github/workflows/deploy-mp-console-itch.yml'
   workflow_dispatch:
 
 concurrency:
-  group: itch-mp-base
+  group: itch-mp-console
   cancel-in-progress: true
 
 permissions:
@@ -45,7 +45,7 @@ jobs:
       # successful push to itch.io below, so a failed deploy doesn't burn a
       # version number.
       - name: Bump version stamp counter
-        run: node scripts/bump-version.js mp-base
+        run: node scripts/bump-version.js mp-console
 
       # itch.io serves each upload from a build-specific path, so asset URLs
       # must be relative rather than the "/game-prototypes/" absolute base
@@ -55,11 +55,11 @@ jobs:
         run: npx vite build --base ./
 
       # dist/ contains the hub page and every prototype because Vite builds
-      # all entry points together. Only mp-base's page (and the shared
-      # assets/ chunks it references) needs to ship to mp-base's itch
+      # all entry points together. Only mp-console's page (and the shared
+      # assets/ chunks it references) needs to ship to mp-console's itch
       # project, so drop the rest. This also leaves exactly one HTML file
       # in the upload, which itch.io auto-selects as the played file.
-      - name: Prune build to mp-base only
+      - name: Prune build to mp-console only
         run: |
           rm -f dist/index.html
           rm -rf dist/prototypes/digger
@@ -72,18 +72,18 @@ jobs:
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist zitian-ff/mp-base:web
+        run: butler push dist zitian-ff/mp-console:web
 
       - name: Commit version stamp bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add prototypes/mp-base/version.json
+          git add prototypes/mp-console/version.json
           if git diff --cached --quiet; then
             echo "No version bump to commit"
             exit 0
           fi
-          git commit -m "Bump mp-base version stamp counter"
+          git commit -m "Bump mp-console version stamp counter"
 
           # Other prototypes' itch.io deploys can trigger on the same push
           # (they share root files like package.json in their own path

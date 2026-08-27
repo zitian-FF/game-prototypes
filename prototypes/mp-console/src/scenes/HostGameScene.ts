@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { matchOrCreateRosterEntry } from 'mp-core';
 import { addVersionStamp } from '../version/versionStamp';
 import { createOrientationGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -51,13 +52,12 @@ export class HostGameScene extends Phaser.Scene {
     }
 
     actions.identity.onMessage = (clientId, context) => {
-      let entry = this.roster.get(clientId);
-      if (!entry) {
-        entry = { clientId, peerId: context.peerId, counter: 0, lastInputMask: 0 };
-        this.roster.set(clientId, entry);
-      } else {
-        entry.peerId = context.peerId;
-      }
+      matchOrCreateRosterEntry(this.roster, clientId, context.peerId, () => ({
+        clientId,
+        peerId: context.peerId,
+        counter: 0,
+        lastInputMask: 0,
+      }));
       this.peerToClient.set(context.peerId, clientId);
       this.addRow(clientId);
       this.renderRow(clientId);

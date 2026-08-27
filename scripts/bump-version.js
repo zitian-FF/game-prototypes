@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Increments the deploy counter in prototypes/<name>/version.json by one.
 // Called once per successful deploy by that prototype's itch.io workflow
-// (see .github/workflows/deploy-mp-base-itch.yml), which commits the
+// (see .github/workflows/deploy-mp-console-itch.yml), which commits the
 // updated file back to main. scripts/generate-versions.js then picks up the
 // new value on the next build.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';

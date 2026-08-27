@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO } from './render/pixelRatio';
-import { getOrCreateClientId } from './net/clientId';
+import { getOrCreateClientId } from 'mp-core';
 import { createNetworkRoom } from './net/room';
 import { createNetworkActions } from './net/actions';
 import type { SharedNetData } from './net/types';
@@ -24,7 +24,7 @@ const lobbyParam = params.get('lobby');
 const isHost = !lobbyParam;
 const lobbyCode = isHost ? randomLobbyCode() : lobbyParam.toUpperCase();
 
-const clientId = getOrCreateClientId();
+const clientId = getOrCreateClientId('mp-console:clientId');
 const room = createNetworkRoom(lobbyCode);
 const actions = createNetworkActions(room);
 

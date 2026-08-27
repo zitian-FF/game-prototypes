@@ -64,7 +64,7 @@ jobs:
           rm -f dist/index.html
           rm -rf dist/prototypes/digger
           rm -rf dist/prototypes/suits
-          rm -rf dist/prototypes/mp-base
+          rm -rf dist/prototypes/mp-console
           rm -rf dist/prototypes/mp-net
 
       - name: Set up butler

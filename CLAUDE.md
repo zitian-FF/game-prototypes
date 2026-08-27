@@ -132,7 +132,7 @@ bindings are acceptable; absent ones are not.
 ## Networking
 
 Prototypes using Trystero's Nostr strategy for WebRTC signaling
-(mp-base, mp-net) must pin `relayConfig.urls` to a small set of
+(mp-console, mp-net) must pin `relayConfig.urls` to a small set of
 well-established, widely-used public relays (e.g. `relay.damus.io`,
 `nos.lol`, `relay.mostr.pub`, `purplerelay.com`, `nostr.data.haus`)
 rather than relying on Trystero's default relay selection. That
@@ -250,7 +250,7 @@ correct.
 - This rule applies to this prototype and all future ones going
   forward, and unlike most rules in this file, it has been
   retroactively applied to prototypes that predate it (digger, suits,
-  mp-base, mp-net) since the visual quality gap on high-DPI phones was
+  mp-console, mp-net) since the visual quality gap on high-DPI phones was
   considered a bug rather than a missed feature.
 
 ## Verification before reporting done
@@ -299,7 +299,7 @@ including ones with no `BUILD_STATUS.md` yet.
 - Commit messages: imperative mood, one line, no trailing period.
 - Auto-merge is enabled on every PR in this repo (CI-pass-gated, no
   manual review required) - this is the default going forward for
-  all prototypes, not just mp-base and mp-net.
+  all prototypes, not just mp-console and mp-net.
 
 ## Scope discipline
 
