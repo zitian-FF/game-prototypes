@@ -1,39 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './GameOverlay.css';
-import { PLACEHOLDER_NAMES, SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
-import type { SeatDelegateState } from './gameOverlayStore';
+import { SEAT_ORDER, SUITS } from './overlayContent';
+import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
-// Two different things live in this one component, deliberately:
+// Every value here is real: seatLabels/currentTurnSeat/starterSeat/
+// leadGodIndex/teamName/the god chips are all computed from the live
+// MaskedState by ui/renderGameView.ts and threaded through
+// gameOverlayStore.ts - this component only renders them plus two small
+// bits of pure presentation bookkeeping:
 //
-// - The name tags, Suit Cycle HUD, turn indicator wheel, and Trick
-//   Starter tag are placeholder/demo display only - a local `demo` state
-//   (turn/lead/trick/starter counters, ported near-verbatim from the
-//   design's own self-contained Component class) drives their rotation
-//   and highlighting. They do not read real MaskedState - real-state
-//   wiring is a separate future task (see BUILD_STATUS.md). This is why
-//   the real Suit Cycle HUD/name-tag/turn-dot/starter-dot drawing that
-//   used to live in ui/renderGameView.ts's renderPlayerCluster/
-//   renderYourRow was removed rather than left running alongside this -
-//   the two would otherwise show conflicting "whose turn"/"who's leading"
-//   information.
-// - The "Order" (sort) and "Action" (Invoke) buttons, and each seat tag's
-//   delegate-selection tap target, ARE real: sortLabel/onToggleSort and
-//   actionLabel/actionEnabled/onAction are threaded from
-//   ui/renderGameView.ts's real render pass via gameOverlayStore.ts,
-//   same as before just re-skinned. Order/Action are simple prop
-//   threading, not rules-engine work; and dropping the delegate tap
-//   target for real would leave a real bot game stuck with no legal way
-//   to proceed past a double win (Twin Awakening) - both were kept
-//   working rather than faked, per explicit user direction mid-task.
+// - useForwardRotation (below) turns a real 0-3 seat/suit-cycle index
+//   into cumulative rotation degrees, so the turn wheel and Suit Cycle
+//   HUD always turn forward and never snap back, even though the
+//   underlying index just wraps 0->3->0. currentTurnSeat/leadGodIndex
+//   coming back `null` (indeterminate - e.g. between tricks, or an
+//   opponent is about to lead but hasn't committed) freezes the wheel at
+//   its last real position rather than snapping to a default.
+// - Real per-seat delegate-selection tap targets (`seatDelegate`): during
+//   the selectDelegate phase, tapping another seat's name tag is the
+//   real (and only) way to choose who performs a redistribution - see
+//   gameOverlayStore.ts's header comment for why this stays wired
+//   directly rather than going through some intermediate placeholder.
 //
-// Every real Action click also pulses the placeholder `demo` state
-// forward (see handleAction) - purely so the rotation this task asks for
-// is actually exercised during real play, not a claim that the demo
-// state reflects the real turn that just happened.
+// This replaces the equivalent Phaser-drawn HUD that used to live in
+// ui/renderGameView.ts's renderPlayerCluster/renderYourRow (removed) -
+// the "Order" and "Action" buttons here are the same real controls that
+// lived there too, just re-skinned to match the design.
 
 export interface GameOverlayProps {
   sortLabel: string;
@@ -43,18 +39,55 @@ export interface GameOverlayProps {
   actionEnabled: boolean;
   onAction: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
+  seatLabels: Record<SeatPosition, string>;
+  currentTurnSeat: SeatPosition | null;
+  starterSeat: SeatPosition | null;
+  leadGodIndex: number | null;
+  teamName: string;
+  yourGodChip: GodChipState;
+  teammateGodChip: GodChipState;
 }
 
-interface DemoState {
-  turn: number;
-  lead: number;
-  trick: number;
-  starter: number;
-  turnTurns: number;
-  leadTurns: number;
+// Accumulates forward-only rotation degrees from a real 0..order-1 index
+// that may jump straight from one value to another (never animating
+// through intermediate ones) and may go `null` (indeterminate - freeze at
+// the last known position). `stepDeg` is the rotation applied per forward
+// step around the cycle (positive to rotate clockwise, negative
+// counter-clockwise - the turn wheel and Suit Cycle HUD each need one).
+function useForwardRotation(index: number | null, order: number, stepDeg: number): number {
+  const [rotation, setRotation] = useState<number>(() => (index ?? 0) * stepDeg);
+  const prevIndexRef = useRef<number | null>(index);
+
+  useEffect(() => {
+    const prev = prevIndexRef.current;
+    if (index === null || index === prev) return;
+    if (prev === null) {
+      // First real value after being indeterminate (including at mount) -
+      // jump straight there rather than accumulating from an arbitrary
+      // starting guess.
+      setRotation(index * stepDeg);
+    } else {
+      const steps = ((index - prev) % order + order) % order;
+      setRotation((r) => r + steps * stepDeg);
+    }
+    prevIndexRef.current = index;
+  }, [index, order, stepDeg]);
+
+  return rotation;
 }
 
-const DEFAULT_DEMO: DemoState = { turn: 0, lead: 0, trick: 1, starter: 0, turnTurns: 0, leadTurns: 0 };
+// Remembers the last non-null value seen - used for the Suit Cycle HUD's
+// "Lead" text, which should keep showing the last real lead suit while
+// the ring itself is frozen (leadGodIndex went indeterminate) rather than
+// blank out, even though the rotation and the label are tracked
+// separately.
+function useLastKnown(value: number | null): number | null {
+  const ref = useRef<number | null>(value);
+  useEffect(() => {
+    if (value !== null) ref.current = value;
+  }, [value]);
+  return value !== null ? value : ref.current;
+}
 
 // Layout constants matching ui/renderGameView.ts's real seat/cluster
 // geometry by value (CENTER_X, CLUSTER_CENTER_Y) so this DOM chrome lines
@@ -74,33 +107,27 @@ const TEAM_HUD_TOP = 514;
 const SORT_BUTTON_TOP = 588;
 const ACTION_BUTTON_BOTTOM = 54;
 
-function nextDemo(s: DemoState): DemoState {
-  const next = (s.turn + 1) % 4;
-  const wrapped = next === s.starter;
-  return {
-    turn: wrapped ? (s.starter + 1) % 4 : next,
-    turnTurns: s.turnTurns + 1,
-    trick: wrapped ? s.trick + 1 : s.trick,
-    starter: wrapped ? (s.starter + 1) % 4 : s.starter,
-    lead: wrapped ? (s.lead + 1) % 4 : s.lead,
-    leadTurns: wrapped ? s.leadTurns + 1 : s.leadTurns,
-  };
-}
-
-export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, actionEnabled, onAction, seatDelegate }: GameOverlayProps): JSX.Element {
-  const [demo, setDemo] = useState<DemoState>(DEFAULT_DEMO);
-
-  const handleAction = (): void => {
-    onAction();
-    setDemo(nextDemo);
-  };
-
-  // Accumulate rotation so the wheels always turn forward, never snap
-  // back - ported directly from the design's own renderVals().
-  const turnDeg = Math.floor(demo.turnTurns / 4) * 360 + SEAT_DEG[SEAT_ORDER[demo.turn]];
-  const suitDeg = -(demo.lead * 90) - Math.floor(demo.leadTurns / 4) * 360;
-  const leadShort = SUITS[demo.lead].short;
-  const starterSeat = SEAT_ORDER[demo.starter];
+export function GameOverlay({
+  sortLabel,
+  onToggleSort,
+  actionLabel,
+  actionHint,
+  actionEnabled,
+  onAction,
+  seatDelegate,
+  seatLabels,
+  currentTurnSeat,
+  starterSeat,
+  leadGodIndex,
+  teamName,
+  yourGodChip,
+  teammateGodChip,
+}: GameOverlayProps): JSX.Element {
+  const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
+  const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
+  const suitDeg = useForwardRotation(leadGodIndex, 4, -90);
+  const knownLeadGodIndex = useLastKnown(leadGodIndex);
+  const leadShort = knownLeadGodIndex === null ? '—' : SUITS[knownLeadGodIndex].short;
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -324,7 +351,7 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
                 >
                   <span style={{ color: 'oklch(0.84 0.11 84)', fontSize: 11, textShadow: '0 0 12px rgba(226, 182, 84, 0.8)' }}>✦</span>
                   <span data-bind="player-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 20, letterSpacing: '0.03em', color: 'oklch(0.95 0.04 90)' }}>
-                    {PLACEHOLDER_NAMES[seat]}
+                    {seatLabels[seat]}
                   </span>
                   <span
                     style={{
@@ -381,7 +408,7 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
                     minWidth: 0,
                   }}
                 >
-                  {PLACEHOLDER_NAMES[seat]}
+                  {seatLabels[seat]}
                 </span>
               </button>
             )}
@@ -406,7 +433,7 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
         );
       })}
 
-      {/* ===== Team / god identity HUD (static placeholder) ===== */}
+      {/* ===== Team / god identity HUD ===== */}
       <div
         data-ui="team-hud"
         style={{
@@ -429,13 +456,13 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(196, 178, 224, 0.6)' }}>Thy covenant</span>
           <span data-bind="team-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 18, lineHeight: 1.05, color: 'oklch(0.88 0.09 88)' }}>
-            Team Cosmos
+            {teamName}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <div
             data-ui="god-chip"
-            data-god="YS"
+            data-god={yourGodChip.code}
             data-assigned="true"
             style={{
               width: 52,
@@ -450,12 +477,12 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
               clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
             }}
           >
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>YS</span>
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>Bound</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>{yourGodChip.code}</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>{yourGodChip.label}</span>
           </div>
           <div
             data-ui="god-chip"
-            data-god="SN"
+            data-god={teammateGodChip.code}
             data-assigned="false"
             style={{
               width: 52,
@@ -469,8 +496,8 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
               clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
             }}
           >
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>SN</span>
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>Kin</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>{teammateGodChip.code}</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>{teammateGodChip.label}</span>
           </div>
         </div>
       </div>
@@ -514,7 +541,7 @@ export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, 
         type="button"
         data-ui="action-button"
         data-enabled={actionEnabled}
-        onClick={actionEnabled ? handleAction : undefined}
+        onClick={actionEnabled ? onAction : undefined}
         disabled={!actionEnabled}
         style={{
           position: 'absolute',

@@ -3,28 +3,26 @@ import type { SeatPosition } from '../../ui/seating';
 // Mirrors dom/domUiStore.ts's and dom/lobby/lobbyUiStore.ts's bridge
 // pattern: the Phaser canvas (renderGameView.ts) still owns and computes
 // real game state every render, and pushes just what this DOM chrome
-// needs through here. Two different kinds of data travel through this
-// bridge, deliberately: sortLabel/onToggleSort and actionLabel/
-// actionEnabled/onAction are REAL (this task keeps the Order/Action
-// controls functional - see GameOverlay.tsx's header comment), while the
-// name tags/Suit Cycle HUD/turn wheel/Trick Starter tag stay internal
-// placeholder state inside GameOverlay itself and read nothing from this
-// store except seatDelegate (see below).
+// needs through here as plain display-ready values - GameOverlay.tsx
+// itself has no game-domain logic, only rendering + rotation bookkeeping.
 //
-// seatDelegate is a narrow exception carrying real per-seat data: during
-// the selectDelegate phase, tapping another seat's name tag is the real
-// (and only) way to choose who performs a redistribution - dropping that
-// interaction entirely (by making name tags purely decorative) would
-// leave a real bot game stuck with no legal way to proceed past a double
-// win. The tag's *displayed* name/starter-tag stays placeholder; only the
-// tap target and its enabled/staged state are real.
+// seatDelegate carries the one interactive exception noted in
+// GameOverlay.tsx's header comment: during the selectDelegate phase,
+// tapping another seat's name tag is the real (and only) way to choose
+// who performs a redistribution.
 export interface SeatDelegateState {
   tappable: boolean;
   staged: boolean;
   onPick: () => void;
 }
 
+export interface GodChipState {
+  code: string;
+  label: string;
+}
+
 const NOOP_SEAT_DELEGATE: SeatDelegateState = { tappable: false, staged: false, onPick: () => {} };
+const BLANK_CHIP: GodChipState = { code: '', label: '' };
 
 export interface GameOverlayUiState {
   visible: boolean;
@@ -35,6 +33,20 @@ export interface GameOverlayUiState {
   actionEnabled: boolean;
   onAction: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
+  // Real per-seat "P1"/"P2 (You)"/etc labels (seatLabelFor + the local
+  // seat's "(You)" suffix) - the only "name" this codebase actually has;
+  // there is no real player-nickname data anywhere in MaskedState/Roster.
+  seatLabels: Record<SeatPosition, string>;
+  // Null when indeterminate (e.g. between tricks, or an opponent is about
+  // to lead but hasn't committed yet) - GameOverlay freezes the turn
+  // wheel/Suit Cycle HUD/Trick Starter tag at their last real value
+  // rather than snapping to a default in that case.
+  currentTurnSeat: SeatPosition | null;
+  starterSeat: SeatPosition | null;
+  leadGodIndex: number | null;
+  teamName: string;
+  yourGodChip: GodChipState;
+  teammateGodChip: GodChipState;
 }
 
 const HIDDEN_STATE: GameOverlayUiState = {
@@ -46,6 +58,13 @@ const HIDDEN_STATE: GameOverlayUiState = {
   actionEnabled: false,
   onAction: () => {},
   seatDelegate: { top: NOOP_SEAT_DELEGATE, right: NOOP_SEAT_DELEGATE, bottom: NOOP_SEAT_DELEGATE, left: NOOP_SEAT_DELEGATE },
+  seatLabels: { top: '', right: '', bottom: '', left: '' },
+  currentTurnSeat: null,
+  starterSeat: null,
+  leadGodIndex: null,
+  teamName: '',
+  yourGodChip: BLANK_CHIP,
+  teammateGodChip: BLANK_CHIP,
 };
 
 let state: GameOverlayUiState = HIDDEN_STATE;

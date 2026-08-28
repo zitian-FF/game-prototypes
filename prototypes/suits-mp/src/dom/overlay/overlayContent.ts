@@ -1,9 +1,7 @@
 import type { SeatPosition } from '../../ui/seating';
+import type { God } from '../../rules/types';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
-// Placeholder-data only, per this task's brief - see GameOverlay.tsx's
-// header comment and BUILD_STATUS.md for what's real vs. placeholder.
-//
 // Seat keys reuse ui/seating.ts's SeatPosition ('top'|'right'|'bottom'|
 // 'left') rather than the design's own "p1".."p4" labels, since those are
 // arbitrary design-tool names for the same four egocentric positions
@@ -24,9 +22,12 @@ export interface SuitInfo {
 }
 
 // Fixed suit-cycle order (Yog-Sothoth -> Cthulhu -> Shub-Niggurath ->
-// Nyarlathotep), matching rules/cards.ts's real cycle - see the Rules
-// modal's own SECTIONS/CYCLE data (dom/rulesContent.ts) for the same
-// order ported for that screen.
+// Nyarlathotep), matching rules/cards.ts's real cycle and the Rules
+// modal's own CYCLE data (dom/rulesContent.ts) for the same order. The
+// design's own 2-letter codes (YS/CT/SN/NY) are kept as-is rather than
+// switched to rules/cards.ts's GOD_ABBR (3-letter: YOG/CTH/SHU/NYA) -
+// pixel fidelity to the source design wins here since both are just
+// abbreviations of the same real god.
 export const SUITS: SuitInfo[] = [
   { code: 'YS', name: 'Yog-Sothoth', short: 'Yog-S.' },
   { code: 'CT', name: 'Cthulhu', short: 'Cthulhu' },
@@ -34,12 +35,10 @@ export const SUITS: SuitInfo[] = [
   { code: 'NY', name: 'Nyarlathotep', short: 'Nyarl.' },
 ];
 
-// Placeholder display names for the name tags - not real roster/player
-// data (see BUILD_STATUS.md's "Open questions" for the real-state-wiring
-// follow-up this defers to).
-export const PLACEHOLDER_NAMES: Record<SeatPosition, string> = {
-  top: 'Abdul A.',
-  right: 'Erich Z.',
-  bottom: 'Randolph C.',
-  left: 'Lavinia W.',
+// This suit cycle's position for each real god - index into SUITS above.
+export const GOD_TO_SUIT_INDEX: Record<God, number> = {
+  YogSothoth: 0,
+  Cthulhu: 1,
+  ShubNiggurath: 2,
+  Nyarlathotep: 3,
 };
