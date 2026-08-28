@@ -14,6 +14,7 @@ import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
+import { closeRules, openRules } from '../dom/domUiStore';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
@@ -256,6 +257,20 @@ function renderWithView(
     }
     return void t;
   };
+
+  // Rules is real content now, rendered by the DOM overlay layer above the
+  // canvas (see dom/RulesModal.tsx) rather than drawn with Phaser
+  // primitives - see root CLAUDE.md's "UI implementation split". Canvas
+  // draws nothing further this frame; closing the modal hands control back
+  // via this same closure.
+  if (ui.overlay === 'rules') {
+    openRules(() => {
+      ui.overlay = 'none';
+      rerender();
+    });
+    return;
+  }
+  closeRules();
 
   if (ui.overlay !== 'none') {
     renderOverlay(scene, container, state, ui.overlay, ui, rerender, rect, text, button);
@@ -735,14 +750,16 @@ function renderRedistLogStub(ui: PersistentUIState, rerender: () => void, button
 }
 
 // --- Overlays: previous-trick log (real content, carried over from an
-// earlier task), Rules and Redistribution-log stubs (real design comes
-// from Claude Design + DOM overlays in Stage 3c - see BRIEF.md) ---------
+// earlier task) and the Redistribution-log stub (real design comes from
+// Claude Design + DOM overlays in a later stage - see BRIEF.md). Rules is
+// handled separately above - it's real content now, rendered by the DOM
+// layer, not this canvas overlay. ---------------------------------------
 
 function renderOverlay(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
   state: MaskedState,
-  kind: Exclude<OverlayKind, 'none'>,
+  kind: Exclude<OverlayKind, 'none' | 'rules'>,
   ui: PersistentUIState,
   rerender: () => void,
   rect: RectFn,
@@ -750,13 +767,11 @@ function renderOverlay(
   button: ButtonFn,
 ): void {
   rect(CENTER_X, HEIGHT / 2, WIDTH, HEIGHT, 0x0c0c10, 1);
-  const title = kind === 'log' ? 'Previous Trick' : kind === 'rules' ? 'Rules' : 'Redistribution Log';
+  const title = kind === 'log' ? 'Previous Trick' : 'Redistribution Log';
   text(CENTER_X, 50, title, '#ffcc66', 16);
 
   if (kind === 'log') {
     renderPreviousTrickOverlay(scene, container, state, text);
-  } else if (kind === 'rules') {
-    text(CENTER_X, HEIGHT / 2 - 20, 'Rules - coming in a later pass.', '#999999', 12);
   } else {
     text(CENTER_X, HEIGHT / 2 - 20, 'Redistribution log - coming in a later pass.', '#999999', 12);
   }

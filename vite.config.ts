@@ -1,4 +1,6 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,6 +33,7 @@ generateVersionStamps(__dirname);
 
 export default defineConfig({
   base: '/game-prototypes/',
+  plugins: [react(), tailwindcss()],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
   },

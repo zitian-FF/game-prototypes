@@ -11,6 +11,7 @@ import { HostLobbyScene } from './scenes/HostLobbyScene';
 import { HostGameScene } from './scenes/HostGameScene';
 import { PlayerLobbyScene } from './scenes/PlayerLobbyScene';
 import { PlayerGameScene } from './scenes/PlayerGameScene';
+import { mountDom } from './dom/mountDom';
 import type { BootData } from './net/playerSession';
 
 mountDebugPanelIfRequested();
@@ -52,6 +53,11 @@ const game = new Phaser.Game({
     height: HEIGHT * PIXEL_RATIO,
   },
 });
+
+// `game.domContainer` isn't created until Game#boot runs (after
+// DOMContentLoaded), so mounting must wait for the `ready` event rather
+// than happening synchronously right after construction.
+game.events.once(Phaser.Core.Events.READY, () => mountDom(game));
 
 game.scene.add('Landing', LandingScene, false);
 game.scene.add('JoinEntry', JoinEntryScene, false);
