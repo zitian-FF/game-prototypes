@@ -1,134 +1,128 @@
 ## Current milestone
 
-Stage 3c (partial): the Rules overlay is now real content, replacing its
-Stage 3a stub ("Rules - coming in a later pass."). This is the first DOM
-(React + Tailwind) UI chrome in suits-mp - and in the repo - per root
-CLAUDE.md's "UI implementation split" and STACK.md's "first expected use:
-suits-mp's Stage 3 UI port." Redistribution-log content, Stage 3c's other
-half, is still stubbed and out of scope for this session (see "Next
-proposed step"). Version stamp counter is at 8 (`version.json`) -
-unchanged this session, no deploy has run yet.
+Stage 3c (continued): the pre-game Landing screen is now real DOM
+content too, alongside the Rules overlay from the previous session -
+both are Claude Design handoffs implemented as React components over
+the Phaser canvas, per root CLAUDE.md's "UI implementation split."
+Redistribution-log content is Stage 3c's remaining piece, still stubbed.
+This session's Lobby work is placeholder-data only by explicit brief:
+real networking wiring (actual room codes, roster, join validation) is
+deferred to a future task - see "Key technical decisions" and "Next
+proposed step." Version stamp counter is at 8 (`version.json`) -
+unchanged, no deploy has run yet.
 
 ## What was implemented
 
-- Ported the Claude Design handoff `Suit of Madness Rules.dc.html` (an
-  accordion-style rules reference: intro line, 7 collapsible sections -
-  Objective, Turning of Suits, Straying from the Suit, Taking a Trick,
-  the Offerings/redistribution, the Invoker, the Fortieth Trick - plus a
-  suit-cycle diagram, an off-suit/Twin-Awakening two-up info grid, and a
-  fold/unfold-all + "Seal the book" close footer) as a pixel-matched
-  React component, `src/dom/RulesModal.tsx`. Section copy/data ported
-  verbatim into `src/dom/rulesContent.ts`; bespoke gradients/oklch
-  colors/clip-path polygons stayed as inline styles (matching the
-  source) rather than forced into Tailwind utility classes - see that
-  file's header comment for why. Real `:hover`/`:active` states and the
-  scrollbar/keyframe styling (expressed in the source via a
-  design-tool-only `style-hover=`/`style-active=` convention, not real
-  CSS) moved into `src/dom/RulesModal.css`.
-- First-time repo infrastructure this unlocks: `@vitejs/plugin-react` and
-  `@tailwindcss/vite` wired into the root `vite.config.ts` (both already
-  sat in the root as devDependencies per STACK.md, unused until now);
-  `react`/`react-dom` added as root dependencies; `tsconfig.json` gained
-  `"jsx": "react-jsx"`. All repo-root changes, so every other prototype
-  is unaffected (the plugins are no-ops on files that don't import JSX
-  or `@import "tailwindcss"`).
-- DOM-mounting layer (`src/dom/mountDom.tsx`, `DomRoot.tsx`,
-  `domUiStore.ts`): one React root mounted into Phaser's own
-  `game.domContainer` (`dom: { createContainer: true }`, already in
-  `main.ts`'s game config) after the `ready` event, since
-  `game.domContainer` doesn't exist until `Game#boot` runs post-
-  `DOMContentLoaded`. `game.domContainer` sizes itself in *device*
-  pixels (`WIDTH*PIXEL_RATIO x HEIGHT*PIXEL_RATIO`) to match the canvas
-  backing store, not the 390x844 logical space every scene/mockup is
-  authored in - `mountDom.tsx` compensates with a `scale(PIXEL_RATIO)`
-  wrapper, the DOM equivalent of every scene's
-  `camera.setZoom(PIXEL_RATIO)`. `domUiStore.ts` is a tiny external
-  store (`useSyncExternalStore`) bridging the DOM layer and the Phaser
-  canvas, which still owns `ui.overlay` (`PersistentUIState`, see
-  `ui/renderGameView.ts`) - no new intent-layer work was needed since
-  opening/closing/toggling the Rules modal is chrome-only and never
-  reaches game logic or the network.
-- Wired the *existing* in-canvas "Rules" button (top bar, already
-  setting `ui.overlay = 'rules'` since Stage 3a) to this real modal
-  instead of adding a second/competing trigger: `renderWithView` now
-  special-cases `ui.overlay === 'rules'` to call `domUiStore.openRules()`
-  with a close callback (resets `ui.overlay` and re-renders the canvas)
-  and draws nothing further that frame; the DOM modal covers the
-  screen. `renderOverlay`'s type narrowed to
-  `Exclude<OverlayKind, 'none' | 'rules'>` now that 'rules' never
-  reaches it, and its dead stub-text branch was removed.
-- suits-mp's own `index.html` gained the three Google Fonts
-  (`IM Fell English SC`, `Cormorant Unicase`, `EB Garamond`) the design
-  specifies, matching the mockup's own `<helmet>` block - scoped to this
-  prototype's own HTML entry point, not the shared root `index.html`.
+- Ported the Claude Design handoff `Suit of Madness Lobby.dc.html` (one
+  component covering the whole pre-game flow as internal states:
+  Landing with Host/Join buttons, Host Lobby with a room-code panel and
+  4-seat list, Join with a 5-character code entry, a Busy/spinner screen
+  for joining/reconnecting, and 5 error variants) as `src/dom/lobby/
+  LobbyFlow.tsx`, matching the source pixel-for-pixel (same approach as
+  the Rules modal: bespoke gradients/oklch/clip-path values as inline
+  styles, `:hover`/`:active` states and keyframes in a companion
+  `LobbyFlow.css`). Data/copy split into `lobbyContent.ts` (error
+  copy/palette, subtitles, the code alphabet) and `lobbySeats.ts` (the
+  seat-row view-model builder). The design's own "dev state rail" (an
+  explicit design-tool-only affordance for previewing every screen) was
+  dropped, not reproduced.
+- `LandingScene.ts` no longer draws any Phaser text/buttons - it now
+  just shows/hides `LobbyFlow` via a new `dom/lobby/lobbyUiStore.ts`
+  (mirrors `dom/domUiStore.ts`'s bridge pattern from the Rules session)
+  and keeps its version-stamp/portrait-guard/camera setup. Found and
+  fixed along the way: Phaser doesn't auto-invoke a `shutdown()` method
+  on `Scene` subclasses (only `Systems#shutdown`, which fires a
+  `SHUTDOWN` event) - `LandingScene` now listens for that event
+  explicitly to call `hideLanding()`, otherwise the DOM Landing view
+  would stay mounted (and pointer-events-capturing) over every later
+  scene.
+- `DomRoot.tsx` now renders both the Rules modal and the Lobby flow as
+  independent siblings, each driven by its own visibility store; at most
+  one is ever visible in practice since only one Phaser scene runs at a
+  time.
 
 ## Key technical decisions
 
-- Reused the existing Stage 3a "Rules" button/`ui.overlay` plumbing
-  rather than adding a new DOM-side trigger button: a second button
-  doing the same thing would have been redundant, and the existing one
-  was already correctly wired end-to-end (tap intent, overlay state)
-  down to its stub content - only the content needed replacing. Flagged
-  to the user as a deliberate deviation from the originally-discussed
-  "add a minimal button" framing once this was discovered mid-session
-  (see Open questions).
-- Kept the ornate/bespoke visual values (oklch colors, multi-stop
-  gradients, clip-path octagon corners, custom serif/small-caps fonts)
-  as inline React styles rather than translating them into Tailwind
-  arbitrary-value utility classes - the source design is essentially
-  entirely bespoke one-off values with no repeating utility pattern, so
-  a utility-class translation would have been both less faithful to
-  pixel fidelity and harder to read/maintain than the direct port.
-  Tailwind is still wired in (`@import "tailwindcss"` in
-  `RulesModal.css`) and available for future, more utility-shaped DOM
-  chrome.
-- Accordion open/closed state is local `useState` inside `RulesModal`,
-  reset fresh every time it mounts (matches the source's own default
-  `{ objective: true, cycle: true }`) rather than persisted - the
-  design gives no indication this should survive a close/reopen, and
-  nothing in suits-mp's `PersistentUIState` currently carries DOM-side
-  UI preferences.
+- **Host/Join stay inside `LobbyFlow`'s own placeholder state, not
+  wired to the real `HostLobbyScene`/`JoinEntryScene`/`ConnectingScene`.**
+  This was a genuine tension worth recording: the user's own preview
+  text when scoping this task described Host/Join calling "the same
+  `scene.start(...)` transitions HostLobbyScene/JoinEntryScene currently
+  trigger," but the brief's explicit text elsewhere was equally clear -
+  "use placeholder data," "actual networking wiring is a separate future
+  task, not part of this one." Wiring Host/Join to the real scenes would
+  have made the new Host-Lobby/Join/Busy/Error screens this task asked
+  for immediately unreachable (those old scenes still render their own
+  Stage-1 monospace UI, unchanged) - i.e. most of the design file would
+  ship as dead code. Reconciled by keeping the *whole* `LobbyFlow`
+  self-contained (a faithful port of the design's own demo state
+  machine: fill/release placeholder bot seats, generate a placeholder
+  room code, validate a placeholder join code, etc.), so every screen in
+  the handoff is genuinely reachable and screenshot-verified. The real,
+  already-working `HostLobbyScene`/`JoinEntryScene`/`ConnectingScene`/
+  `PlayerLobbyScene` are untouched and intact, just currently
+  unreachable from the new Landing flow until a future task rewires
+  `LobbyFlow`'s callbacks (or replaces those scenes' own rendering with
+  it, the way this session did for Landing) - flagged here rather than
+  guessed silently; see Open questions.
+- **Single Player is the one real (non-placeholder) hook**, per explicit
+  user direction: it's the only pre-game action that never touches
+  networking (`LandingScene.startSinglePlayer`, unchanged), so faking it
+  would have added risk for no reason. `LobbyFlow` takes it as a required
+  `onSinglePlayer` prop rather than an internal placeholder action.
+- **"Begin the Rite" is a verbatim port of the design's own stub**
+  (`() => { if (canStart) this.set("landing"); }` in the source) - it
+  just returns to Landing once all 4 placeholder seats are filled. Not
+  invented; the design itself never wires this to anything real either.
+- Dropped the `lobbyFull` screen key the source used only for its dev
+  rail (to preview a pre-filled 4/4 seat list) - naturally filling all 4
+  placeholder seats via "Bind a thrall" already renders the identical
+  visual result through the ordinary `lobby` screen, so the extra key
+  was redundant once the dev rail itself was dropped.
+- The error/reconnecting screens have no real click path in the shipped
+  app - the design itself only reached them via its dev rail, not real
+  end-user navigation. Implemented in full anyway (the brief asked for
+  the whole file) and verified visually via `LobbyFlow`'s `initialScreen`
+  prop (added for exactly this: future real-state binding, or testing)
+  through a throwaway local harness, not shipped in the app.
 
 ## Open questions
 
-- Mid-session, the user was asked (before implementation started)
-  whether to add React+Tailwind infra now and how to trigger the modal
-  (a new button vs. the debug panel vs. no live trigger yet); they chose
-  "add a minimal button." Reading the existing code afterward turned up
-  the already-wired Stage 3a "Rules" button/stub, which made reusing it
-  strictly better than adding a second button - a case the original
-  question didn't anticipate. Not re-blocked on; documented here per
-  CLAUDE.md's rule for exactly this kind of brief/reality mismatch.
-  BRIEF.md may be worth a note that Stage 3c "wires the design in" means
-  completing the existing stubbed trigger, not adding a new one.
-- Redistribution-log content (Stage 3c's other half) was out of scope
-  for this session (the design handoff's focus file was the Rules
-  overlay only) and remains stubbed - see "Next proposed step."
+- The Host/Join real-vs-placeholder tension above was resolved in favor
+  of keeping the whole design file's screens reachable, per the brief's
+  explicit "placeholder data"/"networking wiring is separate" language -
+  but this reads differently from what was approved when scoping the
+  task (Host/Join calling the real scene transitions). Flagging this
+  explicitly rather than silently picking one reading: if real
+  navigation to `HostLobbyScene`/`JoinEntryScene` was actually wanted
+  *now*, that's a small follow-up (swap `LobbyFlow`'s internal `goHost`/
+  `go('join')` calls for `onHost`/`onJoin` props calling
+  `scene.start(...)`, same shape as `onSinglePlayer`).
+- No other outstanding questions from this session.
 
 ## Known issues
 
-- Google Fonts (`fonts.googleapis.com`) fail to load in this dev
-  sandbox's network environment (`net::ERR_CONNECTION_RESET`, verified
-  via an ad hoc Playwright check - no reusable screenshot script exists
-  in `scripts/` yet for any prototype). The modal still renders and is
-  fully legible on the `serif`/`Georgia` fallback stack; this is a
-  sandbox network limitation, not a code defect, and should resolve
-  under normal internet access.
-- Carried over from Stage 3a, still true, untouched this session:
-  facedown-card masking leak at the payload level
-  (`host/mask.ts`'s `currentTrick`/`previousTrick` carry the real card
-  id for offsuit plays to every peer; only patched at the UI layer);
-  not live-verified against real human peers (masking, turn rotation,
+- Google Fonts fail to load in this dev sandbox's network environment
+  (carried over from the Rules session, same fonts) - cosmetic fallback
+  to `serif`/`Georgia`, not a code defect.
+- Carried over from Stage 3a/the Rules session, still true, untouched:
+  facedown-card masking leak at the payload level (`host/mask.ts`); not
+  live-verified against real human peers (masking, turn rotation,
   redistribution/delegate flow, reconnect, room-code refresh); the
   off-suit double-selection fan and `selectDelegate` phase are logic-
   verified but not pixel-verified live; the TURN worker fetch's
-  swallowed `Failed to load resource` console error in the dev sandbox.
+  swallowed console error in the dev sandbox.
 
 ## Next proposed step
 
-Redistribution-log content is Stage 3c's remaining half - same
-treatment (a Claude Design handoff implemented as a DOM component), once
-that design exists. Otherwise, the carried-over Known issues above still
-stand: a real fix for the facedown-card masking leak in `host/mask.ts`,
-and a user phone/live pass covering real-peer masking/reconnect and the
-double-win/`selectDelegate` and off-suit-double-selection live rendering.
+The real networking-wiring follow-up flagged above: decide whether
+Host/Join should navigate to the real `HostLobbyScene`/`JoinEntryScene`
+now (small prop-swap change) or whether those scenes themselves should
+eventually be re-skinned with `LobbyFlow`'s Host-Lobby/Join/Busy/Error
+screens fed real data (larger change, same pattern as this session's
+Landing replacement) - either resolves the placeholder/real split
+recorded above. Otherwise, Redistribution-log content remains Stage 3c's
+last stubbed piece, and the carried-over Known issues (real fix for the
+facedown-card masking leak, a user phone/live pass for real-peer
+masking/reconnect and double-win/off-suit-selection rendering) still
+stand.

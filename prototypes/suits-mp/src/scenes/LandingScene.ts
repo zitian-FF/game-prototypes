@@ -3,10 +3,26 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
+import { showLanding, hideLanding } from '../dom/lobby/lobbyUiStore';
 import type { BootData } from '../net/playerSession';
 import type { Roster } from '../net/types';
 import type { HostGameData } from './HostGameScene';
 
+// Presentation now comes entirely from the DOM Lobby flow
+// (dom/lobby/LobbyFlow.tsx, mounted via lobbyUiStore) rather than Phaser
+// primitives - see root CLAUDE.md's "UI implementation split". This
+// scene's only remaining job is the version stamp/portrait guard (still
+// canvas-owned) and showing/hiding that DOM view, plus the one real
+// non-networked action it can still perform directly: Single Player.
+//
+// Host/Join stay inside the DOM flow's own placeholder state (room code,
+// seat list, code entry - see BUILD_STATUS.md) rather than transitioning
+// to the real HostLobbyScene/JoinEntryScene: this task explicitly defers
+// real networking wiring, so those two scenes are currently unreachable
+// from here (still intact for a future task to wire in), but 'Landing'
+// itself must stay a real, registered scene - JoinEntryScene's back
+// button and ConnectingScene's cancel/error paths both call
+// `scene.start('Landing', data)` to return here.
 export class LandingScene extends Phaser.Scene {
   constructor() {
     super('Landing');
@@ -20,48 +36,11 @@ export class LandingScene extends Phaser.Scene {
     const height = this.scale.height / PIXEL_RATIO;
     this.cameras.main.centerOn(width / 2, height / 2);
 
-    this.add
-      .text(width / 2, height / 2 - 160, 'Suit of Madness\n(suits-mp)', {
-        fontFamily: 'monospace',
-        fontSize: '24px',
-        color: '#ffffff',
-        align: 'center',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-
-    const hostButton = this.add
-      .text(width / 2, height / 2 - 30, '[ Host ]', {
-        fontFamily: 'monospace',
-        fontSize: '24px',
-        color: '#88ff88',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    hostButton.on('pointerdown', () => this.scene.start('HostLobby', data));
-
-    const joinButton = this.add
-      .text(width / 2, height / 2 + 50, '[ Join ]', {
-        fontFamily: 'monospace',
-        fontSize: '24px',
-        color: '#88aaff',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    joinButton.on('pointerdown', () => this.scene.start('JoinEntry', data));
-
-    const singlePlayerButton = this.add
-      .text(width / 2, height / 2 + 130, '[ Single Player (play with bots) ]', {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ff8888',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    singlePlayerButton.on('pointerdown', () => this.startSinglePlayer(data));
+    showLanding(() => this.startSinglePlayer(data));
+    // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
+    // (only `Systems#shutdown`, which fires this event) - see
+    // node_modules/phaser/src/scene/Systems.js.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideLanding);
   }
 
   // No lobby, no room code, no networking of any kind (see BootData's
