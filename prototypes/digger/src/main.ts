@@ -3,7 +3,7 @@ import { bindSelectIntent } from './input/intents';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { generateBoard, shipDamage, upgradeCost } from './state/board';
 import { applyEnergyRegen } from './state/energy';
-import { loadState, saveState } from './state/persistence';
+import { clearState, loadState, saveState } from './state/persistence';
 import type { GameState } from './state/types';
 import tune from '../tune.json';
 
@@ -111,6 +111,13 @@ class DiggerScene extends Phaser.Scene {
   private hudHitRegions: HitRegion[] = [];
   private hudBottom = 0;
   private ship!: Phaser.GameObjects.Sprite;
+
+  // Transient (non-persisted) reset-button confirmation deadline. `null`
+  // means "showing the default Reset label"; a future timestamp means
+  // "showing Confirm reset? until this time". Deliberately not part of
+  // GameState -- a confirmation-in-progress has no business surviving a
+  // reload, and reload is literally what confirming does.
+  private resetConfirmUntil: number | null = null;
 
   preload(): void {
     this.load.json('manifest', 'assets/manifest.json');
@@ -528,6 +535,21 @@ class DiggerScene extends Phaser.Scene {
     this.renderHud();
   }
 
+  // Same-button two-step confirm: first tap arms a countdown and switches
+  // the label/color; a second tap while still armed actually resets.
+  // Clearing localStorage then reloading is simpler and less error-prone
+  // than manually resetting every transient scene field by hand.
+  private onResetButtonTap(): void {
+    const now = Date.now();
+    if (this.resetConfirmUntil !== null && now < this.resetConfirmUntil) {
+      clearState();
+      window.location.reload();
+      return;
+    }
+    this.resetConfirmUntil = now + tune.resetConfirmWindowMs;
+    this.renderHud();
+  }
+
   private onDescend(): void {
     if (this.state.tiles.some((t) => !t.revealed)) return;
     this.state.depth += 1;
@@ -604,6 +626,27 @@ class DiggerScene extends Phaser.Scene {
     this.dynamicHud = this.add.container(0, 0);
     this.hudLayer.add(this.dynamicHud);
     this.hudHitRegions = [];
+
+    // Auto-cancel: no timer of its own -- this runs every renderHud() call,
+    // including the existing 1s regen-tick timer, so a confirmation that's
+    // gone unconfirmed past its window reverts on its own next tick, same
+    // pattern the "Next in Ns" countdown below already relies on.
+    const resetConfirming = this.resetConfirmUntil !== null && Date.now() < this.resetConfirmUntil;
+    if (this.resetConfirmUntil !== null && !resetConfirming) {
+      this.resetConfirmUntil = null;
+    }
+
+    const RESET_BUTTON_W = 140;
+    const RESET_BUTTON_H = 32;
+    this.hudButton(
+      WIDTH - 16 - RESET_BUTTON_W,
+      12,
+      RESET_BUTTON_W,
+      RESET_BUTTON_H,
+      resetConfirming ? 'Confirm reset?' : 'Reset',
+      () => this.onResetButtonTap(),
+      { color: resetConfirming ? 0xaa2222 : 0x333333 }
+    );
 
     let y = this.hudBottom;
 
