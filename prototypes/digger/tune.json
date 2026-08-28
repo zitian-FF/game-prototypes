@@ -6,6 +6,7 @@
   "gridCols": 5,
   "gridRowsBase": 6,
   "minTileTapPx": 44,
+  "resetConfirmWindowMs": 3000,
   "baseTileHp": 3,
   "tileHpDepthMultiplier": 1.15,
   "baseDamage": 1,

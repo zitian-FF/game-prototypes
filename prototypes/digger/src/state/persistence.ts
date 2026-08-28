@@ -36,3 +36,7 @@ export function loadState(): GameState {
 export function saveState(state: GameState): void {
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 }
+
+export function clearState(): void {
+  localStorage.removeItem(SAVE_KEY);
+}
