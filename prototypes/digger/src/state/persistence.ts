@@ -1,5 +1,5 @@
 import type { GameState } from './types';
-import { generateBoard, rowsForDepth } from './board';
+import { generateBoard } from './board';
 import tune from '../../tune.json';
 
 const SAVE_KEY = 'digger:save:v1';
@@ -13,7 +13,7 @@ function freshState(): GameState {
     shipLevel: 1,
     depth,
     gridCols: tune.gridCols,
-    gridRows: rowsForDepth(depth),
+    gridRows: tune.gridRowsBase,
     tiles: generateBoard(depth),
   };
 }

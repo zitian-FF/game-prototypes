@@ -5,7 +5,7 @@
   "energyRegenMs": 60000,
   "gridCols": 5,
   "gridRowsBase": 6,
-  "gridRowsGrowthPerDepth": 1,
+  "minTileTapPx": 44,
   "baseTileHp": 3,
   "tileHpDepthMultiplier": 1.15,
   "baseDamage": 1,

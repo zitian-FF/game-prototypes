@@ -13,7 +13,7 @@ const RANGE: Partial<Record<TuneKey, { min: number; max: number; step: number }>
   energyRegenMs: { min: 1000, max: 300000, step: 1000 },
   gridCols: { min: 1, max: 12, step: 1 },
   gridRowsBase: { min: 1, max: 20, step: 1 },
-  gridRowsGrowthPerDepth: { min: 0, max: 5, step: 1 },
+  minTileTapPx: { min: 20, max: 80, step: 1 },
   baseTileHp: { min: 1, max: 50, step: 1 },
   tileHpDepthMultiplier: { min: 1, max: 3, step: 0.01 },
   baseDamage: { min: 1, max: 50, step: 1 },

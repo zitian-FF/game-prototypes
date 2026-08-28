@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { bindSelectIntent, bindVerticalDragIntent } from './input/intents';
+import { bindSelectIntent } from './input/intents';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
-import { generateBoard, rowsForDepth, shipDamage, upgradeCost } from './state/board';
+import { generateBoard, shipDamage, upgradeCost } from './state/board';
 import { applyEnergyRegen } from './state/energy';
 import { loadState, saveState } from './state/persistence';
 import type { GameState } from './state/types';
@@ -25,8 +25,14 @@ interface HitRegion {
 
 const GRID_MARGIN_X = 24;
 const BOARD_VIEWPORT_TOP = 56;
-const BOARD_VIEWPORT_HEIGHT = 340;
 const SHIP_SPACING = 40;
+
+// Declared max board bound going forward. Board size is still fixed at
+// gridCols=5, gridRows=6 for every board (see state/board.ts) -- these are
+// only used to verify the scale-to-fit geometry below stays workable up to
+// this bound once board-size-per-depth generation is implemented later.
+const MAX_GRID_COLS_BOUND = 7;
+const MAX_GRID_ROWS_BOUND = 9;
 
 // Explicit depths for everything rendered in board-world space (via
 // boardCamera): without these, Phaser stacks same-depth siblings by
@@ -61,17 +67,30 @@ class DiggerScene extends Phaser.Scene {
 
   private tileNativeWidth = 0;
   private tileNativeHeight = 0;
-  // World-fit zoom (native tile px -> logical screen px), independent of
-  // PIXEL_RATIO and independent of depth since GRID_COLS never changes.
+  // Ship/HUD art reference zoom (native art px -> logical screen px),
+  // derived once from tune.gridCols so ship/ammo/laser art keeps a stable
+  // scale regardless of the current board's actual size.
   private artZoom = 1;
 
-  // The board (tile grid) renders through its own camera: clipped to a
-  // fixed-height viewport near the top of the canvas, scrollable
-  // vertically. `cameras.main` stays the fixed logical-pixel camera (build
-  // tag, ship, HUD) used for select-intent hit-testing, exactly like every
-  // other prototype's single main camera — the board camera is additional,
-  // ignored by main and ignoring everything main draws, mirroring the
-  // existing UI-camera-ignoring-game-world pattern.
+  // Height (logical px) reserved below BOARD_VIEWPORT_TOP for the board
+  // viewport, computed once at startup from real measured content (see
+  // computeBoardViewportHeight) rather than a hardcoded constant, since it
+  // depends on loaded texture dimensions.
+  private boardViewportHeight = 0;
+  // Per-board scale-to-fit zoom (native tile px -> logical screen px),
+  // recomputed in buildBoard() from the board's actual current
+  // gridCols/gridRows so it works for any board up to the declared max
+  // bound without rework.
+  private boardZoom = 1;
+
+  // The board (tile grid) renders through its own camera: a fixed-size
+  // viewport near the top of the canvas, showing the whole board scaled to
+  // fit (no scrolling at any board size). `cameras.main` stays the fixed
+  // logical-pixel camera (build tag, ship, HUD) used for select-intent
+  // hit-testing, exactly like every other prototype's single main camera —
+  // the board camera is additional, ignored by main and ignoring everything
+  // main draws, mirroring the existing UI-camera-ignoring-game-world
+  // pattern.
   private boardCamera!: Phaser.Cameras.Scene2D.Camera;
   private tileSprites: Phaser.GameObjects.Image[] = [];
 
@@ -86,10 +105,6 @@ class DiggerScene extends Phaser.Scene {
   // every frame. A WeakMap avoids stashing untyped custom fields directly
   // on Phaser's Particle objects.
   private debrisSpinRates = new WeakMap<Phaser.GameObjects.Particles.Particle, number>();
-
-  // World-space (board-native-pixel) Y the board camera is centered on;
-  // clamped so the viewport never scrolls past the grid's top or bottom.
-  private panCenterY = 0;
 
   private hudLayer!: Phaser.GameObjects.Container;
   private dynamicHud?: Phaser.GameObjects.Container;
@@ -151,13 +166,15 @@ class DiggerScene extends Phaser.Scene {
     const tileScreenWidth = gridScreenWidth / tune.gridCols;
     this.artZoom = tileScreenWidth / this.tileNativeWidth;
 
+    this.computeBoardViewportHeight();
+    this.verifyMaxBoundFits();
+
     this.setUpCameras();
     this.buildBoard();
     this.buildDebrisEmitter();
     this.buildHud();
 
     bindSelectIntent(this, (worldX, worldY) => this.onTap(worldX, worldY));
-    bindVerticalDragIntent(this, (deltaY) => this.onDrag(deltaY));
 
     // Live regen recompute + countdown refresh while the tab stays open.
     // The same timestamp-anchored calc runs again on next load, so this
@@ -176,6 +193,52 @@ class DiggerScene extends Phaser.Scene {
 
   // --- setup ---------------------------------------------------------
 
+  // Computes the board viewport height from real measured content rather
+  // than a hardcoded constant, since it depends on loaded texture
+  // dimensions: everything that must fit below the board (ship spacing +
+  // ship + ammo sprite + text rows + buttons + margin), mirroring
+  // buildShip()'s hudBottom derivation and renderHud()'s layout flow
+  // exactly so the board viewport never overlaps or leaves a gap before the
+  // HUD content beneath it.
+  private computeBoardViewportHeight(): void {
+    const shipFrames = this.animations.player_ship.frames;
+    const shipFrame = this.textures.get('atlas').get(shipFrames[0]);
+    const shipHeightScaled = shipFrame.height * this.artZoom;
+
+    const ammoFrames = this.animations.ui_ammo.frames;
+    const ammoNativeFrame = this.textures.get('atlas').get(ammoFrames[0]);
+    const ammoScale = (WIDTH * 0.6) / ammoNativeFrame.width;
+    const ammoScaledHeight = ammoNativeFrame.height * ammoScale;
+
+    this.boardViewportHeight =
+      SHIP_SPACING + shipHeightScaled + 20 + ammoScaledHeight + 4 + 26 + 30 + 44 + 10 + 48 + 16;
+  }
+
+  // Verifies the declared max board bound (MAX_GRID_COLS_BOUND x
+  // MAX_GRID_ROWS_BOUND) still yields a tappable tile size once real
+  // measured geometry is known, per every axis a future max-size board
+  // could be constrained by. This does not change layout or force a pass —
+  // it only reports, so a future regression here is visible rather than
+  // silently shipped.
+  private verifyMaxBoundFits(): void {
+    const heightPathPx = this.boardViewportHeight / MAX_GRID_ROWS_BOUND;
+    const heightPathOk = heightPathPx >= tune.minTileTapPx;
+    const widthPathPx = (WIDTH - GRID_MARGIN_X * 2) / MAX_GRID_COLS_BOUND;
+    const widthPathOk = widthPathPx >= tune.minTileTapPx;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[digger] boardViewportHeight=${this.boardViewportHeight.toFixed(2)}px ` +
+        `maxBound height-path=${heightPathPx.toFixed(2)}px (${heightPathOk ? 'OK' : 'FAIL'}) ` +
+        `width-path=${widthPathPx.toFixed(2)}px (${widthPathOk ? 'OK' : 'FAIL'}) ` +
+        `vs minTileTapPx=${tune.minTileTapPx}`
+    );
+    if (!heightPathOk || !widthPathOk) {
+      console.warn(
+        '[digger] max board bound (7x9) would not meet minTileTapPx at current geometry -- see BUILD_STATUS.md'
+      );
+    }
+  }
+
   private setUpCameras(): void {
     this.cameras.main.setZoom(PIXEL_RATIO);
     this.cameras.main.centerOn(WIDTH / 2, HEIGHT / 2);
@@ -184,9 +247,8 @@ class DiggerScene extends Phaser.Scene {
       0,
       BOARD_VIEWPORT_TOP * PIXEL_RATIO,
       WIDTH * PIXEL_RATIO,
-      BOARD_VIEWPORT_HEIGHT * PIXEL_RATIO
+      this.boardViewportHeight * PIXEL_RATIO
     );
-    this.boardCamera.setZoom(this.artZoom * PIXEL_RATIO);
     this.boardCamera.setBackgroundColor(0x0a0a0a);
 
     // Cameras render in the order they appear in this.cameras.cameras, and
@@ -217,8 +279,19 @@ class DiggerScene extends Phaser.Scene {
     }
     this.cameras.main.ignore(this.tileSprites);
 
-    this.panCenterY = this.clampPanCenterY(0);
-    this.applyPan();
+    const widthConstraintZoom = (WIDTH - GRID_MARGIN_X * 2) / this.state.gridCols / this.tileNativeWidth;
+    const heightConstraintZoom = this.boardViewportHeight / (this.state.gridRows * this.tileNativeHeight);
+    this.boardZoom = Math.min(widthConstraintZoom, heightConstraintZoom);
+    this.boardCamera.setZoom(this.boardZoom * PIXEL_RATIO);
+
+    // Centering on the board's own world-center, with the camera's fixed
+    // viewport sized independently of the board's world size, is what
+    // auto-centers the board within the viewport on whichever axis has
+    // slack (the axis whose constraint above didn't bind) -- no separate
+    // pan/clamp logic needed.
+    const gridWorldWidth = this.state.gridCols * this.tileNativeWidth;
+    const gridWorldHeight = this.state.gridRows * this.tileNativeHeight;
+    this.boardCamera.centerOn(gridWorldWidth / 2, gridWorldHeight / 2);
   }
 
   // Created once; every hit reuses this same emitter via .explode() rather
@@ -272,13 +345,13 @@ class DiggerScene extends Phaser.Scene {
     });
     this.hudLayer.add(buildText);
 
-    // Functional-only border marking the scrollable board region, so it
-    // reads as distinct from the fixed HUD below it.
+    // Functional-only border marking the board region, so it reads as
+    // distinct from the fixed HUD below it.
     const border = this.add.rectangle(
       WIDTH / 2,
-      BOARD_VIEWPORT_TOP + BOARD_VIEWPORT_HEIGHT / 2,
+      BOARD_VIEWPORT_TOP + this.boardViewportHeight / 2,
       WIDTH - GRID_MARGIN_X * 2 + 8,
-      BOARD_VIEWPORT_HEIGHT + 8
+      this.boardViewportHeight + 8
     );
     border.setStrokeStyle(1, 0x444444, 0.8);
     border.setFillStyle(0, 0);
@@ -292,7 +365,7 @@ class DiggerScene extends Phaser.Scene {
     const frames = this.animations.player_ship.frames;
     const shipFrame = this.textures.get('atlas').get(frames[0]);
     const shipHalfHeight = (shipFrame.height * this.artZoom) / 2;
-    const shipY = BOARD_VIEWPORT_TOP + BOARD_VIEWPORT_HEIGHT + SHIP_SPACING + shipHalfHeight;
+    const shipY = BOARD_VIEWPORT_TOP + this.boardViewportHeight + SHIP_SPACING + shipHalfHeight;
 
     this.ship = this.add.sprite(WIDTH / 2, shipY, 'atlas', frames[0]);
     this.ship.setScale(this.artZoom);
@@ -314,28 +387,33 @@ class DiggerScene extends Phaser.Scene {
     this.hudBottom = shipY + shipHalfHeight + 20;
   }
 
-  // --- camera pan ------------------------------------------------------
+  // --- board <-> screen conversion --------------------------------------
 
-  private viewportWorldHeight(): number {
-    return BOARD_VIEWPORT_HEIGHT / this.artZoom;
+  // Inverse of boardWorldToScreen below -- mirrors it exactly. Both share
+  // the same viewport-center point and board-world-center point that
+  // buildBoard() used to zoom/center the board camera, so together they
+  // stay correct for any board size up to the declared max bound with no
+  // further changes.
+  private screenToBoardWorld(screenX: number, screenY: number): { x: number; y: number } {
+    const gridWorldWidth = this.state.gridCols * this.tileNativeWidth;
+    const gridWorldHeight = this.state.gridRows * this.tileNativeHeight;
+    const viewportCenterX = WIDTH / 2;
+    const viewportCenterY = BOARD_VIEWPORT_TOP + this.boardViewportHeight / 2;
+    return {
+      x: gridWorldWidth / 2 + (screenX - viewportCenterX) / this.boardZoom,
+      y: gridWorldHeight / 2 + (screenY - viewportCenterY) / this.boardZoom,
+    };
   }
 
-  private clampPanCenterY(target: number): number {
-    const viewportHeight = this.viewportWorldHeight();
-    const gridHeight = this.state.gridRows * this.tileNativeHeight;
-    if (gridHeight <= viewportHeight) return gridHeight / 2;
-    return Phaser.Math.Clamp(target, viewportHeight / 2, gridHeight - viewportHeight / 2);
-  }
-
-  private applyPan(): void {
-    const gridWorldCenterX = (this.state.gridCols * this.tileNativeWidth) / 2;
-    this.boardCamera.centerOn(gridWorldCenterX, this.panCenterY);
-  }
-
-  private onDrag(deltaY: number): void {
-    const worldDelta = deltaY / this.boardCamera.zoom;
-    this.panCenterY = this.clampPanCenterY(this.panCenterY - worldDelta);
-    this.applyPan();
+  private boardWorldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+    const gridWorldWidth = this.state.gridCols * this.tileNativeWidth;
+    const gridWorldHeight = this.state.gridRows * this.tileNativeHeight;
+    const viewportCenterX = WIDTH / 2;
+    const viewportCenterY = BOARD_VIEWPORT_TOP + this.boardViewportHeight / 2;
+    return {
+      x: viewportCenterX + (worldX - gridWorldWidth / 2) * this.boardZoom,
+      y: viewportCenterY + (worldY - gridWorldHeight / 2) * this.boardZoom,
+    };
   }
 
   // --- input -----------------------------------------------------------
@@ -356,15 +434,16 @@ class DiggerScene extends Phaser.Scene {
   }
 
   private onTapBoard(screenX: number, screenY: number): void {
-    if (screenY < BOARD_VIEWPORT_TOP || screenY > BOARD_VIEWPORT_TOP + BOARD_VIEWPORT_HEIGHT) return;
-    if (screenX < GRID_MARGIN_X || screenX > WIDTH - GRID_MARGIN_X) return;
+    if (screenY < BOARD_VIEWPORT_TOP || screenY > BOARD_VIEWPORT_TOP + this.boardViewportHeight) return;
+    if (screenX < 0 || screenX > WIDTH) return;
 
-    const tileScreenWidth = (WIDTH - GRID_MARGIN_X * 2) / this.state.gridCols;
-    const scrollTopWorldY = this.panCenterY - this.viewportWorldHeight() / 2;
-    const boardWorldY = scrollTopWorldY + (screenY - BOARD_VIEWPORT_TOP) / this.artZoom;
-
-    const col = Math.floor((screenX - GRID_MARGIN_X) / tileScreenWidth);
-    const row = Math.floor(boardWorldY / this.tileNativeHeight);
+    // A tap landing in the letterboxed slack space (the axis the board's
+    // zoom didn't bind on) converts to a board-world point outside the
+    // board's own bounds, which the col/row range check below rejects --
+    // no separate letterbox-bounds check needed.
+    const boardPoint = this.screenToBoardWorld(screenX, screenY);
+    const col = Math.floor(boardPoint.x / this.tileNativeWidth);
+    const row = Math.floor(boardPoint.y / this.tileNativeHeight);
     if (col < 0 || col >= this.state.gridCols || row < 0 || row >= this.state.gridRows) return;
 
     const index = row * this.state.gridCols + col;
@@ -378,17 +457,17 @@ class DiggerScene extends Phaser.Scene {
     tile.hp -= shipDamage(this.state.shipLevel);
 
     // Tile screen position, in the same fixed screen space as the ship —
-    // mirrors the board-hit-test math above exactly (rather than rederiving
-    // it) so the laser lands pixel-accurate on the tile that was tapped.
-    const tileScreenX = GRID_MARGIN_X + (col + 0.5) * tileScreenWidth;
+    // mirrors the board-hit-test math above exactly (via the same
+    // boardWorldToScreen/screenToBoardWorld pair) so the laser lands
+    // pixel-accurate on the tile that was tapped.
+    const tileWorldX = (col + 0.5) * this.tileNativeWidth;
     const tileWorldYCenter = (row + 0.5) * this.tileNativeHeight;
-    const tileScreenY = BOARD_VIEWPORT_TOP + (tileWorldYCenter - scrollTopWorldY) * this.artZoom;
-    this.fireLaser(this.ship.x, this.ship.y, tileScreenX, tileScreenY);
+    const tileScreen = this.boardWorldToScreen(tileWorldX, tileWorldYCenter);
+    this.fireLaser(this.ship.x, this.ship.y, tileScreen.x, tileScreen.y);
 
     // Tile board-world position (same space as tileSprites, and the same
     // formula buildBoard uses to place them) for the debris burst, which
     // stays entirely within the board and needs no cross-camera conversion.
-    const tileWorldX = (col + 0.5) * this.tileNativeWidth;
     this.debrisEmitter.explode(
       Phaser.Math.Between(tune.debrisWeakCountMin, tune.debrisWeakCountMax),
       tileWorldX,
@@ -452,7 +531,9 @@ class DiggerScene extends Phaser.Scene {
   private onDescend(): void {
     if (this.state.tiles.some((t) => !t.revealed)) return;
     this.state.depth += 1;
-    this.state.gridRows = rowsForDepth(this.state.depth);
+    // Board size is fixed at gridCols/gridRowsBase for every board,
+    // including post-descend -- board-size-per-depth generation is
+    // deferred to a future task (see BUILD_STATUS.md).
     this.state.tiles = generateBoard(this.state.depth);
     saveState(this.state);
     this.buildBoard();

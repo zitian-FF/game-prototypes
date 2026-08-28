@@ -2,10 +2,6 @@ import Phaser from 'phaser';
 import type { TileState } from './types';
 import tune from '../../tune.json';
 
-export function rowsForDepth(depth: number): number {
-  return tune.gridRowsBase + tune.gridRowsGrowthPerDepth * depth;
-}
-
 // Depth-scaled base HP, jittered by the same +/-1 spread the original
 // Phaser.Math.Between(1, 3) placeholder used (there min 1, center 2).
 function rollTileHp(depth: number): number {
@@ -23,9 +19,8 @@ function rollLoot(depth: number): number {
 }
 
 export function generateBoard(depth: number): TileState[] {
-  const rows = rowsForDepth(depth);
   const tiles: TileState[] = [];
-  for (let i = 0; i < tune.gridCols * rows; i++) {
+  for (let i = 0; i < tune.gridCols * tune.gridRowsBase; i++) {
     tiles.push({ hp: rollTileHp(depth), loot: rollLoot(depth), revealed: false });
   }
   return tiles;
