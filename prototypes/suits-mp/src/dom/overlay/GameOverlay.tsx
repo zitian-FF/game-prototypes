@@ -1,0 +1,575 @@
+import { useState } from 'react';
+import type { CSSProperties } from 'react';
+import './GameOverlay.css';
+import { PLACEHOLDER_NAMES, SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
+import type { SeatDelegateState } from './gameOverlayStore';
+import type { SeatPosition } from '../../ui/seating';
+import tune from '../../../tune.json';
+
+// Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
+// Two different things live in this one component, deliberately:
+//
+// - The name tags, Suit Cycle HUD, turn indicator wheel, and Trick
+//   Starter tag are placeholder/demo display only - a local `demo` state
+//   (turn/lead/trick/starter counters, ported near-verbatim from the
+//   design's own self-contained Component class) drives their rotation
+//   and highlighting. They do not read real MaskedState - real-state
+//   wiring is a separate future task (see BUILD_STATUS.md). This is why
+//   the real Suit Cycle HUD/name-tag/turn-dot/starter-dot drawing that
+//   used to live in ui/renderGameView.ts's renderPlayerCluster/
+//   renderYourRow was removed rather than left running alongside this -
+//   the two would otherwise show conflicting "whose turn"/"who's leading"
+//   information.
+// - The "Order" (sort) and "Action" (Invoke) buttons, and each seat tag's
+//   delegate-selection tap target, ARE real: sortLabel/onToggleSort and
+//   actionLabel/actionEnabled/onAction are threaded from
+//   ui/renderGameView.ts's real render pass via gameOverlayStore.ts,
+//   same as before just re-skinned. Order/Action are simple prop
+//   threading, not rules-engine work; and dropping the delegate tap
+//   target for real would leave a real bot game stuck with no legal way
+//   to proceed past a double win (Twin Awakening) - both were kept
+//   working rather than faked, per explicit user direction mid-task.
+//
+// Every real Action click also pulses the placeholder `demo` state
+// forward (see handleAction) - purely so the rotation this task asks for
+// is actually exercised during real play, not a claim that the demo
+// state reflects the real turn that just happened.
+
+export interface GameOverlayProps {
+  sortLabel: string;
+  onToggleSort: () => void;
+  actionLabel: string;
+  actionHint: string;
+  actionEnabled: boolean;
+  onAction: () => void;
+  seatDelegate: Record<SeatPosition, SeatDelegateState>;
+}
+
+interface DemoState {
+  turn: number;
+  lead: number;
+  trick: number;
+  starter: number;
+  turnTurns: number;
+  leadTurns: number;
+}
+
+const DEFAULT_DEMO: DemoState = { turn: 0, lead: 0, trick: 1, starter: 0, turnTurns: 0, leadTurns: 0 };
+
+// Layout constants matching ui/renderGameView.ts's real seat/cluster
+// geometry by value (CENTER_X, CLUSTER_CENTER_Y) so this DOM chrome lines
+// up with the still-canvas-drawn play areas/hand fan beneath it - the
+// design's own mockup used different, only approximate guide-box
+// coordinates for the same regions (it was built independently of this
+// codebase's actual Stage 3a layout), so positions here were adapted to
+// the real scene rather than copied verbatim; only each element's own
+// visual styling is a direct pixel-for-pixel port.
+const WIDTH = 390;
+const CENTER_X = WIDTH / 2;
+const CLUSTER_CENTER_Y = 280;
+const TOP_TAG_TOP = 65;
+const SIDE_TAG_TOP = 320;
+const BOTTOM_TAG_TOP = 442;
+const TEAM_HUD_TOP = 514;
+const SORT_BUTTON_TOP = 588;
+const ACTION_BUTTON_BOTTOM = 54;
+
+function nextDemo(s: DemoState): DemoState {
+  const next = (s.turn + 1) % 4;
+  const wrapped = next === s.starter;
+  return {
+    turn: wrapped ? (s.starter + 1) % 4 : next,
+    turnTurns: s.turnTurns + 1,
+    trick: wrapped ? s.trick + 1 : s.trick,
+    starter: wrapped ? (s.starter + 1) % 4 : s.starter,
+    lead: wrapped ? (s.lead + 1) % 4 : s.lead,
+    leadTurns: wrapped ? s.leadTurns + 1 : s.leadTurns,
+  };
+}
+
+export function GameOverlay({ sortLabel, onToggleSort, actionLabel, actionHint, actionEnabled, onAction, seatDelegate }: GameOverlayProps): JSX.Element {
+  const [demo, setDemo] = useState<DemoState>(DEFAULT_DEMO);
+
+  const handleAction = (): void => {
+    onAction();
+    setDemo(nextDemo);
+  };
+
+  // Accumulate rotation so the wheels always turn forward, never snap
+  // back - ported directly from the design's own renderVals().
+  const turnDeg = Math.floor(demo.turnTurns / 4) * 360 + SEAT_DEG[SEAT_ORDER[demo.turn]];
+  const suitDeg = -(demo.lead * 90) - Math.floor(demo.leadTurns / 4) * 360;
+  const leadShort = SUITS[demo.lead].short;
+  const starterSeat = SEAT_ORDER[demo.starter];
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {/* ===== Turn indicator wheel (outer, independent layer) ===== */}
+      <div
+        data-ui="turn-indicator-wheel"
+        style={{
+          position: 'absolute',
+          left: CENTER_X,
+          top: CLUSTER_CENTER_Y,
+          width: 190,
+          height: 190,
+          marginLeft: -95,
+          marginTop: -95,
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(176, 142, 66, 0.22)', boxShadow: 'inset 0 0 34px rgba(28, 110, 106, 0.22)' }} />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 9,
+            borderRadius: '50%',
+            borderTop: '1px solid rgba(176, 142, 66, 0.34)',
+            borderBottom: '1px solid rgba(176, 142, 66, 0.34)',
+            borderLeft: '1px solid transparent',
+            borderRight: '1px solid transparent',
+          }}
+        />
+        <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px dotted rgba(158, 196, 186, 0.2)' }} />
+        <div
+          data-ui="outer-sigil-ring"
+          style={{
+            position: 'absolute',
+            inset: -14,
+            borderRadius: '50%',
+            border: '1px solid rgba(158, 196, 186, 0.07)',
+            animation: `somCreep ${tune.outerSigilRingSpinMs}ms linear infinite`,
+          }}
+        >
+          <span style={{ position: 'absolute', left: '50%', top: -5, marginLeft: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
+          <span style={{ position: 'absolute', left: '50%', bottom: -5, marginLeft: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
+          <span style={{ position: 'absolute', top: '50%', left: -5, marginTop: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
+          <span style={{ position: 'absolute', top: '50%', right: -5, marginTop: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
+        </div>
+        <div
+          data-bind="turn-rotation"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            transition: `transform ${tune.turnWheelRotationMs}ms ${tune.turnWheelRotationEasing}`,
+            transform: `rotate(${turnDeg}deg)`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 3,
+              marginLeft: -8,
+              width: 16,
+              height: 20,
+              background: 'oklch(0.80 0.11 84)',
+              clipPath: 'polygon(50% 100%, 0 0, 50% 26%, 100% 0)',
+              boxShadow: '0 0 20px 4px rgba(212, 172, 82, 0.5)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 22,
+              width: 1,
+              height: 26,
+              marginLeft: -0.5,
+              background: 'linear-gradient(180deg, rgba(212, 172, 82, 0.75), rgba(212, 172, 82, 0))',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ===== Suit Cycle HUD (inner, independent layer) ===== */}
+      <div
+        data-ui="suit-cycle-hud"
+        style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: 124, height: 124, marginLeft: -62, marginTop: -62, pointerEvents: 'none' }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: 'radial-gradient(58% 58% at 50% 38%, rgba(16, 52, 54, 0.95) 0%, rgba(5, 10, 13, 0.97) 100%)',
+            border: '1px solid rgba(176, 142, 66, 0.34)',
+            boxShadow: '0 0 36px rgba(0, 0, 0, 0.85), inset 0 0 26px rgba(34, 128, 122, 0.22)',
+          }}
+        />
+
+        <div
+          data-bind="lead-suit-rotation"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+            transform: `rotate(${suitDeg}deg)`,
+          }}
+        >
+          {SUITS.map((suit, i) => {
+            const isGold = i % 2 === 0; // YS(0), SN(2) gold; CT(1), NY(3) teal - matches the design's fixed per-corner palette
+            const positionStyle: CSSProperties =
+              i === 0
+                ? { left: '50%', top: 3, marginLeft: -13 }
+                : i === 1
+                  ? { right: 3, top: '50%', marginTop: -13 }
+                  : i === 2
+                    ? { left: '50%', bottom: 3, marginLeft: -13 }
+                    : { left: 3, top: '50%', marginTop: -13 };
+            return (
+              <div
+                key={suit.code}
+                data-suit={suit.code}
+                style={{
+                  position: 'absolute',
+                  ...positionStyle,
+                  width: 26,
+                  height: 26,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: "'Cormorant Unicase', serif",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  letterSpacing: '0.04em',
+                  color: isGold ? 'oklch(0.84 0.09 84)' : 'oklch(0.82 0.09 180)',
+                  border: isGold ? '1px solid rgba(198, 160, 78, 0.5)' : '1px solid rgba(96, 190, 180, 0.45)',
+                  background: isGold ? 'rgba(48, 36, 12, 0.55)' : 'rgba(10, 44, 44, 0.55)',
+                  transform: 'rotate(45deg)',
+                }}
+              >
+                <span style={{ transform: 'rotate(-45deg)' }}>{suit.code}</span>
+              </div>
+            );
+          })}
+          <div style={{ position: 'absolute', inset: 26, borderRadius: '50%', border: '1px solid rgba(176, 142, 66, 0.14)' }} />
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 56,
+            height: 56,
+            margin: '-28px 0 0 -28px',
+            borderRadius: '50%',
+            background: 'radial-gradient(50% 50% at 50% 42%, rgba(14, 46, 48, 0.95), rgba(4, 9, 12, 0.97))',
+            border: '1px solid rgba(176, 142, 66, 0.24)',
+            boxShadow: 'inset 0 0 18px rgba(0,0,0,0.9)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+          }}
+        >
+          <div style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.16em', color: 'rgba(158, 196, 186, 0.55)' }}>Lead</div>
+          <div data-bind="lead-suit-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 12, lineHeight: 1.05, textAlign: 'center', color: 'oklch(0.92 0.04 88)' }}>
+            {leadShort}
+          </div>
+        </div>
+
+        <div
+          data-ui="lead-marker"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: -2,
+            marginLeft: -18,
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '1px solid rgba(120, 220, 206, 0.5)',
+            boxShadow: '0 0 22px rgba(70, 200, 186, 0.4), inset 0 0 14px rgba(70, 200, 186, 0.22)',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+
+      {/* ===== Player name displays + Trick Starter tags ===== */}
+      {SEAT_ORDER.map((seat) => {
+        const isStarter = seat === starterSeat;
+        const isLocal = seat === 'bottom';
+        const delegate = seatDelegate[seat];
+        const tagTop = seat === 'top' ? TOP_TAG_TOP : seat === 'bottom' ? BOTTOM_TAG_TOP : SIDE_TAG_TOP;
+        const width = isLocal ? 208 : seat === 'top' ? 120 : 94;
+        const horizontal: CSSProperties =
+          seat === 'left' ? { left: 10 } : seat === 'right' ? { right: 10 } : { left: CENTER_X - width / 2 };
+
+        return (
+          <div key={seat} data-ui="seat" data-seat={seat} style={{ position: 'absolute', top: tagTop, width, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isLocal ? 6 : 5, ...horizontal }}>
+            {isLocal ? (
+              <div
+                style={{
+                  width: '100%',
+                  padding: 1,
+                  boxSizing: 'border-box',
+                  background: 'linear-gradient(180deg, rgba(212, 174, 88, 0.75), rgba(120, 92, 34, 0.5))',
+                  clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
+                  boxShadow: '0 0 30px rgba(196, 156, 66, 0.3)',
+                }}
+              >
+                <div
+                  style={{
+                    minHeight: 46,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 11,
+                    background: 'linear-gradient(180deg, rgba(44, 34, 14, 0.95), rgba(12, 12, 12, 0.96))',
+                    clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
+                  }}
+                >
+                  <span style={{ color: 'oklch(0.84 0.11 84)', fontSize: 11, textShadow: '0 0 12px rgba(226, 182, 84, 0.8)' }}>✦</span>
+                  <span data-bind="player-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 20, letterSpacing: '0.03em', color: 'oklch(0.95 0.04 90)' }}>
+                    {PLACEHOLDER_NAMES[seat]}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "'Cormorant Unicase', serif",
+                      fontWeight: 500,
+                      fontSize: 9,
+                      letterSpacing: '0.2em',
+                      color: 'rgba(228, 196, 128, 0.7)',
+                      borderLeft: '1px solid rgba(198, 160, 78, 0.4)',
+                      paddingLeft: 10,
+                    }}
+                  >
+                    Thee
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-ui="seat-tag"
+                data-tappable={delegate.tappable}
+                onClick={delegate.tappable ? delegate.onPick : undefined}
+                disabled={!delegate.tappable}
+                style={{
+                  width: '100%',
+                  minHeight: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: seat === 'top' ? 7 : 6,
+                  padding: seat === 'top' ? '0 10px' : '0 7px',
+                  boxSizing: 'border-box',
+                  border: '0',
+                  borderTop: `1px solid ${delegate.staged ? 'rgba(198, 160, 78, 0.55)' : 'rgba(120, 190, 178, 0.3)'}`,
+                  borderBottom: `1px solid ${delegate.staged ? 'rgba(198, 160, 78, 0.55)' : 'rgba(120, 190, 178, 0.3)'}`,
+                  background: delegate.staged
+                    ? 'linear-gradient(180deg, rgba(48, 36, 12, 0.86), rgba(20, 14, 5, 0.88))'
+                    : 'linear-gradient(180deg, rgba(10, 34, 36, 0.86), rgba(5, 14, 17, 0.88))',
+                  cursor: delegate.tappable ? 'pointer' : 'default',
+                  font: 'inherit',
+                }}
+              >
+                <span style={{ color: 'rgba(120, 200, 186, 0.7)', fontSize: 9 }}>◆</span>
+                <span
+                  data-bind="player-name"
+                  style={{
+                    fontFamily: "'IM Fell English SC', serif",
+                    fontSize: seat === 'top' ? 15 : 14,
+                    letterSpacing: '0.02em',
+                    color: 'oklch(0.90 0.02 100)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
+                  }}
+                >
+                  {PLACEHOLDER_NAMES[seat]}
+                </span>
+              </button>
+            )}
+            {isStarter && (
+              <div
+                data-ui="trick-starter-tag"
+                style={{
+                  padding: isLocal ? '3px 11px' : '2px 10px',
+                  border: `1px solid rgba(198, 160, 78, ${isLocal ? 0.6 : 0.55})`,
+                  background: `rgba(48, 36, 12, ${isLocal ? 0.65 : 0.6})`,
+                  fontFamily: "'Cormorant Unicase', serif",
+                  fontWeight: 700,
+                  fontSize: isLocal ? 10 : 9,
+                  letterSpacing: '0.16em',
+                  color: `oklch(${isLocal ? 0.87 : 0.85} 0.09 84)`,
+                }}
+              >
+                Invoker
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ===== Team / god identity HUD (static placeholder) ===== */}
+      <div
+        data-ui="team-hud"
+        style={{
+          position: 'absolute',
+          left: CENTER_X - 136,
+          top: TEAM_HUD_TOP,
+          width: 272,
+          minHeight: 50,
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 13px',
+          borderTop: '1px solid rgba(160, 120, 210, 0.3)',
+          borderBottom: '1px solid rgba(160, 120, 210, 0.3)',
+          background: 'linear-gradient(180deg, rgba(24, 18, 40, 0.9), rgba(9, 9, 16, 0.93))',
+          boxShadow: 'inset 0 0 34px rgba(104, 58, 168, 0.24)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(196, 178, 224, 0.6)' }}>Thy covenant</span>
+          <span data-bind="team-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 18, lineHeight: 1.05, color: 'oklch(0.88 0.09 88)' }}>
+            Team Cosmos
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div
+            data-ui="god-chip"
+            data-god="YS"
+            data-assigned="true"
+            style={{
+              width: 52,
+              height: 36,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid oklch(0.80 0.11 84)',
+              background: 'linear-gradient(180deg, rgba(92, 70, 20, 0.92), rgba(42, 32, 10, 0.92))',
+              boxShadow: '0 0 18px rgba(204, 162, 62, 0.42), inset 0 0 10px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+            }}
+          >
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>YS</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>Bound</span>
+          </div>
+          <div
+            data-ui="god-chip"
+            data-god="SN"
+            data-assigned="false"
+            style={{
+              width: 52,
+              height: 36,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px dashed rgba(190, 172, 222, 0.3)',
+              background: 'rgba(20, 18, 32, 0.75)',
+              clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+            }}
+          >
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>SN</span>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>Kin</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Sort cards ("Order") - real ===== */}
+      <button
+        type="button"
+        data-ui="sort-cards-button"
+        onClick={onToggleSort}
+        style={{
+          position: 'absolute',
+          right: 10,
+          top: SORT_BUTTON_TOP,
+          height: 44,
+          padding: '0 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'linear-gradient(180deg, rgba(16, 38, 38, 0.9), rgba(7, 15, 18, 0.92))',
+          border: '1px solid rgba(120, 190, 178, 0.3)',
+          clipPath: 'polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)',
+          color: 'oklch(0.86 0.04 176)',
+          fontFamily: "'Cormorant Unicase', serif",
+          fontWeight: 500,
+          fontSize: 12,
+          letterSpacing: '0.14em',
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+        }}
+      >
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ display: 'block', width: 11, height: 1, background: 'currentColor' }} />
+          <span style={{ display: 'block', width: 8, height: 1, background: 'currentColor' }} />
+          <span style={{ display: 'block', width: 5, height: 1, background: 'currentColor' }} />
+        </span>
+        {sortLabel}
+      </button>
+
+      {/* ===== Action button - real ===== */}
+      <button
+        type="button"
+        data-ui="action-button"
+        data-enabled={actionEnabled}
+        onClick={actionEnabled ? handleAction : undefined}
+        disabled={!actionEnabled}
+        style={{
+          position: 'absolute',
+          left: CENTER_X - 77,
+          bottom: ACTION_BUTTON_BOTTOM,
+          width: 154,
+          padding: 1,
+          boxSizing: 'border-box',
+          border: 0,
+          background: actionEnabled ? 'linear-gradient(180deg, rgba(226, 188, 96, 0.9), rgba(120, 88, 30, 0.6))' : 'rgba(90, 104, 104, 0.22)',
+          clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
+          boxShadow: actionEnabled ? '0 0 40px rgba(212, 168, 66, 0.42)' : 'none',
+          cursor: actionEnabled ? 'pointer' : 'not-allowed',
+          pointerEvents: 'auto',
+        }}
+      >
+        <span
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            height: 56,
+            background: actionEnabled
+              ? 'linear-gradient(180deg, rgba(106, 78, 22, 0.96), rgba(38, 28, 10, 0.97))'
+              : 'linear-gradient(180deg, rgba(16, 24, 26, 0.9), rgba(8, 12, 14, 0.92))',
+            clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'IM Fell English SC', serif",
+              fontSize: 21,
+              letterSpacing: '0.06em',
+              color: actionEnabled ? 'oklch(0.97 0.04 92)' : 'rgba(150, 176, 174, 0.4)',
+              textShadow: actionEnabled ? '0 0 16px rgba(252, 216, 130, 0.6)' : 'none',
+            }}
+          >
+            {actionLabel}
+          </span>
+          <span
+            data-bind="action-hint"
+            style={{
+              fontFamily: "'Cormorant Unicase', serif",
+              fontWeight: 500,
+              fontSize: 8,
+              letterSpacing: '0.18em',
+              color: actionEnabled ? 'rgba(252, 228, 170, 0.7)' : 'rgba(150, 176, 174, 0.32)',
+            }}
+          >
+            {actionHint}
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}

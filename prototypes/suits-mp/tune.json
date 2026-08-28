@@ -15,5 +15,9 @@
   "cardMiniWidth": 18,
   "cardMiniHeight": 35,
   "cardMiniFontSize": 7,
-  "suitCycleHudRadius": 62
+  "turnWheelRotationMs": 700,
+  "turnWheelRotationEasing": "cubic-bezier(0.24, 0.86, 0.16, 1)",
+  "suitCycleRotationMs": 950,
+  "suitCycleRotationEasing": "cubic-bezier(0.3, 1.08, 0.2, 1)",
+  "outerSigilRingSpinMs": 140000
 }

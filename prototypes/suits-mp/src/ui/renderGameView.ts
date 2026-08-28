@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { GOD_ABBR, GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, sortCardIds, sortCardIdsByRank } from '../rules/cards';
-import type { CardId, God } from '../rules/types';
+import { GOD_DISPLAY_NAME, sortCardIds, sortCardIdsByRank } from '../rules/cards';
+import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
@@ -8,13 +8,15 @@ import type { NetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, MaskedState, MaskedTrickPlay } from '../net/actions';
 import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLegality';
 import type { CardVisualState } from './handLegality';
-import { buildSeatMap, computeSuitRing, seatFor, seatLabelFor } from './seating';
+import { buildSeatMap, seatFor, seatLabelFor } from './seating';
 import type { SeatPosition } from './seating';
 import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
 import { closeRules, openRules } from '../dom/domUiStore';
+import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
+import type { SeatDelegateState } from '../dom/overlay/gameOverlayStore';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
@@ -24,9 +26,12 @@ import tune from '../../tune.json';
 // component / Air Deck proportions / pop-out selection / redistribution
 // card-back stacks this file now implements. Still placeholder-first per
 // root CLAUDE.md: no sprites or art, coloured shapes and text only. The
-// Rules overlay and full Redistribution log content are explicitly
-// stubbed - real design for both comes from Claude Design as DOM overlays
-// in a later stage (3c).
+// Rules overlay is real content now (dom/RulesModal.tsx), and so is the
+// in-game HUD chrome - name tags, Suit Cycle HUD, turn indicator wheel,
+// Trick Starter tag, Team/god HUD, Order/Action buttons - which now lives
+// in dom/overlay/GameOverlay.tsx rather than being drawn here (see that
+// file's header comment for what's real vs. placeholder). Only the
+// Redistribution log content is still stubbed.
 
 const FONT = 'monospace';
 const WIDTH = 390;
@@ -53,24 +58,14 @@ const CARD_GAP = 4;
 // --- Layout constants -------------------------------------------------
 
 const TOP_BAR_Y = 20;
-const TOP_TAG_Y = 82;
 const TOP_BOX_Y = 140;
 const CLUSTER_CENTER_Y = 280;
-const HUD_HUB_RADIUS = 28;
-const HUD_NODE_RADIUS = 12;
-const HUD_RING_RADIUS = tune.suitCycleHudRadius;
 const BOTTOM_BOX_Y = 410;
-const BOTTOM_TAG_Y = 466;
 const SIDE_BOX_Y = CLUSTER_CENTER_Y;
 const LEFT_BOX_X = 58;
 const RIGHT_BOX_X = WIDTH - 58;
-const SIDE_TAG_Y = SIDE_BOX_Y + CARD_DIMS_STANDARD.height / 2 + 16;
-const DELEGATE_TAG_HIT_W = 74;
 
-const YOUR_ROW_Y = 500;
-const SORT_BUTTON_Y = 545;
 const FAN_BASELINE_Y = 615;
-const ACTION_BUTTON_Y = HEIGHT - 130;
 const REDIST_LOG_BUTTON_Y = HEIGHT - 30;
 
 const FAN_CONFIG: FanConfig = {
@@ -83,27 +78,13 @@ const FAN_CONFIG: FanConfig = {
 
 // --- Colors -------------------------------------------------------------
 
-const GOD_COLOR: Record<God, number> = {
-  YogSothoth: 0x8866ff,
-  Cthulhu: 0x33bbaa,
-  ShubNiggurath: 0x55cc55,
-  Nyarlathotep: 0xff7744,
-};
 const COLOR_PANEL = 0x1c1c26;
 const COLOR_PANEL_BORDER = 0x3a3a48;
-const COLOR_TURN_DOT = 0x88ff88;
-const COLOR_STARTER_DOT = 0xffd27a;
-const COLOR_TEAM_CHAOS = 0xff6666;
-const COLOR_TEAM_COSMOS = 0x66aaff;
 const COLOR_BUTTON_ENABLED = 0x2f6b3a;
 const COLOR_BUTTON_DISABLED = 0x2a2a30;
 const COLOR_BUTTON_TEXT_ENABLED = '#bdf5c9';
 const COLOR_BUTTON_TEXT_DISABLED = '#777780';
 const COLOR_STUB_BUTTON = 0x26262e;
-
-function toColorString(hex: number): string {
-  return `#${hex.toString(16).padStart(6, '0')}`;
-}
 
 // Never reveals another player's facedown (offsuit) card, regardless of
 // what `play.cards` technically contains. host/mask.ts currently sends
@@ -241,12 +222,6 @@ function renderWithView(
     return t;
   };
 
-  const circle = (x: number, y: number, r: number, fill: number, alpha = 1): Phaser.GameObjects.Arc => {
-    const c = scene.add.circle(x, y, r, fill, alpha);
-    container.add(c);
-    return c;
-  };
-
   const button: ButtonFn = (x, y, w, h, str, onTap, options = {}) => {
     const fill = options.fill ?? (onTap ? COLOR_BUTTON_ENABLED : COLOR_BUTTON_DISABLED);
     const r = rect(x, y, w, h, fill);
@@ -264,6 +239,7 @@ function renderWithView(
   // draws nothing further this frame; closing the modal hands control back
   // via this same closure.
   if (ui.overlay === 'rules') {
+    hideGameOverlay();
     openRules(() => {
       ui.overlay = 'none';
       rerender();
@@ -273,22 +249,36 @@ function renderWithView(
   closeRules();
 
   if (ui.overlay !== 'none') {
+    hideGameOverlay();
     renderOverlay(scene, container, state, ui.overlay, ui, rerender, rect, text, button);
     return;
   }
 
   if (state.winner) {
+    hideGameOverlay();
     renderGameOver(state, rect, text, button, ui, rerender);
     return;
   }
 
   renderTopBar(state, ui, rerender, rect, text, button);
-  const suitRing = renderPlayerCluster(scene, container, state, view, rerender, rect, text);
-  renderYourRow(state, suitRing, rect, text, circle);
+  renderPlayerCluster(scene, container, state, view, rerender, text);
   const legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
-  renderSortButton(ui, rerender, button);
   renderCardFan(scene, container, state, view, ui, legality, rerender);
-  renderActionButton(state, view, legality, sendAction, rerender, button);
+  const action = computeActionButtonState(state, view, legality, sendAction);
+  showGameOverlay({
+    sortLabel: ui.sortMode === 'suit' ? 'Sort: Suit' : 'Sort: Rank',
+    onToggleSort: () => {
+      ui.sortMode = ui.sortMode === 'suit' ? 'rank' : 'suit';
+      rerender();
+    },
+    actionLabel: action.label,
+    actionHint: action.hint,
+    actionEnabled: action.enabled,
+    onAction: () => {
+      action.onClick();
+    },
+    seatDelegate: computeSeatDelegateState(state, view, rerender),
+  });
   renderRedistLogStub(ui, rerender, button);
 }
 
@@ -316,7 +306,10 @@ function renderTopBar(state: MaskedState, ui: PersistentUIState, rerender: () =>
   void rect;
 }
 
-// --- Player cluster: Suit Cycle HUD + 4 play areas + name tags --------
+// --- Player cluster: 4 play areas ---------------------------------------
+// Name tags, the Suit Cycle HUD, turn/starter indicators and the Team/god
+// HUD are DOM chrome now (dom/overlay/GameOverlay.tsx) - this function
+// only draws the actual card play areas, which stay canvas-owned.
 
 function seatCenter(seat: SeatPosition): { x: number; y: number } {
   switch (seat) {
@@ -331,108 +324,41 @@ function seatCenter(seat: SeatPosition): { x: number; y: number } {
   }
 }
 
-// Top's tag sits *above* its play area (rather than below, like the other
-// three seats) specifically so it doesn't crowd the Suit Cycle HUD's own
-// top-node suit label, which sits just below the top box - see
-// TOP_TAG_Y/TOP_BOX_Y's relative spacing above.
-function nameTagY(seat: SeatPosition): number {
-  switch (seat) {
-    case 'top':
-      return TOP_TAG_Y;
-    case 'bottom':
-      return BOTTOM_TAG_Y;
-    case 'right':
-    case 'left':
-      return SIDE_TAG_Y;
-  }
-}
-
-function renderPlayerCluster(
-  scene: Phaser.Scene,
-  container: Phaser.GameObjects.Container,
-  state: MaskedState,
-  view: ViewState,
-  rerender: () => void,
-  rect: RectFn,
-  text: TextFn,
-): ReturnType<typeof computeSuitRing> {
+function renderPlayerCluster(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState, view: ViewState, rerender: () => void, text: TextFn): void {
   const seatMap = buildSeatMap(state.yourSlot);
-  // Item: local-only pre-commit HUD preview for the trick leader's own
-  // screen (see ui/seating.ts's computeSuitRing doc comment) - only ever
-  // reads this player's own in-progress selection, never sent over the
-  // network, so it can't leak anything to other players.
-  const previewCardId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
-  const suitRing = computeSuitRing(state, previewCardId);
-
-  // Suit Cycle HUD: a hub circle plus 4 ring nodes, one per seat.
-  const hub = scene.add.circle(CENTER_X, CLUSTER_CENTER_Y, HUD_HUB_RADIUS, 0x14141a, 1).setStrokeStyle(1, COLOR_PANEL_BORDER);
-  container.add(hub);
-  text(CENTER_X, CLUSTER_CENTER_Y, 'Suits', '#666677', 10);
-
-  for (const node of suitRing) {
-    const { x, y } = ringNodeCenter(node.seat);
-    const fill = node.suit ? GOD_COLOR[node.suit] : 0x2a2a32;
-    const alpha = node.isLeader ? 1 : node.suit ? 0.55 : 0.3;
-    const circle = scene.add.circle(x, y, HUD_NODE_RADIUS, fill, alpha);
-    if (node.isLeader) circle.setStrokeStyle(node.isLocalPreview ? 1 : 2, 0xffffff, node.isLocalPreview ? 0.6 : 1);
-    container.add(circle);
-    if (node.suit) text(x, y - HUD_NODE_RADIUS - 9, GOD_ABBR[node.suit], node.isLeader ? '#ffffff' : '#999999', 9);
-  }
-
-  const isDelegating = state.delegateChoices !== null;
   const redistCtx = state.redistribution;
 
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
     const pid = seatMap[seat];
-    const isYou = seat === 'bottom';
     const { x, y } = seatCenter(seat);
-
     renderPlayArea(scene, container, state, view, pid, x, y, redistCtx, rerender, text);
-
-    const tagY = nameTagY(seat);
-    const isTurn = pid === state.currentTurn;
-    const isStarter = suitRing.find((n) => n.player === pid)?.isLeader ?? false;
-    const seatLabel = seatLabelFor(seat);
-    const label = isYou ? `${seatLabel} (You)` : seatLabel;
-
-    const delegateTappable = isDelegating && !isYou;
-    const staged = view.delegateChoice === pid;
-    const tagColor = staged ? '#ffd27a' : delegateTappable ? '#ffffff' : '#cccccc';
-    const tagText = text(x, tagY, label, tagColor, 11);
-    if (delegateTappable) {
-      const hit = rect(x, tagY, DELEGATE_TAG_HIT_W, 20, staged ? 0x4a3a1a : 0x22222a, staged ? 0.9 : 0.001);
-      hit.setInteractive({ useHandCursor: true });
-      bindTapIntent(hit, () => {
-        view.delegateChoice = pid;
-        rerender();
-      });
-      container.bringToTop(tagText);
-    }
-
-    if (isTurn) {
-      const dot = scene.add.circle(x - DELEGATE_TAG_HIT_W / 2 - 10, tagY, 4, COLOR_TURN_DOT);
-      container.add(dot);
-    }
-    if (isStarter) {
-      const dot = scene.add.circle(x + DELEGATE_TAG_HIT_W / 2 + 10, tagY, 4, COLOR_STARTER_DOT);
-      container.add(dot);
-    }
   }
-
-  return suitRing;
 }
 
-function ringNodeCenter(seat: SeatPosition): { x: number; y: number } {
-  switch (seat) {
-    case 'top':
-      return { x: CENTER_X, y: CLUSTER_CENTER_Y - HUD_RING_RADIUS };
-    case 'right':
-      return { x: CENTER_X + HUD_RING_RADIUS, y: CLUSTER_CENTER_Y };
-    case 'bottom':
-      return { x: CENTER_X, y: CLUSTER_CENTER_Y + HUD_RING_RADIUS };
-    case 'left':
-      return { x: CENTER_X - HUD_RING_RADIUS, y: CLUSTER_CENTER_Y };
+// Real per-seat delegate-selection state, handed to the DOM name tags
+// (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts - see that file's
+// header comment for why this one interaction stays real while the tags'
+// displayed name/starter-tag are placeholder. Tapping another seat's tag
+// during the selectDelegate phase is the only way to choose who performs
+// a redistribution; there is no other UI for it.
+function computeSeatDelegateState(state: MaskedState, view: ViewState, rerender: () => void): Record<SeatPosition, SeatDelegateState> {
+  const seatMap = buildSeatMap(state.yourSlot);
+  const isDelegating = state.delegateChoices !== null;
+  const result = {} as Record<SeatPosition, SeatDelegateState>;
+  for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
+    const pid = seatMap[seat];
+    const isYou = seat === 'bottom';
+    const tappable = isDelegating && !isYou;
+    result[seat] = {
+      tappable,
+      staged: view.delegateChoice === pid,
+      onPick: () => {
+        view.delegateChoice = pid;
+        rerender();
+      },
+    };
   }
+  return result;
 }
 
 // One opponent/own play-area slot, entirely built from the shared card
@@ -534,57 +460,6 @@ function renderRedistributionStack(
   }
 }
 
-// --- Your row: starter indicator, name tag, team tag -------------------
-
-function renderYourRow(
-  state: MaskedState,
-  suitRing: ReturnType<typeof computeSuitRing>,
-  rect: RectFn,
-  text: TextFn,
-  circle: (x: number, y: number, r: number, fill: number, alpha?: number) => Phaser.GameObjects.Arc,
-): void {
-  const youAreStarter = suitRing.find((n) => n.player === state.yourSlot)?.isLeader ?? false;
-
-  text(62, YOUR_ROW_Y, youAreStarter ? 'You lead' : 'Not leading', youAreStarter ? '#ffd27a' : '#666670', 10);
-
-  text(180, YOUR_ROW_Y, `You: ${seatLabelFor('bottom')}`, '#eeeeee', 11);
-  if (state.currentTurn === state.yourSlot) {
-    circle(180 - 32, YOUR_ROW_Y, 4, COLOR_TURN_DOT);
-  }
-
-  // Team is publicly derivable the moment you know your own god - both
-  // team gods are shown, with your actual identity highlighted, but this
-  // never reveals which of the other 3 players holds the teammate
-  // identity, or anything about the opposing team.
-  const team = GOD_TEAM[state.yourGod];
-  const teammateGod = TEAMMATE_GOD[state.yourGod];
-  const teamColor = team === 'Chaos' ? COLOR_TEAM_CHAOS : COLOR_TEAM_COSMOS;
-  text(320, YOUR_ROW_Y - 10, `Team ${team}`, toColorString(teamColor), 10);
-  const chipY = YOUR_ROW_Y + 7;
-  const gods = [state.yourGod, teammateGod];
-  const chipW = 46;
-  gods.forEach((g, i) => {
-    const cx = 320 - chipW / 2 - 4 + i * (chipW + 4);
-    const isYours = g === state.yourGod;
-    rect(cx, chipY, chipW, 16, isYours ? GOD_COLOR[g] : 0x24242c, isYours ? 1 : 0.6);
-    text(cx, chipY, GOD_ABBR[g], isYours ? '#111111' : '#888890', 9);
-  });
-}
-
-// --- Sort button --------------------------------------------------------
-// Anchored to the card fan's own top edge (amendment item 6) - previously
-// sat in its own row under "Your row"; moved here so it visually reads as
-// part of the hand/fan area it controls, not the trick/play-area section
-// above it.
-
-function renderSortButton(ui: PersistentUIState, rerender: () => void, button: ButtonFn): void {
-  const label = ui.sortMode === 'suit' ? 'Sort: Suit' : 'Sort: Rank';
-  button(WIDTH - 60, SORT_BUTTON_Y, 90, 22, label, () => {
-    ui.sortMode = ui.sortMode === 'suit' ? 'rank' : 'suit';
-    rerender();
-  }, { fill: COLOR_STUB_BUTTON, textColor: '#cccccc', fontSize: 10 });
-}
-
 // --- Card fan (hand display) --------------------------------------------
 
 // Redistribute-phase card state is a separate, much simpler vocabulary
@@ -680,64 +555,73 @@ function seatLabelForNet(state: MaskedState, id: NetPlayerId) {
 
 // --- Action button --------------------------------------------------------
 
-function renderActionButton(
+// Real Action-button state (label/hint/enabled/onClick), handed to the
+// DOM button (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts rather
+// than drawn here - same decision logic as before, just returned as data
+// instead of calling Phaser's `button()`. `hint` is the design's small
+// secondary line under the main label; it's only ever the one static
+// string the design itself uses ("Commit the chosen card"), shown
+// whenever there's a real committable action and blank otherwise.
+interface ActionButtonState {
+  label: string;
+  hint: string;
+  enabled: boolean;
+  onClick: () => void;
+}
+
+const NO_OP = (): void => {};
+
+function computeActionButtonState(
   state: MaskedState,
   view: ViewState,
   legality: ReturnType<typeof computeHandLegality> | null,
   sendAction: (action: ClientAction) => void,
-  rerender: () => void,
-  button: ButtonFn,
-): void {
-  const x = CENTER_X;
-  const y = ACTION_BUTTON_Y;
-  const w = WIDTH - 32;
-  const h = 46;
+): ActionButtonState {
   const isYourTurn = state.currentTurn === state.yourSlot;
 
   if (!isYourTurn || state.turnPhase === 'gameOver') {
     const label = state.currentTurn ? `Waiting for ${seatLabelForNet(state, state.currentTurn)}...` : 'Waiting...';
-    button(x, y, w, h, label, null);
-    return;
+    return { label, hint: '', enabled: false, onClick: NO_OP };
   }
 
   if (state.turnPhase === 'play') {
     if (legality?.playType) {
       const type = legality.playType;
       const cards = [...view.selectedCards];
-      const label = type === 'single' ? 'Commit: Play Card' : type === 'double' ? 'Commit: Twin Awakening' : 'Commit: Facedown Card';
-      button(x, y, w, h, label, () => sendAction({ action: 'playCard', playType: type, cards }));
-    } else {
-      button(x, y, w, h, 'Select a card to play', null);
+      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Twin Awakening' : 'Facedown Card';
+      return { label, hint: 'Commit the chosen card', enabled: true, onClick: () => sendAction({ action: 'playCard', playType: type, cards }) };
     }
-    return;
+    return { label: 'Select a card to play', hint: '', enabled: false, onClick: NO_OP };
   }
 
   if (state.turnPhase === 'selectDelegate') {
     if (view.delegateChoice) {
       const target = view.delegateChoice;
-      button(x, y, w, h, `Commit: Delegate to ${seatLabelForNet(state, target)}`, () =>
-        sendAction({ action: 'selectDelegate', targetPlayer: target }),
-      );
-    } else {
-      button(x, y, w, h, 'Select a delegate above', null);
+      return {
+        label: `Delegate to ${seatLabelForNet(state, target)}`,
+        hint: 'Commit the chosen card',
+        enabled: true,
+        onClick: () => sendAction({ action: 'selectDelegate', targetPlayer: target }),
+      };
     }
-    return;
+    return { label: 'Select a delegate above', hint: '', enabled: false, onClick: NO_OP };
   }
 
-  if (state.turnPhase === 'redistribute') {
-    const ctx = state.redistribution;
-    const allAssigned = !!ctx && ctx.contributions.every((c) => (view.redistributeAssignment[c.player] ?? []).length === c.count);
-    if (allAssigned && ctx) {
-      button(x, y, w, h, 'Commit: Redistribute', () =>
+  const ctx = state.redistribution;
+  const allAssigned = !!ctx && ctx.contributions.every((c) => (view.redistributeAssignment[c.player] ?? []).length === c.count);
+  if (allAssigned && ctx) {
+    return {
+      label: 'Redistribute',
+      hint: 'Commit the chosen card',
+      enabled: true,
+      onClick: () =>
         sendAction({
           action: 'redistribute',
           assignments: ctx.contributions.map((c) => ({ toPlayer: c.player, cards: view.redistributeAssignment[c.player] ?? [] })),
         }),
-      );
-    } else {
-      button(x, y, w, h, 'Assign all cards', null);
-    }
+    };
   }
+  return { label: 'Assign all cards', hint: '', enabled: false, onClick: NO_OP };
 }
 
 // --- Redistribution log stub entry point --------------------------------
