@@ -3,6 +3,8 @@ import { RulesModal } from './RulesModal';
 import { closeRules, getSnapshot, subscribe } from './domUiStore';
 import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
+import { GameOverlay } from './overlay/GameOverlay';
+import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverlay } from './overlay/gameOverlayStore';
 
 // Single React root for suits-mp's whole DOM overlay layer (see
 // mountDom.ts). Add future DOM chrome (React + Tailwind, per root
@@ -14,6 +16,7 @@ import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './
 export function DomRoot(): JSX.Element {
   const { rulesOpen, closeRules: onClose } = useSyncExternalStore(subscribe, getSnapshot);
   const { visible: lobbyVisible, onSinglePlayer } = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
+  const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
 
   return (
     <>
@@ -26,6 +29,17 @@ export function DomRoot(): JSX.Element {
         />
       )}
       {lobbyVisible && <LobbyFlow onSinglePlayer={onSinglePlayer} />}
+      {gameOverlay.visible && (
+        <GameOverlay
+          sortLabel={gameOverlay.sortLabel}
+          onToggleSort={gameOverlay.onToggleSort}
+          actionLabel={gameOverlay.actionLabel}
+          actionHint={gameOverlay.actionHint}
+          actionEnabled={gameOverlay.actionEnabled}
+          onAction={gameOverlay.onAction}
+          seatDelegate={gameOverlay.seatDelegate}
+        />
+      )}
     </>
   );
 }

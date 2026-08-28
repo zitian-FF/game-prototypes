@@ -1,0 +1,37 @@
+/* Pseudo-classes the design expressed as style-hover/style-active (a
+   Claude Design authoring convention, not real CSS) - reproduced here
+   since inline React styles can't express :hover. Tailwind's base is
+   already pulled in via dom/RulesModal.css, loaded whenever the DOM
+   overlay mounts - no need to re-import it here. */
+
+/* Outer sigil ring's continuous decorative spin - duration is
+   tune.json-driven (outerSigilRingSpinMs, see GameOverlay.tsx) via the
+   inline `animation` shorthand; this keyframe only defines the motion
+   itself. Distinct from the turn wheel/Suit Cycle HUD's own rotations,
+   which use state-triggered CSS transitions instead (see root
+   CLAUDE.md's "Suit Cycle HUD and turn indicator wheel... state-triggered
+   CSS transform/transition... not continuous animation loops"). */
+@keyframes somCreep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+[data-ui='sort-cards-button']:hover {
+  border-color: rgba(150, 226, 210, 0.6);
+  color: #dff6ee;
+}
+
+[data-ui='action-button']:not([data-enabled='false']):hover {
+  box-shadow: 0 0 56px rgba(232, 190, 90, 0.6);
+}
+[data-ui='action-button']:not([data-enabled='false']):active {
+  transform: translateY(1px);
+}
+
+[data-ui='seat-tag'][data-tappable='true']:hover {
+  border-color: rgba(196, 158, 236, 0.7);
+}
