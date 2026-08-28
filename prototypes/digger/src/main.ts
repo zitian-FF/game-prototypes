@@ -46,7 +46,14 @@ const MAX_GRID_ROWS_BOUND = 9;
 // stays above the board regardless of when it or the board was last
 // rebuilt.
 const BOARD_DEPTH = 0;
+const TILE_LABEL_DEPTH = 1;
 const EFFECTS_DEPTH = 10;
+
+// Board-world (native tile pixel) inset for the per-tile HP label from the
+// tile's top-right corner -- layout, not game feel, so a plain constant
+// like GRID_MARGIN_X rather than a tune.json entry.
+const TILE_HP_LABEL_PADDING = 6;
+const TILE_HP_LABEL_FONT_SIZE = 16;
 
 const WIDTH = 390;
 const HEIGHT = 844;
@@ -93,6 +100,9 @@ class DiggerScene extends Phaser.Scene {
   // pattern.
   private boardCamera!: Phaser.Cameras.Scene2D.Camera;
   private tileSprites: Phaser.GameObjects.Image[] = [];
+  // Parallel to tileSprites/state.tiles, same indexing. null for a
+  // revealed tile (no HP number on cleared tiles).
+  private tileHpTexts: (Phaser.GameObjects.Text | null)[] = [];
 
   // Single persistent emitter, reused for every debris burst via .explode()
   // rather than one emitter per hit — Phaser pools/batches particles per
@@ -272,6 +282,8 @@ class DiggerScene extends Phaser.Scene {
   private buildBoard(): void {
     for (const sprite of this.tileSprites) sprite.destroy();
     this.tileSprites = [];
+    for (const text of this.tileHpTexts) text?.destroy();
+    this.tileHpTexts = [];
 
     const cols = this.state.gridCols;
     for (let i = 0; i < this.state.tiles.length; i++) {
@@ -283,8 +295,15 @@ class DiggerScene extends Phaser.Scene {
       const sprite = this.add.image(worldX, worldY, tile.revealed ? 'tile_hole' : 'tile_grass');
       sprite.setDepth(BOARD_DEPTH);
       this.tileSprites.push(sprite);
+
+      if (tile.revealed) {
+        this.tileHpTexts.push(null);
+      } else {
+        this.tileHpTexts.push(this.createTileHpText(col, row, tile.hp));
+      }
     }
     this.cameras.main.ignore(this.tileSprites);
+    this.cameras.main.ignore(this.tileHpTexts.filter((text): text is Phaser.GameObjects.Text => text !== null));
 
     const widthConstraintZoom = (WIDTH - GRID_MARGIN_X * 2) / this.state.gridCols / this.tileNativeWidth;
     const heightConstraintZoom = this.boardViewportHeight / (this.state.gridRows * this.tileNativeHeight);
@@ -299,6 +318,24 @@ class DiggerScene extends Phaser.Scene {
     const gridWorldWidth = this.state.gridCols * this.tileNativeWidth;
     const gridWorldHeight = this.state.gridRows * this.tileNativeHeight;
     this.boardCamera.centerOn(gridWorldWidth / 2, gridWorldHeight / 2);
+  }
+
+  // Board-world space, alongside tileSprites (not hudLayer) -- scales/
+  // scrolls with the board's current scale-to-fit zoom automatically, no
+  // extra math needed. Per the house DPR rule, resolution is set
+  // explicitly on the text style rather than relying on camera zoom alone.
+  private createTileHpText(col: number, row: number, hp: number): Phaser.GameObjects.Text {
+    const labelX = (col + 1) * this.tileNativeWidth - TILE_HP_LABEL_PADDING;
+    const labelY = row * this.tileNativeHeight + TILE_HP_LABEL_PADDING;
+    const text = this.add.text(labelX, labelY, `${hp}`, {
+      fontFamily: 'monospace',
+      fontSize: `${TILE_HP_LABEL_FONT_SIZE}px`,
+      color: '#000000',
+      resolution: PIXEL_RATIO,
+    });
+    text.setOrigin(1, 0);
+    text.setDepth(TILE_LABEL_DEPTH);
+    return text;
   }
 
   // Created once; every hit reuses this same emitter via .explode() rather
@@ -462,6 +499,7 @@ class DiggerScene extends Phaser.Scene {
 
     this.state.energy -= 1;
     tile.hp -= shipDamage(this.state.shipLevel);
+    this.tileHpTexts[index]?.setText(`${tile.hp}`);
 
     // Tile screen position, in the same fixed screen space as the ship —
     // mirrors the board-hit-test math above exactly (via the same
@@ -486,6 +524,8 @@ class DiggerScene extends Phaser.Scene {
       tile.revealed = true;
       this.state.currency += tile.loot;
       this.tileSprites[index].setTexture('tile_hole');
+      this.tileHpTexts[index]?.destroy();
+      this.tileHpTexts[index] = null;
       this.debrisEmitter.explode(
         Phaser.Math.Between(tune.debrisStrongCountMin, tune.debrisStrongCountMax),
         tileWorldX,
