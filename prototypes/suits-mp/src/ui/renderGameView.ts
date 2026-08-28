@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GOD_DISPLAY_NAME, sortCardIds, sortCardIdsByRank } from '../rules/cards';
+import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, sortCardIds, sortCardIdsByRank } from '../rules/cards';
 import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -8,7 +8,7 @@ import type { NetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, MaskedState, MaskedTrickPlay } from '../net/actions';
 import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLegality';
 import type { CardVisualState } from './handLegality';
-import { buildSeatMap, seatFor, seatLabelFor } from './seating';
+import { buildSeatMap, computeSuitRing, seatFor, seatLabelFor } from './seating';
 import type { SeatPosition } from './seating';
 import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
@@ -16,7 +16,8 @@ import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
 import { closeRules, openRules } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
-import type { SeatDelegateState } from '../dom/overlay/gameOverlayStore';
+import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
+import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
@@ -29,9 +30,10 @@ import tune from '../../tune.json';
 // Rules overlay is real content now (dom/RulesModal.tsx), and so is the
 // in-game HUD chrome - name tags, Suit Cycle HUD, turn indicator wheel,
 // Trick Starter tag, Team/god HUD, Order/Action buttons - which now lives
-// in dom/overlay/GameOverlay.tsx rather than being drawn here (see that
-// file's header comment for what's real vs. placeholder). Only the
-// Redistribution log content is still stubbed.
+// in dom/overlay/GameOverlay.tsx rather than being drawn here, driven by
+// real MaskedState computed below and threaded through
+// dom/overlay/gameOverlayStore.ts. Only the Redistribution log content is
+// still stubbed.
 
 const FONT = 'monospace';
 const WIDTH = 390;
@@ -265,6 +267,7 @@ function renderWithView(
   const legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
   renderCardFan(scene, container, state, view, ui, legality, rerender);
   const action = computeActionButtonState(state, view, legality, sendAction);
+  const hud = computeGameOverlayHudState(state, view);
   showGameOverlay({
     sortLabel: ui.sortMode === 'suit' ? 'Sort: Suit' : 'Sort: Rank',
     onToggleSort: () => {
@@ -278,6 +281,13 @@ function renderWithView(
       action.onClick();
     },
     seatDelegate: computeSeatDelegateState(state, view, rerender),
+    seatLabels: hud.seatLabels,
+    currentTurnSeat: hud.currentTurnSeat,
+    starterSeat: hud.starterSeat,
+    leadGodIndex: hud.leadGodIndex,
+    teamName: hud.teamName,
+    yourGodChip: hud.yourGodChip,
+    teammateGodChip: hud.teammateGodChip,
   });
   renderRedistLogStub(ui, rerender, button);
 }
@@ -336,11 +346,9 @@ function renderPlayerCluster(scene: Phaser.Scene, container: Phaser.GameObjects.
 }
 
 // Real per-seat delegate-selection state, handed to the DOM name tags
-// (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts - see that file's
-// header comment for why this one interaction stays real while the tags'
-// displayed name/starter-tag are placeholder. Tapping another seat's tag
-// during the selectDelegate phase is the only way to choose who performs
-// a redistribution; there is no other UI for it.
+// (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts. Tapping another
+// seat's tag during the selectDelegate phase is the only way to choose
+// who performs a redistribution; there is no other UI for it.
 function computeSeatDelegateState(state: MaskedState, view: ViewState, rerender: () => void): Record<SeatPosition, SeatDelegateState> {
   const seatMap = buildSeatMap(state.yourSlot);
   const isDelegating = state.delegateChoices !== null;
@@ -359,6 +367,45 @@ function computeSeatDelegateState(state: MaskedState, view: ViewState, rerender:
     };
   }
   return result;
+}
+
+export interface GameOverlayHudState {
+  seatLabels: Record<SeatPosition, string>;
+  currentTurnSeat: SeatPosition | null;
+  starterSeat: SeatPosition | null;
+  leadGodIndex: number | null;
+  teamName: string;
+  yourGodChip: GodChipState;
+  teammateGodChip: GodChipState;
+}
+
+// Real display-ready HUD data for dom/overlay/GameOverlay.tsx - computed
+// from the exact same real state/logic the old Phaser-drawn Suit Cycle
+// HUD/name-tag/turn-dot/starter-dot/Team-god-chip code used
+// (ui/seating.ts's computeSuitRing, GOD_TEAM/TEAMMATE_GOD), just returned
+// as data instead of drawn.
+function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOverlayHudState {
+  const seatLabels = {} as Record<SeatPosition, string>;
+  for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
+    const label = seatLabelFor(seat);
+    seatLabels[seat] = seat === 'bottom' ? `${label} (You)` : label;
+  }
+
+  const previewCardId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
+  const suitRing = computeSuitRing(state, previewCardId);
+  const leaderNode = suitRing.find((n) => n.isLeader);
+  const currentTurnSeat = state.currentTurn ? seatFor(state.currentTurn, state.yourSlot) : null;
+  const teammateGod = TEAMMATE_GOD[state.yourGod];
+
+  return {
+    seatLabels,
+    currentTurnSeat,
+    starterSeat: leaderNode?.seat ?? null,
+    leadGodIndex: leaderNode?.suit ? GOD_TO_SUIT_INDEX[leaderNode.suit] : null,
+    teamName: `Team ${GOD_TEAM[state.yourGod]}`,
+    yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'Bound' },
+    teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin' },
+  };
 }
 
 // One opponent/own play-area slot, entirely built from the shared card

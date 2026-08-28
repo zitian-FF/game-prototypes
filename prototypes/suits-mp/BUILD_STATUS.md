@@ -1,109 +1,81 @@
 ## Current milestone
 
-Stage 3c (continued): the in-game HUD chrome (name tags, Suit Cycle HUD,
-turn indicator wheel, Trick Starter tag, Team/god HUD, Order/Action
-buttons) is now real DOM content, alongside the Rules overlay and Lobby
-screen from previous sessions - all three are Claude Design handoffs
-implemented as React components over the Phaser canvas, per root
-CLAUDE.md's "UI implementation split." Redistribution-log content is
-Stage 3c's last remaining stubbed piece. Version stamp counter is at 8
+Stage 3c (complete except Redistribution-log content): the in-game HUD
+chrome (name tags, Suit Cycle HUD, turn indicator wheel, Trick Starter
+tag, Team/god HUD, Order/Action buttons) is now real DOM content driven
+by real `MaskedState` - no placeholder/demo data remains anywhere in
+`dom/overlay/`. This completes the follow-up flagged at the end of the
+previous session. Alongside the Rules overlay and Lobby screen, all
+three Claude Design handoffs implemented so far are now fully wired to
+real game state where real state exists to wire (see "Known issues" for
+the two things that still don't: Lobby's Host/Join navigation, and
+Redistribution-log content). Version stamp counter is at 8
 (`version.json`) - unchanged, no deploy has run yet.
 
 ## What was implemented
 
-- Ported the Claude Design handoff `Suit of Madness Overlay.dc.html` as
-  `src/dom/overlay/GameOverlay.tsx`: the turn indicator wheel and Suit
-  Cycle HUD (two independently-rotating rings), 4 seat name tags with a
-  Trick Starter ("Invoker") tag, a static Team/god identity HUD, and the
-  "Order"/"Action" buttons. Data split into `overlayContent.ts` (seat
-  order/degrees, suit info, placeholder names) and `gameOverlayStore.ts`
-  (the bridge to the canvas, see below). The design's own decorative
-  background layers (abyssal bloom, film-grain noise, vignette), its
-  `canvas-owned zones` guide boxes, and its bottom-left "DOM overlay"
-  label were all dropped - none are real chrome, they're the design
-  tool's own stand-ins for what the *real* Phaser canvas already renders
-  live underneath this layer.
-- Both ring rotations are state-triggered CSS `transition`s (not
-  `@keyframes` loops or Phaser tweens), with duration/easing now in
-  `tune.json` (`turnWheelRotationMs`/`turnWheelRotationEasing`,
-  `suitCycleRotationMs`/`suitCycleRotationEasing`) - exposed via the
-  existing Tweakpane debug panel, which needed a small fix
-  (`debug/debugPanel.ts`) since it previously assumed every tune value
-  was numeric; easing curves are strings. The outer sigil ring's
-  continuous decorative spin (a real `@keyframes` loop, not one of the
-  two state-triggered rings the rule above targets) also got a tune.json
-  duration (`outerSigilRingSpinMs`).
-- `ui/renderGameView.ts`'s old Phaser-drawn equivalents of all of the
-  above - the Suit Cycle HUD hub+ring dots, per-seat name-tag/turn-dot/
-  starter-dot text, and the Team/Your-row god chips (`renderYourRow`,
-  removed entirely) - were deleted rather than left running alongside
-  the new DOM chrome, along with the unused `suitCycleHudRadius` tune
-  value only they referenced. `renderPlayerCluster` now only draws the 4
-  card play areas (still real, still canvas-owned).
-- Positioning for the new DOM elements was adapted to this codebase's
-  *real* Stage 3a layout constants (`CLUSTER_CENTER_Y`, `TOP_BOX_Y`,
-  `SIDE_BOX_Y`, etc. in `renderGameView.ts`), not copied verbatim from
-  the design's own coordinates - the design's guide boxes for where
-  cards/play-areas sit were only an approximation independent of this
-  codebase's actual geometry, and using them as-is would have visibly
-  misaligned the new rings/tags against the real canvas-drawn cards
-  beneath them. Each element's own *styling* (colors, borders,
-  clip-paths, fonts, sizes) is still a direct pixel-for-pixel port.
+- Removed `GameOverlay.tsx`'s local placeholder `demo` state (turn/lead/
+  trick/starter counters, the `advanceTurn`-on-click pulse) entirely.
+  Every value it renders is now a prop computed from real `MaskedState`
+  by a new `computeGameOverlayHudState()` in `ui/renderGameView.ts`,
+  threaded through `gameOverlayStore.ts`:
+  - **Seat name tags**: real `seatLabelFor(seat)` ("P1"/"P2"/"P4") plus
+    "(You)" for the local seat - this codebase has no real player-
+    nickname data anywhere (`RosterEntry` carries no `name` field), so
+    the seat label *is* the real equivalent of "name", not a placeholder.
+  - **Turn indicator wheel**: rotates to the seat holding real
+    `state.currentTurn` (via `seatFor`).
+  - **Suit Cycle HUD**: rotates to the real lead god - reusing
+    `ui/seating.ts`'s existing `computeSuitRing()` (the same function
+    the old Phaser ring used), including its leader's-own-screen live
+    preview of an in-progress selection before commit.
+  - **Trick Starter ("Invoker") tag**: shown on whichever seat
+    `computeSuitRing` reports as the real trick leader.
+  - **Team/god HUD**: real `GOD_TEAM`/`TEAMMATE_GOD` lookups against
+    `state.yourGod` (same source the old `renderYourRow` used).
+  - Both `currentTurnSeat` and `leadGodIndex` come back `null` when
+    genuinely indeterminate (e.g. an opponent is about to lead but
+    hasn't committed, or between-phase moments with no trick in
+    progress) - `GameOverlay.tsx`'s new `useForwardRotation`/
+    `useLastKnown` hooks freeze the wheel/label at their last real value
+    in that case rather than snapping to a default.
+- New `useForwardRotation(index, order, stepDeg)` hook in
+  `GameOverlay.tsx` turns a real 0-3 index into cumulative rotation
+  degrees (jumping straight to the first real value at mount, then
+  accumulating forward-only steps on every change) - this is what keeps
+  the wheels turning forward and never snapping back now that the index
+  driving them is real game state instead of a local demo counter that
+  only ever incremented by exactly one.
+- `overlayContent.ts` gained `GOD_TO_SUIT_INDEX` (God -> the fixed
+  YS/CT/SN/NY cycle position) and dropped `PLACEHOLDER_NAMES` (no longer
+  needed).
 
 ## Key technical decisions
 
-- **Two different things share this one component, per explicit user
-  direction mid-task** (see the two-part clarifying question this
-  session opened with, and `GameOverlay.tsx`'s header comment):
-  - Name tags, the Suit Cycle HUD, the turn wheel, and the Trick Starter
-    tag are placeholder/demo display only - a local `demo` state (turn/
-    lead/trick/starter counters, ported near-verbatim from the design's
-    own self-contained Component class) drives them, exactly mirroring
-    the Rules/Lobby sessions' approach. They do not read real
-    `MaskedState`.
-  - The "Order" and "Action" buttons stay **real**: `sortLabel`/
-    `onToggleSort` and `actionLabel`/`actionHint`/`actionEnabled`/
-    `onAction` are threaded from `renderGameView.ts`'s real render pass
-    through `gameOverlayStore.ts`, just re-skinned rather than redrawn.
-    Neutering them would have made a currently-playable single-player
-    bot game unplayable (no way to submit moves) or lose real sort
-    behavior, for no benefit - this was simple prop-threading, not
-    rules-engine work, so keeping it real cost nothing extra.
-- **Seat-tag delegate-selection tap targets also stay real** - a
-  discovery made *during* this session, not part of the original
-  clarifying question: the old Phaser name tags weren't purely
-  decorative, they were also the only way to tap-select a redistribution
-  delegate after a Twin Awakening (double) win. Making the new DOM tags
-  placeholder-only (as approved for their *display*) would have silently
-  broken that interaction, leaving a real bot game stuck with no legal
-  way to proceed past a double win. Applied the same "interactive stays
-  real, display goes placeholder" principle the user had just approved
-  for Order/Action: `gameOverlayStore.ts` carries a real
-  `seatDelegate: Record<SeatPosition, SeatDelegateState>` (tappable/
-  staged/onPick per seat, computed by the new
-  `computeSeatDelegateState()` in `renderGameView.ts` from the exact
-  same real logic the old code used), while the tag's *displayed* name
-  and starter-tag stay placeholder. Not re-confirmed with the user before
-  proceeding (to avoid a third clarifying round over a case that follows
-  directly from a principle already approved this session) - flagged
-  here per the standing rule for exactly this kind of mid-session
-  discovery.
-- Every real Action-button click also pulses the placeholder `demo`
-  state forward (`GameOverlay.tsx`'s `handleAction`), purely so the
-  ring rotations this task asked for are actually exercised during real
-  play - this is not a claim that the demo state reflects the turn that
-  just really happened (seat identities/order in the demo are unrelated
-  to the real roster).
-- The DOM tags are the tap targets directly (real `onClick` on the
-  button element), not a parallel invisible Phaser hit-rectangle at a
-  duplicated position - simpler and removes a way the two layers'
-  coordinates could silently drift apart.
+- Reused `ui/seating.ts`'s existing `computeSuitRing()` rather than
+  writing new leader/lead-god logic - it already encodes the exact real
+  rules (mid-trick leader + `state.leadSuit`, or the local live-preview
+  fallback while about to lead) that both the old canvas ring and the
+  delegate-tap targets already depended on; recomputing it once per
+  render in `computeGameOverlayHudState()` (alongside
+  `computeSeatDelegateState()`, which already called it) keeps a single
+  source of truth rather than two.
+- Kept the God->code mapping as this repo's own 2-letter design codes
+  (YS/CT/SN/NY, via `overlayContent.ts`'s `SUITS`/`GOD_TO_SUIT_INDEX`)
+  rather than switching to `rules/cards.ts`'s `GOD_ABBR` (3-letter: YOG/
+  CTH/SHU/NYA) - pixel fidelity to the source design's own abbreviations
+  wins, and both are just abbreviations of the same real god, so nothing
+  is lost.
+- `yourGodChip`/`teammateGodChip`'s "Bound"/"Kin" labels and highlighted-
+  vs-dashed styling stay structurally fixed to which chip is which
+  (your own god is always "Bound"/highlighted, the teammate's is always
+  "Kin"/dashed) rather than data-driven - that distinction is inherent
+  to the two chips' roles, not something that varies per game, matching
+  the old `renderYourRow`'s `isYours` check exactly.
 
 ## Open questions
 
-- No new open questions from this session beyond the one carried over
-  from the Lobby session (Host/Join real-vs-placeholder navigation, see
-  "Next proposed step").
+- None from this session.
 
 ## Known issues
 
@@ -111,29 +83,25 @@ Stage 3c's last remaining stubbed piece. Version stamp counter is at 8
   (carried over, same fonts, same cosmetic fallback to `serif`/
   `Georgia`) - not a code defect.
 - The delegate-selection tap interaction (seat tags during the
-  `selectDelegate` phase) is logic-ported directly from the previously-
-  working real code and was exercised via TypeScript/build checks, but a
-  live double-win didn't occur during this session's bot-game Playwright
-  pass (chance-dependent) - this exact gap (`selectDelegate`'s live
-  rendering not pixel-verified) was already a known, carried-over issue
-  from the original Stage 3a implementation, so it isn't a new
-  regression in verification coverage, just still open.
+  `selectDelegate` phase) still hasn't been exercised by a live double-
+  win in this repo's Playwright passes (chance-dependent) - carried over
+  from the previous session, not new.
 - Carried over, still true, untouched: facedown-card masking leak at the
   payload level (`host/mask.ts`); not live-verified against real human
   peers (masking, turn rotation, redistribution/delegate flow, reconnect,
   room-code refresh); the off-suit double-selection fan is logic-
   verified but not pixel-verified live; the TURN worker fetch's swallowed
   console error in the dev sandbox; the Lobby session's Host/Join
-  real-vs-placeholder navigation question (see below).
+  real-vs-placeholder navigation question (Host/Join currently navigate
+  within `LobbyFlow`'s own placeholder state rather than to the real
+  `HostLobbyScene`/`JoinEntryScene` - unrelated to this session's HUD
+  work, still open from the Lobby session).
 
 ## Next proposed step
 
-Real-state wiring for this session's placeholder HUD (name/turn/suit-
-cycle/starter all currently demo-only) is the natural next Stage 3c
-follow-up, alongside the still-open Lobby-session question of whether
-Host/Join should navigate to the real `HostLobbyScene`/`JoinEntryScene`
-now. Otherwise, Redistribution-log content remains Stage 3c's last
-stubbed piece, and the carried-over Known issues (real fix for the
+Redistribution-log content is Stage 3c's only remaining stubbed piece
+(no design handoff for it exists yet). Otherwise, the two still-open
+items above: the Lobby session's Host/Join real-vs-placeholder
+navigation decision, and the carried-over Known issues (real fix for the
 facedown-card masking leak, a user phone/live pass for real-peer
-masking/reconnect, double-win/`selectDelegate` and off-suit-selection
-live rendering) still stand.
+masking/reconnect and double-win/off-suit-selection live rendering).

@@ -38,6 +38,13 @@ export function DomRoot(): JSX.Element {
           actionEnabled={gameOverlay.actionEnabled}
           onAction={gameOverlay.onAction}
           seatDelegate={gameOverlay.seatDelegate}
+          seatLabels={gameOverlay.seatLabels}
+          currentTurnSeat={gameOverlay.currentTurnSeat}
+          starterSeat={gameOverlay.starterSeat}
+          leadGodIndex={gameOverlay.leadGodIndex}
+          teamName={gameOverlay.teamName}
+          yourGodChip={gameOverlay.yourGodChip}
+          teammateGodChip={gameOverlay.teammateGodChip}
         />
       )}
     </>
