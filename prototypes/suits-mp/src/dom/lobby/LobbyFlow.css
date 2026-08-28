@@ -1,0 +1,87 @@
+/* Pseudo-classes the design expressed as style-hover/style-active (a
+   Claude Design authoring convention, not real CSS) - reproduced here
+   since inline React styles can't express :hover. Tailwind's base is
+   already pulled in via dom/RulesModal.css, loaded whenever the DOM
+   overlay mounts - no need to re-import it here. */
+
+@keyframes somPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes somSeethe {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.06);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+}
+
+@keyframes somCreep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+[data-ui='host-button']:hover {
+  box-shadow: 0 0 58px rgba(232, 190, 90, 0.5);
+}
+[data-ui='host-button']:active {
+  transform: translateY(1px);
+}
+
+[data-ui='join-button']:hover {
+  border-color: rgba(150, 226, 210, 0.7);
+}
+
+[data-ui='refresh-code-button']:hover,
+[data-ui='copy-code-button']:hover,
+[data-ui='copy-link-button']:hover {
+  border-color: rgba(226, 190, 104, 0.8);
+  color: #f6e6c2;
+}
+[data-ui='refresh-code-button']:hover {
+  /* Re-announce keeps the teal palette rather than gold - matches source. */
+  border-color: rgba(150, 226, 210, 0.65);
+  color: #dff6ee;
+}
+
+[data-ui='fill-bot-button']:hover {
+  border-style: solid;
+  border-color: rgba(196, 158, 236, 0.85);
+  color: #eadcfa;
+}
+
+[data-ui='release-bot-button']:hover {
+  color: #eadcfa;
+  border-color: rgba(196, 158, 236, 0.7);
+}
+
+[data-ui='back-to-landing-button']:hover,
+[data-ui='cancel-busy-button']:hover {
+  color: rgba(200, 232, 224, 0.9);
+}
+[data-ui='cancel-busy-button']:hover {
+  border-color: rgba(200, 232, 224, 0.6);
+}
+
+[data-ui='error-primary']:hover {
+  border-color: rgba(230, 192, 106, 0.85);
+}
+
+[data-ui='error-secondary']:hover {
+  border-color: rgba(200, 232, 224, 0.55);
+  color: #dff6ee;
+}
