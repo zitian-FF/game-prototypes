@@ -330,7 +330,10 @@ class DiggerScene extends Phaser.Scene {
     const text = this.add.text(labelX, labelY, `${hp}`, {
       fontFamily: 'monospace',
       fontSize: `${TILE_HP_LABEL_FONT_SIZE}px`,
+      fontStyle: 'bold',
       color: '#000000',
+      stroke: '#ffffff',
+      strokeThickness: 3,
       resolution: PIXEL_RATIO,
     });
     text.setOrigin(1, 0);
