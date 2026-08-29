@@ -79,19 +79,6 @@ function useForwardRotation(index: number | null, order: number, stepDeg: number
   return rotation;
 }
 
-// Remembers the last non-null value seen - used for the Suit Cycle HUD's
-// "Lead" text, which should keep showing the last real lead suit while
-// the ring itself is frozen (leadGodIndex went indeterminate) rather than
-// blank out, even though the rotation and the label are tracked
-// separately.
-function useLastKnown(value: number | null): number | null {
-  const ref = useRef<number | null>(value);
-  useEffect(() => {
-    if (value !== null) ref.current = value;
-  }, [value]);
-  return value !== null ? value : ref.current;
-}
-
 // Layout constants matching ui/renderGameView.ts's real seat/cluster
 // geometry by value (CENTER_X, CLUSTER_CENTER_Y) so this DOM chrome lines
 // up with the still-canvas-drawn play areas/hand fan beneath it - the
@@ -141,9 +128,16 @@ export function GameOverlay({
 }: GameOverlayProps): JSX.Element {
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
-  const suitDeg = useForwardRotation(leadGodIndex, 4, -90);
-  const knownLeadGodIndex = useLastKnown(leadGodIndex);
-  const leadShort = knownLeadGodIndex === null ? '—' : SUITS[knownLeadGodIndex].short;
+  // Badges are laid out (positionStyle below) with SUITS[0] (Yog-Sothoth)
+  // at the ring's local top, going clockwise. useForwardRotation's own
+  // math (index*stepDeg, accumulated forward-only) rotates the ring so
+  // that the current lead suit's badge lands at local top - the fixed
+  // +180 below re-anchors that to the *bottom* instead, where the
+  // "Invoker"/pointer indicator actually lives (see the lead-marker ring
+  // and the wheel transform below), which is the one visual reference a
+  // player actually reads "current lead suit" from now that the center
+  // hub no longer carries a redundant text label.
+  const suitDeg = useForwardRotation(leadGodIndex, 4, -90) + 180;
   const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
   return (
@@ -303,6 +297,11 @@ export function GameOverlay({
           <div style={{ position: 'absolute', inset: 26, borderRadius: '50%', border: '1px solid rgba(176, 142, 66, 0.14)' }} />
         </div>
 
+        {/* The center hub is now a plain decorative disc - no text label.
+            The wheel's own rotation (badge at bottom = current lead suit,
+            highlighted by the lead-marker ring just below) is the only
+            indicator now; a redundant "Lead: <name>" text would just
+            duplicate it. */}
         <div
           style={{
             position: 'absolute',
@@ -315,25 +314,18 @@ export function GameOverlay({
             background: 'radial-gradient(50% 50% at 50% 42%, rgba(14, 46, 48, 0.95), rgba(4, 9, 12, 0.97))',
             border: '1px solid rgba(176, 142, 66, 0.24)',
             boxShadow: 'inset 0 0 18px rgba(0,0,0,0.9)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 1,
           }}
-        >
-          <div style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.16em', color: 'rgba(158, 196, 186, 0.55)' }}>Lead</div>
-          <div data-bind="lead-suit-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 12, lineHeight: 1.05, textAlign: 'center', color: 'oklch(0.92 0.04 88)' }}>
-            {leadShort}
-          </div>
-        </div>
+        />
 
+        {/* Highlights whichever badge the wheel has rotated to the
+            bottom - the anchor position for "current lead suit" (see
+            suitDeg's own comment above for why bottom, not top). */}
         <div
           data-ui="lead-marker"
           style={{
             position: 'absolute',
             left: '50%',
-            top: -2,
+            bottom: -2,
             marginLeft: -18,
             width: 36,
             height: 36,
