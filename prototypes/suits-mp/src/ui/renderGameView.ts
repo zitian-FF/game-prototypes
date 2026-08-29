@@ -60,14 +60,20 @@ const CARD_GAP = 4;
 // --- Layout constants -------------------------------------------------
 
 const TOP_BAR_Y = 20;
-const TOP_BOX_Y = 140;
-const CLUSTER_CENTER_Y = 280;
-const BOTTOM_BOX_Y = 410;
+// Row anchors grown/spaced out from the card-frame compositing task's
+// taller cards (tune.cardStandardHeight 82->114, matching the Card Frame
+// design's true 300:816 proportions - see BUILD_STATUS.md). Keep these in
+// sync with dom/overlay/GameOverlay.tsx's matching constants (TOP_TAG_TOP/
+// SIDE_TAG_TOP/BOTTOM_TAG_TOP/TEAM_HUD_TOP/SORT_BUTTON_TOP), which anchor
+// DOM chrome around these same canvas-drawn play areas.
+const TOP_BOX_Y = 150;
+const CLUSTER_CENTER_Y = 305;
+const BOTTOM_BOX_Y = 453;
 const SIDE_BOX_Y = CLUSTER_CENTER_Y;
 const LEFT_BOX_X = 58;
 const RIGHT_BOX_X = WIDTH - 58;
 
-const FAN_BASELINE_Y = 615;
+const FAN_BASELINE_Y = 648;
 const REDIST_LOG_BUTTON_Y = HEIGHT - 30;
 
 const FAN_CONFIG: FanConfig = {

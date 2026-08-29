@@ -55,14 +55,12 @@ function addToManifest(relativePath, absolutePath) {
 // --- Pack animations ---
 const animations = {};
 
-if (existsSync(packedSrcDir)) {
-  const animKeys = readdirSync(packedSrcDir)
-    .filter((entry) => statSync(path.join(packedSrcDir, entry)).isDirectory())
-    .sort();
+const animKeysPresent = existsSync(packedSrcDir)
+  ? readdirSync(packedSrcDir).filter((entry) => statSync(path.join(packedSrcDir, entry)).isDirectory())
+  : [];
 
-  if (animKeys.length === 0) {
-    fail(`no animation folders found under ${path.relative(rootDir, packedSrcDir)}`);
-  }
+if (animKeysPresent.length > 0) {
+  const animKeys = animKeysPresent.sort();
 
   const folders = [];
   for (const key of animKeys) {
