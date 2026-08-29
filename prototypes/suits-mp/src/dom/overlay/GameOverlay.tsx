@@ -38,6 +38,7 @@ export interface GameOverlayProps {
   actionHint: string;
   actionEnabled: boolean;
   onAction: () => void;
+  onOpenRedistLog: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
   seatLabels: Record<SeatPosition, string>;
   currentTurnSeat: SeatPosition | null;
@@ -106,9 +107,18 @@ const CLUSTER_CENTER_Y = 305;
 const TOP_TAG_TOP = 50;
 const SIDE_TAG_TOP = 358;
 const BOTTOM_TAG_TOP = 501;
-const TEAM_HUD_TOP = 579;
-const SORT_BUTTON_TOP = 653;
-const ACTION_BUTTON_BOTTOM = 54;
+// Height of the local ("P3 (You)") name tag box (padding:1 x2 + its
+// minHeight:46 inner) - used to sit the Team HUD flush against its
+// bottom edge with zero gap, per the design's own attached placement.
+const LOCAL_TAG_HEIGHT = 48;
+// Extra room reserved when the local seat is also this trick's starter,
+// so the Team HUD sits below the "Invoker" tag too rather than
+// overlapping it (gap:6 + the tag's own ~3px/11px padding + text).
+const LOCAL_INVOKER_TAG_HEIGHT = 28;
+// Shared bottom anchor for the three-part bottom row (Redistribution log
+// / Action / Sort) - see BUILD_STATUS.md for why these three, previously
+// scattered (one of them canvas-drawn), are now one coordinated DOM row.
+const BOTTOM_ROW_BOTTOM = 54;
 
 export function GameOverlay({
   sortLabel,
@@ -117,6 +127,7 @@ export function GameOverlay({
   actionHint,
   actionEnabled,
   onAction,
+  onOpenRedistLog,
   seatDelegate,
   seatLabels,
   currentTurnSeat,
@@ -131,6 +142,7 @@ export function GameOverlay({
   const suitDeg = useForwardRotation(leadGodIndex, 4, -90);
   const knownLeadGodIndex = useLastKnown(leadGodIndex);
   const leadShort = knownLeadGodIndex === null ? '—' : SUITS[knownLeadGodIndex].short;
+  const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -437,75 +449,112 @@ export function GameOverlay({
       })}
 
       {/* ===== Team / god identity HUD ===== */}
-      <div
-        data-ui="team-hud"
-        style={{
-          position: 'absolute',
-          left: CENTER_X - 136,
-          top: TEAM_HUD_TOP,
-          width: 272,
-          minHeight: 50,
-          boxSizing: 'border-box',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '6px 13px',
-          borderTop: '1px solid rgba(160, 120, 210, 0.3)',
-          borderBottom: '1px solid rgba(160, 120, 210, 0.3)',
-          background: 'linear-gradient(180deg, rgba(24, 18, 40, 0.9), rgba(9, 9, 16, 0.93))',
-          boxShadow: 'inset 0 0 34px rgba(104, 58, 168, 0.24)',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(196, 178, 224, 0.6)' }}>Thy covenant</span>
-          <span data-bind="team-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 18, lineHeight: 1.05, color: 'oklch(0.88 0.09 88)' }}>
-            {teamName}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div
-            data-ui="god-chip"
-            data-god={yourGodChip.code}
-            data-assigned="true"
-            style={{
-              width: 52,
-              height: 36,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid oklch(0.80 0.11 84)',
-              background: 'linear-gradient(180deg, rgba(92, 70, 20, 0.92), rgba(42, 32, 10, 0.92))',
-              boxShadow: '0 0 18px rgba(204, 162, 62, 0.42), inset 0 0 10px rgba(0,0,0,0.6)',
-              clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-            }}
-          >
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>{yourGodChip.code}</span>
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>{yourGodChip.label}</span>
+      {/* Reduced to 50% size and sat flush against the local name tag's
+          bottom edge (zero gap) - a plain CSS scale on a wrapper sized/
+          positioned exactly as the original box keeps every inner value
+          (borders, shadows, chip sizes, fonts) uniformly halved rather
+          than needing every px value hand-edited. transformOrigin 'top
+          center' keeps it centered on CENTER_X and anchored to teamHudTop
+          (its own top edge doesn't move under the scale). */}
+      <div style={{ position: 'absolute', left: CENTER_X - 136, top: teamHudTop, width: 272, transform: 'scale(0.5)', transformOrigin: 'top center' }}>
+        <div
+          data-ui="team-hud"
+          style={{
+            minHeight: 50,
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '6px 13px',
+            borderTop: '1px solid rgba(160, 120, 210, 0.3)',
+            borderBottom: '1px solid rgba(160, 120, 210, 0.3)',
+            background: 'linear-gradient(180deg, rgba(24, 18, 40, 0.9), rgba(9, 9, 16, 0.93))',
+            boxShadow: 'inset 0 0 34px rgba(104, 58, 168, 0.24)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(196, 178, 224, 0.6)' }}>Thy covenant</span>
+            <span data-bind="team-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 18, lineHeight: 1.05, color: 'oklch(0.88 0.09 88)' }}>
+              {teamName}
+            </span>
           </div>
-          <div
-            data-ui="god-chip"
-            data-god={teammateGodChip.code}
-            data-assigned="false"
-            style={{
-              width: 52,
-              height: 36,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px dashed rgba(190, 172, 222, 0.3)',
-              background: 'rgba(20, 18, 32, 0.75)',
-              clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-            }}
-          >
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>{teammateGodChip.code}</span>
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>{teammateGodChip.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div
+              data-ui="god-chip"
+              data-god={yourGodChip.code}
+              data-assigned="true"
+              style={{
+                width: 52,
+                height: 36,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid oklch(0.80 0.11 84)',
+                background: 'linear-gradient(180deg, rgba(92, 70, 20, 0.92), rgba(42, 32, 10, 0.92))',
+                boxShadow: '0 0 18px rgba(204, 162, 62, 0.42), inset 0 0 10px rgba(0,0,0,0.6)',
+                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+              }}
+            >
+              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>{yourGodChip.code}</span>
+              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>{yourGodChip.label}</span>
+            </div>
+            <div
+              data-ui="god-chip"
+              data-god={teammateGodChip.code}
+              data-assigned="false"
+              style={{
+                width: 52,
+                height: 36,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px dashed rgba(190, 172, 222, 0.3)',
+                background: 'rgba(20, 18, 32, 0.75)',
+                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+              }}
+            >
+              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>{teammateGodChip.code}</span>
+              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>{teammateGodChip.label}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ===== Sort cards ("Order") - real ===== */}
+      {/* ===== Bottom row, left: Redistribution log - real =====
+          Migrated here from a canvas-drawn stub (ui/renderGameView.ts's
+          old renderRedistLogStub) now that it's laid out as part of this
+          same coordinated DOM row alongside Sort/Action - see
+          BUILD_STATUS.md. */}
+      <button
+        type="button"
+        data-ui="redist-log-button"
+        onClick={onOpenRedistLog}
+        style={{
+          position: 'absolute',
+          left: 10,
+          bottom: BOTTOM_ROW_BOTTOM,
+          height: 36,
+          padding: '0 10px',
+          display: 'flex',
+          alignItems: 'center',
+          background: 'linear-gradient(180deg, rgba(16, 38, 38, 0.9), rgba(7, 15, 18, 0.92))',
+          border: '1px solid rgba(120, 190, 178, 0.3)',
+          clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+          color: 'oklch(0.86 0.04 176)',
+          fontFamily: "'Cormorant Unicase', serif",
+          fontWeight: 500,
+          fontSize: 10,
+          letterSpacing: '0.1em',
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+        }}
+      >
+        Redist. Log
+      </button>
+
+      {/* ===== Bottom row, right: Sort cards ("Order") - real ===== */}
       <button
         type="button"
         data-ui="sort-cards-button"
@@ -513,12 +562,12 @@ export function GameOverlay({
         style={{
           position: 'absolute',
           right: 10,
-          top: SORT_BUTTON_TOP,
-          height: 44,
-          padding: '0 14px',
+          bottom: BOTTOM_ROW_BOTTOM,
+          height: 40,
+          padding: '0 10px',
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
           background: 'linear-gradient(180deg, rgba(16, 38, 38, 0.9), rgba(7, 15, 18, 0.92))',
           border: '1px solid rgba(120, 190, 178, 0.3)',
           clipPath: 'polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)',
@@ -539,7 +588,7 @@ export function GameOverlay({
         {sortLabel}
       </button>
 
-      {/* ===== Action button - real ===== */}
+      {/* ===== Bottom row, center: Action button - real ===== */}
       <button
         type="button"
         data-ui="action-button"
@@ -549,7 +598,7 @@ export function GameOverlay({
         style={{
           position: 'absolute',
           left: CENTER_X - 77,
-          bottom: ACTION_BUTTON_BOTTOM,
+          bottom: BOTTOM_ROW_BOTTOM,
           width: 154,
           padding: 1,
           boxSizing: 'border-box',

@@ -1,154 +1,119 @@
 ## Current milestone
 
-Real card compositing (frame + god art + rank numeral) for all 40 playing
-cards, per the "Suit of Madness Card Frame" Claude Design handoff. Every
-face-up card anywhere in the game (hand fan, play areas, previous-trick
-log) now renders the real per-god card frame, the real symbol/face art
-fetched from R2, and a live rank numeral - no more `GOD_ABBR_SHORT` text
-placeholder. Facedown/empty cards are unaffected (no card-back art exists
-yet). Version stamp counter is at 8 (`version.json`) - unchanged, no
-deploy has run yet.
+In-game overlay layout adjustments: the bottom action row, the Team/god
+HUD, and the hand fan have been reworked per explicit user direction (not
+a new Claude Design handoff - direct layout instructions). Version stamp
+counter is at 8 (`version.json`) - unchanged, no deploy has run yet.
 
 ## What was implemented
 
-- New `ui/cardArt.ts`: `buildCard(scene, god, rank, dims)` - the single
-  reusable compositor the task asked for, built from a data-driven
-  `GOD_TOKENS` map (line/plate/glow/deep/label per god, motif hex vs
-  circle), not 40 hand-authored cards.
-  - **Frame**: 4 textures total (one per god, rank-independent), each
-    generated once at runtime via `scene.textures.createCanvas` +
-    Canvas2D (radial gradients, clip-path-equivalent polygon/rounded-rect
-    fills) - reproduces the background wash, tint, vignette, gold
-    border/corners, hex-or-circle motif ornaments, and the symbol-plate's
-    nested rings + gradient fill. Baked at a fixed 150x408 texture
-    (half the design's 300x816 reference, ~3-4x oversampled versus this
-    game's largest on-screen card), then scaled down per call site via
-    `setDisplaySize` - sharp at both `cardStandardWidth`/Height and
-    `cardMiniWidth`/Height without regenerating anything.
-  - **Symbol/face art**: the real R2 PNG (`symbol_<god>` for ranks 2-10,
-    `face_<god>` for Aces), contain-fit into the design's safe rect (or
-    the wider Ace bleed rect) and centered, as its own `Image` layered on
-    the frame - this is what lets one frame texture serve every rank.
-  - **Rank numeral**: a live `Phaser.Text` (never baked), sized/positioned
-    from the same authoring-space math, with a `Graphics`-drawn plate
-    shape (hex or rounded-rect, matching motif) behind it. Both are
-    simply not added to the card's container for Aces, per the handoff's
-    "hide the plate entirely on Aces" note.
-  - `ui/cardComponent.ts`'s `drawCard()` now delegates its `faceup`
-    branch to `buildCard()`, keeping the caller-supplied `CardStyle`
-    (selected/legal/illegal/partner colors) as a thin rim outline + alpha
-    over the real art, so the existing legality/selection color-coding in
-    the hand fan didn't get silently dropped. `facedown`/`empty` are
-    unchanged (still the placeholder rectangle/stripe/dashed-box - no
-    card-back art exists in this handoff).
-  - Scoped out (documented in `cardArt.ts`'s header comment): the
-    design's engraving dot-pattern, linen hatch, and SVG grain-noise
-    texture layers. All three are sub-pixel detail at this game's actual
-    on-screen card size and were judged not worth the Canvas2D
-    implementation cost; every layer that's actually visible at this
-    scale (background/tint/vignette/border/corners/motif/symbol-plate/
-    team-tag) is reproduced.
-- **R2 asset pipeline**: the 8 PNGs (`symbol_<god>`/`face_<god>` x4) were
-  found on R2 under `Suits-of-Madness_assets.zip`, not the
-  `<prototype-name>_assets.zip` convention `scripts/fetch-assets.js`
-  assumes (confirmed by testing both URLs directly - `suits-mp_assets.zip`
-  404s, `Suits-of-Madness_assets.zip` is the real object). Added a
-  backward-compatible optional 3rd CLI arg to `fetch-assets.js` for this
-  exact case (every other prototype's invocation is unchanged) and wired
-  it into both `deploy-suits-mp-itch.yml` and the shared `deploy.yml` Pages
-  workflow (which also builds suits-mp's page, since Vite builds every
-  prototype's entry together - see its existing "One block per prototype
-  that has art in R2" comment). Also fixed `pack-assets.js`, which
-  `fail()`ed on an assets-src with an empty `packed/` folder (this handoff
-  is loose-only, no packed animations) - now treated the same as no
-  `packed/` folder at all, matching every other prototype's behavior when
-  it has no animations.
-  `HostGameScene`/`PlayerGameScene` gained `preload()` (suits-mp's first
-  ever use of real art loading - both call `preloadCardArt()`, which
-  loads the manifest then every `loose/` entry it lists, same pattern as
-  `prototypes/digger/src/main.ts`) and call `ensureCardFrameTextures()`
-  at the top of `create()`.
-- **Card size / layout rework** (see "Key technical decisions" for why):
-  `tune.cardStandardHeight` 82->114, `cardMiniHeight` 35->49 (widths
-  unchanged at 42/18), matching the design's true 300:816 ratio exactly.
-  This cascaded into re-deriving most of the vertical layout constants in
-  `ui/renderGameView.ts` (`TOP_BOX_Y`, `CLUSTER_CENTER_Y`, `BOTTOM_BOX_Y`,
-  `FAN_BASELINE_Y`) and their matching values in `GameOverlay.tsx`
-  (`CLUSTER_CENTER_Y`, `TOP_TAG_TOP`, `SIDE_TAG_TOP`, `BOTTOM_TAG_TOP`,
-  `TEAM_HUD_TOP`, `SORT_BUTTON_TOP`) - both files' comments cross-
-  reference each other same as before. Verified visually via Playwright
-  through several iterations (taller cards initially overlapped the Team
-  HUD bar and the action button before the constants were retuned).
+- **Bottom row, three parts, one coordinated DOM row**
+  (`dom/overlay/GameOverlay.tsx`):
+  - Sort button moved to bottom-right (was floating near the hand fan's
+    right edge, top-anchored).
+  - Redistribution log button moved to bottom-left - and migrated from a
+    canvas-drawn stub (`ui/renderGameView.ts`'s old `renderRedistLogStub`,
+    a Phaser `rect`+`text` button) to a real DOM button, since it's now
+    laid out and bottom-anchored together with the other two (already-DOM)
+    buttons. Wired through a new `onOpenRedistLog` field on
+    `gameOverlayStore.ts`'s `GameOverlayUiState`, computed in
+    `renderGameView.ts` right where the old stub used to set
+    `ui.overlay = 'redistLog'`. The overlay content itself (the actual log
+    panel, still "coming in a later pass") is untouched - only the button
+    that opens it moved.
+  - Action button stays centered, all three now share one bottom anchor
+    (`BOTTOM_ROW_BOTTOM`) instead of three different `top`/`bottom` values.
+- **Team/god HUD** ("Thy covenant" bar): reduced to exactly 50% size via
+  a `transform: scale(0.5)` wrapper (`transformOrigin: 'top center'`)
+  around the unchanged original box, rather than hand-halving every
+  border/shadow/font/gap value - guarantees a uniform 50% rather than an
+  approximation. Repositioned to sit flush (zero gap) under the local
+  player's name tag - its `top` is now derived
+  (`BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT`, plus `LOCAL_INVOKER_TAG_HEIGHT`
+  when the local seat is also this trick's starter) instead of a fixed
+  constant, so it stays flush against whichever of the two ("just the
+  name tag" / "name tag + Invoker tag") is actually showing.
+- **Hand fan** (`ui/renderGameView.ts`, canvas): retuned to span from one
+  screen edge to the other with a shallower per-card angle -
+  `tune.handFanPerCardStepDeg` 6->4, `handFanMaxSpreadDeg` 58->40,
+  `handFanRadius` 240->566 (a much larger radius is what lets a smaller
+  total angular spread still reach the screen edges, while keeping the
+  cards' vertical droop about the same as before - see the tune.json
+  diff's comment for the exact reasoning). A 10-card hand's edge cards
+  now tilt +-18 degrees instead of +-27.
+- Confirmed the action button already has a single consistent slot across
+  every phase (`computeActionButtonState()` returns one
+  `{label, hint, enabled, onClick}` shape for play/selectDelegate/
+  redistribute/waiting, rendered by the one `data-ui="action-button"`
+  DOM element regardless of phase) - nothing needed flagging per the
+  task's fallback instruction.
+- Verified with a throwaway Playwright harness built for this session
+  (a scratch `overlayGallery.ts`/`overlay-gallery.html`, deleted before
+  finishing) that constructs a synthetic `MaskedState` in the redistribute
+  phase directly, rather than trying to reach a real double-win through
+  bot play (chance-dependent, and a live UI-automation loop trying to
+  reach it repeatedly stalled/timed out) - this reproduces the reference
+  screenshot's exact phase deterministically and was the fastest reliable
+  way to confirm all four changes together in that specific state.
 
 ## Key technical decisions
 
-- **Asked the user rather than guessing the aspect-ratio reconciliation**,
-  per the task's explicit instruction: the design's 300x816 reference
-  (ratio ~0.368) didn't match this game's existing card proportions
-  (~0.512-0.514). Presented "shrink width to match ratio" vs "grow height
-  and rework layout" vs "keep existing ratio, stretch the art" as
-  concrete options with their tradeoffs; the user chose "grow height,
-  rework layout" - full art fidelity over layout convenience. That choice
-  is what drove the tune.json height bump and the cascading layout work
-  above.
-- **4 frame textures, not 40 (or 8)**: only god + motif determine a
-  frame's appearance - rank never does - so `ensureCardFrameTextures()`
-  generates exactly one canvas texture per god, reused by every rank via
-  a separate symbol/face `Image` and a separate rank `Text`/`Graphics`
-  layered on top per call. This is also what makes hiding the rank-plate
-  entirely on Aces trivial (it's just not added to that card's container),
-  rather than needing a second "Ace variant" frame texture per god.
-  `createCanvas` (native Canvas2D) was used over Phaser's Graphics API
-  specifically because Graphics has no radial-gradient support, which the
-  design leans on heavily (tint, plate fill, vignette).
-- **Symbol/face art is contain-fit + centered, not stretched**: the 8 R2
-  PNGs are irregular/varied source sizes (498x721 to 513x757) with
-  transparent backgrounds already tight-cropped per the task brief, so
-  `buildCard()` computes `min(safeRect.w/srcW, safeRect.h/srcH)` and
-  centers the result - this is what keeps every god's art at its own
-  correct aspect ratio inside the frame regardless of its exact source
-  pixel dimensions.
-- Existing `CardStyle`-driven legality/selection feedback (gold-tinted
-  "selected", teal "partner", dimmed "illegal") is preserved as a rim
-  outline + alpha over the real card art rather than dropped - losing
-  that color-coding would have been a real gameplay-usability regression,
-  even though the task's own brief didn't mention it.
+- **CSS `transform: scale()` over hand-editing every value** for the
+  Team HUD's 50% reduction: the box has ~15 separate px values (borders,
+  shadows, chip sizes, gaps, three different font sizes) - scaling the
+  whole rendered box guarantees an exact, uniform 50% (including things
+  easy to miss by hand, like `boxShadow` blur radii) rather than an
+  approximation, and needed zero changes to the box's own inner JSX.
+- **Larger fan radius, not just smaller angle, for "shallower but still
+  edge-to-edge"**: a shallower angle alone (smaller `maxSpreadDeg`/
+  `perCardStepDeg`) narrows the fan's horizontal reach for a fixed
+  radius, working directly against "spans edge to edge" - increasing the
+  radius substantially is what recovers that reach from a smaller angular
+  budget. Chose values (radius 566, half-angle 18 degrees for a 10-card
+  hand) that keep the outer cards' vertical droop close to the previous
+  tuning (~28px, was ~26px) so this didn't reopen the Team HUD/fan
+  clearance issue flagged in the previous session - see "Known issues".
+- **Redistribution log button migrated to DOM now, not left canvas-drawn**:
+  root CLAUDE.md's UI-implementation-split section explicitly allows this
+  ("a prototype adopts this pattern the next time it does UI work" on a
+  given piece) - since this task requires laying it out in exact
+  coordination with two already-DOM buttons in one shared row, doing that
+  arithmetic against a canvas button drawn in a completely different
+  render pass would be more fragile than just moving it, not less.
+- Kept `teamHudTop` as a value derived at render time (from
+  `BOTTOM_TAG_TOP`/`starterSeat`) rather than a second fixed constant for
+  the "Invoker showing" case - a fixed constant sized for the taller
+  (Invoker-included) case would leave a visible gap in the far more common
+  case where the local seat isn't this trick's starter.
 
 ## Open questions
 
-- None new from this session - the aspect-ratio question above was
-  already resolved via `AskUserQuestion` before any code was written, per
-  the task's own instruction to ask rather than guess.
+- None from this session - the one instruction that asked to flag rather
+  than guess (whether the action button has one consistent slot across
+  phases) resolved to "yes, already true" from reading the existing code,
+  not a real ambiguity.
 
 ## Known issues
 
-- The hand fan's outermost 1-2 cards graze the bottom edge of the "Thy
-  covenant" Team HUD bar by a few px at certain hand sizes - reduced
-  substantially through three rounds of constant retuning (see "What was
-  implemented") but not fully eliminated; the fan's now-114px-tall cards'
-  total vertical envelope is very close to the available gap between the
-  Team HUD row and the fixed-position Action button. Matches this
-  screen's pre-existing tolerance for similar flush/negative gaps
-  elsewhere (e.g. the original 82px-card layout already had the Trick
-  Starter tag overlapping its own seat's play-area card by 9px) rather
-  than a new regression, but flagging it as the one visual tightness spot
-  worth a second look if a future session touches this screen's layout
-  again.
-- Team tag text ("TEAM CHAOS"/"TEAM COSMOS") is baked into each frame
-  texture per the design, but at this game's actual card size it renders
-  at under 2px tall - present for correctness/fidelity but not legible in
-  play. Not worth a separate live-Text treatment since the task's DPR
-  rule specifically calls out the rank numeral, not this label.
+- Previous session's flagged tightness (hand fan cards grazing the Team
+  HUD bar) is resolved as a side effect of this session's changes - the
+  Team HUD moved up against the name tag (out of the fan's vertical
+  range entirely) and the fan's own cards no longer reach as high at the
+  same radius/droop. Worth a second look only if a future session grows
+  card height again.
+- Team tag text baked into each card's frame texture is still illegible
+  at this game's actual card size (unchanged from the previous session,
+  unrelated to this one).
 - Carried over, still true, untouched: facedown-card masking leak at the
   payload level (`host/mask.ts`); not live-verified against real human
   peers; Google Fonts fail to load in this dev sandbox's network
   environment (cosmetic fallback only); the Lobby session's Host/Join
-  real-vs-placeholder navigation question.
+  real-vs-placeholder navigation question; no card-back art exists yet.
 
 ## Next proposed step
 
-No card-back art exists yet for facedown cards (still the placeholder
-rectangle/stripe pattern) - a natural next Claude Design handoff if the
-user wants full art parity there too. Otherwise, the same carried-over
-items as before: Redistribution-log content (no design yet), the Lobby
-Host/Join navigation decision, and a real human-peer live pass.
+Redistribution-log content is still the only stubbed screen left (no
+design handoff for it exists yet - only its opening button has real
+layout now). Otherwise, the same carried-over items as before: the Lobby
+Host/Join navigation decision, a real human-peer live pass, and card-back
+art if the user wants full art parity there too.

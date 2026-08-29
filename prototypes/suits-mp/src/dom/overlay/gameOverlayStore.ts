@@ -32,6 +32,11 @@ export interface GameOverlayUiState {
   actionHint: string;
   actionEnabled: boolean;
   onAction: () => void;
+  // Opens the Redistribution-log overlay - the bottom-left member of the
+  // bottom action row (see GameOverlay.tsx), migrated here from a
+  // canvas-drawn stub button since it's now laid out and coordinated
+  // together with the (already-DOM) Sort/Action buttons.
+  onOpenRedistLog: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
   // Real per-seat "P1"/"P2 (You)"/etc labels (seatLabelFor + the local
   // seat's "(You)" suffix) - the only "name" this codebase actually has;
@@ -57,6 +62,7 @@ const HIDDEN_STATE: GameOverlayUiState = {
   actionHint: '',
   actionEnabled: false,
   onAction: () => {},
+  onOpenRedistLog: () => {},
   seatDelegate: { top: NOOP_SEAT_DELEGATE, right: NOOP_SEAT_DELEGATE, bottom: NOOP_SEAT_DELEGATE, left: NOOP_SEAT_DELEGATE },
   seatLabels: { top: '', right: '', bottom: '', left: '' },
   currentTurnSeat: null,
