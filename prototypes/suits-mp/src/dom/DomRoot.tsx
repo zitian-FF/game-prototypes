@@ -37,6 +37,7 @@ export function DomRoot(): JSX.Element {
           actionHint={gameOverlay.actionHint}
           actionEnabled={gameOverlay.actionEnabled}
           onAction={gameOverlay.onAction}
+          onOpenRedistLog={gameOverlay.onOpenRedistLog}
           seatDelegate={gameOverlay.seatDelegate}
           seatLabels={gameOverlay.seatLabels}
           currentTurnSeat={gameOverlay.currentTurnSeat}

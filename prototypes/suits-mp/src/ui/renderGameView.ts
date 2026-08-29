@@ -64,8 +64,8 @@ const TOP_BAR_Y = 20;
 // taller cards (tune.cardStandardHeight 82->114, matching the Card Frame
 // design's true 300:816 proportions - see BUILD_STATUS.md). Keep these in
 // sync with dom/overlay/GameOverlay.tsx's matching constants (TOP_TAG_TOP/
-// SIDE_TAG_TOP/BOTTOM_TAG_TOP/TEAM_HUD_TOP/SORT_BUTTON_TOP), which anchor
-// DOM chrome around these same canvas-drawn play areas.
+// SIDE_TAG_TOP/BOTTOM_TAG_TOP and the Team HUD's derived teamHudTop),
+// which anchor DOM chrome around these same canvas-drawn play areas.
 const TOP_BOX_Y = 150;
 const CLUSTER_CENTER_Y = 305;
 const BOTTOM_BOX_Y = 453;
@@ -74,7 +74,6 @@ const LEFT_BOX_X = 58;
 const RIGHT_BOX_X = WIDTH - 58;
 
 const FAN_BASELINE_Y = 648;
-const REDIST_LOG_BUTTON_Y = HEIGHT - 30;
 
 const FAN_CONFIG: FanConfig = {
   perCardStepDeg: tune.handFanPerCardStepDeg,
@@ -286,6 +285,10 @@ function renderWithView(
     onAction: () => {
       action.onClick();
     },
+    onOpenRedistLog: () => {
+      ui.overlay = 'redistLog';
+      rerender();
+    },
     seatDelegate: computeSeatDelegateState(state, view, rerender),
     seatLabels: hud.seatLabels,
     currentTurnSeat: hud.currentTurnSeat,
@@ -295,7 +298,6 @@ function renderWithView(
     yourGodChip: hud.yourGodChip,
     teammateGodChip: hud.teammateGodChip,
   });
-  renderRedistLogStub(ui, rerender, button);
 }
 
 // --- Top bar ----------------------------------------------------------
@@ -675,15 +677,6 @@ function computeActionButtonState(
     };
   }
   return { label: 'Assign all cards', hint: '', enabled: false, onClick: NO_OP };
-}
-
-// --- Redistribution log stub entry point --------------------------------
-
-function renderRedistLogStub(ui: PersistentUIState, rerender: () => void, button: ButtonFn): void {
-  button(90, REDIST_LOG_BUTTON_Y, 148, 26, 'Redistribution log', () => {
-    ui.overlay = 'redistLog';
-    rerender();
-  }, { fill: COLOR_STUB_BUTTON, textColor: '#aaaaaa', fontSize: 10 });
 }
 
 // --- Overlays: previous-trick log (real content, carried over from an
