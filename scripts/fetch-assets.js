@@ -35,7 +35,11 @@ const looseDir = path.join(assetsSrcDir, 'loose');
 mkdirSync(cacheDir, { recursive: true });
 
 const previousEtag = existsSync(etagFile) ? readFileSync(etagFile, 'utf8').trim() : null;
-const zipUrl = `${BUCKET_URL}/${name}_assets.zip`;
+// Optional 3rd arg overrides the R2 object name for prototypes whose art
+// was uploaded under a name that doesn't match "<name>_assets.zip" (e.g.
+// suits-mp's card art, uploaded as "Suits-of-Madness_assets.zip").
+const zipObjectName = process.argv[3] || `${name}_assets.zip`;
+const zipUrl = `${BUCKET_URL}/${zipObjectName}`;
 
 console.log(`fetch-assets: fetching ${zipUrl}`);
 

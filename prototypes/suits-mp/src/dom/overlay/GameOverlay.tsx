@@ -99,12 +99,15 @@ function useLastKnown(value: number | null): number | null {
 // visual styling is a direct pixel-for-pixel port.
 const WIDTH = 390;
 const CENTER_X = WIDTH / 2;
-const CLUSTER_CENTER_Y = 280;
-const TOP_TAG_TOP = 65;
-const SIDE_TAG_TOP = 320;
-const BOTTOM_TAG_TOP = 442;
-const TEAM_HUD_TOP = 514;
-const SORT_BUTTON_TOP = 588;
+// Kept in sync with ui/renderGameView.ts's matching constants (grown/
+// respaced for the card-frame compositing task's taller cards - see
+// BUILD_STATUS.md).
+const CLUSTER_CENTER_Y = 305;
+const TOP_TAG_TOP = 50;
+const SIDE_TAG_TOP = 358;
+const BOTTOM_TAG_TOP = 501;
+const TEAM_HUD_TOP = 579;
+const SORT_BUTTON_TOP = 653;
 const ACTION_BUTTON_BOTTOM = 54;
 
 export function GameOverlay({

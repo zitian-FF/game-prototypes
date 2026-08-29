@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { cardById } from '../rules/cards';
 import type { CardId } from '../rules/types';
-import { PIXEL_RATIO } from '../render/pixelRatio';
+import { buildCard } from './cardArt';
 
 // The one place any card - hand fan, play areas, redistribution stacks,
 // previous-trick log - gets drawn, per the Stage 3a amendment's "unified
@@ -9,11 +9,9 @@ import { PIXEL_RATIO } from '../render/pixelRatio';
 // (face/back/empty) and style (colors) are entirely caller-supplied,
 // keeping this module itself dumb/reusable - callers own what a given
 // visual state *means* (legal/illegal/selected/assigned/etc.), this only
-// owns how a card *looks* once that's decided. Still placeholder-first
-// per root CLAUDE.md: primitives (rectangles, graphics strokes) and text
-// abbreviations, no art.
-
-const FONT = 'monospace';
+// owns how a card *looks* once that's decided. Faceup cards render real
+// composited art (see ui/cardArt.ts); facedown/empty stay placeholder
+// primitives, since no card-back art was part of the Card Frame handoff.
 
 export interface CardDimensions {
   width: number;
@@ -66,40 +64,32 @@ export function drawCard(
     return { container: card, hitArea: hit };
   }
 
-  const box = scene.add.rectangle(0, 0, dims.width, dims.height, style.fill, alpha);
-  box.setStrokeStyle(style.borderWidth ?? 1, style.border, alpha);
-  card.add(box);
-
   if (face.kind === 'facedown') {
+    // No card-back art was part of this handoff (only the 40 face
+    // designs) - facedown cards stay the placeholder rectangle + stripe
+    // pattern.
+    const box = scene.add.rectangle(0, 0, dims.width, dims.height, style.fill, alpha);
+    box.setStrokeStyle(style.borderWidth ?? 1, style.border, alpha);
+    card.add(box);
     drawFacedownPattern(scene, card, dims.width, dims.height, style.border, alpha);
-  } else {
-    const cardDef = cardById(face.cardId);
-    const rankLabel = cardDef.rank === 'Ace' ? 'A' : String(cardDef.rank);
-    const label = scene.add
-      .text(0, 0, `${GOD_ABBR_SHORT[cardDef.god]}\n${rankLabel}`, {
-        fontFamily: FONT,
-        fontSize: `${dims.fontSize}px`,
-        color: style.textColor ?? '#eeeeee',
-        align: 'center',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-    card.add(label);
+    return { container: card, hitArea: box };
   }
 
-  return { container: card, hitArea: box };
-}
+  // Real card art (frame + god symbol/face + live rank Text) - see
+  // ui/cardArt.ts. The caller's style still carries real meaning
+  // (selected/legal/illegal/partner) that the ornate frame art can't
+  // express on its own, so it's kept as a thin rim outline plus alpha
+  // rather than discarded.
+  const cardDef = cardById(face.cardId);
+  const built = buildCard(scene, cardDef.god, cardDef.rank, dims);
+  card.add(built.container);
+  card.setAlpha(alpha);
+  const rim = scene.add.rectangle(0, 0, dims.width, dims.height);
+  rim.setStrokeStyle(style.borderWidth ?? 2, style.border, alpha);
+  card.add(rim);
 
-// Item 1's face-up spec asks for this exact 2-letter suit abbreviation,
-// not the 3-letter GOD_ABBR used elsewhere (HUD ring labels have more
-// room) - "YS / CT / SN / NY" specifically, so a card stays legible at
-// mini size.
-const GOD_ABBR_SHORT: Record<string, string> = {
-  YogSothoth: 'YS',
-  Cthulhu: 'CT',
-  ShubNiggurath: 'SN',
-  Nyarlathotep: 'NY',
-};
+  return { container: card, hitArea: built.hitArea };
+}
 
 function drawDashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, dash: number, gap: number): void {
   const segments: [number, number, number, number][] = [
