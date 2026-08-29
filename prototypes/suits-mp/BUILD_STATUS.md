@@ -1,107 +1,82 @@
 ## Current milestone
 
-Replaced every 2-letter suit-code text badge (YS/CT/SN/NY) with the real
-god symbol art. Three locations found and swapped (two named in the task,
-one found by auditing the codebase as instructed). Version stamp counter
-is at 8 (`version.json`) - unchanged, no deploy has run yet.
+Fixed a real bug in the Suit Cycle HUD (the wheel's rotation didn't put
+the current lead suit's badge at the position players actually read it
+from) and removed the now-redundant "Lead: <name>" center-hub text per
+explicit user direction. Version stamp counter is at 8 (`version.json`) -
+unchanged, no deploy has run yet.
 
 ## What was implemented
 
-- **New shared god-art data** (not Phaser- or DOM-specific, so both
-  layers use the same source of truth instead of duplicating it):
-  - `rules/godArt.ts`: `symbolArtFile(god)`/`faceArtFile(god)` (the
-    R2 PNG filename convention) and `GOD_MOTIF` (hex for Team Chaos,
-    circle for Team Cosmos). `ui/cardArt.ts`'s `GOD_TOKENS` used to carry
-    its own local `motif`/`artIndex`/`artSlug` fields per god - refactored
-    to pull all three from here instead, so the card-frame compositor and
-    this task's new DOM badges can't drift apart on which god gets which
-    art/motif.
-  - `dom/godArtUrl.ts`: `symbolArtUrl(god)` resolves a god's symbol PNG to
-    an `<img>`-loadable URL (`assets/loose/<file>.png`, the same relative
-    path convention `ui/cardArt.ts` already uses for Phaser texture
-    loads - this DOM layer is mounted into the same page as the canvas,
-    so the browser resolves both identically with no separate fetch/
-    manifest plumbing needed). Also exports `HEX_CLIP_PATH`, the one hex
-    shape every hex badge below uses.
-- **Suit Cycle HUD** (`dom/overlay/GameOverlay.tsx`, the four ring badges
-  around "Lead"): each badge now shows the real symbol image inside a
-  badge shaped to match its god's actual motif (hex clip-path for
-  Cthulhu/Nyarlathotep, `border-radius: 50%` for Shub-Niggurath/
-  Yog-Sothoth) instead of a generic rotated-square "diamond" for all
-  four - see "Key technical decisions" for why the diamond went away
-  entirely rather than just getting new content.
-  - **Counter-rotation**: the whole ring rotates via the existing
-    `rotate(${suitDeg}deg)` wheel transform. Each badge's symbol now sits
-    in its own inner wrapper with `rotate(${-suitDeg}deg)`, canceling the
-    parent's rotation so the image stays upright at every wheel position -
-    verified visually before and after triggering a trick-start rotation.
-    Deliberately reuses the wheel's own `tune.suitCycleRotationMs`/
-    `suitCycleRotationEasing` for this inner transition rather than a
-    separate tune value, so the counter-rotation animates in lockstep
-    with the wheel (a different duration would let the symbol visibly
-    lag/lead mid-spin instead of staying locked upright throughout).
-- **Team/god HUD chips** (`dom/overlay/GameOverlay.tsx`'s "Bound"/"Kin"
-  badges): the top line's 2-letter code text swapped for the same real
-  symbol image (18px, `object-fit: contain`); the "Bound"/"Kin" label
-  line and the chip's own box (background/border/cut-corner shape)
-  untouched. `GodChipState` gained a `god: God | null` field (null only
-  in the hidden/placeholder state) so `GameOverlay.tsx` can resolve the
-  right art - `renderGameView.ts`'s `computeGameOverlayHudState()` now
-  passes `state.yourGod`/`teammateGod` through alongside the existing
-  `code`/`label`.
-- **Third location found by the requested audit**: the Rules modal's
-  "Turning of Suits" cycle diagram (`dom/RulesModal.tsx`, ported from the
-  original Rules handoff, unrelated to the Overlay work) had the exact
-  same rotated-diamond-plus-code-text pattern for its own per-god list.
-  Swapped the same way as the Suit Cycle HUD (hex/circle badge + real
-  symbol) - no counter-rotation needed there since this diagram is
-  static, not a spinning wheel. `dom/rulesContent.ts`'s `CycleGod` gained
-  a `god: God` field; its now-unused `cycleColor()` helper (only ever
-  used for the code text's own color) was deleted rather than left dead.
-- Audited the rest of the codebase for any other 2-letter suit-code
-  render (`grep` for `suit.code`/`god.code`/literal `'YS'`/`'CT'`/`'NY'`/
-  `'SN'` across every `.ts`/`.tsx`) - no other location found. The
-  remaining `code`-string usages are all non-visual (`key`/`data-*`
-  attributes, `alt` text) or the Suit Cycle HUD's separate "Lead: Yog-S."
-  center label, which is a partial god *name* (`SUITS[i].short`), not a
-  2-letter code, and out of this task's scope.
+- **Root cause found**: `leadGodIndex` (the data driving the wheel) was
+  always correct - it's the exact same value the removed center label
+  used, and `ui/seating.ts`'s `computeSuitRing()` already resolves it
+  correctly to `state.leadSuit` for the trick leader. The bug was
+  entirely in *where* the rotation math pointed that correct data: the
+  wheel's four badges are laid out with Yog-Sothoth at local top (12
+  o'clock) at rest, and the existing rotation formula
+  (`leadGodIndex * -90`, accumulated forward-only via `useForwardRotation`)
+  correctly rotates the lead suit's badge to that *top* position - but
+  the "lead-marker" highlight ring, the visual cue for "this badge is the
+  current lead," was already sitting at the ring's *bottom* (`top: -2`
+  read like a leftover from a design that put it up top, contradicted by
+  where it's actually drawn) and that's also where the user (and the
+  in-canvas "Invoker"/turn indicator, a separate concentric layer) was
+  reading it from. Wheel position and lead suit were never desynced from
+  the game state - the ring was just rotating the right badge to the
+  wrong anchor.
+- **Fix**: added a fixed `+180` to the rendered rotation
+  (`dom/overlay/GameOverlay.tsx`'s `suitDeg`), re-anchoring "current lead
+  suit" to the bottom position instead of top, and moved the `lead-marker`
+  highlight ring's own `top: -2` to `bottom: -2` to match. The
+  `useForwardRotation` accumulation math itself (the forward-only,
+  never-snap-back stepping) was untouched and re-verified correct - the
+  `+180` is a constant anchor offset applied once at render time, not a
+  change to the stepping logic.
+- **Center hub cleanup**: removed the "Lead" caption and the suit-name
+  text (`leadShort`, plus the now-fully-unused `useLastKnown` hook and
+  `knownLeadGodIndex`/`leadShort` variables it fed) from the hub, per the
+  task - the hub is now a plain decorative disc; the wheel's own rotation
+  (highlighted by the repositioned lead-marker ring) is the only "current
+  lead suit" indicator now.
+- No changes to `tune.json` - the task said to check whether rotation
+  timing/easing were already exposed rather than re-adding, and they were
+  (`suitCycleRotationMs`/`suitCycleRotationEasing`, from an earlier
+  session); this fix didn't need a new value since the +180 is a fixed
+  correctness constant, not a feel/timing knob.
+- **Verification**: live bot play proved too slow/unreliable at reliably
+  reaching a *specific* lead suit within a scripted Playwright run (tried
+  twice, both timed out without a second trick starting) - built a
+  throwaway harness (`rotationCheck.ts`/`rotation-check.html`, deleted
+  before finishing) that drives `renderGameView` with a synthetic
+  `MaskedState` whose `leadSuit` can be swapped on demand
+  (`window.__setLeadSuit(god)`), and checked all 4 gods plus a wrap-back
+  to the first one. For every one of the 5 states, the badge Playwright
+  measured as closest to the ring's bottom edge matched the state's real
+  `leadSuit` exactly (both via the DOM's computed rotation matrix and via
+  screenshot). Also confirmed via the real single-player game that the
+  console stays clean on boot and the center hub renders as an empty disc.
 
 ## Key technical decisions
 
-- **Dropped the diamond backing entirely for the Suit Cycle HUD and Rules
-  cycle diagram, rather than keeping it behind the new symbol**: the raw
-  symbol PNGs have no built-in frame/border of their own (confirmed by
-  looking at them at target render size - they're just the god's glyph on
-  transparent background, same as the card-frame compositor's own source
-  art), so *some* backing is needed for legibility against the busy
-  background - but a uniform rotated-square diamond for all four gods is
-  strictly less correct than shaping that backing to each god's real
-  motif (hex/circle), which the card frames already establish as this
-  game's actual per-team visual language. Since switching motifs also
-  meant the backing no longer needed the "rotate 45deg then counter-
-  rotate -45deg" trick that made a square read as a diamond, that whole
-  mechanism was removed rather than layered under a second counter-
-  rotation for the wheel - one rotation cancellation (wheel only) instead
-  of two nested ones is simpler and less error-prone. This wasn't a fully
-  obvious call (the task said to flag it if not), so it's called out here
-  explicitly even though the reasoning above is why it didn't block on a
-  question.
-- **Team HUD god-chip box shape left untouched**: unlike the ring/cycle-
-  diagram diamonds, this box isn't a suit-shaped badge on its own - it's
-  a two-line label chip (symbol + "Bound"/"Kin") with a generic cut-
-  corner rectangle shared by both chips regardless of god, so there's no
-  motif redundancy to resolve there; only its top line's content changed.
-- **No new tune.json values**: the counter-rotation intentionally reuses
-  the wheel's own existing timing/easing (see above - a separate value
-  would risk desync, not add real tunability), and badge/symbol sizes
-  followed the existing precedent for this HUD's other fixed dimensions
-  (the turn wheel's 190px, the suit-cycle-hud's 124px, the god-chip's
-  52x36px were never tune.json values either) rather than introducing an
-  inconsistent exception for just the new symbols.
+- **Fixed constant offset, not a rewrite of the accumulation math**: since
+  `useForwardRotation`'s forward-only stepping was already provably
+  correct (verified by hand-deriving the modular arithmetic and then
+  confirming empirically), the minimal, lowest-risk fix was a single `+180`
+  applied once at the point the angle is rendered, leaving the
+  battle-tested stepping/freeze-on-null/never-snap-back behavior (shared
+  with the turn-indicator wheel, which has no such anchor bug and wasn't
+  touched) completely alone.
+- **Didn't touch the turn-indicator wheel**: that's a separate concentric
+  layer tracking whose *turn* it is (`currentTurnSeat`), not lead suit -
+  it has its own independent rotation and pointer graphic, unaffected by
+  and unrelated to this bug. Worth naming explicitly since a screenshot of
+  the two rings together can look like one system at a glance.
 
 ## Open questions
 
-- None from this session.
+- None from this session - this was a bug fix against already-correct
+  state, not a design ambiguity.
 
 ## Known issues
 
@@ -114,7 +89,6 @@ is at 8 (`version.json`) - unchanged, no deploy has run yet.
 
 ## Next proposed step
 
-No further suit-code text remains anywhere in the app. Otherwise, the
-same carried-over items as before: Redistribution-log content, the Lobby
-Host/Join navigation decision, a real human-peer live pass, and card-back
-art if the user wants full art parity there too.
+The same carried-over items as before: Redistribution-log content, the
+Lobby Host/Join navigation decision, a real human-peer live pass, and
+card-back art if the user wants full art parity there too.
