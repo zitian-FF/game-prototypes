@@ -1,4 +1,5 @@
 import type { SeatPosition } from '../../ui/seating';
+import type { God } from '../../rules/types';
 
 // Mirrors dom/domUiStore.ts's and dom/lobby/lobbyUiStore.ts's bridge
 // pattern: the Phaser canvas (renderGameView.ts) still owns and computes
@@ -19,10 +20,13 @@ export interface SeatDelegateState {
 export interface GodChipState {
   code: string;
   label: string;
+  // Null only in HIDDEN_STATE's placeholder (the whole overlay is
+  // invisible then anyway) - always a real god once `visible` is true.
+  god: God | null;
 }
 
 const NOOP_SEAT_DELEGATE: SeatDelegateState = { tappable: false, staged: false, onPick: () => {} };
-const BLANK_CHIP: GodChipState = { code: '', label: '' };
+const BLANK_CHIP: GodChipState = { code: '', label: '', god: null };
 
 export interface GameOverlayUiState {
   visible: boolean;

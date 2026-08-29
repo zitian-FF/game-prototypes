@@ -3,6 +3,8 @@
 // design's; this file just gives them TypeScript types so RulesModal.tsx can
 // consume them.
 
+import type { God } from '../rules/types';
+
 export interface Tone {
   accent: string;
   dim: string;
@@ -130,18 +132,15 @@ export interface CycleGod {
   name: string;
   team: string;
   tone: CycleTone;
+  god: God;
 }
 
 export const CYCLE: CycleGod[] = [
-  { code: 'YS', name: 'Yog-Sothoth', team: 'Cosmos', tone: 'gold' },
-  { code: 'CT', name: 'Cthulhu', team: 'Chaos', tone: 'teal' },
-  { code: 'SN', name: 'Shub-Niggurath', team: 'Cosmos', tone: 'gold' },
-  { code: 'NY', name: 'Nyarlathotep', team: 'Chaos', tone: 'teal' },
+  { code: 'YS', name: 'Yog-Sothoth', team: 'Cosmos', tone: 'gold', god: 'YogSothoth' },
+  { code: 'CT', name: 'Cthulhu', team: 'Chaos', tone: 'teal', god: 'Cthulhu' },
+  { code: 'SN', name: 'Shub-Niggurath', team: 'Cosmos', tone: 'gold', god: 'ShubNiggurath' },
+  { code: 'NY', name: 'Nyarlathotep', team: 'Chaos', tone: 'teal', god: 'Nyarlathotep' },
 ];
-
-export function cycleColor(tone: CycleTone): string {
-  return tone === 'gold' ? 'oklch(0.86 0.09 84)' : 'oklch(0.84 0.08 178)';
-}
 
 export function cycleBorder(tone: CycleTone): string {
   return tone === 'gold' ? 'rgba(198, 160, 78, 0.55)' : 'rgba(120, 190, 178, 0.5)';

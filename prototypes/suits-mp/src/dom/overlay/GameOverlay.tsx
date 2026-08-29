@@ -4,6 +4,8 @@ import './GameOverlay.css';
 import { SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
+import { GOD_MOTIF } from '../../rules/godArt';
+import { HEX_CLIP_PATH, symbolArtUrl } from '../godArtUrl';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
@@ -259,6 +261,7 @@ export function GameOverlay({
                   : i === 2
                     ? { left: '50%', bottom: 3, marginLeft: -13 }
                     : { left: 3, top: '50%', marginTop: -13 };
+            const motif = GOD_MOTIF[suit.god];
             return (
               <div
                 key={suit.code}
@@ -271,17 +274,29 @@ export function GameOverlay({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontFamily: "'Cormorant Unicase', serif",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  letterSpacing: '0.04em',
-                  color: isGold ? 'oklch(0.84 0.09 84)' : 'oklch(0.82 0.09 180)',
-                  border: isGold ? '1px solid rgba(198, 160, 78, 0.5)' : '1px solid rgba(96, 190, 180, 0.45)',
+                  overflow: 'hidden',
+                  border: isGold ? '1px solid rgba(198, 160, 78, 0.5)' : '1px solid rgba(96, 190, 178, 0.45)',
                   background: isGold ? 'rgba(48, 36, 12, 0.55)' : 'rgba(10, 44, 44, 0.55)',
-                  transform: 'rotate(45deg)',
+                  borderRadius: motif === 'circle' ? '50%' : 0,
+                  clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
                 }}
               >
-                <span style={{ transform: 'rotate(-45deg)' }}>{suit.code}</span>
+                {/* Counter-rotates by the wheel's own rotation (-suitDeg),
+                    composing with the parent's `rotate(${suitDeg}deg)`
+                    above to net zero - the symbol stays upright no matter
+                    where the wheel points. Shares the wheel's own
+                    transition duration/easing so it stays visually locked
+                    upright throughout the animation too, not just at rest. */}
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+                    transform: `rotate(${-suitDeg}deg)`,
+                  }}
+                >
+                  <img src={symbolArtUrl(suit.god)} alt={suit.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
               </div>
             );
           })}
@@ -496,7 +511,7 @@ export function GameOverlay({
                 clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
               }}
             >
-              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'oklch(0.96 0.05 90)', lineHeight: 1 }}>{yourGodChip.code}</span>
+              {yourGodChip.god && <img src={symbolArtUrl(yourGodChip.god)} alt={yourGodChip.code} style={{ width: 18, height: 18, objectFit: 'contain' }} />}
               <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>{yourGodChip.label}</span>
             </div>
             <div
@@ -515,7 +530,9 @@ export function GameOverlay({
                 clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
               }}
             >
-              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 700, fontSize: 15, letterSpacing: '0.06em', color: 'rgba(200, 188, 222, 0.6)', lineHeight: 1 }}>{teammateGodChip.code}</span>
+              {teammateGodChip.god && (
+                <img src={symbolArtUrl(teammateGodChip.god)} alt={teammateGodChip.code} style={{ width: 18, height: 18, objectFit: 'contain', opacity: 0.7 }} />
+              )}
               <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>{teammateGodChip.label}</span>
             </div>
           </div>

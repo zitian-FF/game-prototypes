@@ -411,8 +411,8 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
     starterSeat: leaderNode?.seat ?? null,
     leadGodIndex: leaderNode?.suit ? GOD_TO_SUIT_INDEX[leaderNode.suit] : null,
     teamName: `Team ${GOD_TEAM[state.yourGod]}`,
-    yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'Bound' },
-    teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin' },
+    yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'Bound', god: state.yourGod },
+    teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin', god: teammateGod },
   };
 }
 
