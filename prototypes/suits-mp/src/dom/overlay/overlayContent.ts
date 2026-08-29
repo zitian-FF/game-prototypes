@@ -19,6 +19,7 @@ export interface SuitInfo {
   code: string;
   name: string;
   short: string;
+  god: God;
 }
 
 // Fixed suit-cycle order (Yog-Sothoth -> Cthulhu -> Shub-Niggurath ->
@@ -27,12 +28,15 @@ export interface SuitInfo {
 // design's own 2-letter codes (YS/CT/SN/NY) are kept as-is rather than
 // switched to rules/cards.ts's GOD_ABBR (3-letter: YOG/CTH/SHU/NYA) -
 // pixel fidelity to the source design wins here since both are just
-// abbreviations of the same real god.
+// abbreviations of the same real god. `code`/`short` still back the few
+// remaining text-only spots (aria labels, the Lead-suit name); the
+// visual suit badges themselves now render `god`'s real symbol art
+// instead (see dom/godArtUrl.ts).
 export const SUITS: SuitInfo[] = [
-  { code: 'YS', name: 'Yog-Sothoth', short: 'Yog-S.' },
-  { code: 'CT', name: 'Cthulhu', short: 'Cthulhu' },
-  { code: 'SN', name: 'Shub-Niggurath', short: 'Shub-N.' },
-  { code: 'NY', name: 'Nyarlathotep', short: 'Nyarl.' },
+  { code: 'YS', name: 'Yog-Sothoth', short: 'Yog-S.', god: 'YogSothoth' },
+  { code: 'CT', name: 'Cthulhu', short: 'Cthulhu', god: 'Cthulhu' },
+  { code: 'SN', name: 'Shub-Niggurath', short: 'Shub-N.', god: 'ShubNiggurath' },
+  { code: 'NY', name: 'Nyarlathotep', short: 'Nyarl.', god: 'Nyarlathotep' },
 ];
 
 // This suit cycle's position for each real god - index into SUITS above.

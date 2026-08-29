@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import './RulesModal.css';
-import { CYCLE, NUMERALS, SECTIONS, cycleBg, cycleBorder, cycleColor, cycleTeamColor } from './rulesContent';
+import { CYCLE, NUMERALS, SECTIONS, cycleBg, cycleBorder, cycleTeamColor } from './rulesContent';
+import { GOD_MOTIF } from '../rules/godArt';
+import { HEX_CLIP_PATH, symbolArtUrl } from './godArtUrl';
 
 // Ported from the Claude Design handoff (`Suit of Madness Rules.dc.html`).
 // Structure and inline styles mirror the source closely (gradients, oklch
@@ -331,17 +333,14 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
+                                  overflow: 'hidden',
                                   border: `1px solid ${cycleBorder(god.tone)}`,
                                   background: cycleBg(god.tone),
-                                  fontFamily: "'Cormorant Unicase', serif",
-                                  fontWeight: 700,
-                                  fontSize: 11,
-                                  letterSpacing: '0.04em',
-                                  color: cycleColor(god.tone),
-                                  transform: 'rotate(45deg)',
+                                  borderRadius: GOD_MOTIF[god.god] === 'circle' ? '50%' : 0,
+                                  clipPath: GOD_MOTIF[god.god] === 'hex' ? HEX_CLIP_PATH : undefined,
                                 }}
                               >
-                                <span style={{ transform: 'rotate(-45deg)' }}>{god.code}</span>
+                                <img src={symbolArtUrl(god.god)} alt={god.code} style={{ width: 19, height: 19, objectFit: 'contain' }} />
                               </span>
                               <span
                                 style={{

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GOD_TEAM } from '../rules/cards';
+import { GOD_MOTIF, faceArtFile, symbolArtFile } from '../rules/godArt';
 import type { God, Rank } from '../rules/types';
 import type { CardDimensions } from './cardComponent';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -33,9 +34,6 @@ interface GodTokens {
   glow: string;
   deep: string;
   label: string;
-  motif: 'hex' | 'circle';
-  artIndex: number;
-  artSlug: string;
 }
 
 const GOD_TOKENS: Record<God, GodTokens> = {
@@ -45,9 +43,6 @@ const GOD_TOKENS: Record<God, GodTokens> = {
     glow: 'rgba(34, 150, 144, 0.20)',
     deep: 'rgba(8, 52, 56, 0.34)',
     label: 'rgba(140, 210, 198, 0.85)',
-    motif: 'hex',
-    artIndex: 1,
-    artSlug: 'cthulhu',
   },
   Nyarlathotep: {
     line: 'rgba(178, 138, 226, 0.68)',
@@ -55,9 +50,6 @@ const GOD_TOKENS: Record<God, GodTokens> = {
     glow: 'rgba(112, 62, 168, 0.20)',
     deep: 'rgba(24, 10, 40, 0.44)',
     label: 'rgba(186, 156, 224, 0.85)',
-    motif: 'hex',
-    artIndex: 2,
-    artSlug: 'nyarlathotep',
   },
   ShubNiggurath: {
     line: 'rgba(150, 200, 108, 0.68)',
@@ -65,9 +57,6 @@ const GOD_TOKENS: Record<God, GodTokens> = {
     glow: 'rgba(96, 148, 48, 0.20)',
     deep: 'rgba(28, 40, 12, 0.38)',
     label: 'rgba(178, 208, 132, 0.85)',
-    motif: 'circle',
-    artIndex: 3,
-    artSlug: 'shub-niggurath',
   },
   YogSothoth: {
     line: 'rgba(196, 160, 232, 0.68)',
@@ -75,20 +64,15 @@ const GOD_TOKENS: Record<God, GodTokens> = {
     glow: 'rgba(132, 88, 172, 0.20)',
     deep: 'rgba(32, 18, 44, 0.40)',
     label: 'rgba(206, 178, 132, 0.85)',
-    motif: 'circle',
-    artIndex: 4,
-    artSlug: 'yog-sothoth',
   },
 };
 
 function symbolKey(god: God): string {
-  const t = GOD_TOKENS[god];
-  return `symbol_${t.artIndex}_${t.artSlug}`;
+  return symbolArtFile(god);
 }
 
 function faceKey(god: God): string {
-  const t = GOD_TOKENS[god];
-  return `face_${t.artIndex}_${t.artSlug}`;
+  return faceArtFile(god);
 }
 
 // Loads the 8 R2-fetched god art PNGs (see art/manifest.json, produced by
@@ -208,9 +192,9 @@ function fillPolygon(ctx: CanvasRenderingContext2D, points: ReadonlyArray<readon
   ctx.fill();
 }
 
-function drawSymbolPlate(ctx: CanvasRenderingContext2D, tokens: GodTokens): void {
+function drawSymbolPlate(ctx: CanvasRenderingContext2D, tokens: GodTokens, motif: 'hex' | 'circle'): void {
   const { x, y, w, h } = ACE_BLEED; // the plate's own full silhouette bounds
-  if (tokens.motif === 'hex') {
+  if (motif === 'hex') {
     ctx.fillStyle = tokens.line;
     fillPolygon(ctx, hexPolygon(x, y, w, h));
     ctx.fillStyle = '#080c0e';
@@ -255,9 +239,9 @@ function drawSymbolPlate(ctx: CanvasRenderingContext2D, tokens: GodTokens): void
   }
 }
 
-function drawMotifOrnaments(ctx: CanvasRenderingContext2D, tokens: GodTokens): void {
+function drawMotifOrnaments(ctx: CanvasRenderingContext2D, tokens: GodTokens, motif: 'hex' | 'circle'): void {
   const midX = AUTH_W / 2;
-  if (tokens.motif === 'hex') {
+  if (motif === 'hex') {
     ctx.fillStyle = tokens.line;
     fillPolygon(ctx, hexPolygon(midX - 17, 30, 34, 30));
     ctx.fillStyle = '#080c0e';
@@ -282,6 +266,7 @@ function drawFrameTexture(scene: Phaser.Scene, god: God): void {
   const key = frameKey(god);
   if (scene.textures.exists(key)) return;
   const tokens = GOD_TOKENS[god];
+  const motif = GOD_MOTIF[god];
 
   const canvasTexture = scene.textures.createCanvas(key, TEX_W, TEX_H);
   if (!canvasTexture) return;
@@ -316,8 +301,8 @@ function drawFrameTexture(scene: Phaser.Scene, god: God): void {
     [1, 'rgba(0,0,0,0)'],
   ]);
 
-  drawSymbolPlate(ctx, tokens);
-  drawMotifOrnaments(ctx, tokens);
+  drawSymbolPlate(ctx, tokens, motif);
+  drawMotifOrnaments(ctx, tokens, motif);
 
   // Gold border + corner brackets (shared, never recolored).
   ctx.strokeStyle = 'rgba(122, 98, 46, 0.85)';
@@ -427,7 +412,7 @@ export function buildCard(scene: Phaser.Scene, god: God, rank: Rank, dims: CardD
     const plate = scene.add.graphics();
     plate.fillStyle(0x0b1010, 0.98);
     plate.lineStyle(Math.max(1, k), hexToNumber(tokens.line), 1);
-    if (tokens.motif === 'hex') {
+    if (GOD_MOTIF[god] === 'hex') {
       const pts = hexPolygon(rankCenterX - plateW / 2, rankCenterY - plateH / 2, plateW, plateH);
       plate.beginPath();
       pts.forEach(([px, py], i) => (i === 0 ? plate.moveTo(px, py) : plate.lineTo(px, py)));
