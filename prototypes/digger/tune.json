@@ -13,10 +13,12 @@
   "damagePerLevel": 1,
   "upgradeCostBase": 10,
   "upgradeCostGrowth": 1.5,
-  "lootChance": 0.3,
-  "lootValueBaseMin": 2,
-  "lootValueBaseMax": 5,
-  "lootValueDepthMultiplier": 1.1,
+  "treasure": {
+    "countMin": 1,
+    "countMax": 3,
+    "valuePerCellBase": 6,
+    "valueDepthMultiplier": 1.1
+  },
   "laserFadeMs": 300,
   "debrisScaleMin": 0.5,
   "debrisScaleMax": 1,
