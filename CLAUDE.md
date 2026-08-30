@@ -79,11 +79,6 @@ that prototype's own folder and is not shared by default. See
 STACK.md for the current list of shared packages and what each
 one provides.
 
-(Note: packages/ does not exist yet as of this brief. This
-section describes where shared packages will live once workspace
-conversion happens in a later task. Do not create packages/ or
-move any code as part of this brief.)
-
 ## Art pipeline
 
 Artwork lives in Cloudflare R2, never in this repository.
