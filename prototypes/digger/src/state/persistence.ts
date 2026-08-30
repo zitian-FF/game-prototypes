@@ -2,10 +2,15 @@ import type { GameState } from './types';
 import { generateBoard } from './board';
 import tune from '../../tune.json';
 
-const SAVE_KEY = 'digger:save:v1';
+// Bumped from v1: TileState dropped `loot` and gained `adjacent`/
+// `treasureIndex`, and GameState gained `treasures` -- a breaking
+// save-shape change, so old saves are discarded (see house Persistence
+// rule) rather than migrated.
+const SAVE_KEY = 'digger:save:v2';
 
 function freshState(): GameState {
   const depth = 0;
+  const { tiles, treasures } = generateBoard(depth);
   return {
     energy: tune.energyMax,
     energyTimestamp: Date.now(),
@@ -14,7 +19,8 @@ function freshState(): GameState {
     depth,
     gridCols: tune.gridCols,
     gridRows: tune.gridRowsBase,
-    tiles: generateBoard(depth),
+    tiles,
+    treasures,
   };
 }
 
