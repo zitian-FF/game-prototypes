@@ -1,82 +1,102 @@
 ## Current milestone
 
-Fixed a real bug in the Suit Cycle HUD (the wheel's rotation didn't put
-the current lead suit's badge at the position players actually read it
-from) and removed the now-redundant "Lead: <name>" center-hub text per
-explicit user direction. Version stamp counter is at 8 (`version.json`) -
-unchanged, no deploy has run yet.
+Rebuilt the Suit Cycle HUD's rotation math to solve relative to the
+Invoker's actual seat (any of top/right/bottom/left) instead of a fixed
+anchor - the previous session's fix (a constant `+180`) only happened to
+work when the Invoker was at the bottom. Version stamp counter is at 8
+(`version.json`) - unchanged, no deploy has run yet.
 
 ## What was implemented
 
-- **Root cause found**: `leadGodIndex` (the data driving the wheel) was
-  always correct - it's the exact same value the removed center label
-  used, and `ui/seating.ts`'s `computeSuitRing()` already resolves it
-  correctly to `state.leadSuit` for the trick leader. The bug was
-  entirely in *where* the rotation math pointed that correct data: the
-  wheel's four badges are laid out with Yog-Sothoth at local top (12
-  o'clock) at rest, and the existing rotation formula
-  (`leadGodIndex * -90`, accumulated forward-only via `useForwardRotation`)
-  correctly rotates the lead suit's badge to that *top* position - but
-  the "lead-marker" highlight ring, the visual cue for "this badge is the
-  current lead," was already sitting at the ring's *bottom* (`top: -2`
-  read like a leftover from a design that put it up top, contradicted by
-  where it's actually drawn) and that's also where the user (and the
-  in-canvas "Invoker"/turn indicator, a separate concentric layer) was
-  reading it from. Wheel position and lead suit were never desynced from
-  the game state - the ring was just rotating the right badge to the
-  wrong anchor.
-- **Fix**: added a fixed `+180` to the rendered rotation
-  (`dom/overlay/GameOverlay.tsx`'s `suitDeg`), re-anchoring "current lead
-  suit" to the bottom position instead of top, and moved the `lead-marker`
-  highlight ring's own `top: -2` to `bottom: -2` to match. The
-  `useForwardRotation` accumulation math itself (the forward-only,
-  never-snap-back stepping) was untouched and re-verified correct - the
-  `+180` is a constant anchor offset applied once at render time, not a
-  change to the stepping logic.
-- **Center hub cleanup**: removed the "Lead" caption and the suit-name
-  text (`leadShort`, plus the now-fully-unused `useLastKnown` hook and
-  `knownLeadGodIndex`/`leadShort` variables it fed) from the hub, per the
-  task - the hub is now a plain decorative disc; the wheel's own rotation
-  (highlighted by the repositioned lead-marker ring) is the only "current
-  lead suit" indicator now.
-- No changes to `tune.json` - the task said to check whether rotation
-  timing/easing were already exposed rather than re-adding, and they were
-  (`suitCycleRotationMs`/`suitCycleRotationEasing`, from an earlier
-  session); this fix didn't need a new value since the +180 is a fixed
-  correctness constant, not a feel/timing knob.
-- **Verification**: live bot play proved too slow/unreliable at reliably
-  reaching a *specific* lead suit within a scripted Playwright run (tried
-  twice, both timed out without a second trick starting) - built a
-  throwaway harness (`rotationCheck.ts`/`rotation-check.html`, deleted
-  before finishing) that drives `renderGameView` with a synthetic
-  `MaskedState` whose `leadSuit` can be swapped on demand
-  (`window.__setLeadSuit(god)`), and checked all 4 gods plus a wrap-back
-  to the first one. For every one of the 5 states, the badge Playwright
-  measured as closest to the ring's bottom edge matched the state's real
-  `leadSuit` exactly (both via the DOM's computed rotation matrix and via
-  screenshot). Also confirmed via the real single-player game that the
-  console stays clean on boot and the center hub renders as an empty disc.
+- **Root cause of the previous fix's remaining gap**: the last session's
+  `+180` re-anchored "current lead suit" to the ring's bottom - correct
+  only when the Invoker happens to be seated there. With the Invoker at
+  right/top/left, the wheel still put the right suit at the *wrong*
+  screen position (bottom, always), because the formula never looked at
+  *where the Invoker actually is* at all.
+- **New rotation formula** (`dom/overlay/GameOverlay.tsx`): required
+  rotation = angle_of(Invoker's seat) - home_angle_of(lead suit's fixed
+  ring position), reduced to a 0-3 step index and fed through the
+  existing `useForwardRotation` (unchanged - still forward-only, still
+  freezes on indeterminate state, still never snaps back). The Invoker's
+  seat->angle mapping reuses `overlayContent.ts`'s `SEAT_DEG` (previously
+  defined but never actually consumed anywhere - the turn-indicator wheel
+  computed the equivalent inline via `SEAT_ORDER.indexOf`) rather than
+  re-deriving it, per the task's "reuse existing logic" instruction.
+- **`starterSeat` is "the Invoker's position", not `currentTurnSeat`**:
+  the task's prose named "whichever seat currently has the turn" as the
+  value to reuse, but that's `currentTurnSeat` - a *different*, existing
+  prop that keeps moving to whoever's turn it is as a trick progresses
+  past its opening play. The prop that actually stays fixed at the
+  Invoker's seat for the whole trick is `starterSeat` (computed by
+  `ui/seating.ts`'s `computeSuitRing()`, already exactly "the trick
+  leader's seat, frozen until the next trick"). Used `starterSeat`, since
+  `currentTurnSeat` would make the wheel keep sliding to follow whoever's
+  turn it currently is - it only coincides with the Invoker's seat at the
+  exact instant the Invoker is leading, which is also exactly when both
+  triggers in this task actually fire, so the two seat values happen to
+  agree at every moment this feature cares about; `starterSeat` is the
+  one that stays correct for the rest of the trick too.
+- **Both triggers already worked correctly before this session** - this
+  task's own two-trigger split (live local preview vs. wait-for-broadcast)
+  was already exactly how `ui/seating.ts`'s `computeSuitRing()` and
+  `ui/renderGameView.ts`'s `ViewState.selectedCards` were wired from an
+  earlier session: `selectedCards` (`ui/renderGameView.ts`) is the "locally
+  selected but not yet committed card" hook the task asked to flag if
+  missing - it already existed cleanly (threaded through as `previewCardId`
+  into `computeSuitRing`, which only reads it when `leaderNet ===
+  state.yourSlot`, i.e. only for the local player's own selection - never
+  another player's). Nothing needed changing there; only the final angle
+  formula consuming `leadGodIndex`/`starterSeat` was wrong.
+- **Lead-marker ring now follows the Invoker's seat too**: a direct,
+  necessary consequence of the rotation fix - the marker was drawn at a
+  fixed `bottom: -2`, which would highlight the wrong badge 3 times out of
+  4 once the wheel could point anywhere. Repositioned via `transform:
+  translate()` from a fixed center anchor (computed pixel offset per seat,
+  `MARKER_OFFSET`) rather than swapping which of `left`/`right`/`top`/
+  `bottom` is set, since only a single interpolatable property like
+  `transform` can actually cross-animate between two arbitrary positions -
+  swapping between e.g. `bottom: -2` and `right: -2` can only snap, not
+  transition. Shares the wheel's own `suitCycleRotationMs`/Easing so it
+  visually travels with the badge it's marking. Freezes at its last known
+  seat (a small reusable `useLastKnown<T>` hook, the same pattern the
+  previous session used and removed when the old text label went away -
+  reintroduced here, generic this time, since the marker needs it too)
+  rather than losing its position while indeterminate.
+- No `tune.json` changes - checked first per the task's instruction; the
+  marker's new transition reuses the wheel's own existing
+  `suitCycleRotationMs`/`suitCycleRotationEasing` so they move in lockstep,
+  and the rotation formula itself has no new feel/timing value to expose.
 
 ## Key technical decisions
 
-- **Fixed constant offset, not a rewrite of the accumulation math**: since
-  `useForwardRotation`'s forward-only stepping was already provably
-  correct (verified by hand-deriving the modular arithmetic and then
-  confirming empirically), the minimal, lowest-risk fix was a single `+180`
-  applied once at the point the angle is rendered, leaving the
-  battle-tested stepping/freeze-on-null/never-snap-back behavior (shared
-  with the turn-indicator wheel, which has no such anchor bug and wasn't
-  touched) completely alone.
-- **Didn't touch the turn-indicator wheel**: that's a separate concentric
-  layer tracking whose *turn* it is (`currentTurnSeat`), not lead suit -
-  it has its own independent rotation and pointer graphic, unaffected by
-  and unrelated to this bug. Worth naming explicitly since a screenshot of
-  the two rings together can look like one system at a glance.
+- **Solve algebraically, don't special-case 4 seats**: rather than writing
+  a lookup table of 16 (seat, suit) combinations, the fix computes the
+  required step index directly from the two existing 0-3 indices
+  (`starterIndex - leadGodIndex`, wrapped mod 4) - this is what makes the
+  fix a small, symmetric change rather than a large one, and it's the
+  same structural shape `useForwardRotation` already expected (a single
+  0-3 index driving forward-only rotation).
+- **Verified via a synthetic-state harness again, not live bot play**:
+  reaching all 4 Invoker seats *and* both triggers through genuine
+  multiplayer/bot flow would need contriving specific seat assignments
+  per trick, which isn't controllable from the UI - built a throwaway
+  harness (deleted before finishing) that drives `renderGameView` directly
+  with hand-built `MaskedState`s (one path per Trigger 2 seat, held fixed
+  while varying the leading player's `NetPlayerId` under a fixed
+  `yourSlot`) and, separately, a *real* Playwright tap on an actual fan
+  card for Trigger 1 (since that path depends on genuine local
+  `ViewState.selectedCards`, which can't be injected the same way a
+  masked network payload can). Confirmed all 4 (seat, suit) pairs for
+  Trigger 2 and all 4 possible suits for Trigger 1's live pre-commit
+  preview, by reading the DOM's actual computed badge/marker positions
+  relative to the ring's own center (not just eyeballing screenshots).
 
 ## Open questions
 
-- None from this session - this was a bug fix against already-correct
-  state, not a design ambiguity.
+- None from this session - this was a rebuild against an already
+  correctly-architected state layer (per the task's own note, both
+  triggers' hooks already existed), not a design ambiguity.
 
 ## Known issues
 
