@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './GameOverlay.css';
-import { SEAT_ORDER, SUITS } from './overlayContent';
+import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
@@ -79,6 +79,20 @@ function useForwardRotation(index: number | null, order: number, stepDeg: number
   return rotation;
 }
 
+// Remembers the last non-null value seen - used for the Suit Cycle HUD's
+// lead-marker ring, which must keep highlighting the Invoker's last real
+// seat while indeterminate (nobody's about to lead / lead suit not yet
+// known) rather than losing its position, even though the badges'
+// rotation freezes for the exact same reason via useForwardRotation's own
+// null-handling.
+function useLastKnown<T>(value: T | null): T | null {
+  const ref = useRef<T | null>(value);
+  useEffect(() => {
+    if (value !== null) ref.current = value;
+  }, [value]);
+  return value !== null ? value : ref.current;
+}
+
 // Layout constants matching ui/renderGameView.ts's real seat/cluster
 // geometry by value (CENTER_X, CLUSTER_CENTER_Y) so this DOM chrome lines
 // up with the still-canvas-drawn play areas/hand fan beneath it - the
@@ -108,6 +122,17 @@ const LOCAL_INVOKER_TAG_HEIGHT = 28;
 // / Action / Sort) - see BUILD_STATUS.md for why these three, previously
 // scattered (one of them canvas-drawn), are now one coordinated DOM row.
 const BOTTOM_ROW_BOTTOM = 54;
+// Suit Cycle HUD's lead-marker ring: pixel offset from the wheel's own
+// center for each seat it might need to highlight - derived from the
+// ring's fixed 124px box and the marker's own 36px size/-2px overhang
+// (e.g. bottom: {left:'50%', bottom:-2, marginLeft:-18} centers the
+// marker at (62, 108) against a (62, 62) ring center = (0, +46)).
+const MARKER_OFFSET: Record<SeatPosition, { dx: number; dy: number }> = {
+  top: { dx: 0, dy: -46 },
+  right: { dx: 46, dy: 0 },
+  bottom: { dx: 0, dy: 46 },
+  left: { dx: -46, dy: 0 },
+};
 
 export function GameOverlay({
   sortLabel,
@@ -128,16 +153,41 @@ export function GameOverlay({
 }: GameOverlayProps): JSX.Element {
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
-  // Badges are laid out (positionStyle below) with SUITS[0] (Yog-Sothoth)
-  // at the ring's local top, going clockwise. useForwardRotation's own
-  // math (index*stepDeg, accumulated forward-only) rotates the ring so
-  // that the current lead suit's badge lands at local top - the fixed
-  // +180 below re-anchors that to the *bottom* instead, where the
-  // "Invoker"/pointer indicator actually lives (see the lead-marker ring
-  // and the wheel transform below), which is the one visual reference a
-  // player actually reads "current lead suit" from now that the center
-  // hub no longer carries a redundant text label.
-  const suitDeg = useForwardRotation(leadGodIndex, 4, -90) + 180;
+
+  // The wheel must land the *current lead suit's* badge exactly at the
+  // Invoker's actual seat position (top/right/bottom/left) - wherever
+  // that is, not a fixed anchor (that was the previous bug: it assumed
+  // the Invoker was always at the bottom, which only happened to be true
+  // when the local player was leading). Each suit has a fixed home angle
+  // on the ring (badges are laid out with Yog-Sothoth/SUITS[0] at local
+  // top, going clockwise - `leadGodIndex * 90`), and `starterSeat` is the
+  // Invoker's real seat (ui/seating.ts's computeSuitRing already resolves
+  // this correctly for both this-session-live triggers: the local
+  // player's own live pre-commit preview via `previewCardId`, when
+  // *they're* the Invoker, and the host's confirmed `state.leadSuit` once
+  // any other player's leading play is broadcast - never a guess at
+  // another player's hidden selection). `SEAT_DEG` (below) is the same
+  // seat->angle mapping the turn-indicator wheel's own `turnSeatIndex`
+  // already encodes (via SEAT_ORDER's clockwise order); reused here
+  // rather than re-derived, per the seat/angle correspondence the wheel
+  // already gets right.
+  //
+  // Required rotation = angle_of(Invoker's seat) - home_angle_of(lead
+  // suit), reduced to a 0-3 step index so useForwardRotation's existing
+  // forward-only, freeze-on-null, never-snap-back stepping (the same
+  // behavior the turn wheel and the old suit ring both already relied on)
+  // still applies - only *what* index that stepping follows changed.
+  const starterIndex = starterSeat === null ? null : SEAT_DEG[starterSeat] / 90;
+  const suitIndex = starterIndex === null || leadGodIndex === null ? null : (((starterIndex - leadGodIndex) % 4) + 4) % 4;
+  const suitDeg = useForwardRotation(suitIndex, 4, 90);
+
+  // The lead-marker ring (below) highlights whichever badge is currently
+  // at the Invoker's seat - it has to track `starterSeat` directly now
+  // that the Invoker isn't always at the bottom, freezing at the last
+  // real seat (rather than losing its position) the same way the ring's
+  // own rotation freezes on indeterminate state. Defaults to 'bottom'
+  // only before any trick has ever had a real leader yet (game start).
+  const markerSeat = useLastKnown(starterSeat) ?? 'bottom';
   const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
   return (
@@ -298,10 +348,10 @@ export function GameOverlay({
         </div>
 
         {/* The center hub is now a plain decorative disc - no text label.
-            The wheel's own rotation (badge at bottom = current lead suit,
-            highlighted by the lead-marker ring just below) is the only
-            indicator now; a redundant "Lead: <name>" text would just
-            duplicate it. */}
+            The wheel's own rotation (the badge sitting at the Invoker's
+            seat is the current lead suit, highlighted by the lead-marker
+            ring just below) is the only indicator now; a redundant
+            "Lead: <name>" text would just duplicate it. */}
         <div
           style={{
             position: 'absolute',
@@ -317,18 +367,24 @@ export function GameOverlay({
           }}
         />
 
-        {/* Highlights whichever badge the wheel has rotated to the
-            bottom - the anchor position for "current lead suit" (see
-            suitDeg's own comment above for why bottom, not top). */}
+        {/* Highlights whichever badge sits at the Invoker's actual seat
+            (`markerSeat`) - not a fixed position, since the Invoker can be
+            at any of the 4 seats. Positioned via `transform: translate()`
+            (a single interpolatable property, unlike swapping between
+            left/right/top/bottom which can't cross-animate) from a fixed
+            center anchor, so it can transition smoothly - same timing/
+            easing as the wheel's own rotation, so it visually travels
+            together with the badge it's marking. */}
         <div
           data-ui="lead-marker"
           style={{
             position: 'absolute',
             left: '50%',
-            bottom: -2,
-            marginLeft: -18,
+            top: '50%',
             width: 36,
             height: 36,
+            transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+            transform: `translate(calc(-50% + ${MARKER_OFFSET[markerSeat].dx}px), calc(-50% + ${MARKER_OFFSET[markerSeat].dy}px))`,
             borderRadius: '50%',
             border: '1px solid rgba(120, 220, 206, 0.5)',
             boxShadow: '0 0 22px rgba(70, 200, 186, 0.4), inset 0 0 14px rgba(70, 200, 186, 0.22)',
