@@ -89,7 +89,9 @@ move any code as part of this brief.)
 Artwork lives in Cloudflare R2, never in this repository.
 
 - Bucket public URL: https://pub-415572b047994ab8807f76b8462eda45.r2.dev
-- Object per prototype: <proto-name>-assets.zip
+- Object per prototype: <proto-name>_assets.zip (underscore, not
+  hyphen — confirmed against scripts/fetch-assets.js, which hardcodes
+  this convention with an override mechanism for named exceptions).
 - Fetched over plain HTTPS. No credentials required. Never add R2 API
   tokens or secrets to this repo.
 - Never commit PNG, zip, or atlas files. Enforce via .gitignore.
