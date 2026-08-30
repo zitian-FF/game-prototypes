@@ -15,7 +15,7 @@ import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverla
 // since only one Phaser scene drives the game at once.
 export function DomRoot(): JSX.Element {
   const { rulesOpen, closeRules: onClose } = useSyncExternalStore(subscribe, getSnapshot);
-  const { visible: lobbyVisible, onSinglePlayer } = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
+  const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
 
   return (
@@ -28,7 +28,22 @@ export function DomRoot(): JSX.Element {
           }}
         />
       )}
-      {lobbyVisible && <LobbyFlow onSinglePlayer={onSinglePlayer} />}
+      {lobby.visible && (
+        <LobbyFlow
+          screen={lobby.screen}
+          roomCode={lobby.roomCode}
+          seats={lobby.seats}
+          onSinglePlayer={lobby.onSinglePlayer}
+          onHost={lobby.onHost}
+          onSubmitJoin={lobby.onSubmitJoin}
+          onFillBot={lobby.onFillBot}
+          onReleaseBot={lobby.onReleaseBot}
+          onStartGame={lobby.onStartGame}
+          onRefreshCode={lobby.onRefreshCode}
+          onBack={lobby.onBack}
+          onRetry={lobby.onRetry}
+        />
+      )}
       {gameOverlay.visible && (
         <GameOverlay
           sortLabel={gameOverlay.sortLabel}
