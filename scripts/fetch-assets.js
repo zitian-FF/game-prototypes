@@ -51,6 +51,19 @@ try {
 }
 
 if (!response.ok) {
+  if (response.status === 404) {
+    fail(
+      `no asset zip found at ${zipUrl} (404 Not Found).\n\n` +
+        `This usually means the file hasn't been uploaded to R2 yet, or is\n` +
+        `named differently than expected.\n\n` +
+        `Expected naming convention: <name>_assets.zip (underscore, not\n` +
+        `hyphen). For this prototype, that's: ${zipObjectName}\n\n` +
+        `Upload it to the public bucket:\n${BUCKET_URL}\n\n` +
+        `If the zip is intentionally named differently (like suits-mp's),\n` +
+        `pass the actual object name as a third argument:\n` +
+        `npm run fetch:assets ${name} <actual-object-name>.zip`,
+    );
+  }
   fail(`request failed with ${response.status} ${response.statusText} for ${zipUrl}`);
 }
 
