@@ -294,9 +294,18 @@ including ones with no `BUILD_STATUS.md` yet.
 - Small, single-purpose PRs. Do not bundle unrelated changes.
 - Never force-push to main.
 - Commit messages: imperative mood, one line, no trailing period.
-- Auto-merge is enabled on every PR in this repo (CI-pass-gated, no
-  manual review required) - this is the default going forward for
-  all prototypes, not just mp-console and mp-net.
+- Auto-merge is enabled on every PR in this repo. The repo-level
+  "Allow auto-merge" setting only permits this - it does not enable
+  it per PR. When opening a PR, immediately run `gh pr merge --auto
+  --squash <PR>` (or the equivalent API call) as part of that same
+  task, every time, for every prototype. This is the default going
+  forward for all prototypes, not just mp-console and mp-net.
+- There is currently no `pull_request`-triggered CI check in this
+  repo (see the per-PR preview-deploy-to-itch workflow, still
+  pending). Until that exists, enabling auto-merge means a PR merges
+  immediately on open, with no automated gate and no manual review
+  step. This is accepted as the current tradeoff, not an oversight -
+  revisit once the real CI check lands.
 
 ## Scope discipline
 
