@@ -29,8 +29,14 @@ function turnPhaseFor(state: GameState): TurnPhase {
 // Builds the one masked view of `state` visible to `forSlot`. Never
 // includes another player's hand or an unrevealed identity - see
 // net/actions.ts's MaskedState doc comments for what each field is allowed
-// to carry and why.
-export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedState {
+// to carry and why. `seatNames` is built by the caller (see
+// HostGameScene.sendMaskedStateTo) from its own Roster, kept decoupled
+// from the Roster type here same as every other field.
+export function buildMaskedState(
+  state: GameState,
+  forSlot: PlayerId,
+  seatNames: Partial<Record<NetPlayerId, string>>,
+): MaskedState {
   const yourSlotNet = toNetPlayerId(forSlot);
   const gameOver = state.phase === 'gameOver';
 
@@ -99,6 +105,7 @@ export function buildMaskedState(state: GameState, forSlot: PlayerId): MaskedSta
   return {
     yourSlot: yourSlotNet,
     yourHand: state.players[forSlot].hand,
+    seatNames,
     yourGod: state.players[forSlot].god,
     revealedGods,
     currentTrick,

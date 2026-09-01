@@ -3,12 +3,12 @@ import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, sortCardIds, sortCardIdsByRan
 import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
+import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, MaskedState, MaskedTrickPlay } from '../net/actions';
 import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLegality';
 import type { CardVisualState } from './handLegality';
-import { buildSeatMap, computeSuitRing, seatFor, seatLabelFor } from './seating';
+import { buildSeatMap, computeSuitRing, seatFor } from './seating';
 import type { SeatPosition } from './seating';
 import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
@@ -393,10 +393,10 @@ export interface GameOverlayHudState {
 // (ui/seating.ts's computeSuitRing, GOD_TEAM/TEAMMATE_GOD), just returned
 // as data instead of drawn.
 function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOverlayHudState {
+  const seatMap = buildSeatMap(state.yourSlot);
   const seatLabels = {} as Record<SeatPosition, string>;
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
-    const label = seatLabelFor(seat);
-    seatLabels[seat] = seat === 'bottom' ? `${label} (You)` : label;
+    seatLabels[seat] = playerLabelFor(state, seatMap[seat]);
   }
 
   const previewCardId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
@@ -604,8 +604,18 @@ function renderCardFan(
   for (const entry of selected) drawEntry(entry, true);
 }
 
-function seatLabelForNet(state: MaskedState, id: NetPlayerId) {
-  return seatLabelFor(seatFor(id, state.yourSlot));
+// Player-facing identity label: the real displayName if one was entered
+// (falling back to a seat-numbered "Player N", absolute and the same for
+// every viewer - see net/actions.ts's MaskedState.seatNames doc comment),
+// with a "(You)" suffix for the local player's own slot. This is the
+// absolute NetPlayerId->number mapping (p0->1..p3->4), deliberately NOT
+// derived from seatFor/seatLabelFor's viewer-relative P1-P4 geometry
+// labels - see BUILD_STATUS.md for why the two numbering systems must
+// stay separate.
+function playerLabelFor(state: MaskedState, id: NetPlayerId): string {
+  const name = state.seatNames[id]?.trim();
+  const base = name || `Player ${fromNetPlayerId(id) + 1}`;
+  return id === state.yourSlot ? `${base} (You)` : base;
 }
 
 // --- Action button --------------------------------------------------------
@@ -635,7 +645,7 @@ function computeActionButtonState(
   const isYourTurn = state.currentTurn === state.yourSlot;
 
   if (!isYourTurn || state.turnPhase === 'gameOver') {
-    const label = state.currentTurn ? `Waiting for ${seatLabelForNet(state, state.currentTurn)}...` : 'Waiting...';
+    const label = state.currentTurn ? `Waiting for ${playerLabelFor(state, state.currentTurn)}...` : 'Waiting...';
     return { label, hint: '', enabled: false, onClick: NO_OP };
   }
 
@@ -653,7 +663,7 @@ function computeActionButtonState(
     if (view.delegateChoice) {
       const target = view.delegateChoice;
       return {
-        label: `Delegate to ${seatLabelForNet(state, target)}`,
+        label: `Delegate to ${playerLabelFor(state, target)}`,
         hint: 'Commit the chosen card',
         enabled: true,
         onClick: () => sendAction({ action: 'selectDelegate', targetPlayer: target }),
@@ -726,7 +736,7 @@ function renderPreviousTrickOverlay(scene: Phaser.Scene, container: Phaser.GameO
   }
   state.previousTrick.forEach((play, i) => {
     const rowY = 92 + i * (CARD_DIMS_MINI.height + 20);
-    text(78, rowY, seatLabelForNet(state, play.player), '#dddddd', 12, 'left');
+    text(78, rowY, playerLabelFor(state, play.player), '#dddddd', 12, 'left');
     const faces = maskedPlayFaces(play, state.yourSlot);
     drawCardRow(scene, container, 230, rowY, faces, CARD_DIMS_MINI, logCardStyle);
   });
@@ -754,7 +764,7 @@ function renderGameOver(
     text(CENTER_X, 220, 'Revealed identities:', '#aaaaaa', 12);
     revealed.forEach((slot, i) => {
       const god = state.revealedGods[slot]!;
-      text(CENTER_X, 246 + i * 20, `${seatLabelForNet(state, slot)}: ${GOD_DISPLAY_NAME[god]}`, '#cccccc', 11);
+      text(CENTER_X, 246 + i * 20, `${playerLabelFor(state, slot)}: ${GOD_DISPLAY_NAME[god]}`, '#cccccc', 11);
     });
   }
 

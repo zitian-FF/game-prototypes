@@ -11,6 +11,7 @@ import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PersistentUIState } from '../ui/renderGameView';
 import { ensureCardFrameTextures, preloadCardArt } from '../ui/cardArt';
 import { fromNetPlayerId, toNetPlayerId } from '../net/netPlayerId';
+import type { NetPlayerId } from '../net/netPlayerId';
 import type { createNetworkRoom } from '../net/room';
 import type { createNetworkActions, ClientAction } from '../net/actions';
 import type { Roster, RosterEntry } from '../net/types';
@@ -169,12 +170,18 @@ export class HostGameScene extends Phaser.Scene {
     });
   }
 
+  private seatNames(): Partial<Record<NetPlayerId, string>> {
+    const names: Partial<Record<NetPlayerId, string>> = {};
+    for (const entry of this.roster.values()) names[entry.slot] = entry.displayName;
+    return names;
+  }
+
   private sendMaskedStateTo(entry: RosterEntry): void {
     // Bots have no observer (no real network peer, and nothing renders
     // their perspective) - nothing to build or send.
     if (entry.isBot) return;
     const slot = fromNetPlayerId(entry.slot);
-    const masked = buildMaskedState(this.state, slot);
+    const masked = buildMaskedState(this.state, slot, this.seatNames());
     if (entry.isHost) {
       renderGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState);
     } else if (this.actions) {

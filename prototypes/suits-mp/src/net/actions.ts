@@ -88,6 +88,12 @@ export type NetWinInfo = {
 export type MaskedState = {
   yourSlot: NetPlayerId;
   yourHand: CardId[];
+  // Raw displayName values keyed by absolute NetPlayerId, exactly as
+  // stored in the host's roster (net/types.ts) - may be an empty string
+  // for a blank-named player. The seat-numbered "Player N" fallback is
+  // computed at render time (see ui/renderGameView.ts's playerLabelFor),
+  // mirroring the Lobby's own lobbySeats.ts pattern, not baked in here.
+  seatNames: Partial<Record<NetPlayerId, string>>;
   // A player's own identity is never secret to themself - only to everyone
   // else, until suit completion (see `revealedGods` below). Powers a
   // persistent "You are: <god> - Team <team>" display so a player always
