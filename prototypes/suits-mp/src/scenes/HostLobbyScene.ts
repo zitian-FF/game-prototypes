@@ -105,7 +105,13 @@ export class HostLobbyScene extends Phaser.Scene {
     this.room = room;
     this.code = code;
     this.actions = createNetworkActions(room);
-    this.roster.set(data.clientId, { clientId: data.clientId, peerId: 'host', slot: 'p0', isHost: true });
+    this.roster.set(data.clientId, {
+      clientId: data.clientId,
+      peerId: 'host',
+      displayName: '',
+      slot: 'p0',
+      isHost: true,
+    });
 
     statusText.destroy();
     this.buildLobbyUI(width, height);
@@ -193,7 +199,7 @@ export class HostLobbyScene extends Phaser.Scene {
   // `this.actions` currently are - split out so refreshRoomCode can call it
   // again after swapping in a new room.
   private wireRoomHandlers(): void {
-    this.actions.identity.onMessage = (clientId, context) => {
+    this.actions.identity.onMessage = ({ clientId, displayName }, context) => {
       this.reconnectDebouncer.cancelPending(clientId);
 
       const result = matchOrCreateRosterEntry(this.roster, clientId, context.peerId, () => {
@@ -201,6 +207,7 @@ export class HostLobbyScene extends Phaser.Scene {
         return {
           clientId,
           peerId: context.peerId,
+          displayName,
           slot: nextAvailableSlot(this.roster),
           isHost: false,
         };

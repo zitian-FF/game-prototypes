@@ -1,6 +1,6 @@
 # mp-core
 
-Version: **0.1.0**
+Version: **0.2.0**
 
 Shared Trystero-based networking primitives for this repo's multiplayer
 prototypes. Extracted from mp-net and suits-mp, which had each grown their
@@ -12,25 +12,53 @@ own copy of the same identity/reconnect logic.
   (independent of Trystero's transient `peerId`), used to match a
   reload/reconnect back to the same host-side roster slot.
 - **Generic Trystero action creators** - `createIdentityAction`,
-  `createHostUIAction<T>`, `createInputAction`, `createAnalogInputAction`,
-  `createInputDeltaAction`. Each prototype composes its own
-  `createNetworkActions(room)` from whichever of these it needs, plus its
-  own game-specific channels (e.g. suits-mp's `gameAction`/`state`). Not
-  every prototype needs the full set - suits-mp only uses `identity` and
-  `hostUI`, since its turn-based `gameAction`/`state` channels replace the
-  generic `input`/`analogInput`/`inputDelta` bitmask/delta channels that
-  mp-net's test mechanic uses.
+  `createIdentityActionWithName`, `createHostUIAction<T>`,
+  `createInputAction`, `createAnalogInputAction`, `createInputDeltaAction`.
+  Each prototype composes its own `createNetworkActions(room)` from
+  whichever of these it needs, plus its own game-specific channels (e.g.
+  suits-mp's `gameAction`/`state`). Not every prototype needs the full set
+  - suits-mp only uses `identity`/`identityWithName` and `hostUI`, since
+  its turn-based `gameAction`/`state` channels replace the generic
+  `input`/`analogInput`/`inputDelta` bitmask/delta channels that mp-net's
+  test mechanic uses.
 - **The identity-matched reconnect handshake** - `createReconnectDebouncer`
   (debounces roster removal on disconnect, cancelled if the same client ID
   reappears before the timer fires), `matchOrCreateRosterEntry` (lobby-side:
   reconnect an existing roster entry or create a new one), and
   `matchRosterEntryForReconnect` (mid-game: reconnect an existing entry only
   - a client ID with no roster slot once the game has started is a
-  stranger, not a reconnect, and is rejected by the caller).
-- **Shared types** - `BaseRosterEntry` (`clientId`/`peerId`, which every
-  prototype's own richer `RosterEntry` extends) and `SharedNetData<TActions>`
-  (the room/actions/clientId/lobbyCode bundle threaded through player-side
-  scenes).
+  stranger, not a reconnect, and is rejected by the caller). Both matching
+  helpers only ever touch `peerId` on a reconnect - every other field on
+  the existing entry, `displayName` included, is left untouched.
+- **Shared types** - `BaseRosterEntry` (`clientId`/`peerId`/optional
+  `displayName`, which every prototype's own richer `RosterEntry` extends)
+  and `SharedNetData<TActions>` (the room/actions/clientId/lobbyCode bundle
+  threaded through player-side scenes).
+
+## Identity payload: two channel creators (0.2.0+)
+
+`createIdentityAction` is unchanged - still `room.makeAction<string>
+('identity')`, a bare client ID. 0.2.0 adds a second, opt-in creator,
+`createIdentityActionWithName`, on the *same* channel name but a richer
+payload: `IdentityPayload = { clientId: string; displayName: string }`.
+
+This package has no real per-consumer version isolation of its own (it's
+a single local workspace package, not a registry-published one - every
+consumer's TypeScript gets compiled against whatever is on disk,
+regardless of what a prototype's own `package.json` semver range says).
+Changing `createIdentityAction`'s existing payload shape in place would
+therefore have broken every consumer's build at once, pin or no pin. Two
+separate creators avoids that: a consumer that never imports
+`createIdentityActionWithName` is unaffected by its existence, full stop.
+`BaseRosterEntry.displayName` is optional for the same reason - a
+consumer still on the plain string payload never sets it, so it can't be
+required. A consumer using `createIdentityActionWithName` should treat it
+as effectively required on its own richer `RosterEntry` by always setting
+it when constructing an entry.
+
+No UI for entering a display name ships with this version - it's just the
+field on the wire and on `BaseRosterEntry`; a caller not yet reading it
+can send `''` as a placeholder.
 
 ## What it deliberately excludes
 
@@ -58,14 +86,20 @@ generic networking) and stay local to each one:
 
 ## Consumers
 
-- **mp-net** and **suits-mp** depend on this package (pinned version, see
-  each prototype's own `package.json`), and use the mid-game
-  `matchRosterEntryForReconnect` helper (reject a stranger once the game
-  has started) plus `createReconnectDebouncer`.
-- **mp-console** also depends on this package (pinned version). It differs
-  from the other two consumers in shape: it uses `matchOrCreateRosterEntry`
-  in *both* its lobby and mid-game scenes (it always accepts a new client
-  ID, even mid-game - there is no "already in progress" rejection here),
-  has no `inputDelta` channel, and does not use `createReconnectDebouncer`
+- **suits-mp** depends on `^0.2.0` and is the only consumer using
+  `createIdentityActionWithName`/`IdentityPayload` so far. Uses the
+  mid-game `matchRosterEntryForReconnect` helper (reject a stranger once
+  the game has started) plus `createReconnectDebouncer`.
+- **mp-net** and **mp-console** remain pinned to `0.1.0` and untouched by
+  the 0.2.0 identity-payload addition - they still use the plain
+  `createIdentityAction`/bare-string payload, unaffected by
+  `createIdentityActionWithName`'s existence. Moving them onto the named
+  identity payload is a deliberate opt-in for a separate brief, not
+  automatic. mp-net uses the mid-game `matchRosterEntryForReconnect`
+  helper plus `createReconnectDebouncer`. mp-console differs from the
+  other two consumers in shape: it uses `matchOrCreateRosterEntry` in
+  *both* its lobby and mid-game scenes (it always accepts a new client ID,
+  even mid-game - there is no "already in progress" rejection here), has
+  no `inputDelta` channel, and does not use `createReconnectDebouncer`
   (see "What it deliberately excludes" above). See its own
   `BUILD_STATUS.md` for the full detail on this divergence.
