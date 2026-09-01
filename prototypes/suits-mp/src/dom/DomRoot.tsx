@@ -33,6 +33,7 @@ export function DomRoot(): JSX.Element {
           screen={lobby.screen}
           roomCode={lobby.roomCode}
           seats={lobby.seats}
+          hostLeft={lobby.hostLeft}
           onSinglePlayer={lobby.onSinglePlayer}
           onHost={lobby.onHost}
           onSubmitJoin={lobby.onSubmitJoin}

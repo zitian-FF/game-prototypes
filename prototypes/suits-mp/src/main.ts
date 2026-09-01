@@ -68,7 +68,11 @@ game.scene.add('PlayerLobby', PlayerLobbyScene, false);
 game.scene.add('PlayerGame', PlayerGameScene, false);
 
 if (initialCode) {
-  game.scene.start('Connecting', { ...bootData, code: initialCode });
+  // An invite link boots straight into Connecting, bypassing Landing's own
+  // name-entry field entirely - no UI has run yet to collect one, so this
+  // join sends an empty displayName like any other blank-name join (falls
+  // back to a seat-numbered "Player N" at render time, see lobbySeats.ts).
+  game.scene.start('Connecting', { ...bootData, code: initialCode, displayName: '' });
 } else {
   game.scene.start('Landing', bootData);
 }

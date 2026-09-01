@@ -1,25 +1,30 @@
 import type { Screen, ErrorKind } from './lobbyContent';
-import type { SeatOccupancy } from './lobbySeats';
+import type { SeatInfo } from './lobbySeats';
 
 // Mirrors dom/domUiStore.ts's bridge pattern (see that file's header
 // comment), extended to carry the Lobby flow's real state: whichever real
 // scene currently owns the flow (LandingScene, HostLobbyScene,
-// ConnectingScene) pushes its state in here on every change, and
-// LobbyFlow.tsx renders it as a fully controlled component - it holds no
-// screen/roomCode/seat state of its own. Two purely-local screen
-// transitions (Landing -> the join code-entry screen, and back) don't
-// involve any scene/network action, so they're implemented as plain store
-// mutations below (goToJoinScreen/goToLandingScreen) rather than routed
-// through a scene.
+// ConnectingScene, PlayerLobbyScene) pushes its state in here on every
+// change, and LobbyFlow.tsx renders it as a fully controlled component - it
+// holds no screen/roomCode/seat state of its own (name-entry draft and the
+// copy-to-clipboard toast are the only state it still owns locally, see
+// LobbyFlow.tsx). Two purely-local screen transitions (Landing -> the join
+// code-entry screen, and back) don't involve any scene/network action, so
+// they're implemented as plain store mutations below (goToJoinScreen/
+// goToLandingScreen) rather than routed through a scene.
 
 export interface LobbyUiState {
   visible: boolean;
   screen: Screen;
   roomCode: string;
-  seats: SeatOccupancy[];
+  seats: SeatInfo[];
+  // Only meaningful while screen === 'waiting' (see showWaiting/
+  // setWaitingHostLeft) - whether the host disconnected while this peer was
+  // waiting in the lobby.
+  hostLeft: boolean;
   onSinglePlayer: () => void;
-  onHost: () => void;
-  onSubmitJoin: (code: string) => void;
+  onHost: (name: string) => void;
+  onSubmitJoin: (code: string, name: string) => void;
   onFillBot: (index: number) => void;
   onReleaseBot: (index: number) => void;
   onStartGame: () => void;
@@ -33,7 +38,12 @@ export interface LobbyUiState {
   onRetry: () => void;
 }
 
-const EMPTY_SEATS: SeatOccupancy[] = [null, null, null, null];
+const EMPTY_SEATS: SeatInfo[] = [
+  { occupancy: null, displayName: '' },
+  { occupancy: null, displayName: '' },
+  { occupancy: null, displayName: '' },
+  { occupancy: null, displayName: '' },
+];
 
 function noop(): void {}
 
@@ -43,6 +53,7 @@ function idleState(): LobbyUiState {
     screen: 'landing',
     roomCode: '',
     seats: EMPTY_SEATS,
+    hostLeft: false,
     onSinglePlayer: noop,
     onHost: noop,
     onSubmitJoin: noop,
@@ -73,7 +84,11 @@ export function getSnapshot(): LobbyUiState {
 
 // --- LandingScene -----------------------------------------------------
 
-export function showLanding(onSinglePlayer: () => void, onHost: () => void, onSubmitJoin: (code: string) => void): void {
+export function showLanding(
+  onSinglePlayer: () => void,
+  onHost: (name: string) => void,
+  onSubmitJoin: (code: string, name: string) => void,
+): void {
   state = { ...idleState(), visible: true, screen: 'landing', onSinglePlayer, onHost, onSubmitJoin };
   emit();
 }
@@ -117,7 +132,7 @@ export interface HostLobbyCallbacks {
   onRefreshCode: () => void;
 }
 
-export function showHostLobby(roomCode: string, seats: SeatOccupancy[], callbacks: HostLobbyCallbacks): void {
+export function showHostLobby(roomCode: string, seats: SeatInfo[], callbacks: HostLobbyCallbacks): void {
   state = { ...idleState(), visible: true, screen: 'lobby', roomCode, seats, ...callbacks };
   emit();
 }
@@ -141,6 +156,34 @@ export function showJoinError(kind: ErrorKind, onRetry: () => void, onBack: () =
 }
 
 export function hideJoinFlow(): void {
+  if (!state.visible) return;
+  state = idleState();
+  emit();
+}
+
+// --- PlayerLobbyScene -----------------------------------------------------
+
+// A connected peer waiting for the host to start. No live seat list here:
+// the host doesn't currently broadcast roster/seat state to joined peers
+// during the lobby phase (only the lobbyJoined/gameStarted/roomFull/
+// alreadyInProgress signals) - adding that broadcast is a bigger, separate
+// piece of networking surface than this screen needs, see BUILD_STATUS.md.
+export function showWaiting(): void {
+  state = { ...idleState(), visible: true, screen: 'waiting', hostLeft: false };
+  emit();
+}
+
+// The host's connection dropped while this peer was waiting - flips a flag
+// on the same 'waiting' screen rather than transitioning anywhere, since
+// per the existing (pre-this-brief) behavior this is a terminal state, not
+// a retryable failure.
+export function setWaitingHostLeft(): void {
+  if (state.screen !== 'waiting') return;
+  state = { ...state, hostLeft: true };
+  emit();
+}
+
+export function hideWaiting(): void {
   if (!state.visible) return;
   state = idleState();
   emit();

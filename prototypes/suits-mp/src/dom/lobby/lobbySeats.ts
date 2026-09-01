@@ -1,10 +1,19 @@
 import { NUMERALS } from './lobbyContent';
 
-// Ported from the design's `seatModel()` method. Placeholder-data only:
-// "peer" here is a hardcoded display name, not a real connected roster
-// entry - see BUILD_STATUS.md for why real roster/networking binding is
-// deferred to a future task.
+// Ported from the design's `seatModel()` method, now driven by real roster
+// data (see HostLobbyScene's `rosterToSeats()`) instead of placeholder
+// occupancy - "peer"/"host" seats carry a real `displayName`; bots keep
+// their existing flavor label (bots have no player-entered name).
 export type SeatOccupancy = 'host' | 'peer' | 'bot' | null;
+
+export interface SeatInfo {
+  occupancy: SeatOccupancy;
+  // Real roster entry's displayName - '' for an empty seat, for a bot, or
+  // for a real player who left the name field blank. Never fabricated
+  // upstream; the seat-numbered "Player N" fallback below is what actually
+  // covers a blank name at render time.
+  displayName: string;
+}
 
 export interface SeatViewModel {
   id: string;
@@ -25,24 +34,28 @@ export interface SeatViewModel {
   release: () => void;
 }
 
-const NAMES = { host: 'Randolph C.', peer: 'Erich Z.' };
-
 export function seatModel(
-  occupancy: SeatOccupancy[],
+  seats: SeatInfo[],
   onFill: (index: number) => void,
   onRelease: (index: number) => void,
 ): SeatViewModel[] {
-  return occupancy.map((occ, i) => {
+  return seats.map(({ occupancy: occ, displayName }, i) => {
     const filled = occ !== null;
     const isBot = occ === 'bot';
     const isHost = occ === 'host';
+    const isPeer = occ === 'peer';
     const accent = isBot ? 'rgba(170, 132, 216,' : isHost ? 'rgba(198, 160, 78,' : 'rgba(120, 190, 178,';
+    // Seat-numbered fallback (matching the row's own "I".."IV" numeral, 1
+    // per row) for a real player who left the name field blank - never a
+    // fabricated string sent over the network, only ever computed here at
+    // render time.
+    const realOrFallbackName = displayName.trim() || `Player ${i + 1}`;
     return {
       id: 'seat' + (i + 1),
       numeral: NUMERALS[i],
       state: occ === null ? 'empty' : occ,
-      name: isBot ? 'Thrall of the Deep' : isHost ? NAMES.host : occ === 'peer' ? NAMES.peer : 'Awaiting a soul',
-      role: isBot ? 'Bot · bound by the host' : isHost ? 'Host · thee' : occ === 'peer' ? 'Player · connected' : 'Empty seat',
+      name: isBot ? 'Thrall of the Deep' : isHost || isPeer ? realOrFallbackName : 'Awaiting a soul',
+      role: isBot ? 'Bot · bound by the host' : isHost ? 'Host · thee' : isPeer ? 'Player · connected' : 'Empty seat',
       glyph: filled ? (isBot ? '✦' : '◆') : '◇',
       line: filled ? accent + ' 0.34)' : 'rgba(158, 196, 186, 0.14)',
       bg: filled
