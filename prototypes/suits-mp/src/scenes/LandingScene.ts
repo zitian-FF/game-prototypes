@@ -12,17 +12,17 @@ import type { HostGameData } from './HostGameScene';
 // (dom/lobby/LobbyFlow.tsx, mounted via lobbyUiStore) rather than Phaser
 // primitives - see root CLAUDE.md's "UI implementation split". This
 // scene's only remaining job is the version stamp/portrait guard (still
-// canvas-owned) and showing/hiding that DOM view, plus the one real
-// non-networked action it can still perform directly: Single Player.
+// canvas-owned), showing/hiding that DOM view, wiring its Host/Join
+// buttons to the real networking scenes, and the one real non-networked
+// action it can still perform directly: Single Player.
 //
-// Host/Join stay inside the DOM flow's own placeholder state (room code,
-// seat list, code entry - see BUILD_STATUS.md) rather than transitioning
-// to the real HostLobbyScene/JoinEntryScene: this task explicitly defers
-// real networking wiring, so those two scenes are currently unreachable
-// from here (still intact for a future task to wire in), but 'Landing'
-// itself must stay a real, registered scene - JoinEntryScene's back
-// button and ConnectingScene's cancel/error paths both call
-// `scene.start('Landing', data)` to return here.
+// Host transitions to HostLobbyScene, which owns real room creation
+// (net/room.ts, net/lobbyCode.ts) and pushes its own state back into the
+// same DOM store as it becomes available. Join's code-entry screen lives
+// entirely in the DOM now (LobbyFlow's own 'join' screen replaced
+// JoinEntryScene's plain-Phaser-DOM `<input>` - that scene is no longer
+// reachable from anywhere and is a candidate for removal); submitting a
+// code transitions straight to the real ConnectingScene.
 export class LandingScene extends Phaser.Scene {
   constructor() {
     super('Landing');
@@ -36,7 +36,11 @@ export class LandingScene extends Phaser.Scene {
     const height = this.scale.height / PIXEL_RATIO;
     this.cameras.main.centerOn(width / 2, height / 2);
 
-    showLanding(() => this.startSinglePlayer(data));
+    showLanding(
+      () => this.startSinglePlayer(data),
+      () => this.scene.start('HostLobby', data),
+      (code) => this.scene.start('Connecting', { ...data, code }),
+    );
     // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
     // (only `Systems#shutdown`, which fires this event) - see
     // node_modules/phaser/src/scene/Systems.js.

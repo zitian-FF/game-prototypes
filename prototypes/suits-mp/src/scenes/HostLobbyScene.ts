@@ -8,9 +8,12 @@ import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
+import { showHostSettingUp, showHostLobby, hideHostLobby } from '../dom/lobby/lobbyUiStore';
+import type { SeatOccupancy } from '../dom/lobby/lobbySeats';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
 import { ROOM_CAPACITY } from '../net/types';
+import type { NetPlayerId } from '../net/netPlayerId';
 import type { Roster, RosterEntry } from '../net/types';
 
 // Safety cap on the collision-retry loop; with a 32-character, 5-slot
@@ -25,6 +28,21 @@ function nextAvailableSlot(roster: Roster) {
   return free;
 }
 
+function rosterToSeats(roster: Roster): SeatOccupancy[] {
+  return ALL_NET_PLAYER_IDS.map((slot) => {
+    const entry = [...roster.values()].find((e) => e.slot === slot);
+    if (!entry) return null;
+    if (entry.isBot) return 'bot';
+    return entry.isHost ? 'host' : 'peer';
+  });
+}
+
+// Presentation comes entirely from the DOM Lobby flow (dom/lobby/LobbyFlow.tsx,
+// mounted via lobbyUiStore) rather than Phaser primitives - see root
+// CLAUDE.md's "UI implementation split". This scene keeps owning the real
+// room/roster/reconnect lifecycle (room creation with collision retry,
+// identity handshake, reconnect debounce, Start Game) and pushes its state
+// into the DOM store on every change, rather than rendering it itself.
 export class HostLobbyScene extends Phaser.Scene {
   private roster: Roster = new Map();
   private room!: ReturnType<typeof createNetworkRoom>;
@@ -34,20 +52,13 @@ export class HostLobbyScene extends Phaser.Scene {
   private code!: string;
   private refreshing = false;
 
-  private codeText!: Phaser.GameObjects.Text;
-  private playerListText!: Phaser.GameObjects.Text;
-  private startButton!: Phaser.GameObjects.Text;
-  private refreshButton!: Phaser.GameObjects.Text;
-  private copyCodeButton!: Phaser.GameObjects.Text;
-  private copyInviteButton!: Phaser.GameObjects.Text;
-
   // Debounces roster removal on disconnect (mobile connections blip
   // constantly) and is cancelled if the same client ID reappears before
   // the timer fires. See packages/mp-core.
   private reconnectDebouncer: ReconnectDebouncer<RosterEntry> = createReconnectDebouncer(
     this.roster,
     tune.disconnectDebounceMs,
-    () => this.renderRoster(),
+    () => this.pushLobbyState(),
   );
 
   constructor() {
@@ -65,24 +76,16 @@ export class HostLobbyScene extends Phaser.Scene {
 
     this.hostClientId = data.clientId;
 
-    const statusText = this.add
-      .text(width / 2, height / 2, 'Setting up room...', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#eeeeee',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
+    showHostSettingUp();
+    // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
+    // (only `Systems#shutdown`, which fires this event) - see
+    // node_modules/phaser/src/scene/Systems.js.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideHostLobby);
 
-    void this.setUpRoom(data, statusText, width, height);
+    void this.setUpRoom(data);
   }
 
-  private async setUpRoom(
-    data: BootData,
-    statusText: Phaser.GameObjects.Text,
-    width: number,
-    height: number,
-  ): Promise<void> {
+  private async setUpRoom(data: BootData): Promise<void> {
     this.iceServers = await data.getIceServers();
 
     let code = randomLobbyCode();
@@ -113,8 +116,8 @@ export class HostLobbyScene extends Phaser.Scene {
       isHost: true,
     });
 
-    statusText.destroy();
-    this.buildLobbyUI(width, height);
+    this.wireRoomHandlers();
+    this.pushLobbyState();
   }
 
   // Joins the room and waits a short window for any peer to announce
@@ -127,68 +130,6 @@ export class HostLobbyScene extends Phaser.Scene {
       };
       setTimeout(() => resolve(occupied), tune.hostOccupancyCheckMs);
     });
-  }
-
-  private buildLobbyUI(width: number, height: number): void {
-    this.add
-      .text(width / 2, 40, 'suits-mp host', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#ffffff',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-
-    this.codeText = this.add
-      .text(width / 2, 80, `Room code: ${this.code}`, {
-        fontFamily: 'monospace',
-        fontSize: '26px',
-        color: '#ffd27a',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-
-    this.copyCodeButton = this.makeCopyButton(width / 2 - 100, 128, '[ Copy code ]', () => this.code);
-    this.copyInviteButton = this.makeCopyButton(width / 2 + 100, 128, '[ Copy invite link ]', () => this.inviteUrl());
-
-    this.refreshButton = this.add
-      .text(width / 2, 156, '[ Refresh code ]', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#88aaff',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    this.refreshButton.on('pointerdown', () => void this.refreshRoomCode());
-
-    this.add.text(30, 190, `Players (need exactly ${ROOM_CAPACITY}):`, {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      color: '#aaaaaa',
-      resolution: PIXEL_RATIO,
-    });
-
-    this.playerListText = this.add.text(30, 214, '', {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      color: '#eeeeee',
-      lineSpacing: 6,
-      resolution: PIXEL_RATIO,
-    });
-
-    this.startButton = this.add
-      .text(width / 2, height - 60, '[ Start Game ]', {
-        fontFamily: 'monospace',
-        fontSize: '20px',
-        color: '#88ff88',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-    this.startButton.on('pointerdown', () => this.startGame());
-
-    this.wireRoomHandlers();
-    this.renderRoster();
   }
 
   private inviteUrl(): string {
@@ -219,12 +160,32 @@ export class HostLobbyScene extends Phaser.Scene {
       }
 
       void this.actions.hostUI.send({ type: 'lobbyJoined' }, { target: context.peerId });
-      this.renderRoster();
+      this.pushLobbyState();
     };
 
     this.room.onPeerLeave = (peerId) => {
       this.reconnectDebouncer.scheduleRemovalOnLeave(peerId, (entry) => entry.isHost);
     };
+  }
+
+  // Adds a host-local bot to the given (currently empty) slot - see
+  // host/botAI.ts and HostGameScene.driveBotsIfNeeded for how `isBot`
+  // drives it purely host-locally at game time, no network peer involved.
+  private fillBot(slot: NetPlayerId): void {
+    if ([...this.roster.values()].some((e) => e.slot === slot)) return;
+    const clientId = `bot:${slot}`;
+    this.roster.set(clientId, { clientId, peerId: 'bot', displayName: '', slot, isHost: false, isBot: true });
+    this.pushLobbyState();
+  }
+
+  private releaseBot(slot: NetPlayerId): void {
+    for (const [clientId, entry] of this.roster) {
+      if (entry.slot === slot && entry.isBot) {
+        this.roster.delete(clientId);
+        break;
+      }
+    }
+    this.pushLobbyState();
   }
 
   private startGame(): void {
@@ -252,19 +213,17 @@ export class HostLobbyScene extends Phaser.Scene {
   // now occupied by someone else, falls back to generating a new one, same
   // rules as the initial host setup. Real peer connections don't survive a
   // room.leave() switch, so their roster entries are dropped (they'll need
-  // to reconnect on the possibly-new code); only the host's own slot
-  // survives.
+  // to reconnect on the possibly-new code); only the host's own slot and
+  // any host-local bot slots survive.
   private async refreshRoomCode(): Promise<void> {
     if (this.refreshing) return;
     this.refreshing = true;
-    this.refreshButton.setText('[ Refreshing... ]');
-    this.refreshButton.disableInteractive();
 
     try {
       await this.room.leave();
 
       for (const [clientId, entry] of [...this.roster.entries()]) {
-        if (!entry.isHost) this.roster.delete(clientId);
+        if (!entry.isHost && !entry.isBot) this.roster.delete(clientId);
       }
       this.reconnectDebouncer.clearAll();
 
@@ -292,52 +251,18 @@ export class HostLobbyScene extends Phaser.Scene {
       this.code = code;
       this.actions = createNetworkActions(room);
       this.wireRoomHandlers();
-
-      this.codeText.setText(`Room code: ${this.code}`);
-      this.renderRoster();
+      this.pushLobbyState();
     } finally {
       this.refreshing = false;
-      if (this.scene.isActive()) {
-        this.refreshButton.setText('[ Refresh code ]');
-        this.refreshButton.setInteractive({ useHandCursor: true });
-      }
     }
   }
 
-  private renderRoster(): void {
-    const bySlot = [...this.roster.values()].sort((a, b) => a.slot.localeCompare(b.slot));
-    const lines = bySlot.map((entry) => `${entry.slot}: ${shortId(entry.clientId)}${entry.isHost ? ' (You, Host)' : ''}`);
-    this.playerListText.setText(lines.join('\n'));
-
-    const ready = this.roster.size === ROOM_CAPACITY;
-    this.startButton.setAlpha(ready ? 1 : 0.4);
-    if (ready) this.startButton.setInteractive({ useHandCursor: true });
-    else this.startButton.disableInteractive();
-  }
-
-  private makeCopyButton(x: number, y: number, label: string, getValue: () => string): Phaser.GameObjects.Text {
-    const button = this.add
-      .text(x, y, label, {
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        color: '#88aaff',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    button.on('pointerdown', () => {
-      void navigator.clipboard.writeText(getValue()).then(() => {
-        const original = label;
-        button.setText('[ Copied! ]');
-        this.time.delayedCall(1200, () => button.setText(original));
-      });
+  private pushLobbyState(): void {
+    showHostLobby(this.code, rosterToSeats(this.roster), {
+      onFillBot: (i) => this.fillBot(ALL_NET_PLAYER_IDS[i]),
+      onReleaseBot: (i) => this.releaseBot(ALL_NET_PLAYER_IDS[i]),
+      onStartGame: () => this.startGame(),
+      onRefreshCode: () => void this.refreshRoomCode(),
     });
-
-    return button;
   }
-}
-
-function shortId(clientId: string): string {
-  return clientId.slice(0, 8);
 }

@@ -1,108 +1,100 @@
 ## Current milestone
 
-mp-core's identity handshake payload gained a `displayName` field
-(`packages/mp-core` bumped 0.1.0 -> 0.2.0; suits-mp is the first and only
-consumer opted onto it, via a new additive action creator rather than a
-breaking change to the existing one - see "Key technical decisions"). No
-UI reads or sets a real display name yet - every call site sends/stores
-an empty-string placeholder. Version stamp counter unchanged (deploy-only
-bump, no deploy has run this session).
+Merged `main` into the lobby-real-networking branch (PR #52) to resolve a
+conflict with an independent session's work that landed on `main` in the
+meantime: mp-core's identity handshake gaining a `displayName` field
+(`packages/mp-core` bumped to 0.2.0, suits-mp's `RosterEntry.displayName`
+narrowed to required). The two changes touch overlapping files
+(`HostLobbyScene`/`ConnectingScene`/`LandingScene`/`net/types.ts`) but not
+overlapping logic, so this was a reconciliation, not a redesign - see
+"What was implemented" for the one real gap the merge surfaced. Version
+stamp counter unchanged (`8`), no deploy has run yet.
 
 ## What was implemented
 
-- `packages/mp-core/src/actions.ts`: `createIdentityAction` (bare
-  `clientId: string` payload) is untouched. Added a second creator,
-  `createIdentityActionWithName`, returning `room.makeAction<IdentityPayload>
-  ('identity')` where `IdentityPayload = { clientId: string; displayName:
-  string }` - same channel name as the original, different payload shape,
-  opt-in per consumer.
-- `packages/mp-core/src/types.ts`: `BaseRosterEntry` gained an *optional*
-  `displayName?: string` field.
-- `packages/mp-core/src/reconnect.ts`: no logic change - both matching
-  helpers already only ever wrote `peerId` on a reconnect. Doc comments
-  updated to spell out that `displayName` (like every other field) is
-  left untouched on a match, not just on the happy path.
-- `packages/mp-core` bumped to 0.2.0; `README.md` documents the new
-  creator, why `displayName` is optional on the shared base type, and the
-  per-consumer state (who's on which creator/version).
-- suits-mp bumped its `mp-core` pin to `^0.2.0` and is the only consumer
-  using `createIdentityActionWithName`/`IdentityPayload`. Its own
-  `RosterEntry` narrows `displayName` back to required (TypeScript allows
-  narrowing an inherited optional field to required across `extends`).
-- Call sites updated to compile against the new payload shape:
-  `ConnectingScene` now sends `{ clientId: data.clientId, displayName: ''
-  }`; `HostLobbyScene`'s identity handler destructures `{ clientId,
-  displayName }` and threads `displayName` through into the roster entry
-  it constructs on a brand-new join; `HostGameScene`'s mid-game handler
-  only destructures `clientId` (irrelevant there - it never creates an
-  entry, only matches an existing one, and must not touch its stored
-  name). Two more roster-entry object literals the originating brief
-  didn't call out (written after that brief, by other sessions) also
-  needed a `displayName` field to keep the build green:
-  `HostLobbyScene`'s own host-seat entry, and `LandingScene`'s Single
-  Player host+3-bot roster construction.
+- **Merged `origin/main` into `proto/suits-mp/lobby-real-networking`**:
+  git auto-merged every file except `BUILD_STATUS.md` itself (two
+  sessions each fully overwrote it per the "always overwrite, never
+  append" rule, so a textual conflict there was expected and is resolved
+  by this rewrite, not a real code conflict).
+- **One real gap found and fixed**: `HostLobbyScene.fillBot()` (added by
+  this branch's lobby-networking work, so it didn't exist yet when the
+  `displayName` brief updated every *other* roster-entry-construction call
+  site) was still constructing a bot roster entry without a `displayName`
+  field, which now fails to typecheck since suits-mp's `RosterEntry`
+  narrows it to required. Fixed by adding `displayName: ''` to that one
+  entry literal, matching the exact placeholder convention already used
+  by every other suits-mp call site (`HostLobbyScene`'s own host-seat
+  entry, `ConnectingScene`'s identity send, `LandingScene`'s Single
+  Player bot entries) - bots have no real name any more than any other
+  suits-mp seat does yet, so this is consistent, not a new decision.
+- Everything else from both sides carried over unchanged: this branch's
+  DOM-driven Lobby wiring (`LobbyFlow.tsx` as a fully controlled
+  component, `HostLobbyScene`/`ConnectingScene` pushing into
+  `lobbyUiStore.ts` instead of rendering Phaser Text, bot fill/release
+  writing real `isBot` roster entries, `LandingScene`'s real scene
+  transitions, real room-code validation/collision handling, the
+  `FailureOutcome`->`ErrorKind` mapping) and `main`'s `displayName`
+  plumbing (opt-in `createIdentityActionWithName`, `BaseRosterEntry
+  .displayName?` in mp-core, every suits-mp identity/roster call site
+  sending/storing an empty-string placeholder - no UI reads or sets a
+  real name yet, that's explicitly scoped to a separate, later brief).
 
 ## Key technical decisions
 
-- **Additive, not breaking, and why**: the brief's original plan (change
-  `createIdentityAction`'s existing payload shape in place, relying on
-  the 0.1.0 -> 0.2.0 pin bump to isolate mp-net/mp-console from it) turned
-  out not to hold - mp-core is a single local workspace package, not a
-  version-resolved registry dependency, so every consumer's TypeScript
-  compiles against whatever's on disk regardless of what its own
-  `package.json` semver range says. A breaking change in place failed
-  mp-net's and mp-console's typecheck immediately on the first build,
-  pin or not - confirmed by running the typecheck and seeing exactly
-  that. Raised this to the user rather than quietly touching mp-net/
-  mp-console files (or their behavior) to route around it, since the
-  brief was explicit that those two "must NOT be touched or forced onto
-  the new version." User's direction: add a second, opt-in action
-  creator instead (same channel name, different payload shape) and make
-  `BaseRosterEntry.displayName` optional rather than required. Verified
-  after: `git diff` shows zero lines touched in either `prototypes/
-  mp-net/` or `prototypes/mp-console/`, and both still typecheck/build
-  clean.
-- **suits-mp's own `RosterEntry` re-declares `displayName` as required**:
-  narrows the shared (optional) `BaseRosterEntry` field back down for
-  this prototype specifically, since suits-mp always sets it on
-  construction (even if empty for now) - the stricter local type catches
-  any future call site here that forgets to, without forcing the same
-  requirement onto mp-net/mp-console, which never set it at all.
-- **Placeholder is `''`, not omitted or `undefined`**: matches the
-  brief's explicit instruction, and keeps every suits-mp roster-entry
-  object literal structurally complete rather than leaning on the
-  optional-field escape hatch mp-net/mp-console still use.
+- **Rewrote `BUILD_STATUS.md` fresh rather than concatenating both
+  sides' prose**: the file documents the current state of the prototype,
+  not a log of sessions - appending would misrepresent two independent,
+  already-completed pieces of work as one continuous narrative. This
+  entry replaces both.
+- **Fixed the gap inline rather than reopening either session's design**:
+  the missing `displayName: ''` on the bot entry is a mechanical
+  consequence of the merge (a call site that postdates the field's
+  introduction), not a new product decision - same placeholder value,
+  same reasoning, as every other suits-mp entry already uses.
 
 ## Open questions
 
-None from this session - the version-isolation mismatch between this
-brief's assumption and how the workspace actually resolves dependencies
-was surfaced and resolved directly with the user (see "Key technical
-decisions"), not left as an open question.
+- None new from this merge - it was a reconciliation of two already-
+  completed, already-reviewed pieces of work, not a design task. The two
+  substantive open questions from the lobby-networking side (whether a
+  peer-side DOM "waiting in lobby" screen is in scope for a future task,
+  and whether `JoinEntryScene` - now fully unreachable dead code - should
+  be deleted) are unchanged by this merge; see below.
 
 ## Known issues
 
-Carried over, still true, untouched: facedown-card masking leak at the
-payload level (`host/mask.ts`); not live-verified against real human
-peers; Google Fonts fail to load in this dev sandbox's network
-environment (cosmetic fallback only); the Lobby session's Host/Join
-real-vs-placeholder navigation question; no card-back art exists yet;
-Redistribution-log content still stubbed (no design handoff yet).
-
-Noticed while testing this session's change, not a regression from it:
-the Lobby UI's seat list (`dom/lobby/lobbySeats.ts`) still shows
-hardcoded placeholder names ("Randolph C." / "Erich Z."), entirely
-disconnected from any real roster or from the `displayName` field this
-session added - its own comment already documents this as deferred to a
-future task.
+- Carried over, still true, untouched from both sides: facedown-card
+  masking leak at the payload level (`host/mask.ts`); no card-back art
+  yet; Redistribution-log content still stubbed (no design handoff yet);
+  Google Fonts fail to load in this dev sandbox's network environment
+  (cosmetic fallback only); this sandbox's network proxy blocks the
+  pinned Nostr relay WebSocket connections outright, so genuine two-
+  device WebRTC/Trystero peer-to-peer connectivity (a real second device
+  seating as `'peer'` in the host's live seat list, and identity-matched
+  reconnect for a real peer) is still unverified in any sandboxed session
+  and needs the user's own live 2-device test; the Lobby UI's seat list
+  still shows placeholder/generic names rather than a real `displayName`
+  (name entry itself was explicitly scoped to a later brief, not this
+  merge); real refresh-in-progress has no loading/disabled visual state
+  on the DOM refresh button (the scene-side `refreshing` boolean guard
+  still prevents a real double-fire bug, just with no visual feedback).
+- The design mockup has no "peer is waiting in the lobby" screen
+  (`PlayerLobbyScene` stays on its older plain-Phaser-Text UI) and the
+  host's own `'lobby'` screen has no leave/cancel affordance - both
+  pre-existing gaps in the mockup, not introduced by this merge.
+- `JoinEntryScene` is fully unreachable dead code (DOM's own 'join'
+  screen replaced its job) - left in place rather than deleted, flagged
+  for a future cleanup task to confirm before removing.
 
 ## Next proposed step
 
-Wiring real display-name entry - a text input somewhere in the Host/Join
-flow, sent as the identity payload's `displayName` instead of `''`, and
-the Lobby UI's seat list reading a real `roster.displayName` instead of
-its current hardcoded names - is the natural next step, and was
-explicitly scoped out to a separate brief by the brief that added this
-field. Not started here. Beyond that, the same carried-over items as
-before: Redistribution-log content, the Lobby Host/Join navigation
-decision, a real human-peer live pass, and card-back art.
+Verify typecheck/build/Playwright pass post-merge, then push PR #52. The
+natural next piece of work after that is the display-name entry UI
+itself (a text input on the Lobby's landing screen, wired to send a real
+`displayName` and to render it - falling back to a seat-numbered default
+when empty - in the Lobby's seat list), which both sides' prior
+BUILD_STATUS notes already independently flagged as the obvious next
+step and which is out of scope for this merge. Beyond that:
+Redistribution-log content, a real human-peer live pass, and card-back
+art.

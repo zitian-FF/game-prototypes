@@ -1,68 +1,81 @@
 import { useEffect, useRef, useState } from 'react';
 import './LobbyFlow.css';
-import { ERRORS, SUBTITLES, randomCode, type Screen, type ErrorKind } from './lobbyContent';
+import { ERRORS, SUBTITLES, type Screen, type ErrorKind } from './lobbyContent';
 import { seatModel, type SeatOccupancy } from './lobbySeats';
+import { goToJoinScreen, goToLandingScreen } from './lobbyUiStore';
+import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../net/lobbyCode';
 
 // Ported from the Claude Design handoff (`Suit of Madness Lobby.dc.html`).
-// Placeholder-data only, per this task's brief: room code, seat
-// occupancy, and code-entry validation are all local component state
-// (mirroring the design's own self-contained demo `Component` class),
-// not wired to suits-mp's real networking (net/room.ts, net/lobbyCode.ts,
-// HostLobbyScene/JoinEntryScene/ConnectingScene) - that wiring is a
-// separate future task. The design's own "dev state rail" (explicitly
-// marked design-tool-only in the source) is dropped; every other screen
-// state it could preview - reconnecting, and all 5 error variants - has
-// no real click path in this port either (the design itself only reached
-// them via that same dev rail), but is still implemented in full and
-// reachable via `initialScreen` for future real-state binding or testing.
+// Now a fully controlled component: `screen`/`roomCode`/`seats` and every
+// networked action (host, join, bot fill/release, start, refresh, cancel/
+// retry) are driven entirely by whichever real scene currently owns the
+// flow (LandingScene, HostLobbyScene, ConnectingScene - see
+// dom/lobby/lobbyUiStore.ts). This component holds no game/network state
+// of its own; the only local state left is the join code-entry draft and
+// the transient copy-to-clipboard toast, neither of which needs to survive
+// outside a single render pass.
+//
+// Two screen transitions stay purely local (Landing <-> the join code-entry
+// screen): they involve no scene/network action, so lobbyUiStore exposes
+// them as plain store mutations rather than routing through a scene.
 //
 // Structured for future binding: every element keeps the design's own
 // data-ui/data-bind/data-state attributes even where nothing reads them
-// yet, so a later task can select against them without renaming.
+// yet.
 
 export interface LobbyFlowProps {
-  initialScreen?: Screen;
+  screen: Screen;
+  roomCode: string;
+  seats: SeatOccupancy[];
   onSinglePlayer: () => void;
+  onHost: () => void;
+  onSubmitJoin: (code: string) => void;
+  onFillBot: (index: number) => void;
+  onReleaseBot: (index: number) => void;
+  onStartGame: () => void;
+  onRefreshCode: () => void;
+  onBack: () => void;
+  onRetry: () => void;
 }
 
 const isErrorKind = (s: Screen): s is ErrorKind => s in ERRORS;
 
-export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFlowProps): JSX.Element {
-  const [screen, setScreen] = useState<Screen>(initialScreen);
-  const [roomCode, setRoomCode] = useState('K7QMR');
+export function LobbyFlow({
+  screen,
+  roomCode,
+  seats,
+  onSinglePlayer,
+  onHost,
+  onSubmitJoin,
+  onFillBot,
+  onReleaseBot,
+  onStartGame,
+  onRefreshCode,
+  onBack,
+  onRetry,
+}: LobbyFlowProps): JSX.Element {
   const [code, setCode] = useState('');
   const [copyToast, setCopyToast] = useState('');
-  const [seats, setSeats] = useState<SeatOccupancy[]>(['host', 'peer', null, null]);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+  // Clear any leftover code-entry draft whenever we land back on the join
+  // screen from somewhere else (e.g. after an error sends us back here).
+  useEffect(() => {
+    if (screen === 'join') setCode('');
+  }, [screen]);
 
-  const go = (s: Screen): void => {
-    setScreen(s);
-    setCopyToast('');
-  };
-  const goLanding = (): void => go('landing');
-  const goHost = (): void => {
-    setRoomCode(randomCode());
-    go('lobby');
-  };
-  const refreshCode = (): void => {
-    setRoomCode(randomCode());
-    setCopyToast('Sigil re-announced.');
-  };
   const copy = (what: 'code' | 'link'): void => {
-    const text = what === 'code' ? roomCode : 'https://suits.mp/?lobby=' + roomCode;
+    const text = what === 'code' ? roomCode : `${location.origin}${location.pathname}?lobby=${roomCode}`;
     if (navigator.clipboard) void navigator.clipboard.writeText(text).catch(() => {});
     setCopyToast(what === 'code' ? 'Sigil copied.' : 'Summons copied.');
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setCopyToast(''), 2200);
   };
-  const fillSeat = (i: number): void => setSeats((s) => s.map((v, j) => (j === i ? 'bot' : v)));
-  const releaseSeat = (i: number): void => setSeats((s) => s.map((v, j) => (j === i ? null : v)));
 
   const filled = seats.filter((o) => o !== null).length;
   const canStart = filled === 4;
-  const codeValid = code.length === 5;
+  const codeValid = isValidLobbyCode(code);
   const isBusy = screen === 'joining' || screen === 'reconnecting';
   const err = isErrorKind(screen) ? ERRORS[screen] : null;
 
@@ -145,7 +158,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
           <button
             type="button"
             data-ui="host-button"
-            onClick={goHost}
+            onClick={onHost}
             style={{
               width: '100%',
               padding: 1,
@@ -182,7 +195,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
           <button
             type="button"
             data-ui="join-button"
-            onClick={() => go('join')}
+            onClick={goToJoinScreen}
             style={{
               width: '100%',
               height: 78,
@@ -248,7 +261,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
               <button
                 type="button"
                 data-ui="refresh-code-button"
-                onClick={refreshCode}
+                onClick={onRefreshCode}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -358,7 +371,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
                 {filled} / 4 seated
               </span>
             </div>
-            {seatModel(seats, fillSeat, releaseSeat).map((seat) => (
+            {seatModel(seats, onFillBot, onReleaseBot).map((seat) => (
               <div
                 key={seat.id}
                 data-ui="seat-row"
@@ -452,7 +465,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
             data-ui="start-game-button"
             data-bind="start-enabled"
             data-enabled={canStart}
-            onClick={() => canStart && goLanding()}
+            onClick={() => canStart && onStartGame()}
             style={{
               width: '100%',
               padding: 1,
@@ -522,18 +535,13 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
                 data-bind="code-value"
                 value={code}
                 onChange={(e) => {
-                  const raw = (e.target.value || '')
-                    .toUpperCase()
-                    .replace(/\s+/g, '')
-                    .replace(/[^A-Z0-9]/g, '')
-                    .slice(0, 5);
-                  setCode(raw);
+                  setCode(normalizeLobbyCode(e.target.value || '').slice(0, LOBBY_CODE_LENGTH));
                 }}
                 inputMode="text"
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
-                maxLength={5}
+                maxLength={LOBBY_CODE_LENGTH}
                 placeholder="—————"
                 style={{
                   width: '100%',
@@ -555,7 +563,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 12 }}>
-              {Array.from({ length: 5 }, (_, i) => (
+              {Array.from({ length: LOBBY_CODE_LENGTH }, (_, i) => (
                 <span
                   key={i}
                   data-ui="code-pip"
@@ -576,7 +584,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
                 color: codeValid ? 'oklch(0.82 0.09 84)' : 'rgba(158, 196, 186, 0.5)',
               }}
             >
-              {codeValid ? 'The sigil is whole' : `${5 - code.length} marks remain`}
+              {codeValid ? 'The sigil is whole' : `${LOBBY_CODE_LENGTH - code.length} marks remain`}
             </div>
           </div>
 
@@ -585,7 +593,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
             data-ui="submit-join-button"
             data-bind="join-enabled"
             data-enabled={codeValid}
-            onClick={() => codeValid && go('joining')}
+            onClick={() => codeValid && onSubmitJoin(code)}
             style={{
               width: '100%',
               padding: 1,
@@ -621,7 +629,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
           <button
             type="button"
             data-ui="back-to-landing-button"
-            onClick={goLanding}
+            onClick={goToLandingScreen}
             style={{
               alignSelf: 'center',
               padding: '8px 4px',
@@ -685,7 +693,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
                 color: 'oklch(0.92 0.05 88)',
               }}
             >
-              {screen === 'joining' ? code || roomCode : roomCode}
+              {roomCode}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
@@ -713,7 +721,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
           <button
             type="button"
             data-ui="cancel-busy-button"
-            onClick={goLanding}
+            onClick={onBack}
             style={{
               padding: '10px 16px',
               background: 'transparent',
@@ -777,7 +785,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
             <button
               type="button"
               data-ui="error-primary"
-              onClick={() => go(screen === 'roomFull' || screen === 'inProgress' || screen === 'notFound' ? 'join' : 'joining')}
+              onClick={onRetry}
               style={{
                 width: '100%',
                 height: 52,
@@ -800,7 +808,7 @@ export function LobbyFlow({ initialScreen = 'landing', onSinglePlayer }: LobbyFl
             <button
               type="button"
               data-ui="error-secondary"
-              onClick={goLanding}
+              onClick={onBack}
               style={{
                 width: '100%',
                 height: 46,

@@ -3,10 +3,6 @@
 // error/subtitle tables are the design's; this file just gives them
 // TypeScript types so LobbyFlow.tsx can consume them.
 
-// No 0/O, 1/I/L - same alphabet mp-net's real room codes already use
-// (see net/lobbyCode.ts); kept local here since this is placeholder-data
-// only, not wired to the real code generator (see BUILD_STATUS.md).
-export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
 
 export type ErrorKind = 'notFound' | 'connFailed' | 'timeout' | 'roomFull' | 'inProgress';
@@ -101,6 +97,3 @@ export const SUBTITLES: Record<Screen, string> = {
   roomFull: 'Turned away',
   inProgress: 'Turned away',
 };
-
-export const randomCode = (): string =>
-  Array.from({ length: 5 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
