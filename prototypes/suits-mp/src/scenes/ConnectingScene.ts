@@ -108,7 +108,7 @@ export class ConnectingScene extends Phaser.Scene {
 
       activeRoom.onPeerJoin = (peerId) => {
         sawPeer = true;
-        void activeActions.identity.send(data.clientId, { target: peerId });
+        void activeActions.identity.send({ clientId: data.clientId, displayName: '' }, { target: peerId });
       };
 
       activeActions.hostUI.onMessage = (message, context) => {

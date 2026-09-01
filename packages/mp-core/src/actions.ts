@@ -16,6 +16,20 @@ export function createIdentityAction(room: Room) {
   return room.makeAction<string>('identity');
 }
 
+// Same handshake, extended with the player's chosen display name. Opt-in
+// replacement for `createIdentityAction` - same channel name ('identity'),
+// but a different payload shape, so a consumer must move to this one
+// deliberately rather than picking it up automatically (mp-core has no
+// per-consumer version isolation of its own; each prototype's own
+// `package.json` pin is the only enforcement). mp-net and mp-console still
+// use the plain `createIdentityAction` above; suits-mp is the first
+// consumer of this one. See README.md's "Identity payload" section.
+export type IdentityPayload = { clientId: string; displayName: string };
+
+export function createIdentityActionWithName(room: Room) {
+  return room.makeAction<IdentityPayload>('identity');
+}
+
 // Host -> peer(s) UI/state pushes, optionally targeted at one peer. The
 // payload union (`HostUIMessage`) is always prototype-specific (each game
 // has its own lobby/session signals), so the message type is generic here.

@@ -61,9 +61,10 @@ export type RosterMatchResult<T> =
   | { kind: 'rejected' };
 
 // Lobby-side identity match: an incoming `identity` message either belongs
-// to an existing roster entry (a reconnect - update its peerId in place) or
-// is a brand-new join (create a fresh entry via `createEntry`, which may
-// itself return null to reject the join, e.g. the room is full).
+// to an existing roster entry (a reconnect - update its peerId in place,
+// leaving every other field, including displayName, untouched) or is a
+// brand-new join (create a fresh entry via `createEntry`, which may itself
+// return null to reject the join, e.g. the room is full).
 export function matchOrCreateRosterEntry<T extends BaseRosterEntry>(
   roster: Map<string, T>,
   clientId: string,
@@ -83,7 +84,8 @@ export function matchOrCreateRosterEntry<T extends BaseRosterEntry>(
 
 // Mid-game identity match: once a game has started, an incoming `identity`
 // message with no existing roster entry is a stranger, not a reconnect -
-// there is no "create" path here, only match-and-update-peerId or reject.
+// there is no "create" path here, only match-and-update-peerId (leaving
+// every other field, including displayName, untouched) or reject.
 export function matchRosterEntryForReconnect<T extends BaseRosterEntry>(
   roster: Map<string, T>,
   clientId: string,

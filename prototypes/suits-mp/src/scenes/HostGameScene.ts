@@ -87,7 +87,7 @@ export class HostGameScene extends Phaser.Scene {
         this.applyAndBroadcast(fromNetPlayerId(entry.slot), action);
       };
 
-      actions.identity.onMessage = (clientId, context) => {
+      actions.identity.onMessage = ({ clientId }, context) => {
         const entry = matchRosterEntryForReconnect(this.roster, clientId, context.peerId);
         if (!entry) {
           // No roster slot for this client ID: a stranger, not a reconnect.

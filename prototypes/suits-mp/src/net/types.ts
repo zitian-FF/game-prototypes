@@ -13,8 +13,12 @@ export type SharedNetData = CoreSharedNetData<NetworkActions>;
 // used both for turn order and for every masked-state/action payload.
 // `isBot` marks a host-local AI seat (see host/botAI.ts) - it has no real
 // network peer, so `peerId` is a harmless placeholder never used for
-// sending.
+// sending. `displayName` is narrowed back to required here - suits-mp
+// always sends/stores one (even if empty for now), unlike mp-core's other
+// consumers, which don't use the named-identity payload at all and leave
+// `BaseRosterEntry.displayName` optional (see packages/mp-core/README.md).
 export interface RosterEntry extends BaseRosterEntry {
+  displayName: string;
   slot: NetPlayerId;
   isHost: boolean;
   isBot?: boolean;

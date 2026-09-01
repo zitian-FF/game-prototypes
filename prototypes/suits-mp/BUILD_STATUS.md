@@ -1,114 +1,108 @@
 ## Current milestone
 
-Rebuilt the Suit Cycle HUD's rotation math to solve relative to the
-Invoker's actual seat (any of top/right/bottom/left) instead of a fixed
-anchor - the previous session's fix (a constant `+180`) only happened to
-work when the Invoker was at the bottom. Version stamp counter is at 8
-(`version.json`) - unchanged, no deploy has run yet.
+mp-core's identity handshake payload gained a `displayName` field
+(`packages/mp-core` bumped 0.1.0 -> 0.2.0; suits-mp is the first and only
+consumer opted onto it, via a new additive action creator rather than a
+breaking change to the existing one - see "Key technical decisions"). No
+UI reads or sets a real display name yet - every call site sends/stores
+an empty-string placeholder. Version stamp counter unchanged (deploy-only
+bump, no deploy has run this session).
 
 ## What was implemented
 
-- **Root cause of the previous fix's remaining gap**: the last session's
-  `+180` re-anchored "current lead suit" to the ring's bottom - correct
-  only when the Invoker happens to be seated there. With the Invoker at
-  right/top/left, the wheel still put the right suit at the *wrong*
-  screen position (bottom, always), because the formula never looked at
-  *where the Invoker actually is* at all.
-- **New rotation formula** (`dom/overlay/GameOverlay.tsx`): required
-  rotation = angle_of(Invoker's seat) - home_angle_of(lead suit's fixed
-  ring position), reduced to a 0-3 step index and fed through the
-  existing `useForwardRotation` (unchanged - still forward-only, still
-  freezes on indeterminate state, still never snaps back). The Invoker's
-  seat->angle mapping reuses `overlayContent.ts`'s `SEAT_DEG` (previously
-  defined but never actually consumed anywhere - the turn-indicator wheel
-  computed the equivalent inline via `SEAT_ORDER.indexOf`) rather than
-  re-deriving it, per the task's "reuse existing logic" instruction.
-- **`starterSeat` is "the Invoker's position", not `currentTurnSeat`**:
-  the task's prose named "whichever seat currently has the turn" as the
-  value to reuse, but that's `currentTurnSeat` - a *different*, existing
-  prop that keeps moving to whoever's turn it is as a trick progresses
-  past its opening play. The prop that actually stays fixed at the
-  Invoker's seat for the whole trick is `starterSeat` (computed by
-  `ui/seating.ts`'s `computeSuitRing()`, already exactly "the trick
-  leader's seat, frozen until the next trick"). Used `starterSeat`, since
-  `currentTurnSeat` would make the wheel keep sliding to follow whoever's
-  turn it currently is - it only coincides with the Invoker's seat at the
-  exact instant the Invoker is leading, which is also exactly when both
-  triggers in this task actually fire, so the two seat values happen to
-  agree at every moment this feature cares about; `starterSeat` is the
-  one that stays correct for the rest of the trick too.
-- **Both triggers already worked correctly before this session** - this
-  task's own two-trigger split (live local preview vs. wait-for-broadcast)
-  was already exactly how `ui/seating.ts`'s `computeSuitRing()` and
-  `ui/renderGameView.ts`'s `ViewState.selectedCards` were wired from an
-  earlier session: `selectedCards` (`ui/renderGameView.ts`) is the "locally
-  selected but not yet committed card" hook the task asked to flag if
-  missing - it already existed cleanly (threaded through as `previewCardId`
-  into `computeSuitRing`, which only reads it when `leaderNet ===
-  state.yourSlot`, i.e. only for the local player's own selection - never
-  another player's). Nothing needed changing there; only the final angle
-  formula consuming `leadGodIndex`/`starterSeat` was wrong.
-- **Lead-marker ring now follows the Invoker's seat too**: a direct,
-  necessary consequence of the rotation fix - the marker was drawn at a
-  fixed `bottom: -2`, which would highlight the wrong badge 3 times out of
-  4 once the wheel could point anywhere. Repositioned via `transform:
-  translate()` from a fixed center anchor (computed pixel offset per seat,
-  `MARKER_OFFSET`) rather than swapping which of `left`/`right`/`top`/
-  `bottom` is set, since only a single interpolatable property like
-  `transform` can actually cross-animate between two arbitrary positions -
-  swapping between e.g. `bottom: -2` and `right: -2` can only snap, not
-  transition. Shares the wheel's own `suitCycleRotationMs`/Easing so it
-  visually travels with the badge it's marking. Freezes at its last known
-  seat (a small reusable `useLastKnown<T>` hook, the same pattern the
-  previous session used and removed when the old text label went away -
-  reintroduced here, generic this time, since the marker needs it too)
-  rather than losing its position while indeterminate.
-- No `tune.json` changes - checked first per the task's instruction; the
-  marker's new transition reuses the wheel's own existing
-  `suitCycleRotationMs`/`suitCycleRotationEasing` so they move in lockstep,
-  and the rotation formula itself has no new feel/timing value to expose.
+- `packages/mp-core/src/actions.ts`: `createIdentityAction` (bare
+  `clientId: string` payload) is untouched. Added a second creator,
+  `createIdentityActionWithName`, returning `room.makeAction<IdentityPayload>
+  ('identity')` where `IdentityPayload = { clientId: string; displayName:
+  string }` - same channel name as the original, different payload shape,
+  opt-in per consumer.
+- `packages/mp-core/src/types.ts`: `BaseRosterEntry` gained an *optional*
+  `displayName?: string` field.
+- `packages/mp-core/src/reconnect.ts`: no logic change - both matching
+  helpers already only ever wrote `peerId` on a reconnect. Doc comments
+  updated to spell out that `displayName` (like every other field) is
+  left untouched on a match, not just on the happy path.
+- `packages/mp-core` bumped to 0.2.0; `README.md` documents the new
+  creator, why `displayName` is optional on the shared base type, and the
+  per-consumer state (who's on which creator/version).
+- suits-mp bumped its `mp-core` pin to `^0.2.0` and is the only consumer
+  using `createIdentityActionWithName`/`IdentityPayload`. Its own
+  `RosterEntry` narrows `displayName` back to required (TypeScript allows
+  narrowing an inherited optional field to required across `extends`).
+- Call sites updated to compile against the new payload shape:
+  `ConnectingScene` now sends `{ clientId: data.clientId, displayName: ''
+  }`; `HostLobbyScene`'s identity handler destructures `{ clientId,
+  displayName }` and threads `displayName` through into the roster entry
+  it constructs on a brand-new join; `HostGameScene`'s mid-game handler
+  only destructures `clientId` (irrelevant there - it never creates an
+  entry, only matches an existing one, and must not touch its stored
+  name). Two more roster-entry object literals the originating brief
+  didn't call out (written after that brief, by other sessions) also
+  needed a `displayName` field to keep the build green:
+  `HostLobbyScene`'s own host-seat entry, and `LandingScene`'s Single
+  Player host+3-bot roster construction.
 
 ## Key technical decisions
 
-- **Solve algebraically, don't special-case 4 seats**: rather than writing
-  a lookup table of 16 (seat, suit) combinations, the fix computes the
-  required step index directly from the two existing 0-3 indices
-  (`starterIndex - leadGodIndex`, wrapped mod 4) - this is what makes the
-  fix a small, symmetric change rather than a large one, and it's the
-  same structural shape `useForwardRotation` already expected (a single
-  0-3 index driving forward-only rotation).
-- **Verified via a synthetic-state harness again, not live bot play**:
-  reaching all 4 Invoker seats *and* both triggers through genuine
-  multiplayer/bot flow would need contriving specific seat assignments
-  per trick, which isn't controllable from the UI - built a throwaway
-  harness (deleted before finishing) that drives `renderGameView` directly
-  with hand-built `MaskedState`s (one path per Trigger 2 seat, held fixed
-  while varying the leading player's `NetPlayerId` under a fixed
-  `yourSlot`) and, separately, a *real* Playwright tap on an actual fan
-  card for Trigger 1 (since that path depends on genuine local
-  `ViewState.selectedCards`, which can't be injected the same way a
-  masked network payload can). Confirmed all 4 (seat, suit) pairs for
-  Trigger 2 and all 4 possible suits for Trigger 1's live pre-commit
-  preview, by reading the DOM's actual computed badge/marker positions
-  relative to the ring's own center (not just eyeballing screenshots).
+- **Additive, not breaking, and why**: the brief's original plan (change
+  `createIdentityAction`'s existing payload shape in place, relying on
+  the 0.1.0 -> 0.2.0 pin bump to isolate mp-net/mp-console from it) turned
+  out not to hold - mp-core is a single local workspace package, not a
+  version-resolved registry dependency, so every consumer's TypeScript
+  compiles against whatever's on disk regardless of what its own
+  `package.json` semver range says. A breaking change in place failed
+  mp-net's and mp-console's typecheck immediately on the first build,
+  pin or not - confirmed by running the typecheck and seeing exactly
+  that. Raised this to the user rather than quietly touching mp-net/
+  mp-console files (or their behavior) to route around it, since the
+  brief was explicit that those two "must NOT be touched or forced onto
+  the new version." User's direction: add a second, opt-in action
+  creator instead (same channel name, different payload shape) and make
+  `BaseRosterEntry.displayName` optional rather than required. Verified
+  after: `git diff` shows zero lines touched in either `prototypes/
+  mp-net/` or `prototypes/mp-console/`, and both still typecheck/build
+  clean.
+- **suits-mp's own `RosterEntry` re-declares `displayName` as required**:
+  narrows the shared (optional) `BaseRosterEntry` field back down for
+  this prototype specifically, since suits-mp always sets it on
+  construction (even if empty for now) - the stricter local type catches
+  any future call site here that forgets to, without forcing the same
+  requirement onto mp-net/mp-console, which never set it at all.
+- **Placeholder is `''`, not omitted or `undefined`**: matches the
+  brief's explicit instruction, and keeps every suits-mp roster-entry
+  object literal structurally complete rather than leaning on the
+  optional-field escape hatch mp-net/mp-console still use.
 
 ## Open questions
 
-- None from this session - this was a rebuild against an already
-  correctly-architected state layer (per the task's own note, both
-  triggers' hooks already existed), not a design ambiguity.
+None from this session - the version-isolation mismatch between this
+brief's assumption and how the workspace actually resolves dependencies
+was surfaced and resolved directly with the user (see "Key technical
+decisions"), not left as an open question.
 
 ## Known issues
 
-- Carried over, still true, untouched: facedown-card masking leak at the
-  payload level (`host/mask.ts`); not live-verified against real human
-  peers; Google Fonts fail to load in this dev sandbox's network
-  environment (cosmetic fallback only); the Lobby session's Host/Join
-  real-vs-placeholder navigation question; no card-back art exists yet;
-  Redistribution-log content still stubbed (no design handoff yet).
+Carried over, still true, untouched: facedown-card masking leak at the
+payload level (`host/mask.ts`); not live-verified against real human
+peers; Google Fonts fail to load in this dev sandbox's network
+environment (cosmetic fallback only); the Lobby session's Host/Join
+real-vs-placeholder navigation question; no card-back art exists yet;
+Redistribution-log content still stubbed (no design handoff yet).
+
+Noticed while testing this session's change, not a regression from it:
+the Lobby UI's seat list (`dom/lobby/lobbySeats.ts`) still shows
+hardcoded placeholder names ("Randolph C." / "Erich Z."), entirely
+disconnected from any real roster or from the `displayName` field this
+session added - its own comment already documents this as deferred to a
+future task.
 
 ## Next proposed step
 
-The same carried-over items as before: Redistribution-log content, the
-Lobby Host/Join navigation decision, a real human-peer live pass, and
-card-back art if the user wants full art parity there too.
+Wiring real display-name entry - a text input somewhere in the Host/Join
+flow, sent as the identity payload's `displayName` instead of `''`, and
+the Lobby UI's seat list reading a real `roster.displayName` instead of
+its current hardcoded names - is the natural next step, and was
+explicitly scoped out to a separate brief by the brief that added this
+field. Not started here. Beyond that, the same carried-over items as
+before: Redistribution-log content, the Lobby Host/Join navigation
+decision, a real human-peer live pass, and card-back art.
