@@ -9,12 +9,16 @@ import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
 import { showHostSettingUp, showHostLobby, hideHostLobby } from '../dom/lobby/lobbyUiStore';
-import type { SeatOccupancy } from '../dom/lobby/lobbySeats';
+import type { SeatInfo } from '../dom/lobby/lobbySeats';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
 import { ROOM_CAPACITY } from '../net/types';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { Roster, RosterEntry } from '../net/types';
+
+export interface HostLobbyData extends BootData {
+  displayName: string;
+}
 
 // Safety cap on the collision-retry loop; with a 32-character, 5-slot
 // alphabet a real collision run this long is not expected in practice,
@@ -28,12 +32,12 @@ function nextAvailableSlot(roster: Roster) {
   return free;
 }
 
-function rosterToSeats(roster: Roster): SeatOccupancy[] {
+function rosterToSeats(roster: Roster): SeatInfo[] {
   return ALL_NET_PLAYER_IDS.map((slot) => {
     const entry = [...roster.values()].find((e) => e.slot === slot);
-    if (!entry) return null;
-    if (entry.isBot) return 'bot';
-    return entry.isHost ? 'host' : 'peer';
+    if (!entry) return { occupancy: null, displayName: '' };
+    const occupancy = entry.isBot ? 'bot' : entry.isHost ? 'host' : 'peer';
+    return { occupancy, displayName: entry.displayName };
   });
 }
 
@@ -65,7 +69,7 @@ export class HostLobbyScene extends Phaser.Scene {
     super('HostLobby');
   }
 
-  create(data: BootData): void {
+  create(data: HostLobbyData): void {
     addVersionStamp(this);
     createPortraitGuard(this);
 
@@ -85,7 +89,7 @@ export class HostLobbyScene extends Phaser.Scene {
     void this.setUpRoom(data);
   }
 
-  private async setUpRoom(data: BootData): Promise<void> {
+  private async setUpRoom(data: HostLobbyData): Promise<void> {
     this.iceServers = await data.getIceServers();
 
     let code = randomLobbyCode();
@@ -111,7 +115,7 @@ export class HostLobbyScene extends Phaser.Scene {
     this.roster.set(data.clientId, {
       clientId: data.clientId,
       peerId: 'host',
-      displayName: '',
+      displayName: data.displayName,
       slot: 'p0',
       isHost: true,
     });

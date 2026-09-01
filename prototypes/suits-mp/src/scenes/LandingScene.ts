@@ -38,8 +38,8 @@ export class LandingScene extends Phaser.Scene {
 
     showLanding(
       () => this.startSinglePlayer(data),
-      () => this.scene.start('HostLobby', data),
-      (code) => this.scene.start('Connecting', { ...data, code }),
+      (displayName) => this.scene.start('HostLobby', { ...data, displayName }),
+      (code, displayName) => this.scene.start('Connecting', { ...data, code, displayName }),
     );
     // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
     // (only `Systems#shutdown`, which fires this event) - see

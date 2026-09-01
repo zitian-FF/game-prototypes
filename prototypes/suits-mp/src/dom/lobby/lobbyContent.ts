@@ -83,6 +83,7 @@ export type Screen =
   | 'joining'
   | 'lobby'
   | 'reconnecting'
+  | 'waiting'
   | ErrorKind;
 
 export const SUBTITLES: Record<Screen, string> = {
@@ -91,6 +92,7 @@ export const SUBTITLES: Record<Screen, string> = {
   joining: 'Crossing over',
   lobby: 'The circle gathers',
   reconnecting: 'Holding the thread',
+  waiting: 'Bound to the circle',
   notFound: 'Turned away',
   connFailed: 'Turned away',
   timeout: 'Turned away',

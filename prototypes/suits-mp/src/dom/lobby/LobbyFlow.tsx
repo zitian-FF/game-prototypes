@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import './LobbyFlow.css';
 import { ERRORS, SUBTITLES, type Screen, type ErrorKind } from './lobbyContent';
-import { seatModel, type SeatOccupancy } from './lobbySeats';
+import { seatModel, type SeatInfo } from './lobbySeats';
 import { goToJoinScreen, goToLandingScreen } from './lobbyUiStore';
 import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../net/lobbyCode';
+
+// Display name is capped to this many characters (matches the wireframe's
+// fixed-width name column in the seat list) - enforced via the input's own
+// maxLength, no other validation.
+const DISPLAY_NAME_MAX_LENGTH = 20;
 
 // Ported from the Claude Design handoff (`Suit of Madness Lobby.dc.html`).
 // Now a fully controlled component: `screen`/`roomCode`/`seats` and every
@@ -26,10 +31,11 @@ import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../n
 export interface LobbyFlowProps {
   screen: Screen;
   roomCode: string;
-  seats: SeatOccupancy[];
+  seats: SeatInfo[];
+  hostLeft: boolean;
   onSinglePlayer: () => void;
-  onHost: () => void;
-  onSubmitJoin: (code: string) => void;
+  onHost: (name: string) => void;
+  onSubmitJoin: (code: string, name: string) => void;
   onFillBot: (index: number) => void;
   onReleaseBot: (index: number) => void;
   onStartGame: () => void;
@@ -44,6 +50,7 @@ export function LobbyFlow({
   screen,
   roomCode,
   seats,
+  hostLeft,
   onSinglePlayer,
   onHost,
   onSubmitJoin,
@@ -55,6 +62,7 @@ export function LobbyFlow({
   onRetry,
 }: LobbyFlowProps): JSX.Element {
   const [code, setCode] = useState('');
+  const [name, setName] = useState('');
   const [copyToast, setCopyToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -73,7 +81,7 @@ export function LobbyFlow({
     toastTimer.current = setTimeout(() => setCopyToast(''), 2200);
   };
 
-  const filled = seats.filter((o) => o !== null).length;
+  const filled = seats.filter((s) => s.occupancy !== null).length;
   const canStart = filled === 4;
   const codeValid = isValidLobbyCode(code);
   const isBusy = screen === 'joining' || screen === 'reconnecting';
@@ -154,11 +162,56 @@ export function LobbyFlow({
       </div>
 
       {screen === 'landing' && (
-        <div data-ui="screen-landing" style={{ position: 'absolute', left: 26, right: 26, top: 300, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div data-ui="screen-landing" style={{ position: 'absolute', left: 26, right: 26, top: 268, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div
+            data-ui="name-input-wrap"
+            style={{
+              padding: '10px 14px 12px',
+              borderTop: '1px solid rgba(198, 160, 78, 0.3)',
+              borderBottom: '1px solid rgba(198, 160, 78, 0.3)',
+              background: 'linear-gradient(180deg, rgba(20, 16, 8, 0.65), rgba(6, 10, 13, 0.7))',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Cormorant Unicase', serif",
+                fontWeight: 500,
+                fontSize: 9,
+                letterSpacing: '0.2em',
+                color: 'rgba(212, 186, 132, 0.6)',
+              }}
+            >
+              Thy name (optional)
+            </span>
+            <input
+              data-ui="display-name-input"
+              data-bind="display-name"
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, DISPLAY_NAME_MAX_LENGTH))}
+              maxLength={DISPLAY_NAME_MAX_LENGTH}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Nameless wanderer"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: 4,
+                padding: '4px 0 6px',
+                background: 'transparent',
+                border: 0,
+                borderBottom: '1px solid rgba(198, 160, 78, 0.28)',
+                outline: 'none',
+                fontFamily: "'EB Garamond', serif",
+                fontSize: 18,
+                color: 'oklch(0.93 0.04 88)',
+                caretColor: 'oklch(0.85 0.09 84)',
+              }}
+            />
+          </div>
           <button
             type="button"
             data-ui="host-button"
-            onClick={onHost}
+            onClick={() => onHost(name.trim())}
             style={{
               width: '100%',
               padding: 1,
@@ -593,7 +646,7 @@ export function LobbyFlow({
             data-ui="submit-join-button"
             data-bind="join-enabled"
             data-enabled={codeValid}
-            onClick={() => codeValid && onSubmitJoin(code)}
+            onClick={() => codeValid && onSubmitJoin(code, name.trim())}
             style={{
               width: '100%',
               padding: 1,
@@ -645,6 +698,47 @@ export function LobbyFlow({
           >
             ← Turn back
           </button>
+        </div>
+      )}
+
+      {screen === 'waiting' && (
+        <div
+          data-ui="screen-waiting"
+          data-bind="host-left"
+          data-state={hostLeft ? 'hostLeft' : 'waiting'}
+          style={{
+            position: 'absolute',
+            left: 26,
+            right: 26,
+            top: 320,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
+            textAlign: 'center',
+          }}
+        >
+          <div
+            data-bind="waiting-title"
+            style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 22, letterSpacing: '0.04em', color: 'oklch(0.93 0.04 88)' }}
+          >
+            {hostLeft ? 'The host has vanished' : 'Thou art seated'}
+          </div>
+          <div
+            data-bind="waiting-detail"
+            style={{
+              maxWidth: 260,
+              fontFamily: "'EB Garamond', serif",
+              fontStyle: 'italic',
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: 'rgba(178, 210, 202, 0.72)',
+            }}
+          >
+            {hostLeft
+              ? 'The circle has been severed. This session has ended.'
+              : 'Waiting for the host to gather the rest and begin the rite.'}
+          </div>
         </div>
       )}
 

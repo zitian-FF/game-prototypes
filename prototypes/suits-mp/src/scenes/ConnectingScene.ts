@@ -11,6 +11,7 @@ import type { BootData, PlayerSessionData } from '../net/playerSession';
 
 export interface ConnectingSceneData extends BootData {
   code: string;
+  displayName: string;
 }
 
 type FailureOutcome = 'roomNotFound' | 'connectionFailed' | 'alreadyInProgress' | 'roomFull' | 'timeout';
@@ -114,7 +115,7 @@ export class ConnectingScene extends Phaser.Scene {
 
       activeRoom.onPeerJoin = (peerId) => {
         sawPeer = true;
-        void activeActions.identity.send({ clientId: data.clientId, displayName: '' }, { target: peerId });
+        void activeActions.identity.send({ clientId: data.clientId, displayName: data.displayName }, { target: peerId });
       };
 
       activeActions.hostUI.onMessage = (message, context) => {
