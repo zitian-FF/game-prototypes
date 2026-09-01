@@ -54,11 +54,17 @@ export class LandingScene extends Phaser.Scene {
   // every networking step that only matters for real peers.
   private startSinglePlayer(data: BootData): void {
     const roster: Roster = new Map();
-    roster.set(data.clientId, { clientId: data.clientId, peerId: 'host', slot: 'p0', isHost: true });
+    roster.set(data.clientId, {
+      clientId: data.clientId,
+      peerId: 'host',
+      displayName: '',
+      slot: 'p0',
+      isHost: true,
+    });
     for (const slot of ALL_NET_PLAYER_IDS) {
       if (slot === 'p0') continue;
       const clientId = `bot:${slot}`;
-      roster.set(clientId, { clientId, peerId: 'bot', slot, isHost: false, isBot: true });
+      roster.set(clientId, { clientId, peerId: 'bot', displayName: '', slot, isHost: false, isBot: true });
     }
 
     const gameData: HostGameData = { room: null, actions: null, roster };

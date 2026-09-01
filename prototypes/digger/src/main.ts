@@ -4,7 +4,7 @@ import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { generateBoard, shipDamage, upgradeCost } from './state/board';
 import { applyEnergyRegen } from './state/energy';
 import { clearState, loadState, saveState } from './state/persistence';
-import type { GameState } from './state/types';
+import type { GameState, Treasure, TileState } from './state/types';
 import tune from '../tune.json';
 
 interface AnimationConfig {
@@ -45,15 +45,25 @@ const MAX_GRID_ROWS_BOUND = 9;
 // should default to EFFECTS_DEPTH (or higher), not BOARD_DEPTH, so it
 // stays above the board regardless of when it or the board was last
 // rebuilt.
+// Treasure placeholder images sit below BOARD_DEPTH: tile sprites are
+// opaque and cover them completely until a tile clears, which is what
+// makes the reveal work with no additional show/hide logic beyond the
+// existing clear flow (see onTapBoard's treasure handling).
+const TREASURE_DEPTH = -1;
 const BOARD_DEPTH = 0;
 const TILE_LABEL_DEPTH = 1;
 const EFFECTS_DEPTH = 10;
 
-// Board-world (native tile pixel) inset for the per-tile HP label from the
-// tile's top-right corner -- layout, not game feel, so a plain constant
-// like GRID_MARGIN_X rather than a tune.json entry.
-const TILE_HP_LABEL_PADDING = 6;
-const TILE_HP_LABEL_FONT_SIZE = 16;
+// Board-world (native tile pixel) inset for the per-tile label (HP while
+// unrevealed, adjacency count once cleared) from the tile's top-right
+// corner -- layout, not game feel, so a plain constant like GRID_MARGIN_X
+// rather than a tune.json entry.
+const TILE_LABEL_PADDING = 6;
+const TILE_LABEL_FONT_SIZE = 16;
+
+// Placeholder-first: treasures have no real art yet, just a flat-colored
+// rectangle spanning their footprint (see BRIEF's placeholder-first rule).
+const TREASURE_PLACEHOLDER_COLOR = 0xffcc00;
 
 const WIDTH = 390;
 const HEIGHT = 844;
@@ -99,10 +109,21 @@ class DiggerScene extends Phaser.Scene {
   // main draws, mirroring the existing UI-camera-ignoring-game-world
   // pattern.
   private boardCamera!: Phaser.Cameras.Scene2D.Camera;
-  private tileSprites: Phaser.GameObjects.Image[] = [];
+  // Parallel to state.tiles, same indexing. null once a treasure-footprint
+  // cell clears -- tile_hole is not actually transparent in its cleared-out
+  // area (confirmed by inspecting the real asset's alpha channel), so a
+  // treasure cell's sprite is destroyed outright on clear rather than
+  // texture-swapped, or the opaque tile_hole art would keep hiding the
+  // treasure image underneath. Non-treasure cells keep the tile_hole swap.
+  private tileSprites: (Phaser.GameObjects.Image | null)[] = [];
   // Parallel to tileSprites/state.tiles, same indexing. null for a
-  // revealed tile (no HP number on cleared tiles).
+  // revealed treasure cell (no label) or a revealed non-treasure cell with
+  // an adjacency count of 0 (blank, not "0", matching Minesweeper).
   private tileHpTexts: (Phaser.GameObjects.Text | null)[] = [];
+  // One placeholder rectangle per state.treasures entry, same indexing,
+  // sized/positioned to its footprint. Sits at TREASURE_DEPTH, below the
+  // opaque tile sprites, so it's naturally hidden until clears expose it.
+  private treasureSprites: Phaser.GameObjects.Rectangle[] = [];
 
   // Single persistent emitter, reused for every debris burst via .explode()
   // rather than one emitter per hit — Phaser pools/batches particles per
@@ -280,10 +301,18 @@ class DiggerScene extends Phaser.Scene {
   }
 
   private buildBoard(): void {
-    for (const sprite of this.tileSprites) sprite.destroy();
+    for (const sprite of this.tileSprites) sprite?.destroy();
     this.tileSprites = [];
     for (const text of this.tileHpTexts) text?.destroy();
     this.tileHpTexts = [];
+    for (const rect of this.treasureSprites) rect.destroy();
+    this.treasureSprites = this.state.treasures.map((treasure) => {
+      const bounds = this.treasureWorldRect(treasure);
+      const rect = this.add.rectangle(bounds.x, bounds.y, bounds.width, bounds.height, TREASURE_PLACEHOLDER_COLOR);
+      rect.setDepth(TREASURE_DEPTH);
+      return rect;
+    });
+    this.cameras.main.ignore(this.treasureSprites);
 
     const cols = this.state.gridCols;
     for (let i = 0; i < this.state.tiles.length; i++) {
@@ -292,18 +321,23 @@ class DiggerScene extends Phaser.Scene {
       const worldX = (col + 0.5) * this.tileNativeWidth;
       const worldY = (row + 0.5) * this.tileNativeHeight;
       const tile = this.state.tiles[i];
-      const sprite = this.add.image(worldX, worldY, tile.revealed ? 'tile_hole' : 'tile_grass');
-      sprite.setDepth(BOARD_DEPTH);
-      this.tileSprites.push(sprite);
 
-      if (tile.revealed) {
-        this.tileHpTexts.push(null);
+      if (tile.revealed && tile.treasureIndex !== null) {
+        // Cleared treasure cell: no sprite at all, so the treasure image
+        // beneath shows through (see the tileSprites field comment above).
+        this.tileSprites.push(null);
       } else {
-        this.tileHpTexts.push(this.createTileHpText(col, row, tile.hp));
+        const sprite = this.add.image(worldX, worldY, tile.revealed ? 'tile_hole' : 'tile_grass');
+        sprite.setDepth(BOARD_DEPTH);
+        this.tileSprites.push(sprite);
       }
+
+      const labelValue = this.tileLabelForState(tile);
+      this.tileHpTexts.push(labelValue === null ? null : this.createTileLabelText(col, row, labelValue));
     }
-    this.cameras.main.ignore(this.tileSprites);
-    this.cameras.main.ignore(this.tileHpTexts.filter((text): text is Phaser.GameObjects.Text => text !== null));
+    this.cameras.main.ignore(this.tileSprites.filter((sprite): sprite is Phaser.GameObjects.Image => sprite !== null));
+    // tileHpTexts' entries already self-ignore cameras.main in
+    // createTileLabelText() -- no batched call needed here.
 
     const widthConstraintZoom = (WIDTH - GRID_MARGIN_X * 2) / this.state.gridCols / this.tileNativeWidth;
     const heightConstraintZoom = this.boardViewportHeight / (this.state.gridRows * this.tileNativeHeight);
@@ -320,16 +354,32 @@ class DiggerScene extends Phaser.Scene {
     this.boardCamera.centerOn(gridWorldWidth / 2, gridWorldHeight / 2);
   }
 
+  // What the top-right tile label should show, if anything: the tile's own
+  // HP while unrevealed, an adjacency count once cleared (unless it's a
+  // treasure cell, which shows no number -- that slot is the treasure
+  // reveal instead), and nothing at all for a 0 adjacency count (blank,
+  // matching Minesweeper's convention rather than a noisy "0" everywhere).
+  private tileLabelForState(tile: TileState): string | null {
+    if (!tile.revealed) return `${tile.hp}`;
+    if (tile.treasureIndex !== null) return null;
+    return tile.adjacent > 0 ? `${tile.adjacent}` : null;
+  }
+
   // Board-world space, alongside tileSprites (not hudLayer) -- scales/
   // scrolls with the board's current scale-to-fit zoom automatically, no
   // extra math needed. Per the house DPR rule, resolution is set
   // explicitly on the text style rather than relying on camera zoom alone.
-  private createTileHpText(col: number, row: number, hp: number): Phaser.GameObjects.Text {
-    const labelX = (col + 1) * this.tileNativeWidth - TILE_HP_LABEL_PADDING;
-    const labelY = row * this.tileNativeHeight + TILE_HP_LABEL_PADDING;
-    const text = this.add.text(labelX, labelY, `${hp}`, {
+  // Shared by both HP numbers and adjacency-hint numbers -- same position/
+  // font/stroke style either way, only the text content differs. Ignores
+  // cameras.main itself (rather than relying on a caller's batched ignore()
+  // call) since this is also called from onTapBoard, well after buildBoard's
+  // own batched ignore() call over its initial set has already run.
+  private createTileLabelText(col: number, row: number, value: string): Phaser.GameObjects.Text {
+    const labelX = (col + 1) * this.tileNativeWidth - TILE_LABEL_PADDING;
+    const labelY = row * this.tileNativeHeight + TILE_LABEL_PADDING;
+    const text = this.add.text(labelX, labelY, value, {
       fontFamily: 'monospace',
-      fontSize: `${TILE_HP_LABEL_FONT_SIZE}px`,
+      fontSize: `${TILE_LABEL_FONT_SIZE}px`,
       fontStyle: 'bold',
       color: '#000000',
       stroke: '#ffffff',
@@ -338,7 +388,34 @@ class DiggerScene extends Phaser.Scene {
     });
     text.setOrigin(1, 0);
     text.setDepth(TILE_LABEL_DEPTH);
+    this.cameras.main.ignore(text);
     return text;
+  }
+
+  // Footprint bounding box, in world units -- shared by the treasure's
+  // placeholder rectangle (buildBoard) and its debris-burst completion
+  // effect (onTapBoard), so both agree on where "the treasure's center" is.
+  private treasureWorldRect(treasure: Treasure): { x: number; y: number; width: number; height: number } {
+    let minCol = Infinity;
+    let minRow = Infinity;
+    let maxCol = -Infinity;
+    let maxRow = -Infinity;
+    for (const index of treasure.cells) {
+      const col = index % this.state.gridCols;
+      const row = Math.floor(index / this.state.gridCols);
+      minCol = Math.min(minCol, col);
+      maxCol = Math.max(maxCol, col);
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+    }
+    const width = (maxCol - minCol + 1) * this.tileNativeWidth;
+    const height = (maxRow - minRow + 1) * this.tileNativeHeight;
+    return {
+      x: minCol * this.tileNativeWidth + width / 2,
+      y: minRow * this.tileNativeHeight + height / 2,
+      width,
+      height,
+    };
   }
 
   // Created once; every hit reuses this same emitter via .explode() rather
@@ -525,10 +602,35 @@ class DiggerScene extends Phaser.Scene {
     if (tile.hp <= 0) {
       tile.hp = 0;
       tile.revealed = true;
-      this.state.currency += tile.loot;
-      this.tileSprites[index].setTexture('tile_hole');
       this.tileHpTexts[index]?.destroy();
       this.tileHpTexts[index] = null;
+
+      if (tile.treasureIndex !== null) {
+        // Workaround for tile_hole not actually being transparent in its
+        // cleared-out area (confirmed by inspecting the real asset) --
+        // destroy the sprite outright so the treasure image beneath shows
+        // through, rather than texture-swapping to the opaque tile_hole.
+        this.tileSprites[index]?.destroy();
+        this.tileSprites[index] = null;
+
+        const treasure = this.state.treasures[tile.treasureIndex];
+        treasure.clearedCount += 1;
+        if (treasure.clearedCount >= treasure.cells.length) {
+          this.state.currency += treasure.value;
+          const center = this.treasureWorldRect(treasure);
+          this.debrisEmitter.explode(
+            Phaser.Math.Between(tune.debrisStrongCountMin, tune.debrisStrongCountMax),
+            center.x,
+            center.y
+          );
+        }
+      } else {
+        this.tileSprites[index]!.setTexture('tile_hole');
+        if (tile.adjacent > 0) {
+          this.tileHpTexts[index] = this.createTileLabelText(col, row, `${tile.adjacent}`);
+        }
+      }
+
       this.debrisEmitter.explode(
         Phaser.Math.Between(tune.debrisStrongCountMin, tune.debrisStrongCountMax),
         tileWorldX,
@@ -599,7 +701,9 @@ class DiggerScene extends Phaser.Scene {
     // Board size is fixed at gridCols/gridRowsBase for every board,
     // including post-descend -- board-size-per-depth generation is
     // deferred to a future task (see BUILD_STATUS.md).
-    this.state.tiles = generateBoard(this.state.depth);
+    const { tiles, treasures } = generateBoard(this.state.depth);
+    this.state.tiles = tiles;
+    this.state.treasures = treasures;
     saveState(this.state);
     this.buildBoard();
     this.renderHud();

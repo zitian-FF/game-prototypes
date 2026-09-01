@@ -108,7 +108,13 @@ export class HostLobbyScene extends Phaser.Scene {
     this.room = room;
     this.code = code;
     this.actions = createNetworkActions(room);
-    this.roster.set(data.clientId, { clientId: data.clientId, peerId: 'host', slot: 'p0', isHost: true });
+    this.roster.set(data.clientId, {
+      clientId: data.clientId,
+      peerId: 'host',
+      displayName: '',
+      slot: 'p0',
+      isHost: true,
+    });
 
     this.wireRoomHandlers();
     this.pushLobbyState();
@@ -134,7 +140,7 @@ export class HostLobbyScene extends Phaser.Scene {
   // `this.actions` currently are - split out so refreshRoomCode can call it
   // again after swapping in a new room.
   private wireRoomHandlers(): void {
-    this.actions.identity.onMessage = (clientId, context) => {
+    this.actions.identity.onMessage = ({ clientId, displayName }, context) => {
       this.reconnectDebouncer.cancelPending(clientId);
 
       const result = matchOrCreateRosterEntry(this.roster, clientId, context.peerId, () => {
@@ -142,6 +148,7 @@ export class HostLobbyScene extends Phaser.Scene {
         return {
           clientId,
           peerId: context.peerId,
+          displayName,
           slot: nextAvailableSlot(this.roster),
           isHost: false,
         };
@@ -167,7 +174,7 @@ export class HostLobbyScene extends Phaser.Scene {
   private fillBot(slot: NetPlayerId): void {
     if ([...this.roster.values()].some((e) => e.slot === slot)) return;
     const clientId = `bot:${slot}`;
-    this.roster.set(clientId, { clientId, peerId: 'bot', slot, isHost: false, isBot: true });
+    this.roster.set(clientId, { clientId, peerId: 'bot', displayName: '', slot, isHost: false, isBot: true });
     this.pushLobbyState();
   }
 

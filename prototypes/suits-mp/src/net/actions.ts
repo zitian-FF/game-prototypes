@@ -1,5 +1,5 @@
 import type { Room } from 'trystero/nostr';
-import { createIdentityAction, createHostUIAction } from 'mp-core';
+import { createIdentityActionWithName, createHostUIAction } from 'mp-core';
 import type { CardId, God, PlayKind, Team, WinInfo } from '../rules/types';
 import type { NetPlayerId } from './netPlayerId';
 
@@ -119,9 +119,10 @@ export type MaskedState = {
 
 export function createNetworkActions(room: Room) {
   return {
-    // Player -> host handshake: persistent client ID, sent on (re)join.
-    // Shared with every mp-* prototype - see packages/mp-core.
-    identity: createIdentityAction(room),
+    // Player -> host handshake: persistent client ID plus chosen display
+    // name, sent on (re)join. Shared with every mp-* prototype that opts
+    // into the named-identity payload - see packages/mp-core.
+    identity: createIdentityActionWithName(room),
     // Host -> peer(s) lobby/session UI pushes, optionally targeted.
     hostUI: createHostUIAction<HostUIMessage>(room),
     // Player -> host game actions (playCard/selectDelegate/redistribute/
