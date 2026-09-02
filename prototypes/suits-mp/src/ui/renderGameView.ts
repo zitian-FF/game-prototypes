@@ -14,7 +14,8 @@ import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
-import { closeRules, openRules } from '../dom/domUiStore';
+import { closeRedistLog, closeRules, openRedistLog, openRules } from '../dom/domUiStore';
+import type { RedistLogEntry } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
 import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
@@ -255,9 +256,25 @@ function renderWithView(
   }
   closeRules();
 
+  // Redistribution log is real content now, rendered by the DOM overlay
+  // layer above the canvas (see dom/RedistLogModal.tsx) rather than drawn
+  // with Phaser primitives - same treatment as Rules above, per root
+  // CLAUDE.md's "UI implementation split". Canvas draws nothing further
+  // this frame; closing the modal hands control back via this same
+  // closure.
+  if (ui.overlay === 'redistLog') {
+    hideGameOverlay();
+    openRedistLog(computeRedistLogEntries(state), () => {
+      ui.overlay = 'none';
+      rerender();
+    });
+    return;
+  }
+  closeRedistLog();
+
   if (ui.overlay !== 'none') {
     hideGameOverlay();
-    renderOverlay(scene, container, state, ui.overlay, ui, rerender, rect, text, button);
+    renderOverlay(scene, container, state, ui, rerender, rect, text, button);
     return;
   }
 
@@ -612,7 +629,7 @@ function renderCardFan(
 // derived from seatFor/seatLabelFor's viewer-relative P1-P4 geometry
 // labels - see BUILD_STATUS.md for why the two numbering systems must
 // stay separate.
-function playerLabelFor(state: MaskedState, id: NetPlayerId): string {
+export function playerLabelFor(state: MaskedState, id: NetPlayerId): string {
   const name = state.seatNames[id]?.trim();
   const base = name || `Player ${fromNetPlayerId(id) + 1}`;
   return id === state.yourSlot ? `${base} (You)` : base;
@@ -689,17 +706,15 @@ function computeActionButtonState(
   return { label: 'Assign all cards', hint: '', enabled: false, onClick: NO_OP };
 }
 
-// --- Overlays: previous-trick log (real content, carried over from an
-// earlier task) and the Redistribution-log stub (real design comes from
-// Claude Design + DOM overlays in a later stage - see BRIEF.md). Rules is
-// handled separately above - it's real content now, rendered by the DOM
-// layer, not this canvas overlay. ---------------------------------------
+// --- Overlay: previous-trick log (real content, carried over from an
+// earlier task). Rules and the Redistribution log are handled separately
+// above - both are real content now, rendered by the DOM layer, not this
+// canvas overlay. This is the only OverlayKind left that reaches here. ---
 
 function renderOverlay(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
   state: MaskedState,
-  kind: Exclude<OverlayKind, 'none' | 'rules'>,
   ui: PersistentUIState,
   rerender: () => void,
   rect: RectFn,
@@ -707,14 +722,8 @@ function renderOverlay(
   button: ButtonFn,
 ): void {
   rect(CENTER_X, HEIGHT / 2, WIDTH, HEIGHT, 0x0c0c10, 1);
-  const title = kind === 'log' ? 'Previous Trick' : 'Redistribution Log';
-  text(CENTER_X, 50, title, '#ffcc66', 16);
-
-  if (kind === 'log') {
-    renderPreviousTrickOverlay(scene, container, state, text);
-  } else {
-    renderRedistributionLogOverlay(scene, container, state, text);
-  }
+  text(CENTER_X, 50, 'Previous Trick', '#ffcc66', 16);
+  renderPreviousTrickOverlay(scene, container, state, text);
 
   button(CENTER_X, HEIGHT - 60, 120, 36, 'Close', () => {
     ui.overlay = 'none';
@@ -746,61 +755,20 @@ function renderPreviousTrickOverlay(scene: Phaser.Scene, container: Phaser.GameO
 // viewing player's own perspective (see net/actions.ts's
 // RedistributionLogEntry and host/mask.ts's buildMaskedState - both
 // perspectives are already computed host-side, this is pure
-// presentation). A 'received' entry never shows what anyone else got;
-// a 'distributed' entry never repeats a self-gift (host/mask.ts already
-// excludes it) and shows one row per recipient actually gifted. Cards
-// are always shown face-up here - unlike the previous-trick log/live
-// play areas, nothing in this panel needs maskedPlayFaces' facedown
-// masking, since a viewer only ever sees cards they personally received
-// or personally distributed, never another player's redistribution.
-// A 'distributed' entry reads "You redistributed as delegate" when
-// `wonByDouble` is true - self-delegation is illegal, so a Double win
-// means `fromPlayer` (always yourSlot for this perspective) was
-// necessarily a delegate acting on the actual winner's behalf, never the
-// winner themself. "You redistributed" (no qualifier) covers the Single-
-// win case, where the redistributor was necessarily the winner.
-function renderRedistributionLogOverlay(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState, text: TextFn): void {
-  if (state.redistributionLog.length === 0) {
-    text(CENTER_X, 100, 'No tricks resolved yet.', '#777777', 12);
-    return;
-  }
-
-  // Single centered column throughout, unlike the previous-trick log's
-  // side-by-side label+cards row: these lines are full sentences of
-  // variable length (a real display name can run up to 20 characters -
-  // see Brief B), which would clip off the canvas edge at a fixed
-  // left-anchored x the way the previous-trick log's short single-name
-  // labels don't. Text always centers on the (x, y) passed to `text()`
-  // regardless of the `align` hint - matching every other call site in
-  // this file - so centering the whole column on CENTER_X is what
-  // actually stays on-screen for an arbitrarily long name.
-  const cardRowHeight = CARD_DIMS_MINI.height + 18;
-  let y = 84;
-
-  for (const entry of state.redistributionLog) {
-    text(CENTER_X, y, `Trick ${entry.trickNumber}`, '#ffcc66', 12);
-    y += 20;
-
-    if (entry.perspective === 'received') {
-      const [group] = entry.groups;
-      text(CENTER_X, y, `Received from ${playerLabelFor(state, entry.fromPlayer)}`, '#dddddd', 11);
-      y += 16;
-      const faces: CardFace[] = group.cards.map((id) => ({ kind: 'faceup', cardId: id }));
-      drawCardRow(scene, container, CENTER_X, y + CARD_DIMS_MINI.height / 2, faces, CARD_DIMS_MINI, logCardStyle);
-      y += cardRowHeight;
-    } else {
-      text(CENTER_X, y, entry.wonByDouble ? 'You redistributed as delegate' : 'You redistributed', '#dddddd', 11);
-      y += 18;
-      for (const group of entry.groups) {
-        text(CENTER_X, y, playerLabelFor(state, group.toPlayer), '#cccccc', 11);
-        y += 16;
-        const faces: CardFace[] = group.cards.map((id) => ({ kind: 'faceup', cardId: id }));
-        drawCardRow(scene, container, CENTER_X, y + CARD_DIMS_MINI.height / 2, faces, CARD_DIMS_MINI, logCardStyle);
-        y += cardRowHeight;
-      }
-    }
-    y += 14;
-  }
+// presentation). Real content now, rendered by the DOM overlay layer
+// (dom/RedistLogModal.tsx) rather than drawn with Phaser primitives - see
+// this function's call site above. Newest-first: unlike the previous-trick
+// log (always exactly one trick) this can grow long over a 40-trick game,
+// and the entry a player actually wants after a redistribution is the one
+// that just happened, not the first one from the top of a long scroll.
+function computeRedistLogEntries(state: MaskedState): RedistLogEntry[] {
+  return [...state.redistributionLog].reverse().map((entry) => ({
+    trickNumber: entry.trickNumber,
+    perspective: entry.perspective,
+    wonByDouble: entry.wonByDouble,
+    fromPlayerLabel: playerLabelFor(state, entry.fromPlayer),
+    groups: entry.groups.map((g) => ({ toPlayerLabel: playerLabelFor(state, g.toPlayer), cards: g.cards })),
+  }));
 }
 
 // --- Game over --------------------------------------------------------

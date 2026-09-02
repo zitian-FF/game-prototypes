@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { createRoot } from 'react-dom/client';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { DomRoot } from './DomRoot';
-import './RulesModal.css';
+import './modalChrome.css';
 
 // Same 390x844 logical box every scene lays out in - see main.ts.
 const WIDTH = 390;

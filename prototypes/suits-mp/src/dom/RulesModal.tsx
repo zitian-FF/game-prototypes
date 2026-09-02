@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import './RulesModal.css';
+import './modalChrome.css';
 import { CYCLE, NUMERALS, SECTIONS, cycleBg, cycleBorder, cycleTeamColor } from './rulesContent';
 import { GOD_MOTIF } from '../rules/godArt';
 import { HEX_CLIP_PATH, symbolArtUrl } from './godArtUrl';
@@ -10,7 +10,8 @@ import { HEX_CLIP_PATH, symbolArtUrl } from './godArtUrl';
 // reproduce a bespoke, non-utility visual design pixel-for-pixel - see
 // root CLAUDE.md's UI implementation split. Only real CSS pseudo-classes
 // (:hover/:active, ::-webkit-scrollbar) and the seethe keyframe live in
-// RulesModal.css; everything else is inline, same as the source.
+// modalChrome.css (shared with every other full-screen modal in this DOM
+// layer); everything else is inline, same as the source.
 
 export interface RulesModalProps {
   onClose: () => void;

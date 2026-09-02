@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { RulesModal } from './RulesModal';
-import { closeRules, getSnapshot, subscribe } from './domUiStore';
+import { RedistLogModal } from './RedistLogModal';
+import { closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
 import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
 import { GameOverlay } from './overlay/GameOverlay';
@@ -14,7 +15,10 @@ import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverla
 // rendered independently - in practice at most one is visible at a time,
 // since only one Phaser scene drives the game at once.
 export function DomRoot(): JSX.Element {
-  const { rulesOpen, closeRules: onClose } = useSyncExternalStore(subscribe, getSnapshot);
+  const { rulesOpen, closeRules: onClose, redistLogOpen, redistLogEntries, closeRedistLog: onCloseRedistLog } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+  );
   const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
 
@@ -25,6 +29,15 @@ export function DomRoot(): JSX.Element {
           onClose={() => {
             onClose();
             closeRules();
+          }}
+        />
+      )}
+      {redistLogOpen && (
+        <RedistLogModal
+          entries={redistLogEntries}
+          onClose={() => {
+            onCloseRedistLog();
+            closeRedistLog();
           }}
         />
       )}
