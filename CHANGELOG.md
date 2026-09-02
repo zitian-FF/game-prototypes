@@ -57,3 +57,56 @@ across prototypes.
 React/Tailwind only when that prototype's next UI work begins
 (Stage 3+ for suits-mp is the first case). Existing UI code is
 not being force-migrated on its own.
+
+## 2026-09-02 — Player display names, suits-mp Lobby consolidation, redistribution log
+
+**What changed:**
+- packages/mp-core bumped 0.1.0 → 0.2.0, additive only: new
+  `createIdentityActionWithName` export and an optional `displayName`
+  on `BaseRosterEntry`, alongside the original unchanged
+  `createIdentityAction`. See STACK.md's mp-core section for the
+  version-isolation limitation this surfaced and the pattern adopted
+  going forward.
+- suits-mp adopted 0.2.0. Two previously-parallel Lobby
+  implementations - a canvas/Text-based one (`HostLobbyScene`/
+  `PlayerLobbyScene`, the one actually wired to real networking) and an
+  unwired DOM `LobbyFlow.tsx` (the Claude Design port, placeholder data
+  only) - are now consolidated into one: `LobbyFlow.tsx` renders as a
+  DOM overlay driven by the scenes' real networking, with a name-entry
+  field feeding the new mp-core capability.
+- Every in-game `P1`-`P4` display site in suits-mp (trick display,
+  turn/waiting text, delegate-selection targets, god-reveal, DOM HUD
+  tags) now shows a real player name, or an absolute-numbered
+  `Player N` fallback if blank. This introduced a formal split between
+  two numbering systems that must not be conflated: `P1`-`P4`
+  (`ui/seating.ts`'s `SeatLabel`) is viewer-relative screen position,
+  an internal geometry concept only, no longer shown as player-facing
+  text anywhere; the `Player N` fallback is absolute seat order
+  (`NetPlayerId` `p0`..`p3` → 1..4), consistent across every viewer and
+  matching the Lobby's own numbering.
+- The redistribution log (suits-mp) is fully implemented: per-trick
+  entries from the viewing player's perspective, `'received'` vs.
+  `'distributed'`, grouped by recipient, self-gifts excluded,
+  distinguishing a direct Single-win redistribution from a Double-win
+  delegate redistribution via `wonByDouble` (now persisted per-record
+  in the rules engine, not just on the most recent trick). Host-side
+  masking holds throughout - no perspective is inferred client-side.
+- Repo-wide: auto-merge's actual mechanics were clarified in CLAUDE.md.
+  The repo-level "Allow auto-merge" setting only permits auto-merge; it
+  does not enable it per PR. Claude Code now runs the enable command
+  explicitly on every PR it opens. There is still no
+  `pull_request`-triggered CI check, so this currently means a PR
+  merges immediately on open with no automated gate - an accepted,
+  explicit tradeoff, not an oversight, pending the real CI-gate work.
+
+**Why:** Player identity was previously invisible in suits-mp - every
+screen showed viewer-relative `P1`-`P4` labels with no connection to a
+real person, which made teammate deduction and general readability
+harder than intended by the GDD's design.
+
+**Applies to:** suits-mp directly. mp-console and mp-net gained the
+mp-core capability but have not adopted it and are otherwise untouched.
+
+**Action needed per prototype:** None automatically for mp-console/
+mp-net - opt into mp-core 0.2.0 and wire display names only if/when a
+future task calls for it.

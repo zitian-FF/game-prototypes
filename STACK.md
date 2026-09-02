@@ -55,6 +55,32 @@ Status: mp-net, suits-mp, and mp-console are all wired onto
 packages/mp-core now - no prototype carries its own duplicated copy
 of this logic anymore.
 
+mp-core is now at 0.2.0, which adds an opt-in player display-name
+capability: `createIdentityActionWithName` (a second identity-channel
+creator, alongside the original `createIdentityAction`, which is
+unchanged) and an optional `displayName` field on `BaseRosterEntry`.
+suits-mp has adopted 0.2.0 and uses this for real player names
+end-to-end (Lobby entry, in-game labels, redistribution log). mp-net
+and mp-console remain pinned to 0.1.0 and are unaffected - this was
+shipped additively specifically so their pins wouldn't need to move.
+
+**Known limitation, worth knowing before scoping any future mp-core
+change:** this repo's shared packages are not actually version-isolated
+per consumer - it's a single local workspace package, not a real
+registry. A consumer's declared semver pin (e.g. `^0.1.0`) is a
+statement of intent, not an enforced boundary: a genuinely *breaking*
+change to mp-core fails typecheck repo-wide regardless of what any
+other consumer's package.json claims to pin. This was discovered
+mid-brief when adding the display-name field - the first draft made
+`createIdentityAction`'s payload change type and `displayName` a
+required field, which broke mp-net/mp-console's build immediately even
+though only suits-mp's pin was meant to move. The fix (and the pattern
+to repeat for any future mp-core change) is: always ship additively -
+new exports/optional fields alongside old ones unchanged, never a
+changed signature or a newly-required field on an existing type - until
+real per-consumer version isolation exists as its own piece of
+infrastructure work.
+
 ## What "available to a prototype" means in practice
 
 A new prototype starts with just the core engine stack above and
