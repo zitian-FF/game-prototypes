@@ -713,7 +713,7 @@ function renderOverlay(
   if (kind === 'log') {
     renderPreviousTrickOverlay(scene, container, state, text);
   } else {
-    text(CENTER_X, HEIGHT / 2 - 20, 'Redistribution log - coming in a later pass.', '#999999', 12);
+    renderRedistributionLogOverlay(scene, container, state, text);
   }
 
   button(CENTER_X, HEIGHT - 60, 120, 36, 'Close', () => {
@@ -740,6 +740,66 @@ function renderPreviousTrickOverlay(scene: Phaser.Scene, container: Phaser.GameO
     const faces = maskedPlayFaces(play, state.yourSlot);
     drawCardRow(scene, container, 230, rowY, faces, CARD_DIMS_MINI, logCardStyle);
   });
+}
+
+// GDD "Redistribution Log": one entry per completed trick, from the
+// viewing player's own perspective (see net/actions.ts's
+// RedistributionLogEntry and host/mask.ts's buildMaskedState - both
+// perspectives are already computed host-side, this is pure
+// presentation). A 'received' entry never shows what anyone else got;
+// a 'distributed' entry never repeats a self-gift (host/mask.ts already
+// excludes it) and shows one row per recipient actually gifted. Cards
+// are always shown face-up here - unlike the previous-trick log/live
+// play areas, nothing in this panel needs maskedPlayFaces' facedown
+// masking, since a viewer only ever sees cards they personally received
+// or personally distributed, never another player's redistribution.
+// "You redistributed" is shown uniformly for every 'distributed' entry,
+// including a delegate's - `fromPlayer === yourSlot` is true in both the
+// direct-win and delegated-win cases and nothing in MaskedState
+// distinguishes which happened, so there's no data to render "as
+// delegate" from (see BUILD_STATUS.md).
+function renderRedistributionLogOverlay(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState, text: TextFn): void {
+  if (state.redistributionLog.length === 0) {
+    text(CENTER_X, 100, 'No tricks resolved yet.', '#777777', 12);
+    return;
+  }
+
+  // Single centered column throughout, unlike the previous-trick log's
+  // side-by-side label+cards row: these lines are full sentences of
+  // variable length (a real display name can run up to 20 characters -
+  // see Brief B), which would clip off the canvas edge at a fixed
+  // left-anchored x the way the previous-trick log's short single-name
+  // labels don't. Text always centers on the (x, y) passed to `text()`
+  // regardless of the `align` hint - matching every other call site in
+  // this file - so centering the whole column on CENTER_X is what
+  // actually stays on-screen for an arbitrarily long name.
+  const cardRowHeight = CARD_DIMS_MINI.height + 18;
+  let y = 84;
+
+  for (const entry of state.redistributionLog) {
+    text(CENTER_X, y, `Trick ${entry.trickNumber}`, '#ffcc66', 12);
+    y += 20;
+
+    if (entry.perspective === 'received') {
+      const [group] = entry.groups;
+      text(CENTER_X, y, `Received from ${playerLabelFor(state, entry.fromPlayer)}`, '#dddddd', 11);
+      y += 16;
+      const faces: CardFace[] = group.cards.map((id) => ({ kind: 'faceup', cardId: id }));
+      drawCardRow(scene, container, CENTER_X, y + CARD_DIMS_MINI.height / 2, faces, CARD_DIMS_MINI, logCardStyle);
+      y += cardRowHeight;
+    } else {
+      text(CENTER_X, y, 'You redistributed', '#dddddd', 11);
+      y += 18;
+      for (const group of entry.groups) {
+        text(CENTER_X, y, playerLabelFor(state, group.toPlayer), '#cccccc', 11);
+        y += 16;
+        const faces: CardFace[] = group.cards.map((id) => ({ kind: 'faceup', cardId: id }));
+        drawCardRow(scene, container, CENTER_X, y + CARD_DIMS_MINI.height / 2, faces, CARD_DIMS_MINI, logCardStyle);
+        y += cardRowHeight;
+      }
+    }
+    y += 14;
+  }
 }
 
 // --- Game over --------------------------------------------------------

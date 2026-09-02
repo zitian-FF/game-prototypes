@@ -70,11 +70,26 @@ export type RedistributionContext = {
   contributions: RedistributionContribution[];
 };
 
+// One completed trick's redistribution, from the viewing player's own
+// perspective (see host/mask.ts's buildMaskedState) - never both
+// perspectives for the same trickNumber, since a player is either the
+// trick's redistributor or a recipient of it, never both.
+export type RedistributionLogGroup = {
+  toPlayer: NetPlayerId;
+  cards: CardId[];
+};
+
 export type RedistributionLogEntry = {
   trickNumber: number;
-  toPlayer: NetPlayerId;
+  perspective: 'received' | 'distributed';
+  // The trick's actual redistributor (winner of a Single, or delegate
+  // after a Double) - for a 'received' entry this is who you got cards
+  // from; for a 'distributed' entry this is always yourSlot.
   fromPlayer: NetPlayerId;
-  count: number;
+  // 'received': exactly one group, toPlayer === yourSlot. 'distributed':
+  // one group per recipient you actually gave cards to - self-gifts are
+  // excluded, per the GDD.
+  groups: RedistributionLogGroup[];
 };
 
 export type TurnPhase = 'play' | 'selectDelegate' | 'redistribute' | 'gameOver';
