@@ -61,25 +61,52 @@ creator, alongside the original `createIdentityAction`, which is
 unchanged) and an optional `displayName` field on `BaseRosterEntry`.
 suits-mp has adopted 0.2.0 and uses this for real player names
 end-to-end (Lobby entry, in-game labels, redistribution log). mp-net
-and mp-console remain pinned to 0.1.0 and are unaffected - this was
-shipped additively specifically so their pins wouldn't need to move.
+and mp-console don't use the new capability and needed no source
+changes, but **their own `package.json` pins had to move to `^0.2.0`
+too** - see the known limitation immediately below for why that turned
+out not to be optional.
 
-**Known limitation, worth knowing before scoping any future mp-core
+**Known limitations, worth knowing before scoping any future mp-core
 change:** this repo's shared packages are not actually version-isolated
 per consumer - it's a single local workspace package, not a real
 registry. A consumer's declared semver pin (e.g. `^0.1.0`) is a
-statement of intent, not an enforced boundary: a genuinely *breaking*
-change to mp-core fails typecheck repo-wide regardless of what any
-other consumer's package.json claims to pin. This was discovered
-mid-brief when adding the display-name field - the first draft made
-`createIdentityAction`'s payload change type and `displayName` a
-required field, which broke mp-net/mp-console's build immediately even
-though only suits-mp's pin was meant to move. The fix (and the pattern
-to repeat for any future mp-core change) is: always ship additively -
-new exports/optional fields alongside old ones unchanged, never a
-changed signature or a newly-required field on an existing type - until
-real per-consumer version isolation exists as its own piece of
-infrastructure work.
+statement of intent, not an enforced boundary, in two distinct ways:
+
+1. **Typechecking isn't isolated.** A genuinely *breaking* change to
+   mp-core fails typecheck repo-wide regardless of what any other
+   consumer's package.json claims to pin. Discovered when first adding
+   the display-name field - the first draft made `createIdentityAction`'s
+   existing payload change type and `displayName` a required field,
+   which broke mp-net/mp-console's build immediately even though only
+   suits-mp's pin was meant to move.
+2. **A stale pin can silently swap in an unrelated package from the real
+   npm registry**, which is worse than a build failure because it fails
+   silently. `npm`'s workspace linking only prefers the local
+   `packages/mp-core` folder for a consumer's `mp-core` dependency when
+   the local package's actual version *satisfies that consumer's
+   declared semver range*. Once mp-core's own version moved to `0.2.0`,
+   mp-net/mp-console's still-`^0.1.0` pins no longer matched it - so
+   `npm install` fell back to fetching an unrelated, deprecated package
+   that happens to squat the name "mp-core" on the public npm registry
+   into each of their `node_modules`, instead of linking the local
+   workspace folder. This was caught only because it also broke `npm
+   ci`'s stricter lockfile-sync check (surfacing as itch.io/Butler
+   deploy-workflow failures) - had the lockfile been regenerated with a
+   looser `npm install` without noticing the diff, mp-net and mp-console
+   would have silently started running on fake, unrelated code with no
+   error at all.
+
+The fix, and the pattern to repeat for any future mp-core version bump:
+(a) always ship additively - new exports/optional fields alongside old
+ones unchanged, never a changed signature or a newly-required field on
+an existing type - and (b) bump *every* consumer's declared `mp-core`
+pin to match mp-core's new version at the same time you bump mp-core
+itself, even a consumer that doesn't use the new capability and needs
+no source changes - otherwise its dependency resolution silently breaks
+the moment mp-core's version moves past that consumer's declared range,
+whether or not anyone notices. Real per-consumer version isolation
+(so a stale pin fails loudly instead of resolving to the wrong thing)
+remains unbuilt infrastructure work.
 
 ## What "available to a prototype" means in practice
 
