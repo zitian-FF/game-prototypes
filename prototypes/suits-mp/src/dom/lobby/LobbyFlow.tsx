@@ -33,6 +33,7 @@ export interface LobbyFlowProps {
   roomCode: string;
   seats: SeatInfo[];
   hostLeft: boolean;
+  refreshCodeError: boolean;
   onSinglePlayer: () => void;
   onHost: (name: string) => void;
   onSubmitJoin: (code: string, name: string) => void;
@@ -51,6 +52,7 @@ export function LobbyFlow({
   roomCode,
   seats,
   hostLeft,
+  refreshCodeError,
   onSinglePlayer,
   onHost,
   onSubmitJoin,
@@ -400,9 +402,17 @@ export function LobbyFlow({
             </div>
             <div
               data-bind="copy-toast"
-              style={{ paddingTop: 8, textAlign: 'center', fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: 12, color: 'rgba(180, 222, 212, 0.8)', minHeight: 16 }}
+              style={{
+                paddingTop: 8,
+                textAlign: 'center',
+                fontFamily: "'EB Garamond', serif",
+                fontStyle: 'italic',
+                fontSize: 12,
+                color: !copyToast && refreshCodeError ? 'rgba(224, 120, 120, 0.85)' : 'rgba(180, 222, 212, 0.8)',
+                minHeight: 16,
+              }}
             >
-              {copyToast}
+              {copyToast || (refreshCodeError ? 'Re-announcement failed — tap ↻ to try again.' : '')}
             </div>
           </div>
 

@@ -8,7 +8,13 @@ import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
-import { showHostSettingUp, showHostLobby, hideHostLobby } from '../dom/lobby/lobbyUiStore';
+import {
+  showHostSettingUp,
+  showHostLobby,
+  hideHostLobby,
+  showHostLobbyRefreshError,
+  clearHostLobbyRefreshError,
+} from '../dom/lobby/lobbyUiStore';
 import type { SeatInfo } from '../dom/lobby/lobbySeats';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
@@ -240,9 +246,18 @@ export class HostLobbyScene extends Phaser.Scene {
   // room.leave() switch, so their roster entries are dropped (they'll need
   // to reconnect on the possibly-new code); only the host's own slot and
   // any host-local bot slots survive.
+  //
+  // Wrapped in a real catch (this used to be a try/finally with no catch -
+  // the same class of silent-failure bug found and fixed in ConnectingScene
+  // and setUpRoom above, see BUILD_STATUS.md). Lower severity than that one:
+  // this is a user-initiated in-lobby retry, not a boot-time hang that
+  // blocks the whole screen, so on failure it logs and surfaces an inline
+  // error next to the refresh button rather than navigating away - the host
+  // stays on the lobby they were already on and can just try again.
   private async refreshRoomCode(): Promise<void> {
     if (this.refreshing) return;
     this.refreshing = true;
+    clearHostLobbyRefreshError();
 
     try {
       await this.room.leave();
@@ -277,6 +292,9 @@ export class HostLobbyScene extends Phaser.Scene {
       this.actions = createNetworkActions(room);
       this.wireRoomHandlers();
       this.pushLobbyState();
+    } catch (err: unknown) {
+      console.error('[suits-mp host] failed to refresh room code:', err);
+      showHostLobbyRefreshError();
     } finally {
       this.refreshing = false;
     }
