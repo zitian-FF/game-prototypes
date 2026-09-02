@@ -30,6 +30,7 @@ const RELAY_URLS = [
 ];
 
 export function createNetworkRoom(lobbyCode: string, options: CreateRoomOptions = {}): Room {
+  console.log(`[suits-mp room] joinRoom(appId=${APP_ID}, code=${lobbyCode}, ${options.iceServers ? `${options.iceServers.length} TURN server(s)` : 'no TURN servers'})`);
   return joinRoom(
     {
       appId: APP_ID,
@@ -38,7 +39,8 @@ export function createNetworkRoom(lobbyCode: string, options: CreateRoomOptions 
     },
     lobbyCode,
     {
-      onJoinError: () => {
+      onJoinError: (details) => {
+        console.warn('[suits-mp room] onJoinError:', details);
         options.onConnectionFailed?.();
       },
     },

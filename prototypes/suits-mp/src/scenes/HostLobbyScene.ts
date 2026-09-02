@@ -86,22 +86,43 @@ export class HostLobbyScene extends Phaser.Scene {
     // node_modules/phaser/src/scene/Systems.js.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideHostLobby);
 
-    void this.setUpRoom(data);
+    // `setUpRoom` is async and was previously fired-and-forgotten
+    // (`void this.setUpRoom(data)` with no `.catch()`) - any exception
+    // thrown inside it (getIceServers() itself, or synchronously inside
+    // createNetworkRoom) would silently reject and leave the "Setting up
+    // room..." busy screen hung forever with no visible error, the same
+    // class of bug found and fixed in ConnectingScene's join flow (see
+    // BUILD_STATUS.md). No equivalent error screen exists for the host
+    // side, so this falls back to Landing - an existing, safe escape hatch
+    // - rather than leaving the host stuck with no way out.
+    void this.setUpRoom(data).catch((err: unknown) => {
+      console.error('[suits-mp host] unexpected error setting up the room:', err);
+      if (this.scene.isActive()) {
+        this.scene.start('Landing', { clientId: data.clientId, getIceServers: data.getIceServers });
+      }
+    });
   }
 
   private async setUpRoom(data: HostLobbyData): Promise<void> {
+    console.log('[suits-mp host] fetching ICE servers...');
     this.iceServers = await data.getIceServers();
+    console.log(
+      `[suits-mp host] ICE servers resolved: ${this.iceServers ? `${this.iceServers.length} TURN/STUN server(s)` : 'none (STUN-only fallback)'}`,
+    );
 
     let code = randomLobbyCode();
+    console.log(`[suits-mp host] creating room for code ${code}...`);
     let room = createNetworkRoom(code, { iceServers: this.iceServers });
 
     for (let attempt = 1; attempt < MAX_CODE_ATTEMPTS; attempt++) {
       const occupied = await this.checkOccupied(room);
       if (!occupied) break;
+      console.log(`[suits-mp host] code ${code} already occupied, trying a new one...`);
       await room.leave();
       code = randomLobbyCode();
       room = createNetworkRoom(code, { iceServers: this.iceServers });
     }
+    console.log(`[suits-mp host] room ready on code ${code}`);
 
     if (!this.scene.isActive()) {
       // Scene was torn down (e.g. navigated away) while the async setup ran.
