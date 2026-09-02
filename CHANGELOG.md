@@ -3,6 +3,52 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-09-02 — Fix root package-lock.json drift breaking every deploy workflow
+
+**What changed:** `package-lock.json` is regenerated to match the
+`mp-core` 0.2.0 bump from the previous entry below, and `prototypes/
+mp-net/package.json` and `prototypes/mp-console/package.json`'s own
+`"mp-core"` dependency pins are bumped from `^0.1.0` to `^0.2.0` to
+match. See STACK.md's mp-core section for the full two-part explanation
+of why the stale pins had to move even though neither prototype's
+source changed.
+
+**Why:** When `packages/mp-core/package.json` moved to `0.2.0` (previous
+entry), `package-lock.json` was never regenerated to match. Every
+deploy workflow in this repo runs `npm ci` at the repo root as its
+first substantive step, and `npm ci` fails loudly (`EUSAGE`, lockfile
+out of sync) rather than reconciling - so every deploy, for every
+prototype, on every push to `main`, has been failing at that step since
+the bump, regardless of which prototype's files the triggering push
+actually touched. Confirmed via GitHub Actions job logs: the "Install
+dependencies" step failed identically on the Pages/hub deploy (11
+consecutive failing runs) and on digger's itch.io deploy (the one run
+that happened to trigger since the bump); suits-mp, mp-net, and
+mp-console's own itch.io deploys hadn't been triggered again since the
+bump but would have failed identically, since the failure is in a
+step that runs before any prototype-specific work begins.
+
+A second, more severe hazard was caught while fixing this: naively
+running `npm install` (rather than fixing the pins first) silently
+substituted an unrelated, deprecated package from the public npm
+registry into mp-net/mp-console's own `node_modules` in place of the
+real local `packages/mp-core` workspace folder, with no error at all.
+This was caught before being committed. See STACK.md's mp-core section,
+point 2, for the full mechanism - it's the more important takeaway of
+the two for scoping any future shared-package version bump.
+
+**Applies to:** Repo-wide CI/deploy infrastructure. No prototype's
+source or runtime behavior changed - confirmed via byte-identical
+mp-net/mp-console build output before and after, plus a clean
+`npm run typecheck` / `npm run build` / `npm ci`.
+
+**Action needed per prototype:** None. This is a lockfile/pin
+correction only. Worth internalizing the pattern in STACK.md before
+bumping any shared package's version again: bump *every* consumer's
+declared pin for that package at the same time, even one that needs no
+source changes, and regenerate the lockfile as part of the same
+change - never as an afterthought.
+
 ## 2026-08-27 — mp-base renamed to mp-console, wired onto packages/mp-core
 
 **What changed:** `prototypes/mp-base/` is now `prototypes/mp-console/`
