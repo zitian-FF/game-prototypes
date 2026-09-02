@@ -57,8 +57,8 @@ export const SECTIONS: RuleSection[] = [
     title: 'The Objective',
     kicker: 'Why we sit',
     body: [
-      "Each player is bound to a single god. Gather all ten cards of thy god's suit and thy covenant claims the victory.",
-      'Two covenants contend: Chaos, of the drowned deeps, and Cosmos, of the gold and violet dark. Thy kin holds the other god of thy covenant — either of you completing a suit wins it for both.',
+      'Each player is bound to a single Deity. Gather all ten cards of thy Deity Suit and thy covenant claims the victory.',
+      'Two covenants contend: Chaos, of the drowned deeps, and Cosmos, of the gold and violet dark. Thy kin holds the other Deity of thy covenant — either of you completing a Deity Suit wins it for both.',
     ],
   },
   {
