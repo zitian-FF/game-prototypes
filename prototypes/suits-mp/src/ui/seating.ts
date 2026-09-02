@@ -21,25 +21,21 @@ import type { MaskedState } from '../net/actions';
 //   offset 1 (next to act after you) -> left
 //   offset 2 (opposite you)          -> top
 //   offset 3 (acted right before you)-> right
-// This also matches the brief's fixed P1..P4 seat labels, which are
-// positions relative to the viewer, not absolute NetPlayerIds: P3 is
-// always "you" (bottom), P4 the next to act after you (left), P1 the
-// player opposite you (top), P2 the one who acted right before you
-// (right).
+// P1-P4 (viewer-relative screen position: P3 is always "you"/bottom, P4
+// the next to act after you/left, P1 opposite you/top, P2 the one who
+// acted right before you/right) was this geometry's original player-
+// facing label, but is an internal/geometry concept only now - every
+// player-facing identity site uses the absolute, viewer-independent
+// "Player N" numbering instead (see ui/renderGameView.ts's playerLabelFor
+// and net/actions.ts's MaskedState.seatNames doc comment). Do not
+// reintroduce P1-P4 as visible text.
 export type SeatPosition = 'top' | 'right' | 'bottom' | 'left';
 
-export type SeatLabel = 'P1' | 'P2' | 'P3' | 'P4';
-
 const SEAT_BY_OFFSET: readonly SeatPosition[] = ['bottom', 'left', 'top', 'right'];
-const LABEL_BY_SEAT: Record<SeatPosition, SeatLabel> = { top: 'P1', right: 'P2', bottom: 'P3', left: 'P4' };
 
 export function seatFor(otherSlot: NetPlayerId, yourSlot: NetPlayerId): SeatPosition {
   const offset = (fromNetPlayerId(otherSlot) - fromNetPlayerId(yourSlot) + 4) % 4;
   return SEAT_BY_OFFSET[offset];
-}
-
-export function seatLabelFor(seat: SeatPosition): SeatLabel {
-  return LABEL_BY_SEAT[seat];
 }
 
 // Every seat, keyed by the NetPlayerId currently occupying it - built once

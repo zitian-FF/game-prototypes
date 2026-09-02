@@ -1,137 +1,109 @@
 ## Current milestone
 
-Real display-name entry, wired end to end: a text field on the Lobby's
-landing screen feeds the identity handshake's `displayName`, real roster
-entries carry it into the Host's seat list (falling back to a seat-
-numbered "Player N" when blank), and `PlayerLobbyScene` (the joining
-peer's own "waiting for host" screen) is now DOM-driven too instead of
-plain Phaser Text - the last piece of the Lobby flow still on the older
-canvas-Text UI. Version stamp counter unchanged (`8`), no deploy has run
-yet.
+Every in-game player-facing identity label now shows a real name (or the
+absolute, seat-numbered `Player N` fallback) instead of the viewer-relative
+`P1`-`P4` screen-position labels: the trick-in-progress/previous-trick log,
+the delegate-selection targets, the "Waiting for..." status text, the
+game-over god-reveal listing, and the DOM overlay's HUD name tags. Version
+stamp counter unchanged (`8`), no deploy has run yet.
 
 ## What was implemented
 
-- **Name-entry field** (`LobbyFlow.tsx`'s landing screen, above the Host/
-  Join buttons): a single freeform text input, capped at 20 characters via
-  `maxLength`, local component state (like the join-code draft, doesn't
-  need to survive a screen switch). Trimmed once at send time (`onHost`/
-  `onSubmitJoin` callbacks), not on every keystroke, so a blank/whitespace-
-  only entry sends a real empty string rather than a fabricated "Player N"
-  - the fallback is computed downstream at render time instead (see
-  `lobbySeats.ts`).
-- **Threaded through both paths**: `LobbyUiState.onHost`/`onSubmitJoin`
-  (`lobbyUiStore.ts`) now take the entered name; `LandingScene` passes it
-  into `scene.start('HostLobby', ...)`/`scene.start('Connecting', ...)` as
-  a new `displayName` field. `HostLobbyScene.setUpRoom()` uses it for the
-  host's own roster entry instead of `''`; `ConnectingScene` sends it in
-  the real `identity.send(...)` payload instead of `''`. The one boot path
-  that never runs Landing at all - an invite link's `?lobby=` direct-to-
-  Connecting boot in `main.ts` - has no UI to collect a name from, so it
-  sends `''` like any other blank-name join (same fallback path handles
-  it, not a special case).
-- **Real roster data replaces `lobbySeats.ts`'s hardcoded `NAMES`**:
-  `seatModel()` now takes `SeatInfo[]` (`{ occupancy, displayName }` per
-  seat, from `HostLobbyScene`'s `rosterToSeats()`) instead of bare
-  `SeatOccupancy[]`. A host/peer seat shows the real `displayName` if
-  non-empty (`.trim()`ed defensively at render time too, in case a stray
-  value ever reached the roster untrimmed), else `Player ${i + 1}` -
-  seat-numbered by the same 1-based row position as the row's own "I"..
-  "IV" numeral. Bot seats are unaffected - still the flavor label
-  ("Thrall of the Deep"), since bots have no player-entered name.
-- **Reconnect preserves the original name unchanged** - verified by
-  reading, not by a live test (see "Known issues"): both
-  `matchOrCreateRosterEntry` (lobby-phase) and `matchRosterEntryForReconnect`
-  (mid-game) only ever update `peerId` on an existing roster entry, never
-  `displayName` - the `displayName` field on an incoming `identity` payload
-  is only ever read inside the *create-new-entry* factory closure, which
-  doesn't run on a match. This is pre-existing mp-core/suits-mp logic, not
-  changed by this task; confirmed it still holds after this task's edits.
-- **`PlayerLobbyScene` converted to a DOM overlay** (this brief's other
-  scene-side ask): all Phaser `Text` objects removed from the scene; it
-  now calls `showWaiting()`/`setWaitingHostLeft()`/`hideWaiting()`
-  (`lobbyUiStore.ts`) instead, and `LobbyFlow.tsx` gained a new `'waiting'`
-  screen rendering the exact same two states the scene already tracked
-  (connected-and-waiting / host-disconnected) - see "Key technical
-  decisions" for why this stayed a same-behavior conversion rather than
-  growing a live seat list for the peer's own view.
+- **`MaskedState` gained `seatNames`** (`net/actions.ts`): a
+  `Partial<Record<NetPlayerId, string>>` of raw `displayName` values keyed
+  by absolute seat, exactly as stored in the roster - may be `''`; the
+  `Player N` fallback is computed at render time (mirroring Brief B's
+  `lobbySeats.ts` pattern), never baked into the payload itself.
+- **`buildMaskedState` takes a third `seatNames` parameter**
+  (`host/mask.ts`), included verbatim in the returned object. Stays
+  decoupled from the `Roster` type, same as every other field - the caller
+  builds the lookup.
+- **`HostGameScene` builds the lookup from its own roster**: a new private
+  `seatNames()` method maps every roster entry's `slot` to its
+  `displayName`, called once per `sendMaskedStateTo` (covers both the
+  regular broadcast path and the reconnect-resend path, since both funnel
+  through that one method).
+- **New `playerLabelFor(state, id)` helper** (`ui/renderGameView.ts`,
+  not `ui/seating.ts` - see "Key technical decisions"): returns the real
+  name if non-empty (`.trim()`ed), else `Player ${absolute index}` (`p0`->1
+  .. `p3`->4, from `fromNetPlayerId`, deliberately NOT `seatFor`/
+  `seatLabelFor`'s viewer-relative geometry), with a `(You)` suffix when
+  `id === state.yourSlot`.
+- **Every `P1`-`P4` display site replaced**: the previous-trick log's row
+  label, the game-over god-reveal listing, the "Waiting for..." status
+  text, the delegate-selection target label (all `ui/renderGameView.ts`),
+  and `computeGameOverlayHudState`'s `seatLabels` (which now looks up each
+  geometric seat's occupying `NetPlayerId` via `buildSeatMap` and calls
+  `playerLabelFor`, rather than a bare `seatLabelFor(seat)`). Geometry
+  code itself (`seatFor`, `SeatPosition`, `computeSuitRing`, the Suit Cycle
+  HUD rotation math, `buildSeatMap`) is untouched.
+- **`ui/seating.ts`'s `SeatLabel` type, `seatLabelFor()`, and
+  `LABEL_BY_SEAT` removed** - once every call site above was migrated,
+  nothing referenced them any more (confirmed via a repo-wide grep before
+  deleting); `P1`-`P4` no longer exists as visible text anywhere, matching
+  the acceptance criteria, and the file's own doc comment now says so
+  explicitly so it isn't reintroduced by accident.
 
 ## Key technical decisions
 
-- **`'Player N'` fallback numbering matches the Lobby's own seat-row order
-  (I/II/III/IV), not `ui/seating.ts`'s egocentric P1-P4 labels.** The
-  brief's wording ("matching the existing P1-P4 numbering") could be read
-  either way; `ui/seating.ts`'s P1-P4 is deliberately *egocentric* (P3 is
-  always "you", computed relative to `yourSlot`) for the in-game view,
-  where every player's own screen shows a different labeling of the same
-  four seats. The Lobby's seat list is the opposite - one absolute,
-  slot-ordered list (`p0`..`p3`, host always row I) that every viewer of
-  it should see identically. Reusing the egocentric scheme here would
-  actually be wrong (it doesn't apply to a viewer-independent list), so
-  "Player N" is 1-indexed against the row's own existing numeral instead.
-  Flagging this reading as a judgment call, not a re-ask, since the
-  egocentric scheme genuinely doesn't fit this list's shape.
-- **`PlayerLobbyScene`'s DOM conversion is a same-behavior swap, not a new
-  live-roster feature.** The brief's section 2a asks to "mount `LobbyFlow`
-  as a DOM overlay" over both `HostLobbyScene` *and* `PlayerLobbyScene`,
-  "the same pattern already used for the in-game DOM overlay." Doing that
-  literally for the peer's own waiting screen would tempt adding a live
-  seat list there too - but the host currently never broadcasts roster/
-  seat state to already-joined peers during the lobby phase (only the
-  `lobbyJoined`/`gameStarted`/`roomFull`/`alreadyInProgress` signals), so
-  showing one would mean designing and building a new broadcast channel
-  and a new "peer's read-only lobby view" screen with no existing
-  wireframe to follow - real scope beyond "stop rendering Text, mount
-  DOM." Kept the conversion to exactly the two states the scene already
-  tracked (waiting / host left), same behavior, different rendering
-  layer. Flagging that a real live-roster peer view is a natural next
-  step if wanted, not attempted here.
-- **Trim happens once, at send time, not per keystroke**: lets someone
-  type a trailing space mid-edit without it being silently stripped out
-  from under their cursor; the value that actually reaches the network is
-  what's trimmed and capped.
+- **`playerLabelFor` lives in `ui/renderGameView.ts`, not `ui/seating.ts`**,
+  even though the brief offered either. `seating.ts`'s own header comment
+  describes it as "pure seat-geometry logic... deliberately kept free of
+  any Phaser/DOM dependency" - identity/name display isn't geometry, and
+  every call site that needs the helper is already in `renderGameView.ts`
+  (the one exception, `computeGameOverlayHudState`'s `seatLabels`, is also
+  in that file). Keeps `seating.ts` scoped to exactly what its own doc
+  comment claims.
+- **Absolute numbering (`fromNetPlayerId(id) + 1`), never `seatFor`'s
+  viewer-relative offset** - this was the brief's own explicit, already-
+  made decision (restated to avoid re-litigating it), and matters because
+  the two systems return different numbers for the same seat depending on
+  who's asking: `seatFor`'s P1-P4 depends on `yourSlot`, while `Player N`
+  must be the same number for every viewer looking at the same blank-named
+  seat (matching the Lobby's own `lobbySeats.ts` convention from Brief B).
+- **`(You)` suffix is now uniform across every `playerLabelFor` call site**,
+  including two (the previous-trick log row and the game-over reveal
+  listing) that never showed it before this brief - the old
+  `seatLabelForNet` had no `(You)` concept at all, only the separate HUD
+  `seatLabels` loop special-cased `bottom`. The brief's own helper spec
+  ("Append ' (You)' when `id === state.yourSlot`") makes this the helper's
+  own uniform behavior rather than a per-site special case, so these two
+  sites now also mark your own row - a small, intentional improvement
+  (you can now tell which log/reveal row was yours), not a side effect to
+  undo. The "Waiting for.../Delegate to..." sites are structurally
+  unaffected (the active/delegate-target player is never `yourSlot` there
+  already), so no visible change at those two.
 
 ## Open questions
 
-- **Confirm the "Player N" numbering call above** (row-numeral-based vs.
-  egocentric P1-P4) is what's wanted - reasoned through above, not asked
-  up front since it's a very local, easily-reversible rendering choice
-  with no networking or data-shape consequences either way.
-- **Confirm the `PlayerLobbyScene` scope call above** (same-behavior DOM
-  swap vs. a full live-roster peer view) - flagged rather than asked
-  since building the fuller version would have meant designing new
-  networking surface and new screen content with no wireframe to check
-  it against, which felt like it belonged in its own brief rather than
-  folded into this one silently.
-- Carried over from the prior session's merge, still open: whether
-  `JoinEntryScene` (fully unreachable dead code since the DOM's own
-  'join' screen replaced its job) should be deleted.
+None from this session - the brief's own numbering-system decision was
+already made and just needed following precisely (see "Key technical
+decisions" for the one place its wording could have been misread and
+wasn't), and every display site named in scope had exactly one call site
+to update, confirmed via grep before and after.
 
 ## Known issues
 
-- **Reconnect-preserves-name and real two-device peer join are verified
-  by reading the code, not by a live test** - this sandbox's network
-  proxy blocks the pinned Nostr relay WebSocket connections outright
-  (confirmed via console logs in the prior session and reconfirmed this
-  session), so no real second device/browser could actually connect
-  through Trystero here. Everything reachable without a real peer
-  connection was tested for real: name entry, the real `HostLobbyScene`/
-  `ConnectingScene` room-creation and join-attempt flow, the seat-list
-  fallback rendering, and the `waiting`/`hostLeft` DOM states (the latter
-  via direct store calls, not a real disconnect event, for the same
-  reason). A live 2-device test is still needed to verify a real peer's
-  name actually reaches the host's seat list and survives a real
-  reconnect.
+- **The bottom HUD name tag can wrap to two lines for a long real name**
+  (e.g. a 20-character name plus " (You)") - verified visually in this
+  session's real-game screenshot. The tag's fixed width (`208`, set by an
+  earlier overlay-layout task) was sized for short fallback text like
+  "Player 3 (You)"; this brief didn't touch that layout constant, since
+  retuning DOM chrome dimensions is outside "wire real names into every
+  display site." Flagging as a follow-up rather than fixing here - a
+  smaller font at longer lengths, an ellipsis, or a wider tag are all
+  reasonable fixes but weren't this brief's call to make silently.
 - Carried over, still true, untouched: facedown-card masking leak at the
   payload level (`host/mask.ts`); no card-back art yet; Redistribution-log
-  content still stubbed (no design handoff yet); Google Fonts fail to load
-  in this dev sandbox's network environment (cosmetic fallback only); the
-  host's own `'lobby'` screen has no leave/cancel affordance; real
-  refresh-in-progress has no loading/disabled visual state on the DOM
-  refresh button.
+  content still stubbed (Brief D's scope, which will consume this same
+  `seatNames`/`playerLabelFor`); Google Fonts fail to load in this dev
+  sandbox's network environment (cosmetic fallback only); a live 2-device
+  test is still needed to confirm a real second peer's name (not just the
+  host's own, already verified for real this session) reaches every other
+  player's in-game screen identically.
 
 ## Next proposed step
 
-A live 2-device pass (outside this sandbox) to confirm real names reach
-the host's seat list and survive a real reconnect. Beyond that: a real
-peer-visible lobby roster (if wanted, per the open question above),
-Redistribution-log content, and card-back art.
+Brief D's Redistribution-log content, now that `seatNames`/`playerLabelFor`
+exist for it to consume. Optionally address the long-name HUD tag wrap
+noted above. Beyond that: a live 2-device pass, and card-back art.
