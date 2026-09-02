@@ -1,7 +1,7 @@
 /* Pseudo-classes the design expressed as style-hover/style-active (a
    Claude Design authoring convention, not real CSS) - reproduced here
    since inline React styles can't express :hover. Tailwind's base is
-   already pulled in via dom/RulesModal.css, loaded whenever the DOM
+   already pulled in via dom/modalChrome.css, loaded whenever the DOM
    overlay mounts - no need to re-import it here. */
 
 /* Outer sigil ring's continuous decorative spin - duration is
