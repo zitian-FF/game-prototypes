@@ -90,6 +90,12 @@ export type RedistributionLogEntry = {
   // one group per recipient you actually gave cards to - self-gifts are
   // excluded, per the GDD.
   groups: RedistributionLogGroup[];
+  // Whether this trick was won via a Double. Since self-delegation is
+  // illegal, this alone tells a 'distributed' entry's viewer whether
+  // they redistributed as the trick's winner (Single) or as a delegate
+  // acting on the winner's behalf (Double) - see
+  // ui/renderGameView.ts's renderRedistributionLogOverlay.
+  wonByDouble: boolean;
 };
 
 export type TurnPhase = 'play' | 'selectDelegate' | 'redistribute' | 'gameOver';

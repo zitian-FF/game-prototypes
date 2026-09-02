@@ -423,7 +423,12 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     players = players.map((p) =>
       p.id === gift.toPlayerId ? { ...p, hand: [...p.hand, ...gift.cardIds] } : p
     ) as GameState['players'];
-    const record = { cardIds: gift.cardIds, fromPlayerId: distributorId, trickNumber: state.trickNumber };
+    const record = {
+      cardIds: gift.cardIds,
+      fromPlayerId: distributorId,
+      trickNumber: state.trickNumber,
+      wonByDouble: state.lastTrickResult.wonByDouble,
+    };
     lastReceived[gift.toPlayerId] = record;
     receivedLog[gift.toPlayerId] = [...(receivedLog[gift.toPlayerId] ?? []), record];
   }
