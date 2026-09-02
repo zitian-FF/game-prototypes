@@ -15,7 +15,12 @@ import type { MaskedState, MaskedTrickPlay, RedistributionLogEntry, TurnPhase } 
 // would show up under `state.receivedLog[forSlot]`, which this function
 // deliberately skips.
 function buildDistributedEntries(state: GameState, forSlot: PlayerId): RedistributionLogEntry[] {
-  const byTrick = new Map<number, Map<PlayerId, CardId[]>>();
+  // `wonByDouble` is carried alongside the per-recipient map since it's a
+  // property of the trick itself, not of any individual gift - every
+  // record for a given trickNumber shares the same value (see
+  // rules/engine.ts's resolveRedistribution, which stamps it from that
+  // trick's own state.lastTrickResult onto every gift's record).
+  const byTrick = new Map<number, { wonByDouble: boolean; byRecipient: Map<PlayerId, CardId[]> }>();
 
   for (const [toPlayerIdKey, records] of Object.entries(state.receivedLog)) {
     const toPlayerId = Number(toPlayerIdKey) as PlayerId;
@@ -23,21 +28,22 @@ function buildDistributedEntries(state: GameState, forSlot: PlayerId): Redistrib
 
     for (const record of records ?? []) {
       if (record.fromPlayerId !== forSlot) continue;
-      let byRecipient = byTrick.get(record.trickNumber);
-      if (!byRecipient) {
-        byRecipient = new Map();
-        byTrick.set(record.trickNumber, byRecipient);
+      let trick = byTrick.get(record.trickNumber);
+      if (!trick) {
+        trick = { wonByDouble: record.wonByDouble, byRecipient: new Map() };
+        byTrick.set(record.trickNumber, trick);
       }
-      const existing = byRecipient.get(toPlayerId) ?? [];
-      byRecipient.set(toPlayerId, [...existing, ...record.cardIds]);
+      const existing = trick.byRecipient.get(toPlayerId) ?? [];
+      trick.byRecipient.set(toPlayerId, [...existing, ...record.cardIds]);
     }
   }
 
-  return [...byTrick.entries()].map(([trickNumber, byRecipient]) => ({
+  return [...byTrick.entries()].map(([trickNumber, trick]) => ({
     trickNumber,
     perspective: 'distributed',
     fromPlayer: toNetPlayerId(forSlot),
-    groups: [...byRecipient.entries()].map(([toPlayerId, cards]) => ({
+    wonByDouble: trick.wonByDouble,
+    groups: [...trick.byRecipient.entries()].map(([toPlayerId, cards]) => ({
       toPlayer: toNetPlayerId(toPlayerId),
       cards,
     })),
@@ -145,6 +151,7 @@ export function buildMaskedState(
     perspective: 'received',
     fromPlayer: toNetPlayerId(record.fromPlayerId),
     groups: [{ toPlayer: yourSlotNet, cards: record.cardIds }],
+    wonByDouble: record.wonByDouble,
   }));
   const distributedEntries = buildDistributedEntries(state, forSlot);
   // Exactly one entry per trick per viewer - never both perspectives for

@@ -46,6 +46,12 @@ export interface ReceivedRecord {
   readonly cardIds: CardId[];
   readonly fromPlayerId: PlayerId;
   readonly trickNumber: number;
+  // Whether the trick this gift was redistributed from was won via a
+  // Double - since self-delegation is illegal, this alone determines
+  // whether `fromPlayerId` was the trick's winner (Single) or a delegate
+  // acting on the winner's behalf (Double). See host/mask.ts's
+  // RedistributionLogEntry.wonByDouble for where this is surfaced.
+  readonly wonByDouble: boolean;
 }
 
 export type Phase =

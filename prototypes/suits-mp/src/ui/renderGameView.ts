@@ -753,11 +753,12 @@ function renderPreviousTrickOverlay(scene: Phaser.Scene, container: Phaser.GameO
 // play areas, nothing in this panel needs maskedPlayFaces' facedown
 // masking, since a viewer only ever sees cards they personally received
 // or personally distributed, never another player's redistribution.
-// "You redistributed" is shown uniformly for every 'distributed' entry,
-// including a delegate's - `fromPlayer === yourSlot` is true in both the
-// direct-win and delegated-win cases and nothing in MaskedState
-// distinguishes which happened, so there's no data to render "as
-// delegate" from (see BUILD_STATUS.md).
+// A 'distributed' entry reads "You redistributed as delegate" when
+// `wonByDouble` is true - self-delegation is illegal, so a Double win
+// means `fromPlayer` (always yourSlot for this perspective) was
+// necessarily a delegate acting on the actual winner's behalf, never the
+// winner themself. "You redistributed" (no qualifier) covers the Single-
+// win case, where the redistributor was necessarily the winner.
 function renderRedistributionLogOverlay(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState, text: TextFn): void {
   if (state.redistributionLog.length === 0) {
     text(CENTER_X, 100, 'No tricks resolved yet.', '#777777', 12);
@@ -788,7 +789,7 @@ function renderRedistributionLogOverlay(scene: Phaser.Scene, container: Phaser.G
       drawCardRow(scene, container, CENTER_X, y + CARD_DIMS_MINI.height / 2, faces, CARD_DIMS_MINI, logCardStyle);
       y += cardRowHeight;
     } else {
-      text(CENTER_X, y, 'You redistributed', '#dddddd', 11);
+      text(CENTER_X, y, entry.wonByDouble ? 'You redistributed as delegate' : 'You redistributed', '#dddddd', 11);
       y += 18;
       for (const group of entry.groups) {
         text(CENTER_X, y, playerLabelFor(state, group.toPlayer), '#cccccc', 11);
