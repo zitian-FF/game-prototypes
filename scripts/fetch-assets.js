@@ -35,9 +35,8 @@ const looseDir = path.join(assetsSrcDir, 'loose');
 mkdirSync(cacheDir, { recursive: true });
 
 const previousEtag = existsSync(etagFile) ? readFileSync(etagFile, 'utf8').trim() : null;
-// Optional 3rd arg overrides the R2 object name for prototypes whose art
-// was uploaded under a name that doesn't match "<name>_assets.zip" (e.g.
-// suits-mp's card art, uploaded as "Suits-of-Madness_assets.zip").
+// Optional 3rd arg overrides the R2 object name for a prototype whose art
+// was uploaded under a name that doesn't match "<name>_assets.zip".
 const zipObjectName = process.argv[3] || `${name}_assets.zip`;
 const zipUrl = `${BUCKET_URL}/${zipObjectName}`;
 
@@ -59,8 +58,8 @@ if (!response.ok) {
         `Expected naming convention: <name>_assets.zip (underscore, not\n` +
         `hyphen). For this prototype, that's: ${zipObjectName}\n\n` +
         `Upload it to the public bucket:\n${BUCKET_URL}\n\n` +
-        `If the zip is intentionally named differently (like suits-mp's),\n` +
-        `pass the actual object name as a third argument:\n` +
+        `If the zip is intentionally named differently, pass the actual\n` +
+        `object name as a third argument:\n` +
         `npm run fetch:assets ${name} <actual-object-name>.zip`,
     );
   }

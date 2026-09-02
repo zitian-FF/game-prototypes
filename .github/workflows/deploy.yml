@@ -53,14 +53,10 @@ jobs:
       - name: Pack digger assets
         run: npm run pack:assets digger
 
-      # suits-mp's card art was uploaded to R2 under "Suits-of-Madness_assets.zip"
-      # rather than the "<name>_assets.zip" convention scripts/fetch-assets.js
-      # defaults to (see its optional 3rd-arg override), since that's the
-      # object name it was actually uploaded under.
       - name: Get suits-mp art ETag
         id: suits-mp-etag
         run: |
-          etag=$(curl -fsSI "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/Suits-of-Madness_assets.zip" \
+          etag=$(curl -fsSI "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/suits-mp_assets.zip" \
             | grep -i '^etag:' | sed -E 's/[Ee][Tt][Aa][Gg]: *"?([^"\r]*)"?.*/\1/')
           echo "etag=$etag" >> "$GITHUB_OUTPUT"
 
@@ -73,7 +69,7 @@ jobs:
           key: suits-mp-art-${{ steps.suits-mp-etag.outputs.etag }}
 
       - name: Fetch suits-mp assets
-        run: npm run fetch:assets suits-mp Suits-of-Madness_assets.zip
+        run: npm run fetch:assets suits-mp
 
       - name: Pack suits-mp assets
         run: npm run pack:assets suits-mp
