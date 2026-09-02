@@ -1,9 +1,48 @@
 import { cardById } from '../rules/cards';
 import { activePlayerId, currentRequiredSuit } from '../rules/engine';
-import type { GameState, God, PlayerId } from '../rules/types';
+import type { CardId, GameState, God, PlayerId } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
-import type { MaskedState, MaskedTrickPlay, TurnPhase } from '../net/actions';
+import type { MaskedState, MaskedTrickPlay, RedistributionLogEntry, TurnPhase } from '../net/actions';
+
+// Every trick where `forSlot` was the actual redistributor (winner of a
+// Single, or delegate after a Double) - grouped by trick, then by
+// recipient, since one redistribute action can gift multiple players
+// within the same trick and the GDD wants one log entry per trick, not
+// one per recipient. Self-gifts are excluded (per the GDD, a
+// distributor's entry never repeats cards assigned back to themself) -
+// `state.receivedLog` is keyed by *recipient* PlayerId, so a self-gift
+// would show up under `state.receivedLog[forSlot]`, which this function
+// deliberately skips.
+function buildDistributedEntries(state: GameState, forSlot: PlayerId): RedistributionLogEntry[] {
+  const byTrick = new Map<number, Map<PlayerId, CardId[]>>();
+
+  for (const [toPlayerIdKey, records] of Object.entries(state.receivedLog)) {
+    const toPlayerId = Number(toPlayerIdKey) as PlayerId;
+    if (toPlayerId === forSlot) continue;
+
+    for (const record of records ?? []) {
+      if (record.fromPlayerId !== forSlot) continue;
+      let byRecipient = byTrick.get(record.trickNumber);
+      if (!byRecipient) {
+        byRecipient = new Map();
+        byTrick.set(record.trickNumber, byRecipient);
+      }
+      const existing = byRecipient.get(toPlayerId) ?? [];
+      byRecipient.set(toPlayerId, [...existing, ...record.cardIds]);
+    }
+  }
+
+  return [...byTrick.entries()].map(([trickNumber, byRecipient]) => ({
+    trickNumber,
+    perspective: 'distributed',
+    fromPlayer: toNetPlayerId(forSlot),
+    groups: [...byRecipient.entries()].map(([toPlayerId, cards]) => ({
+      toPlayer: toNetPlayerId(toPlayerId),
+      cards,
+    })),
+  }));
+}
 
 function turnPhaseFor(state: GameState): TurnPhase {
   switch (state.phase) {
@@ -101,6 +140,18 @@ export function buildMaskedState(
   }
 
   const receivedByMe = state.receivedLog[forSlot] ?? [];
+  const receivedEntries: RedistributionLogEntry[] = receivedByMe.map((record) => ({
+    trickNumber: record.trickNumber,
+    perspective: 'received',
+    fromPlayer: toNetPlayerId(record.fromPlayerId),
+    groups: [{ toPlayer: yourSlotNet, cards: record.cardIds }],
+  }));
+  const distributedEntries = buildDistributedEntries(state, forSlot);
+  // Exactly one entry per trick per viewer - never both perspectives for
+  // the same trick (see this function's own doc comment and
+  // buildDistributedEntries's) - so a plain concat+sort is enough, no
+  // dedupe/merge needed.
+  const redistributionLog = [...receivedEntries, ...distributedEntries].sort((a, b) => a.trickNumber - b.trickNumber);
 
   return {
     yourSlot: yourSlotNet,
@@ -117,12 +168,7 @@ export function buildMaskedState(
     requiredSuit: currentRequiredSuit(state),
     redistribution,
     delegateChoices,
-    redistributionLog: receivedByMe.map((record) => ({
-      trickNumber: record.trickNumber,
-      toPlayer: yourSlotNet,
-      fromPlayer: toNetPlayerId(record.fromPlayerId),
-      count: record.cardIds.length,
-    })),
+    redistributionLog,
     winner: state.winner ? { team: state.winner.team, reason: state.winner.reason, detail: state.winner.detail } : null,
   };
 }
