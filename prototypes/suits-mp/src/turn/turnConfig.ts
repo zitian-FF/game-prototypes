@@ -15,14 +15,24 @@ export async function fetchTurnIceServers(): Promise<RTCIceServer[] | undefined>
 
   try {
     const response = await fetch(TURN_WORKER_URL, { signal: controller.signal });
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      console.warn(`[suits-mp turn] worker responded with status ${response.status} - falling back to STUN-only`);
+      return undefined;
+    }
 
     const data: unknown = await response.json();
     const iceServers = (data as { iceServers?: unknown }).iceServers;
-    if (!Array.isArray(iceServers) || iceServers.length === 0) return undefined;
+    if (!Array.isArray(iceServers) || iceServers.length === 0) {
+      console.warn('[suits-mp turn] worker response had no usable iceServers - falling back to STUN-only');
+      return undefined;
+    }
 
     return iceServers as RTCIceServer[];
-  } catch {
+  } catch (err) {
+    // Includes the AbortController firing on timeout - `fetch` rejects with
+    // an AbortError in that case, indistinguishable here from a genuine
+    // network failure, which is fine: both fall back the same way.
+    console.warn('[suits-mp turn] fetch failed or timed out - falling back to STUN-only:', err);
     return undefined;
   } finally {
     clearTimeout(timer);

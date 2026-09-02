@@ -1,79 +1,139 @@
 ## Current milestone
 
-The Redistribution Log's "You redistributed" text now distinguishes a
-Double-win delegate from a direct Single-win redistributor - the gap
-Brief D flagged honestly rather than faking. Version stamp counter
-unchanged (`8`), no deploy has run yet.
+Investigated a live-device bug report (real 2-device test: joiner hangs
+indefinitely on the "Crossing over..." Connecting screen, with zero
+network activity for the TURN worker or any Nostr relay). Found and
+fixed a real, concrete gap that produces exactly this symptom - the
+join/host network-setup code had no error handling at all, so any
+exception thrown during setup would silently hang the UI forever rather
+than surface an error. Could not reproduce the exact reported symptom on
+a real device (none available in this sandbox), so this is reported as a
+strong, well-evidenced fix for a real bug class, not a confirmed
+root-cause resolution - see "Known issues" for exactly what remains
+unverified. Version stamp counter unchanged (`8`), no deploy has run yet.
 
 ## What was implemented
 
-- **`ReceivedRecord` gained `wonByDouble: boolean`** (`rules/types.ts`),
-  stamped in `rules/engine.ts`'s `resolveRedistribution` from that
-  trick's own `state.lastTrickResult.wonByDouble` onto every gift record
-  it writes into `receivedLog` - `lastTrickResult` is guaranteed non-null
-  at that point in the function (it already throws earlier if it's
-  missing), so no new null-check was needed.
-- **`RedistributionLogEntry` gained the same field** (`net/actions.ts`),
-  threaded through `host/mask.ts`: received entries copy it straight
-  from their source record; `buildDistributedEntries` carries it
-  alongside each trick's per-recipient map (one `wonByDouble` per trick,
-  not per gift, since it's a property of the trick itself - every record
-  for a given `trickNumber` already shares the same value by
-  construction).
-- **`ui/renderGameView.ts`'s `renderRedistributionLogOverlay`** now
-  reads `entry.wonByDouble` for `'distributed'` entries: "You
-  redistributed as delegate" when true, "You redistributed" when false.
-  The outdated comment explaining why this couldn't be shown is replaced
-  with one explaining why it now can (self-delegation is illegal, so
-  `wonByDouble` alone determines which case a `'distributed'` entry is -
-  the reasoning restated directly in the brief).
-- No change to the `'received'` side's text, the grouping logic, or the
-  self-gift exclusion - all untouched, exactly as scoped.
+- **Root cause investigation**: traced the full call path from the DOM
+  Lobby's join button (`LobbyFlow.tsx`'s `onSubmitJoin`) through
+  `LandingScene` -> `ConnectingScene.create()` -> `data.getIceServers()`
+  -> `createNetworkRoom()`/`createNetworkActions()`. The handoff itself
+  is structurally correct (`BootData`'s `getIceServers` function
+  reference survives every `{ ...data, ... }` spread across scene
+  transitions unchanged - already proven working via `HostLobbyScene`'s
+  identical use of the same field, verified for real in an earlier
+  session's Playwright test). The real gap: **the entire async setup
+  chain had no error handling.** `ConnectingScene`'s
+  `data.getIceServers().then(...)` had no `.catch()`, and
+  `HostLobbyScene`'s `void this.setUpRoom(data)` (an async method) was
+  fired-and-forgotten with no `.catch()` either. Any exception thrown
+  anywhere in that chain - `data.getIceServers` not actually being
+  callable, or (more plausibly on a real device/browser) Trystero's
+  `joinRoom()` throwing synchronously for some environment-specific
+  reason - would silently reject an unhandled promise: the busy
+  "Crossing over..."/"Setting up room..." screen stays up forever, no
+  error ever shows, and since the throw can happen before any relay
+  connection is even attempted, zero network activity is exactly what
+  DevTools would show. This matches every symptom in the report:
+  indefinite hang, a small number of console errors (the unhandled
+  rejection itself), and no TURN/relay network entries.
+- **`ConnectingScene.create()`**: the `data.getIceServers()` call is now
+  wrapped in `try { ... } catch` (catches a synchronous throw calling
+  `getIceServers()` itself) around a `.then().catch()` chain (catches
+  both an async rejection and any exception thrown synchronously inside
+  the success callback, e.g. from `createNetworkRoom`/
+  `createNetworkActions`). Any caught exception now calls
+  `fail('connectionFailed')` - closest existing error bucket, real
+  detail logged to console alongside it - so a setup exception becomes a
+  visible, actionable error screen instead of a silent permanent hang.
+- **`HostLobbyScene.create()`**: `void this.setUpRoom(data)` gained a
+  `.catch()` for the same reason. No host-side error screen exists to
+  reuse (the DOM store has no `showHostError` equivalent), so this falls
+  back to `Landing` - an existing, safe escape hatch - rather than
+  inventing new UI for a bug-fix task.
+- **Explicit console logging added at every step of the join/host
+  sequence**, per the task's own request, independent of whether it
+  turns out to be the actual root cause: TURN fetch start (implicit via
+  the calling log)/success/failure/timeout (`turn/turnConfig.ts`), room
+  creation calls and `onJoinError` (`net/room.ts`), ICE-servers
+  resolution, room creation, peer-join events, `hostUI` messages, and
+  the connection timeout firing (`ConnectingScene.ts`); the equivalent
+  host-side steps (ICE fetch, room creation, code-collision retries)
+  in `HostLobbyScene.ts`. All prefixed `[suits-mp join]`/`[suits-mp
+  host]`/`[suits-mp turn]`/`[suits-mp room]` so a future live-device
+  session's console tells the whole story without needing to read the
+  Network tab by hand.
 
 ## Key technical decisions
 
-- **`wonByDouble` lives on the trick-level record, not derived
-  elsewhere**: the brief specified stamping it directly from
-  `state.lastTrickResult` at the exact point each gift record is
-  constructed, rather than trying to look it up later from `trickNumber`
-  alone (there's no historical per-trick result store to look it up
-  from - only the single most recent `lastTrickResult` ever exists at
-  any moment, which is exactly the gap this brief closes by persisting
-  the one bit of it that matters into `receivedLog`).
+- **Reused the existing `'connectionFailed'` error bucket for an
+  unexpected setup exception**, rather than inventing a 6th `ErrorKind`/
+  design-copy variant for "unexpected error" - its existing copy ("This
+  looks like a network issue on one side") is a reasonable, if slightly
+  generic, description of an unexpected connection-setup failure, and
+  adding new user-facing design copy wasn't asked for in a bug-fix task.
+  The real exception detail still reaches the console via the new
+  logging, so nothing about the actual cause is lost even though the
+  user-facing text is a shared bucket.
+- **Did not attempt to fully redesign `HostLobbyScene.refreshRoomCode()`'s
+  error handling** even though it has the same class of gap (a
+  `try/finally` with no `catch`) - it's a user-initiated, in-lobby retry
+  action rather than the initial boot-time setup this bug report is
+  about, and a silent failure there just leaves the refresh button
+  clickable again rather than hanging the whole screen. Flagging it
+  below as a smaller follow-up rather than expanding this bug-fix's
+  scope.
 
 ## Open questions
 
-None - the brief's own reasoning (self-delegation being illegal makes
-`wonByDouble` fully determine the distinction) left nothing ambiguous to
-resolve.
+None - the investigation either confirmed or ruled out each theory
+considered (see "Known issues" for what remains genuinely unconfirmed
+without a real device, as opposed to unresolved ambiguity in this task).
 
 ## Known issues
 
-- Carried over, still true, untouched: facedown-card masking leak at the
-  payload level (`host/mask.ts`, unrelated to this brief); no card-back
-  art yet; Google Fonts fail to load in this dev sandbox's network
-  environment (cosmetic fallback only); a live 2-device test is still
-  needed to confirm a real second peer's name/log entries; the bottom
-  HUD name tag can still wrap for a long real name; no scrolling for a
-  long redistribution log (both flagged in the previous brief, unrelated
-  to this one).
-- **Not verified through genuine bot-driven Double-win-then-delegate
-  gameplay** - same limitation as Brief D: reaching a real completed
-  trick with a real delegated redistribution via Playwright-driven card
-  taps proved unreliable in earlier sessions. Verified via a synthetic-
-  `MaskedState` harness (deleted before finishing, per this engagement's
-  established pattern) covering both a `wonByDouble: false` entry
-  ("You redistributed") and a `wonByDouble: true` entry ("You
-  redistributed as delegate", with two recipients, matching Brief D's
-  existing multi-recipient grouping) - both rendered correctly with no
-  console errors. No real delegate case was confirmed via genuine
-  gameplay in this session.
+- **The exact root cause is not confirmed** - this sandbox cannot reach
+  the pinned Nostr relays or the TURN worker at all (confirmed again
+  this session: `fetch()` to the TURN worker fails outright here), so
+  the *specific* failure mode reported (indefinite hang, zero network
+  entries at all, not even a failed one) could not be reproduced. What
+  *was* verified for real in this sandbox: the full join sequence, now
+  with the new logging, still correctly falls through TURN-fetch-failure
+  -> STUN-only fallback -> real room creation -> real 8-second timeout
+  -> a real `notFound` error screen, with no regression from the
+  try/catch changes. The fix targets a concrete, verified-real gap
+  (no error handling around network setup) that would produce exactly
+  the reported symptom if anything in that chain ever threw - which is
+  a plausible explanation given Trystero/WebRTC can behave differently
+  across real browsers/devices than in this sandbox - but whether that
+  exact throw is what actually happened on the reporting user's device
+  could not be confirmed without their own follow-up test.
+- **This bug-fix's real value going forward is the diagnostics**: if the
+  same hang recurs on a real device with this fix deployed, either (a) it
+  no longer hangs - the try/catch caught something and shows a real
+  error screen, which is itself the answer - or (b) it still hangs, but
+  the console now shows exactly which logged step was the last one to
+  fire, immediately narrowing down where the *actual* hang is (e.g., if
+  `[suits-mp join] attempting code ... fetching ICE servers...` is the
+  last line and nothing else follows, the hang is inside
+  `getIceServers()`/`fetchTurnIceServers()` itself, which would point at
+  something even the try/catch can't help with - e.g. a truly-unsettled
+  promise rather than a thrown exception).
+- `HostLobbyScene.refreshRoomCode()` has the same class of gap
+  (`try/finally`, no `catch`) - not touched, see "Key technical
+  decisions".
+- Carried over, still true, untouched from prior briefs: facedown-card
+  masking leak (`host/mask.ts`); no card-back art yet; the bottom HUD
+  name tag can wrap for a long real name; no scrolling for a long
+  redistribution log.
 
 ## Next proposed step
 
-A live multi-device pass or a longer bot-driven playtest that actually
-reaches a delegated Double win, to confirm this text against genuine
-engine output rather than only the synthetic case checked this session.
-Beyond that, the same carried-over items as the previous brief: log
-scrolling if entry count becomes a real problem, the wireframe's "Show N
-recipients" collapse affordance, card-back art, and a live 2-device pass.
+Deploy this fix and have the user retry the exact same real 2-device
+join scenario with DevTools open and the console visible from the start
+(not just the Network tab) - the new `[suits-mp ...]` logs should make
+the actual failure point immediately obvious this time, whether that's
+the try/catch now catching something real (bug plausibly fixed) or the
+logs stopping at a specific line (narrows the remaining investigation
+precisely). If it's the latter, the next step depends entirely on which
+line was last.
