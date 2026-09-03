@@ -71,20 +71,17 @@ export interface PendingBlocker {
 
 export interface WinInfo {
   readonly team: Team | null;
-  // Single-valued for now: the trick-40 forced end (and the 'trick40'/
-  // 'stalemate' reasons that only ever existed to support it) was removed
-  // per GDD v2's "No Trick Limit" - there is no trick limit or forced end
-  // condition any more, so trickNumber climbs indefinitely and the only way
-  // a game ends is checkSuitCompletion() finding a completed Deity Suit.
-  // Kept as a discriminant (not inlined into `team`/`detail`) since a
-  // future reason may need to exist - notably, GDD's Standard Win
-  // Condition also calls for a stalemate when both Teams complete a Deity
-  // Suit in the same redistribution, which checkSuitCompletion() does not
-  // currently detect (it returns the first completed player found, with no
-  // simultaneous-completion check at all). That gap predates this removal
-  // and is a separate, unimplemented mechanic, not something this removal
-  // touches - see BUILD_STATUS.md.
-  readonly reason: 'suit';
+  // 'suit': the Standard Win Condition - one or more players (necessarily
+  // all on the same Team, see checkSuitCompletion()) completed their Deity
+  // Suit and no opposing-Team player did in the same redistribution.
+  // 'stalemate': GDD's Standard Win Condition also requires this when BOTH
+  // Teams have at least one completing player in the same redistribution -
+  // team is null in this case. (Unrelated to the old trick-40 forced end's
+  // own tie-break reason, which used the same string but a different
+  // mechanic entirely - that was removed along with trick-40 itself, per
+  // GDD v2's "No Trick Limit". This 'stalemate' is GDD's Standard Win
+  // Condition simultaneous-completion case, freshly implemented.)
+  readonly reason: 'suit' | 'stalemate';
   readonly detail: string;
 }
 
