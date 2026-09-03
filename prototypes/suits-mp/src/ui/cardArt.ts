@@ -391,9 +391,9 @@ export function buildCard(scene: Phaser.Scene, god: God, rank: Rank, dims: CardD
   const frame = scene.add.image(0, 0, frameKey(god)).setDisplaySize(dims.width, dims.height);
   container.add(frame);
 
-  const isAce = rank === 'Ace';
-  const artKey = isAce ? faceKey(god) : symbolKey(god);
-  const safeRect = isAce ? ACE_BLEED : SYMBOL_SAFE;
+  const isDeityCard = rank === 'DeityCard';
+  const artKey = isDeityCard ? faceKey(god) : symbolKey(god);
+  const safeRect = isDeityCard ? ACE_BLEED : SYMBOL_SAFE;
   if (scene.textures.exists(artKey)) {
     const art = scene.add.image(0, 0, artKey);
     const srcFrame = art.frame;
@@ -403,7 +403,7 @@ export function buildCard(scene: Phaser.Scene, god: God, rank: Rank, dims: CardD
     container.add(art);
   }
 
-  if (!isAce) {
+  if (!isDeityCard) {
     const rankCenterX = (RANK_SAFE.x + RANK_SAFE.w / 2 - AUTH_W / 2) * k;
     const rankCenterY = (RANK_SAFE.y + RANK_SAFE.h / 2 - AUTH_H / 2) * k;
     const plateW = RANK_SAFE.w * k;

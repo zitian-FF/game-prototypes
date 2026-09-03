@@ -1,6 +1,7 @@
 import { ALL_GODS, CARD_DEFS, GOD_DISPLAY_NAME, GOD_TEAM, cardById, cardId, suitAfterSteps } from './cards';
 import type {
   CardId,
+  DeityCardState,
   ForcedDeal,
   GameState,
   God,
@@ -194,7 +195,12 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
 
   const newHand = player.hand.filter((id) => !cardIds.includes(id));
   const newPlayers = state.players.map((p) => (p.id === playerId ? { ...p, hand: newHand } : p)) as GameState['players'];
-  const newPlay: TrickPlay = { playerId, cardIds, kind, requiredSuit };
+  // Computed against state.plays - this play's own earlier-position
+  // history in the trick - before it's appended below, so a Deity Card's
+  // Dormant/Powered state is fixed at the moment it's played and never
+  // reconsidered once a later 10 (or later Deity Card) joins the trick.
+  const deityCardState = computeDeityCardState(kind, cardIds, state.plays);
+  const newPlay: TrickPlay = { playerId, cardIds, kind, requiredSuit, deityCardState };
   const newPlays = [...state.plays, newPlay];
 
   if (newPlays.length < 4) {
@@ -234,30 +240,33 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
 
 // --- Trick resolution -----------------------------------------------------
 
-function hasTenInTrick(plays: readonly TrickPlay[]): boolean {
-  return plays.some((p) => p.cardIds.some((id) => cardById(id).rank === 10));
+// A play's Dormant/Powered state, fixed at the moment it's made. `priorPlays`
+// must be exactly this trick's plays strictly before this one - see
+// playCard()'s call site, the only caller. Null for anything that isn't a
+// face-up Deity Card single/double (offsuit plays are always hidden and
+// scored 0, per GDD, so their contents never matter here).
+function computeDeityCardState(kind: PlayKind, cardIds: readonly CardId[], priorPlays: readonly TrickPlay[]): DeityCardState | null {
+  if (kind === 'offsuit') return null;
+  if (cardById(cardIds[0]).rank !== 'DeityCard') return null;
+  const poweredByPriorTen = priorPlays.some((p) => p.cardIds.some((id) => cardById(id).rank === 10));
+  return poweredByPriorTen ? 'powered' : 'dormant';
 }
 
-function rankValue(id: CardId, hasTen: boolean): number {
-  const rank = cardById(id).rank;
-  if (rank === 'Ace') return hasTen ? 11 : 1;
+function scoreOf(play: TrickPlay): number {
+  if (play.kind === 'offsuit') return 0;
+  const rank = cardById(play.cardIds[0]).rank;
+  if (rank === 'DeityCard') return play.deityCardState === 'powered' ? 11 : 1;
   return rank;
 }
 
-function scoreOf(play: TrickPlay, hasTen: boolean): number {
-  if (play.kind === 'offsuit') return 0;
-  return rankValue(play.cardIds[0], hasTen);
-}
-
 export function resolveTrick(plays: readonly TrickPlay[]): TrickResult {
-  const hasTen = hasTenInTrick(plays);
   const doublePlays = plays.filter((p) => p.kind === 'double');
   const candidates = doublePlays.length > 0 ? doublePlays : plays;
 
   let best = candidates[0];
-  let bestScore = scoreOf(best, hasTen);
+  let bestScore = scoreOf(best);
   for (let i = 1; i < candidates.length; i++) {
-    const s = scoreOf(candidates[i], hasTen);
+    const s = scoreOf(candidates[i]);
     if (s >= bestScore) {
       best = candidates[i];
       bestScore = s;
@@ -274,7 +283,7 @@ function godCardIds(god: God): CardId[] {
 }
 
 // GDD's Standard Win Condition: "If all players who completed their Deity
-// Suit belong to the same Team, they reveal their Deity Cards and that
+// Suit belong to the same Team, they reveal their Deity Identities and that
 // Team wins. If both Teams have at least one player complete their Deity
 // Suit during the same redistribution, the game ends in a stalemate with
 // no winning Team." So this checks every player, not just the first
