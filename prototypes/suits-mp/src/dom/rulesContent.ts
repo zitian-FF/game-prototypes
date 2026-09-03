@@ -114,13 +114,13 @@ export const SECTIONS: RuleSection[] = [
     ],
   },
   {
-    id: 'forty',
+    id: 'noLimit',
     tone: VIOLET,
-    title: 'The Fortieth Trick',
-    kicker: 'Forced ending',
+    title: 'Until the Suit is Claimed',
+    kicker: 'No trick limit',
     body: [
-      'Should no suit be completed by the fortieth trick, the rite is closed by count. Each covenant is judged by its better player’s completion count, and the higher takes the victory.',
-      'If those counts are equal, the other player of each covenant is compared. Should all counts match, the rite ends in stalemate.',
+      'No trick limit binds this rite. Play continues, turning after turning, until a Deity Suit is gathered in full — however long the turning takes.',
+      'Should both covenants complete a Deity Suit within the same offering, the rite grants no victory; it ends in stalemate, and neither claims it.',
     ],
   },
 ];

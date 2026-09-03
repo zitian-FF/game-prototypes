@@ -9,13 +9,10 @@ import type {
   PlayerState,
   Rank,
   RedistributionGift,
-  Team,
   TrickPlay,
   TrickResult,
   WinInfo,
 } from './types';
-
-const TRICK_40_FORCED_END = 40;
 
 // --- Randomness -------------------------------------------------------
 // Always genuinely random for real play. Forced deals (debug-only) bypass
@@ -446,25 +443,6 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     };
   }
 
-  // Trick-40 forced end (replaces the old role-guess win condition): if no
-  // suit was completed by the end of trick 40's own redistribution, the
-  // game ends automatically here - no player action triggers it, and it
-  // fires identically regardless of whether this redistribution was
-  // self-performed or delegated. See resolveTrick40ForcedEnd below.
-  if (state.trickNumber === TRICK_40_FORCED_END) {
-    return {
-      ...state,
-      players,
-      lastReceived,
-      receivedLog,
-      phase: 'gameOver',
-      pendingBlocker: null,
-      pendingWinnerId: null,
-      pendingDistributorId: null,
-      winner: resolveTrick40ForcedEnd(players),
-    };
-  }
-
   const newLeaderId = state.pendingDistributorId;
   return {
     ...state,
@@ -477,47 +455,6 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     pendingDistributorId: null,
     phase: 'blocker',
     pendingBlocker: { forPlayerId: newLeaderId, next: 'turn' },
-  };
-}
-
-// --- Trick-40 forced end ---------------------------------------------------
-
-function suitCompletionCount(player: PlayerState): number {
-  return godCardIds(player.god).filter((id) => player.hand.includes(id)).length;
-}
-
-// Chaos = Cthulhu + Nyarlathotep, Cosmos = Shub-Niggurath + Yog-Sothoth
-// (same fixed pairing as GOD_TEAM). Compares each team's best player's
-// suit-completion count, then their other player's as a tiebreak, then
-// falls back to a stalemate. See root BRIEF.md item 2 of the follow-up
-// task for the exact rule this implements.
-function resolveTrick40ForcedEnd(players: readonly PlayerState[]): WinInfo {
-  const byTeam: Record<Team, PlayerState[]> = { Chaos: [], Cosmos: [] };
-  for (const p of players) byTeam[GOD_TEAM[p.god]].push(p);
-
-  const chaosCounts = byTeam.Chaos.map(suitCompletionCount).sort((a, b) => b - a);
-  const cosmosCounts = byTeam.Cosmos.map(suitCompletionCount).sort((a, b) => b - a);
-
-  if (chaosCounts[0] !== cosmosCounts[0]) {
-    const winningTeam: Team = chaosCounts[0] > cosmosCounts[0] ? 'Chaos' : 'Cosmos';
-    return {
-      team: winningTeam,
-      reason: 'trick40',
-      detail: `Trick 40 ended with no suit completed - ${winningTeam}'s best player held more of their own suit (${Math.max(chaosCounts[0], cosmosCounts[0])} vs ${Math.min(chaosCounts[0], cosmosCounts[0])}).`,
-    };
-  }
-  if (chaosCounts[1] !== cosmosCounts[1]) {
-    const winningTeam: Team = chaosCounts[1] > cosmosCounts[1] ? 'Chaos' : 'Cosmos';
-    return {
-      team: winningTeam,
-      reason: 'trick40',
-      detail: `Trick 40 ended with no suit completed - both teams tied on their best player, ${winningTeam}'s other player held more of their own suit (${Math.max(chaosCounts[1], cosmosCounts[1])} vs ${Math.min(chaosCounts[1], cosmosCounts[1])}).`,
-    };
-  }
-  return {
-    team: null,
-    reason: 'stalemate',
-    detail: 'Trick 40 ended with no suit completed and both teams tied on both players.',
   };
 }
 

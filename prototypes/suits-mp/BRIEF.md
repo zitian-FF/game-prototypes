@@ -264,20 +264,34 @@ drift. Every trick after the first is unaffected: its leader (whoever
 performed the prior redistribution) may open with any single card, same
 as before.
 
-### Trick-40 forced end (replaces role-guess)
+### Trick-40 forced end (removed)
 
 A follow-up task removed the original design doc's trick-40+ role-guess
 win condition entirely from suits-mp (the `declareRoleGuess` action, the
 `roleGuess` phase/turnPhase, `PlayerState.guessUsed`, all gone) and
 replaced it with an automatic forced end, computed host-side with no
-player action involved: `redistribute()` now checks, right after
-finishing trick 40's own redistribution (whether self-performed or
-delegated) and finding no suit completed, which team's **best** player
-(by count of their own suit's cards currently held) is ahead; ties break
-on each team's **other** player; a full tie is a stalemate. See
-`rules/engine.ts`'s `resolveTrick40ForcedEnd`. `WinInfo.reason` gained a
-`'trick40'` value for this (distinct from `'suit'`); `'stalemate'` now
-means only this specific tie, not the old role-guess-exhaustion stalemate.
+player action involved: `redistribute()` checked, right after finishing
+trick 40's own redistribution (whether self-performed or delegated) and
+finding no suit completed, which team's **best** player (by count of
+their own suit's cards currently held) was ahead; ties broke on each
+team's **other** player; a full tie was a stalemate (`rules/engine.ts`'s
+`resolveTrick40ForcedEnd`, `WinInfo.reason`'s `'trick40'` value).
+
+A later follow-up task removed this too, per GDD v2's "No Trick Limit"
+section ("There is no trick limit or forced end condition... A forced
+ending may be reconsidered only if future playtesting data shows that
+one is needed"): `resolveTrick40ForcedEnd` and the `'trick40'`/
+`'stalemate'` reasons are gone, `trickNumber` now climbs indefinitely,
+and `dom/rulesContent.ts`'s "The Fortieth Trick" Rules-modal section was
+replaced with copy describing the actual current rule (no trick limit;
+stalemate only via both covenants completing a Deity Suit in the same
+offering). See BUILD_STATUS.md for that removal task's own notes,
+including a still-open gap this surfaced: `checkSuitCompletion()` (the
+Standard Win Condition check) does not itself detect two players from
+opposing Teams completing simultaneously - it returns whichever
+completed player it finds first - so genuine simultaneous-completion
+stalemate detection remains unimplemented, not just newly-unreachable
+from this removal.
 
 ## AI bot mode
 
@@ -323,8 +337,10 @@ strategy, explicitly deferred to a future task):
   network; a host-local bot already has full canonical-state access, so
   it's free to use the engine's actual, more permissive pool exactly as
   the brief for this behavior specified.
-- Bots that win via suit completion or via the trick-40 forced end just
-  end the game like anyone else - no special-casing.
+- Bots that win via suit completion just end the game like anyone else -
+  no special-casing. (The trick-40 forced end this line used to also
+  mention was removed by a later follow-up task - see "Trick-40 forced
+  end (removed)" above.)
 
 **Bot pacing (follow-up task):** each bot step is delayed by
 `tune.json`'s `botActionDelayMs` (default 1000ms, tunable via `?debug=1`
