@@ -273,18 +273,30 @@ function godCardIds(god: God): CardId[] {
   return CARD_DEFS.filter((c) => c.god === god).map((c) => c.id);
 }
 
+// GDD's Standard Win Condition: "If all players who completed their Deity
+// Suit belong to the same Team, they reveal their Deity Cards and that
+// Team wins. If both Teams have at least one player complete their Deity
+// Suit during the same redistribution, the game ends in a stalemate with
+// no winning Team." So this checks every player, not just the first
+// completer found - a single pass has to know whether an opposing-Team
+// completer exists before it can declare either a winner or a stalemate.
 export function checkSuitCompletion(players: readonly PlayerState[]): WinInfo | null {
-  for (const p of players) {
-    const suitIds = godCardIds(p.god);
-    if (suitIds.every((id) => p.hand.includes(id))) {
-      return {
-        team: GOD_TEAM[p.god],
-        reason: 'suit',
-        detail: `${p.name} collected all 10 ${GOD_DISPLAY_NAME[p.god]} cards.`,
-      };
-    }
+  const completers = players.filter((p) => godCardIds(p.god).every((id) => p.hand.includes(id)));
+  if (completers.length === 0) return null;
+
+  const teams = new Set(completers.map((p) => GOD_TEAM[p.god]));
+  if (teams.size > 1) {
+    const summary = completers.map((p) => `${p.name} (${GOD_DISPLAY_NAME[p.god]})`).join(' and ');
+    return {
+      team: null,
+      reason: 'stalemate',
+      detail: `Stalemate: ${summary} each completed a Deity Suit in the same redistribution, on opposing Teams.`,
+    };
   }
-  return null;
+
+  const [winningTeam] = teams;
+  const detail = completers.map((p) => `${p.name} collected all 10 ${GOD_DISPLAY_NAME[p.god]} cards.`).join(' ');
+  return { team: winningTeam, reason: 'suit', detail };
 }
 
 // --- Trick result -> redistribution handoff -------------------------------
