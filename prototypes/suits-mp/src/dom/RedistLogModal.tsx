@@ -67,7 +67,7 @@ function CardBadge({ cardId }: { cardId: CardId }): JSX.Element {
           color: 'oklch(0.9 0.05 90)',
         }}
       >
-        {card.rank === 'Ace' ? 'A' : card.rank}
+        {card.rank === 'DeityCard' ? '★' : card.rank}
       </span>
     </div>
   );

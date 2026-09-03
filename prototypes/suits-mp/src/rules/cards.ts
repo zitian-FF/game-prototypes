@@ -1,4 +1,4 @@
-import type { CardDef, CardId, God, Rank, Team } from './types';
+import type { CardDef, CardId, DeityCardState, God, Rank, Team } from './types';
 
 // Reference data from the design document's card list table. Card names are
 // flavour text only; they carry no mechanical meaning beyond god + rank.
@@ -13,7 +13,7 @@ const CARD_NAMES: Record<God, ReadonlyArray<readonly [Rank, string]>> = {
     [8, 'Abyssal Chant'],
     [9, 'Eye of the Sleeper'],
     [10, 'The Great Slumber'],
-    ['Ace', 'Heart of Cthulhu'],
+    ['DeityCard', 'Cthulhu'],
   ],
   Nyarlathotep: [
     [2, 'Whispering Masks'],
@@ -25,7 +25,7 @@ const CARD_NAMES: Record<God, ReadonlyArray<readonly [Rank, string]>> = {
     [8, 'Thousand Forms'],
     [9, 'Eyes in the Void'],
     [10, 'The Living Chaos'],
-    ['Ace', 'Aspect of Nyarlathotep'],
+    ['DeityCard', 'Nyarlathotep'],
   ],
   ShubNiggurath: [
     [2, 'Root-Tangle Spawn'],
@@ -37,7 +37,7 @@ const CARD_NAMES: Record<God, ReadonlyArray<readonly [Rank, string]>> = {
     [8, 'Unnatural Bloom'],
     [9, 'Forest That Devours'],
     [10, "Black Goat's Awakening"],
-    ['Ace', 'Seed of Shub-Niggurath'],
+    ['DeityCard', 'Shub-Niggurath'],
   ],
   YogSothoth: [
     [2, 'Flicker of the Void'],
@@ -49,7 +49,7 @@ const CARD_NAMES: Record<God, ReadonlyArray<readonly [Rank, string]>> = {
     [8, 'Keeper of Keys'],
     [9, 'Star-Fused Knowledge'],
     [10, 'Gate Beyond All Time'],
-    ['Ace', 'Core of Yog-Sothoth'],
+    ['DeityCard', 'Yog-Sothoth'],
   ],
 };
 
@@ -59,6 +59,13 @@ export const GOD_DISPLAY_NAME: Record<God, string> = {
   ShubNiggurath: 'Shub-Niggurath',
   YogSothoth: 'Yog-Sothoth',
 };
+
+// Player-facing name for a god's Deity Card, per its current Dormant/Powered
+// state (see rules/types.ts's DeityCardState). Exposed here for the
+// rendering layer to consume later - not yet wired into any UI.
+export function deityCardDisplayName(god: God, state: DeityCardState): string {
+  return state === 'powered' ? `Awakened ${GOD_DISPLAY_NAME[god]}` : GOD_DISPLAY_NAME[god];
+}
 
 // Short codes for space-constrained UI (the card-fan boxes and Suit Cycle
 // HUD ring nodes are too small for GOD_DISPLAY_NAME's full names).
@@ -101,7 +108,7 @@ const RANK_SORT_ORDER: Record<Rank, number> = {
   8: 6,
   9: 7,
   10: 8,
-  Ace: 9,
+  DeityCard: 9,
 };
 
 export function cardId(god: God, rank: Rank): string {

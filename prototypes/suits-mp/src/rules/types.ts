@@ -2,7 +2,14 @@ export type God = 'Cthulhu' | 'Nyarlathotep' | 'ShubNiggurath' | 'YogSothoth';
 
 export type Team = 'Chaos' | 'Cosmos';
 
-export type Rank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'Ace';
+export type Rank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'DeityCard';
+
+// A Deity Card enters play Dormant (effective rank 1) by default. It becomes
+// Powered (effective rank 11, for this trick only) if at least one 10 was
+// played at an earlier position in the same trick at the moment this Deity
+// Card is played - evaluated once, at time-of-play, per GDD's "Winning a
+// Trick" section. Never recomputed retroactively.
+export type DeityCardState = 'dormant' | 'powered';
 
 export type PlayerId = 0 | 1 | 2 | 3;
 
@@ -29,6 +36,12 @@ export interface TrickPlay {
   readonly cardIds: CardId[];
   readonly kind: PlayKind;
   readonly requiredSuit: God | null;
+  // Dormant/Powered state, computed once at the moment this play was made
+  // (see rules/engine.ts's computeDeityCardState). Null covers both "this
+  // play contains no Deity Card" and "this play is an offsuit Single" - an
+  // offsuit card is always hidden and scores 0 regardless of what it
+  // actually is, so it never has a meaningful Dormant/Powered state.
+  readonly deityCardState: DeityCardState | null;
 }
 
 export interface TrickResult {
