@@ -14,9 +14,11 @@ export type HostUIMessage =
 // --- Client -> host game actions -------------------------------------------
 // Three action types, sent on player confirm at the end of each turn. (A
 // follow-up task removed the trick-40+ role-guess feature this prototype
-// briefly had, and with it the fourth `declareRoleGuess` action - trick 40
-// is now an automatic host-computed forced end, not a player-submitted
-// action. See rules/engine.ts's resolveTrick40ForcedEnd.)
+// briefly had, and with it the fourth `declareRoleGuess` action. The
+// forced end that briefly replaced it at trick 40 has since been removed
+// too, per GDD v2's "No Trick Limit" - trickNumber now just climbs
+// indefinitely, with no forced-end action or automatic host-computed
+// ending of any kind tied to a trick count.)
 
 export type PlayType = 'single' | 'double' | 'facedownSingle';
 

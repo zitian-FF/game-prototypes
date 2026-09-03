@@ -71,11 +71,20 @@ export interface PendingBlocker {
 
 export interface WinInfo {
   readonly team: Team | null;
-  // 'trick40': the automatic forced end at the close of trick 40 with no
-  // suit completed (see engine.ts's resolveTrick40ForcedEnd). 'stalemate'
-  // covers only that forced end's own tie case now - the old role-guess
-  // exhaustion stalemate was removed along with role-guess entirely.
-  readonly reason: 'suit' | 'trick40' | 'stalemate';
+  // Single-valued for now: the trick-40 forced end (and the 'trick40'/
+  // 'stalemate' reasons that only ever existed to support it) was removed
+  // per GDD v2's "No Trick Limit" - there is no trick limit or forced end
+  // condition any more, so trickNumber climbs indefinitely and the only way
+  // a game ends is checkSuitCompletion() finding a completed Deity Suit.
+  // Kept as a discriminant (not inlined into `team`/`detail`) since a
+  // future reason may need to exist - notably, GDD's Standard Win
+  // Condition also calls for a stalemate when both Teams complete a Deity
+  // Suit in the same redistribution, which checkSuitCompletion() does not
+  // currently detect (it returns the first completed player found, with no
+  // simultaneous-completion check at all). That gap predates this removal
+  // and is a separate, unimplemented mechanic, not something this removal
+  // touches - see BUILD_STATUS.md.
+  readonly reason: 'suit';
   readonly detail: string;
 }
 
