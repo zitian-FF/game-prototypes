@@ -1,25 +1,36 @@
-import type { God } from './types';
+import type { God, Team } from './types';
 
-// Filename convention for the 8 R2-fetched god art PNGs (see
-// suits-mp_assets.zip's loose/ folder: symbol_<n>_<slug>.png and
-// face_<n>_<slug>.png). Shared by every consumer of this art - the
-// Phaser card-frame compositor (ui/cardArt.ts) and any DOM chrome that
-// also shows real god art (dom/overlay's suit symbols) - so the god ->
-// filename mapping has a single source of truth rather than being
-// duplicated per consumer.
-const GOD_ART_SLUG: Record<God, string> = {
-  Cthulhu: '1_cthulhu',
-  Nyarlathotep: '2_nyarlathotep',
-  ShubNiggurath: '3_shub-niggurath',
-  YogSothoth: '4_yog-sothoth',
+// Filename convention for the R2-fetched god/board art PNGs (see
+// suits-mp_assets.zip's loose/ folder and the runtime asset manifest doc -
+// exact filenames, verbatim, never renamed in code). Shared by every
+// consumer of this art - the Phaser card compositor (ui/cardArt.ts) and any
+// DOM chrome that also shows real god art (dom/overlay's suit symbols,
+// RulesModal's cycle diagram) - so the god -> filename mapping has a single
+// source of truth rather than being duplicated per consumer.
+const GOD_SLUG: Record<God, string> = {
+  Cthulhu: 'cthulhu',
+  Nyarlathotep: 'nyarlathotep',
+  ShubNiggurath: 'shub_niggurath',
+  YogSothoth: 'yog_sothoth',
 };
 
 export function symbolArtFile(god: God): string {
-  return `symbol_${GOD_ART_SLUG[god]}`;
+  return `deity_symbol_${GOD_SLUG[god]}`;
 }
 
 export function faceArtFile(god: God): string {
-  return `face_${GOD_ART_SLUG[god]}`;
+  return `deity_face_${GOD_SLUG[god]}`;
+}
+
+export function frameArtFile(god: God): string {
+  return `card_frame_${GOD_SLUG[god]}`;
+}
+
+// Team Chaos (Cthulhu, Nyarlathotep) and Team Cosmos (Shub-Niggurath,
+// Yog-Sothoth) each have one shared rank-badge treatment - not per-god,
+// unlike the frame/symbol/face art above.
+export function rankBadgeArtFile(team: Team): string {
+  return team === 'Chaos' ? 'rank_badge_chaos_portal' : 'rank_badge_cosmos_galaxy';
 }
 
 // Team Chaos (Cthulhu, Nyarlathotep) uses the hexagonal motif; Team Cosmos

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, sortCardIds, sortCardIdsByRank } from '../rules/cards';
-import type { CardId } from '../rules/types';
+import type { CardId, God } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
@@ -14,7 +14,7 @@ import { computeFanLayouts } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
-import { closeRedistLog, closeRules, openRedistLog, openRules } from '../dom/domUiStore';
+import { closeMenu, closeRedistLog, closeRules, openMenu, openRedistLog, openRules } from '../dom/domUiStore';
 import type { RedistLogEntry } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
@@ -40,6 +40,12 @@ const FONT = 'monospace';
 const WIDTH = 390;
 const HEIGHT = 844;
 const CENTER_X = WIDTH / 2;
+
+// background_tabletop_stone.png - texture key matches the manifest filename
+// minus extension, per preloadCardArt's manifest-driven loose-image loader
+// (ui/cardArt.ts) - loaded the same way as every card texture, no second
+// loader.
+const TABLETOP_KEY = 'background_tabletop_stone';
 
 // --- Card dimensions (shared component - see ui/cardComponent.ts) ------
 // "Standard" is used everywhere a full-size card appears (hand fan, every
@@ -108,7 +114,7 @@ const COLOR_STUB_BUTTON = 0x26262e;
 // masked.
 function maskedPlayFaces(play: MaskedTrickPlay, yourSlot: NetPlayerId): CardFace[] {
   if (play.kind === 'offsuit' && play.player !== yourSlot) return [{ kind: 'facedown' }];
-  return play.cards.map((id): CardFace => ({ kind: 'faceup', cardId: id }));
+  return play.cards.map((id): CardFace => ({ kind: 'faceup', cardId: id, deityCardState: play.deityCardState }));
 }
 
 // --- Card style presets ---------------------------------------------------
@@ -166,7 +172,7 @@ function freshViewState(): ViewState {
   return { selectedCards: [], redistributeAssignment: {}, delegateChoice: null };
 }
 
-export type OverlayKind = 'none' | 'log' | 'rules' | 'redistLog';
+export type OverlayKind = 'none' | 'log' | 'rules' | 'redistLog' | 'menu';
 export type SortMode = 'suit' | 'rank';
 
 // UI preferences that must survive every masked-state push from *any*
@@ -215,6 +221,15 @@ function renderWithView(
 ): void {
   container.removeAll(true);
   const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui);
+
+  // Tabletop treatment - drawn first so it always sits behind every other
+  // canvas element this render pass adds (see board/UI requirements: real
+  // R2-fetched art, loaded the same manifest-driven way as every card
+  // texture - see preloadCardArt).
+  if (scene.textures.exists(TABLETOP_KEY)) {
+    const bg = scene.add.image(CENTER_X, HEIGHT / 2, TABLETOP_KEY).setDisplaySize(WIDTH, HEIGHT);
+    container.add(bg);
+  }
 
   const rect: RectFn = (x, y, w, h, fill, alpha = 1) => {
     const r = scene.add.rectangle(x, y, w, h, fill, alpha);
@@ -272,6 +287,32 @@ function renderWithView(
   }
   closeRedistLog();
 
+  // Menu is real content now too (dom/MenuModal.tsx) - the board's new
+  // top-left hub, hosting Rules and the previous-trick log (see
+  // dom/overlay/GameOverlay.tsx's Menu button). Same treatment as Rules/
+  // Redist Log above.
+  if (ui.overlay === 'menu') {
+    hideGameOverlay();
+    openMenu(
+      () => {
+        closeMenu();
+        ui.overlay = 'rules';
+        rerender();
+      },
+      () => {
+        closeMenu();
+        ui.overlay = 'log';
+        rerender();
+      },
+      () => {
+        ui.overlay = 'none';
+        rerender();
+      },
+    );
+    return;
+  }
+  closeMenu();
+
   if (ui.overlay !== 'none') {
     hideGameOverlay();
     renderOverlay(scene, container, state, ui, rerender, rect, text, button);
@@ -284,7 +325,7 @@ function renderWithView(
     return;
   }
 
-  renderTopBar(state, ui, rerender, rect, text, button);
+  renderTopBar(state, text);
   renderPlayerCluster(scene, container, state, view, rerender, text);
   const legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
   renderCardFan(scene, container, state, view, ui, legality, rerender);
@@ -306,6 +347,10 @@ function renderWithView(
       ui.overlay = 'redistLog';
       rerender();
     },
+    onOpenMenu: () => {
+      ui.overlay = 'menu';
+      rerender();
+    },
     seatDelegate: computeSeatDelegateState(state, view, rerender),
     seatLabels: hud.seatLabels,
     currentTurnSeat: hud.currentTurnSeat,
@@ -314,12 +359,16 @@ function renderWithView(
     teamName: hud.teamName,
     yourGodChip: hud.yourGodChip,
     teammateGodChip: hud.teammateGodChip,
+    requiredSuitGod: hud.requiredSuitGod,
   });
 }
 
 // --- Top bar ----------------------------------------------------------
 
-function renderTopBar(state: MaskedState, ui: PersistentUIState, rerender: () => void, rect: RectFn, text: TextFn, button: ButtonFn): void {
+// Log/Rules access moved to the DOM Menu hub (dom/MenuModal.tsx, opened via
+// the board's top-left Menu button) - this now only draws the Trick/Phase
+// readout, per the approved preview's top bar.
+function renderTopBar(state: MaskedState, text: TextFn): void {
   const phaseLabel: Record<MaskedState['turnPhase'], string> = {
     play: 'Play Card',
     selectDelegate: 'Select Delegate',
@@ -328,17 +377,6 @@ function renderTopBar(state: MaskedState, ui: PersistentUIState, rerender: () =>
   };
   text(CENTER_X, TOP_BAR_Y, `Trick: ${state.trickNumber}`, '#eeeeee', 14);
   text(CENTER_X, TOP_BAR_Y + 20, `Phase: ${phaseLabel[state.turnPhase]}`, '#aaaaaa', 11);
-
-  button(46, TOP_BAR_Y, 68, 26, 'Log', () => {
-    ui.overlay = 'log';
-    rerender();
-  }, { fill: COLOR_STUB_BUTTON, textColor: '#cccccc', fontSize: 11 });
-
-  button(WIDTH - 46, TOP_BAR_Y, 68, 26, 'Rules', () => {
-    ui.overlay = 'rules';
-    rerender();
-  }, { fill: COLOR_STUB_BUTTON, textColor: '#cccccc', fontSize: 11 });
-  void rect;
 }
 
 // --- Player cluster: 4 play areas ---------------------------------------
@@ -402,6 +440,7 @@ export interface GameOverlayHudState {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
+  requiredSuitGod: God | null;
 }
 
 // Real display-ready HUD data for dom/overlay/GameOverlay.tsx - computed
@@ -430,7 +469,24 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
     teamName: `Team ${GOD_TEAM[state.yourGod]}`,
     yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'Bound', god: state.yourGod },
     teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin', god: teammateGod },
+    requiredSuitGod: state.requiredSuit,
   };
+}
+
+// A card-shaped recess carved into the stone tabletop, behind whatever
+// actually occupies this play-area slot (a played card, an empty-slot
+// placeholder, or a redistribution stack) - procedural Graphics, since no
+// recess art asset was part of this handoff (only the tabletop surface
+// itself, background_tabletop_stone.png).
+function drawPlayAreaRecess(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number): void {
+  const w = CARD_DIMS_STANDARD.width + 14;
+  const h = CARD_DIMS_STANDARD.height + 14;
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.4);
+  g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+  g.lineStyle(1, 0x000000, 0.6);
+  g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+  container.add(g);
 }
 
 // One opponent/own play-area slot, entirely built from the shared card
@@ -451,6 +507,8 @@ function renderPlayArea(
   rerender: () => void,
   text: TextFn,
 ): void {
+  drawPlayAreaRecess(scene, container, x, y);
+
   const contribution = redistCtx?.contributions.find((c) => c.player === pid) ?? null;
 
   if (redistCtx && contribution) {

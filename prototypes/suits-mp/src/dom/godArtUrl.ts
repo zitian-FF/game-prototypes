@@ -16,6 +16,19 @@ export function symbolArtUrl(god: God): string {
   return `assets/loose/${symbolArtFile(god)}.png`;
 }
 
+// Carved black-and-gold button frame family (Menu/Set/Log utility buttons,
+// the primary Play Card action button) - one shared asset, same relative-
+// URL convention as symbolArtUrl above.
+export function actionSlabUrl(): string {
+  return 'assets/loose/ui_action_slab.png';
+}
+
+// Player nameplate background, shared by every seat tag (local and
+// opponent alike) - same convention as symbolArtUrl above.
+export function nameplateUrl(): string {
+  return 'assets/loose/ui_player_nameplate.png';
+}
+
 // A regular hexagon, apex at top-center, side vertices at ~20%/80% height -
 // the exact same proportions as ui/cardArt.ts's hexPolygon(). Shared by
 // every DOM spot that backs a Team Chaos god's symbol with a hex badge

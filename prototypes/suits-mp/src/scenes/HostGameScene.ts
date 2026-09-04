@@ -9,7 +9,7 @@ import { buildMaskedState } from '../host/mask';
 import { activePlayerId } from '../rules/engine';
 import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PersistentUIState } from '../ui/renderGameView';
-import { ensureCardFrameTextures, preloadCardArt } from '../ui/cardArt';
+import { preloadCardArt } from '../ui/cardArt';
 import { fromNetPlayerId, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { createNetworkRoom } from '../net/room';
@@ -62,7 +62,6 @@ export class HostGameScene extends Phaser.Scene {
   create(data: HostGameData): void {
     addVersionStamp(this);
     createPortraitGuard(this);
-    ensureCardFrameTextures(this);
     this.cameras.main.setZoom(PIXEL_RATIO);
     const width = this.scale.width / PIXEL_RATIO;
     const height = this.scale.height / PIXEL_RATIO;
