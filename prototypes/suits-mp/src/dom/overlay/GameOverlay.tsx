@@ -7,7 +7,7 @@ import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
 import { GOD_DISPLAY_NAME } from '../../rules/cards';
 import type { God } from '../../rules/types';
-import { HEX_CLIP_PATH, actionSlabUrl, nameplateUrl, symbolArtUrl } from '../godArtUrl';
+import { HEX_CLIP_PATH, nameplateUrl, symbolArtUrl } from '../godArtUrl';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
@@ -132,16 +132,26 @@ const BOTTOM_ROW_BOTTOM = 54;
 // already shown by the Suit Cycle HUD ring above it - this is the only
 // spot that also names the suit in text).
 const REQUIRED_SUIT_BANNER_TOP = 590;
-// Suit Cycle HUD's lead-marker ring: pixel offset from the wheel's own
-// center for each seat it might need to highlight - derived from the
-// ring's fixed 124px box and the marker's own 36px size/-2px overhang
-// (e.g. bottom: {left:'50%', bottom:-2, marginLeft:-18} centers the
-// marker at (62, 108) against a (62, 62) ring center = (0, +46)).
+// Centre inlay geometry (visual reskin pass - see BUILD_STATUS.md). Wells
+// are positioned by a single center-relative offset (WELL_OFFSET) rather
+// than edge-anchored to the housing's own border, so they read as
+// tightly grouped near the middle of the carved-stone inlay per the
+// approved preview, instead of pinned to its outer rim.
+const OUTER_BEZEL_SIZE = 168;
+const INLAY_SIZE = 150;
+const WELL_SIZE = 42;
+const WELL_OFFSET = 30;
+const MARKER_SIZE = 50;
+
+// Suit Cycle HUD's lead-marker ring: pixel offset from the inlay's own
+// center for each seat it might need to highlight - matches WELL_OFFSET
+// exactly, since the marker must frame whichever well currently sits at
+// that position.
 const MARKER_OFFSET: Record<SeatPosition, { dx: number; dy: number }> = {
-  top: { dx: 0, dy: -46 },
-  right: { dx: 46, dy: 0 },
-  bottom: { dx: 0, dy: 46 },
-  left: { dx: -46, dy: 0 },
+  top: { dx: 0, dy: -WELL_OFFSET },
+  right: { dx: WELL_OFFSET, dy: 0 },
+  bottom: { dx: 0, dy: WELL_OFFSET },
+  left: { dx: -WELL_OFFSET, dy: 0 },
 };
 
 export function GameOverlay({
@@ -204,48 +214,34 @@ export function GameOverlay({
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* ===== Turn indicator wheel (outer, independent layer) ===== */}
+      {/* ===== Turn indicator wheel (outer bezel, independent layer) =====
+          Visual reskin only (see BUILD_STATUS.md) - a single carved-stone
+          bezel ring replaces the old multi-ring glowing/dotted/spinning-
+          sigil stack. `turnDeg` (computed above, untouched) still drives
+          the exact same rotating pointer; only its container's styling
+          changed. */}
       <div
         data-ui="turn-indicator-wheel"
         style={{
           position: 'absolute',
           left: CENTER_X,
           top: CLUSTER_CENTER_Y,
-          width: 190,
-          height: 190,
-          marginLeft: -95,
-          marginTop: -95,
+          width: OUTER_BEZEL_SIZE,
+          height: OUTER_BEZEL_SIZE,
+          marginLeft: -OUTER_BEZEL_SIZE / 2,
+          marginTop: -OUTER_BEZEL_SIZE / 2,
           pointerEvents: 'none',
         }}
       >
-        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(176, 142, 66, 0.22)', boxShadow: 'inset 0 0 34px rgba(28, 110, 106, 0.22)' }} />
         <div
           style={{
             position: 'absolute',
-            inset: 9,
+            inset: 0,
             borderRadius: '50%',
-            borderTop: '1px solid rgba(176, 142, 66, 0.34)',
-            borderBottom: '1px solid rgba(176, 142, 66, 0.34)',
-            borderLeft: '1px solid transparent',
-            borderRight: '1px solid transparent',
+            background: 'radial-gradient(circle at 40% 32%, rgba(72, 68, 60, 0.28), rgba(10, 10, 11, 0) 68%)',
+            boxShadow: 'inset 0 3px 7px rgba(0, 0, 0, 0.65), inset 0 -2px 5px rgba(120, 100, 60, 0.12)',
           }}
         />
-        <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px dotted rgba(158, 196, 186, 0.2)' }} />
-        <div
-          data-ui="outer-sigil-ring"
-          style={{
-            position: 'absolute',
-            inset: -14,
-            borderRadius: '50%',
-            border: '1px solid rgba(158, 196, 186, 0.07)',
-            animation: `somCreep ${tune.outerSigilRingSpinMs}ms linear infinite`,
-          }}
-        >
-          <span style={{ position: 'absolute', left: '50%', top: -5, marginLeft: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
-          <span style={{ position: 'absolute', left: '50%', bottom: -5, marginLeft: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
-          <span style={{ position: 'absolute', top: '50%', left: -5, marginTop: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
-          <span style={{ position: 'absolute', top: '50%', right: -5, marginTop: -4, width: 8, height: 8, border: '1px solid rgba(176, 142, 66, 0.4)', transform: 'rotate(45deg)' }} />
-        </div>
         <div
           data-bind="turn-rotation"
           style={{
@@ -259,42 +255,51 @@ export function GameOverlay({
             style={{
               position: 'absolute',
               left: '50%',
-              top: 3,
-              marginLeft: -8,
-              width: 16,
-              height: 20,
-              background: 'oklch(0.80 0.11 84)',
+              top: 2,
+              marginLeft: -7,
+              width: 14,
+              height: 18,
+              background: 'linear-gradient(180deg, oklch(0.82 0.10 84), oklch(0.60 0.09 68))',
               clipPath: 'polygon(50% 100%, 0 0, 50% 26%, 100% 0)',
-              boxShadow: '0 0 20px 4px rgba(212, 172, 82, 0.5)',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.6)',
             }}
           />
           <div
             style={{
               position: 'absolute',
               left: '50%',
-              top: 22,
+              top: 19,
               width: 1,
-              height: 26,
+              height: 20,
               marginLeft: -0.5,
-              background: 'linear-gradient(180deg, rgba(212, 172, 82, 0.75), rgba(212, 172, 82, 0))',
+              background: 'linear-gradient(180deg, rgba(198, 160, 78, 0.6), rgba(198, 160, 78, 0))',
             }}
           />
         </div>
       </div>
 
-      {/* ===== Suit Cycle HUD (inner, independent layer) ===== */}
+      {/* ===== Suit Cycle HUD (inner carved-stone inlay, independent
+          layer) ===== Visual reskin only - `suitDeg` (untouched) still
+          rotates the whole well group, each well still counter-rotates
+          its own symbol by `-suitDeg` so it stays upright, and
+          `lead-marker` still tracks `markerSeat` via the same
+          translate-offset technique as before (now using WELL_OFFSET so
+          it frames the enlarged wells exactly). Only sizes/colors/shapes
+          changed - no rotation math touched. */}
       <div
         data-ui="suit-cycle-hud"
-        style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: 124, height: 124, marginLeft: -62, marginTop: -62, pointerEvents: 'none' }}
+        style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: INLAY_SIZE, height: INLAY_SIZE, marginLeft: -INLAY_SIZE / 2, marginTop: -INLAY_SIZE / 2, pointerEvents: 'none' }}
       >
+        {/* Round carved-stone inlay housing - depth via inset shadow only,
+            no glowing border/outline (the old teal-bordered radial glow
+            read as a floating UI panel, not part of the tabletop). */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
             borderRadius: '50%',
-            background: 'radial-gradient(58% 58% at 50% 38%, rgba(16, 52, 54, 0.95) 0%, rgba(5, 10, 13, 0.97) 100%)',
-            border: '1px solid rgba(176, 142, 66, 0.34)',
-            boxShadow: '0 0 36px rgba(0, 0, 0, 0.85), inset 0 0 26px rgba(34, 128, 122, 0.22)',
+            background: 'radial-gradient(58% 58% at 42% 34%, rgba(46, 42, 38, 0.55) 0%, rgba(8, 8, 9, 0.88) 100%)',
+            boxShadow: 'inset 0 4px 11px rgba(0, 0, 0, 0.72), inset 0 -2px 6px rgba(90, 74, 40, 0.10)',
           }}
         />
 
@@ -308,33 +313,40 @@ export function GameOverlay({
           }}
         >
           {SUITS.map((suit, i) => {
-            const isGold = i % 2 === 0; // YS(0), SN(2) gold; CT(1), NY(3) teal - matches the design's fixed per-corner palette
-            const positionStyle: CSSProperties =
+            const isGold = i % 2 === 0; // YS(0), SN(2) gold/Cosmos; CT(1), NY(3) teal/Chaos - matches the design's fixed per-slot palette
+            const offset =
               i === 0
-                ? { left: '50%', top: 3, marginLeft: -13 }
+                ? { dx: 0, dy: -WELL_OFFSET }
                 : i === 1
-                  ? { right: 3, top: '50%', marginTop: -13 }
+                  ? { dx: WELL_OFFSET, dy: 0 }
                   : i === 2
-                    ? { left: '50%', bottom: 3, marginLeft: -13 }
-                    : { left: 3, top: '50%', marginTop: -13 };
+                    ? { dx: 0, dy: WELL_OFFSET }
+                    : { dx: -WELL_OFFSET, dy: 0 };
             const motif = GOD_MOTIF[suit.god];
+            const tint = isGold ? '198, 160, 78' : '96, 190, 178';
             return (
               <div
                 key={suit.code}
                 data-suit={suit.code}
                 style={{
                   position: 'absolute',
-                  ...positionStyle,
-                  width: 26,
-                  height: 26,
+                  left: '50%',
+                  top: '50%',
+                  width: WELL_SIZE,
+                  height: WELL_SIZE,
+                  transform: `translate(calc(-50% + ${offset.dx}px), calc(-50% + ${offset.dy}px))`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
-                  border: isGold ? '1px solid rgba(198, 160, 78, 0.5)' : '1px solid rgba(96, 190, 178, 0.45)',
-                  background: isGold ? 'rgba(48, 36, 12, 0.55)' : 'rgba(10, 44, 44, 0.55)',
                   borderRadius: motif === 'circle' ? '50%' : 0,
                   clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
+                  // Glassy well: a soft highlight top-left fading into a
+                  // dark, faintly team-tinted floor - procedurally drawn,
+                  // no dedicated well asset exists (see BUILD_STATUS.md).
+                  background: `radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.30), rgba(${tint}, 0.24) 45%, rgba(6, 10, 11, 0.94) 100%)`,
+                  border: `1px solid rgba(${tint}, 0.55)`,
+                  boxShadow: `inset 0 2px 5px rgba(0, 0, 0, 0.55), inset 0 -1px 3px rgba(${tint}, 0.16)`,
                 }}
               >
                 {/* Counter-rotates by the wheel's own rotation (-suitDeg),
@@ -345,8 +357,8 @@ export function GameOverlay({
                     upright throughout the animation too, not just at rest. */}
                 <div
                   style={{
-                    width: 18,
-                    height: 18,
+                    width: WELL_SIZE * 0.68,
+                    height: WELL_SIZE * 0.68,
                     transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
                     transform: `rotate(${-suitDeg}deg)`,
                   }}
@@ -356,50 +368,46 @@ export function GameOverlay({
               </div>
             );
           })}
-          <div style={{ position: 'absolute', inset: 26, borderRadius: '50%', border: '1px solid rgba(176, 142, 66, 0.14)' }} />
         </div>
 
-        {/* The center hub is now a plain decorative disc - no text label.
-            The wheel's own rotation (the badge sitting at the Invoker's
-            seat is the current lead suit, highlighted by the lead-marker
-            ring just below) is the only indicator now; a redundant
-            "Lead: <name>" text would just duplicate it. */}
+        {/* The center hub is a small plain stone recess - no symbol, no
+            text label (the required suit is stated once, by the Required
+            Suit banner below, never duplicated here). */}
         <div
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            width: 56,
-            height: 56,
-            margin: '-28px 0 0 -28px',
+            width: 34,
+            height: 34,
+            margin: '-17px 0 0 -17px',
             borderRadius: '50%',
-            background: 'radial-gradient(50% 50% at 50% 42%, rgba(14, 46, 48, 0.95), rgba(4, 9, 12, 0.97))',
-            border: '1px solid rgba(176, 142, 66, 0.24)',
-            boxShadow: 'inset 0 0 18px rgba(0,0,0,0.9)',
+            background: 'radial-gradient(circle at 38% 30%, rgba(40, 38, 34, 0.6), rgba(4, 4, 5, 0.92))',
+            boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.7)',
           }}
         />
 
-        {/* Highlights whichever badge sits at the Invoker's actual seat
+        {/* Highlights whichever well sits at the Invoker's actual seat
             (`markerSeat`) - not a fixed position, since the Invoker can be
             at any of the 4 seats. Positioned via `transform: translate()`
             (a single interpolatable property, unlike swapping between
             left/right/top/bottom which can't cross-animate) from a fixed
             center anchor, so it can transition smoothly - same timing/
             easing as the wheel's own rotation, so it visually travels
-            together with the badge it's marking. */}
+            together with the well it's marking. */}
         <div
           data-ui="lead-marker"
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            width: 36,
-            height: 36,
+            width: MARKER_SIZE,
+            height: MARKER_SIZE,
             transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
             transform: `translate(calc(-50% + ${MARKER_OFFSET[markerSeat].dx}px), calc(-50% + ${MARKER_OFFSET[markerSeat].dy}px))`,
             borderRadius: '50%',
-            border: '1px solid rgba(120, 220, 206, 0.5)',
-            boxShadow: '0 0 22px rgba(70, 200, 186, 0.4), inset 0 0 14px rgba(70, 200, 186, 0.22)',
+            border: '1px solid rgba(226, 196, 120, 0.55)',
+            boxShadow: '0 0 10px rgba(226, 196, 120, 0.28), inset 0 0 8px rgba(226, 196, 120, 0.14)',
             pointerEvents: 'none',
           }}
         />
@@ -435,7 +443,14 @@ export function GameOverlay({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 11,
-                    background: 'linear-gradient(180deg, rgba(44, 34, 14, 0.95), rgba(12, 12, 12, 0.96))',
+                    // Real ui_player_nameplate.png applied here only - the
+                    // local seat is never a delegate-selection target (a
+                    // player can't delegate to themself), so there's no
+                    // staged/not-staged color cue to lose. The other three
+                    // seat tags below keep their teal/gold gradient
+                    // treatment, which does carry that state - see
+                    // BUILD_STATUS.md.
+                    background: `linear-gradient(180deg, rgba(20, 16, 8, 0.15), rgba(4, 4, 3, 0.3)), url(${nameplateUrl()}) center/100% 100% no-repeat`,
                     clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
                   }}
                 >
@@ -676,8 +691,15 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
-          border: '1px solid rgba(198, 160, 78, 0.5)',
+          // Procedural inset-stone treatment, not ui_action_slab.png: that
+          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
+          // ratio) and stretching it into a square distorted it into a
+          // washed-out flat-gold box rather than a carved control. No
+          // dedicated square-button asset exists for Menu/Set/Log.
+          background:
+            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
+          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
+          border: '1px solid rgba(198, 160, 78, 0.55)',
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
@@ -707,8 +729,15 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
-          border: '1px solid rgba(198, 160, 78, 0.5)',
+          // Procedural inset-stone treatment, not ui_action_slab.png: that
+          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
+          // ratio) and stretching it into a square distorted it into a
+          // washed-out flat-gold box rather than a carved control. No
+          // dedicated square-button asset exists for Menu/Set/Log.
+          background:
+            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
+          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
+          border: '1px solid rgba(198, 160, 78, 0.55)',
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
@@ -739,8 +768,15 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
-          border: '1px solid rgba(198, 160, 78, 0.5)',
+          // Procedural inset-stone treatment, not ui_action_slab.png: that
+          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
+          // ratio) and stretching it into a square distorted it into a
+          // washed-out flat-gold box rather than a carved control. No
+          // dedicated square-button asset exists for Menu/Set/Log.
+          background:
+            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
+          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
+          border: '1px solid rgba(198, 160, 78, 0.55)',
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,

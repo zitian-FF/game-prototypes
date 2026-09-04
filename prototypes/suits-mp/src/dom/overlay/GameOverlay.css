@@ -4,13 +4,14 @@
    already pulled in via dom/modalChrome.css, loaded whenever the DOM
    overlay mounts - no need to re-import it here. */
 
-/* Outer sigil ring's continuous decorative spin - duration is
-   tune.json-driven (outerSigilRingSpinMs, see GameOverlay.tsx) via the
-   inline `animation` shorthand; this keyframe only defines the motion
-   itself. Distinct from the turn wheel/Suit Cycle HUD's own rotations,
-   which use state-triggered CSS transitions instead (see root
-   CLAUDE.md's "Suit Cycle HUD and turn indicator wheel... state-triggered
-   CSS transform/transition... not continuous animation loops"). */
+/* Shared continuous decorative spin keyframe, used elsewhere in the DOM
+   layer (see dom/lobby/LobbyFlow.tsx/.css, with its own hardcoded
+   durations). The centre inlay's own outer sigil ring that previously
+   used this here (tune.json-driven via outerSigilRingSpinMs) was removed
+   in the centre-inlay reskin pass (see BUILD_STATUS.md), and that now-
+   unused tune value was removed too - the turn wheel/Suit Cycle HUD use
+   state-triggered CSS transitions instead, never a continuous loop (see
+   root CLAUDE.md). */
 @keyframes somCreep {
   0% {
     transform: rotate(0deg);
