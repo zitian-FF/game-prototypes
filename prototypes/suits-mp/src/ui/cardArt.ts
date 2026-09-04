@@ -1,71 +1,33 @@
 import Phaser from 'phaser';
 import { GOD_TEAM } from '../rules/cards';
-import { GOD_MOTIF, faceArtFile, symbolArtFile } from '../rules/godArt';
-import type { God, Rank } from '../rules/types';
+import { faceArtFile, frameArtFile, rankBadgeArtFile, symbolArtFile } from '../rules/godArt';
+import type { DeityCardState, God, Rank } from '../rules/types';
 import type { CardDimensions } from './cardComponent';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 
-// Real card compositing, per the Claude Design handoff ("Suit of Madness
-// Card Frame.dc.html"). Three layers, assembled at runtime rather than
-// baked into 40 static PNGs:
-//   1. A per-god card-frame texture (background/border/motif/symbol-plate),
-//      generated once via Canvas2D (scene.textures.createCanvas) - only 4
-//      of these exist (one per god; rank never changes a frame's look).
-//   2. The god's symbol (ranks 2-10) or full face art (Aces) - one of the
-//      8 R2-fetched PNGs, placed as its own Image so it can differ by rank
-//      without multiplying frame textures.
-//   3. The rank numeral (ranks 2-10 only) - a live Phaser.Text, per root
-//      CLAUDE.md's DPR rule (baking it into the canvas frame would bypass
-//      per-Text `resolution`). Its backing "rank-plate" plate shape is
-//      drawn fresh via Graphics rather than baked into the frame texture,
-//      since it must disappear entirely on Aces (same frame texture is
-//      shared by every rank of that god).
+// Real card compositing from the baked art handoff (card_frame_<deity>.png,
+// deity_symbol_<deity>.png, deity_face_<deity>.png, rank_badge_<team>.png -
+// see the runtime asset manifest). Three layers, all real R2-fetched PNGs
+// (no more Canvas2D-generated frame textures - the earlier CSS-recolorable
+// token frame system, GOD_TOKENS/drawFrameTexture and everything under it,
+// is removed entirely per this task's explicit resolution):
+//   1. The god's own card_frame_<deity>.png as the full card background -
+//      one real per-god frame image, already including the card's border,
+//      ornamentation and a baked-in bottom-left circular badge socket.
+//   2. The god's symbol or face art, placed in the frame's main window.
+//      Numbered cards (2-10) and a Dormant Deity Card both show the Deity
+//      Symbol; only a Powered Deity Card shows the Deity Face instead.
+//   3. A small rank badge in the frame's own bottom-left socket -
+//      rank_badge_chaos_portal.png/rank_badge_cosmos_galaxy.png by Team,
+//      with a live Phaser.Text on top (per root CLAUDE.md's DPR rule): the
+//      plain rank numeral for a numbered card, or the Dormant/Powered state
+//      marker ("1"/"★") for a Deity Card. A Deity Card's *name* never
+//      changes between states - only this marker, and the symbol/face
+//      layer above, do.
 //
-// Scope note: the design's engraving dot-pattern, linen hatch, and SVG
-// grain-noise texture layers are omitted - all three are sub-pixel detail
-// at this project's actual on-screen card size (tens of px tall) and would
-// cost far more Canvas2D code than they'd ever be visible. Background
-// washes, tint, vignette, gold border/corners, the hex/circle motif, the
-// symbol-plate, and the team tag are all reproduced.
-
-interface GodTokens {
-  line: string;
-  plate: string;
-  glow: string;
-  deep: string;
-  label: string;
-}
-
-const GOD_TOKENS: Record<God, GodTokens> = {
-  Cthulhu: {
-    line: 'rgba(96, 200, 188, 0.72)',
-    plate: 'rgba(14, 62, 62, 0.62)',
-    glow: 'rgba(34, 150, 144, 0.20)',
-    deep: 'rgba(8, 52, 56, 0.34)',
-    label: 'rgba(140, 210, 198, 0.85)',
-  },
-  Nyarlathotep: {
-    line: 'rgba(178, 138, 226, 0.68)',
-    plate: 'rgba(40, 22, 62, 0.66)',
-    glow: 'rgba(112, 62, 168, 0.20)',
-    deep: 'rgba(24, 10, 40, 0.44)',
-    label: 'rgba(186, 156, 224, 0.85)',
-  },
-  ShubNiggurath: {
-    line: 'rgba(150, 200, 108, 0.68)',
-    plate: 'rgba(30, 54, 22, 0.62)',
-    glow: 'rgba(96, 148, 48, 0.20)',
-    deep: 'rgba(28, 40, 12, 0.38)',
-    label: 'rgba(178, 208, 132, 0.85)',
-  },
-  YogSothoth: {
-    line: 'rgba(196, 160, 232, 0.68)',
-    plate: 'rgba(46, 30, 66, 0.62)',
-    glow: 'rgba(132, 88, 172, 0.20)',
-    deep: 'rgba(32, 18, 44, 0.40)',
-    label: 'rgba(206, 178, 132, 0.85)',
-  },
-};
+// Every position/size below is measured directly off the real art (see
+// this task's BUILD_STATUS.md) rather than transcribed from a design spec,
+// since none was provided for the new images' internal layout.
 
 function symbolKey(god: God): string {
   return symbolArtFile(god);
@@ -75,7 +37,11 @@ function faceKey(god: God): string {
   return faceArtFile(god);
 }
 
-// Loads the 8 R2-fetched god art PNGs (see art/manifest.json, produced by
+function frameKey(god: God): string {
+  return frameArtFile(god);
+}
+
+// Loads the R2-fetched loose PNGs (see art/manifest.json, produced by
 // scripts/pack-assets.js from prototypes/suits-mp/assets-src/loose/) the
 // same manifest-driven way every other prototype with loose art loads it
 // (see prototypes/digger/src/main.ts's preload) - discovering filenames
@@ -112,263 +78,44 @@ export function preloadCardArt(scene: Phaser.Scene): void {
   scene.load.once(`filecomplete-json-${MANIFEST_KEY}`, () => queueLooseImages(scene));
 }
 
-// --- Card-local authoring space -----------------------------------------
-// Matches the design's own 300x816 reference canvas exactly, so every zone
-// coordinate below is a direct transcription of the .dc.html spec. Frame
-// textures are generated at half that resolution (150x408) - comfortably
-// oversampled for this game's largest on-screen card size (the popped-out
-// hand card, well under 100 logical px wide even at PIXEL_RATIO 2), while
-// keeping texture memory small.
+// --- Card-local layout, measured off the real card_frame_<deity>.png -----
+// (1024x1536 native, a clean 2:3 aspect - tune.json's cardStandard/cardMini
+// width:height ratios were updated to match, so cards are never stretched;
+// see BUILD_STATUS.md for the measurement method: alpha-channel inspection
+// of the frame art to find its window and its baked-in badge socket, since
+// no pixel spec doc came with this handoff.)
 
-const AUTH_W = 300;
-const AUTH_H = 816;
-const TEX_SCALE = 0.5;
-const TEX_W = AUTH_W * TEX_SCALE;
-const TEX_H = AUTH_H * TEX_SCALE;
+// The frame's own main window (behind the Deity Symbol/Face), as fractions
+// of the full card - a rounded-rect area below the frame's ornamental
+// crown, above its bottom wave/badge-socket band.
+const WINDOW = { x: 0.08, y: 0.155, w: 0.84, h: 0.6 };
 
-const SYMBOL_SAFE = { x: 50, y: 170, w: 200, h: 236 };
-const ACE_BLEED = { x: 26, y: 92, w: 248, h: 396 };
-const RANK_SAFE = { x: 96, y: 572, w: 108, h: 68 };
+// The frame's baked-in circular badge socket, bottom-left - center and
+// diameter as fractions of the full card.
+const BADGE_CENTER = { x: 0.145, y: 0.82 };
+const BADGE_DIAMETER = 0.19;
 
-function frameKey(god: God): string {
-  return `cardFrame_${god}`;
+function frameSize(): { w: number; h: number } {
+  return { w: 1024, h: 1536 };
 }
 
-function ellipseRadialFill(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  stops: ReadonlyArray<readonly [number, string]>,
-): void {
-  if (rx <= 0 || ry <= 0) return;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(rx, ry);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  for (const [offset, color] of stops) g.addColorStop(offset, color);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, 1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+// The god's Deity Symbol for a numbered card or a Dormant Deity Card; its
+// Deity Face once Powered. `deityCardState` is null for anything that
+// isn't a face-up Deity Card (see cardComponent.ts's CardFace doc comment)
+// and is treated the same as 'dormant' - a Deity Card always starts
+// Dormant, and one still sitting unplayed in a hand has no real state yet.
+function windowArtKey(god: God, rank: Rank, deityCardState: DeityCardState | null): string {
+  const isPowered = rank === 'DeityCard' && deityCardState === 'powered';
+  return isPowered ? faceKey(god) : symbolKey(god);
 }
 
-function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
+// The bottom-left badge's marker: the plain rank for a numbered card, or
+// the Dormant/Powered state marker for a Deity Card - never the god's name,
+// which never changes between states (see this module's header comment).
+function badgeMarkerText(rank: Rank, deityCardState: DeityCardState | null): string {
+  if (rank !== 'DeityCard') return String(rank);
+  return deityCardState === 'powered' ? '★' : '1';
 }
-
-// The hex plate's own clip-path polygon from the .dc.html spec, expressed
-// relative to a box of the given width/height (its apex sits at the exact
-// horizontal center, side vertices at ~20%/80% height - the same fixed
-// proportions the spec uses for both the symbol-plate and rank-plate hexes,
-// just at different box sizes).
-function hexPolygon(x: number, y: number, w: number, h: number): [number, number][] {
-  const midX = x + w / 2;
-  const yTop = y + h * 0.1995;
-  const yBot = y + h * 0.8005;
-  return [
-    [midX, y],
-    [x + w, yTop],
-    [x + w, yBot],
-    [midX, y + h],
-    [x, yBot],
-    [x, yTop],
-  ];
-}
-
-function fillPolygon(ctx: CanvasRenderingContext2D, points: ReadonlyArray<readonly [number, number]>): void {
-  ctx.beginPath();
-  points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawSymbolPlate(ctx: CanvasRenderingContext2D, tokens: GodTokens, motif: 'hex' | 'circle'): void {
-  const { x, y, w, h } = ACE_BLEED; // the plate's own full silhouette bounds
-  if (motif === 'hex') {
-    ctx.fillStyle = tokens.line;
-    fillPolygon(ctx, hexPolygon(x, y, w, h));
-    ctx.fillStyle = '#080c0e';
-    fillPolygon(ctx, hexPolygon(x + 1, y + 1.2, w - 2, h - 2.4));
-    ctx.fillStyle = 'rgba(176, 142, 66, 0.26)';
-    fillPolygon(ctx, hexPolygon(x + 9, y + 10.7, w - 18, h - 21.4));
-    ctx.save();
-    fillPolygon(ctx, hexPolygon(x + 11, y + 13, w - 22, h - 26));
-    ctx.clip();
-    ellipseRadialFill(ctx, x + w / 2, y + h * 0.46, w * 0.28, h * 0.26, [
-      [0, tokens.plate],
-      [1, 'rgba(4, 7, 9, 0.97)'],
-    ]);
-    ctx.restore();
-  } else {
-    ctx.strokeStyle = tokens.line;
-    ctx.lineWidth = 1;
-    roundedRectPath(ctx, x, y, w, h, 100);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(176, 142, 66, 0.26)';
-    roundedRectPath(ctx, x + 8, y + 8, w - 16, h - 16, 92);
-    ctx.stroke();
-    ctx.save();
-    roundedRectPath(ctx, x + 10, y + 10, w - 20, h - 20, 90);
-    ctx.clip();
-    ellipseRadialFill(ctx, x + w / 2, y + h * 0.46, w * 0.28, h * 0.26, [
-      [0, tokens.plate],
-      [1, 'rgba(4, 7, 9, 0.97)'],
-    ]);
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(176, 142, 66, 0.2)';
-    ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + h / 2, w * 0.463, h * 0.290, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = tokens.line;
-    ctx.beginPath();
-    ctx.arc(x + w / 2, y + 34, 10, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x + w / 2, y + h - 34, 10, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-
-function drawMotifOrnaments(ctx: CanvasRenderingContext2D, tokens: GodTokens, motif: 'hex' | 'circle'): void {
-  const midX = AUTH_W / 2;
-  if (motif === 'hex') {
-    ctx.fillStyle = tokens.line;
-    fillPolygon(ctx, hexPolygon(midX - 17, 30, 34, 30));
-    ctx.fillStyle = '#080c0e';
-    fillPolygon(ctx, hexPolygon(midX - 16, 31, 32, 28));
-    ctx.fillStyle = tokens.line;
-    fillPolygon(ctx, hexPolygon(midX - 17, AUTH_H - 60, 34, 30));
-    ctx.fillStyle = '#080c0e';
-    fillPolygon(ctx, hexPolygon(midX - 16, AUTH_H - 59, 32, 28));
-  } else {
-    ctx.strokeStyle = tokens.line;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(midX, 44, 14, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(midX, AUTH_H - 44, 14, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-
-function drawFrameTexture(scene: Phaser.Scene, god: God): void {
-  const key = frameKey(god);
-  if (scene.textures.exists(key)) return;
-  const tokens = GOD_TOKENS[god];
-  const motif = GOD_MOTIF[god];
-
-  const canvasTexture = scene.textures.createCanvas(key, TEX_W, TEX_H);
-  if (!canvasTexture) return;
-  const ctx = canvasTexture.context;
-  ctx.scale(TEX_SCALE, TEX_SCALE);
-  ctx.imageSmoothingEnabled = true;
-
-  // Base wash.
-  ctx.fillStyle = '#080c0e';
-  ctx.fillRect(0, 0, AUTH_W, AUTH_H);
-  ellipseRadialFill(ctx, 150, 375.4, 240, 375.4, [
-    [0, 'rgba(34, 38, 32, 0.5)'],
-    [1, 'rgba(6, 9, 11, 0)'],
-  ]);
-  ellipseRadialFill(ctx, 42, 32.6, 270, 326.4, [
-    [0, 'rgba(58, 50, 32, 0.26)'],
-    [1, 'rgba(6, 9, 11, 0)'],
-  ]);
-  ellipseRadialFill(ctx, 258, 799.7, 270, 326.4, [
-    [0, 'rgba(58, 50, 32, 0.2)'],
-    [1, 'rgba(6, 9, 11, 0)'],
-  ]);
-
-  // Tint (glow + deep) - the one layer that carries most of each god's
-  // color identity at a glance.
-  ellipseRadialFill(ctx, 150, 269.3, 93, 138.7, [
-    [0, tokens.glow],
-    [1, 'rgba(0,0,0,0)'],
-  ]);
-  ellipseRadialFill(ctx, 150, 881.3, 360, 408, [
-    [0, tokens.deep],
-    [1, 'rgba(0,0,0,0)'],
-  ]);
-
-  drawSymbolPlate(ctx, tokens, motif);
-  drawMotifOrnaments(ctx, tokens, motif);
-
-  // Gold border + corner brackets (shared, never recolored).
-  ctx.strokeStyle = 'rgba(122, 98, 46, 0.85)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, AUTH_W - 2, AUTH_H - 2);
-  ctx.strokeStyle = 'rgba(176, 142, 66, 0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(9, 9, AUTH_W - 18, AUTH_H - 18);
-
-  ctx.strokeStyle = 'rgba(198, 160, 78, 0.72)';
-  const cornerLen = 16;
-  const cornerInset = 18;
-  const corners: [number, number, number, number][] = [
-    [cornerInset, cornerInset, 1, 1],
-    [AUTH_W - cornerInset, cornerInset, -1, 1],
-    [cornerInset, AUTH_H - cornerInset, 1, -1],
-    [AUTH_W - cornerInset, AUTH_H - cornerInset, -1, -1],
-  ];
-  for (const [cx, cy, dx, dy] of corners) {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy + cornerLen * dy);
-    ctx.lineTo(cx, cy);
-    ctx.lineTo(cx + cornerLen * dx, cy);
-    ctx.stroke();
-  }
-
-  // Top/bottom accent double-lines.
-  ctx.strokeStyle = 'rgba(176, 142, 66, 0.45)';
-  for (const y of [56, AUTH_H - 56]) {
-    ctx.beginPath();
-    ctx.moveTo(52, y);
-    ctx.lineTo(AUTH_W - 52, y);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = 'rgba(176, 142, 66, 0.2)';
-  for (const y of [62, AUTH_H - 62]) {
-    ctx.beginPath();
-    ctx.moveTo(74, y);
-    ctx.lineTo(AUTH_W - 74, y);
-    ctx.stroke();
-  }
-
-  // Vignette - darkens the edges over everything else.
-  ellipseRadialFill(ctx, 150, 359, 117, 424, [
-    [0.34, 'rgba(0,0,0,0)'],
-    [1, 'rgba(2, 4, 6, 0.9)'],
-  ]);
-
-  // Team tag - baked here (static per god, unlike the rank numeral, so it
-  // doesn't need the per-Text DPR treatment - the whole texture is already
-  // generated at a fixed oversampled resolution).
-  ctx.fillStyle = tokens.label;
-  ctx.font = "700 10px 'Cormorant Unicase', serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.letterSpacing = '2.8px';
-  ctx.fillText(`Team ${GOD_TEAM[god]}`.toUpperCase(), 150, AUTH_H - 96);
-
-  canvasTexture.refresh();
-}
-
-export function ensureCardFrameTextures(scene: Phaser.Scene): void {
-  (Object.keys(GOD_TOKENS) as God[]).forEach((god) => drawFrameTexture(scene, god));
-}
-
-// --- buildCard ------------------------------------------------------------
 
 export interface BuiltCard {
   container: Phaser.GameObjects.Container;
@@ -376,77 +123,67 @@ export interface BuiltCard {
 }
 
 // The one place a real (non-facedown, non-empty) card gets assembled -
-// frame + god symbol/face art + (ranks 2-10 only) rank numeral - reusable
-// wherever a face-up card appears (hand fan, play areas, previous-trick
-// log). `dims` is the caller's display size in logical px; art is always
-// authored/generated at the fixed 300x816 reference and scaled down to
-// fit, so this works at both CARD_DIMS_STANDARD and CARD_DIMS_MINI (and
-// the hand fan's popped-out scale) without regenerating any texture.
-export function buildCard(scene: Phaser.Scene, god: God, rank: Rank, dims: CardDimensions): BuiltCard {
-  const tokens = GOD_TOKENS[god];
-  const k = dims.width / AUTH_W;
+// frame + Deity Symbol/Face + rank/state badge - reusable wherever a
+// face-up card appears (hand fan, play areas, previous-trick log). `dims`
+// is the caller's display size in logical px; art is always authored/
+// generated at the fixed 1024x1536 reference and scaled down to fit, so
+// this works at both CARD_DIMS_STANDARD and CARD_DIMS_MINI (and the hand
+// fan's popped-out scale) without regenerating any texture.
+export function buildCard(
+  scene: Phaser.Scene,
+  god: God,
+  rank: Rank,
+  dims: CardDimensions,
+  deityCardState: DeityCardState | null = null,
+): BuiltCard {
+  const { w: authW, h: authH } = frameSize();
+  const k = dims.width / authW;
 
   const container = scene.add.container(0, 0);
 
   const frame = scene.add.image(0, 0, frameKey(god)).setDisplaySize(dims.width, dims.height);
   container.add(frame);
 
-  const isDeityCard = rank === 'DeityCard';
-  const artKey = isDeityCard ? faceKey(god) : symbolKey(god);
-  const safeRect = isDeityCard ? ACE_BLEED : SYMBOL_SAFE;
+  const artKey = windowArtKey(god, rank, deityCardState);
   if (scene.textures.exists(artKey)) {
     const art = scene.add.image(0, 0, artKey);
     const srcFrame = art.frame;
-    const fitScale = Math.min(safeRect.w / srcFrame.width, safeRect.h / srcFrame.height);
-    art.setDisplaySize(srcFrame.width * fitScale * k, srcFrame.height * fitScale * k);
-    art.setY((safeRect.y + safeRect.h / 2 - AUTH_H / 2) * k);
+    const winW = WINDOW.w * authW * k;
+    const winH = WINDOW.h * authH * k;
+    const fitScale = Math.min(winW / srcFrame.width, winH / srcFrame.height);
+    art.setDisplaySize(srcFrame.width * fitScale, srcFrame.height * fitScale);
+    art.setX((WINDOW.x + WINDOW.w / 2 - 0.5) * authW * k);
+    art.setY((WINDOW.y + WINDOW.h / 2 - 0.5) * authH * k);
     container.add(art);
   }
 
-  if (!isDeityCard) {
-    const rankCenterX = (RANK_SAFE.x + RANK_SAFE.w / 2 - AUTH_W / 2) * k;
-    const rankCenterY = (RANK_SAFE.y + RANK_SAFE.h / 2 - AUTH_H / 2) * k;
-    const plateW = RANK_SAFE.w * k;
-    const plateH = RANK_SAFE.h * k;
-
-    const plate = scene.add.graphics();
-    plate.fillStyle(0x0b1010, 0.98);
-    plate.lineStyle(Math.max(1, k), hexToNumber(tokens.line), 1);
-    if (GOD_MOTIF[god] === 'hex') {
-      const pts = hexPolygon(rankCenterX - plateW / 2, rankCenterY - plateH / 2, plateW, plateH);
-      plate.beginPath();
-      pts.forEach(([px, py], i) => (i === 0 ? plate.moveTo(px, py) : plate.lineTo(px, py)));
-      plate.closePath();
-      plate.fillPath();
-      plate.strokePath();
-    } else {
-      plate.fillRoundedRect(rankCenterX - plateW / 2, rankCenterY - plateH / 2, plateW, plateH, plateH / 2);
-      plate.strokeRoundedRect(rankCenterX - plateW / 2, rankCenterY - plateH / 2, plateW, plateH, plateH / 2);
-    }
-    container.add(plate);
-
-    const rankLabel = String(rank);
-    const fontSize = Math.round((rankLabel.length > 1 ? 90 : 128) * k);
-    const rankText = scene.add
-      .text(rankCenterX, rankCenterY, rankLabel, {
-        fontFamily: 'Georgia, serif',
-        fontStyle: 'bold',
-        fontSize: `${fontSize}px`,
-        color: '#f2e0a8',
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5);
-    container.add(rankText);
+  const team = GOD_TEAM[god];
+  const badgeKey = rankBadgeArtFile(team);
+  const badgeCx = (BADGE_CENTER.x - 0.5) * authW * k;
+  const badgeCy = (BADGE_CENTER.y - 0.5) * authH * k;
+  const badgeDiameter = BADGE_DIAMETER * authW * k;
+  if (scene.textures.exists(badgeKey)) {
+    const badge = scene.add.image(badgeCx, badgeCy, badgeKey).setDisplaySize(badgeDiameter, badgeDiameter);
+    container.add(badge);
   }
+
+  const marker = badgeMarkerText(rank, deityCardState);
+  const markerFontSize = Math.round(badgeDiameter * (marker.length > 1 ? 0.4 : 0.5));
+  const markerText = scene.add
+    .text(badgeCx, badgeCy, marker, {
+      fontFamily: 'Georgia, serif',
+      fontStyle: 'bold',
+      fontSize: `${markerFontSize}px`,
+      color: '#fff6df',
+      stroke: '#1a0f04',
+      strokeThickness: Math.max(2, Math.round(markerFontSize * 0.12)),
+      resolution: PIXEL_RATIO,
+    })
+    .setOrigin(0.5);
+  container.add(markerText);
 
   const hitArea = scene.add.rectangle(0, 0, dims.width, dims.height, 0x000000, 0.001);
   container.add(hitArea);
 
   return { container, hitArea };
-}
-
-function hexToNumber(rgba: string): number {
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgba);
-  if (!m) return 0xffffff;
-  return (parseInt(m[1], 10) << 16) | (parseInt(m[2], 10) << 8) | parseInt(m[3], 10);
 }

@@ -32,6 +32,10 @@ interface DomUiState {
   redistLogOpen: boolean;
   redistLogEntries: RedistLogEntry[];
   closeRedistLog: () => void;
+  menuOpen: boolean;
+  onMenuRules: () => void;
+  onMenuPreviousTrick: () => void;
+  closeMenu: () => void;
 }
 
 function idleState(): DomUiState {
@@ -41,6 +45,10 @@ function idleState(): DomUiState {
     redistLogOpen: false,
     redistLogEntries: [],
     closeRedistLog: () => {},
+    menuOpen: false,
+    onMenuRules: () => {},
+    onMenuPreviousTrick: () => {},
+    closeMenu: () => {},
   };
 }
 
@@ -80,5 +88,16 @@ export function openRedistLog(entries: RedistLogEntry[], onClose: () => void): v
 export function closeRedistLog(): void {
   if (!state.redistLogOpen) return;
   state = { ...state, redistLogOpen: false, redistLogEntries: [], closeRedistLog: () => {} };
+  emit();
+}
+
+export function openMenu(onRules: () => void, onPreviousTrick: () => void, onClose: () => void): void {
+  state = { ...state, menuOpen: true, onMenuRules: onRules, onMenuPreviousTrick: onPreviousTrick, closeMenu: onClose };
+  emit();
+}
+
+export function closeMenu(): void {
+  if (!state.menuOpen) return;
+  state = { ...state, menuOpen: false, onMenuRules: () => {}, onMenuPreviousTrick: () => {}, closeMenu: () => {} };
   emit();
 }

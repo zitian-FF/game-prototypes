@@ -1,4 +1,4 @@
-import type { CardDef, CardId, DeityCardState, God, Rank, Team } from './types';
+import type { CardDef, CardId, God, Rank, Team } from './types';
 
 // Reference data from the design document's card list table. Card names are
 // flavour text only; they carry no mechanical meaning beyond god + rank.
@@ -59,13 +59,6 @@ export const GOD_DISPLAY_NAME: Record<God, string> = {
   ShubNiggurath: 'Shub-Niggurath',
   YogSothoth: 'Yog-Sothoth',
 };
-
-// Player-facing name for a god's Deity Card, per its current Dormant/Powered
-// state (see rules/types.ts's DeityCardState). Exposed here for the
-// rendering layer to consume later - not yet wired into any UI.
-export function deityCardDisplayName(god: God, state: DeityCardState): string {
-  return state === 'powered' ? `Awakened ${GOD_DISPLAY_NAME[god]}` : GOD_DISPLAY_NAME[god];
-}
 
 // Short codes for space-constrained UI (the card-fan boxes and Suit Cycle
 // HUD ring nodes are too small for GOD_DISPLAY_NAME's full names).

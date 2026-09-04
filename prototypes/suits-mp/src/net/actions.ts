@@ -1,6 +1,6 @@
 import type { Room } from 'trystero/nostr';
 import { createIdentityActionWithName, createHostUIAction } from 'mp-core';
-import type { CardId, God, PlayKind, Team, WinInfo } from '../rules/types';
+import type { CardId, DeityCardState, God, PlayKind, Team, WinInfo } from '../rules/types';
 import type { NetPlayerId } from './netPlayerId';
 
 // --- Host -> peer lobby/session signals ------------------------------------
@@ -50,6 +50,11 @@ export type MaskedTrickPlay = {
   player: NetPlayerId;
   cards: CardId[];
   kind: PlayKind;
+  // Mirrors the real TrickPlay.deityCardState (see rules/types.ts) - null
+  // for anything that isn't a face-up Deity Card. Never populated for an
+  // offsuit play that isn't the viewer's own (host/mask.ts masks the whole
+  // play to a facedown placeholder before this would ever matter).
+  deityCardState: DeityCardState | null;
 };
 
 export type RedistributionContribution = {

@@ -89,7 +89,7 @@ export const SECTIONS: RuleSection[] = [
     kicker: 'Highest, and latest',
     body: [
       'The highest rank laid takes the trick. Where ranks are equal, the card played later prevails.',
-      'The Ace overcomes a Ten only when it falls after it within the same trick. Laid before, the Ten stands.',
+      'Each Deity Card enters play Dormant, at rank 1 - unless a Ten already fell earlier in the same trick, in which case it enters Powered, at rank 11. A Ten played after a Deity Card never powers it retroactively.',
     ],
     note: 'Lateness is the tiebreaker throughout. Watch the order of play, not only the ranks.',
   },

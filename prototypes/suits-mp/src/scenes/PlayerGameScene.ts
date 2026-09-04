@@ -4,7 +4,7 @@ import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PlayerSessionData } from '../net/playerSession';
-import { ensureCardFrameTextures, preloadCardArt } from '../ui/cardArt';
+import { preloadCardArt } from '../ui/cardArt';
 
 export class PlayerGameScene extends Phaser.Scene {
   constructor() {
@@ -18,7 +18,6 @@ export class PlayerGameScene extends Phaser.Scene {
   create(data: PlayerSessionData): void {
     addVersionStamp(this);
     createPortraitGuard(this);
-    ensureCardFrameTextures(this);
     this.cameras.main.setZoom(PIXEL_RATIO);
     const width = this.scale.width / PIXEL_RATIO;
     const height = this.scale.height / PIXEL_RATIO;

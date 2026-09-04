@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { cardById } from '../rules/cards';
-import type { CardId } from '../rules/types';
+import type { CardId, DeityCardState } from '../rules/types';
 import { buildCard } from './cardArt';
 
 // The one place any card - hand fan, play areas, redistribution stacks,
@@ -19,7 +19,15 @@ export interface CardDimensions {
   fontSize: number;
 }
 
-export type CardFace = { kind: 'faceup'; cardId: CardId } | { kind: 'facedown' } | { kind: 'empty' };
+// `deityCardState` is only ever set from a real, already-played TrickPlay's
+// own stored state (see rules/types.ts's DeityCardState doc comment) - a
+// Deity Card still sitting in a hand/redistribution-stack context hasn't
+// been played yet and has no state, so it's omitted/null there and always
+// renders its Dormant treatment (see ui/cardArt.ts's buildCard).
+export type CardFace =
+  | { kind: 'faceup'; cardId: CardId; deityCardState?: DeityCardState | null }
+  | { kind: 'facedown' }
+  | { kind: 'empty' };
 
 export interface CardStyle {
   fill: number;
@@ -81,7 +89,7 @@ export function drawCard(
   // express on its own, so it's kept as a thin rim outline plus alpha
   // rather than discarded.
   const cardDef = cardById(face.cardId);
-  const built = buildCard(scene, cardDef.god, cardDef.rank, dims);
+  const built = buildCard(scene, cardDef.god, cardDef.rank, dims, face.deityCardState ?? null);
   card.add(built.container);
   card.setAlpha(alpha);
   const rim = scene.add.rectangle(0, 0, dims.width, dims.height);

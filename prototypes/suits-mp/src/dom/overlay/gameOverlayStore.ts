@@ -41,6 +41,9 @@ export interface GameOverlayUiState {
   // canvas-drawn stub button since it's now laid out and coordinated
   // together with the (already-DOM) Sort/Action buttons.
   onOpenRedistLog: () => void;
+  // Opens the new Menu hub (Rules, Previous Trick) - the top-left member of
+  // the board's utility-button family (see GameOverlay.tsx).
+  onOpenMenu: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
   // Real per-seat "P1"/"P2 (You)"/etc labels (seatLabelFor + the local
   // seat's "(You)" suffix) - the only "name" this codebase actually has;
@@ -56,6 +59,7 @@ export interface GameOverlayUiState {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
+  requiredSuitGod: God | null;
 }
 
 const HIDDEN_STATE: GameOverlayUiState = {
@@ -67,6 +71,7 @@ const HIDDEN_STATE: GameOverlayUiState = {
   actionEnabled: false,
   onAction: () => {},
   onOpenRedistLog: () => {},
+  onOpenMenu: () => {},
   seatDelegate: { top: NOOP_SEAT_DELEGATE, right: NOOP_SEAT_DELEGATE, bottom: NOOP_SEAT_DELEGATE, left: NOOP_SEAT_DELEGATE },
   seatLabels: { top: '', right: '', bottom: '', left: '' },
   currentTurnSeat: null,
@@ -75,6 +80,7 @@ const HIDDEN_STATE: GameOverlayUiState = {
   teamName: '',
   yourGodChip: BLANK_CHIP,
   teammateGodChip: BLANK_CHIP,
+  requiredSuitGod: null,
 };
 
 let state: GameOverlayUiState = HIDDEN_STATE;

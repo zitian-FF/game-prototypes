@@ -5,7 +5,9 @@ import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
-import { HEX_CLIP_PATH, symbolArtUrl } from '../godArtUrl';
+import { GOD_DISPLAY_NAME } from '../../rules/cards';
+import type { God } from '../../rules/types';
+import { HEX_CLIP_PATH, actionSlabUrl, nameplateUrl, symbolArtUrl } from '../godArtUrl';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
@@ -41,6 +43,7 @@ export interface GameOverlayProps {
   actionEnabled: boolean;
   onAction: () => void;
   onOpenRedistLog: () => void;
+  onOpenMenu: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
   seatLabels: Record<SeatPosition, string>;
   currentTurnSeat: SeatPosition | null;
@@ -49,6 +52,7 @@ export interface GameOverlayProps {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
+  requiredSuitGod: God | null;
 }
 
 // Accumulates forward-only rotation degrees from a real 0..order-1 index
@@ -118,10 +122,16 @@ const LOCAL_TAG_HEIGHT = 48;
 // so the Team HUD sits below the "Invoker" tag too rather than
 // overlapping it (gap:6 + the tag's own ~3px/11px padding + text).
 const LOCAL_INVOKER_TAG_HEIGHT = 28;
-// Shared bottom anchor for the three-part bottom row (Redistribution log
-// / Action / Sort) - see BUILD_STATUS.md for why these three, previously
-// scattered (one of them canvas-drawn), are now one coordinated DOM row.
+// Shared bottom anchor for the three-part bottom row (Set / Action / Log) -
+// see BUILD_STATUS.md for why these three, previously scattered (one of
+// them canvas-drawn), are now one coordinated DOM row.
 const BOTTOM_ROW_BOTTOM = 54;
+// The Required Suit banner sits between the player cluster and the hand
+// fan - the player-facing prompt for what must be followed this trick, per
+// this task's board requirements (it does not duplicate the suit symbol
+// already shown by the Suit Cycle HUD ring above it - this is the only
+// spot that also names the suit in text).
+const REQUIRED_SUIT_BANNER_TOP = 590;
 // Suit Cycle HUD's lead-marker ring: pixel offset from the wheel's own
 // center for each seat it might need to highlight - derived from the
 // ring's fixed 124px box and the marker's own 36px size/-2px overhang
@@ -142,6 +152,7 @@ export function GameOverlay({
   actionEnabled,
   onAction,
   onOpenRedistLog,
+  onOpenMenu,
   seatDelegate,
   seatLabels,
   currentTurnSeat,
@@ -150,6 +161,7 @@ export function GameOverlay({
   teamName,
   yourGodChip,
   teammateGodChip,
+  requiredSuitGod,
 }: GameOverlayProps): JSX.Element {
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
@@ -504,7 +516,7 @@ export function GameOverlay({
                   color: `oklch(${isLocal ? 0.87 : 0.85} 0.09 84)`,
                 }}
               >
-                Invoker
+                Lead Player
               </div>
             )}
           </div>
@@ -587,27 +599,86 @@ export function GameOverlay({
         </div>
       </div>
 
-      {/* ===== Bottom row, left: Redistribution log - real =====
-          Migrated here from a canvas-drawn stub (ui/renderGameView.ts's
-          old renderRedistLogStub) now that it's laid out as part of this
-          same coordinated DOM row alongside Sort/Action - see
-          BUILD_STATUS.md. */}
+      {/* ===== Required Suit banner - real ===== */}
+      <div
+        data-ui="required-suit-banner"
+        style={{
+          position: 'absolute',
+          left: 14,
+          right: 14,
+          top: REQUIRED_SUIT_BANNER_TOP,
+          height: 34,
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0 12px',
+          background: 'linear-gradient(180deg, rgba(10, 34, 36, 0.82), rgba(5, 14, 17, 0.86))',
+          border: '1px solid rgba(120, 190, 178, 0.28)',
+        }}
+      >
+        {requiredSuitGod ? (
+          <span
+            style={{
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: GOD_MOTIF[requiredSuitGod] === 'circle' ? '50%' : 0,
+              clipPath: GOD_MOTIF[requiredSuitGod] === 'hex' ? HEX_CLIP_PATH : undefined,
+            }}
+          >
+            <img src={symbolArtUrl(requiredSuitGod)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </span>
+        ) : null}
+        <span
+          style={{
+            fontFamily: "'Cormorant Unicase', serif",
+            fontWeight: 500,
+            fontSize: 9,
+            letterSpacing: '0.16em',
+            color: 'rgba(158, 196, 186, 0.6)',
+          }}
+        >
+          Required Suit
+        </span>
+        <span
+          style={{
+            fontFamily: "'IM Fell English SC', serif",
+            fontSize: 15,
+            color: 'oklch(0.86 0.09 178)',
+          }}
+        >
+          {requiredSuitGod ? GOD_DISPLAY_NAME[requiredSuitGod] : 'Any Suit'}
+        </span>
+      </div>
+
+      {/* ===== Top-left: Menu - real =====
+          New hub (dom/MenuModal.tsx) hosting Rules and the previous-trick
+          log, replacing the old canvas-drawn top-bar Rules/Log buttons -
+          see ui/renderGameView.ts's renderTopBar. Square, carved black-
+          and-gold family matching the Play Card action button (per the
+          approved preview), via the real ui_action_slab.png art. */}
       <button
         type="button"
-        data-ui="redist-log-button"
-        onClick={onOpenRedistLog}
+        data-ui="menu-button"
+        onClick={onOpenMenu}
         style={{
           position: 'absolute',
           left: 10,
-          bottom: BOTTOM_ROW_BOTTOM,
-          height: 36,
-          padding: '0 10px',
+          top: 18,
+          width: 52,
+          height: 52,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          background: 'linear-gradient(180deg, rgba(16, 38, 38, 0.9), rgba(7, 15, 18, 0.92))',
-          border: '1px solid rgba(120, 190, 178, 0.3)',
-          clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-          color: 'oklch(0.86 0.04 176)',
+          justifyContent: 'center',
+          gap: 3,
+          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
+          border: '1px solid rgba(198, 160, 78, 0.5)',
+          color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
           fontSize: 10,
@@ -616,41 +687,71 @@ export function GameOverlay({
           pointerEvents: 'auto',
         }}
       >
-        Redist. Log
+        <span style={{ fontSize: 15, lineHeight: 1 }}>☰</span>
+        Menu
       </button>
 
-      {/* ===== Bottom row, right: Sort cards ("Order") - real ===== */}
+      {/* ===== Bottom row, left: hand sort ("Set") - real ===== */}
       <button
         type="button"
         data-ui="sort-cards-button"
         onClick={onToggleSort}
         style={{
           position: 'absolute',
-          right: 10,
+          left: 10,
           bottom: BOTTOM_ROW_BOTTOM,
-          height: 40,
-          padding: '0 10px',
+          width: 52,
+          height: 52,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: 6,
-          background: 'linear-gradient(180deg, rgba(16, 38, 38, 0.9), rgba(7, 15, 18, 0.92))',
-          border: '1px solid rgba(120, 190, 178, 0.3)',
-          clipPath: 'polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px)',
-          color: 'oklch(0.86 0.04 176)',
+          justifyContent: 'center',
+          gap: 3,
+          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
+          border: '1px solid rgba(198, 160, 78, 0.5)',
+          color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
-          fontSize: 12,
-          letterSpacing: '0.14em',
+          fontSize: 10,
+          letterSpacing: '0.1em',
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+        }}
+        aria-label={sortLabel}
+      >
+        <span style={{ fontSize: 15, lineHeight: 1 }}>⌘</span>
+        Set
+      </button>
+
+      {/* ===== Bottom row, right: Redistribution log ("Log") - real ===== */}
+      <button
+        type="button"
+        data-ui="redist-log-button"
+        onClick={onOpenRedistLog}
+        style={{
+          position: 'absolute',
+          right: 10,
+          bottom: BOTTOM_ROW_BOTTOM,
+          width: 52,
+          height: 52,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 3,
+          background: `url(${actionSlabUrl()}) center/100% 100% no-repeat`,
+          border: '1px solid rgba(198, 160, 78, 0.5)',
+          color: 'oklch(0.86 0.09 84)',
+          fontFamily: "'Cormorant Unicase', serif",
+          fontWeight: 500,
+          fontSize: 10,
+          letterSpacing: '0.1em',
           cursor: 'pointer',
           pointerEvents: 'auto',
         }}
       >
-        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ display: 'block', width: 11, height: 1, background: 'currentColor' }} />
-          <span style={{ display: 'block', width: 8, height: 1, background: 'currentColor' }} />
-          <span style={{ display: 'block', width: 5, height: 1, background: 'currentColor' }} />
-        </span>
-        {sortLabel}
+        <span style={{ fontSize: 15, lineHeight: 1 }}>☷</span>
+        Log
       </button>
 
       {/* ===== Bottom row, center: Action button - real ===== */}

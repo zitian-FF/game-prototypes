@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { RulesModal } from './RulesModal';
 import { RedistLogModal } from './RedistLogModal';
-import { closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
+import { MenuModal } from './MenuModal';
+import { closeMenu, closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
 import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
 import { GameOverlay } from './overlay/GameOverlay';
@@ -15,10 +16,17 @@ import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverla
 // rendered independently - in practice at most one is visible at a time,
 // since only one Phaser scene drives the game at once.
 export function DomRoot(): JSX.Element {
-  const { rulesOpen, closeRules: onClose, redistLogOpen, redistLogEntries, closeRedistLog: onCloseRedistLog } = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-  );
+  const {
+    rulesOpen,
+    closeRules: onClose,
+    redistLogOpen,
+    redistLogEntries,
+    closeRedistLog: onCloseRedistLog,
+    menuOpen,
+    onMenuRules,
+    onMenuPreviousTrick,
+    closeMenu: onCloseMenu,
+  } = useSyncExternalStore(subscribe, getSnapshot);
   const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
 
@@ -38,6 +46,16 @@ export function DomRoot(): JSX.Element {
           onClose={() => {
             onCloseRedistLog();
             closeRedistLog();
+          }}
+        />
+      )}
+      {menuOpen && (
+        <MenuModal
+          onRules={onMenuRules}
+          onPreviousTrick={onMenuPreviousTrick}
+          onClose={() => {
+            onCloseMenu();
+            closeMenu();
           }}
         />
       )}
@@ -68,6 +86,7 @@ export function DomRoot(): JSX.Element {
           actionEnabled={gameOverlay.actionEnabled}
           onAction={gameOverlay.onAction}
           onOpenRedistLog={gameOverlay.onOpenRedistLog}
+          onOpenMenu={gameOverlay.onOpenMenu}
           seatDelegate={gameOverlay.seatDelegate}
           seatLabels={gameOverlay.seatLabels}
           currentTurnSeat={gameOverlay.currentTurnSeat}
@@ -76,6 +95,7 @@ export function DomRoot(): JSX.Element {
           teamName={gameOverlay.teamName}
           yourGodChip={gameOverlay.yourGodChip}
           teammateGodChip={gameOverlay.teammateGodChip}
+          requiredSuitGod={gameOverlay.requiredSuitGod}
         />
       )}
     </>

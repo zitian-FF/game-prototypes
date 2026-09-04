@@ -96,6 +96,7 @@ export function buildMaskedState(
     player: toNetPlayerId(play.playerId),
     cards: play.cardIds,
     kind: play.kind,
+    deityCardState: play.deityCardState,
   }));
 
   // `state.lastTrickResult` is overwritten only when a trick actually
@@ -108,6 +109,7 @@ export function buildMaskedState(
         player: toNetPlayerId(play.playerId),
         cards: play.cardIds,
         kind: play.kind,
+        deityCardState: play.deityCardState,
       }))
     : null;
 
