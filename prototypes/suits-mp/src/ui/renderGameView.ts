@@ -477,15 +477,24 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
 // actually occupies this play-area slot (a played card, an empty-slot
 // placeholder, or a redistribution stack) - procedural Graphics, since no
 // recess art asset was part of this handoff (only the tabletop surface
-// itself, background_tabletop_stone.png).
+// itself, background_tabletop_stone.png). Visual reskin pass (see
+// BUILD_STATUS.md): a soft outer shadow plus a top-darker/bottom-lighter
+// gradient floor and a faint warm rim reads as a sunken hollow in the
+// stone, rather than the flat black dashed-container look this used to
+// have. Purely decorative - card slot position, hit target and seat
+// relationship are unchanged; this is drawn first, behind everything.
 function drawPlayAreaRecess(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number): void {
-  const w = CARD_DIMS_STANDARD.width + 14;
-  const h = CARD_DIMS_STANDARD.height + 14;
+  const w = CARD_DIMS_STANDARD.width + 16;
+  const h = CARD_DIMS_STANDARD.height + 16;
+  const rx = x - w / 2;
+  const ry = y - h / 2;
   const g = scene.add.graphics();
-  g.fillStyle(0x000000, 0.4);
-  g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
-  g.lineStyle(1, 0x000000, 0.6);
-  g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+  g.fillStyle(0x000000, 0.16);
+  g.fillRoundedRect(rx - 4, ry - 4, w + 8, h + 8, 12);
+  g.fillGradientStyle(0x05060a, 0x05060a, 0x161a1e, 0x161a1e, 0.55, 0.55, 0.55, 0.55);
+  g.fillRoundedRect(rx, ry, w, h, 8);
+  g.lineStyle(1, 0x8a6a34, 0.22);
+  g.strokeRoundedRect(rx, ry, w, h, 8);
   container.add(g);
 }
 

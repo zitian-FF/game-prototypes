@@ -1,235 +1,262 @@
 ## Current milestone
 
-Visual asset integration: real R2-fetched art (card frames, Deity Symbol/
-Face, rank badges, tabletop, action-slab buttons) wired into the card
-compositor and board, replacing the earlier CSS-recolorable token frame
-system entirely. Read all 5 handoff documents fresh (GDD, architecture/
-pipeline doc, approved preview PNG, the reconstructable HTML/CSS mockup,
-runtime asset manifest doc) before touching code, per this task's own
-read-before-code rule, and got the two already-resolved conflicts (card
-frame system, no "Awakened [Deity]" text) plus three further genuinely
-ambiguous points (Menu/Set/Log button semantics, centre-inlay behavior)
-answered by the user before implementing, rather than guessing.
+Visual integration pass 1: centre-inlay reskin, play-area recess reskin,
+and stone-and-gold control styling. Read the live GDD, the Game Production
+Pipeline and Architecture doc, and (as required implementation input, per
+the architecture doc's own Branch B workflow)
+`Art Pipeline/Suits of Madness/Working/suits-mp-screen-reference.md`
+fresh before touching code. Per that document's explicit authority rule,
+this doc was **not** edited directly - ChatGPT/Codex is its sole editor;
+proposed corrections are called out in their own section below, clearly
+separated so they can be relayed to GPT afterward.
 
-## What was implemented
+Confirmed directly from the screen-reference doc and the Export manifest
+before starting: no new asset exists for the centre inlay's wells - only
+`background_tabletop_stone.png` and the existing `deity_symbol_<god>.png`
+files. The four wells are procedurally drawn (hex/circle shapes, glassy
+gradient, coded), matching the same approach the play-area recesses
+already used. No new asset need was found partway through; nothing was
+substituted informally.
 
-**Card compositing (`ui/cardArt.ts`, full rewrite)** - `buildCard()` now
-composites three real PNG layers instead of Canvas2D-generated ones:
-`card_frame_<deity>.png` as the full card background (a per-god frame with
-a baked-in main window and a baked-in bottom-left circular badge socket -
-both measured directly off the real art via alpha-channel inspection,
-since no pixel spec doc came with the handoff; see the git history's
-measurement script for the method), the god's `deity_symbol_<deity>.png`
-(numbered cards, and a Dormant Deity Card) or `deity_face_<deity>.png` (a
-Powered Deity Card only) in that window, and a `rank_badge_chaos_portal.png`/
-`rank_badge_cosmos_galaxy.png` (by Team) in the badge socket, with a live
-Phaser.Text on top per root CLAUDE.md's DPR rule - the plain rank numeral
-for a numbered card, or the Dormant/Powered marker ("1"/"★") for a Deity
-Card. The entire earlier token system (`GOD_TOKENS`, `drawFrameTexture`,
-`drawSymbolPlate`, `drawMotifOrnaments`, `ellipseRadialFill`,
-`roundedRectPath`, `hexPolygon`, `fillPolygon`, `ensureCardFrameTextures`,
-`frameKey`'s Canvas2D generation, the old `AUTH_W`/`AUTH_H`/`TEX_SCALE`/
-`SYMBOL_SAFE`/`ACE_BLEED`/`RANK_SAFE` constants) is deleted, not layered
-under the new art - confirmed via the same rewrite, and its two call sites
-(`HostGameScene.ts`/`PlayerGameScene.ts`'s `ensureCardFrameTextures(this)`)
-removed, since real PNGs load via the existing manifest-driven
-`preloadCardArt`, no per-god texture generation step needed anymore.
-- **A Deity Card's display name never changes between states** -
-  `rules/cards.ts`'s `deityCardDisplayName()` (added, unused, in the prior
-  engine task) returned `"Awakened [Deity]"` when Powered; per this task's
-  resolution that's now wrong, and since nothing had started consuming it
-  yet, it's deleted outright rather than patched into a no-op.
-- **`rules/godArt.ts`**: the god->filename slug convention updated to match
-  the real manifest exactly (`deity_symbol_<god>`/`deity_face_<god>`/
-  `card_frame_<god>`, underscore-separated - the old convention used
-  `symbol_1_cthulhu`/hyphenated `shub-niggurath` and would not have
-  resolved to any real file). Added `frameArtFile()` and a Team-keyed
-  `rankBadgeArtFile()`.
-- **`tune.json`**: `cardStandardWidth` 42->76, `cardMiniWidth` 18->33 -
-  the new `card_frame_<deity>.png` is a clean 1024x1536 (2:3) image,
-  nothing like the old token system's narrow 300:816 "Air Deck" authoring
-  ratio the previous card-frame task tuned these to. The brief's own
-  "preserve source alpha and aspect ratio" requirement made this
-  unavoidable (stretching the new frame art to the old narrow ratio would
-  distort it); heights are unchanged to minimize disruption to the
-  layout constants already tuned around them. Same category of change as
-  the prior card-frame task's own height bump (82->114) for the same
-  reason - an art-driven dimension fix, not arbitrary tuning.
-- **Dormant/Powered state now reaches the renderer for real**: `TrickPlay`'s
-  `deityCardState` (added in the prior engine task, previously unconsumed)
-  is threaded through `net/actions.ts`'s `MaskedTrickPlay` and
-  `host/mask.ts`'s `buildMaskedState()` (both `currentTrick` and
-  `previousTrick`), then into `ui/cardComponent.ts`'s `CardFace` (a new
-  optional field on the `faceup` variant) and finally into `buildCard()`.
-  A card still sitting in a hand or a redistribution stack has no
-  `deityCardState` (it hasn't been played yet) and always renders its
-  Dormant treatment, per the engine's own rule that state is only ever
-  determined at the moment of play.
-- **Board**: `background_tabletop_stone.png` drawn full-bleed as the first
-  (bottom-most) canvas element every render pass; a procedural (no asset
-  provided for this) dark rounded-rect "recess" drawn behind each of the 4
-  play-area slots.
-- **Menu / Set / Log**: a new top-left "Menu" button (carved black-and-gold
-  `ui_action_slab.png` family, per the approved preview) opens a new
-  `dom/MenuModal.tsx` hosting the two things that used to sit behind their
-  own top-bar buttons - Rules and the previous-trick log. The bottom-left
-  Sort button is relabeled "Set" (same behavior, `⌘` glyph per the
-  preview); the bottom-right Redistribution Log button is relabeled "Log"
-  (same behavior). The old canvas-drawn top-bar Rules/Log buttons are
-  removed from `renderTopBar` (which now only draws the Trick/Phase text).
-- **Required Suit banner** - new DOM element between the player cluster and
-  the hand fan, showing the live required suit's symbol + name (or "Any
-  Suit" while leading) - the player-facing prompt the board requirements
-  asked for. Does not duplicate a symbol inside the centre inlay (see
-  below).
-- **"Invoker" -> "Lead Player"** - the seat tag text in
-  `dom/overlay/GameOverlay.tsx` renamed to match both the approved preview
-  and the fresh GDD read this session, which no longer uses "Invoker"
-  anywhere (a second, independent terminology drift beyond the Ace->Deity
-  Card one, caught by the same fresh-read discipline).
-- **`dom/rulesContent.ts`**'s "Taking a Trick" copy rewritten from the
-  stale "The Ace overcomes a Ten only when it falls after it..." sentence
-  (already flagged stale in the prior engine task) to the real Dormant/
-  Powered mechanic in the same voice as the rest of that section.
-- **Centre Suit Cycle HUD / turn-indicator ring**: per explicit user
-  decision, kept exactly as-is functionally (rotation, freeze-on-null,
-  lead-marker highlighting all untouched) - not re-skinned as static hex/
-  circle wells. A visual "carved stone well" re-skin of the existing ring
-  badges (same shape/rotation behavior, different surface treatment) is
-  left as a follow-up polish item, not attempted this pass.
+## Files/components changed
 
-## Two conflicts already resolved by the user (applied as given)
+- `src/dom/overlay/GameOverlay.tsx` - centre inlay (turn-indicator wheel +
+  Suit Cycle HUD), Menu/Set/Log button styling, local nameplate.
+- `src/dom/overlay/GameOverlay.css` - stale comment referencing the
+  removed outer-sigil-ring fixed (the shared `somCreep` keyframe itself is
+  still used by `dom/lobby/LobbyFlow.tsx` and is untouched).
+- `src/ui/renderGameView.ts` - `drawPlayAreaRecess()` restyled.
+- `tune.json` - removed `outerSigilRingSpinMs` (see below).
 
-- **Card frame system**: switched to the baked images, old token system
-  removed outright rather than layered - see above.
-- **Powered Deity Card display name**: name never changes; state is
-  Symbol/Face art + "1"/"★" marker only - see above. **Important
-  discrepancy found and reported, not silently resolved**: the brief
-  stated "The GDD has been updated to match this decision." A fresh read
-  of the live GDD this session shows it has **not** - the Card List
-  section, its "Deity Card visual activation concept" paragraph, all four
-  per-Deity rows, and the Compact Card Representation section all still
-  say "Awakened [Deity]" throughout. This was reported to the user
-  directly in-session rather than assumed away; implementation proceeded
-  on the user's own explicit in-chat resolution (which functions as an
-  override regardless of the document's current text), but **the GDD
-  document itself still needs a manual edit** - this session has no tool
-  capable of writing Google Doc body content (only title/location
-  metadata), so it could not make that edit itself.
+## Each screen-reference element addressed
 
-## Three further ambiguities the user resolved before implementation
+- **"Center inlay... the single biggest visual gap versus the approved
+  preview"**: addressed. The legacy glowing-ring/floating-badge treatment
+  (three nested colored-border circles + an animated spinning "outer
+  sigil ring" with four 45°-rotated diamond marks) is replaced with one
+  round carved-stone bezel (turn wheel) housing a round carved-stone
+  inlay (Suit Cycle HUD), both styled via inset box-shadows and dark
+  radial gradients instead of glowing borders - no diagonal
+  stripes/diamonds, no colored UI-outline rings. The four badges became
+  enlarged (26px → 42px), tightly-grouped "glassy well" shapes (hex for
+  Chaos, circle for Cosmos - unchanged mapping, still per-god via
+  `GOD_MOTIF`), each with a soft top-left highlight fading into a dark,
+  faintly team-tinted floor. The center hub is a small plain stone recess
+  - still no symbol, still no text label.
+  - **The exact rotation/highlighting logic the doc flagged as "real
+    interactive logic, not decoration" is untouched**: `useForwardRotation`,
+    `useLastKnown`, the `starterIndex`/`suitIndex`/`turnSeatIndex`
+    computation, and every `useState`/`useEffect` above the JSX are
+    byte-for-byte the same as before this pass. Only the JSX/style values
+    consuming `turnDeg`/`suitDeg`/`markerSeat` changed - sizes, colors,
+    gradients, shapes - never which state drives which transform. The
+    per-well counter-rotation (`rotate(${-suitDeg}deg)` on each symbol's
+    own wrapper) is preserved exactly, just resized to match the larger
+    wells (30px inner icon, up from 18px, same ~0.7 ratio).
+  - `MARKER_OFFSET`'s four `{dx, dy}` values now equal a single
+    `WELL_OFFSET` constant (30) instead of a hardcoded 46, since the
+    lead-marker must track the wells' new (closer-to-center) positions -
+    this is a size/position constant change, not a logic change; the
+    marker still highlights whichever well sits at `markerSeat` via the
+    same `translate()` technique.
+- **Required Suit banner "deliberately NOT duplicated inside the center
+  inlay"**: unchanged - still the only place the required suit is named,
+  still not repeated in the inlay (confirmed by inspection; nothing in
+  this pass added a symbol/text to the inlay's center hub).
+- **Board background / play-area recesses ("procedurally-drawn... no
+  recess art asset exists")**: addressed. `drawPlayAreaRecess()` (Phaser
+  Graphics, canvas layer, untouched card slot/position/hit-target math)
+  now draws a soft outer shadow, a top-darker/bottom-lighter gradient
+  floor (`fillGradientStyle`), and a faint warm rim in the stone-and-gold
+  palette - replacing the old flat black semi-transparent rect with a
+  black stroke, which read as a UI panel rather than a sunken hollow in
+  the stone.
+- **Bottom row (Set/Log) + Menu button, "square controls matching the
+  Play Card button's carved black-and-gold family"**: addressed, but not
+  via `ui_action_slab.png` as originally attempted in the prior pass -
+  see the discrepancy note below. All three now use a procedural dark
+  inset-stone gradient with a clean gold border instead.
+- **Player cluster name tags, "no real player-nickname data... 'Player
+  N' is the only label that exists"**: unchanged - `seatLabels` is still
+  the only source, no hardcoded names were added anywhere.
+- **Hand fan interaction rules (selected-card lift, no "Selected" label,
+  neutral illegal dimming, no LOCKED text/stripes)**: unchanged - none of
+  `ui/cardComponent.ts`, `ui/handLegality.ts`, or the fan's own tap/z-order
+  code in `ui/renderGameView.ts` were touched this pass.
+- **Deity Card Dormant/Powered behavior, card compositing, Deity/rank
+  semantics**: unchanged - `ui/cardArt.ts` was not touched.
 
-- **Menu button** (new, no equivalent in the current UI): opens a real
-  hub, not just a Rules relocation - implemented as `MenuModal.tsx` hosting
-  Rules + Previous Trick.
-- **Set button**: confirmed to be the existing hand Sort toggle, relabeled.
-- **Log button**: confirmed to be the Redistribution Log (not the
-  previous-trick log, which moved into the new Menu instead).
-- **Centre inlay**: confirmed to keep its existing rotating/highlighting
-  behavior rather than becoming a static decorative element - see above.
+## Runtime behavior explicitly preserved (verified, not just claimed)
 
-## How this was verified
+Verified live against a running single-player-vs-bots game
+(`npm run preview`, Playwright, portrait viewport):
 
-- `npm run typecheck` (repo root) - clean.
-- `npm run build` (repo root) - succeeds; real R2 art fetched via
-  `npm run fetch:assets suits-mp` + `npm run pack:assets suits-mp`
-  (existing pipeline, no second loader) - all 17 manifest filenames
-  present and correctly hash-keyed into `public/prototypes/suits-mp/assets`.
-- **R2 zip structure discrepancy found and reported, non-blocking**: the
-  manifest doc says the zip "must open directly to loose/ and packed/, no
-  enclosing folder," but the real uploaded zip wraps everything in one
-  `suits-mp_assets/` folder. `scripts/fetch-assets.js` already has an
-  explicit one-level-flatten step for exactly this case (confirmed by
-  running it against the real zip) - not a hard failure in practice, but
-  flagged here since it doesn't match the manifest doc's own stated rule.
-- **Isolated card-compositing verification**: a temporary Phaser harness
-  page (`harness-test.html`, deleted before finishing) called `buildCard()`
-  directly for 6 cases - Dormant and Powered YogSothoth, Dormant and
-  Powered Cthulhu, plus two ordinary numbered cards (ShubNiggurath 7,
-  Nyarlathotep 10) - and both screenshotted the result and read the actual
-  Phaser.Text marker values back out of the scene. Confirmed exactly
-  right: Dormant shows Deity Symbol art + "1"; Powered shows Deity Face
-  art + "★"; numbered cards show Deity Symbol art + their plain rank. The
-  marker was initially illegible against the badge art at small sizes -
-  fixed by adding a dark stroke/outline to the marker text (real,
-  necessary contrast fix, applied before finishing rather than left as a
-  known issue).
-- **Full-game Playwright pass** against `npm run preview`: booted the
-  lobby (clean), started a single-player-vs-bots game, and confirmed via
-  screenshot at a portrait viewport (430x900 - the default headless
-  viewport is landscape-ish enough to trigger the pre-existing portrait-
-  guard overlay, which then hides the whole canvas behind an opaque "please
-  rotate" screen; not a regression, just a test-viewport artifact) that
-  the tabletop background, real per-god card frames on both played cards
-  and the hand fan, the Required Suit banner, the renamed Lead Player tag,
-  and the new Menu/Set/Log buttons all render together correctly. Opened
-  the Menu modal and confirmed Rules opens cleanly from inside it - a real
-  bug was caught and fixed here: the first wiring left the Menu modal
-  state open underneath Rules (both stacked) because switching
-  `ui.overlay` away from `'menu'` never called `closeMenu()`; fixed by
-  calling it explicitly in both of Menu's own button callbacks before
-  reassigning `ui.overlay`.
-- Browser console clean on boot and through a played trick, aside from the
-  known pre-existing Google Fonts sandbox-network failure and one
-  intermittent, previously-established-as-unrelated 404 (present before
-  this task too, never reproduced by a targeted response-listener run
-  either time it was checked).
+- **Card selection**: tapped a legal hand card (found by probing several
+  fan x-positions since trick 1's forced-opener legality only allows one
+  specific card) - card entered the `selected` visual state and the
+  action button enabled with the correct "Play Card / Follow \<suit\>"
+  label.
+- **Playing a card**: clicked the action button with a card selected -
+  the turn phase advanced (`Play Card` → `Redistribute`), the required-
+  suit banner and hand fan updated, "Waiting for Player N..." appeared -
+  confirming the play actually committed through the host, not just a
+  local visual change.
+- **Sorting**: clicked the Set button - no error, hand fan re-rendered
+  (toggled suit/rank order); clicked again to toggle back.
+- **Opening Menu**: clicked the Menu button - `MenuModal` opened cleanly
+  (no double-stack regression from the prior pass's bug).
+- **Opening Rules from Menu**: clicked "The Rites" inside the open Menu -
+  Rules opened with Menu correctly closed underneath (re-confirms the fix
+  from the previous pass still holds after this pass's centre-inlay/
+  button changes).
+- **Opening the Redistribution Log**: clicked the Log button - "The
+  Ledger" opened ("No tricks resolved yet." while trick 1 was still in
+  progress).
+- **Delegate-selection color cue**: *not* exercised live this pass (would
+  need a Double-win to reach `selectDelegate` phase, not reliably
+  reachable from bot-random play in the time available) - verified by
+  inspection instead: the non-local seat-tag JSX block (the
+  `delegate.staged` teal/gold gradient logic) was not touched by any edit
+  in this pass; only the local "You" tag's own background line changed,
+  and the local seat is never a delegate target. Flagged here rather than
+  silently assumed.
+- Browser console clean through the entire sequence above (aside from
+  the known pre-existing Google Fonts sandbox-network failure and the
+  same intermittent, previously-established-as-unrelated 404 seen in
+  every prior task's checks).
+- `npm run typecheck` and `npm run build` (repo root) - both clean.
+
+## Asset filenames used
+
+Only real, already-fetched R2 assets, per the Export manifest - no new
+asset requests:
+
+- `background_tabletop_stone.png` - unchanged use (already wired in the
+  prior pass).
+- `deity_symbol_cthulhu.png` / `deity_symbol_nyarlathotep.png` /
+  `deity_symbol_shub_niggurath.png` / `deity_symbol_yog_sothoth.png` -
+  now shown larger inside the reskinned wells (same images, same
+  per-god/per-motif mapping as before).
+- `ui_player_nameplate.png` - newly applied, to the local "You" tag only
+  (see below).
+- No use of `ui_action_slab.png` in this pass - see discrepancy below.
+
+## Remaining visual discrepancies or ambiguity
+
+- **`ui_action_slab.png` still isn't used anywhere.** The Export
+  manifest describes it as the "carved black-and-gold primary action and
+  square utility-button frame family," and the prior pass tried using it
+  as the Menu/Set/Log background - but that asset is a wide bar (its real
+  dimensions are roughly 1065×220, a ~4.8:1 aspect ratio, confirmed by
+  inspecting the fetched file), and stretching it into a 52×52 square via
+  CSS `background-size: 100% 100%` distorted it into a flat, washed-out
+  gold box rather than a carved control (this is what the task's "no
+  yellow box" instruction was describing). This pass replaces that with
+  procedural styling for the three square buttons instead, per the same
+  "no dedicated asset exists, draw it in code" principle already
+  established for the wells/recesses. The Play Card action button (wide,
+  ~154×56, a much closer aspect match to the real asset) still uses its
+  own inline gradients too, unrelated to this pass - it was out of this
+  pass's explicit scope (only Menu/Set/Log were named) and wasn't
+  touched. Whether `ui_action_slab.png` should be wired into the Action
+  button specifically (where its aspect ratio would actually fit) is an
+  open question for a future pass, not resolved here.
+- **`ui_player_nameplate.png` applied to the local tag only, not the
+  other three seat tags** - per the task's own explicit instruction to
+  use judgment and report rather than guess a compromise. The three
+  non-local seat tags carry real delegate-selection state (a teal vs.
+  gold gradient distinguishing `staged`/not-`staged`) that a naive image
+  swap would still risk flattening, same concern as when this was first
+  deferred. The local tag has no such state (you can't delegate to
+  yourself) so it was safe to apply there. A tinted overlay
+  (`rgba(20,16,8,0.15)` → `rgba(4,4,3,0.3)`, adjusted down from an
+  initial too-opaque pass once screenshotted) sits over the real art so
+  "Player 1 (You)" stays legible against its texture.
+- Delegate-selection live verification not exercised this pass (see
+  above) - preserved by inspection, not by a live Double-win test.
+- The centre inlay's exact proportions (42px wells, 30px center offset,
+  150px inlay, 168px outer bezel) were chosen to visually match the
+  approved preview's "tightly grouped" look by eye, not measured against
+  a pixel spec - no such spec exists for this element's internal
+  geometry in any of the read documents.
+
+## Proposed updates to suits-mp-screen-reference.md
+
+**(Separated here specifically for relay to GPT/Codex, the document's
+sole editor - everything above is for the user; this section is the
+handoff.)**
+
+1. **Center inlay section** - the "single biggest visual gap versus the
+   approved preview" framing is now stale. The rotating-ring/floating-
+   badge visual is gone; the centre inlay is now a round carved-stone
+   bezel + inlay with four enlarged glassy hex/circle wells, matching the
+   preview's direction. The *rotation/highlighting logic* this section
+   correctly flagged as real (not decorative) is unchanged and still
+   accurately described - only the "what's actually live" visual
+   description needs updating. Affected code: `src/dom/overlay/
+   GameOverlay.tsx`'s `turn-indicator-wheel` and `suit-cycle-hud` blocks;
+   state relationships (`turnDeg`/`suitDeg`/`markerSeat`/`WELL_OFFSET`/
+   `MARKER_OFFSET`) are unchanged from what the doc already describes.
+2. **Board background section** - the play-area recesses are still
+   procedurally drawn (no new asset), but the doc's own note that a
+   dedicated recess texture "would be new work" remains accurate; only
+   the recess's current visual treatment (was flat black, is now a
+   gradient-shaded sunken hollow) changed. Affected code:
+   `src/ui/renderGameView.ts`'s `drawPlayAreaRecess()`.
+3. **Bottom row section** - should note that Menu/Set/Log use procedural
+   stone-and-gold styling, not `ui_action_slab.png`, because that asset's
+   real aspect ratio (~4.8:1, a wide bar) doesn't fit a square button
+   without visible distortion. If a genuinely square carved-stone button
+   asset is produced later, it could replace this procedural styling
+   directly (same DOM structure, just swap the `background` value).
+4. **New note worth adding**: `ui_player_nameplate.png` is now applied,
+   but only to the local player's own seat tag - the doc's existing
+   "known deliberate gap" entry for this asset should be updated to say
+   *partially* applied, with the reason (delegate-staged color state on
+   the other three tags) rather than "never applied."
+5. **New note worth adding**: `tune.json`'s `outerSigilRingSpinMs` was
+   removed (its only consumer, the old outer sigil ring, no longer
+   exists) - if the screen-reference doc or any other doc lists tune keys
+   anywhere, this one should come off that list.
 
 ## Key technical decisions
 
-- **Frame window/badge-socket coordinates were measured off the real
-  images, not assumed** - the handoff came with exact filenames but no
-  pixel-layout spec for internal placement. Used alpha-channel contiguous-
-  run detection on `card_frame_cthulhu.png` to find the main window and
-  the bottom-left badge socket's true bounds, then applied the same
-  fractional coordinates to every god's frame (all four share the same
-  layout, only the art differs).
-- **Marker legibility was treated as an in-scope bug, not a known issue**
-  - a state indicator nobody can read defeats the point of the mechanic;
-  fixed with a text stroke rather than deferred.
-- **The old per-god `GOD_TOKENS` color/motif system is gone from
-  `cardArt.ts`** (the frame images bake in their own team accents now) -
-  but `rules/godArt.ts`'s `GOD_MOTIF` (hex/circle per Team) is kept, since
-  it's still real and load-bearing for the DOM chrome (Suit Cycle HUD
-  badge shapes, RulesModal's cycle diagram, the Required Suit banner's
-  icon frame) which never used the token system to begin with.
+- **Every centre-inlay edit was a style-value change on an unmodified JSX
+  skeleton** wherever possible (same divs, same `data-bind`/`data-ui`
+  attributes, same conditional structure) specifically so the diff stays
+  auditable against "did any logic change" - a reviewer (or GPT, reading
+  the handoff above) can see the rotation math is identical by checking
+  that no `useState`/`useEffect`/index-computation line changed.
+- **Procedural over informal-asset-substitution for the square buttons.**
+  The task was explicit that stopping to report beats improvising when a
+  needed asset doesn't exist; misusing `ui_action_slab.png` at the wrong
+  aspect ratio was exactly the kind of informal substitution to avoid,
+  so it was replaced with the same procedural approach already
+  established (and explicitly sanctioned) for the wells and recesses,
+  rather than left as a visible defect or worked around with a hack.
 
 ## Open questions
 
-- The GDD document itself needs the manual text edit described above
-  (removing "Awakened [Deity]" from the Card List section, its visual-
-  activation-concept paragraph, the four per-Deity rows, and the Compact
-  Card Representation section) - this session found the discrepancy and
-  reported it, but has no tool that can write Google Doc body content, so
-  the edit itself is still pending outside this repo.
-- `ui_player_nameplate.png` is fetched/packed and available but **not**
-  applied to the seat name tags in this pass - the existing gold-bordered
-  "You" tag and teal/gold staged-vs-default other-seat tags carry real
-  functional meaning (delegate-selection state), and a naive full-image
-  background swap risked losing that color cue without more design
-  iteration time than this pass had. Flagged rather than guessed at.
-- The centre Suit Cycle HUD ring's *visual surface* (still the original
-  glowing-badge treatment, not a carved-stone "well" look) is unchanged,
-  per the user's explicit "keep rotation" decision - a lighter re-skin
-  that preserves the exact same rotation/marker logic is a reasonable
-  follow-up if the visual gap to the approved preview's compact look
-  matters enough to revisit.
+- Should `ui_action_slab.png` be wired into the Play Card action button
+  (where its aspect ratio fits), now that Menu/Set/Log no longer use it?
+  Not resolved here - out of this pass's scope.
+- Should a square carved-stone button asset be commissioned for Menu/
+  Set/Log specifically, or is the procedural treatment good enough long
+  -term? A product/art-direction decision, not resolved here.
 
 ## Known issues
 
-- Two items above (`ui_player_nameplate.png` unapplied, centre-HUD visual
-  surface unchanged) are deliberate scope decisions for this pass, not
-  bugs, but are real gaps versus the approved preview's pixel treatment.
-- Carried over, untouched by this task: `advanceBlocker()`'s premature
-  `checkSuitCompletion()` call; the facedown-card masking leak in
-  `host/mask.ts`; Rules-modal content gaps (no Setup section, off-suit
-  hidden-identity nature unstated).
+Carried over, untouched by this pass: `advanceBlocker()`'s premature
+`checkSuitCompletion()` call; the facedown-card masking leak in
+`host/mask.ts`; Rules-modal content gaps (no Setup section, off-suit
+hidden-identity nature unstated); the other three seat tags still don't
+use `ui_player_nameplate.png` (see above, deliberate).
 
 ## Next proposed step
 
-Apply `ui_player_nameplate.png` to the seat tags without losing the
-delegate-staged color cue (e.g. tint the art rather than replacing the
-background outright), and/or a lighter carved-stone re-skin of the Suit
-Cycle HUD ring's badge surface - both are visual polish on top of what's
-already wired up, not new plumbing. Separately: get the GDD document's own
-"Awakened [Deity]" text corrected (a manual edit outside this repo).
+Relay the "Proposed updates to suits-mp-screen-reference.md" section
+above to GPT/Codex so the screen-reference doc gets reconciled. Separately,
+decide (product/art call, not code) whether `ui_action_slab.png` moves to
+the Action button and whether the other three seat tags ever get a
+nameplate treatment that preserves the delegate-staged cue (e.g. tinting
+the art per-state rather than swapping backgrounds outright).
