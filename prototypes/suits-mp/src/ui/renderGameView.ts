@@ -100,18 +100,17 @@ const COLOR_BUTTON_TEXT_ENABLED = '#bdf5c9';
 const COLOR_BUTTON_TEXT_DISABLED = '#777780';
 const COLOR_STUB_BUTTON = 0x26262e;
 
-// Never reveals another player's facedown (offsuit) card, regardless of
-// what `play.cards` technically contains. host/mask.ts currently sends
-// the real card id for offsuit plays to every peer (a pre-existing
-// masking gap that predates Stage 3a - fixing it belongs in mask.ts,
-// out of scope here). This is a presentation-only safeguard so play areas
-// and the log don't visually leak it even though the payload already has
-// it. Your own plays are always shown plainly - no privacy concern in
-// seeing your own card. Returns one CardFace per card in the play (1 for
-// a normal/offsuit single, 2 for a double) - the shared card component
-// (ui/cardComponent.ts) draws whichever face this resolves to, so both
-// the live play-area boxes and the previous-trick log render identically
-// masked.
+// Never reveals another player's facedown (offsuit) card. host/mask.ts
+// now genuinely masks this at the payload level - another player's
+// offsuit play arrives with `cards: []`, so this `kind === 'offsuit'`
+// check is defense-in-depth (the client never has the real id to leak in
+// the first place) rather than the only thing preventing exposure, as it
+// used to be. Your own plays are always shown plainly - no privacy
+// concern in seeing your own card. Returns one CardFace per card in the
+// play (1 for a normal/offsuit single, 2 for a double) - the shared card
+// component (ui/cardComponent.ts) draws whichever face this resolves to,
+// so both the live play-area boxes and the previous-trick log render
+// identically masked.
 function maskedPlayFaces(play: MaskedTrickPlay, yourSlot: NetPlayerId): CardFace[] {
   if (play.kind === 'offsuit' && play.player !== yourSlot) return [{ kind: 'facedown' }];
   return play.cards.map((id): CardFace => ({ kind: 'faceup', cardId: id, deityCardState: play.deityCardState }));

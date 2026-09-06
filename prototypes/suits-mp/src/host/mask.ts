@@ -1,9 +1,24 @@
 import { cardById } from '../rules/cards';
 import { activePlayerId, currentRequiredSuit } from '../rules/engine';
-import type { CardId, GameState, God, PlayerId } from '../rules/types';
+import type { CardId, GameState, God, PlayerId, TrickPlay } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { MaskedState, MaskedTrickPlay, RedistributionLogEntry, TurnPhase } from '../net/actions';
+
+// GDD/architecture-doc canon: an off-suit Single is a private, face-down
+// play - its suit, rank, Deity Symbol and identity must stay hidden from
+// every other player "over the wire," not just in what the renderer
+// chooses to draw (see ui/renderGameView.ts's maskedPlayFaces, which
+// relied on this being true and is now backed by it). Empty `cards`
+// still lets a viewer know an off-suit Single was played at all (via
+// `kind`), exactly as the GDD's "public state reveals only that an
+// off-suit Single was played" allows - only the card's own identity is
+// withheld. The viewer's own off-suit play is unaffected - there's no
+// privacy concern in a player seeing their own card.
+function maskedCardIds(play: TrickPlay, forSlot: PlayerId): CardId[] {
+  if (play.kind === 'offsuit' && play.playerId !== forSlot) return [];
+  return play.cardIds;
+}
 
 // Every trick where `forSlot` was the actual redistributor (winner of a
 // Single, or delegate after a Double) - grouped by trick, then by
@@ -94,7 +109,7 @@ export function buildMaskedState(
 
   const currentTrick: MaskedTrickPlay[] = state.plays.map((play) => ({
     player: toNetPlayerId(play.playerId),
-    cards: play.cardIds,
+    cards: maskedCardIds(play, forSlot),
     kind: play.kind,
     deityCardState: play.deityCardState,
   }));
@@ -107,7 +122,7 @@ export function buildMaskedState(
   const previousTrick: MaskedTrickPlay[] | null = state.lastTrickResult
     ? state.lastTrickResult.plays.map((play) => ({
         player: toNetPlayerId(play.playerId),
-        cards: play.cardIds,
+        cards: maskedCardIds(play, forSlot),
         kind: play.kind,
         deityCardState: play.deityCardState,
       }))
