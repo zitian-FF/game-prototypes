@@ -1,109 +1,112 @@
 ## Current milestone
 
-Removed the premature suit-completion check in `advanceBlocker()`,
-closing a rules-correctness bug every prior session's BUILD_STATUS.md had
-carried forward as a known issue. The GDD is explicit: "Victory is
-checked only after redistribution is fully complete and every player
-again holds exactly 10 cards." `advanceBlocker()` was checking right
-after the distributor collected the trick's cards into their own hand -
-before any redistribution happened - so a distributor whose suit merely
-*looked* complete at that moment (because the cards that completed it
-were exactly the ones they were about to be required to give away) could
-end the game immediately, skipping mandatory redistribution and denying
-the other players their rightful gifted cards.
+Fixed a canvas mis-scale bug observed on the itch.io deploy: Phaser's
+`Scale.FIT` mode measures its parent (`#app`) once at construction to
+compute the canvas's CSS scale/position, but itch.io resizes the iframe
+the game runs in asynchronously - if that measurement happens before the
+iframe settles to its real size, everything canvas-drawn (card frames,
+tabletop background, hand fan - all of it) renders invisible or badly
+mis-scaled, while the DOM overlay chrome (name tags, centre inlay,
+buttons) is laid out independently via its own CSS and looks fine. Only
+observed on itch.io; the GitHub Pages hub deploy hasn't shown this
+symptom, consistent with it being iframe-specific.
 
 ## What was implemented
 
-- **`rules/engine.ts`'s `advanceBlocker()`**: removed the
-  `checkSuitCompletion(players)` call and its `gameOver` early-return
-  entirely. The trick-card collection into the distributor's hand is
-  unchanged - still correct and necessary, per the function's own
-  existing doc comment about why collection has to happen here. The
-  function now simply returns `{ ...state, players, phase: next,
-  pendingBlocker: null }` after collection, with no win check in between.
-- **Doc comment updated** to state plainly that no win check happens in
-  this function anymore, and why: right after collection the distributor's
-  hand is inflated above 10 and every other contributor is still short by
-  their own contribution, so checking here could end the game on cards
-  about to be given away, and would miss a win by whoever ends up
-  *receiving* a gifted completing card. The only suit-completion check in
-  the whole flow is now `redistribute()`'s own (untouched, still fires
-  once every gift has actually been applied and the 10-cards-all
-  invariant is restored).
-- `redistribute()`, `checkSuitCompletion()`, and the mandatory-
-  redistribution/delegation logic - untouched, per scope. No UI code
-  touched - this is a rules-engine-only fix.
+- **`main.ts`**: added a `ResizeObserver` on the `#app` parent element,
+  right after `Phaser.Game` construction, that calls `game.scale.refresh()`
+  whenever `#app`'s observed size changes. This reacts to the real size
+  actually becoming correct (whenever itch.io actually resizes the
+  iframe) rather than guessing at a timeout, and triggers the exact same
+  recalculation Phaser's own internal window-resize listener already
+  performs on a normal resize - `game.scale.refresh()` is Phaser's own
+  documented API for this ("Refreshes the internal scale values, bounds
+  sizes and orientation checks... called automatically by the Scale
+  Manager when the browser window size changes"). The observer is never
+  disconnected - it stays active for the page's lifetime, same as
+  Phaser's own listener.
+- `WIDTH`, `HEIGHT`, `PIXEL_RATIO`, and every property already in the
+  `scale` config object are untouched - this only adds one additional
+  trigger for a recalculation Phaser already knows how to do.
 
 ## How this was verified
 
 - `npm run typecheck` / `npm run build` (repo root) - clean.
-- **Constructed exactly the scenario the bug describes**, via a scratch
-  script (deleted before finishing) driving the real engine directly
-  (`initGame`/`playCard`/`proceedFromTrickResult`/`advanceBlocker`/
-  `redistribute` from `rules/engine.ts`, `settleAutoPhases` from
-  `host/gameHost.ts` - not a reimplementation): a distributor (P0,
-  Cthulhu) missing exactly one Cthulhu card pre-trick wins a trick whose
-  collected cards happen to include that exact missing card. A **sanity
-  assertion first confirmed this is a genuine repro** - P0's hand really
-  does look suit-complete immediately after collection, exactly the state
-  the old code would have wrongly ended the game on. Then:
-  1. **`advanceBlocker()` no longer ends the game at collection time** -
-     phase proceeds to `'redistribution'`, `winner` stays `null`, even
-     though the pre-fix code would have set `phase: 'gameOver'` right
-     here (confirmed by the sanity assertion above).
-  2. **The correct check still fires for a real win - including for a
-     gift recipient, not just the distributor** - from that same
-     pre-redistribution state, called `redistribute()` with gifts
-     arranged so the distributor (P0) does *not* end up keeping their
-     completing card (it's given away), while a different player (P3,
-     ShubNiggurath) *receives* a gifted card that completes their own
-     suit. Confirmed `phase: 'gameOver'`, `winner.team: 'Cosmos'`,
-     `reason: 'suit'`, and explicitly confirmed P0 did not also complete.
-  3. **No false positive when nobody actually completes** - from the same
-     pre-redistribution state, called `redistribute()` with every
-     contributor simply getting their own contributed card back (the
-     "boring" case) and confirmed the game correctly continues to the
-     next trick (`phase: 'blocker'`, `winner: null`,
-     `trickNumber` advanced).
-  All 12 assertions across the three checks passed on the first run
-  after the fix was written.
-- Playwright against `npm run preview`: booted a single-player-vs-bots
-  game, confirmed the board renders normally (this fix touches no
-  rendering code) with a clean console aside from the known pre-existing
-  Google Fonts sandbox-network failure and the same intermittent,
-  previously-established-as-unrelated 404 seen in prior tasks' checks.
+- **Direct, precise verification that the new mechanism actually works**
+  (via a temporary debug hook exposing the `Phaser.Game` instance,
+  removed before finishing): wrapped `game.scale.refresh` to count calls,
+  then changed `#app`'s own CSS `width`/`height` directly (60%/70% of its
+  previous size) - an element-only resize that does **not** dispatch a
+  `window` `resize` event, so Phaser's own built-in listener could not
+  have caught it. Confirmed `#app`'s measured size actually changed
+  (430×900 → 258×630) and `game.scale.refresh()` was called exactly
+  once as a direct result - proving the `ResizeObserver` this task adds
+  is the thing catching this case, not some other existing mechanism.
+- **Best-effort simulation of the actual itch.io race**: loaded the game
+  inside a wrapper page's `<iframe>` that starts at a stale tiny size
+  (10×10) and gets resized to its real size (400×860) via a `setTimeout`,
+  mimicking itch.io's async resize. The canvas ended up correctly filling
+  the real size in this simulation - but changing an iframe element's
+  `width`/`height` HTML attributes from the outer page turns out to
+  already dispatch a `resize` event to the iframe's own inner `window`
+  in Chromium, which Phaser's *existing* listener alone might already
+  catch, regardless of this fix. **This means the simulation doesn't
+  conclusively isolate this fix's contribution the way the direct
+  `#app`-only test above does** - noted honestly rather than overclaimed.
+- Playwright boot/console check (non-iframe, matching the GitHub Pages
+  deploy shape): booted the lobby and a single-player-vs-bots game,
+  confirmed identical, correct rendering to before this change, with a
+  clean console aside from the known pre-existing Google Fonts
+  sandbox-network failure and the same intermittent, previously-
+  established-as-unrelated 404 seen in prior tasks' checks.
+- **This specifically still needs re-verification on the live itch.io
+  deploy after merge** - Playwright cannot reproduce itch.io's actual
+  iframe-resize timing (its own async behavior is the whole premise of
+  the bug), so the direct `#app`-resize test above is the strongest
+  verification available pre-deploy, but confirming the game boots
+  correctly on a fresh load of the real itch.io page (no DevTools open,
+  no manual resize) is the real acceptance test for this fix.
 
 ## Key technical decisions
 
-- **Deleted the check outright rather than moving or gating it** - the
-  function's own doc comment already explained (accurately) why
-  collection has to happen in `advanceBlocker()`, but the win check
-  itself had no such justification for running there; `redistribute()`
-  was already the correct, later point, and already had its own
-  identical check. Removing the earlier one is strictly a subtraction -
-  no new logic, no new call site, nothing to keep in sync between the two
-  checks now that only one remains.
+- **`ResizeObserver` on the specific element, not a timer or a second
+  `window` resize listener** - a `setTimeout`/`requestAnimationFrame`
+  guess would have to assume how long itch.io's resize takes, which is
+  exactly the kind of race condition already causing the bug. A
+  `ResizeObserver` reacts to `#app`'s real size actually changing,
+  whenever that happens, with no assumption about timing. It also
+  observes the element directly rather than relying on `window`'s own
+  `resize` event, which - per this task's own verification - is not
+  guaranteed to fire for every case that changes `#app`'s effective size.
+- **No disconnect/cleanup** - per the brief, this observer is meant to
+  behave like Phaser's own internal resize listener: a permanent,
+  page-lifetime concern, not a per-scene resource needing teardown.
 
 ## Open questions
 
-None - the GDD's check-timing requirement was unambiguous, and the fix
-was verified directly against the real engine, including the specific
-"gift recipient" case the brief called out as the more subtle half of
-the bug (the old code could never have detected that case at all, since
-it ran before any gifts existed).
+None on the implementation itself. Whether itch.io's specific resize
+timing is fully covered by this fix (as opposed to some other iframe
+lifecycle quirk) can only be confirmed by the live re-verification noted
+above and below.
 
 ## Known issues
 
-Carried over, untouched by this task: the facedown-card masking leak is
-already fixed (prior task) but genuine gameplay verification of it via
-real bot/human play is still pending; Rules-modal content gaps (no Setup
-section, off-suit hidden-identity nature unstated in the copy); the
-other three seat tags still don't use `ui_player_nameplate.png`
-(deliberate, from an earlier visual pass).
+- **This fix needs re-verification on the live itch.io deploy** - see
+  "How this was verified" above. This is the one environment where the
+  original bug was observed, and Playwright cannot reproduce itch.io's
+  actual iframe-resize timing.
+- Carried over, untouched by this task: genuine gameplay verification of
+  off-suit masking via real bot/human play is still pending; Rules-modal
+  content gaps (no Setup section, off-suit hidden-identity nature
+  unstated in the copy); the other three seat tags still don't use
+  `ui_player_nameplate.png` (deliberate, from an earlier visual pass).
 
 ## Next proposed step
 
-None specific to this fix - it's complete and verified. Whatever task
-next does real multi-device or multi-bot playtesting is a natural place
-to also pick up the still-pending genuine-gameplay verification items
-noted above (off-suit masking, and now implicitly this fix too).
+Re-verify on the live itch.io deploy after this merges: load the game
+fresh (no DevTools open, no manual window resize) and confirm the board
+renders correctly on first paint. If it still doesn't, the next place to
+look is whether itch.io's iframe embed goes through an intermediate
+wrapper that changes `#app`'s size in a way `ResizeObserver` also
+doesn't catch (e.g. a CSS transform instead of a real layout-affecting
+resize, which `ResizeObserver` does not observe).
