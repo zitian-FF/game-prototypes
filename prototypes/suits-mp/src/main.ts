@@ -54,6 +54,24 @@ const game = new Phaser.Game({
   },
 });
 
+// Phaser's FIT scale mode measures its parent (#app) once at construction
+// to compute the canvas's CSS scale/position. On itch.io the game runs in
+// an iframe that itch.io resizes asynchronously - if that measurement
+// happens before the iframe settles to its real size, the canvas ends up
+// scaled/positioned against a stale (often 0 or tiny) size and everything
+// canvas-drawn renders invisible or badly mis-scaled, while the DOM
+// overlay (laid out independently via its own CSS) looks fine. A window
+// resize event makes Phaser remeasure and self-correct, which is why
+// opening DevTools "fixes" it - this ResizeObserver reacts to the actual
+// #app size changing (whenever itch.io actually resizes the iframe)
+// rather than guessing at a timeout, and calls the same recalculation
+// Phaser's own resize listener already triggers. Not disconnected - it
+// stays active for the page's lifetime, same as that internal listener.
+const appEl = document.getElementById('app');
+if (appEl) {
+  new ResizeObserver(() => game.scale.refresh()).observe(appEl);
+}
+
 // `game.domContainer` isn't created until Game#boot runs (after
 // DOMContentLoaded), so mounting must wait for the `ready` event rather
 // than happening synchronously right after construction.
