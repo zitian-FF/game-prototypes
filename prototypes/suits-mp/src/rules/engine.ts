@@ -354,15 +354,25 @@ export function chooseDelegate(state: GameState, delegateId: PlayerId): GameStat
 // (set directly in proceedFromTrickResult() for a single win, or by
 // chooseDelegate() for a double win). Collecting here instead of at
 // trick-resolution/delegate-choice time means playCard() and
-// chooseDelegate() don't need their own near-duplicate collect-then-check-
-// win logic - there's exactly one place cards move into a hand and exactly
-// one place the resulting suit-completion win gets checked. This is safe
-// precisely because 'blocker'/'trickResult' are hotseat-only pass-device
-// beats with no suits-mp equivalent (see host/mask.ts's turnPhaseFor) -
+// chooseDelegate() don't need their own near-duplicate collection logic -
+// there's exactly one place cards move into a hand. This is safe precisely
+// because 'blocker'/'trickResult' are hotseat-only pass-device beats with
+// no suits-mp equivalent (see host/mask.ts's turnPhaseFor) -
 // gameHost.settleAutoPhases() always chains through them in one host tick
 // before any masked state is ever built, so no client ever observes an
 // intermediate state where the distributor's hand doesn't yet include the
 // trick they're about to redistribute.
+//
+// No win check happens here. The GDD is explicit that "victory is checked
+// only after redistribution is fully complete and every player again
+// holds exactly 10 cards" - right after collection, the distributor's
+// hand is inflated above 10 and every other contributor's hand is still
+// short by their own contribution, so checking here could end the game on
+// cards the distributor is about to be required to give away, and would
+// miss a win by whoever ends up receiving a gifted completing card. The
+// only suit-completion check in this whole flow is redistribute()'s own,
+// which runs once every gift has actually been applied and the 10-cards-
+// all invariant is restored.
 export function advanceBlocker(state: GameState): GameState {
   if (state.phase !== 'blocker' || !state.pendingBlocker) throw new Error('not at a blocker');
   const next = state.pendingBlocker.next;
@@ -379,11 +389,6 @@ export function advanceBlocker(state: GameState): GameState {
   const players = state.players.map((p) =>
     p.id === distributorId ? { ...p, hand: [...p.hand, ...collectedCardIds] } : p
   ) as GameState['players'];
-
-  const win = checkSuitCompletion(players);
-  if (win) {
-    return { ...state, players, phase: 'gameOver', pendingBlocker: null, winner: win };
-  }
 
   return { ...state, players, phase: next, pendingBlocker: null };
 }
