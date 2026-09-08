@@ -1,4 +1,4 @@
-import type { God, Team } from './types';
+import type { God } from './types';
 
 // Filename convention for the R2-fetched god/board art PNGs (see
 // suits-mp_assets.zip's loose/ folder and the runtime asset manifest doc -
@@ -26,11 +26,12 @@ export function frameArtFile(god: God): string {
   return `card_frame_${GOD_SLUG[god]}`;
 }
 
-// Team Chaos (Cthulhu, Nyarlathotep) and Team Cosmos (Shub-Niggurath,
-// Yog-Sothoth) each have one shared rank-badge treatment - not per-god,
-// unlike the frame/symbol/face art above.
-export function rankBadgeArtFile(team: Team): string {
-  return team === 'Chaos' ? 'rank_badge_chaos_portal' : 'rank_badge_cosmos_galaxy';
+export function backdropArtFile(god: God): string {
+  return `card_backdrop_${GOD_SLUG[god]}`;
+}
+
+export function nameplateArtFile(god: God): string {
+  return `deity_nameplate_${GOD_SLUG[god]}`;
 }
 
 // Team Chaos (Cthulhu, Nyarlathotep) uses the hexagonal motif; Team Cosmos

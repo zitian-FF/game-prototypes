@@ -1,33 +1,33 @@
 import Phaser from 'phaser';
-import { GOD_TEAM } from '../rules/cards';
-import { faceArtFile, frameArtFile, rankBadgeArtFile, symbolArtFile } from '../rules/godArt';
+import { backdropArtFile, faceArtFile, frameArtFile, nameplateArtFile, symbolArtFile } from '../rules/godArt';
 import type { DeityCardState, God, Rank } from '../rules/types';
 import type { CardDimensions } from './cardComponent';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 
-// Real card compositing from the baked art handoff (card_frame_<deity>.png,
-// deity_symbol_<deity>.png, deity_face_<deity>.png, rank_badge_<team>.png -
-// see the runtime asset manifest). Three layers, all real R2-fetched PNGs
-// (no more Canvas2D-generated frame textures - the earlier CSS-recolorable
-// token frame system, GOD_TOKENS/drawFrameTexture and everything under it,
-// is removed entirely per this task's explicit resolution):
-//   1. The god's own card_frame_<deity>.png as the full card background -
-//      one real per-god frame image, already including the card's border,
-//      ornamentation and a baked-in bottom-left circular badge socket.
-//   2. The god's symbol or face art, placed in the frame's main window.
-//      Numbered cards (2-10) and a Dormant Deity Card both show the Deity
-//      Symbol; only a Powered Deity Card shows the Deity Face instead.
-//   3. A small rank badge in the frame's own bottom-left socket -
-//      rank_badge_chaos_portal.png/rank_badge_cosmos_galaxy.png by Team,
-//      with a live Phaser.Text on top (per root CLAUDE.md's DPR rule): the
-//      plain rank numeral for a numbered card, or the Dormant/Powered state
-//      marker ("1"/"★") for a Deity Card. A Deity Card's *name* never
-//      changes between states - only this marker, and the symbol/face
-//      layer above, do.
+// Real card compositing per the approved runtime-composited three-state
+// card system (Numbered / Dormant / Powered). All masters are authored on a
+// shared 1024x1536 reference canvas (see frameSize() below - also
+// tune.json's cardStandard/cardMini width:height ratio, a clean 2:3) and
+// scaled uniformly to the caller's live display size, so this one function
+// works unchanged for hand-fan cards, played-card recesses, and any other
+// consumer of buildCard() via cardComponent.ts's drawCard().
 //
-// Every position/size below is measured directly off the real art (see
-// this task's BUILD_STATUS.md) rather than transcribed from a design spec,
-// since none was provided for the new images' internal layout.
+// Back-to-front layer order per state (see this task's handoff for the
+// full placement table):
+//   Numbered (rank 2-10): backdrop -> Deity Symbol (large) -> frame -> rank
+//   Dormant  (DeityCard, not powered): backdrop -> Deity Symbol (extra-large)
+//     -> frame -> nameplate -> "1"
+//   Powered  (DeityCard, powered): backdrop -> Deity Face (anime art) ->
+//     frame -> Deity Symbol (small top badge, ABOVE the frame) -> nameplate
+//     -> "★"
+// The frame is always drawn on top of the main symbol/face layer so its
+// opaque border masks any layer that intentionally overflows the window
+// (e.g. Dormant's 1130px-wide symbol box on the 1024px-wide canvas) -
+// except Powered's small top-badge symbol, which the approved spec
+// explicitly places above the frame and must never be masked by it.
+// Rank numerals and the star are live Phaser.Text (per root CLAUDE.md's DPR
+// rule), never baked into art. Deity names are the approved nameplate PNGs,
+// never recreated as text.
 
 function symbolKey(god: God): string {
   return symbolArtFile(god);
@@ -39,6 +39,14 @@ function faceKey(god: God): string {
 
 function frameKey(god: God): string {
   return frameArtFile(god);
+}
+
+function backdropKey(god: God): string {
+  return backdropArtFile(god);
+}
+
+function nameplateKey(god: God): string {
+  return nameplateArtFile(god);
 }
 
 // Loads the R2-fetched loose PNGs (see art/manifest.json, produced by
@@ -78,43 +86,98 @@ export function preloadCardArt(scene: Phaser.Scene): void {
   scene.load.once(`filecomplete-json-${MANIFEST_KEY}`, () => queueLooseImages(scene));
 }
 
-// --- Card-local layout, measured off the real card_frame_<deity>.png -----
-// (1024x1536 native, a clean 2:3 aspect - tune.json's cardStandard/cardMini
-// width:height ratios were updated to match, so cards are never stretched;
-// see BUILD_STATUS.md for the measurement method: alpha-channel inspection
-// of the frame art to find its window and its baked-in badge socket, since
-// no pixel spec doc came with this handoff.)
-
-// The frame's own main window (behind the Deity Symbol/Face), as fractions
-// of the full card - a rounded-rect area below the frame's ornamental
-// crown, above its bottom wave/badge-socket band.
-const WINDOW = { x: 0.08, y: 0.155, w: 0.84, h: 0.6 };
-
-// The frame's baked-in circular badge socket, bottom-left - center and
-// diameter as fractions of the full card.
-const BADGE_CENTER = { x: 0.145, y: 0.82 };
-const BADGE_DIAMETER = 0.19;
+// --- Reference-canvas placement, per the approved handoff's placement table
+// (all masters authored at 1024x1536; every box below is given as absolute
+// reference-canvas pixels, top-left + size, and every art layer is "contain"
+// fit - aspect preserved, centered on both axes - within its box).
 
 function frameSize(): { w: number; h: number } {
   return { w: 1024, h: 1536 };
 }
 
-// The god's Deity Symbol for a numbered card or a Dormant Deity Card; its
-// Deity Face once Powered. `deityCardState` is null for anything that
-// isn't a face-up Deity Card (see cardComponent.ts's CardFace doc comment)
-// and is treated the same as 'dormant' - a Deity Card always starts
-// Dormant, and one still sitting unplayed in a hand has no real state yet.
-function windowArtKey(god: God, rank: Rank, deityCardState: DeityCardState | null): string {
-  const isPowered = rank === 'DeityCard' && deityCardState === 'powered';
-  return isPowered ? faceKey(god) : symbolKey(god);
+interface RefBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
-// The bottom-left badge's marker: the plain rank for a numbered card, or
+// Numbered symbol: contain within 760x760, horizontally centered, top y=290.
+const NUMBERED_SYMBOL_BOX: RefBox = { x: 132, y: 290, w: 760, h: 760 };
+
+// Dormant symbol: contain within 1130x1130, horizontally centered, top
+// y=170. Wider than the 1024px canvas by design (the source plate's own
+// padding allows a nearly full-width visible symbol) - the box legitimately
+// extends past the canvas's left/right edges; the frame drawn on top masks
+// the overflow.
+const DORMANT_SYMBOL_BOX: RefBox = { x: -53, y: 170, w: 1130, h: 1130 };
+
+// Powered anime Deity: contain within 850x1190, horizontally centered, top
+// y=180.
+const POWERED_FACE_BOX: RefBox = { x: 87, y: 180, w: 850, h: 1190 };
+
+// Powered top symbol: contain within 400x400, horizontally centered, top
+// y=-40 (extends above the canvas top by design) - rendered above the
+// frame, never masked beneath it.
+const POWERED_TOP_SYMBOL_BOX: RefBox = { x: 312, y: -40, w: 400, h: 400 };
+
+// Deity nameplate: contain within 680x170, horizontally centered, top
+// y=1330 (visible bottom edge flush with the bottom frame).
+const NAMEPLATE_BOX: RefBox = { x: 172, y: 1330, w: 680, h: 170 };
+
+// Runtime rank/state glyph: centered on (220, 1308), in the frame's
+// integrated lower-left rank quadrant. Numeral ~158px tall, star ~176px,
+// both on the 1024x1536 reference canvas.
+const RUNTIME_RANK_CENTER = { x: 220, y: 1308 };
+const RUNTIME_NUMERAL_SIZE = 158;
+const RUNTIME_STAR_SIZE = 176;
+
+type CardVisualState = 'numbered' | 'dormant' | 'powered';
+
+// The exact existing state-determination logic (unchanged from before this
+// task): a face-up Deity Card is Powered only when its resolved
+// deityCardState is 'powered'; null (never resolved - still sitting in a
+// hand, or any face-up card that isn't a Deity Card at all) and 'dormant'
+// are both Dormant. A non-DeityCard rank (2-10) is always Numbered. This is
+// a pure re-expression of the prior windowArtKey/badgeMarkerText branching
+// under the new three-state naming, not a reinterpretation of game rules.
+function cardVisualState(rank: Rank, deityCardState: DeityCardState | null): CardVisualState {
+  if (rank !== 'DeityCard') return 'numbered';
+  return deityCardState === 'powered' ? 'powered' : 'dormant';
+}
+
+// The rank quadrant's runtime glyph: the plain rank for a Numbered card, or
 // the Dormant/Powered state marker for a Deity Card - never the god's name,
-// which never changes between states (see this module's header comment).
-function badgeMarkerText(rank: Rank, deityCardState: DeityCardState | null): string {
-  if (rank !== 'DeityCard') return String(rank);
-  return deityCardState === 'powered' ? '★' : '1';
+// which is shown via the nameplate art instead and never changes between
+// states.
+function rankGlyphText(rank: Rank, state: CardVisualState): string {
+  if (state === 'numbered') return String(rank);
+  return state === 'powered' ? '★' : '1';
+}
+
+// Adds `textureKey` to `container`, contain-fit (aspect preserved, centered
+// on both axes) within `box` (given in reference-canvas pixels), scaled by
+// `k` into the caller's live display size. Silently skipped if the texture
+// isn't loaded, matching the rest of this module's defensive art lookups.
+function placeContain(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  textureKey: string,
+  box: RefBox,
+  k: number,
+  authW: number,
+  authH: number,
+): void {
+  if (!scene.textures.exists(textureKey)) return;
+  const image = scene.add.image(0, 0, textureKey);
+  const srcFrame = image.frame;
+  const boxW = box.w * k;
+  const boxH = box.h * k;
+  const fitScale = Math.min(boxW / srcFrame.width, boxH / srcFrame.height);
+  image.setDisplaySize(srcFrame.width * fitScale, srcFrame.height * fitScale);
+  image.setX((box.x + box.w / 2 - authW / 2) * k);
+  image.setY((box.y + box.h / 2 - authH / 2) * k);
+  container.add(image);
 }
 
 export interface BuiltCard {
@@ -123,12 +186,13 @@ export interface BuiltCard {
 }
 
 // The one place a real (non-facedown, non-empty) card gets assembled -
-// frame + Deity Symbol/Face + rank/state badge - reusable wherever a
-// face-up card appears (hand fan, play areas, previous-trick log). `dims`
-// is the caller's display size in logical px; art is always authored/
-// generated at the fixed 1024x1536 reference and scaled down to fit, so
-// this works at both CARD_DIMS_STANDARD and CARD_DIMS_MINI (and the hand
-// fan's popped-out scale) without regenerating any texture.
+// backdrop + symbol/face + frame + (Powered's top symbol) + nameplate +
+// rank/state glyph - reusable wherever a face-up card appears (hand fan,
+// play areas, previous-trick log). `dims` is the caller's display size in
+// logical px; art is always authored at the fixed 1024x1536 reference and
+// scaled uniformly to fit, so this works at both CARD_DIMS_STANDARD and
+// CARD_DIMS_MINI (and the hand fan's popped-out scale) without regenerating
+// any texture.
 export function buildCard(
   scene: Phaser.Scene,
   god: God,
@@ -141,46 +205,60 @@ export function buildCard(
 
   const container = scene.add.container(0, 0);
 
-  const frame = scene.add.image(0, 0, frameKey(god)).setDisplaySize(dims.width, dims.height);
-  container.add(frame);
-
-  const artKey = windowArtKey(god, rank, deityCardState);
-  if (scene.textures.exists(artKey)) {
-    const art = scene.add.image(0, 0, artKey);
-    const srcFrame = art.frame;
-    const winW = WINDOW.w * authW * k;
-    const winH = WINDOW.h * authH * k;
-    const fitScale = Math.min(winW / srcFrame.width, winH / srcFrame.height);
-    art.setDisplaySize(srcFrame.width * fitScale, srcFrame.height * fitScale);
-    art.setX((WINDOW.x + WINDOW.w / 2 - 0.5) * authW * k);
-    art.setY((WINDOW.y + WINDOW.h / 2 - 0.5) * authH * k);
-    container.add(art);
+  // 1. Backdrop - full canvas, always the back-most layer. Its own alpha
+  //    already keeps it inside the frame's silhouette (see this task's
+  //    BUILD_STATUS.md) - never given an opaque rectangular container.
+  if (scene.textures.exists(backdropKey(god))) {
+    container.add(scene.add.image(0, 0, backdropKey(god)).setDisplaySize(dims.width, dims.height));
   }
 
-  const team = GOD_TEAM[god];
-  const badgeKey = rankBadgeArtFile(team);
-  const badgeCx = (BADGE_CENTER.x - 0.5) * authW * k;
-  const badgeCy = (BADGE_CENTER.y - 0.5) * authH * k;
-  const badgeDiameter = BADGE_DIAMETER * authW * k;
-  if (scene.textures.exists(badgeKey)) {
-    const badge = scene.add.image(badgeCx, badgeCy, badgeKey).setDisplaySize(badgeDiameter, badgeDiameter);
-    container.add(badge);
+  const state = cardVisualState(rank, deityCardState);
+
+  // 2. Main symbol/face layer, BEFORE the frame (see module header comment
+  //    on masking).
+  if (state === 'powered') {
+    placeContain(scene, container, faceKey(god), POWERED_FACE_BOX, k, authW, authH);
+  } else if (state === 'dormant') {
+    placeContain(scene, container, symbolKey(god), DORMANT_SYMBOL_BOX, k, authW, authH);
+  } else {
+    placeContain(scene, container, symbolKey(god), NUMBERED_SYMBOL_BOX, k, authW, authH);
   }
 
-  const marker = badgeMarkerText(rank, deityCardState);
-  const markerFontSize = Math.round(badgeDiameter * (marker.length > 1 ? 0.4 : 0.5));
-  const markerText = scene.add
-    .text(badgeCx, badgeCy, marker, {
+  // 3. Frame - full canvas, on top of the backdrop and main symbol/face
+  //    layer.
+  container.add(scene.add.image(0, 0, frameKey(god)).setDisplaySize(dims.width, dims.height));
+
+  // 4. Powered's small top-badge symbol - the one art layer that renders
+  //    ABOVE the frame, per the approved spec, so it is never masked.
+  if (state === 'powered') {
+    placeContain(scene, container, symbolKey(god), POWERED_TOP_SYMBOL_BOX, k, authW, authH);
+  }
+
+  // 5. Nameplate - Dormant and Powered only; a Numbered 2-10 card never
+  //    gets one.
+  if (state === 'dormant' || state === 'powered') {
+    placeContain(scene, container, nameplateKey(god), NAMEPLATE_BOX, k, authW, authH);
+  }
+
+  // 6. Runtime rank/state glyph - always topmost, live text per the DPR
+  //    rule (root CLAUDE.md), never baked into any PNG.
+  const glyph = rankGlyphText(rank, state);
+  const glyphRefSize = glyph === '★' ? RUNTIME_STAR_SIZE : RUNTIME_NUMERAL_SIZE;
+  const glyphFontSize = glyphRefSize * k;
+  const glyphX = (RUNTIME_RANK_CENTER.x - authW / 2) * k;
+  const glyphY = (RUNTIME_RANK_CENTER.y - authH / 2) * k;
+  const glyphText = scene.add
+    .text(glyphX, glyphY, glyph, {
       fontFamily: 'Georgia, serif',
       fontStyle: 'bold',
-      fontSize: `${markerFontSize}px`,
+      fontSize: `${Math.round(glyphFontSize)}px`,
       color: '#fff6df',
       stroke: '#1a0f04',
-      strokeThickness: Math.max(2, Math.round(markerFontSize * 0.12)),
+      strokeThickness: Math.max(2, Math.round(glyphFontSize * 0.12)),
       resolution: PIXEL_RATIO,
     })
     .setOrigin(0.5);
-  container.add(markerText);
+  container.add(glyphText);
 
   const hitArea = scene.add.rectangle(0, 0, dims.width, dims.height, 0x000000, 0.001);
   container.add(hitArea);
