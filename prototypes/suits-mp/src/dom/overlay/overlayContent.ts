@@ -10,11 +10,6 @@ import type { God } from '../../rules/types';
 
 export const SEAT_ORDER: readonly SeatPosition[] = ['top', 'right', 'bottom', 'left'];
 
-// Degrees the turn-indicator wheel's pointer rotates to when it's each
-// seat's turn - clockwise from the top, matching seating.ts's own
-// clockwise seat order.
-export const SEAT_DEG: Record<SeatPosition, number> = { top: 0, right: 90, bottom: 180, left: 270 };
-
 export interface SuitInfo {
   code: string;
   name: string;

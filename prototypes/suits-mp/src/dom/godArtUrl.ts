@@ -37,6 +37,17 @@ export function nameplateUrl(): string {
   return 'assets/loose/ui_player_nameplate.webp';
 }
 
+// Center HUD: fixed carved-stone bezel (four circular recesses, open
+// center) and the rotating current-turn pointer - same convention as
+// symbolArtUrl above.
+export function suitCycleBezelUrl(): string {
+  return 'assets/loose/ui_suit_cycle_bezel.webp';
+}
+
+export function currentTurnPointerUrl(): string {
+  return 'assets/loose/ui_current_turn_pointer.webp';
+}
+
 // A regular hexagon, apex at top-center, side vertices at ~20%/80% height -
 // the exact same proportions as ui/cardArt.ts's hexPolygon(). Shared by
 // every DOM spot that backs a Team Chaos god's symbol with a hex badge
