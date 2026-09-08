@@ -10,6 +10,8 @@ import { activePlayerId } from '../rules/engine';
 import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PersistentUIState } from '../ui/renderGameView';
 import { preloadCardArt } from '../ui/cardArt';
+import { showAssetLoadProgress } from '../ui/loadingProgress';
+import type { AssetLoadProgress } from '../ui/loadingProgress';
 import { fromNetPlayerId, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
 import type { createNetworkRoom } from '../net/room';
@@ -50,16 +52,32 @@ export class HostGameScene extends Phaser.Scene {
   // One instance for the scene's whole lifetime, not rebuilt per masked
   // state - see ui/renderGameView.ts's PersistentUIState doc comment.
   private uiState: PersistentUIState = createPersistentUIState();
+  private loading!: AssetLoadProgress;
 
   constructor() {
     super('HostGame');
   }
 
   preload(): void {
+    this.loading = showAssetLoadProgress(this);
     preloadCardArt(this);
   }
 
   create(data: HostGameData): void {
+    // A failed asset fetch mid-preload: stop here rather than proceeding
+    // into a game view missing card art. Retrying just restarts this same
+    // scene with the same data, which re-runs preload() - preloadCardArt's
+    // manifest-driven loader only re-requests textures that don't already
+    // exist, so a partial success isn't re-fetched from scratch.
+    if (this.loading.hadError) {
+      this.loading.showRetry(() => this.scene.restart(data));
+      return;
+    }
+    // The host's own view renders synchronously below (broadcastAll), so
+    // it's safe to hide the loading overlay immediately rather than
+    // waiting for a later render callback the way PlayerGameScene must.
+    this.loading.hide();
+
     addVersionStamp(this);
     createPortraitGuard(this);
     this.cameras.main.setZoom(PIXEL_RATIO);
