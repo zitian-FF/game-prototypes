@@ -171,7 +171,7 @@ function handCardStyle(cardState: CardVisualState | null): CardStyle {
   const textColor = colorFor(cardState);
   const fill = cardState === 'selected' ? 0x3a3320 : cardState === 'partner' ? 0x1c3a3a : cardState === 'illegal' ? 0x18181c : COLOR_PANEL;
   const border = cardState === 'illegal' ? 0x2a2a30 : 0x55555f;
-  return { fill, border, textColor };
+  return { fill, border, textColor, dimmed: cardState === 'illegal' };
 }
 
 function playAreaStyle(face: CardFace): CardStyle {

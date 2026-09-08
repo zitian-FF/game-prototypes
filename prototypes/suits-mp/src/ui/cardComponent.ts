@@ -35,6 +35,14 @@ export interface CardStyle {
   borderWidth?: number;
   textColor?: string;
   alpha?: number;
+  // Draws the illegal-card dimmer overlay (see drawIllegalDimmer below) on
+  // top of a real card's finished art. Deliberately separate from `alpha`:
+  // that fades the whole container (frame color and all, unevenly per
+  // Deity), while this is a dedicated neutral-dark shape sized and
+  // corner-chamfered to match the card underneath - see the "already-
+  // approved" Hand fan spec in suits-mp-screen-reference.md: "illegal
+  // cards get a neutral dim (no LOCKED text/stripes)".
+  dimmed?: boolean;
 }
 
 export interface DrawnCard {
@@ -84,19 +92,63 @@ export function drawCard(
   }
 
   // Real card art (frame + god symbol/face + live rank Text) - see
-  // ui/cardArt.ts. The caller's style still carries real meaning
-  // (selected/legal/illegal/partner) that the ornate frame art can't
-  // express on its own, so it's kept as a thin rim outline plus alpha
-  // rather than discarded.
+  // ui/cardArt.ts. The finished art already reads clearly on its own; a
+  // rim outline drawn on top of it (the previous approach here) just adds
+  // wireframe clutter across real illustration. Selected state has its
+  // own signal independent of any outline (the hand fan pops the selected
+  // card up and draws it last - see renderGameView.ts's renderCardFan),
+  // so removing the rim doesn't lose that. Illegal state gets a dedicated
+  // dimmer overlay instead (see drawIllegalDimmer below) rather than an
+  // outline or a whole-container alpha fade.
   const cardDef = cardById(face.cardId);
   const built = buildCard(scene, cardDef.god, cardDef.rank, dims, face.deityCardState ?? null);
   card.add(built.container);
   card.setAlpha(alpha);
-  const rim = scene.add.rectangle(0, 0, dims.width, dims.height);
-  rim.setStrokeStyle(style.borderWidth ?? 2, style.border, alpha);
-  card.add(rim);
+  if (style.dimmed) {
+    card.add(drawIllegalDimmer(scene, dims.width, dims.height));
+  }
 
   return { container: card, hitArea: built.hitArea };
+}
+
+// The card frame art's own outer corners are cut with a straight 45deg
+// chamfer (measured directly off card_frame_<deity>.png's alpha channel:
+// ~37-39px on the shared 1024-wide reference canvas, consistent across
+// all four Deities - not a circular curve/fillet at any radius, so a
+// Graphics.fillRoundedRect would visibly mismatch the card's actual
+// corner shape). Expressed here as a fraction of card width so it scales
+// correctly at any CardDimensions.
+const CARD_CORNER_CHAMFER_FRACTION = 38 / 1024;
+
+// Illegal-card dimmer: a dedicated semi-transparent neutral-dark shape
+// drawn on top of a card's finished art (never a whole-container alpha
+// fade, which fades unevenly depending on each card's own frame color).
+// Sized to exactly dims.width x dims.height - the same box every other
+// card layer (backdrop/frame) is drawn into - with its corners chamfered
+// to match the frame's real corner treatment instead of a hard-edged
+// rectangle that would visibly overhang the card's own cut corners.
+// Smooth and neutral only: dark fill, no color tint, no stripes or text -
+// see the "already-approved" hand fan spec in
+// suits-mp-screen-reference.md ("illegal cards get a neutral dim (no
+// LOCKED text/stripes)").
+function drawIllegalDimmer(scene: Phaser.Scene, width: number, height: number): Phaser.GameObjects.Graphics {
+  const c = Math.min(width, height) * CARD_CORNER_CHAMFER_FRACTION;
+  const halfW = width / 2;
+  const halfH = height / 2;
+  const points = [
+    { x: -halfW + c, y: -halfH },
+    { x: halfW - c, y: -halfH },
+    { x: halfW, y: -halfH + c },
+    { x: halfW, y: halfH - c },
+    { x: halfW - c, y: halfH },
+    { x: -halfW + c, y: halfH },
+    { x: -halfW, y: halfH - c },
+    { x: -halfW, y: -halfH + c },
+  ];
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.55);
+  g.fillPoints(points, true);
+  return g;
 }
 
 function drawDashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, dash: number, gap: number): void {
