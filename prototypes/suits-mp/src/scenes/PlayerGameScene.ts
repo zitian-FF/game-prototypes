@@ -5,17 +5,32 @@ import { PIXEL_RATIO } from '../render/pixelRatio';
 import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
 import type { PlayerSessionData } from '../net/playerSession';
 import { preloadCardArt } from '../ui/cardArt';
+import { showAssetLoadProgress } from '../ui/loadingProgress';
+import type { AssetLoadProgress } from '../ui/loadingProgress';
 
 export class PlayerGameScene extends Phaser.Scene {
+  private loading!: AssetLoadProgress;
+
   constructor() {
     super('PlayerGame');
   }
 
   preload(): void {
+    this.loading = showAssetLoadProgress(this);
     preloadCardArt(this);
   }
 
   create(data: PlayerSessionData): void {
+    // A failed asset fetch mid-preload: stop here rather than proceeding
+    // into a game view missing card art. Retrying just restarts this same
+    // scene with the same data, which re-runs preload() - preloadCardArt's
+    // manifest-driven loader only re-requests textures that don't already
+    // exist, so a partial success isn't re-fetched from scratch.
+    if (this.loading.hadError) {
+      this.loading.showRetry(() => this.scene.restart(data));
+      return;
+    }
+
     addVersionStamp(this);
     createPortraitGuard(this);
     this.cameras.main.setZoom(PIXEL_RATIO);
@@ -45,8 +60,18 @@ export class PlayerGameScene extends Phaser.Scene {
     // No local-only "checking the rules overlay" / redistribution-log tap
     // targets yet - both are stubbed with placeholder text this stage (see
     // ui/renderGameView.ts) since real presentation is Stage 3.
+    let loadingHidden = false;
     actions.state.onMessage = (masked, context) => {
       data.hostPeerId.current = context.peerId;
+      // Asset loading finished back in preload(), but this scene has
+      // nothing real to show until its first masked state arrives over the
+      // network - keep the loading overlay up until that actually happens,
+      // rather than hiding it as soon as preload completes, so there is no
+      // gap of blank canvas between the two.
+      if (!loadingHidden) {
+        loadingHidden = true;
+        this.loading.hide();
+      }
       renderGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState);
     };
 
