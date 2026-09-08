@@ -47,19 +47,27 @@ const CENTER_X = WIDTH / 2;
 // loader.
 const TABLETOP_KEY = 'background_tabletop_stone';
 
-// Measured fact, not derivable from the image's raw dimensions: the stone
-// tabletop's circular ritual-sigil motif is centered at approximately
-// 49.2% of the source image's width and 49.1% of its height (native
-// 841x1870) - very close to, but not exactly, the image's own geometric
-// center. Used as a "background-position anchor" so the sigil lines up
-// with the DOM-layer center wheel (dom/overlay/GameOverlay.tsx's
-// "suit-cycle-hud", itself pinned to this same CENTER_X/CLUSTER_CENTER_Y
-// point - confirmed by measuring its live getBoundingClientRect() back
-// into canvas-logical coordinates) rather than literal canvas center:
-// the canvas has more UI below its vertical midpoint than above it (hand
-// fan, Required Suit banner, seat bar), so CLUSTER_CENTER_Y sits well
-// above HEIGHT / 2, the point the old code anchored to instead.
-const TABLETOP_SIGIL_ANCHOR = { x: 0.492, y: 0.491 };
+// Measured fact, not derivable from the image's raw dimensions or
+// estimated from its description - re-measured for the corrected
+// production background (1080x1920, a much smaller circular sigil in a
+// larger dark-blue cracked-stone field, replacing the old 841x1870
+// near-full-canvas sigil the previous fraction below was measured
+// against). Method: isolate the sigil's bright linework from the darker
+// stone via a luminance threshold (stable across thresholds 70-90 out of
+// 255, confirmed by re-running at several thresholds), then take the
+// midpoint of that mask's bounding box - the sigil is a clean circle, so
+// its bbox midpoint on each axis is its true geometric center. Result:
+// bbox x range [253, 825] of 1080 -> mid 539.0 (49.9% of width); y range
+// [622, 1198] of 1920 -> mid 910.0 (47.4% of height). Used as a
+// "background-position anchor" so the sigil lines up with the DOM-layer
+// center wheel (dom/overlay/GameOverlay.tsx's "center-hud", itself pinned
+// to this same CENTER_X/CLUSTER_CENTER_Y point - reconfirmed by measuring
+// its live getBoundingClientRect() back into canvas-logical coordinates,
+// same method as the original alignment fix) rather than literal canvas
+// center: the canvas has more UI below its vertical midpoint than above
+// it (hand fan, Required Suit banner, seat bar), so CLUSTER_CENTER_Y sits
+// well above HEIGHT / 2, the point a naive fix would anchor to instead.
+const TABLETOP_SIGIL_ANCHOR = { x: 0.499, y: 0.474 };
 
 // Positions the tabletop so its sigil anchor lands exactly on the DOM
 // wheel's point (CENTER_X, CLUSTER_CENTER_Y), uniformly scaled (never

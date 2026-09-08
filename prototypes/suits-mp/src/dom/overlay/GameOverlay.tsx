@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './GameOverlay.css';
-import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
+import { SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
 import { GOD_DISPLAY_NAME } from '../../rules/cards';
 import type { God } from '../../rules/types';
-import { HEX_CLIP_PATH, nameplateUrl, symbolArtUrl } from '../godArtUrl';
+import { HEX_CLIP_PATH, currentTurnPointerUrl, nameplateUrl, suitCycleBezelUrl, symbolArtUrl } from '../godArtUrl';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
@@ -132,26 +132,45 @@ const BOTTOM_ROW_BOTTOM = 54;
 // already shown by the Suit Cycle HUD ring above it - this is the only
 // spot that also names the suit in text).
 const REQUIRED_SUIT_BANNER_TOP = 590;
-// Centre inlay geometry (visual reskin pass - see BUILD_STATUS.md). Wells
-// are positioned by a single center-relative offset (WELL_OFFSET) rather
-// than edge-anchored to the housing's own border, so they read as
-// tightly grouped near the middle of the carved-stone inlay per the
-// approved preview, instead of pinned to its outer rim.
-const OUTER_BEZEL_SIZE = 168;
-const INLAY_SIZE = 150;
-const WELL_SIZE = 42;
-const WELL_OFFSET = 30;
-const MARKER_SIZE = 50;
+// Center HUD geometry (asset-based replacement of the old procedural
+// rotating-rings HUD - see BUILD_STATUS.md). One fixed carved-stone bezel
+// (ui_suit_cycle_bezel.png, four circular recesses + open center) plus one
+// rotating pointer (ui_current_turn_pointer.png) replace the old two-tier
+// "outer bezel ring + inner suit-cycle inlay" entirely - only the pointer
+// still rotates; the four recesses are now permanent, fixed positions.
+const HUD_SIZE = 168;
+// Each recess's center, as a fraction of HUD_SIZE from the bezel's own
+// center - measured directly off ui_suit_cycle_bezel.png's real pixels
+// (all four recesses land within ~0.004 of this fraction on both axes),
+// not estimated from the design description.
+const RECESS_OFFSET_FRACTION = 0.3;
+const RECESS_SYMBOL_SIZE = HUD_SIZE * 0.24;
+const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
+// The pointer PNG's own tip sits ~0.946 of its half-height from the
+// image's center (long needle, short blunt counterweight) - sized here so
+// the tip reaches just inside the recess ring rather than overshooting
+// past the bezel's outer edge.
+const POINTER_SIZE = HUD_SIZE * 0.58;
 
-// Suit Cycle HUD's lead-marker ring: pixel offset from the inlay's own
-// center for each seat it might need to highlight - matches WELL_OFFSET
-// exactly, since the marker must frame whichever well currently sits at
-// that position.
-const MARKER_OFFSET: Record<SeatPosition, { dx: number; dy: number }> = {
-  top: { dx: 0, dy: -WELL_OFFSET },
-  right: { dx: WELL_OFFSET, dy: 0 },
-  bottom: { dx: 0, dy: WELL_OFFSET },
-  left: { dx: -WELL_OFFSET, dy: 0 },
+// Indexed 0-3, matching SUITS/GOD_TO_SUIT_INDEX's fixed order (Yog-Sothoth
+// top, Cthulhu right, Shub-Niggurath bottom, Nyarlathotep left).
+const RECESS_OFFSET: readonly { dx: number; dy: number }[] = [
+  { dx: 0, dy: -HUD_SIZE * RECESS_OFFSET_FRACTION },
+  { dx: HUD_SIZE * RECESS_OFFSET_FRACTION, dy: 0 },
+  { dx: 0, dy: HUD_SIZE * RECESS_OFFSET_FRACTION },
+  { dx: -HUD_SIZE * RECESS_OFFSET_FRACTION, dy: 0 },
+];
+
+// Canonical per-Deity accent hue for the Lead recess glow - a neutral-
+// white core (shared, see the glow itself below) plus this hue, per the
+// approved spec: Cthulhu cyan, Nyarlathotep purple, Shub-Niggurath green,
+// Yog-Sothoth gold (gold value matches the existing gold accent already
+// used elsewhere in this file, e.g. the local seat tag's border).
+const GOD_ACCENT_RGB: Record<God, string> = {
+  Cthulhu: '90, 224, 210',
+  Nyarlathotep: '176, 120, 232',
+  ShubNiggurath: '120, 200, 110',
+  YogSothoth: '198, 160, 78',
 };
 
 export function GameOverlay({
@@ -176,241 +195,145 @@ export function GameOverlay({
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
 
-  // The wheel must land the *current lead suit's* badge exactly at the
-  // Invoker's actual seat position (top/right/bottom/left) - wherever
-  // that is, not a fixed anchor (that was the previous bug: it assumed
-  // the Invoker was always at the bottom, which only happened to be true
-  // when the local player was leading). Each suit has a fixed home angle
-  // on the ring (badges are laid out with Yog-Sothoth/SUITS[0] at local
-  // top, going clockwise - `leadGodIndex * 90`), and `starterSeat` is the
-  // Invoker's real seat (ui/seating.ts's computeSuitRing already resolves
-  // this correctly for both this-session-live triggers: the local
-  // player's own live pre-commit preview via `previewCardId`, when
-  // *they're* the Invoker, and the host's confirmed `state.leadSuit` once
-  // any other player's leading play is broadcast - never a guess at
-  // another player's hidden selection). `SEAT_DEG` (below) is the same
-  // seat->angle mapping the turn-indicator wheel's own `turnSeatIndex`
-  // already encodes (via SEAT_ORDER's clockwise order); reused here
-  // rather than re-derived, per the seat/angle correspondence the wheel
-  // already gets right.
-  //
-  // Required rotation = angle_of(Invoker's seat) - home_angle_of(lead
-  // suit), reduced to a 0-3 step index so useForwardRotation's existing
-  // forward-only, freeze-on-null, never-snap-back stepping (the same
-  // behavior the turn wheel and the old suit ring both already relied on)
-  // still applies - only *what* index that stepping follows changed.
-  const starterIndex = starterSeat === null ? null : SEAT_DEG[starterSeat] / 90;
-  const suitIndex = starterIndex === null || leadGodIndex === null ? null : (((starterIndex - leadGodIndex) % 4) + 4) % 4;
-  const suitDeg = useForwardRotation(suitIndex, 4, 90);
-
-  // The lead-marker ring (below) highlights whichever badge is currently
-  // at the Invoker's seat - it has to track `starterSeat` directly now
-  // that the Invoker isn't always at the bottom, freezing at the last
-  // real seat (rather than losing its position) the same way the ring's
-  // own rotation freezes on indeterminate state. Defaults to 'bottom'
-  // only before any trick has ever had a real leader yet (game start).
-  const markerSeat = useLastKnown(starterSeat) ?? 'bottom';
+  // Which of the four FIXED recesses gets the Lead glow + LEAD label.
+  // Recess positions no longer rotate to bring the lead suit to the
+  // Invoker's seat (that was the old ring's job) - the bezel is fixed per
+  // the approved Center HUD spec, so this is just `leadGodIndex` itself
+  // (SUITS/GOD_TO_SUIT_INDEX's own 0-3 order = the four permanent recess
+  // slots), frozen at its last real value while indeterminate (between
+  // tricks, or before any trick has ever had a real leader yet) rather
+  // than losing its position - same freeze spirit as the old marker ring.
+  const litGodIndex = useLastKnown(leadGodIndex) ?? 0;
   const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* ===== Turn indicator wheel (outer bezel, independent layer) =====
-          Visual reskin only (see BUILD_STATUS.md) - a single carved-stone
-          bezel ring replaces the old multi-ring glowing/dotted/spinning-
-          sigil stack. `turnDeg` (computed above, untouched) still drives
-          the exact same rotating pointer; only its container's styling
-          changed. */}
+      {/* ===== Center HUD (fixed bezel + rotating pointer) =====
+          Replaces the old two-tier procedural rotating-rings HUD
+          (outer turn-indicator bezel + inner suit-cycle inlay) entirely
+          with the approved art assets - see BUILD_STATUS.md. The bezel
+          and all four recess positions are now permanently fixed; only
+          the pointer rotates, and the Lead glow/label move between
+          recesses instead of the recesses themselves moving. Back-to-
+          front: 1) bezel, 2) the four symbols (+ Lead glow, placed just
+          behind its symbol rather than literally on top - see below),
+          3) the rotating pointer, 4) the LEAD label, always topmost. */}
       <div
-        data-ui="turn-indicator-wheel"
-        style={{
-          position: 'absolute',
-          left: CENTER_X,
-          top: CLUSTER_CENTER_Y,
-          width: OUTER_BEZEL_SIZE,
-          height: OUTER_BEZEL_SIZE,
-          marginLeft: -OUTER_BEZEL_SIZE / 2,
-          marginTop: -OUTER_BEZEL_SIZE / 2,
-          pointerEvents: 'none',
-        }}
+        data-ui="center-hud"
+        style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: HUD_SIZE, height: HUD_SIZE, marginLeft: -HUD_SIZE / 2, marginTop: -HUD_SIZE / 2, pointerEvents: 'none' }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 40% 32%, rgba(72, 68, 60, 0.28), rgba(10, 10, 11, 0) 68%)',
-            boxShadow: 'inset 0 3px 7px rgba(0, 0, 0, 0.65), inset 0 -2px 5px rgba(120, 100, 60, 0.12)',
-          }}
-        />
-        <div
-          data-bind="turn-rotation"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transition: `transform ${tune.turnWheelRotationMs}ms ${tune.turnWheelRotationEasing}`,
-            transform: `rotate(${turnDeg}deg)`,
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: 2,
-              marginLeft: -7,
-              width: 14,
-              height: 18,
-              background: 'linear-gradient(180deg, oklch(0.82 0.10 84), oklch(0.60 0.09 68))',
-              clipPath: 'polygon(50% 100%, 0 0, 50% 26%, 100% 0)',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.6)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: 19,
-              width: 1,
-              height: 20,
-              marginLeft: -0.5,
-              background: 'linear-gradient(180deg, rgba(198, 160, 78, 0.6), rgba(198, 160, 78, 0))',
-            }}
-          />
-        </div>
-      </div>
+        {/* 1. Fixed bezel - never rotates, never recolors by Deity/team. */}
+        <img src={suitCycleBezelUrl()} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
 
-      {/* ===== Suit Cycle HUD (inner carved-stone inlay, independent
-          layer) ===== Visual reskin only - `suitDeg` (untouched) still
-          rotates the whole well group, each well still counter-rotates
-          its own symbol by `-suitDeg` so it stays upright, and
-          `lead-marker` still tracks `markerSeat` via the same
-          translate-offset technique as before (now using WELL_OFFSET so
-          it frames the enlarged wells exactly). Only sizes/colors/shapes
-          changed - no rotation math touched. */}
-      <div
-        data-ui="suit-cycle-hud"
-        style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: INLAY_SIZE, height: INLAY_SIZE, marginLeft: -INLAY_SIZE / 2, marginTop: -INLAY_SIZE / 2, pointerEvents: 'none' }}
-      >
-        {/* Round carved-stone inlay housing - depth via inset shadow only,
-            no glowing border/outline (the old teal-bordered radial glow
-            read as a floating UI panel, not part of the tabletop). */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            background: 'radial-gradient(58% 58% at 42% 34%, rgba(46, 42, 38, 0.55) 0%, rgba(8, 8, 9, 0.88) 100%)',
-            boxShadow: 'inset 0 4px 11px rgba(0, 0, 0, 0.72), inset 0 -2px 6px rgba(90, 74, 40, 0.10)',
-          }}
-        />
-
-        <div
-          data-bind="lead-suit-rotation"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
-            transform: `rotate(${suitDeg}deg)`,
-          }}
-        >
-          {SUITS.map((suit, i) => {
-            const isGold = i % 2 === 0; // YS(0), SN(2) gold/Cosmos; CT(1), NY(3) teal/Chaos - matches the design's fixed per-slot palette
-            const offset =
-              i === 0
-                ? { dx: 0, dy: -WELL_OFFSET }
-                : i === 1
-                  ? { dx: WELL_OFFSET, dy: 0 }
-                  : i === 2
-                    ? { dx: 0, dy: WELL_OFFSET }
-                    : { dx: -WELL_OFFSET, dy: 0 };
-            const motif = GOD_MOTIF[suit.god];
-            const tint = isGold ? '198, 160, 78' : '96, 190, 178';
-            return (
+        {/* 2. The four Deity symbols, one per fixed recess - always
+            upright and centered, with visible clearance inside the
+            recess; never redrawn/cropped/baked into the bezel. */}
+        {SUITS.map((suit, i) => {
+          const motif = GOD_MOTIF[suit.god];
+          const offset = RECESS_OFFSET[i];
+          const isLit = i === litGodIndex;
+          const accent = GOD_ACCENT_RGB[suit.god];
+          return (
+            <div
+              key={suit.code}
+              data-suit={suit.code}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: RECESS_SYMBOL_SIZE,
+                height: RECESS_SYMBOL_SIZE,
+                transform: `translate(calc(-50% + ${offset.dx}px), calc(-50% + ${offset.dy}px))`,
+              }}
+            >
+              {/* Lead glow - one shared radius/intensity/pulse timing/
+                  easing across all four Deities, neutral-white core
+                  fading into this Deity's canonical accent hue. Placed
+                  behind the symbol (not literally "on top" per a strict
+                  reading of the back-to-front list) since a glow the
+                  same size as the icon it covers would defeat the
+                  "visible clearance" requirement below. */}
+              {isLit && (
+                <div
+                  data-ui="lead-glow"
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    width: RECESS_GLOW_SIZE,
+                    height: RECESS_GLOW_SIZE,
+                    marginLeft: -RECESS_GLOW_SIZE / 2,
+                    marginTop: -RECESS_GLOW_SIZE / 2,
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(${accent}, 0.45) 45%, rgba(${accent}, 0) 75%)`,
+                    animation: `suitsMpLeadGlowPulse ${tune.leadGlowPulseMs}ms ${tune.leadGlowPulseEasing} infinite`,
+                  }}
+                />
+              )}
               <div
-                key={suit.code}
-                data-suit={suit.code}
                 style={{
                   position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  width: WELL_SIZE,
-                  height: WELL_SIZE,
-                  transform: `translate(calc(-50% + ${offset.dx}px), calc(-50% + ${offset.dy}px))`,
+                  inset: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
                   borderRadius: motif === 'circle' ? '50%' : 0,
                   clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
-                  // Glassy well: a soft highlight top-left fading into a
-                  // dark, faintly team-tinted floor - procedurally drawn,
-                  // no dedicated well asset exists (see BUILD_STATUS.md).
-                  background: `radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.30), rgba(${tint}, 0.24) 45%, rgba(6, 10, 11, 0.94) 100%)`,
-                  border: `1px solid rgba(${tint}, 0.55)`,
-                  boxShadow: `inset 0 2px 5px rgba(0, 0, 0, 0.55), inset 0 -1px 3px rgba(${tint}, 0.16)`,
                 }}
               >
-                {/* Counter-rotates by the wheel's own rotation (-suitDeg),
-                    composing with the parent's `rotate(${suitDeg}deg)`
-                    above to net zero - the symbol stays upright no matter
-                    where the wheel points. Shares the wheel's own
-                    transition duration/easing so it stays visually locked
-                    upright throughout the animation too, not just at rest. */}
-                <div
-                  style={{
-                    width: WELL_SIZE * 0.68,
-                    height: WELL_SIZE * 0.68,
-                    transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
-                    transform: `rotate(${-suitDeg}deg)`,
-                  }}
-                >
-                  <img src={symbolArtUrl(suit.god)} alt={suit.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                </div>
+                <img src={symbolArtUrl(suit.god)} alt={suit.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
+
+        {/* 3. Rotating current-turn pointer - pivot at the exact
+            geometric center of the HUD, sprite origin at the center of
+            its own square asset (per the handoff, so no off-center pivot
+            math is needed), rotated via the same forward-rotation
+            behavior as before (`turnDeg`, untouched). Never tinted by
+            Deity or team - it's neutral carved pewter regardless of
+            state. */}
+        <img
+          data-bind="turn-rotation"
+          src={currentTurnPointerUrl()}
+          alt=""
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: POINTER_SIZE,
+            height: POINTER_SIZE,
+            marginLeft: -POINTER_SIZE / 2,
+            marginTop: -POINTER_SIZE / 2,
+            transition: `transform ${tune.turnWheelRotationMs}ms ${tune.turnWheelRotationEasing}`,
+            transform: `rotate(${turnDeg}deg)`,
+          }}
+        />
+
+        {/* 4. LEAD label - always the topmost layer, fixed upright, may
+            partially obscure the symbol by design (per the handoff).
+            `Lead Suit` remains the canonical gameplay term; this is only
+            the compact HUD label - not a standalone Lead Player badge,
+            which stays deliberately absent from this screen. */}
+        <div
+          data-ui="lead-label"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: `translate(calc(-50% + ${RECESS_OFFSET[litGodIndex].dx}px), calc(-50% + ${RECESS_OFFSET[litGodIndex].dy}px))`,
+            fontFamily: "'Cormorant Unicase', serif",
+            fontWeight: 700,
+            fontSize: 9,
+            letterSpacing: '0.14em',
+            color: 'oklch(0.96 0.02 90)',
+            textShadow: '0 0 6px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9)',
+          }}
+        >
+          LEAD
         </div>
-
-        {/* The center hub is a small plain stone recess - no symbol, no
-            text label (the required suit is stated once, by the Required
-            Suit banner below, never duplicated here). */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: 34,
-            height: 34,
-            margin: '-17px 0 0 -17px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 38% 30%, rgba(40, 38, 34, 0.6), rgba(4, 4, 5, 0.92))',
-            boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.7)',
-          }}
-        />
-
-        {/* Highlights whichever well sits at the Invoker's actual seat
-            (`markerSeat`) - not a fixed position, since the Invoker can be
-            at any of the 4 seats. Positioned via `transform: translate()`
-            (a single interpolatable property, unlike swapping between
-            left/right/top/bottom which can't cross-animate) from a fixed
-            center anchor, so it can transition smoothly - same timing/
-            easing as the wheel's own rotation, so it visually travels
-            together with the well it's marking. */}
-        <div
-          data-ui="lead-marker"
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: MARKER_SIZE,
-            height: MARKER_SIZE,
-            transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
-            transform: `translate(calc(-50% + ${MARKER_OFFSET[markerSeat].dx}px), calc(-50% + ${MARKER_OFFSET[markerSeat].dy}px))`,
-            borderRadius: '50%',
-            border: '1px solid rgba(226, 196, 120, 0.55)',
-            boxShadow: '0 0 10px rgba(226, 196, 120, 0.28), inset 0 0 8px rgba(226, 196, 120, 0.14)',
-            pointerEvents: 'none',
-          }}
-        />
       </div>
 
       {/* ===== Player name displays + Trick Starter tags ===== */}
