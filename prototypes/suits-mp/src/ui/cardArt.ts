@@ -14,20 +14,28 @@ import { PIXEL_RATIO } from '../render/pixelRatio';
 //
 // Back-to-front layer order per state (see this task's handoff for the
 // full placement table):
-//   Numbered (rank 2-10): backdrop -> Deity Symbol (large) -> frame -> rank
-//   Dormant  (DeityCard, not powered): backdrop -> Deity Symbol (extra-large)
-//     -> frame -> nameplate -> "1"
+//   Numbered (rank 2-10): backdrop -> Deity Symbol -> frame -> rank
+//   Dormant  (DeityCard, not powered): backdrop -> Deity Symbol -> frame ->
+//     nameplate -> "1"
 //   Powered  (DeityCard, powered): backdrop -> Deity Face (anime art) ->
 //     frame -> Deity Symbol (small top badge, ABOVE the frame) -> nameplate
 //     -> "★"
 // The frame is always drawn on top of the main symbol/face layer so its
 // opaque border masks any layer that intentionally overflows the window
-// (e.g. Dormant's 1130px-wide symbol box on the 1024px-wide canvas) -
-// except Powered's small top-badge symbol, which the approved spec
-// explicitly places above the frame and must never be masked by it.
+// (e.g. the symbol box's 1130px width on the 1024px-wide canvas) - except
+// Powered's small top-badge symbol, which the approved spec explicitly
+// places above the frame and must never be masked by it.
 // Rank numerals and the star are live Phaser.Text (per root CLAUDE.md's DPR
 // rule), never baked into art. Deity names are the approved nameplate PNGs,
 // never recreated as text.
+//
+// DEVIATION FROM THE ORIGINAL APPROVED HANDOFF: that spec sized Numbered's
+// symbol smaller (contain within 760x760, top y=290) than Dormant's
+// (1130x1130, top y=170) to visually flag the Deity Card's special status.
+// Judged incorrect after seeing it live - Numbered now uses the exact same
+// box as Dormant (see SYMBOL_BOX below). Flagging here for GPT/Codex to
+// reconcile back into suits-mp-screen-reference.md; the Numbered-specific
+// 760x760/y=290 box no longer exists in code.
 
 function symbolKey(god: God): string {
   return symbolArtFile(god);
@@ -102,15 +110,14 @@ interface RefBox {
   h: number;
 }
 
-// Numbered symbol: contain within 760x760, horizontally centered, top y=290.
-const NUMBERED_SYMBOL_BOX: RefBox = { x: 132, y: 290, w: 760, h: 760 };
-
-// Dormant symbol: contain within 1130x1130, horizontally centered, top
+// Deity Symbol box, shared by Numbered and Dormant alike (see this file's
+// header comment on the deviation from the original handoff, which sized
+// these differently): contain within 1130x1130, horizontally centered, top
 // y=170. Wider than the 1024px canvas by design (the source plate's own
 // padding allows a nearly full-width visible symbol) - the box legitimately
 // extends past the canvas's left/right edges; the frame drawn on top masks
 // the overflow.
-const DORMANT_SYMBOL_BOX: RefBox = { x: -53, y: 170, w: 1130, h: 1130 };
+const SYMBOL_BOX: RefBox = { x: -53, y: 170, w: 1130, h: 1130 };
 
 // Powered anime Deity: contain within 850x1190, horizontally centered, top
 // y=180.
@@ -215,13 +222,13 @@ export function buildCard(
   const state = cardVisualState(rank, deityCardState);
 
   // 2. Main symbol/face layer, BEFORE the frame (see module header comment
-  //    on masking).
+  //    on masking). Numbered and Dormant share the exact same symbol box -
+  //    see this file's header comment on the deviation from the original
+  //    handoff, which sized these differently.
   if (state === 'powered') {
     placeContain(scene, container, faceKey(god), POWERED_FACE_BOX, k, authW, authH);
-  } else if (state === 'dormant') {
-    placeContain(scene, container, symbolKey(god), DORMANT_SYMBOL_BOX, k, authW, authH);
   } else {
-    placeContain(scene, container, symbolKey(god), NUMBERED_SYMBOL_BOX, k, authW, authH);
+    placeContain(scene, container, symbolKey(god), SYMBOL_BOX, k, authW, authH);
   }
 
   // 3. Frame - full canvas, on top of the backdrop and main symbol/face
