@@ -47,6 +47,51 @@ const CENTER_X = WIDTH / 2;
 // loader.
 const TABLETOP_KEY = 'background_tabletop_stone';
 
+// Measured fact, not derivable from the image's raw dimensions: the stone
+// tabletop's circular ritual-sigil motif is centered at approximately
+// 49.2% of the source image's width and 49.1% of its height (native
+// 841x1870) - very close to, but not exactly, the image's own geometric
+// center. Used as a "background-position anchor" so the sigil lines up
+// with the DOM-layer center wheel (dom/overlay/GameOverlay.tsx's
+// "suit-cycle-hud", itself pinned to this same CENTER_X/CLUSTER_CENTER_Y
+// point - confirmed by measuring its live getBoundingClientRect() back
+// into canvas-logical coordinates) rather than literal canvas center:
+// the canvas has more UI below its vertical midpoint than above it (hand
+// fan, Required Suit banner, seat bar), so CLUSTER_CENTER_Y sits well
+// above HEIGHT / 2, the point the old code anchored to instead.
+const TABLETOP_SIGIL_ANCHOR = { x: 0.492, y: 0.491 };
+
+// Positions the tabletop so its sigil anchor lands exactly on the DOM
+// wheel's point (CENTER_X, CLUSTER_CENTER_Y), uniformly scaled (never
+// stretched independently per-axis) just enough that the image still
+// covers every edge of the canvas from that anchor - the same
+// "background-size: cover" technique, generalized to an anchor that isn't
+// the image's own center. Reads the texture's actual loaded dimensions
+// rather than hardcoding them, so a same-named art replacement of a
+// different size (art is overwritten in place, never versioned - see root
+// CLAUDE.md's art pipeline rules) doesn't silently throw the alignment off
+// again the way a hardcoded 841x1870 would.
+function drawTabletop(scene: Phaser.Scene, container: Phaser.GameObjects.Container): void {
+  if (!scene.textures.exists(TABLETOP_KEY)) return;
+  const source = scene.textures.get(TABLETOP_KEY).getSourceImage();
+  const srcW = source.width;
+  const srcH = source.height;
+  const { x: fx, y: fy } = TABLETOP_SIGIL_ANCHOR;
+
+  const scale = Math.max(
+    CENTER_X / (fx * srcW),
+    (WIDTH - CENTER_X) / ((1 - fx) * srcW),
+    CLUSTER_CENTER_Y / (fy * srcH),
+    (HEIGHT - CLUSTER_CENTER_Y) / ((1 - fy) * srcH),
+  );
+
+  const bg = scene.add
+    .image(CENTER_X, CLUSTER_CENTER_Y, TABLETOP_KEY)
+    .setOrigin(fx, fy)
+    .setDisplaySize(srcW * scale, srcH * scale);
+  container.add(bg);
+}
+
 // --- Card dimensions (shared component - see ui/cardComponent.ts) ------
 // "Standard" is used everywhere a full-size card appears (hand fan, every
 // play area); "mini" is used for the two compact contexts (redistribution
@@ -225,10 +270,7 @@ function renderWithView(
   // canvas element this render pass adds (see board/UI requirements: real
   // R2-fetched art, loaded the same manifest-driven way as every card
   // texture - see preloadCardArt).
-  if (scene.textures.exists(TABLETOP_KEY)) {
-    const bg = scene.add.image(CENTER_X, HEIGHT / 2, TABLETOP_KEY).setDisplaySize(WIDTH, HEIGHT);
-    container.add(bg);
-  }
+  drawTabletop(scene, container);
 
   const rect: RectFn = (x, y, w, h, fill, alpha = 1) => {
     const r = scene.add.rectangle(x, y, w, h, fill, alpha);
