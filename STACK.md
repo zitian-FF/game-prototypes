@@ -108,6 +108,63 @@ whether or not anyone notices. Real per-consumer version isolation
 (so a stale pin fails loudly instead of resolving to the wrong thing)
 remains unbuilt infrastructure work.
 
+## Art asset pipeline: automatic downscale/recompress
+
+`scripts/pack-assets.js` (the second half of every prototype's
+`fetch:assets` / `pack:assets` flow, see CLAUDE.md's Art pipeline
+section) can automatically downscale and recompress `loose/` images as
+part of packing them into `public/prototypes/<name>/assets/` - opt-in
+per prototype via `IMAGE_OPTIMIZATION_RULES` at the top of that script,
+keyed by prototype name. A prototype with no entry there gets exact
+byte-for-byte passthrough, exactly as before this existed - adding
+another prototype's rules can't affect one that hasn't opted in, same
+principle as every other shared capability in this file.
+
+Each rule can:
+
+- **Downscale** (`maxDimension`): fit the image inside an NxN box,
+  aspect ratio always preserved, never enlarging an already-smaller
+  image. Size this to the asset's real largest on-screen footprint -
+  check every actual call site (canvas *and* DOM, if both consume the
+  same file), not just the most obvious one, and account for the
+  runtime's device-pixel-ratio ceiling (see CLAUDE.md's DPR section) -
+  never to the authoring canvas's own resolution. Master art from an
+  image-generation pipeline is routinely produced at 2-4x the resolution
+  any mobile-portrait canvas will ever display it at.
+- **Recompress** (`format`/`quality`): re-encode into a smaller-footprint
+  format. Currently only WebP (lossy, high quality) is implemented -
+  it typically cuts 30-60% off file size versus PNG at equivalent visual
+  quality for painterly/photographic art, and still supports an alpha
+  channel. Needs no Phaser-side loader changes: Phaser's image loader and
+  the browser's own `<img>`/CSS `url()` both decode WebP exactly like
+  PNG/JPEG, and this repo's manifest-driven loose-asset loader
+  (`preloadCardArt`'s `queueLooseImages()` pattern, see suits-mp's
+  `ui/cardArt.ts`) already derives its texture keys by stripping
+  whatever extension a file has - only code that constructs an asset's
+  URL *directly* (bypassing the manifest, as some DOM-layer `<img>` URLs
+  do) needs its hardcoded extension updated to match.
+- **Do nothing on purpose**: a rule with neither field is a valid,
+  intentional no-op - useful to record that an asset's resolution was
+  checked and found already appropriate (or, per suits-mp's tabletop
+  background, that its real on-screen footprint via some placement
+  formula can legitimately exceed its native resolution, so downscaling
+  it further would visibly hurt quality) rather than just never
+  considered.
+
+Manifest hashing (`scripts/pack-assets.js`'s content-hash cache-key
+mechanism, see CLAUDE.md's Art pipeline section) is computed on the
+*final, processed* output bytes, so a resize/format change is picked up
+by the existing cache-busting exactly like any other art change - no
+changes needed there.
+
+**suits-mp is the first (and so far only) adopter**: every loose card
+asset (backdrops, frames, symbols, faces, nameplates) is capped at 512px
+on its long edge and converted to WebP; the tabletop background is
+recompressed to WebP only, at its native resolution, for the reason
+noted above. Real measured result on this asset set: 27.2MB -> 1.1MB
+(96% smaller) - see `prototypes/suits-mp/BUILD_STATUS.md` for the full
+before/after and how the 512px figure was derived.
+
 ## What "available to a prototype" means in practice
 
 A new prototype starts with just the core engine stack above and
