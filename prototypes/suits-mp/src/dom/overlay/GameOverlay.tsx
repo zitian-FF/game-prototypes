@@ -133,16 +133,27 @@ const BOTTOM_ROW_BOTTOM = 54;
 // spot that also names the suit in text).
 const REQUIRED_SUIT_BANNER_TOP = 590;
 // Center HUD geometry (asset-based replacement of the old procedural
-// rotating-rings HUD - see BUILD_STATUS.md). One fixed carved-stone bezel
+// rotating-rings HUD - see BUILD_STATUS.md). One carved-stone bezel
 // (ui_suit_cycle_bezel.png, four circular recesses + open center) plus one
-// rotating pointer (ui_current_turn_pointer.png) replace the old two-tier
-// "outer bezel ring + inner suit-cycle inlay" entirely - only the pointer
-// still rotates; the four recesses are now permanent, fixed positions.
+// rotating pointer (ui_current_turn_pointer.png). Unlike the intermediate
+// fixed-recess design, rotation is restored (by explicit user override,
+// see BUILD_STATUS.md): the bezel itself rotates as one rigid unit so the
+// current lead suit's baked-in recess lands at the fixed marker position
+// (local top, offset index 0 below) - there's no way to move the four
+// recesses independently any more since they're baked into one texture,
+// unlike the old ring's separate per-badge DOM elements. Each Deity symbol
+// (and the Lead label/glow) is a separate overlay that counter-rotates by
+// the bezel's inverse angle so it stays upright regardless of bezel angle
+// - confirmed via pixel analysis that the bezel art itself has genuine
+// 4-fold rotational symmetry (no unique orientation marking), so this is
+// safe.
 const HUD_SIZE = 168;
 // Each recess's center, as a fraction of HUD_SIZE from the bezel's own
 // center - measured directly off ui_suit_cycle_bezel.png's real pixels
 // (all four recesses land within ~0.004 of this fraction on both axes),
-// not estimated from the design description.
+// not estimated from the design description. Index 0 (local top) doubles
+// as the fixed marker/pointer position that the lead suit's recess
+// rotates to.
 const RECESS_OFFSET_FRACTION = 0.3;
 const RECESS_SYMBOL_SIZE = HUD_SIZE * 0.24;
 const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
@@ -195,106 +206,180 @@ export function GameOverlay({
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
 
-  // Which of the four FIXED recesses gets the Lead glow + LEAD label.
-  // Recess positions no longer rotate to bring the lead suit to the
-  // Invoker's seat (that was the old ring's job) - the bezel is fixed per
-  // the approved Center HUD spec, so this is just `leadGodIndex` itself
-  // (SUITS/GOD_TO_SUIT_INDEX's own 0-3 order = the four permanent recess
-  // slots), frozen at its last real value while indeterminate (between
-  // tricks, or before any trick has ever had a real leader yet) rather
-  // than losing its position - same freeze spirit as the old marker ring.
+  // Bezel rotation, restored (by explicit user override - see
+  // BUILD_STATUS.md - of the intermediate fixed-recess design). Recesses
+  // are laid out (RECESS_OFFSET below) with SUITS[0]/Yog-Sothoth at local
+  // top going clockwise, i.e. recess `i`'s home angle is `i * 90`.
+  // Rotating the whole bezel by `-leadGodIndex * 90` always brings that
+  // recess to angle 0 (local top - the fixed marker position), regardless
+  // of which suit currently leads. `useForwardRotation`'s existing
+  // forward-only, freeze-on-null, never-snap-back stepping (already used
+  // by the turn pointer above) applies unchanged - only *what* index it
+  // follows differs (this is not coupled to `starterSeat`/the Invoker's
+  // seat this time - the marker is a single fixed screen position, not a
+  // seat-tracking one, since the design brief didn't ask for that here).
+  const suitDeg = useForwardRotation(leadGodIndex, 4, -90);
+
+  // Which recess sits at the marker (index 0/top) once rotation settles -
+  // by construction this is always `leadGodIndex` itself, frozen at its
+  // last real value while indeterminate (between tricks, or before any
+  // trick has ever had a real leader yet) rather than losing its
+  // position - same freeze spirit as `suitDeg` above. Still drives the
+  // Lead glow + LEAD label, kept from the prior task per explicit user
+  // request (rotation and the glow/label are additive now, not
+  // alternatives).
   const litGodIndex = useLastKnown(leadGodIndex) ?? 0;
   const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* ===== Center HUD (fixed bezel + rotating pointer) =====
+      {/* ===== Center HUD (rotating bezel + rotating pointer) =====
           Replaces the old two-tier procedural rotating-rings HUD
           (outer turn-indicator bezel + inner suit-cycle inlay) entirely
-          with the approved art assets - see BUILD_STATUS.md. The bezel
-          and all four recess positions are now permanently fixed; only
-          the pointer rotates, and the Lead glow/label move between
-          recesses instead of the recesses themselves moving. Back-to-
-          front: 1) bezel, 2) the four symbols (+ Lead glow, placed just
-          behind its symbol rather than literally on top - see below),
-          3) the rotating pointer, 4) the LEAD label, always topmost. */}
+          with the approved art assets - see BUILD_STATUS.md. Rotation
+          was restored by explicit user override on top of the approved
+          Center HUD spec (which had made the bezel fixed and moved the
+          Lead glow/label between static recesses instead): the bezel
+          image now rotates as one rigid unit - since its four recesses
+          are baked into a single texture, unlike the old ring's separate
+          per-badge DOM elements, there's no way to move a recess
+          independently any more - so each Deity symbol (and the Lead
+          glow/label, kept from the prior task per explicit request)
+          counter-rotates by the bezel's inverse angle to stay upright.
+          The pointer is unaffected and keeps rotating independently
+          toward `currentTurnSeat`. Back-to-front: 1) the rotating bezel,
+          2) the four counter-rotating symbols (+ Lead glow/label on
+          whichever one is currently at the marker), 3) the pointer. */}
       <div
         data-ui="center-hud"
         style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: HUD_SIZE, height: HUD_SIZE, marginLeft: -HUD_SIZE / 2, marginTop: -HUD_SIZE / 2, pointerEvents: 'none' }}
       >
-        {/* 1. Fixed bezel - never rotates, never recolors by Deity/team. */}
-        <img src={suitCycleBezelUrl()} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        {/* 1. Rotating bezel group - the bezel image plus all four recess
+            anchors rotate together as one rigid unit (`suitDeg`), so the
+            current lead suit's baked-in recess lands at the fixed marker
+            position (local top / RECESS_OFFSET[0]). */}
+        <div
+          data-ui="suit-cycle-bezel-group"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+            transform: `rotate(${suitDeg}deg)`,
+          }}
+        >
+          <img src={suitCycleBezelUrl()} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
 
-        {/* 2. The four Deity symbols, one per fixed recess - always
-            upright and centered, with visible clearance inside the
-            recess; never redrawn/cropped/baked into the bezel. */}
-        {SUITS.map((suit, i) => {
-          const motif = GOD_MOTIF[suit.god];
-          const offset = RECESS_OFFSET[i];
-          const isLit = i === litGodIndex;
-          const accent = GOD_ACCENT_RGB[suit.god];
-          return (
-            <div
-              key={suit.code}
-              data-suit={suit.code}
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                width: RECESS_SYMBOL_SIZE,
-                height: RECESS_SYMBOL_SIZE,
-                transform: `translate(calc(-50% + ${offset.dx}px), calc(-50% + ${offset.dy}px))`,
-              }}
-            >
-              {/* Lead glow - one shared radius/intensity/pulse timing/
-                  easing across all four Deities, neutral-white core
-                  fading into this Deity's canonical accent hue. Placed
-                  behind the symbol (not literally "on top" per a strict
-                  reading of the back-to-front list) since a glow the
-                  same size as the icon it covers would defeat the
-                  "visible clearance" requirement below. */}
-              {isLit && (
-                <div
-                  data-ui="lead-glow"
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    width: RECESS_GLOW_SIZE,
-                    height: RECESS_GLOW_SIZE,
-                    marginLeft: -RECESS_GLOW_SIZE / 2,
-                    marginTop: -RECESS_GLOW_SIZE / 2,
-                    borderRadius: '50%',
-                    background: `radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(${accent}, 0.45) 45%, rgba(${accent}, 0) 75%)`,
-                    animation: `suitsMpLeadGlowPulse ${tune.leadGlowPulseMs}ms ${tune.leadGlowPulseEasing} infinite`,
-                  }}
-                />
-              )}
+          {/* The four Deity symbols, one per recess anchor - each anchor
+              moves rigidly with the bezel group above, but its inner
+              content counter-rotates by `-suitDeg` so the symbol (and the
+              Lead glow/label, when lit) stays visually upright regardless
+              of the bezel's current rotation angle. Never redrawn/
+              cropped/baked into the bezel itself. */}
+          {SUITS.map((suit, i) => {
+            const motif = GOD_MOTIF[suit.god];
+            const offset = RECESS_OFFSET[i];
+            const isLit = i === litGodIndex;
+            const accent = GOD_ACCENT_RGB[suit.god];
+            return (
               <div
+                key={suit.code}
+                data-suit={suit.code}
                 style={{
                   position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  borderRadius: motif === 'circle' ? '50%' : 0,
-                  clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
+                  left: '50%',
+                  top: '50%',
+                  width: RECESS_SYMBOL_SIZE,
+                  height: RECESS_SYMBOL_SIZE,
+                  transform: `translate(calc(-50% + ${offset.dx}px), calc(-50% + ${offset.dy}px))`,
                 }}
               >
-                <img src={symbolArtUrl(suit.god)} alt={suit.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <div
+                  data-ui="suit-cycle-counter-rotate"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    transition: `transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+                    transform: `rotate(${-suitDeg}deg)`,
+                  }}
+                >
+                  {/* Lead glow - one shared radius/intensity/pulse timing/
+                      easing across all four Deities, neutral-white core
+                      fading into this Deity's canonical accent hue. Placed
+                      behind the symbol (not literally "on top" per a
+                      strict reading of the back-to-front list) since a
+                      glow the same size as the icon it covers would
+                      defeat the "visible clearance" requirement below. */}
+                  {isLit && (
+                    <div
+                      data-ui="lead-glow"
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        width: RECESS_GLOW_SIZE,
+                        height: RECESS_GLOW_SIZE,
+                        marginLeft: -RECESS_GLOW_SIZE / 2,
+                        marginTop: -RECESS_GLOW_SIZE / 2,
+                        borderRadius: '50%',
+                        background: `radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(${accent}, 0.45) 45%, rgba(${accent}, 0) 75%)`,
+                        animation: `suitsMpLeadGlowPulse ${tune.leadGlowPulseMs}ms ${tune.leadGlowPulseEasing} infinite`,
+                      }}
+                    />
+                  )}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      borderRadius: motif === 'circle' ? '50%' : 0,
+                      clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
+                    }}
+                  >
+                    <img src={symbolArtUrl(suit.god)} alt={suit.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                  {/* LEAD label - topmost within this recess's own
+                      counter-rotating group, so it stays upright alongside
+                      the symbol it labels. `Lead Suit` remains the
+                      canonical gameplay term; this is only the compact HUD
+                      label - not a standalone Lead Player badge, which
+                      stays deliberately absent from this screen. */}
+                  {isLit && (
+                    <div
+                      data-ui="lead-label"
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: "'Cormorant Unicase', serif",
+                        fontWeight: 700,
+                        fontSize: 9,
+                        letterSpacing: '0.14em',
+                        color: 'oklch(0.96 0.02 90)',
+                        textShadow: '0 0 6px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9)',
+                      }}
+                    >
+                      LEAD
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
-        {/* 3. Rotating current-turn pointer - pivot at the exact
+        {/* 2. Rotating current-turn pointer - pivot at the exact
             geometric center of the HUD, sprite origin at the center of
             its own square asset (per the handoff, so no off-center pivot
             math is needed), rotated via the same forward-rotation
-            behavior as before (`turnDeg`, untouched). Never tinted by
-            Deity or team - it's neutral carved pewter regardless of
-            state. */}
+            behavior as before (`turnDeg`, untouched). Deliberately NOT
+            inside the bezel group above - its rotation tracks
+            `currentTurnSeat` independently and must never be coupled to
+            the bezel's `suitDeg`. Never tinted by Deity or team - it's
+            neutral carved pewter regardless of state. */}
         <img
           data-bind="turn-rotation"
           src={currentTurnPointerUrl()}
@@ -311,29 +396,6 @@ export function GameOverlay({
             transform: `rotate(${turnDeg}deg)`,
           }}
         />
-
-        {/* 4. LEAD label - always the topmost layer, fixed upright, may
-            partially obscure the symbol by design (per the handoff).
-            `Lead Suit` remains the canonical gameplay term; this is only
-            the compact HUD label - not a standalone Lead Player badge,
-            which stays deliberately absent from this screen. */}
-        <div
-          data-ui="lead-label"
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: `translate(calc(-50% + ${RECESS_OFFSET[litGodIndex].dx}px), calc(-50% + ${RECESS_OFFSET[litGodIndex].dy}px))`,
-            fontFamily: "'Cormorant Unicase', serif",
-            fontWeight: 700,
-            fontSize: 9,
-            letterSpacing: '0.14em',
-            color: 'oklch(0.96 0.02 90)',
-            textShadow: '0 0 6px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9)',
-          }}
-        >
-          LEAD
-        </div>
       </div>
 
       {/* ===== Player name displays + Trick Starter tags ===== */}
