@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './GameOverlay.css';
-import { SEAT_ORDER, SUITS } from './overlayContent';
+import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
@@ -135,11 +135,10 @@ const REQUIRED_SUIT_BANNER_TOP = 590;
 // Center HUD geometry (asset-based replacement of the old procedural
 // rotating-rings HUD - see BUILD_STATUS.md). One carved-stone bezel
 // (ui_suit_cycle_bezel.png, four circular recesses + open center) plus one
-// rotating pointer (ui_current_turn_pointer.png). Unlike the intermediate
-// fixed-recess design, rotation is restored (by explicit user override,
-// see BUILD_STATUS.md): the bezel itself rotates as one rigid unit so the
-// current lead suit's baked-in recess lands at the fixed marker position
-// (local top, offset index 0 below) - there's no way to move the four
+// rotating pointer (ui_current_turn_pointer.png). The bezel itself
+// rotates as one rigid unit so the current lead suit's baked-in recess
+// lands at the actual seat of whoever led the trick (by explicit user
+// override - see BUILD_STATUS.md) - there's no way to move the four
 // recesses independently any more since they're baked into one texture,
 // unlike the old ring's separate per-badge DOM elements. Each Deity symbol
 // (and the Lead label/glow) is a separate overlay that counter-rotates by
@@ -151,9 +150,9 @@ const HUD_SIZE = 168;
 // Each recess's center, as a fraction of HUD_SIZE from the bezel's own
 // center - measured directly off ui_suit_cycle_bezel.png's real pixels
 // (all four recesses land within ~0.004 of this fraction on both axes),
-// not estimated from the design description. Index 0 (local top) doubles
-// as the fixed marker/pointer position that the lead suit's recess
-// rotates to.
+// not estimated from the design description. Index 0 (local top) is the
+// home position for SUITS[0]/Yog-Sothoth, matching the same top/right/
+// bottom/left seat geometry SEAT_ORDER/SEAT_DEG use.
 const RECESS_OFFSET_FRACTION = 0.3;
 const RECESS_SYMBOL_SIZE = HUD_SIZE * 0.24;
 const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
@@ -206,28 +205,37 @@ export function GameOverlay({
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
 
-  // Bezel rotation, restored (by explicit user override - see
-  // BUILD_STATUS.md - of the intermediate fixed-recess design). Recesses
-  // are laid out (RECESS_OFFSET below) with SUITS[0]/Yog-Sothoth at local
-  // top going clockwise, i.e. recess `i`'s home angle is `i * 90`.
-  // Rotating the whole bezel by `-leadGodIndex * 90` always brings that
-  // recess to angle 0 (local top - the fixed marker position), regardless
-  // of which suit currently leads. `useForwardRotation`'s existing
-  // forward-only, freeze-on-null, never-snap-back stepping (already used
-  // by the turn pointer above) applies unchanged - only *what* index it
-  // follows differs (this is not coupled to `starterSeat`/the Invoker's
-  // seat this time - the marker is a single fixed screen position, not a
-  // seat-tracking one, since the design brief didn't ask for that here).
-  const suitDeg = useForwardRotation(leadGodIndex, 4, -90);
+  // Bezel rotation, now seat-relative (by explicit user override - see
+  // BUILD_STATUS.md - of the immediately prior task's fixed-top-marker
+  // design). The HUD sits at the center of the four seat tags around it
+  // (SEAT_ORDER's own top/right/bottom/left), so its four cardinal
+  // recess positions read as those same four seats, not an abstract
+  // fixed marker - the lit recess should sit in the direction of
+  // whoever actually led the trick, so a glance at the HUD alone shows
+  // both *what* suit leads and *who* led it. Recesses are laid out
+  // (RECESS_OFFSET below) with SUITS[0]/Yog-Sothoth at local top going
+  // clockwise, i.e. recess `i`'s home screen angle is `i * 90`; we want
+  // that angle to land on `SEAT_DEG[starterSeat]` once rotated, so
+  // `suitIndex = starterIndex - leadGodIndex` (mod 4) is the number of
+  // forward 90deg steps needed - ported from the pre-Center-HUD-redesign
+  // ring's own "Invoker's actual seat" fix (see git history), adapted to
+  // this rigid single-bezel-rotation mechanism. Indeterminate whenever
+  // either half is unknown (between tricks, or before any trick has ever
+  // had a real leader) - `useForwardRotation`'s existing forward-only,
+  // freeze-on-null, never-snap-back stepping (already used by the turn
+  // pointer above) freezes the bezel at its last real position rather
+  // than losing it, same as before.
+  const starterIndex = starterSeat === null ? null : SEAT_DEG[starterSeat] / 90;
+  const suitIndex = starterIndex === null || leadGodIndex === null ? null : (((starterIndex - leadGodIndex) % 4) + 4) % 4;
+  const suitDeg = useForwardRotation(suitIndex, 4, 90);
 
-  // Which recess sits at the marker (index 0/top) once rotation settles -
-  // by construction this is always `leadGodIndex` itself, frozen at its
-  // last real value while indeterminate (between tricks, or before any
-  // trick has ever had a real leader yet) rather than losing its
-  // position - same freeze spirit as `suitDeg` above. Still drives the
-  // Lead glow + LEAD label, kept from the prior task per explicit user
-  // request (rotation and the glow/label are additive now, not
-  // alternatives).
+  // Which recess sits at the leader's own seat once rotation settles - by
+  // construction this is always `leadGodIndex` itself, frozen at its last
+  // real value while indeterminate (between tricks, or before any trick
+  // has ever had a real leader yet) rather than losing its position -
+  // same freeze spirit as `suitDeg` above. Still drives the Lead glow +
+  // LEAD label, kept from a prior task per explicit user request
+  // (rotation and the glow/label are additive, not alternatives).
   const litGodIndex = useLastKnown(leadGodIndex) ?? 0;
   const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
 
@@ -236,28 +244,28 @@ export function GameOverlay({
       {/* ===== Center HUD (rotating bezel + rotating pointer) =====
           Replaces the old two-tier procedural rotating-rings HUD
           (outer turn-indicator bezel + inner suit-cycle inlay) entirely
-          with the approved art assets - see BUILD_STATUS.md. Rotation
-          was restored by explicit user override on top of the approved
-          Center HUD spec (which had made the bezel fixed and moved the
-          Lead glow/label between static recesses instead): the bezel
-          image now rotates as one rigid unit - since its four recesses
-          are baked into a single texture, unlike the old ring's separate
+          with the approved art assets - see BUILD_STATUS.md. The bezel
+          image rotates as one rigid unit - since its four recesses are
+          baked into a single texture, unlike the old ring's separate
           per-badge DOM elements, there's no way to move a recess
           independently any more - so each Deity symbol (and the Lead
-          glow/label, kept from the prior task per explicit request)
-          counter-rotates by the bezel's inverse angle to stay upright.
+          glow/label) counter-rotates by the bezel's inverse angle to
+          stay upright. Rotation targets the actual seat of whoever led
+          the trick (`suitDeg`, seat-relative - see its own comment
+          above), not a fixed screen position, by explicit user override.
           The pointer is unaffected and keeps rotating independently
           toward `currentTurnSeat`. Back-to-front: 1) the rotating bezel,
           2) the four counter-rotating symbols (+ Lead glow/label on
-          whichever one is currently at the marker), 3) the pointer. */}
+          whichever one is currently at the leader's seat), 3) the
+          pointer. */}
       <div
         data-ui="center-hud"
         style={{ position: 'absolute', left: CENTER_X, top: CLUSTER_CENTER_Y, width: HUD_SIZE, height: HUD_SIZE, marginLeft: -HUD_SIZE / 2, marginTop: -HUD_SIZE / 2, pointerEvents: 'none' }}
       >
         {/* 1. Rotating bezel group - the bezel image plus all four recess
             anchors rotate together as one rigid unit (`suitDeg`), so the
-            current lead suit's baked-in recess lands at the fixed marker
-            position (local top / RECESS_OFFSET[0]). */}
+            current lead suit's baked-in recess lands at the trick
+            leader's actual seat (top/right/bottom/left). */}
         <div
           data-ui="suit-cycle-bezel-group"
           style={{

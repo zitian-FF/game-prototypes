@@ -10,6 +10,19 @@ import type { God } from '../../rules/types';
 
 export const SEAT_ORDER: readonly SeatPosition[] = ['top', 'right', 'bottom', 'left'];
 
+// Clockwise screen angle for each seat, local-top = 0deg - the same
+// correspondence GameOverlay.tsx's turn-indicator pointer already uses via
+// SEAT_ORDER's own order (index*90deg). Used by the Suit Cycle HUD's own
+// bezel rotation to bring the current trick's lead suit to the actual
+// seat of whoever led it, rather than a fixed screen position - see
+// GameOverlay.tsx's `suitDeg` computation.
+export const SEAT_DEG: Record<SeatPosition, number> = {
+  top: 0,
+  right: 90,
+  bottom: 180,
+  left: 270,
+};
+
 export interface SuitInfo {
   code: string;
   name: string;

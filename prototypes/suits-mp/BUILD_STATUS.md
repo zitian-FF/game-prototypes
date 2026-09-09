@@ -1,128 +1,127 @@
 ## Current milestone
 
-Closed a verification gap flagged against the prior Suit Cycle rotation
-task: its own Playwright check used a fabricated-state debug hook and
-only ever showed the bezel at rest with Yog-Sothoth lit - trick 1's own
-opener is *always* the 2 of Yog-Sothoth (a real, hardcoded game rule, see
-`rules/engine.ts`'s `forcedTrick1Opener`), which also happens to be the
-bezel's default/home orientation. That meant the only screenshot anyone
-had ever seen of this feature in real gameplay could not distinguish a
-correctly-working rotation from a completely frozen one. This task
-re-verified using genuine multi-trick gameplay (real `applyAction`
-calls, real bots, real card plays) rather than injected overlay state.
+Made the Suit Cycle bezel's rotation seat-relative, by explicit user
+request/override of the immediately prior task's fixed-top-marker
+design: the lead suit's recess now rotates to the *actual seat* of
+whoever led the trick (top/right/bottom/left, matching the seat tags
+already surrounding the HUD), rather than always landing at a single
+fixed screen position regardless of who led. Verified with real,
+varied multi-trick gameplay, not fabricated state.
 
-**Result: no bug found.** The rotation mechanism from the prior task
-works correctly. Full findings below.
+## Why (user-reported, from a live screenshot)
 
-## What was verified, and how
+The user pointed out a real screenshot (Trick 2, Nyarlathotep leading
+from the **left** seat, Player 2) where the bezel's LEAD glow/label sat
+at the fixed **top** marker instead of rotating to align with Player
+2's actual seat - and gave the exact expected correction ("it should be
+90 degrees ccw"). That is: the center HUD sits at the middle of the
+four seat tags around it, so its four cardinal recess positions read as
+those same four seats to a player glancing at it - the lit recess
+should point toward *who* led, not just show *what* suit leads. The
+immediately prior task's fixed-top-marker design (itself a deliberate,
+explicit override of the original approved Center HUD spec) didn't do
+this; this task overrides that in turn.
 
-No code was changed this task - this was verification-only, and it
-found nothing to fix. Two temporary, read-only debug hooks were added,
-used, then fully reverted (confirmed via `git status`/`git diff` showing
-zero diff against `main` afterward):
+## What changed
 
-- `HostGameScene.ts`: stored the host's own last-built `MaskedState` on
-  the scene instance (`lastMaskedStateForDebug`) right where it was
-  already being computed for rendering - a read, not a mutation; no new
-  state, no bypassed logic.
-- `main.ts`: exposed that state read-only via `window.__gs()`, plus
-  `window.__legalCardClickTarget()`, which calls the real, unmodified
-  `computeHandLegality`/`sortCardIds`/`computeFanScale`/
-  `computeFanLayouts` functions to find a real legal card in the real
-  hand and compute its real on-canvas coordinates - so a driver script
-  could locate what to click without guessing pixel positions or
-  fabricating any card/hand data.
+**Files changed**: `dom/overlay/GameOverlay.tsx`,
+`dom/overlay/overlayContent.ts`. No changes needed to `tune.json` or
+`GameOverlay.css` - this is pure rotation-target math, reusing the
+exact same `useForwardRotation` hook, CSS transition, and counter-
+rotation mechanism from the immediately prior task unchanged.
 
-Everything that actually *changed game state* went through the real
-UI: a Playwright script played real Single Player games by (1) reading
-the live masked state via `__gs()`, (2) when it was genuinely the local
-player's turn, using `__legalCardClickTarget()` to find a real legal
-card and clicking its real canvas coordinates (a genuine synthesized
-mouse event hitting the card's real Phaser hit-area, the same event
-path a human tap or `bindTapIntent` produces), then clicking the real
-DOM `[data-ui="action-button"]` to commit - the exact same
-`sendAction({action:'playCard', ...})` -> `applyAction` path a real
-player or bot uses. The three bot seats played automatically via the
-game's own existing `driveBotsIfNeeded`/`chooseBotAction`, completely
-untouched. **No `gameOverlayStore` state was ever injected** - the
-distinction the task asked for.
+- **`overlayContent.ts`**: restored `SEAT_DEG` (`{ top: 0, right: 90,
+  bottom: 180, left: 270 }`) - the same seat-to-angle mapping the
+  turn-indicator pointer's own `SEAT_ORDER`-based math already encodes,
+  reused here rather than re-derived. This is the exact same export
+  that existed before the Center HUD asset redesign (removed then as
+  dead code, since the intermediate fixed-recess design had no seat-
+  relative math to drive) - restoring a known-good, previously-shipped
+  piece rather than inventing new geometry.
+- **`GameOverlay.tsx`**'s `suitDeg` computation: previously
+  `useForwardRotation(leadGodIndex, 4, -90)` (always rotates the lead
+  suit to a fixed local-top position). Now:
+  ```
+  const starterIndex = starterSeat === null ? null : SEAT_DEG[starterSeat] / 90;
+  const suitIndex = starterIndex === null || leadGodIndex === null ? null : (((starterIndex - leadGodIndex) % 4) + 4) % 4;
+  const suitDeg = useForwardRotation(suitIndex, 4, 90);
+  ```
+  Recess `i`'s home screen angle is `i * 90` (SUITS[0]/Yog-Sothoth at
+  local top, clockwise); rotating the whole bezel group by
+  `suitIndex * 90` brings the lead suit's recess (`leadGodIndex`) to
+  `starterSeat`'s real screen angle (`SEAT_DEG[starterSeat]`). This is
+  a direct port of the pre-Center-HUD-redesign ring's own "Invoker's
+  actual seat" fix (see git history - a real, previously-shipped
+  formula for this exact problem, adapted from independently-rotating
+  per-badge DOM elements to this single-rigid-bezel-rotation mechanism
+  the asset redesign requires). Indeterminate (freezes at the last real
+  position, same `useForwardRotation` semantics as before) whenever
+  either `starterSeat` or `leadGodIndex` is null - between tricks, or
+  before any trick has ever had a real leader.
+- `litGodIndex` (drives the Lead glow/label) is unchanged - still just
+  `leadGodIndex` itself, frozen the same way - since which suit is
+  "lit" doesn't depend on where it's rotated to.
+- Updated every affected comment (constants block, the `suitDeg`
+  computation, the Center HUD JSX header, the rotating-bezel-group
+  comment) that previously described the marker as "a single fixed
+  screen position, not a seat-tracking one" - that description is now
+  wrong and has been corrected to describe the seat-relative behavior.
 
-The script played through 4 consecutive real tricks in one continuous
-game and, at the moment each trick's real `leadSuit` became known
-(after the real leader's card was actually committed, waiting past
-`tune.suitCycleRotationMs`'s 950ms transition), recorded the DOM bezel
-group's real `getComputedStyle().transform` and the real lit recess's
-`data-suit`, then compared both against the value predicted by the
-`suitDeg = -leadGodIndex * 90` formula:
+## How this was verified
 
-| Trick | Real lead suit (from live `state.leadSuit`) | Expected rotation | Actual bezel transform | Lit recess |
-|---|---|---|---|---|
-| 1 | Yog-Sothoth (forced opener) | 0deg | `matrix(1,0,0,1,0,0)` (0deg) | YS |
-| 2 | Yog-Sothoth (real winner happened to lead the same suit again) | 0deg | `matrix(1,0,0,1,0,0)` (0deg) | YS |
-| 3 | Shub-Niggurath | 180deg | `matrix(-1,0,0,-1,0,0)` (180deg) | SN |
-| 4 | Nyarlathotep | 90deg | `matrix(0,1,-1,0,0,0)` (90deg) | NY |
+Same real-gameplay-driven methodology as the immediately prior task
+(no fabricated `gameOverlayStore` state), extended to also drive the
+`selectDelegate` and `redistribute` phases (needed this time since
+seat-relative rotation depends on *who* led, so the test had to survive
+past whichever trick the *human* player happened to win, not just the
+one forced trick-1 case):
 
-Tricks 3 and 4 are exactly the cases trick 1 alone could never rule
-out: a real, non-default lead suit, reached through genuine gameplay,
-with the bezel correctly rotated to a **non-zero** angle (180deg and
-90deg respectively) and the correct recess lit in both. All four
-tricks matched their predicted rotation exactly, and a screenshot taken
-at trick 4 visually confirms the purple Nyarlathotep recess sitting at
-the fixed top marker with its glow/label, Cthulhu at bottom, Yog-Sothoth
-at right, Shub-Niggurath at left - upright and correctly positioned,
-matching the same visual pattern confirmed with fabricated state in the
-prior task, now reproduced with real state.
+- `npm run typecheck` / `npm run build` (repo root) - clean, both with
+  the temporary debug hooks in place and after reverting them.
+- Two temporary, read-only/plan-computing debug hooks (`HostGameScene.ts`
+  storing the host's own last-built `MaskedState`; `main.ts` exposing it
+  plus helpers that call the real, unmodified `computeHandLegality`/
+  `computeSuitRing`/`computeFanScale`/`computeFanLayouts` to find real
+  legal cards, a real redistribution plan, and their real on-canvas
+  coordinates) - added, used, then fully reverted; confirmed via
+  `git status`/`git diff` that only `GameOverlay.tsx`/`overlayContent.ts`
+  remain changed.
+- A Playwright script played a real Single Player game through **5**
+  consecutive real tricks - real card clicks + real "Play Card"/
+  "Delegate to..."/"Redistribute" button presses for whichever phase
+  came up (including real redistribution: staging a real card then
+  tapping a real contributor's stack, the same two-tap flow a human
+  uses), bots playing automatically via the untouched
+  `driveBotsIfNeeded`/`chooseBotAction`. At each trick's real lead
+  suit, recorded the bezel's live `getComputedStyle().transform` and
+  compared it against the value predicted by the seat-relative formula
+  above, using the real live `starterSeat` and `leadGodIndex`:
 
-## Root cause of the original gap (not a code bug - a verification gap)
+  | Trick | Real starter seat | Real lead suit | Expected angle | Actual transform | Lit recess |
+  |---|---|---|---|---|---|
+  | 1 | bottom (You) | Yog-Sothoth | 180deg | matches | YS |
+  | 2 | left | Yog-Sothoth | 270deg | matches | YS |
+  | 3 | right | Yog-Sothoth | 90deg | matches | YS |
+  | 4 | left | Nyarlathotep | 0deg | matches | NY |
+  | 5 | top | Cthulhu | 270deg | matches | CT |
 
-The prior task's own Playwright pass never played real gameplay far
-enough (or at all) to reach a trick with a non-Yog-Sothoth lead suit,
-because it used `gameOverlayStore.showGameOverlay()` directly with
-hand-fabricated `leadGodIndex` values (1, then 3) rather than driving
-real tricks. That approach happened to also prove the mechanism works
-(it fabricated two *different* indices and confirmed both rotated
-correctly relative to each other), so the underlying rotation logic was
-never actually in doubt from a code-correctness standpoint - what was
-missing was a demonstration that the real per-trick `leadGodIndex`
-computed from live `MaskedState` (via `computeSuitRing` in
-`ui/seating.ts` -> `leaderNode.suit` -> `GOD_TO_SUIT_INDEX` in
-`ui/renderGameView.ts`) actually reaches the component correctly as
-real tricks progress, as opposed to e.g. staying stuck at trick 1's
-value due to a memoization bug, a missed re-render, or a stale prop.
-This task closes that gap: the full real pipeline, end to end, is now
-confirmed working, not just the presentation-layer rotation math in
-isolation.
-
-**Confidence-in-prior-verification note, stated plainly per this task's
-own request**: prior tasks in this feature's history (Center HUD
-redesign, rotation-restore, glow/label-keep) were each verified with
-Playwright, but exclusively via fabricated `gameOverlayStore` state -
-none of them had run a real multi-trick game before this task. That
-verification gap is now closed for the rotation mechanism specifically;
-it should be treated as a general pattern to watch for on any future
-Center HUD/turn-order-driven feature in this codebase, since fabricated-
-state Playwright checks (useful for isolating presentation logic
-quickly) can mask a wiring bug between real game state and the
-component exactly the way it did here, if the fabricated values happen
-to coincide with what real play would produce - they didn't here in a
-way that hid a bug, but the risk was real and is worth remembering.
-
-## How this was verified (repeating the standard checklist)
-
-- `npm run typecheck` (repo root) - clean, both with the temporary debug
-  hooks in place and after reverting them.
-- `npm run build` (repo root) - clean, same.
-- **Genuinely live, multi-trick, gameplay-driven Playwright
-  verification** - see above; this is the actual deliverable of this
-  task, not a formality. Real `applyAction` calls advanced 4 real
-  tricks; no `gameOverlayStore` state was fabricated at any point.
-- Browser console clean throughout the entire 4-trick playthrough, not
-  just at boot - only the pre-existing, unrelated sandboxed Google Fonts
-  network noise present on every boot in this environment.
+  All 5 tricks matched exactly, across 4 different real starter seats
+  and 3 different real lead suits in one continuous game - conclusively
+  exercising the seat-relative formula's actual variable (which seat
+  led), not just its previously-tested suit variable. A screenshot at
+  trick 1 (You led with Yog-Sothoth from the bottom seat) visually
+  confirms the gold recess and LEAD glow/label sitting at the **bottom**
+  of the bezel - exactly the corrected behavior the user's original
+  screenshot was missing.
+- Browser console clean throughout the full 5-trick playthrough - only
+  the pre-existing, unrelated sandboxed Google Fonts network noise
+  present on every boot in this environment.
 
 ## Open questions
 
-None new.
+None new - the user's report included the exact expected correction
+(seat, direction, and magnitude), so no ambiguity needed resolving
+mid-session.
 
 ## Known issues
 
@@ -140,9 +139,10 @@ a real multi-human-peer game.
 
 ## Next proposed step
 
-A real-device/live-deploy pass covering everything listed under "Known
-issues" remains the next open loop. Given this task's own finding, worth
-considering (not requested, just flagging) whether any *other* existing
-Playwright verification in this codebase's history that relied solely on
-fabricated `gameOverlayStore`/similar injected state deserves the same
-real-gameplay re-check this task gave the Suit Cycle rotation.
+Relay this task's deviation (bezel rotation is now seat-relative,
+overriding the immediately prior task's fixed-top-marker design, itself
+an override of the original approved Center HUD spec - three decisions
+deep now) back to GPT/Codex for `suits-mp-screen-reference.md`
+reconciliation, alongside the earlier symbol-size and rotation-restore
+overrides. A real-device/live-deploy pass covering everything listed
+under "Known issues" remains the next open loop.
