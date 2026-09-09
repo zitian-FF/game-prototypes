@@ -1,143 +1,143 @@
 ## Current milestone
 
-Added a 2-second client-side dwell on a just-completed trick (all 4
-played cards, trick winner apparent) before the UI advances to
-redistribution/chooseDelegate - a pure presentation-layer delay, with
-the host's own game-logic timing and network broadcast timing
-completely untouched.
-
-## Investigation: how `trickResult` actually flows from host to client
-
-Read before implementing, per the task's own instruction. Confirmed:
-`gameHost.ts`'s `settleAutoPhases()` auto-chains through the engine's
-`'trickResult'` (and `'blocker'`) phases entirely inside one
-synchronous host tick, every single time (`applyAction()` always calls
-`settleAutoPhases(next)` before returning). **A client never receives
-`'trickResult'` as its own distinct masked-state update** - by the time
-any broadcast lands, the state has already jumped straight from
-"3 plays, someone about to play the 4th" to "trick fully resolved,
-next real decision phase" in one step. So there's no phase value to key
-a delay off of.
-
-The actual detectable signal is diffing consecutive masked states:
-`previousTrick` (`host/mask.ts`, copied from `state.lastTrickResult`)
-changes to a new, different value exactly when a trick resolves, and
-then stays constant through the whole chooseDelegate/redistribution
-phase that follows it. `trickNumber` does **not** work for this - it
-only increments inside `redistribute()`, i.e. after redistribution
-completes, not when the trick itself resolves - so it stays the same
-across the exact transition this task needs to detect. Used
-`previousTrick` diffing (approach (a) offered in the task).
+Added a fast, natural fly-in animation for the local player's own
+card play - hand position to play-area landing, with a quick
+scale-punch settle beat on arrival - referencing the snappy
+Yu-Gi-Oh Master Duel-style card-play feel the task asked for. Scoped
+deliberately to the local player only: other seats' plays still
+appear instantly, exactly as before.
 
 ## What changed
 
-**Files changed**: `ui/renderGameView.ts` (new `presentGameView`
-export, `PersistentUIState` extended), `scenes/HostGameScene.ts` /
-`scenes/PlayerGameScene.ts` (call `presentGameView` instead of
-`renderGameView` directly), `tune.json` (`trickResultDwellMs: 2000`).
-**No host-logic file (`rules/engine.ts`, `host/gameHost.ts`,
-`host/botAI.ts`) touched at all** - the critical architectural
-constraint holds: the host resolves and broadcasts exactly as fast as
-before, on every client, all the time.
+**Files changed**: `ui/renderGameView.ts` (new `animateOwnPlayIntoPlayArea`,
+`PersistentUIState` extended, `renderPlayArea`/`renderPlayerCluster`/
+`renderCardFan` threaded to support it), `tune.json` (5 new feel
+values). No changes to `ui/cardComponent.ts`/`ui/cardFan.ts` - both
+reused exactly as they already were.
 
-- **`presentGameView(scene, container, masked, sendAction, ui)`** - the
-  new entry point both scenes now call instead of `renderGameView`
-  directly (which still exists, unchanged, and is what `presentGameView`
-  itself calls under the hood - no duplicated rendering logic):
-  - Fingerprints `previousTrick` (`JSON.stringify`, at most 4 small
-    entries - cheap) and compares it to the last one this client
-    presented. A change (and not the client's very first-ever
-    presented state, so a reconnecting peer picking up mid-game never
-    misreads its first paint as "a trick just completed") means a
-    trick just resolved.
-  - If so: renders a **frozen** view immediately - the real masked
-    state with `currentTrick` replaced by `previousTrick` (so play
-    areas show the real 4 finished plays via the exact same rendering
-    path a live trick already uses, rather than the already-reset
-    `currentTrick`/a redistribution stack that would otherwise appear
-    instantly) and `currentTurn`/`redistribution`/`delegateChoices`
-    forced to `null`. These are the same legitimate "nothing pending
-    right now" values these fields already take between real
-    decisions, not a fabricated state shape - and they cascade to
-    disable every interactive element for free: `renderCardFan`'s
-    `inRedistributePhase` check is `state.redistribution !== null`, the
-    seat-tag delegate picker's `isDelegating` check is
-    `state.delegateChoices !== null`, and `computeActionButtonState`'s
-    very first check is `state.currentTurn === state.yourSlot`. No
-    separate "interactions disabled" flag was needed anywhere.
-  - Schedules one `scene.time.delayedCall(tune.trickResultDwellMs, ...)`
-    to present the real state after the hold. Tracks the *latest*
-    masked state received during the hold (not the one that triggered
-    it), so if the host has already moved further by the time the hold
-    elapses (a bot's redistribution, even the next trick starting -
-    see verification below), the client jumps straight to what's
-    actually current rather than a stale intermediate snapshot.
-  - While a hold is already pending, any further updates just refresh
-    "the latest state" and return - no re-triggering, no stacking of
-    multiple holds.
-  - `renderGameView`'s own internal `rerender()` closure (used for
-    local UI actions like toggling sort or staging a card - see
-    `ViewState`'s doc comment) is untouched and still calls
-    `renderWithView` directly, never `presentGameView` - only a
-    genuinely new masked state from the network should ever be
-    eligible to trigger a hold.
-- **`tune.json`**: added `trickResultDwellMs: 2000` - the only new
-  tunable value, live-editable via the existing generic Tweakpane panel
-  under `?debug=1` with zero additional code (same mechanism as every
-  other tune value).
+- **Capturing the real hand-fan origin**: `renderCardFan` already
+  computes each hand card's real `computeFanLayouts`-derived
+  `{x, y, rotationDeg}` every render (via its existing `entries`
+  array) - this task adds one line caching that into a new
+  `PersistentUIState.lastHandLayoutsByCardId: Map<CardId, {x,y,rotationDeg}>`,
+  unconditionally, on every render. Since `renderPlayerCluster` (and
+  therefore `renderPlayArea`) already runs *before* `renderCardFan` in
+  the same render pass (see `renderWithView`'s call order, unchanged),
+  a card that just left the hand is looked up in the map as it stood
+  at the *previous* render - i.e. exactly where it was in the fan the
+  moment before it was played, not a guessed or recomputed point.
+- **Detecting "this specific play just appeared"**: a new
+  `PersistentUIState.animatedOwnPlayKey` fingerprint
+  (`${play.player}:${play.cards.join(',')}`) - `renderPlayArea` only
+  triggers the fly-in on the one render where the local player's own
+  `currentTrick` entry's fingerprint differs from the last one it
+  animated; every other render of an already-landed play (including
+  the trick-result dwell hold's own frozen re-render from the prior
+  task) falls through to the ordinary, static `drawCardRow` untouched.
+  Resets to `''` whenever the local seat's play area goes back to
+  empty (between tricks), so the next real trick's play is always
+  detected fresh.
+- **`animateOwnPlayIntoPlayArea`**: for each face in the local
+  player's fresh play (1 card normally, 2 for a Twin Awakening
+  double - each animates independently to its own final row
+  position), draws the card via the unmodified `drawCard` at its
+  captured hand origin (position *and* rotation - the fan's tilt
+  animates out to upright over the same travel tween, rather than
+  snapping instantly, since starting rotation was the one thing the
+  task's origin requirement didn't explicitly forbid animating and
+  leaving it static looked like a jump-cut), calls
+  `container.bringToTop(...)` so it renders above every other element
+  already added this pass while mid-flight, then runs one Phaser tween
+  (`x`/`y`/`rotation` to the exact final values `renderPlayArea`
+  always used) followed by a second scale tween (`scaleX`/`scaleY` up
+  to a punch peak and back down via `yoyo: true`) chained in its
+  `onComplete` - fast decelerating travel into a snappy little impact
+  bounce, not a float or a linear slide. A card with no captured
+  origin (not expected for a genuine local play, but a safe fallback
+  for e.g. a page reload mid-trick) lands directly with no animation,
+  same as any other seat's play.
+- Once both tweens finish, the card sits at exactly the same
+  `x`/`y`/`rotation`/size `renderPlayArea` already placed it at before
+  this task - this only changes the transition *into* that position.
+- **Scope boundary, by construction, not just convention**: only
+  `renderPlayArea`'s call for `pid === state.yourSlot` ever reads
+  `animatedOwnPlayKey`/calls `animateOwnPlayIntoPlayArea` - every other
+  seat's play always takes the original, unmodified `drawCardRow` path
+  with zero new code in between. There's no shared "animate this
+  play" flag either seat could accidentally trip.
+- **`tune.json`**: `cardPlayTravelMs: 160`, `cardPlayTravelEase:
+  "Cubic.easeOut"` (fast, decelerating into the landing spot - not
+  linear), `cardPlayPunchMs: 90`, `cardPlayPunchScale: 1.12`,
+  `cardPlayPunchEase: "Sine.easeInOut"` (the up-then-back-down punch,
+  `yoyo: true` doubles this to ~180ms total) - five small, independent
+  values so duration/easing/punch strength can each be retuned without
+  touching the others. All five bind automatically to the existing
+  generic `?debug=1` Tweakpane panel, same as every other tune value -
+  confirmed live.
 
 ## How this was verified
 
-Per the lesson from the recent Center HUD rotation task, this was
-checked with **real gameplay**, not fabricated/injected state:
+Real gameplay, not fabricated/injected state, per the pattern
+established across the last several tasks in this feature area:
 
 - `npm run typecheck` / `npm run build` (repo root) - clean.
-- Confirmed `trickResultDwellMs` appears as a live-editable field in the
-  `?debug=1` Tweakpane panel.
+- Confirmed all five new keys appear as live-editable Tweakpane fields
+  under `?debug=1`.
 - Two temporary, read-only debug hooks (`HostGameScene.ts` exposing its
-  own last-built real `MaskedState` and its `PersistentUIState`
-  instance directly; `main.ts` exposing both plus real-card-click and
-  real-redistribution-plan helpers built from the actual, unmodified
-  `computeHandLegality`/`computeFanScale`/`computeFanLayouts` functions
-  - same pattern as prior tasks this session) - added, used, then fully
-  reverted; `git diff` against `main` is empty except the four files
-  listed above.
-- A Playwright script played a real Single Player game (real card
-  clicks, real "Play Card" button presses, bots via the untouched
-  `driveBotsIfNeeded`/`chooseBotAction`) until a real trick resolved,
-  then, in real time:
-  - Confirmed the **real host-side state** had already fully advanced
-    the instant `previousTrick` changed (`turnPhase: "redistribute"`,
-    `previousTrick` holding all 4 real plays) - proving the host was
-    never blocked or delayed by anything client-side.
-  - Confirmed `pendingHoldMasked !== null` (a hold was active) at that
-    exact moment, and that **no action button was even enabled** to tap
-    during the hold (`tapDuringHoldEnabledCount: 0`); attempting a tap
-    anyway had zero effect on real state (`tapDuringHoldHadNoEffect:
-    true`).
-  - Polled until the hold cleared: **~1.8-1.9 seconds** elapsed both
-    runs (two independent playthroughs), matching `trickResultDwellMs`
-    (2000ms) within polling granularity (50ms) and per-step overhead.
-  - Screenshotted mid-hold: all 4 played cards fully visible in their
-    real play-area positions, "Lead Player" tag correctly on the actual
-    trick leader's seat, bottom prompt showing "Waiting..." (not
-    "Select a card") - exactly the required frozen frame.
-  - Screenshotted after the hold cleared: in both runs, the real host
-    had *already* processed an entire bot redistribution (and, in one
-    run, started the next trick) during the ~2s the client was holding
-    - and the client correctly presented that fully-current state
-    rather than a stale one, demonstrating both "host not blocked" and
-    "always show what's actually current" at once.
-- Browser console clean throughout - only the pre-existing, unrelated
+  own last-built real `MaskedState`; `main.ts` exposing that plus a
+  real-legal-card click-target helper and direct access to the scene
+  object - same pattern as prior tasks) - added, used, then fully
+  reverted; `git diff` against `main` is empty except
+  `ui/renderGameView.ts` and `tune.json`.
+- **Verified the actual running Phaser tweens, not just the code path**:
+  this animation is the *only* thing in this codebase that uses
+  `scene.tweens` at all (confirmed via a full-source grep before
+  relying on this), so `scene.tweens.getTweens()` - a real, un-modified
+  Phaser API, not a test-only hook - unambiguously identifies this
+  animation whenever it's running. A Playwright script played a real
+  Single Player game and, the moment a real "Play Card" tap committed
+  the local player's own card:
+  - Polled `getTweens()` every 20ms. Samples show the position tween
+    completing at exactly `(195, 453)` - `renderPlayArea`'s real,
+    unmodified `seatCenter('bottom')` landing spot for a single-card
+    play - followed by several consecutive samples showing `scaleX`
+    ramping up through `1.068 -> 1.12` (the exact configured
+    `cardPlayPunchScale` peak) and back down to `1.04` before settling,
+    then `getTweens().length` returning to `0` - real, live,
+    multi-frame proof of both the travel and the punch actually
+    running, not just declared in config.
+  - The origin sample matched the card's real fan position
+    (`(210.7, 648.3)`, in the fan's baseline-Y neighborhood), not a
+    guessed point.
+  - Screenshotted the settled result: the local player's card sits in
+    its normal bottom play-area slot, pixel-identical to how an
+    unanimated play has always looked.
+  - **Scope boundary, explicitly checked, not assumed**: the moment a
+    bot's play landed (a different seat, `p2`), immediately queried
+    `getTweens().length` - **0**, confirming zero animation for a
+    remote seat's play, the same instant it appears, exactly as
+    before this task.
+- Browser console clean on boot (only the pre-existing, unrelated
   sandboxed Google Fonts network noise present on every boot in this
-  environment.
+  environment) - both with the temporary debug hooks in place and
+  after reverting them.
+
+**This change benefits from the user's own live verification on a
+real device, same as the Center HUD rotation-easing task.** The
+Phaser-tween sampling above proves the travel lands at the exact
+right pixel and the punch peaks at the exact configured scale, but
+"does 160ms of travel plus a 1.12x punch actually read as snappy and
+impactful, Master-Duel-style, on a real phone" is a feel judgment this
+automated check can't make - the five `cardPlay*` Tweakpane fields
+under `?debug=1` are there to retune live if the numbers don't land
+right on first look.
 
 ## Open questions
 
-None new - the task's own investigation section anticipated exactly
-the mechanism needed (diffing consecutive states) and named the
-critical constraint (client-only delay) clearly enough that no
-mid-session clarification was needed.
+None new - the task's own scope boundary (local player only) and
+animation requirements (fast, eased, a punch/overshoot on arrival, no
+DOM/CSS) were specific enough that no mid-session clarification was
+needed.
 
 ## Known issues
 
@@ -148,19 +148,21 @@ in the copy); `ui_player_nameplate.png` still applies to the local seat
 tag only (deliberate); the `'partner'` hand-fan state still has no
 working visual differentiation from `'legal'`; the itch.io iframe
 canvas-scale fix, the asset pipeline's downscale/recompress output, the
-hand-fan edge-bound fix, and the Center HUD easing curve still want a
-real-device/live-deploy glance; this task's own real-gameplay
-verification was likewise a local dev-server Playwright pass
-(single-player vs. bots), not an actual itch.io build or a real
-multi-human-peer game - the latter would be the strongest possible
-confirmation that per-client holds truly never entangle with each
-other, though nothing in the implementation is peer-count-dependent
-(each `PersistentUIState`/hold lives entirely on its own client).
+hand-fan edge-bound fix, the Center HUD easing curve, and now this
+card-play animation's feel all still want a real-device/live-deploy
+glance; a Twin Awakening double-card play's own animation (two cards
+animating independently from two different hand positions to their
+shared row) was implemented but not separately exercised this pass -
+the driver script only ever committed single-card plays, since
+reliably forcing a real double-selection through bot-driven gameplay
+wasn't attempted; the code path is the same per-card loop used for the
+already-verified single-card case, just run twice, so this is a
+reasonable-confidence gap, not an unknown.
 
 ## Next proposed step
 
 A real-device/live-deploy pass covering everything listed under "Known
-issues" remains the next open loop - a real multi-peer game (not just
-single-player vs. bots) would be the highest-value addition to this
-task's own verification specifically, given the per-client independence
-claim.
+issues" remains the next open loop - the animation feel specifically,
+and a live look at a real Twin Awakening double-play's two-card
+animation, would be the highest-value additions to this task's own
+follow-up.
