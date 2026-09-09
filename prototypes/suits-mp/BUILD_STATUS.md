@@ -1,127 +1,87 @@
 ## Current milestone
 
-Made the Suit Cycle bezel's rotation seat-relative, by explicit user
-request/override of the immediately prior task's fixed-top-marker
-design: the lead suit's recess now rotates to the *actual seat* of
-whoever led the trick (top/right/bottom/left, matching the seat tags
-already surrounding the HUD), rather than always landing at a single
-fixed screen position regardless of who led. Verified with real,
-varied multi-trick gameplay, not fabricated state.
-
-## Why (user-reported, from a live screenshot)
-
-The user pointed out a real screenshot (Trick 2, Nyarlathotep leading
-from the **left** seat, Player 2) where the bezel's LEAD glow/label sat
-at the fixed **top** marker instead of rotating to align with Player
-2's actual seat - and gave the exact expected correction ("it should be
-90 degrees ccw"). That is: the center HUD sits at the middle of the
-four seat tags around it, so its four cardinal recess positions read as
-those same four seats to a player glancing at it - the lit recess
-should point toward *who* led, not just show *what* suit leads. The
-immediately prior task's fixed-top-marker design (itself a deliberate,
-explicit override of the original approved Center HUD spec) didn't do
-this; this task overrides that in turn.
+Gave the Center HUD's two rotating elements (the Suit Cycle bezel and
+the current-turn pointer) a natural wind-up/settle easing curve, in
+place of the existing custom curve that read as mechanically uniform
+despite already being a cubic-bezier. Pure easing-curve change - the
+rotation-target math (seat-relative `suitDeg`, `useForwardRotation`)
+is completely untouched.
 
 ## What changed
 
-**Files changed**: `dom/overlay/GameOverlay.tsx`,
-`dom/overlay/overlayContent.ts`. No changes needed to `tune.json` or
-`GameOverlay.css` - this is pure rotation-target math, reusing the
-exact same `useForwardRotation` hook, CSS transition, and counter-
-rotation mechanism from the immediately prior task unchanged.
+**Files changed**: `tune.json` only.
 
-- **`overlayContent.ts`**: restored `SEAT_DEG` (`{ top: 0, right: 90,
-  bottom: 180, left: 270 }`) - the same seat-to-angle mapping the
-  turn-indicator pointer's own `SEAT_ORDER`-based math already encodes,
-  reused here rather than re-derived. This is the exact same export
-  that existed before the Center HUD asset redesign (removed then as
-  dead code, since the intermediate fixed-recess design had no seat-
-  relative math to drive) - restoring a known-good, previously-shipped
-  piece rather than inventing new geometry.
-- **`GameOverlay.tsx`**'s `suitDeg` computation: previously
-  `useForwardRotation(leadGodIndex, 4, -90)` (always rotates the lead
-  suit to a fixed local-top position). Now:
-  ```
-  const starterIndex = starterSeat === null ? null : SEAT_DEG[starterSeat] / 90;
-  const suitIndex = starterIndex === null || leadGodIndex === null ? null : (((starterIndex - leadGodIndex) % 4) + 4) % 4;
-  const suitDeg = useForwardRotation(suitIndex, 4, 90);
-  ```
-  Recess `i`'s home screen angle is `i * 90` (SUITS[0]/Yog-Sothoth at
-  local top, clockwise); rotating the whole bezel group by
-  `suitIndex * 90` brings the lead suit's recess (`leadGodIndex`) to
-  `starterSeat`'s real screen angle (`SEAT_DEG[starterSeat]`). This is
-  a direct port of the pre-Center-HUD-redesign ring's own "Invoker's
-  actual seat" fix (see git history - a real, previously-shipped
-  formula for this exact problem, adapted from independently-rotating
-  per-badge DOM elements to this single-rigid-bezel-rotation mechanism
-  the asset redesign requires). Indeterminate (freezes at the last real
-  position, same `useForwardRotation` semantics as before) whenever
-  either `starterSeat` or `leadGodIndex` is null - between tricks, or
-  before any trick has ever had a real leader.
-- `litGodIndex` (drives the Lead glow/label) is unchanged - still just
-  `leadGodIndex` itself, frozen the same way - since which suit is
-  "lit" doesn't depend on where it's rotated to.
-- Updated every affected comment (constants block, the `suitDeg`
-  computation, the Center HUD JSX header, the rotating-bezel-group
-  comment) that previously described the marker as "a single fixed
-  screen position, not a seat-tracking one" - that description is now
-  wrong and has been corrected to describe the seat-relative behavior.
+- `suitCycleRotationEasing`: `"cubic-bezier(0.3, 1.08, 0.2, 1)"` ->
+  `"cubic-bezier(0.86, 0, 0.07, 1)"` (the standard "easeInOutQuint"
+  curve) - a pronounced slow start (overcoming inertia) and a
+  pronounced slow settle at the end, symmetric around the midpoint. The
+  old curve's `y > 1` control point (`1.08`) produced a slight
+  overshoot/bounce past the target before settling back, which isn't
+  the same thing as a wind-up/settle feel and wasn't what was asked for
+  here - the new curve never overshoots, it just accelerates and
+  decelerates more dramatically than the old curve did.
+- `turnWheelRotationEasing`: `"cubic-bezier(0.24, 0.86, 0.16, 1)"` ->
+  the same `"cubic-bezier(0.86, 0, 0.07, 1)"`, for visual consistency
+  between the HUD's two rotating elements (the bezel and the pointer) -
+  no reason found for them to feel different, so defaulted to matching
+  per the task's own instruction.
+- `suitCycleRotationMs` (950) and `turnWheelRotationMs` (700) are
+  **unchanged** - only the curve shape changed, not the duration, per
+  the task's explicit requirement.
+- No code changes anywhere: both `GameOverlay.tsx` transitions
+  (`transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
+  used identically for the bezel group and each recess's counter-
+  rotation, plus the separate pointer transition) already interpolate
+  `tune.json`'s easing string directly - a value-only change was
+  sufficient, nothing to wire up.
+- Confirmed still live-tunable: `debug/debugPanel.ts`'s Tweakpane panel
+  binds every `tune.json` key generically (string values, including
+  every easing curve, get a plain text field automatically - no
+  per-key code), so both new values are exposed under `?debug=1` with
+  zero additional work, same as before.
 
 ## How this was verified
 
-Same real-gameplay-driven methodology as the immediately prior task
-(no fabricated `gameOverlayStore` state), extended to also drive the
-`selectDelegate` and `redistribute` phases (needed this time since
-seat-relative rotation depends on *who* led, so the test had to survive
-past whichever trick the *human* player happened to win, not just the
-one forced trick-1 case):
+- `npm run typecheck` / `npm run build` (repo root) - clean.
+- Confirmed both `suitCycleRotationEasing` and `turnWheelRotationEasing`
+  still appear as live text-editable fields in the `?debug=1` Tweakpane
+  panel, showing the new curve values.
+- **Sampled the actual rendered animation**, not just the CSS string:
+  a temporary, read-only debug hook (`HostGameScene.ts` storing the
+  host's last-built `MaskedState`; `main.ts` exposing it plus a real-
+  legal-card click-target helper - same pattern as the two immediately
+  prior tasks, added, used, then fully reverted; `git diff` against
+  `main` is empty except `tune.json`) drove one real trick's forced
+  Yog-Sothoth opener, and a Playwright script polled
+  `getComputedStyle().transform` on the bezel group every ~30ms during
+  the transition, converting each frame's rotation matrix to an angle
+  and unwrapping across the atan2 ±180deg discontinuity. The resulting
+  angular-velocity profile (degrees moved per ms, between consecutive
+  samples) came out as: ~0.06/ms in the first ~150ms, rising to a peak
+  of ~1.5/ms around the transition's midpoint (~350-440ms of the
+  950ms total), then decaying back down to ~0.01/ms by ~900ms before
+  settling exactly on the target angle - a clean, symmetric slow-fast-
+  slow sigmoid, confirming the easeInOutQuint curve is actually
+  producing the intended wind-up/settle motion in the real rendering
+  pipeline, not just declared in a config string.
+- Browser console clean on boot (only the pre-existing, unrelated
+  sandboxed Google Fonts network noise present on every boot in this
+  environment) - both with the temporary debug hooks in place and
+  after reverting them.
 
-- `npm run typecheck` / `npm run build` (repo root) - clean, both with
-  the temporary debug hooks in place and after reverting them.
-- Two temporary, read-only/plan-computing debug hooks (`HostGameScene.ts`
-  storing the host's own last-built `MaskedState`; `main.ts` exposing it
-  plus helpers that call the real, unmodified `computeHandLegality`/
-  `computeSuitRing`/`computeFanScale`/`computeFanLayouts` to find real
-  legal cards, a real redistribution plan, and their real on-canvas
-  coordinates) - added, used, then fully reverted; confirmed via
-  `git status`/`git diff` that only `GameOverlay.tsx`/`overlayContent.ts`
-  remain changed.
-- A Playwright script played a real Single Player game through **5**
-  consecutive real tricks - real card clicks + real "Play Card"/
-  "Delegate to..."/"Redistribute" button presses for whichever phase
-  came up (including real redistribution: staging a real card then
-  tapping a real contributor's stack, the same two-tap flow a human
-  uses), bots playing automatically via the untouched
-  `driveBotsIfNeeded`/`chooseBotAction`. At each trick's real lead
-  suit, recorded the bezel's live `getComputedStyle().transform` and
-  compared it against the value predicted by the seat-relative formula
-  above, using the real live `starterSeat` and `leadGodIndex`:
-
-  | Trick | Real starter seat | Real lead suit | Expected angle | Actual transform | Lit recess |
-  |---|---|---|---|---|---|
-  | 1 | bottom (You) | Yog-Sothoth | 180deg | matches | YS |
-  | 2 | left | Yog-Sothoth | 270deg | matches | YS |
-  | 3 | right | Yog-Sothoth | 90deg | matches | YS |
-  | 4 | left | Nyarlathotep | 0deg | matches | NY |
-  | 5 | top | Cthulhu | 270deg | matches | CT |
-
-  All 5 tricks matched exactly, across 4 different real starter seats
-  and 3 different real lead suits in one continuous game - conclusively
-  exercising the seat-relative formula's actual variable (which seat
-  led), not just its previously-tested suit variable. A screenshot at
-  trick 1 (You led with Yog-Sothoth from the bottom seat) visually
-  confirms the gold recess and LEAD glow/label sitting at the **bottom**
-  of the bezel - exactly the corrected behavior the user's original
-  screenshot was missing.
-- Browser console clean throughout the full 5-trick playthrough - only
-  the pre-existing, unrelated sandboxed Google Fonts network noise
-  present on every boot in this environment.
+**This change still wants the user's own eyes on a real device.** The
+angular-velocity sampling above proves the curve *shape* is a genuine
+ease-in-out (not linear, not the old curve's slight overshoot), but
+"does this feel like natural weight/momentum" is a subjective call a
+number sequence can't fully settle - please give the rotation a look
+on your own device via `?debug=1` (or just normal play) before
+considering this fully done; the `suitCycleRotationEasing`/
+`turnWheelRotationEasing` Tweakpane fields are right there to try
+alternate curves live if this one doesn't land.
 
 ## Open questions
 
-None new - the user's report included the exact expected correction
-(seat, direction, and magnitude), so no ambiguity needed resolving
-mid-session.
+None new.
 
 ## Known issues
 
@@ -133,16 +93,12 @@ tag only (deliberate); the `'partner'` hand-fan state still has no
 working visual differentiation from `'legal'`; the itch.io iframe
 canvas-scale fix, the asset pipeline's downscale/recompress output, and
 the hand-fan edge-bound fix still want a real-device/live-deploy glance;
-this task's own real-gameplay verification was still a local dev-server
-Playwright pass (single-player vs. bots), not an actual itch.io build or
-a real multi-human-peer game.
+this task's easing change likewise has only been sampled in a local
+dev-server Playwright pass - the user's own on-device judgment on the
+new curve's feel is the real open item here, not an automated check.
 
 ## Next proposed step
 
-Relay this task's deviation (bezel rotation is now seat-relative,
-overriding the immediately prior task's fixed-top-marker design, itself
-an override of the original approved Center HUD spec - three decisions
-deep now) back to GPT/Codex for `suits-mp-screen-reference.md`
-reconciliation, alongside the earlier symbol-size and rotation-restore
-overrides. A real-device/live-deploy pass covering everything listed
-under "Known issues" remains the next open loop.
+Awaiting the user's own live verification of the new easing feel (see
+above). A real-device/live-deploy pass covering everything listed under
+"Known issues" remains the next open loop.
