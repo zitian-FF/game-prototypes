@@ -10,7 +10,7 @@ import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLega
 import type { CardVisualState } from './handLegality';
 import { buildSeatMap, computeSuitRing, seatFor } from './seating';
 import type { SeatPosition } from './seating';
-import { computeFanLayouts } from './cardFan';
+import { computeFanLayouts, computeFanScale } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
@@ -687,7 +687,38 @@ function renderCardFan(
   const assignedIds = new Set(Object.values(view.redistributeAssignment).flat());
   const stagedId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
 
-  const layouts = computeFanLayouts(hand.length, CENTER_X, FAN_BASELINE_Y + FAN_CONFIG.radius, FAN_CONFIG);
+  // computeFanScale checks the outermost cards' actual rendered edges
+  // (rotated-rectangle bounding box, not just their center x) against the
+  // real screen width, and returns how much to shrink both the radius and
+  // the card size together to keep those edges on-screen - see its own
+  // header comment in cardFan.ts. It's a no-op (returns 1) whenever
+  // `FAN_CONFIG`'s own tuned values already fit a hand of this size, so a
+  // normal ~10-card hand only compacts as much as the invariant actually
+  // requires, and larger hands (redistribution can inflate a hand well
+  // past 10 - see BUILD_STATUS.md) get progressively more compact rather
+  // than clipped. Uses a worst-case (popped-out-size) card footprint since
+  // *any* card in the fan, including an outermost one, can end up popped
+  // out and selected (see poppedOut below) - the edge invariant has to
+  // hold for that case too, not just the resting state.
+  const fanScale = computeFanScale(
+    hand.length,
+    CENTER_X,
+    { ...FAN_CONFIG, cardWidth: FAN_CONFIG.cardWidth * tune.handFanPopOutScale, cardHeight: FAN_CONFIG.cardHeight * tune.handFanPopOutScale },
+    { screenWidth: WIDTH, edgeMarginPx: tune.handFanEdgeMarginPx },
+  );
+  const scaledFanConfig: FanConfig = { ...FAN_CONFIG, radius: FAN_CONFIG.radius * fanScale };
+  const scaledDims: CardDimensions = {
+    width: CARD_DIMS_STANDARD.width * fanScale,
+    height: CARD_DIMS_STANDARD.height * fanScale,
+    fontSize: CARD_DIMS_STANDARD.fontSize * fanScale,
+  };
+  // Pivot is offset below the visible fan by exactly the radius actually
+  // used for layout (the scaled one) - not the base tune.json radius - so
+  // the center card (angle 0) always lands on FAN_BASELINE_Y regardless of
+  // how much `fanScale` compacted the fan; using the unscaled radius here
+  // would shift the whole fan up/down by the scale difference instead of
+  // just compacting it in place.
+  const layouts = computeFanLayouts(hand.length, CENTER_X, FAN_BASELINE_Y + scaledFanConfig.radius, scaledFanConfig);
 
   const entries: FanEntry[] = hand.map((id, i) => {
     let cardState: CardVisualState | null = null;
@@ -708,11 +739,11 @@ function renderCardFan(
     const y = poppedOut ? entry.y - tune.handFanPopOutDistance : entry.y;
     const dims: CardDimensions = poppedOut
       ? {
-          width: CARD_DIMS_STANDARD.width * tune.handFanPopOutScale,
-          height: CARD_DIMS_STANDARD.height * tune.handFanPopOutScale,
-          fontSize: CARD_DIMS_STANDARD.fontSize,
+          width: scaledDims.width * tune.handFanPopOutScale,
+          height: scaledDims.height * tune.handFanPopOutScale,
+          fontSize: scaledDims.fontSize,
         }
-      : CARD_DIMS_STANDARD;
+      : scaledDims;
     const style = handCardStyle(entry.cardState);
     const { hitArea } = drawCard(scene, container, entry.x, y, entry.rotationDeg, { kind: 'faceup', cardId: entry.id }, style, dims);
 

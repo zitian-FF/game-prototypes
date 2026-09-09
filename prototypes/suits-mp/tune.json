@@ -7,6 +7,7 @@
   "handFanPerCardStepDeg": 4,
   "handFanMaxSpreadDeg": 40,
   "handFanRadius": 566,
+  "handFanEdgeMarginPx": 10,
   "handFanPopOutDistance": 24,
   "handFanPopOutScale": 1.08,
   "cardStandardWidth": 76,
