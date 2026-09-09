@@ -1,79 +1,101 @@
 ## Current milestone
 
-Added a fast, natural fly-in animation for the local player's own
-card play - hand position to play-area landing, with a quick
-scale-punch settle beat on arrival - referencing the snappy
-Yu-Gi-Oh Master Duel-style card-play feel the task asked for. Scoped
-deliberately to the local player only: other seats' plays still
-appear instantly, exactly as before.
+Extended the card-play fly-in animation (previously local-player-only)
+to all four seats: a higher, genuinely-arced toss motion with a
+scale-punch settle on arrival, referencing the Yu-Gi-Oh Master
+Duel-style card-play feel. Remote seats now fly in from their
+nameplate position instead of appearing instantly; the local player's
+origin/behavior is unchanged from the prior task.
 
 ## What changed
 
-**Files changed**: `ui/renderGameView.ts` (new `animateOwnPlayIntoPlayArea`,
-`PersistentUIState` extended, `renderPlayArea`/`renderPlayerCluster`/
-`renderCardFan` threaded to support it), `tune.json` (5 new feel
-values). No changes to `ui/cardComponent.ts`/`ui/cardFan.ts` - both
-reused exactly as they already were.
+**Files changed**: `ui/renderGameView.ts` (`animateOwnPlayIntoPlayArea`
+renamed to `animateCardPlayIntoPlayArea` and generalized to all seats,
+`PersistentUIState` extended, `renderPlayArea`/`renderPlayerCluster`
+threaded to support it, new `REMOTE_NAMEPLATE_ORIGIN` constant),
+`tune.json` (one new value, one adjusted). No changes to
+`ui/cardComponent.ts`/`ui/cardFan.ts`/`host/mask.ts` - all reused
+exactly as they already were, which is also why the masking guarantee
+below holds structurally, not just by convention.
 
-- **Capturing the real hand-fan origin**: `renderCardFan` already
-  computes each hand card's real `computeFanLayouts`-derived
-  `{x, y, rotationDeg}` every render (via its existing `entries`
-  array) - this task adds one line caching that into a new
-  `PersistentUIState.lastHandLayoutsByCardId: Map<CardId, {x,y,rotationDeg}>`,
-  unconditionally, on every render. Since `renderPlayerCluster` (and
-  therefore `renderPlayArea`) already runs *before* `renderCardFan` in
-  the same render pass (see `renderWithView`'s call order, unchanged),
-  a card that just left the hand is looked up in the map as it stood
-  at the *previous* render - i.e. exactly where it was in the fan the
-  moment before it was played, not a guessed or recomputed point.
-- **Detecting "this specific play just appeared"**: a new
-  `PersistentUIState.animatedOwnPlayKey` fingerprint
-  (`${play.player}:${play.cards.join(',')}`) - `renderPlayArea` only
-  triggers the fly-in on the one render where the local player's own
-  `currentTrick` entry's fingerprint differs from the last one it
-  animated; every other render of an already-landed play (including
-  the trick-result dwell hold's own frozen re-render from the prior
-  task) falls through to the ordinary, static `drawCardRow` untouched.
-  Resets to `''` whenever the local seat's play area goes back to
-  empty (between tricks), so the next real trick's play is always
-  detected fresh.
-- **`animateOwnPlayIntoPlayArea`**: for each face in the local
-  player's fresh play (1 card normally, 2 for a Twin Awakening
-  double - each animates independently to its own final row
-  position), draws the card via the unmodified `drawCard` at its
-  captured hand origin (position *and* rotation - the fan's tilt
-  animates out to upright over the same travel tween, rather than
-  snapping instantly, since starting rotation was the one thing the
-  task's origin requirement didn't explicitly forbid animating and
-  leaving it static looked like a jump-cut), calls
-  `container.bringToTop(...)` so it renders above every other element
-  already added this pass while mid-flight, then runs one Phaser tween
-  (`x`/`y`/`rotation` to the exact final values `renderPlayArea`
-  always used) followed by a second scale tween (`scaleX`/`scaleY` up
-  to a punch peak and back down via `yoyo: true`) chained in its
-  `onComplete` - fast decelerating travel into a snappy little impact
-  bounce, not a float or a linear slide. A card with no captured
-  origin (not expected for a genuine local play, but a safe fallback
-  for e.g. a page reload mid-trick) lands directly with no animation,
-  same as any other seat's play.
-- Once both tweens finish, the card sits at exactly the same
-  `x`/`y`/`rotation`/size `renderPlayArea` already placed it at before
-  this task - this only changes the transition *into* that position.
-- **Scope boundary, by construction, not just convention**: only
-  `renderPlayArea`'s call for `pid === state.yourSlot` ever reads
-  `animatedOwnPlayKey`/calls `animateOwnPlayIntoPlayArea` - every other
-  seat's play always takes the original, unmodified `drawCardRow` path
-  with zero new code in between. There's no shared "animate this
-  play" flag either seat could accidentally trip.
-- **`tune.json`**: `cardPlayTravelMs: 160`, `cardPlayTravelEase:
-  "Cubic.easeOut"` (fast, decelerating into the landing spot - not
-  linear), `cardPlayPunchMs: 90`, `cardPlayPunchScale: 1.12`,
-  `cardPlayPunchEase: "Sine.easeInOut"` (the up-then-back-down punch,
-  `yoyo: true` doubles this to ~180ms total) - five small, independent
-  values so duration/easing/punch strength can each be retuned without
-  touching the others. All five bind automatically to the existing
-  generic `?debug=1` Tweakpane panel, same as every other tune value -
-  confirmed live.
+- **Per-seat animation trigger**: `PersistentUIState.animatedOwnPlayKey`
+  (a single string) became `animatedPlayKeyBySeat: Record<NetPlayerId,
+  string>` - the same "fingerprint changed since last animated" logic
+  as before, just one independent slot per seat instead of one shared
+  slot for the local player only. Every seat resets its own slot to
+  `''` when that seat's play area returns to empty between tricks.
+- **Per-seat origin**: `renderPlayArea` now takes the seat name and
+  passes `isOwnSeat ? null : REMOTE_NAMEPLATE_ORIGIN[seat]` into
+  `animateCardPlayIntoPlayArea`. `REMOTE_NAMEPLATE_ORIGIN` is a new
+  constant (`{top, left, right}`, no `bottom` entry - the local player
+  never uses it) whose coordinates are derived from
+  `dom/overlay/GameOverlay.tsx`'s own `TOP_TAG_TOP`/`SIDE_TAG_TOP`
+  nameplate anchor constants plus roughly half that tag's own height,
+  kept in sync by value the same way this file's other row anchors
+  already are documented to be. Inside
+  `animateCardPlayIntoPlayArea`, `remoteOrigin ?? handOrigin` picks
+  the nameplate point for a remote seat or the real captured
+  `lastHandLayoutsByCardId` position for the local player, unchanged
+  from the prior task; a remote seat's starting rotation is always 0
+  (a nameplate has no "tilt" to animate out of, unlike a fanned hand
+  card).
+- **A genuine arc, not a straight line**: replaced the previous
+  `scene.tweens.add({x, y, rotation, ...})` targets-based tween with
+  `scene.tweens.addCounter({from: 0, to: 1, ...})` driving a manual
+  `onUpdate`. This was a necessary rewrite, not a style choice -
+  Phaser's targets-based tweens always interpolate the named
+  properties along a straight line between their start and end
+  values; easing reshapes *speed over time* along that line, it never
+  bends the path itself. `addCounter` instead hands back a single
+  eased progress value `t` per frame, which `onUpdate` uses to compute
+  `x`/`y` manually: a straight lerp between origin and landing, minus
+  `tune.cardPlayArcHeight * Math.sin(Math.PI * t)` on `y` (screen y
+  grows downward, so subtracting lifts the card; the `sin` shape rises
+  from 0, peaks at the midpoint, and returns to 0, so the card starts
+  and lands exactly on the straight-line endpoints and only bulges
+  upward in between) - a real toss trajectory. `onComplete` still
+  snaps to the exact final `x`/`y`/`rotation` to eliminate any float
+  residue from the manual lerp, then chains the same scale-punch tween
+  as before.
+- **Z-order bug found and fixed (affects the previous task's animation
+  too, not just this one's remote seats)**: the original
+  `container.bringToTop(drawn.container)` call happened immediately
+  inside the animation function, during `renderPlayerCluster`'s own
+  pass. But `renderCardFan` (the hand fan) runs *after*
+  `renderPlayerCluster` in the same render pass and adds its own new
+  children to the same shared container - so any hand-fan card drawn
+  afterward would still end up rendered *on top of* an already-flying
+  card for its entire flight, violating "must render above other
+  elements during flight." This was a latent bug in the prior task's
+  local-only animation as well, just never surfaced there because nothing
+  else that render pass happened to occupy the same visual moment as
+  clearly. Fixed with a new `PersistentUIState.cardsAnimatingThisRender`
+  scratch array: `animateCardPlayIntoPlayArea` now pushes the flying
+  container here instead of calling `bringToTop` immediately, and
+  `renderWithView` drains it (`bringToTop` for real) once, at the very
+  end of the whole render pass, after everything else that pass could
+  possibly draw - hand fan included - is already in place.
+- **Masking correctness during flight**: `renderPlayArea` computes
+  `maskedPlayFaces(play, state.yourSlot)` *before* deciding whether to
+  animate, exactly as it did before this task - a hidden off-suit
+  play is already reduced to a single `{kind: 'facedown'}` face with
+  no card id at all by the time the animation function ever sees it.
+  The animation draws exactly that face for the entire flight, so
+  there is no code path (old or new) by which real Deity/rank art
+  could appear mid-flight for a masked play - the same placeholder
+  rectangle-and-stripe treatment (`cardComponent.ts`'s `facedown`
+  branch) used at rest is used throughout the toss too. No temporary
+  or substitute card-back asset was built for this task, per the
+  explicit instruction that a real card-back is a future, drop-in
+  replacement at that same rendering branch.
+- **`tune.json`**: `cardPlayArcHeight: 70` (new - the arc's peak
+  height in pixels, clearly higher than a subtle curve, tunable
+  independently of everything else). `cardPlayTravelMs` bumped from
+  160 to 190 (a slightly longer window felt necessary for a 70px arc
+  to read clearly rather than as a blur - still fast/snappy, not a
+  float). `cardPlayPunchMs`/`cardPlayPunchScale`/`cardPlayPunchEase`
+  unchanged from the prior task. All six bind automatically to the
+  existing generic `?debug=1` Tweakpane panel - confirmed live.
 
 ## How this was verified
 
@@ -81,88 +103,96 @@ Real gameplay, not fabricated/injected state, per the pattern
 established across the last several tasks in this feature area:
 
 - `npm run typecheck` / `npm run build` (repo root) - clean.
-- Confirmed all five new keys appear as live-editable Tweakpane fields
-  under `?debug=1`.
-- Two temporary, read-only debug hooks (`HostGameScene.ts` exposing its
-  own last-built real `MaskedState`; `main.ts` exposing that plus a
-  real-legal-card click-target helper and direct access to the scene
-  object - same pattern as prior tasks) - added, used, then fully
-  reverted; `git diff` against `main` is empty except
-  `ui/renderGameView.ts` and `tune.json`.
-- **Verified the actual running Phaser tweens, not just the code path**:
-  this animation is the *only* thing in this codebase that uses
-  `scene.tweens` at all (confirmed via a full-source grep before
-  relying on this), so `scene.tweens.getTweens()` - a real, un-modified
-  Phaser API, not a test-only hook - unambiguously identifies this
-  animation whenever it's running. A Playwright script played a real
-  Single Player game and, the moment a real "Play Card" tap committed
-  the local player's own card:
-  - Polled `getTweens()` every 20ms. Samples show the position tween
-    completing at exactly `(195, 453)` - `renderPlayArea`'s real,
-    unmodified `seatCenter('bottom')` landing spot for a single-card
-    play - followed by several consecutive samples showing `scaleX`
-    ramping up through `1.068 -> 1.12` (the exact configured
-    `cardPlayPunchScale` peak) and back down to `1.04` before settling,
-    then `getTweens().length` returning to `0` - real, live,
-    multi-frame proof of both the travel and the punch actually
-    running, not just declared in config.
-  - The origin sample matched the card's real fan position
-    (`(210.7, 648.3)`, in the fan's baseline-Y neighborhood), not a
-    guessed point.
-  - Screenshotted the settled result: the local player's card sits in
-    its normal bottom play-area slot, pixel-identical to how an
-    unanimated play has always looked.
-  - **Scope boundary, explicitly checked, not assumed**: the moment a
-    bot's play landed (a different seat, `p2`), immediately queried
-    `getTweens().length` - **0**, confirming zero animation for a
-    remote seat's play, the same instant it appears, exactly as
-    before this task.
-- Browser console clean on boot (only the pre-existing, unrelated
-  sandboxed Google Fonts network noise present on every boot in this
-  environment) - both with the temporary debug hooks in place and
-  after reverting them.
+- Confirmed all six `cardPlay*` keys appear as live-editable Tweakpane
+  fields under `?debug=1`.
+- Temporary, read-only debug hooks (`HostGameScene.ts` exposing its
+  own last-built real `MaskedState` and container; `main.ts` exposing
+  those plus a real-legal-card click-target helper and a real
+  redistribute-plan helper - same pattern as prior tasks) were added,
+  used, then fully reverted via targeted edits (not a blanket
+  `git checkout`, since `HostGameScene.ts` also carries real permanent
+  code from an earlier task) - confirmed via `git diff --stat` against
+  `main` showing exactly `ui/renderGameView.ts` and `tune.json`
+  changed, nothing else.
+- A Playwright script played a real Single Player game end-to-end,
+  watching for the first genuine occurrence of each of three cases and
+  sampling the top-of-container object 8 times (15ms apart) as each
+  occurred:
+  - **Local player's own play**: landed at exactly `(195, 453)` -
+    `renderPlayArea`'s real, unmodified bottom-seat landing spot -
+    with real card art visible throughout, matching the always-shown
+    local-hand behavior.
+  - **A bot/remote seat's face-up play** (`p2`, on-suit): landed at
+    exactly `(195, 150)` - the top seat's real landing spot - with
+    real Deity/rank art visible throughout, correct for a legal,
+    unmasked play.
+  - **A bot/remote seat's facedown off-suit play** (`p3`): landed at
+    exactly `(332, 305)` - the right seat's real landing spot - with
+    **zero** Image-type descendants (`hasImage: false`) across all 8
+    samples spanning the entire animation and rest, i.e. never showing
+    real art for even one sampled frame. This is the task's CRITICAL
+    masking requirement, and it held.
+- **Arc shape itself, directly traced**: rather than trust an external
+  poller (which raced the click-to-render round trip in an earlier,
+  discarded diagnostic attempt - see Known issues below for what that
+  looked like and why it was a test artifact, not a bug), a temporary
+  `onUpdate` hook pushed the tween's own computed `{t, x, y}` into a
+  buffer read back after the animation settled. One real local play's
+  trace: at `t≈0.59`, `y≈466.6` versus a straight-line prediction
+  between origin and landing of `y≈533.8` at that same `t` - the card
+  sat about 67px higher than a direct line would put it (consistent
+  with `cardPlayArcHeight: 70` peaking near the midpoint), then
+  converged to exactly the final `(195, 453)` by `t=1`. Confirms the
+  arc is real, not just declared in code.
+- Browser console clean on boot under `?debug=1` (only the
+  pre-existing, unrelated sandboxed network noise - `net::ERR_CONNECTION_RESET`
+  / a 404 - present on every boot in this environment, unchanged from
+  prior tasks) - checked with temporary hooks removed.
 
 **This change benefits from the user's own live verification on a
-real device, same as the Center HUD rotation-easing task.** The
-Phaser-tween sampling above proves the travel lands at the exact
-right pixel and the punch peaks at the exact configured scale, but
-"does 160ms of travel plus a 1.12x punch actually read as snappy and
-impactful, Master-Duel-style, on a real phone" is a feel judgment this
-automated check can't make - the five `cardPlay*` Tweakpane fields
-under `?debug=1` are there to retune live if the numbers don't land
-right on first look.
+real device.** The traced tween data proves the arc's shape and
+landing pixel are exactly as configured, but "does a 70px arc at 190ms
+read as a real toss, Master-Duel-style, on a real phone, for all four
+seats" is a feel judgment this automated check can't make - the six
+`cardPlay*` Tweakpane fields under `?debug=1` are there to retune live
+if the numbers don't land right on first look.
 
 ## Open questions
 
-None new - the task's own scope boundary (local player only) and
-animation requirements (fast, eased, a punch/overshoot on arrival, no
-DOM/CSS) were specific enough that no mid-session clarification was
+None new - the task's own requirements (arc height as a tunable value,
+per-seat origin rules, the masking constraint, continuing to use the
+placeholder facedown treatment rather than building a substitute
+asset) were specific enough that no mid-session clarification was
 needed.
 
 ## Known issues
 
-Carried over, untouched by this task: genuine gameplay verification of
-off-suit masking via real bot/human play is still pending; Rules-modal
-content gaps (no Setup section, off-suit hidden-identity nature unstated
-in the copy); `ui_player_nameplate.png` still applies to the local seat
-tag only (deliberate); the `'partner'` hand-fan state still has no
-working visual differentiation from `'legal'`; the itch.io iframe
-canvas-scale fix, the asset pipeline's downscale/recompress output, the
-hand-fan edge-bound fix, the Center HUD easing curve, and now this
-card-play animation's feel all still want a real-device/live-deploy
-glance; a Twin Awakening double-card play's own animation (two cards
-animating independently from two different hand positions to their
-shared row) was implemented but not separately exercised this pass -
-the driver script only ever committed single-card plays, since
-reliably forcing a real double-selection through bot-driven gameplay
-wasn't attempted; the code path is the same per-card loop used for the
-already-verified single-card case, just run twice, so this is a
-reasonable-confidence gap, not an unknown.
+Carried over, mostly untouched by this task: Rules-modal content gaps
+(no Setup section, off-suit hidden-identity nature unstated in the
+copy); `ui_player_nameplate.png` still applies to the local seat tag
+only (deliberate); the `'partner'` hand-fan state still has no working
+visual differentiation from `'legal'`; the itch.io iframe canvas-scale
+fix, the asset pipeline's downscale/recompress output, the hand-fan
+edge-bound fix, the Center HUD easing curve, the trick-result dwell
+hold, and now this arc animation's feel all still want a real-device/
+live-deploy glance; a Twin Awakening double-card play's own animation
+(two cards animating independently to their shared row) uses the same
+per-card loop as the already-verified single-card case but wasn't
+separately exercised this pass. Also carried over: an early attempt at
+directly sampling the arc's mid-flight shape via an external
+`requestAnimationFrame` poller produced a misleading "frozen position"
+result - it was racing the click's async state-update round trip and,
+during that race window, sampled a stale pre-play hand-fan object
+instead of the flying card. This was a test-methodology artifact, not
+a real bug (resolved by tracing the tween's own values directly
+instead, per "How this was verified" above), but is worth remembering
+if a future task's own external polling produces a similarly
+suspicious frozen reading early in a click-driven state transition.
 
 ## Next proposed step
 
 A real-device/live-deploy pass covering everything listed under "Known
-issues" remains the next open loop - the animation feel specifically,
-and a live look at a real Twin Awakening double-play's two-card
-animation, would be the highest-value additions to this task's own
-follow-up.
+issues" remains the next open loop - the arc's height/timing/feel
+across all four seats specifically, and a live look at a real Twin
+Awakening double-play's animation, would be the highest-value
+additions to this task's own follow-up.
