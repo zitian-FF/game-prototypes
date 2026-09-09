@@ -23,8 +23,9 @@
   "suitCycleRotationEasing": "cubic-bezier(0.86, 0, 0.07, 1)",
   "leadGlowPulseMs": 2200,
   "leadGlowPulseEasing": "ease-in-out",
-  "cardPlayTravelMs": 160,
+  "cardPlayTravelMs": 190,
   "cardPlayTravelEase": "Cubic.easeOut",
+  "cardPlayArcHeight": 70,
   "cardPlayPunchMs": 90,
   "cardPlayPunchScale": 1.12,
   "cardPlayPunchEase": "Sine.easeInOut"

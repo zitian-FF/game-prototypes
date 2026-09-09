@@ -247,19 +247,36 @@ export interface PersistentUIState {
   // render always shows what's *actually* current once it fires, not a
   // stale snapshot from the moment the hold started.
   pendingHoldMasked: MaskedState | null;
-  // Hand-to-play-area animation bookkeeping (see renderCardFan/
-  // renderPlayArea below) - every render of the hand fan records each of
-  // its own cards' real computeFanLayouts position here, so that the very
-  // next render (once one of those cards has actually left the hand for
-  // the play area) can look up exactly where it flew in from, without
-  // needing to guess or re-derive a since-removed card's old position.
+  // Card-play animation bookkeeping (see renderCardFan/renderPlayArea
+  // below) - every render of the hand fan records each of its own cards'
+  // real computeFanLayouts position here, so that the very next render
+  // (once one of those cards has actually left the hand for the play
+  // area) can look up exactly where it flew in from, without needing to
+  // guess or re-derive a since-removed card's old position. Only the
+  // local player's own plays ever use this - remote seats' plays fly in
+  // from a fixed nameplate position instead (see
+  // REMOTE_NAMEPLATE_ORIGIN), since their hands are never rendered.
   lastHandLayoutsByCardId: Map<CardId, { x: number; y: number; rotationDeg: number }>;
-  // Fingerprint of the local player's own current-trick play that has
-  // already been animated in (or already decided not to animate, e.g. no
-  // captured origin) - so a play that's already landed doesn't fly in
-  // again on every incidental re-render (the trick-result dwell hold's
+  // Per-seat fingerprint of whichever current-trick play has already been
+  // animated in for that seat (or already decided not to animate, e.g. no
+  // captured hand origin) - so a play that's already landed doesn't fly
+  // in again on every incidental re-render (the trick-result dwell hold's
   // own re-render included), only on the render where it's genuinely new.
-  animatedOwnPlayKey: string;
+  // Keyed by NetPlayerId (whoever's seated there), one entry per seat.
+  animatedPlayKeyBySeat: Record<NetPlayerId, string>;
+  // Scratch list, rebuilt every render pass: any card just set flying by
+  // renderPlayArea this pass gets pushed here instead of being brought to
+  // the top of the shared container immediately - renderPlayerCluster
+  // (which draws play areas) runs *before* renderCardFan (the hand) in
+  // the same pass, so bringing a card to the top of the container at
+  // renderPlayArea's own point in that sequence would still leave it
+  // rendered *below* every hand card added afterward. renderWithView
+  // drains this list (bringing each to the top for real) only once
+  // everything else this render pass could possibly draw on top of it -
+  // hand fan included - is already in place, which is the only way to
+  // actually guarantee "renders above every other element" for the whole
+  // flight, not just above whatever existed at the moment it was drawn.
+  cardsAnimatingThisRender: Phaser.GameObjects.Container[];
 }
 
 export function createPersistentUIState(): PersistentUIState {
@@ -270,7 +287,8 @@ export function createPersistentUIState(): PersistentUIState {
     hasPresentedOnce: false,
     pendingHoldMasked: null,
     lastHandLayoutsByCardId: new Map(),
-    animatedOwnPlayKey: '',
+    animatedPlayKeyBySeat: { p0: '', p1: '', p2: '', p3: '' },
+    cardsAnimatingThisRender: [],
   };
 }
 
@@ -394,6 +412,11 @@ function renderWithView(
 ): void {
   container.removeAll(true);
   const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui);
+  // Reset for this pass - see PersistentUIState.cardsAnimatingThisRender's
+  // own doc comment for why the actual bringToTop happens once, at the
+  // very end of this function, instead of at each animation's own point
+  // in the sequence below.
+  ui.cardsAnimatingThisRender = [];
 
   // Tabletop treatment - drawn first so it always sits behind every other
   // canvas element this render pass adds (see board/UI requirements: real
@@ -531,6 +554,13 @@ function renderWithView(
     teammateGodChip: hud.teammateGodChip,
     requiredSuitGod: hud.requiredSuitGod,
   });
+
+  // Now that every canvas element this render pass could possibly add is
+  // actually in place (play areas, then the hand fan above them - see
+  // PersistentUIState.cardsAnimatingThisRender's own doc comment), bring
+  // each of this pass's flying cards to the real top of the shared
+  // container, once, for real.
+  for (const flying of ui.cardsAnimatingThisRender) container.bringToTop(flying);
 }
 
 // --- Top bar ----------------------------------------------------------
@@ -582,7 +612,7 @@ function renderPlayerCluster(
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
     const pid = seatMap[seat];
     const { x, y } = seatCenter(seat);
-    renderPlayArea(scene, container, state, view, ui, pid, x, y, redistCtx, rerender, text);
+    renderPlayArea(scene, container, state, view, ui, seat, pid, x, y, redistCtx, rerender, text);
   }
 }
 
@@ -676,6 +706,22 @@ function drawPlayAreaRecess(scene: Phaser.Scene, container: Phaser.GameObjects.C
   container.add(g);
 }
 
+// Real screen anchor for each non-local seat's nameplate (dom/overlay/
+// GameOverlay.tsx's own TOP_TAG_TOP/SIDE_TAG_TOP + roughly half that tag's
+// own ~34px height) - kept in sync with that file by value, the same way
+// this module's other row anchors already are (see this file's own
+// TOP_BOX_Y/SIDE_BOX_Y/CENTER_X header comment). Used only as the
+// remote-seat card-play animation's flight origin - the local player's
+// own origin is a real captured hand position instead (see
+// PersistentUIState.lastHandLayoutsByCardId), since their hand is the one
+// hand this file actually draws. There's no local/bottom entry here on
+// purpose: the local player never uses a nameplate origin.
+const REMOTE_NAMEPLATE_ORIGIN: Record<'top' | 'left' | 'right', { x: number; y: number }> = {
+  top: { x: CENTER_X, y: 67 },
+  left: { x: 57, y: 375 },
+  right: { x: 333, y: 375 },
+};
+
 // One opponent/own play-area slot, entirely built from the shared card
 // component (ui/cardComponent.ts) - amendment item 1's whole point.
 // Shows this trick's play (masked for offsuit plays that aren't yours -
@@ -688,6 +734,7 @@ function renderPlayArea(
   state: MaskedState,
   view: ViewState,
   ui: PersistentUIState,
+  seat: SeatPosition,
   pid: NetPlayerId,
   x: number,
   y: number,
@@ -704,56 +751,63 @@ function renderPlayArea(
     return;
   }
 
-  const isOwnSeat = pid === state.yourSlot;
   const play = state.currentTrick.find((p) => p.player === pid) ?? null;
   if (!play) {
-    // Ready for the next real play to be detected as genuinely new -
-    // otherwise a same-fingerprint coincidence across two different
-    // tricks (unlikely but not impossible with only 40 cards) could skip
-    // its animation.
-    if (isOwnSeat) ui.animatedOwnPlayKey = '';
+    // Ready for the next real play at this seat to be detected as
+    // genuinely new - otherwise a same-fingerprint coincidence across two
+    // different tricks (unlikely but not impossible with only 40 cards)
+    // could skip its animation.
+    ui.animatedPlayKeyBySeat[pid] = '';
     drawCard(scene, container, x, y, 0, { kind: 'empty' }, emptySlotStyle(), CARD_DIMS_STANDARD);
     return;
   }
 
+  // Animate every seat's card play, once - the very first render where
+  // this specific play appears. Every subsequent render of this same
+  // already-landed play (a re-render for an unrelated reason, including
+  // the trick-result dwell hold's own frozen re-render) falls through to
+  // the plain, static drawCardRow below. `maskedPlayFaces` (below) has
+  // already reduced a hidden offsuit play to a single `{kind:'facedown'}`
+  // face with no card id at all by this point - the animation draws
+  // exactly that face, so a facedown play can never show real art
+  // mid-flight any more than it could at rest.
   const faces = maskedPlayFaces(play, state.yourSlot);
-
-  // Animate ONLY the local player's own card play, and only once - the
-  // very first render where this specific play appears (a real hand
-  // position to fly in from is only meaningful for a card that really was
-  // just in this client's own hand fan; see BUILD_STATUS.md for why other
-  // seats' plays deliberately never animate). Every subsequent render of
-  // this same already-landed play (a re-render for an unrelated reason,
-  // including the trick-result dwell hold's own frozen re-render) falls
-  // through to the plain, static drawCardRow below.
-  if (isOwnSeat) {
-    const key = `${play.player}:${play.cards.join(',')}`;
-    if (key !== ui.animatedOwnPlayKey) {
-      ui.animatedOwnPlayKey = key;
-      animateOwnPlayIntoPlayArea(scene, container, x, y, faces, ui);
-      return;
-    }
+  const key = `${play.player}:${play.cards.join(',')}`;
+  if (key !== ui.animatedPlayKeyBySeat[pid]) {
+    ui.animatedPlayKeyBySeat[pid] = key;
+    const isOwnSeat = pid === state.yourSlot;
+    animateCardPlayIntoPlayArea(scene, container, x, y, faces, isOwnSeat ? null : REMOTE_NAMEPLATE_ORIGIN[seat as 'top' | 'left' | 'right'], ui);
+    return;
   }
 
   drawCardRow(scene, container, x, y, faces, CARD_DIMS_STANDARD, playAreaStyle);
 }
 
-// Flies the local player's just-played card(s) in from their real
-// computeFanLayouts-derived hand position (captured by renderCardFan's own
-// last render, before this card left the hand - see
-// PersistentUIState.lastHandLayoutsByCardId) to the exact same final
-// position/rotation/size renderPlayArea always placed them at - this only
-// changes the transition INTO that position, never the resting result.
-// Fast travel (a quick decelerate into landing, not a float) followed by a
-// brief scale-punch settle beat on arrival, referencing the snappy
-// card-play feel this task asked for. Every value affecting the feel here
+// Flies a just-played card in from its real origin to the exact same
+// final position/rotation/size renderPlayArea always placed it at - this
+// only changes the transition INTO that position, never the resting
+// result. `remoteOrigin` is null for the local player (whose real
+// per-card hand position comes from `ui.lastHandLayoutsByCardId` instead)
+// and a fixed nameplate point for the other three seats, whose hands are
+// never rendered - both origins feed the exact same flight/timing/easing
+// below for visual consistency across all four seats, per the task.
+//
+// The path is a genuine arc, not a straight line: `t` (0-1, eased) drives
+// a manual x/y lerp between origin and landing plus a `sin(pi*t)` bump
+// subtracted from y (screen y grows downward, so subtracting lifts the
+// card) that peaks at the midpoint - a real toss trajectory, unlike
+// tweening `x`/`y` directly to their final values, which Phaser would
+// interpolate along a straight line regardless of easing (easing reshapes
+// speed over time, never the path itself). A brief scale-punch settle
+// beat chains on arrival for impact. Every value affecting the feel here
 // lives in tune.json (see BUILD_STATUS.md).
-function animateOwnPlayIntoPlayArea(
+function animateCardPlayIntoPlayArea(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
   x: number,
   y: number,
   faces: CardFace[],
+  remoteOrigin: { x: number; y: number } | null,
   ui: PersistentUIState,
 ): void {
   const dims = CARD_DIMS_STANDARD;
@@ -765,12 +819,14 @@ function animateOwnPlayIntoPlayArea(
     const finalY = y;
     cx += dims.width + CARD_GAP;
 
-    const origin = face.kind === 'faceup' ? ui.lastHandLayoutsByCardId.get(face.cardId) : undefined;
     const style = playAreaStyle(face);
+    const handOrigin = remoteOrigin === null && face.kind === 'faceup' ? ui.lastHandLayoutsByCardId.get(face.cardId) : undefined;
+    const origin = remoteOrigin ?? handOrigin;
+    const originRotationDeg = handOrigin?.rotationDeg ?? 0;
 
     if (!origin) {
-      // No captured hand position for this card - not expected for a
-      // genuine local play (maskedPlayFaces always resolves the local
+      // No captured hand position for this local card - not expected for
+      // a genuine local play (maskedPlayFaces always resolves the local
       // player's own play to real faceup ids), but a safe fallback for an
       // edge case like a page reload mid-trick: land directly rather than
       // animating from a guessed/default point.
@@ -778,19 +834,31 @@ function animateOwnPlayIntoPlayArea(
       continue;
     }
 
-    const drawn = drawCard(scene, container, origin.x, origin.y, origin.rotationDeg, face, style, dims);
-    // Must render above every other element already added this pass
-    // (other play areas, the tabletop) while it's mid-flight.
-    container.bringToTop(drawn.container);
+    const drawn = drawCard(scene, container, origin.x, origin.y, originRotationDeg, face, style, dims);
+    // Must render above every other element for the whole flight,
+    // including the hand fan, which this same render pass draws *after*
+    // play areas - bringToTop right now would only clear whatever's
+    // already in the container at this point, not what's still to come.
+    // Queued and actually brought to the top once, at the very end of
+    // this whole render pass - see PersistentUIState.cardsAnimatingThisRender.
+    ui.cardsAnimatingThisRender.push(drawn.container);
 
-    scene.tweens.add({
-      targets: drawn.container,
-      x: finalX,
-      y: finalY,
-      rotation: 0,
+    const originRotationRad = (originRotationDeg * Math.PI) / 180;
+    scene.tweens.addCounter({
+      from: 0,
+      to: 1,
       duration: tune.cardPlayTravelMs,
       ease: tune.cardPlayTravelEase,
+      onUpdate: (_tween, _target, _key, t: number) => {
+        drawn.container.x = origin.x + (finalX - origin.x) * t;
+        drawn.container.y = origin.y + (finalY - origin.y) * t - tune.cardPlayArcHeight * Math.sin(Math.PI * t);
+        drawn.container.setRotation(originRotationRad * (1 - t));
+      },
       onComplete: () => {
+        // Land pixel-exact regardless of any float residue from the
+        // manual lerp above.
+        drawn.container.setPosition(finalX, finalY);
+        drawn.container.setRotation(0);
         scene.tweens.add({
           targets: drawn.container,
           scaleX: tune.cardPlayPunchScale,
