@@ -7,7 +7,7 @@ import { createInitialState, applyAction } from '../host/gameHost';
 import { chooseBotAction } from '../host/botAI';
 import { buildMaskedState } from '../host/mask';
 import { activePlayerId } from '../rules/engine';
-import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
+import { createPersistentUIState, presentGameView } from '../ui/renderGameView';
 import type { PersistentUIState } from '../ui/renderGameView';
 import { preloadCardArt } from '../ui/cardArt';
 import { showAssetLoadProgress } from '../ui/loadingProgress';
@@ -200,7 +200,7 @@ export class HostGameScene extends Phaser.Scene {
     const slot = fromNetPlayerId(entry.slot);
     const masked = buildMaskedState(this.state, slot, this.seatNames());
     if (entry.isHost) {
-      renderGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState);
+      presentGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState);
     } else if (this.actions) {
       // Structurally unreachable in Single Player mode: its roster is only
       // ever the host plus bots, both handled above.

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { createPersistentUIState, renderGameView } from '../ui/renderGameView';
+import { createPersistentUIState, presentGameView } from '../ui/renderGameView';
 import type { PlayerSessionData } from '../net/playerSession';
 import { preloadCardArt } from '../ui/cardArt';
 import { showAssetLoadProgress } from '../ui/loadingProgress';
@@ -72,7 +72,7 @@ export class PlayerGameScene extends Phaser.Scene {
         loadingHidden = true;
         this.loading.hide();
       }
-      renderGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState);
+      presentGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState);
     };
 
     room.onPeerLeave = (peerId) => {
