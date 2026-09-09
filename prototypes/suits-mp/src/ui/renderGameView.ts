@@ -235,10 +235,22 @@ export type SortMode = 'suit' | 'rank';
 export interface PersistentUIState {
   overlay: OverlayKind;
   sortMode: SortMode;
+  // Trick-result dwell bookkeeping (see presentGameView below) - a plain
+  // fingerprint of the last-seen `previousTrick`, and whether any state
+  // has been presented yet at all (so the very first state a client ever
+  // receives - including a reconnecting peer picking up mid-game - never
+  // reads as "a trick just completed").
+  lastPreviousTrickKey: string | null;
+  hasPresentedOnce: boolean;
+  // Non-null while a trick-completion's 2s hold is still pending; holds
+  // the most recently received masked state so the hold's own delayed
+  // render always shows what's *actually* current once it fires, not a
+  // stale snapshot from the moment the hold started.
+  pendingHoldMasked: MaskedState | null;
 }
 
 export function createPersistentUIState(): PersistentUIState {
-  return { overlay: 'none', sortMode: 'suit' };
+  return { overlay: 'none', sortMode: 'suit', lastPreviousTrickKey: null, hasPresentedOnce: false, pendingHoldMasked: null };
 }
 
 type RectFn = (x: number, y: number, w: number, h: number, fill: number, alpha?: number) => Phaser.GameObjects.Rectangle;
@@ -261,6 +273,94 @@ export function renderGameView(
   ui: PersistentUIState,
 ): void {
   renderWithView(scene, container, state, sendAction, freshViewState(), ui);
+}
+
+// Cheap content fingerprint for `previousTrick` (at most 4 small entries) -
+// good enough to detect "this is a genuinely different completed trick
+// than the one we last saw", which is all presentGameView below needs.
+function previousTrickKey(state: MaskedState): string {
+  return state.previousTrick ? JSON.stringify(state.previousTrick) : '';
+}
+
+// Entry point HostGameScene (its own local render) and PlayerGameScene
+// (its network message handler) call instead of renderGameView directly,
+// so every client - the host's own screen included - holds the display on
+// a just-completed trick for tune.trickResultDwellMs before advancing to
+// whatever the next phase's UI actually is (redistribution/chooseDelegate).
+//
+// This is a client-only presentation delay, never a host-logic one: the
+// host keeps resolving and broadcasting real state exactly as fast as it
+// always did (see gameHost.ts's settleAutoPhases) - this function only
+// ever decides when *this client* renders what it already received, never
+// touches game state, and never blocks or waits on the host or any other
+// client's own hold. Each client manages its own hold independently.
+//
+// Detecting "a trick just completed": settleAutoPhases auto-chains through
+// the engine's 'trickResult' phase entirely within one synchronous host
+// tick (see its own doc comment in gameHost.ts) specifically so it never
+// needs a network round-trip - which also means a client *never* receives
+// 'trickResult' as its own distinct masked-state update to key off of. The
+// only observable signal is diffing consecutive updates: `previousTrick`
+// (host/mask.ts's copy of `state.lastTrickResult`) changes to a new,
+// different value exactly when a trick resolves, and stays constant for
+// the whole chooseDelegate/redistribution phase that follows (trickNumber
+// itself doesn't increment until redistribute() completes - see
+// rules/engine.ts - so it can't be used for this).
+export function presentGameView(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  masked: MaskedState,
+  sendAction: (action: ClientAction) => void,
+  ui: PersistentUIState,
+): void {
+  const key = previousTrickKey(masked);
+  const justCompletedTrick = ui.hasPresentedOnce && masked.previousTrick !== null && key !== ui.lastPreviousTrickKey;
+  ui.lastPreviousTrickKey = key;
+  ui.hasPresentedOnce = true;
+
+  if (ui.pendingHoldMasked) {
+    // Already holding on an earlier trick-completion - remember the
+    // latest state and keep waiting; the pending delayed call below will
+    // render it once the hold elapses, never sooner. Not re-triggering a
+    // fresh hold here even if this update also carries a further-changed
+    // `previousTrick` (bots resolving unusually fast) is deliberate: one
+    // 2s hold per visit here is the contract, not a chain of them.
+    ui.pendingHoldMasked = masked;
+    return;
+  }
+
+  if (!justCompletedTrick) {
+    renderGameView(scene, container, masked, sendAction, ui);
+    return;
+  }
+
+  // Freeze the display on the trick that just finished. Play areas show
+  // its real 4 plays (`previousTrick`) instead of `currentTrick` (already
+  // reset) or a redistribution stack (would otherwise appear immediately)
+  // - reusing the exact same rendering path a live trick uses, since a
+  // finished trick's plays look identical to a live one's. `currentTurn`/
+  // `redistribution`/`delegateChoices` are forced to null - the same
+  // legitimate "nothing pending right now" values these fields already
+  // take on between real decisions, not a fabricated state shape - which
+  // disables every interactive element (hand-fan taps, seat-tag delegate
+  // picks, the action button) exactly as required: nobody can act during
+  // the hold. No fading or animation is needed for this to read as
+  // "holding" - the frame simply doesn't change until the hold ends.
+  const frozen: MaskedState = {
+    ...masked,
+    currentTrick: masked.previousTrick ?? [],
+    redistribution: null,
+    currentTurn: null,
+    delegateChoices: null,
+  };
+  renderGameView(scene, container, frozen, sendAction, ui);
+
+  ui.pendingHoldMasked = masked;
+  scene.time.delayedCall(tune.trickResultDwellMs, () => {
+    const latest = ui.pendingHoldMasked;
+    ui.pendingHoldMasked = null;
+    if (latest) renderGameView(scene, container, latest, sendAction, ui);
+  });
 }
 
 function renderWithView(

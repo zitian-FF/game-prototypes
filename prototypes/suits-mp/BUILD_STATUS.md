@@ -1,87 +1,143 @@
 ## Current milestone
 
-Gave the Center HUD's two rotating elements (the Suit Cycle bezel and
-the current-turn pointer) a natural wind-up/settle easing curve, in
-place of the existing custom curve that read as mechanically uniform
-despite already being a cubic-bezier. Pure easing-curve change - the
-rotation-target math (seat-relative `suitDeg`, `useForwardRotation`)
-is completely untouched.
+Added a 2-second client-side dwell on a just-completed trick (all 4
+played cards, trick winner apparent) before the UI advances to
+redistribution/chooseDelegate - a pure presentation-layer delay, with
+the host's own game-logic timing and network broadcast timing
+completely untouched.
+
+## Investigation: how `trickResult` actually flows from host to client
+
+Read before implementing, per the task's own instruction. Confirmed:
+`gameHost.ts`'s `settleAutoPhases()` auto-chains through the engine's
+`'trickResult'` (and `'blocker'`) phases entirely inside one
+synchronous host tick, every single time (`applyAction()` always calls
+`settleAutoPhases(next)` before returning). **A client never receives
+`'trickResult'` as its own distinct masked-state update** - by the time
+any broadcast lands, the state has already jumped straight from
+"3 plays, someone about to play the 4th" to "trick fully resolved,
+next real decision phase" in one step. So there's no phase value to key
+a delay off of.
+
+The actual detectable signal is diffing consecutive masked states:
+`previousTrick` (`host/mask.ts`, copied from `state.lastTrickResult`)
+changes to a new, different value exactly when a trick resolves, and
+then stays constant through the whole chooseDelegate/redistribution
+phase that follows it. `trickNumber` does **not** work for this - it
+only increments inside `redistribute()`, i.e. after redistribution
+completes, not when the trick itself resolves - so it stays the same
+across the exact transition this task needs to detect. Used
+`previousTrick` diffing (approach (a) offered in the task).
 
 ## What changed
 
-**Files changed**: `tune.json` only.
+**Files changed**: `ui/renderGameView.ts` (new `presentGameView`
+export, `PersistentUIState` extended), `scenes/HostGameScene.ts` /
+`scenes/PlayerGameScene.ts` (call `presentGameView` instead of
+`renderGameView` directly), `tune.json` (`trickResultDwellMs: 2000`).
+**No host-logic file (`rules/engine.ts`, `host/gameHost.ts`,
+`host/botAI.ts`) touched at all** - the critical architectural
+constraint holds: the host resolves and broadcasts exactly as fast as
+before, on every client, all the time.
 
-- `suitCycleRotationEasing`: `"cubic-bezier(0.3, 1.08, 0.2, 1)"` ->
-  `"cubic-bezier(0.86, 0, 0.07, 1)"` (the standard "easeInOutQuint"
-  curve) - a pronounced slow start (overcoming inertia) and a
-  pronounced slow settle at the end, symmetric around the midpoint. The
-  old curve's `y > 1` control point (`1.08`) produced a slight
-  overshoot/bounce past the target before settling back, which isn't
-  the same thing as a wind-up/settle feel and wasn't what was asked for
-  here - the new curve never overshoots, it just accelerates and
-  decelerates more dramatically than the old curve did.
-- `turnWheelRotationEasing`: `"cubic-bezier(0.24, 0.86, 0.16, 1)"` ->
-  the same `"cubic-bezier(0.86, 0, 0.07, 1)"`, for visual consistency
-  between the HUD's two rotating elements (the bezel and the pointer) -
-  no reason found for them to feel different, so defaulted to matching
-  per the task's own instruction.
-- `suitCycleRotationMs` (950) and `turnWheelRotationMs` (700) are
-  **unchanged** - only the curve shape changed, not the duration, per
-  the task's explicit requirement.
-- No code changes anywhere: both `GameOverlay.tsx` transitions
-  (`transform ${tune.suitCycleRotationMs}ms ${tune.suitCycleRotationEasing}`,
-  used identically for the bezel group and each recess's counter-
-  rotation, plus the separate pointer transition) already interpolate
-  `tune.json`'s easing string directly - a value-only change was
-  sufficient, nothing to wire up.
-- Confirmed still live-tunable: `debug/debugPanel.ts`'s Tweakpane panel
-  binds every `tune.json` key generically (string values, including
-  every easing curve, get a plain text field automatically - no
-  per-key code), so both new values are exposed under `?debug=1` with
-  zero additional work, same as before.
+- **`presentGameView(scene, container, masked, sendAction, ui)`** - the
+  new entry point both scenes now call instead of `renderGameView`
+  directly (which still exists, unchanged, and is what `presentGameView`
+  itself calls under the hood - no duplicated rendering logic):
+  - Fingerprints `previousTrick` (`JSON.stringify`, at most 4 small
+    entries - cheap) and compares it to the last one this client
+    presented. A change (and not the client's very first-ever
+    presented state, so a reconnecting peer picking up mid-game never
+    misreads its first paint as "a trick just completed") means a
+    trick just resolved.
+  - If so: renders a **frozen** view immediately - the real masked
+    state with `currentTrick` replaced by `previousTrick` (so play
+    areas show the real 4 finished plays via the exact same rendering
+    path a live trick already uses, rather than the already-reset
+    `currentTrick`/a redistribution stack that would otherwise appear
+    instantly) and `currentTurn`/`redistribution`/`delegateChoices`
+    forced to `null`. These are the same legitimate "nothing pending
+    right now" values these fields already take between real
+    decisions, not a fabricated state shape - and they cascade to
+    disable every interactive element for free: `renderCardFan`'s
+    `inRedistributePhase` check is `state.redistribution !== null`, the
+    seat-tag delegate picker's `isDelegating` check is
+    `state.delegateChoices !== null`, and `computeActionButtonState`'s
+    very first check is `state.currentTurn === state.yourSlot`. No
+    separate "interactions disabled" flag was needed anywhere.
+  - Schedules one `scene.time.delayedCall(tune.trickResultDwellMs, ...)`
+    to present the real state after the hold. Tracks the *latest*
+    masked state received during the hold (not the one that triggered
+    it), so if the host has already moved further by the time the hold
+    elapses (a bot's redistribution, even the next trick starting -
+    see verification below), the client jumps straight to what's
+    actually current rather than a stale intermediate snapshot.
+  - While a hold is already pending, any further updates just refresh
+    "the latest state" and return - no re-triggering, no stacking of
+    multiple holds.
+  - `renderGameView`'s own internal `rerender()` closure (used for
+    local UI actions like toggling sort or staging a card - see
+    `ViewState`'s doc comment) is untouched and still calls
+    `renderWithView` directly, never `presentGameView` - only a
+    genuinely new masked state from the network should ever be
+    eligible to trigger a hold.
+- **`tune.json`**: added `trickResultDwellMs: 2000` - the only new
+  tunable value, live-editable via the existing generic Tweakpane panel
+  under `?debug=1` with zero additional code (same mechanism as every
+  other tune value).
 
 ## How this was verified
 
-- `npm run typecheck` / `npm run build` (repo root) - clean.
-- Confirmed both `suitCycleRotationEasing` and `turnWheelRotationEasing`
-  still appear as live text-editable fields in the `?debug=1` Tweakpane
-  panel, showing the new curve values.
-- **Sampled the actual rendered animation**, not just the CSS string:
-  a temporary, read-only debug hook (`HostGameScene.ts` storing the
-  host's last-built `MaskedState`; `main.ts` exposing it plus a real-
-  legal-card click-target helper - same pattern as the two immediately
-  prior tasks, added, used, then fully reverted; `git diff` against
-  `main` is empty except `tune.json`) drove one real trick's forced
-  Yog-Sothoth opener, and a Playwright script polled
-  `getComputedStyle().transform` on the bezel group every ~30ms during
-  the transition, converting each frame's rotation matrix to an angle
-  and unwrapping across the atan2 ±180deg discontinuity. The resulting
-  angular-velocity profile (degrees moved per ms, between consecutive
-  samples) came out as: ~0.06/ms in the first ~150ms, rising to a peak
-  of ~1.5/ms around the transition's midpoint (~350-440ms of the
-  950ms total), then decaying back down to ~0.01/ms by ~900ms before
-  settling exactly on the target angle - a clean, symmetric slow-fast-
-  slow sigmoid, confirming the easeInOutQuint curve is actually
-  producing the intended wind-up/settle motion in the real rendering
-  pipeline, not just declared in a config string.
-- Browser console clean on boot (only the pre-existing, unrelated
-  sandboxed Google Fonts network noise present on every boot in this
-  environment) - both with the temporary debug hooks in place and
-  after reverting them.
+Per the lesson from the recent Center HUD rotation task, this was
+checked with **real gameplay**, not fabricated/injected state:
 
-**This change still wants the user's own eyes on a real device.** The
-angular-velocity sampling above proves the curve *shape* is a genuine
-ease-in-out (not linear, not the old curve's slight overshoot), but
-"does this feel like natural weight/momentum" is a subjective call a
-number sequence can't fully settle - please give the rotation a look
-on your own device via `?debug=1` (or just normal play) before
-considering this fully done; the `suitCycleRotationEasing`/
-`turnWheelRotationEasing` Tweakpane fields are right there to try
-alternate curves live if this one doesn't land.
+- `npm run typecheck` / `npm run build` (repo root) - clean.
+- Confirmed `trickResultDwellMs` appears as a live-editable field in the
+  `?debug=1` Tweakpane panel.
+- Two temporary, read-only debug hooks (`HostGameScene.ts` exposing its
+  own last-built real `MaskedState` and its `PersistentUIState`
+  instance directly; `main.ts` exposing both plus real-card-click and
+  real-redistribution-plan helpers built from the actual, unmodified
+  `computeHandLegality`/`computeFanScale`/`computeFanLayouts` functions
+  - same pattern as prior tasks this session) - added, used, then fully
+  reverted; `git diff` against `main` is empty except the four files
+  listed above.
+- A Playwright script played a real Single Player game (real card
+  clicks, real "Play Card" button presses, bots via the untouched
+  `driveBotsIfNeeded`/`chooseBotAction`) until a real trick resolved,
+  then, in real time:
+  - Confirmed the **real host-side state** had already fully advanced
+    the instant `previousTrick` changed (`turnPhase: "redistribute"`,
+    `previousTrick` holding all 4 real plays) - proving the host was
+    never blocked or delayed by anything client-side.
+  - Confirmed `pendingHoldMasked !== null` (a hold was active) at that
+    exact moment, and that **no action button was even enabled** to tap
+    during the hold (`tapDuringHoldEnabledCount: 0`); attempting a tap
+    anyway had zero effect on real state (`tapDuringHoldHadNoEffect:
+    true`).
+  - Polled until the hold cleared: **~1.8-1.9 seconds** elapsed both
+    runs (two independent playthroughs), matching `trickResultDwellMs`
+    (2000ms) within polling granularity (50ms) and per-step overhead.
+  - Screenshotted mid-hold: all 4 played cards fully visible in their
+    real play-area positions, "Lead Player" tag correctly on the actual
+    trick leader's seat, bottom prompt showing "Waiting..." (not
+    "Select a card") - exactly the required frozen frame.
+  - Screenshotted after the hold cleared: in both runs, the real host
+    had *already* processed an entire bot redistribution (and, in one
+    run, started the next trick) during the ~2s the client was holding
+    - and the client correctly presented that fully-current state
+    rather than a stale one, demonstrating both "host not blocked" and
+    "always show what's actually current" at once.
+- Browser console clean throughout - only the pre-existing, unrelated
+  sandboxed Google Fonts network noise present on every boot in this
+  environment.
 
 ## Open questions
 
-None new.
+None new - the task's own investigation section anticipated exactly
+the mechanism needed (diffing consecutive states) and named the
+critical constraint (client-only delay) clearly enough that no
+mid-session clarification was needed.
 
 ## Known issues
 
@@ -91,14 +147,20 @@ content gaps (no Setup section, off-suit hidden-identity nature unstated
 in the copy); `ui_player_nameplate.png` still applies to the local seat
 tag only (deliberate); the `'partner'` hand-fan state still has no
 working visual differentiation from `'legal'`; the itch.io iframe
-canvas-scale fix, the asset pipeline's downscale/recompress output, and
-the hand-fan edge-bound fix still want a real-device/live-deploy glance;
-this task's easing change likewise has only been sampled in a local
-dev-server Playwright pass - the user's own on-device judgment on the
-new curve's feel is the real open item here, not an automated check.
+canvas-scale fix, the asset pipeline's downscale/recompress output, the
+hand-fan edge-bound fix, and the Center HUD easing curve still want a
+real-device/live-deploy glance; this task's own real-gameplay
+verification was likewise a local dev-server Playwright pass
+(single-player vs. bots), not an actual itch.io build or a real
+multi-human-peer game - the latter would be the strongest possible
+confirmation that per-client holds truly never entangle with each
+other, though nothing in the implementation is peer-count-dependent
+(each `PersistentUIState`/hold lives entirely on its own client).
 
 ## Next proposed step
 
-Awaiting the user's own live verification of the new easing feel (see
-above). A real-device/live-deploy pass covering everything listed under
-"Known issues" remains the next open loop.
+A real-device/live-deploy pass covering everything listed under "Known
+issues" remains the next open loop - a real multi-peer game (not just
+single-player vs. bots) would be the highest-value addition to this
+task's own verification specifically, given the per-client independence
+claim.
