@@ -1351,7 +1351,16 @@ function renderCardFan(
     ui.awakenedHandCardIds.clear();
   } else {
     const tenAlreadyPlayed = state.currentTrick.some((play) => play.cards.some((id) => cardById(id).rank === 10));
-    if (tenAlreadyPlayed) {
+    // Scenario 1 also requires the local player to not have taken their
+    // own turn yet this trick (2026-09-10 action-glow-awakened-trigger
+    // task) - without this, the preview wrongly fired on the local
+    // player's own 10 play (their play is what just made tenAlreadyPlayed
+    // true) and kept firing on later renders after they'd already played,
+    // even though by then they have nothing left to act on until the next
+    // trick's reset (see this block's own currentTrick.length === 0
+    // clear above).
+    const localPlayerAlreadyPlayed = state.currentTrick.some((play) => play.player === state.yourSlot);
+    if (tenAlreadyPlayed && !localPlayerAlreadyPlayed) {
       for (const id of state.yourHand) {
         if (cardById(id).rank === 'DeityCard' && !ui.awakenedHandCardIds.has(id)) {
           ui.awakenedHandCardIds.add(id);
