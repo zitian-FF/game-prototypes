@@ -1177,6 +1177,24 @@ function animateCardPlayIntoPlayArea(
 // centered as a row at (x, y) - shared by play areas and the
 // previous-trick log, since both need to show a multi-card play as a
 // small side-by-side group rather than a single card.
+//
+// A single card (the common case) is unchanged: full width, no overlap.
+// Multiple cards (currently only ever 2, a Double) overlap significantly
+// instead of sitting side by side at full width + CARD_GAP - a
+// non-overlapping row of 2 standard-size cards is wide enough to run off
+// the left/right seats' play areas, which sit close to the screen edges
+// (see BUILD_STATUS.md). Later cards are added to the container after
+// earlier ones, so Phaser's own display-list order already draws them
+// front-to-back left-to-right with no extra depth/z-index bookkeeping
+// needed - this only had to change *spacing*, not draw order. Kept
+// general to `faces.length` (a loop, not "2 cards" hardcoded) even
+// though nothing currently calls this with more than 2, per the task's
+// own instruction. `tune.doublePlayOverlapFraction` is how much of each
+// card's width the *next* card covers - tuned low enough that the
+// covered card's own rank glyph/god symbol (both left-of-center in the
+// Card Frame art - see cardArt.ts's RUNTIME_RANK_CENTER/SYMBOL_BOX) stays
+// legible in the visible strip, confirmed visually at the left/right
+// seats specifically (the tightest fit) - see BUILD_STATUS.md.
 function drawCardRow(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -1186,11 +1204,12 @@ function drawCardRow(
   dims: CardDimensions,
   styleFor: (face: CardFace) => CardStyle,
 ): void {
-  const totalW = faces.length * dims.width + (faces.length - 1) * CARD_GAP;
+  const step = faces.length > 1 ? dims.width * (1 - tune.doublePlayOverlapFraction) : dims.width + CARD_GAP;
+  const totalW = dims.width + (faces.length - 1) * step;
   let cx = x - totalW / 2 + dims.width / 2;
   for (const face of faces) {
     drawCard(scene, container, cx, y, 0, face, styleFor(face), dims);
-    cx += dims.width + CARD_GAP;
+    cx += step;
   }
 }
 

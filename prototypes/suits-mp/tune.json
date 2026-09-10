@@ -40,5 +40,6 @@
   "cardCollectArcHeight": 40,
   "cardCollectEase": "Cubic.easeInOut",
   "cardCollectFadeMs": 250,
-  "cardCollectFadeScale": 0.4
+  "cardCollectFadeScale": 0.4,
+  "doublePlayOverlapFraction": 0.72
 }
