@@ -31,8 +31,8 @@ import tune from '../../tune.json';
 // root CLAUDE.md: no sprites or art, coloured shapes and text only. The
 // Rules overlay is real content now (dom/RulesModal.tsx), and so is the
 // in-game HUD chrome - name tags, Suit Cycle HUD, turn indicator wheel,
-// Trick Starter tag, Team/god HUD, Order/Action buttons - which now lives
-// in dom/overlay/GameOverlay.tsx rather than being drawn here, driven by
+// Team/god HUD, Order/Action buttons - which now lives in dom/overlay/
+// GameOverlay.tsx rather than being drawn here, driven by
 // real MaskedState computed below and threaded through
 // dom/overlay/gameOverlayStore.ts. Only the Redistribution log content is
 // still stubbed.
@@ -140,7 +140,36 @@ const RIGHT_BOX_X = WIDTH - 58;
 // 2026-09-10 live-asset-layout-corrections brief's "move the hand
 // downward only as necessary; do not resize cards" instruction. Cards
 // themselves (CARD_DIMS_STANDARD) are untouched.
-const FAN_BASELINE_Y = 662;
+//
+// Nudged down again, 662 -> 670 (2026-09-10 nameplate-glow-lead-tag-
+// cleanup task's "lower the fan further"), but only by what the
+// available vertical budget actually allows once the other changes in
+// that same task are accounted for - this is a genuinely tight fit, not
+// a free choice:
+//   - The local nameplate directly above the hint panel grew taller
+//     (Team symbols now match the Center HUD's own 56x56, up from
+//     36x36), pushing the hint panel's own top down (GameOverlay.tsx's
+//     REQUIRED_SUIT_BANNER_TOP, 590 -> 596).
+//   - The bottom action button grew 50% larger in the same task
+//     (GameOverlay.tsx's tune.actionButtonWidth/Height, 177x78 ->
+//     266x117), which - grown in place at its old bottom anchor - would
+//     have pushed its own top edge 39px further up the screen, leaving
+//     no room at all for a full 114px-tall card between it and the hint
+//     panel above. Reclaimed most of that room by lowering the whole
+//     bottom row's own anchor instead (GameOverlay.tsx's
+//     BOTTOM_ROW_BOTTOM, 54 -> 16, by explicit user direction after
+//     flagging this as a real space conflict rather than guessing a
+//     compromise).
+//   - Net result: the action button's top edge still ends up 1px higher
+//     than it was before this task (711 vs the old 712) - close to a
+//     wash. A first pass at 670 (662 + 8) left generous clearance below
+//     (confirmed via a real screenshot) but almost none above, against
+//     the hint panel's own bottom edge - nudged to 674 to borrow a
+//     little of that spare room and even out both gaps, still comfortably
+//     clear of the button. Verified via a real screenshot with a full
+//     hand showing clean separation from both the hint panel above and
+//     the action button below.
+const FAN_BASELINE_Y = 674;
 
 const FAN_CONFIG: FanConfig = {
   perCardStepDeg: tune.handFanPerCardStepDeg,
