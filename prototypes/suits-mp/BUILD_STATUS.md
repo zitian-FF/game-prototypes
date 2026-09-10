@@ -1,252 +1,251 @@
 ## Current milestone
 
-Implemented the 2026-09-10 Live Asset Layout Corrections brief in full:
-runtime sizing/positioning/alignment fixes across the Center HUD, face-
-down cards, remote/local nameplates, the contextual hint panel, and the
-bottom action button. No source artwork, gameplay logic, or anything
-outside the brief's explicit scope was touched.
+Removed a real CSS artifact from the local nameplate, permanently deleted
+the redundant standalone "Lead Player" tag, and closed out four
+remaining sizing/position issues (Team compartment symbol size, action
+button size, hand-fan position, contextual-hint clearance) - including
+a genuine layout-budget conflict between two of those asks that
+required user input mid-task rather than a guessed compromise.
 
-## Pre-flight: R2 asset re-verification
+## Part 1: Local nameplate glow artifact - found and removed
 
-Per the task's own instruction, re-verified the prior task's
-`card_backdrop_nyarlathotep.png` corruption blocker was genuinely
-resolved on R2 before starting - fresh fetch, not cached:
+Confirmed via a real screenshot (not a cache/stale-load artifact): a
+visibly lighter rectangular patch sat behind the local nameplate's
+right-side Team compartment.
 
-- Cleared `.cache/suits-mp.etag` and deleted `assets-src/`/`public/
-  prototypes/suits-mp/assets/` entirely, then re-ran `npm run
-  fetch:assets suits-mp` from clean state.
-- Confirmed the fetched `card_backdrop_nyarlathotep.png` hash-matches the
-  already-verified fix (SHA-256 `12140ae9...`), has a valid `IEND`
-  chunk, and `npm run pack:assets suits-mp` processes all 36 files
-  cleanly. No regression - this file isn't touched by this task's own
-  changes.
+**Investigation**: Walked the entire DOM subtree under `[data-ui="local-
+nameplate"]` via live `getComputedStyle()` - every single descendant
+element had `backgroundColor: transparent` and `boxShadow: none`; only
+the *outer* nameplate `<div>` itself had anything painted: `boxShadow:
+0 0 30px rgba(196, 156, 66, 0.22)`. Confirmed this was the actual cause
+(not a coincidence) via a real A/B screenshot - removing just that one
+`boxShadow` line and re-rendering made the patch disappear completely,
+with the board's normal dark texture showing through cleanly in its
+place.
 
-## Findings per brief item
+**Root cause**: the outer nameplate `<div>` has no `border-radius`, so
+its `box-shadow` follows the div's own plain rectangular border box
+rather than the carved plate art's real beveled/octagonal-notched
+silhouette (confirmed against the source `ui_player_nameplate.png` -
+its actual visible plate shape has cut corners, but the CSS box behind
+it is a plain rectangle). The shadow read as a flat glowing rectangle
+bleeding onto the board background on every side, not a soft ambient
+highlight - most visible over the right compartment simply because that
+side of the board texture is plainer/darker, giving the added glow more
+contrast to stand out against.
 
-Investigated all 7 numbered items against the real running app (pixel
-measurement + live DOM/`getBoundingClientRect()` inspection, not just
-reading the code) before changing anything. Two items were already
-correct; five needed real fixes.
+**Fix**: removed the `boxShadow` declaration entirely, per the task's
+explicit "find why it's visible and eliminate the actual cause" (not
+"make it blend in" via a color/opacity tweak). Nothing else in this
+file's local/remote nameplates uses an outer glow, and the plate art
+itself already carries all the visual weight it needs - this wasn't a
+design element worth preserving in a reshaped form.
 
-### 1. Center HUD position - already correct, no change
+## Part 2: Standalone "Lead Player" tag - deleted entirely
 
-`ui/renderGameView.ts`'s `drawTabletop()` already anchors the
-background's real sigil center (measured fresh off the current
-`background_tabletop_stone.png`: bbox mid at 49.91%/47.40% of the
-image, matching the code's existing `TABLETOP_SIGIL_ANCHOR` constant
-exactly) to the same `(CENTER_X, CLUSTER_CENTER_Y)` point the DOM
-Center HUD (`dom/overlay/GameOverlay.tsx`'s `center-hud`) is pinned to.
-Verified by overlaying a crosshair at the HUD's own measured
-`getBoundingClientRect()` center on real screenshots in both Play Card
-and Select Delegate ("Redistribution") phases - the background's
-decorative ring/glyph pattern is visually centered on that same point
-in both. No code change made - this was likely already fixed by a
-change the brief predates, or the background art referenced by the
-original report has since been corrected.
+Removed `data-ui="trick-starter-tag"` (the `isStarter && <div>...Lead
+Player</div>` block), the `isStarter` local variable that fed only that
+block, and updated three stale comments elsewhere that still described
+it as present (`ui/renderGameView.ts`'s file-header list,
+`gameOverlayStore.ts`'s `currentTurnSeat` doc comment, and
+`GameOverlay.tsx`'s own "LEAD label ... not a standalone Lead Player
+badge, which stays deliberately absent from this screen" comment - that
+claim predated this fix and was actually false until now).
 
-### 2. Center HUD recess symbols - fixed
+**What's preserved**: `starterSeat` itself (the prop, `gameOverlayStore.
+ts` field, and `computeGameOverlayHudState`'s computation in `ui/
+renderGameView.ts`) is untouched - it's still load-bearing for the
+Center HUD bezel's own seat-relative rotation (`GameOverlay.tsx`'s
+`starterIndex`/`suitIndex`/`suitDeg`). Only the separate, redundant
+per-seat text tag is gone; the wheel's rotation-to-seat behavior and its
+`LEAD` label are unaffected.
 
-The four `deity_symbol_*.png` badges were oversized relative to their
-recess: measuring the actual rendered badge (its own dark backplate
-fill, not the brighter glow effect) against the bezel's real recess
-opening (~0.273 of the bezel's own width/height, confirmed by a
-brightness-profile scan) showed the badge at the prior task's `0.37`
-size fraction landing close to ~88% of the recess diameter, closer to
-crowding the ring than sitting comfortably inside it. Reduced to
-`suitCycleSymbolSizeFraction: 0.335` (from `0.37`) - derived from the
-target 75-80% band against the limiting (largest) per-Deity content-
-fill fraction (0.681, Cthulhu/Nyarlathotep's own canvas height), then
-nudged up slightly after a live screenshot measurement showed the
-first-pass value landing a touch under that band. Centering was already
-correct (each symbol master's own visible content is centered within
-its own canvas, confirmed via bounding-box measurement) - no separate
-centering fix was needed.
+**Verified on every seat, not just local**: real Playwright captures
+with the local player leading (screenshot 1) and with a remote seat
+(Player 3, forced via `leaderId`) leading (screenshot 2) - both confirm
+`document.querySelectorAll('[data-ui="trick-starter-tag"]').length ===
+0` and no "Lead Player" text anywhere in `document.body.innerText`.
 
-### 3. Face-down card size - already correct, no change
+## Part 3: Remaining sizing/position fixes
 
-`ui/cardComponent.ts`'s `drawCard()` already draws `card_back.png` at
-the exact same `dims` (`CARD_DIMS_STANDARD`) every face-up played card
-uses, via the same call sites (`drawCardRow`/`animateCardPlayIntoPlayArea`
-in `ui/renderGameView.ts`). Verified with a real forced off-suit
-facedown play alongside a real face-up played card in the same
-screenshot - both render at the same width/height/silhouette. This was
-already fixed by the 2026-09-10 Player UI Asset Wave's own `card_back.
-png` wiring; no change needed here.
+### 3.1 Team compartment symbols now match the Center HUD's own symbols exactly
 
-### 4. Remote player nameplates - fixed
+Measured both live via `getBoundingClientRect()` rather than assuming:
+the Center HUD's own per-symbol anchor box (`[data-suit]`) renders at
+**56.265625 x 56.265625px** (`HUD_SIZE(168) * tune.
+suitCycleSymbolSizeFraction(0.335)`). Set `tune.localTeamSymbolSize` to
+that same value (`56.27`) - re-measured after the change and confirmed
+both now render at the identical `56.265625 x 56.265625px`.
 
-The three remote seat tags were previously sized independently by
-width alone (94-120px) with a fixed 34px height, ignoring the real
-`ui_remote_player_nameplate_*.webp` source aspect ratio (measured
-fresh: exactly 1774:887 = 2:1 across all four states) - squashing the
-carved plate into an illegible sliver. Now one uniform
-`tune.remoteNameplateWidth` (96px) for all three seats, with height
-derived from that same real 2:1 ratio (48px) rather than a second
-independent constant. Width couldn't grow much further at left/right -
-anchored 10px from the screen edge with the Center HUD's own box
-starting at x=111, 96px leaves only a ~5px clearance - confirming the
-brief's own "grow height, not width" framing was the right fix.
-Confirmed the button's own box (now `height` instead of the old
-`minHeight`) still exactly matches the visible plate, so the hit area
-stays exact.
+**Fit check, not assumed**: the right compartment's own box is only
+~120px wide, and two 56px symbols plus an 8px gap need ~120.5px -
+looked like it might not fit. Rather than guess a smaller compromise
+size, implemented the exact match and measured the *real* rendered
+result: the symbol row lands at `x: 204.78-325.31` against the
+compartment's own `x: ~205-324.9` - a sub-pixel (~0.3px) overflow,
+confirmed via a real screenshot to be completely invisible (no clipping
+or crowding). The outer plate grew from 69px to 89.27px tall to
+accommodate the bigger symbols (flex `alignItems: stretch` on its own
+`minHeight: 64` box) - this is a real, visible, and intentional side
+effect, not a bug (see 3.4 below for the knock-on spacing fix it
+required).
 
-### 5. Local player and Team nameplate - fixed
+**Caveat for future tuning**: `tune.json` is static data, so
+`localTeamSymbolSize` and `suitCycleSymbolSizeFraction * HUD_SIZE`
+aren't formula-linked - if `suitCycleSymbolSizeFraction` is tweaked
+later (e.g. live via `?debug=1`), `localTeamSymbolSize` won't
+automatically follow and would need a matching manual update to stay
+in sync. Flagging this rather than silently coupling them, since the
+task named `localTeamSymbolSize` as an existing tune key to reuse
+rather than restructuring it into a derived value.
 
-Increased both Team Deity symbols from a fixed 18px to
-`tune.localTeamSymbolSize` (36px, ~2x), and grew the outer plate's
-`minHeight` from 56 to 64px so the bigger symbols fit cleanly without
-overflowing the compartment. Removed the teammate's "Kin" label
-entirely (`teammateGodChip.label` is now `''` at its source in
-`computeGameOverlayHudState`, `ui/renderGameView.ts`) - this reconciles
-the prior task's own interim choice (documented as an open question in
-that task's BUILD_STATUS.md, pending exactly this clarification): the
-local player's own "YOU" marker is unaffected. A fixed-height label
-slot is still reserved under both icons regardless, so the two stay
-vertically aligned even though only one now shows text. Which remote
-seat holds the teammate Deity is still never revealed - this
-compartment never showed a seat/player identity to begin with.
+### 3.2 Action button enlarged a further 50%
 
-### 6. Contextual hint panel - fixed
+`tune.actionButtonWidth`/`Height`: 177x78 -> **266x117** (both axes
+scaled by the same 1.5x factor, so the aspect ratio is unchanged from
+the prior pass - already "close to native" per that pass's own
+decision, and uniform scaling can't move it further from or closer to
+that). Text remains flex-centered within the button's own box (bound to
+the asset's real bounds, not procedural coordinates), so both the
+short label and the long two-line "Delegate to Player 3" / "Commit the
+chosen card" case stay fully inside the visible slab with no overflow -
+confirmed via a real screenshot of that exact long-text state.
 
-Was a full-width bar (390 - 2×14 = 362px) crowding the space above the
-hand. Now `tune.contextualHintWidth` (226px, ~58% of the 390px
-reference viewport) horizontally centered, `tune.contextualHintHeight`
-(48px, within the requested 45-50px band). Shortened "Required Suit" to
-"Suit" so the longest canonical god name (Nyarlathotep, 12 characters)
-still fits alongside the icon and value text at the narrower width -
-confirmed live. **Follow-on fix required**: the panel's height growth
-(34px -> 48px) pushed its bottom edge down into the hand fan's own
-top edge - caught via a real screenshot, not assumed away. Fixed by
-shifting `ui/renderGameView.ts`'s `FAN_BASELINE_Y` down by the same 14px
-the panel grew (648 -> 662), per the brief's own "move the hand
-downward only as necessary; do not resize cards" - `CARD_DIMS_STANDARD`
-itself is untouched. Verified the hand's new position also still clears
-the (now taller) action button below it.
+### Real conflict found: enlarged button vs. "lower the fan further"
 
-### 7. Bottom action button - fixed
+Growing the action button in place (same `BOTTOM_ROW_BOTTOM` anchor)
+pushed its own top edge 39px further up the screen (from y=712 to
+y=673) - directly into the same vertical band the hand fan needed, and
+with no room left for a full 114px-tall card between it and the
+contextual hint panel above regardless of where the fan's own baseline
+sat. This wasn't a "nudge a constant" situation, so per this task's own
+"report the constraint rather than guessing a compromise" instruction
+(applied here even though it was stated for 3.1, since the same
+principle covers any conflict like this), stopped and asked the user
+directly rather than picking a resolution unilaterally. **User's
+choice: move the whole bottom row down** (reduce
+`BOTTOM_ROW_BOTTOM`), accepting that this also repositions Menu/Sort/
+Log.
 
-Grown from 154x58 to `tune.actionButtonWidth`/`actionButtonHeight`
-(177x78 - ~15% wider, ~35% taller) so two-line label+hint text (e.g.
-"Delegate to Player 2" / "Commit the chosen card") no longer overflows
-past the visible slab art's own edges - confirmed live with exactly
-that text in the Select Delegate phase. Text layout was already flex-
-centered within the button's own box (bound to the asset's real bounds,
-not separate procedural coordinates), so it re-centered automatically
-at the new size with no layout math to update. State selection (waiting/
-disabled/ready/pressed) is untouched.
+Implemented: `BOTTOM_ROW_BOTTOM` 54 -> **16**, reclaiming most of the
+button's growth (new button top: y=711, just 1px higher than the
+original pre-task y=712). `REQUIRED_SUIT_BANNER_TOP` 590 -> **596** to
+clear the taller local nameplate from 3.1 (see 3.4). This freed enough
+room for `FAN_BASELINE_Y` to move from 662 to **674** (662 -> 670 in a
+first pass, confirmed via a real screenshot to leave generous room
+below but almost none above; nudged to 674 to even out both gaps) - a
+genuine, if modest, "further lower" within the space this reclaiming
+actually created, verified clean at both boundaries (see 3.4).
+
+### 3.3 Hand fan lowered
+
+`ui/renderGameView.ts`'s `FAN_BASELINE_Y`: 662 -> **674** (see above for
+the full reasoning chain - this number is a direct consequence of the
+3.2 conflict resolution, not an independent free choice).
+
+### 3.4 Contextual hint panel clearance - re-verified with fresh screenshots
+
+- **Above** (vs. the now-taller local nameplate): nameplate bottom
+  (589.27, at `top: 501` + `height: 89.27`) vs. hint panel top (`596`,
+  up from 590) - a clean ~7px gap, confirmed via a real screenshot (no
+  more sub-pixel overlap).
+- **Below** (vs. the hand fan): hint panel bottom (`596 + 48 = 644`) vs.
+  the fan's own topmost card edges at `FAN_BASELINE_Y = 674` - confirmed
+  via a real screenshot showing a clean, real gap (not just "not
+  technically overlapping").
+- **Fan vs. action button**: confirmed via a real screenshot showing a
+  clean, visible gap between the lowest card edges and the button's own
+  top edge (`y = 711`).
+
+## Final measured bounds (all via live `getBoundingClientRect()`)
+
+| Element | Bounds |
+|---|---|
+| Center HUD symbol (`[data-suit]`) | 56.27 x 56.27 |
+| Team compartment symbol (`[data-ui="god-chip"] > div`) | 56.27 x 56.27 (exact match) |
+| Local nameplate | x:65, y:501, w:260, h:89.27 |
+| Local nameplate `boxShadow` | `none` (was `0 0 30px rgba(196,156,66,0.22)`) |
+| Contextual hint panel | x:82, y:596, w:226, h:48 |
+| Action button | x:62, y:711, w:266, h:117 |
+| `trick-starter-tag` elements (any seat) | 0 |
+| `BOTTOM_ROW_BOTTOM` (Menu/Sort/Log/Action shared anchor) | 16 (was 54) |
+| `FAN_BASELINE_Y` | 674 (was 662) |
 
 ## How this was verified
 
-Real gameplay state throughout, not fabricated component data - temporary
-`ForcedDeal`/`debugPlayCard`/`debugSelectDelegate`/`debugState`/
-`debugMasked`/`pauseBots` debug hooks in `HostGameScene.ts`/`main.ts`,
-added for this session and fully reverted before finishing (`git diff
---stat` against `main` for both files is empty). Bot auto-play was
-paused (`debugBotsPaused`) during forced scenarios so a scripted play
-sequence can't race against the existing bot-driving loop - discovered
-this race first-hand when chaining multiple forced deals in one page
-session produced a inconsistent hybrid render (new god assignment,
-stale hand); switched to one fresh page load per scenario instead of
-chasing the timing further, since re-loading is simpler and more robust
-than trying to out-wait an unrelated bot-AI interaction this task's own
-debug hooks introduced, not a product bug (confirmed: a totally
-unforced real boot with no debug hooks invoked never reproduces it).
+Real gameplay state throughout - temporary `ForcedDeal`/`debugPlayCard`/
+`pauseBots` debug hooks in `HostGameScene.ts`/`main.ts`, added for this
+session and fully reverted before finishing (`git diff --stat` against
+`main` for both files is empty).
 
-- `npm run typecheck` / `npm run build` - clean, at each step of the
-  implementation and again after every debug hook was reverted.
-- All 7 of Section 9's required captures, via real engine state:
-  1. **Play Card with three face-up played cards** - a real trick with
-     3 of 4 seats played face-up, 4th (local) still to act.
-  2. **A state containing a face-down card** - a real forced off-suit
-     play from a remote seat (not local, so it's genuinely masked
-     facedown on the local client, matching the real masking rule),
-     alongside a normal face-up local play in the same trick.
-  3. **Redistribution with remote delegation states visible** - a real
-     Double-card win (the only path to `chooseDelegate`, confirmed via
-     `rules/engine.ts` - a single-card win self-redistributes with no
-     delegate step) showing all three remote seats in the real
-     `eligible` state.
-  4. **A selected remote delegation target** - a real Playwright click
-     on the eligible seat tag, confirming `selected` state and the
-     Action button updating to "Delegate to Player 3".
-  5. **At least two Lead Players and lead suits** - Yog-Sothoth led by
-     Player 2, Cthulhu led by the local player, and Cthulhu led by
-     Player 2 again in the Double-win scenario (3 distinct
-     leader/suit pairs across the captures above).
-  6. **Local Chaos and Cosmos Team states** - Team Chaos (local
-     assigned Cthulhu) in captures 1-2, Team Cosmos (local assigned
-     Yog-Sothoth) in captures 3-4.
-  7. **Hint text containing "Nyarlathotep"** - the contextual hint
-     panel showing "Suit  Nyarlathotep" at its new, narrower width with
-     no truncation, in captures 1-2.
-- **Report**, per Section 9:
-  - Before/after screenshots: captured for every item above (before the
-    Item 2/4/5/6/7 fixes, and after all seven), plus a final pass after
-    the Item 6 hand-fan follow-on fix.
-  - Final rendered bounds (via live `getBoundingClientRect()`, not
-    estimated): Center HUD 168x168 at (111, 221); recess symbols'
-    visible backplate now inside the recess ring, confirmed via pixel
-    overlay against the measured recess-opening circle; remote
-    nameplates 96x48 (all three, uniform); local nameplate 260x64 with
-    36x36 Team symbols; contextual hint 226x48 centered at x=82-308;
-    action button 177x78 centered at x=106.5-283.5.
-  - Confirmed the Center HUD does not shift between Play Card, Select
-    Delegate, and Redistribution-adjacent phases (same crosshair-vs-
-    sigil check as item 1, above).
-  - Confirmed all four HUD symbols stay centered and unclipped through
-    real bezel rotation across the 3 distinct lead-suit scenarios
-    tested above.
-  - Confirmed no unrelated behavior or layout changed: Menu/Sort/Log
-    buttons, hand fan angles/ordering/card sizing, bezel rotation
-    mechanism, counter-rotation, Lead Suit/`LEAD` treatment, and gameplay
-    rules are all untouched - only `dom/overlay/GameOverlay.tsx`,
-    `ui/renderGameView.ts` (the `FAN_BASELINE_Y` follow-on fix and the
-    `teammateGodChip.label` source change), and `tune.json` changed.
-- **Real, unforced boot** into Single Player, trick 1 (local genuinely
-  holding and leading the forced Yog-Sothoth-2 opener - untouched real
-  gameplay rule): confirmed the same fixes read correctly with no
-  forced state, hand fan clears the hint panel and action button
-  cleanly, and the console is clean (only the pre-existing sandboxed
-  `net::ERR_CONNECTION_RESET`/404 noise present in this environment).
-  Confirmed the temporary debug hooks are fully absent from this real
-  boot (`window.__forceDeal`/`__playCard`/`__selectDelegate`/
-  `__debugState`/`__debugMasked`/`__pauseBots`/`__container` all
-  `undefined`).
-- Confirmed all 7 new `tune.json` values (`suitCycleSymbolSizeFraction`,
-  `localTeamSymbolSize`, `remoteNameplateWidth`, `contextualHintWidth`,
-  `contextualHintHeight`, `actionButtonWidth`, `actionButtonHeight`) are
-  live-editable under `?debug=1` via Tweakpane's existing generic
-  "iterate every `tune.json` key" wiring - no new panel code needed.
+- `npm run typecheck` / `npm run build` - clean, at each step and again
+  after every debug hook was reverted.
+- Real screenshots covering:
+  1. Local player leading trick 1 (real, unforced) - no glow, no Lead
+     Player tag, correct Team symbol size.
+  2. A remote seat (Player 3) leading a forced trick - confirms the
+     Lead Player tag removal isn't local-seat-specific.
+  3. A real Double-card win reaching `chooseDelegate`, before picking a
+     delegate - long "Select a delegate above" action-button text,
+     fully contained.
+  4. The same flow after a real Playwright click selects a delegate -
+     "Delegate to Player 3" / "Commit the chosen card" two-line text,
+     fully contained in the enlarged button.
+- Live DOM measurement (`getComputedStyle`/`getBoundingClientRect`) in
+  every scenario above confirming: zero `trick-starter-tag` elements,
+  no "Lead Player" text anywhere in the page, `boxShadow: none` on the
+  local nameplate, and the Center HUD/Team-compartment symbol sizes
+  matching exactly.
+- **Real, unforced boot** into Single Player, trick 1: confirmed all of
+  the above reads correctly with no forced state, and the console is
+  clean (only the pre-existing sandboxed `net::ERR_CONNECTION_RESET`/404
+  noise present in this environment). Confirmed the temporary debug
+  hooks are fully absent from this real boot (`window.__forceDeal`/
+  `__playCard`/`__pauseBots` all `undefined`).
+- Confirmed all `tune.json` values touched this task
+  (`suitCycleSymbolSizeFraction`, `localTeamSymbolSize`,
+  `actionButtonWidth`, `actionButtonHeight`) remain live-editable under
+  `?debug=1` via Tweakpane's existing generic wiring - no new panel code
+  needed.
 
 ## Key technical decisions
 
-- Kept items 1 and 3 as verified-no-change rather than making a
-  defensive edit "just in case" - both were provably already correct
-  (measured against the real current assets, not just re-reading old
-  code comments), and editing already-correct code risks a real
-  regression for no benefit.
-- Sized the recess symbols against the *measured* recess opening and
-  each symbol's own *measured* content-fill fraction, not a guess -
-  same pixel-measurement methodology the prior Suit Cycle sizing task
-  established, just re-targeted at this brief's explicit 75-80% band
-  instead of "reach the ring with a small margin."
-- `FAN_BASELINE_Y`'s 14px shift is a deliberate, minimal fix scoped
-  exactly to the hint panel's own height growth (34px -> 48px) - not a
-  broader hand-fan repositioning, per the brief's own "move the hand
-  downward only as necessary."
-- Removed `teammateGodChip.label` at its source (`renderGameView.ts`)
-  rather than special-casing it away only in the render - keeps
-  `GameOverlay.tsx` rendering both chips identically off one shared
-  data shape, with no `chip === yourGodChip` branch needed.
+- Diagnosed the glow via a real A/B screenshot (shadow present vs.
+  removed) rather than trusting a plausible-sounding theory from
+  reading the CSS alone - an earlier hypothesis (uniform box-shadow
+  bleed, more visible against a plainer background) turned out to be
+  exactly right, but only the A/B test confirmed it rather than a
+  second, equally plausible theory (background texture variance).
+- Kept `starterSeat`'s own plumbing entirely intact when removing the
+  tag it used to feed - conflating "this prop only exists for the tag"
+  with "this prop only has one consumer" would have broken the Center
+  HUD's bezel rotation, which reads the same value.
+- Escalated the button/fan space conflict to the user rather than
+  picking a resolution myself (shrinking the button back down, silently
+  ignoring "lower the fan", or letting cards visibly clip behind the
+  button) - the four resolutions were all real, mutually exclusive
+  design trade-offs a human should decide, not something to guess
+  around under a "measure, don't guess" directive that explicitly
+  named this exact kind of situation.
+- Chose `BOTTOM_ROW_BOTTOM: 16` (not lower) even though the user's
+  chosen direction could in principle go closer to `0` - kept a small
+  real margin from the literal screen edge for the Sort/Log buttons'
+  own tap targets and general polish, since nothing in the request
+  asked for them flush against the edge.
 
 ## Open questions
 
-None raised to the user this session - every ambiguity (the exact
-`suitCycleSymbolSizeFraction`/nameplate dimensions/hint panel width,
-whether items 1/3 needed changes at all) was resolved by direct pixel
-measurement and live verification rather than guessing, and the one
-explicit reconciliation the brief flagged (`Kin` label removal) was
-already a direct instruction, not an open choice.
+- **`localTeamSymbolSize` vs. `suitCycleSymbolSizeFraction`**: these two
+  `tune.json` values must currently be kept in sync by hand if either
+  is ever tuned again (see 3.1's caveat above) - flagging since
+  `BRIEF.md` doesn't currently document this coupling anywhere a future
+  session would find it before making that mistake.
+- **The button/fan space budget is now fully spent**: with
+  `BOTTOM_ROW_BOTTOM` at 16 and the action button at 117 tall, there is
+  very little further room to grow either the action button or the
+  local nameplate again without re-opening the same conflict - worth
+  flagging in `BRIEF.md` if either is expected to grow further in a
+  future pass.
 
 ## Known issues
 
@@ -258,28 +257,16 @@ the trick-result dwell hold, the card-play arc animation, the Awakened
 reveal, and the end-of-trick collect animation all still want a real-
 device/live-deploy glance. suits-mp still has no permanent
 `?debug=1`-gated `ForcedDeal` hook (unlike the sibling `suits`
-prototype's `rules/debugScenarios.ts`) - this is now the ninth task in
-this feature area to build and tear down its own one-off version, this
-time also adding matching one-off `debugSelectDelegate`/`debugState`/
-`debugMasked`/`pauseBots` hooks to chase down a chooseDelegate-phase
-requirement and a cross-scenario test-harness race.
-
-**New from this task (test-harness note, not a product bug)**: chaining
-multiple `debugForceDeal` calls within one page session raced against
-the existing `driveBotsIfNeeded` bot-driving loop, producing an
-inconsistent hybrid render during verification scripting. Confirmed
-this never occurs in real, unforced gameplay - documented here only so
-a future one-off debug harness in this area knows to either pause bots
-before the *first* forced deal (not just before the first play) or use
-one fresh page load per scenario, as this task ended up doing.
+prototype's `rules/debugScenarios.ts`) - this is now the tenth task in
+this feature area to build and tear down its own one-off version.
 
 ## Next proposed step
 
 A real-device/live-deploy pass covering everything listed under "Known
 issues" remains the standing next open loop. For this task specifically,
-the seven new `tune.json` values are all first-pass measured/derived
-values, live-tunable under `?debug=1` - worth a quick look on a real
-phone alongside the rest of the recent asset work, since several (the
-remote nameplate's tight 5px HUD clearance in particular) were sized
-against exact desktop-viewport pixel measurements that are worth
-confirming still read well at real mobile pixel density.
+the newly-tight `BOTTOM_ROW_BOTTOM`/`FAN_BASELINE_Y`/action-button
+budget (see "Open questions" above) is worth a real-phone check - all
+of today's measurements were taken at the reference 390px desktop
+viewport, and margins this thin (single-digit pixels in a few spots)
+are the kind of thing that can read differently at real mobile pixel
+density.

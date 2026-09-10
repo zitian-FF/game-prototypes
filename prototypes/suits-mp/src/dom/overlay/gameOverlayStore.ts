@@ -54,9 +54,13 @@ export interface GameOverlayUiState {
   seatLabels: Record<SeatPosition, string>;
   // Null when indeterminate (e.g. between tricks, or an opponent is about
   // to lead but hasn't committed yet) - GameOverlay freezes the turn
-  // wheel/Suit Cycle HUD/Trick Starter tag at their last real value
-  // rather than snapping to a default in that case.
+  // wheel/Suit Cycle HUD at their last real value rather than snapping to
+  // a default in that case.
   currentTurnSeat: SeatPosition | null;
+  // Drives the Suit Cycle HUD bezel's own seat-relative rotation only
+  // (GameOverlay.tsx's `starterIndex`/`suitDeg`) - there is no longer a
+  // separate standalone "Lead Player" tag rendered per seat (removed; see
+  // GameOverlay.tsx's "LEAD label" comment for why).
   starterSeat: SeatPosition | null;
   leadGodIndex: number | null;
   teamName: string;

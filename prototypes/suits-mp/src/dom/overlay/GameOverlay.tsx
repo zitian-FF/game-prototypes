@@ -126,14 +126,24 @@ const SIDE_TAG_TOP = 358;
 const BOTTOM_TAG_TOP = 501;
 // Shared bottom anchor for the three-part bottom row (Set / Action / Log) -
 // see BUILD_STATUS.md for why these three, previously scattered (one of
-// them canvas-drawn), are now one coordinated DOM row.
-const BOTTOM_ROW_BOTTOM = 54;
+// them canvas-drawn), are now one coordinated DOM row. Reduced from 54 (by
+// explicit user direction - 2026-09-10 nameplate-glow-lead-tag-cleanup
+// task) to reclaim vertical room the action button's own 50% enlargement
+// (177x78 -> 266x117) ate into: growing the button in place at the old
+// anchor pushed its top edge 39px further up the screen, leaving no room
+// for a full-height hand-fan card between it and the contextual hint
+// panel above (see ui/renderGameView.ts's FAN_BASELINE_Y comment for the
+// full budget this and that value were jointly re-tuned against).
+const BOTTOM_ROW_BOTTOM = 16;
 // The Required Suit banner sits between the player cluster and the hand
 // fan - the player-facing prompt for what must be followed this trick, per
 // this task's board requirements (it does not duplicate the suit symbol
 // already shown by the Suit Cycle HUD ring above it - this is the only
-// spot that also names the suit in text).
-const REQUIRED_SUIT_BANNER_TOP = 590;
+// spot that also names the suit in text). Nudged down from 590 (2026-09-10
+// nameplate-glow-lead-tag-cleanup task) - the local nameplate directly
+// above grew taller (56x56 Team symbols, up from 36x36) and its own
+// bottom edge now lands past the old 590, which would otherwise overlap.
+const REQUIRED_SUIT_BANNER_TOP = 596;
 // Center HUD geometry (asset-based replacement of the old procedural
 // rotating-rings HUD - see BUILD_STATUS.md). One carved-stone bezel
 // (ui_suit_cycle_bezel.png, four circular recesses + open center) plus one
@@ -406,7 +416,20 @@ export function GameOverlay({
                       the symbol it labels. `Lead Suit` remains the
                       canonical gameplay term; this is only the compact HUD
                       label - not a standalone Lead Player badge, which
-                      stays deliberately absent from this screen. */}
+                      stays deliberately absent from this screen. That was
+                      true of the original Center HUD spec's intent from
+                      the start, but a separate per-seat "Lead Player" text
+                      tag (`data-ui="trick-starter-tag"`) had lingered
+                      below the seat it belonged to regardless - it
+                      predated this spec and was never actually covered by
+                      it. Removed entirely (2026-09-10 nameplate-glow-lead-
+                      tag-cleanup task): the wheel's own rotation-to-seat
+                      behavior plus this LEAD label, and the played card's
+                      own position in a trick, already identify who led -
+                      the redundant tag added no information a Center HUD
+                      glance doesn't already give. `starterSeat` (this
+                      recess's own rotation math, above) is unaffected -
+                      only the standalone tag is gone. */}
                   {isLit && (
                     <div
                       data-ui="lead-label"
@@ -459,9 +482,8 @@ export function GameOverlay({
         />
       </div>
 
-      {/* ===== Player name displays + Trick Starter tags ===== */}
+      {/* ===== Player name displays ===== */}
       {SEAT_ORDER.map((seat) => {
-        const isStarter = seat === starterSeat;
         const isLocal = seat === 'bottom';
         const delegate = seatDelegate[seat];
         const tagTop = seat === 'top' ? TOP_TAG_TOP : seat === 'bottom' ? BOTTOM_TAG_TOP : SIDE_TAG_TOP;
@@ -516,6 +538,22 @@ export function GameOverlay({
               // can't delegate to themself), so there's no staged/
               // tappable state to preserve here the way the remote seat
               // tags below need to.
+              //
+              // No boxShadow here - a `0 0 30px rgba(196, 156, 66, 0.22)`
+              // ambient glow used to sit on this div (removed per the
+              // 2026-09-10 nameplate-glow-lead-tag-cleanup task). Confirmed
+              // via a real screenshot A/B (glow present vs. removed) that
+              // it was the actual source of a visibly lighter rectangular
+              // patch behind this plate: with no `border-radius` on this
+              // div, the shadow followed the div's own plain rectangular
+              // border box rather than the carved plate art's real
+              // beveled/notched silhouette, so it read as a flat glowing
+              // rectangle bleeding onto the board background on every
+              // side, not a soft ambient highlight. Not a design element
+              // worth keeping in a reshaped form - nothing else in this
+              // file's local/remote nameplates uses an outer glow, and the
+              // plate art itself already carries all the visual weight it
+              // needs.
               <div
                 data-ui="local-nameplate"
                 style={{
@@ -525,7 +563,6 @@ export function GameOverlay({
                   display: 'flex',
                   alignItems: 'stretch',
                   background: `linear-gradient(180deg, rgba(20, 16, 8, 0.15), rgba(4, 4, 3, 0.3)), url(${nameplateUrl()}) center/100% 100% no-repeat`,
-                  boxShadow: '0 0 30px rgba(196, 156, 66, 0.22)',
                 }}
               >
                 <div style={{ flex: '1.15 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '0 8px' }}>
@@ -688,23 +725,6 @@ export function GameOverlay({
                   </button>
                 );
               })()
-            )}
-            {isStarter && (
-              <div
-                data-ui="trick-starter-tag"
-                style={{
-                  padding: isLocal ? '3px 11px' : '2px 10px',
-                  border: `1px solid rgba(198, 160, 78, ${isLocal ? 0.6 : 0.55})`,
-                  background: `rgba(48, 36, 12, ${isLocal ? 0.65 : 0.6})`,
-                  fontFamily: "'Cormorant Unicase', serif",
-                  fontWeight: 700,
-                  fontSize: isLocal ? 10 : 9,
-                  letterSpacing: '0.16em',
-                  color: `oklch(${isLocal ? 0.87 : 0.85} 0.09 84)`,
-                }}
-              >
-                Lead Player
-              </div>
             )}
           </div>
         );
@@ -907,15 +927,19 @@ export function GameOverlay({
           `disabled` for every other not-yet-actionable case (e.g. "Select
           a card to play" with nothing selected yet).
 
-          Sized via tune.actionButtonWidth/Height (177x78, ~15% wider and
-          ~35% taller than the prior fixed 154x58) per the 2026-09-10 live-
-          asset-layout-corrections brief - the old box was short enough
-          that two-line label+hint text (e.g. "Delegate to Player 2" /
-          "Commit the chosen card") could overflow past the visible slab
-          art's own top/bottom edge. Text stays centered via flex within
-          this same box (bound to the asset's own bounds, not separate
-          procedural coordinates), so it re-centers automatically at the
-          new size with no layout math of its own to update. */}
+          Sized via tune.actionButtonWidth/Height, grown in two passes:
+          154x58 -> 177x78 (~15% wider/~35% taller, 2026-09-10 live-asset-
+          layout-corrections brief - the old box was short enough that
+          two-line label+hint text, e.g. "Delegate to Player 2" / "Commit
+          the chosen card", could overflow past the visible slab art's own
+          top/bottom edge) -> 266x117 (a further 50% up from that, per the
+          2026-09-10 nameplate-glow-lead-tag-cleanup task, keeping the
+          same aspect ratio the prior pass already settled on since
+          scaling both axes by one uniform factor can't change it). Text
+          stays centered via flex within this same box (bound to the
+          asset's own bounds, not separate procedural coordinates), so it
+          re-centers automatically at the new size with no layout math of
+          its own to update. */}
       <button
         type="button"
         data-ui="action-button"

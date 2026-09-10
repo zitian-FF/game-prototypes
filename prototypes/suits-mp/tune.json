@@ -43,10 +43,10 @@
   "cardCollectFadeScale": 0.4,
   "doublePlayOverlapFraction": 0.72,
   "suitCycleSymbolSizeFraction": 0.335,
-  "localTeamSymbolSize": 36,
+  "localTeamSymbolSize": 56.27,
   "remoteNameplateWidth": 96,
   "contextualHintWidth": 226,
   "contextualHintHeight": 48,
-  "actionButtonWidth": 177,
-  "actionButtonHeight": 78
+  "actionButtonWidth": 266,
+  "actionButtonHeight": 117
 }
