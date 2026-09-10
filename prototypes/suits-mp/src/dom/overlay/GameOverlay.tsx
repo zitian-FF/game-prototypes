@@ -909,7 +909,17 @@ export function GameOverlay({
           stays centered via flex within this same box (bound to the
           asset's own bounds, not separate procedural coordinates), so it
           re-centers automatically at the new size with no layout math of
-          its own to update. */}
+          its own to update.
+
+          No enabled-state text glow (removed 2026-09-10 action-glow-
+          awakened-trigger task) - a leftover `textShadow` from before the
+          real state-specific ui_action_slab_*.png art above existed,
+          reading as a stray highlight bleeding around the button now
+          that the slab art itself already communicates enabled/pressed
+          state. The enabled-state text color change stays; only the
+          disabled-state shadow remains, and it's a plain legibility aid
+          (dark backing behind pale, low-contrast text), not a decorative
+          glow. */}
       <button
         type="button"
         data-ui="action-button"
@@ -946,7 +956,7 @@ export function GameOverlay({
             fontSize: 21,
             letterSpacing: '0.06em',
             color: actionEnabled ? 'oklch(0.97 0.04 92)' : 'rgba(150, 176, 174, 0.4)',
-            textShadow: actionEnabled ? '0 0 16px rgba(252, 216, 130, 0.6)' : '0 1px 3px rgba(0, 0, 0, 0.85)',
+            textShadow: actionEnabled ? undefined : '0 1px 3px rgba(0, 0, 0, 0.85)',
           }}
         >
           {actionLabel}
