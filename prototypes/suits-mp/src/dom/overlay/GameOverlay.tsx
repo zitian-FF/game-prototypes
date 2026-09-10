@@ -7,7 +7,17 @@ import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
 import { GOD_DISPLAY_NAME } from '../../rules/cards';
 import type { God } from '../../rules/types';
-import { HEX_CLIP_PATH, currentTurnPointerUrl, nameplateUrl, suitCycleBezelUrl, symbolArtUrl } from '../godArtUrl';
+import {
+  HEX_CLIP_PATH,
+  actionSlabStateUrl,
+  currentTurnPointerUrl,
+  nameplateUrl,
+  remoteNameplateUrl,
+  squareControlUrl,
+  suitCycleBezelUrl,
+  symbolArtUrl,
+} from '../godArtUrl';
+import type { ActionSlabState, RemoteNameplateState } from '../godArtUrl';
 import tune from '../../../tune.json';
 
 // Ported from the Claude Design handoff (`Suit of Madness Overlay.dc.html`).
@@ -114,14 +124,6 @@ const CLUSTER_CENTER_Y = 305;
 const TOP_TAG_TOP = 50;
 const SIDE_TAG_TOP = 358;
 const BOTTOM_TAG_TOP = 501;
-// Height of the local ("P3 (You)") name tag box (padding:1 x2 + its
-// minHeight:46 inner) - used to sit the Team HUD flush against its
-// bottom edge with zero gap, per the design's own attached placement.
-const LOCAL_TAG_HEIGHT = 48;
-// Extra room reserved when the local seat is also this trick's starter,
-// so the Team HUD sits below the "Invoker" tag too rather than
-// overlapping it (gap:6 + the tag's own ~3px/11px padding + text).
-const LOCAL_INVOKER_TAG_HEIGHT = 28;
 // Shared bottom anchor for the three-part bottom row (Set / Action / Log) -
 // see BUILD_STATUS.md for why these three, previously scattered (one of
 // them canvas-drawn), are now one coordinated DOM row.
@@ -237,7 +239,28 @@ export function GameOverlay({
   // LEAD label, kept from a prior task per explicit user request
   // (rotation and the glow/label are additive, not alternatives).
   const litGodIndex = useLastKnown(leadGodIndex) ?? 0;
-  const teamHudTop = BOTTOM_TAG_TOP + LOCAL_TAG_HEIGHT + (starterSeat === 'bottom' ? LOCAL_INVOKER_TAG_HEIGHT : 0);
+
+  // Real "currently held down" tracking for the two button families that
+  // now need a genuine `pressed` visual state (2026-09-10 asset handoff):
+  // a remote seat's delegate-selection tag, and the bottom Action button.
+  // Pure presentation bookkeeping - never touches game state - since
+  // "pressed" is a transient pointer/touch concept the game logic
+  // (computeSeatDelegateState/computeActionButtonState in renderGameView.
+  // ts) has no reason to know about; only `tappable`/`staged`/
+  // `actionEnabled` are real game-state facts. Cleared defensively
+  // whenever the previously-pressed seat/button is no longer actionable
+  // (e.g. the phase moved on mid-press) so a stuck press can't linger.
+  const [pressedSeat, setPressedSeat] = useState<SeatPosition | null>(null);
+  useEffect(() => {
+    if (pressedSeat !== null && !seatDelegate[pressedSeat].tappable) setPressedSeat(null);
+  }, [pressedSeat, seatDelegate]);
+  const [actionPressed, setActionPressed] = useState(false);
+  useEffect(() => {
+    if (actionPressed && !actionEnabled) setActionPressed(false);
+  }, [actionPressed, actionEnabled]);
+  // See the Action button's own render-site comment below for the full
+  // rationale behind this specific 4-way mapping.
+  const actionVisualState: ActionSlabState = !actionEnabled ? (actionLabel.startsWith('Waiting') ? 'waiting' : 'disabled') : actionPressed ? 'pressed' : 'ready';
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -412,120 +435,196 @@ export function GameOverlay({
         const isLocal = seat === 'bottom';
         const delegate = seatDelegate[seat];
         const tagTop = seat === 'top' ? TOP_TAG_TOP : seat === 'bottom' ? BOTTOM_TAG_TOP : SIDE_TAG_TOP;
-        const width = isLocal ? 208 : seat === 'top' ? 120 : 94;
+        // The local nameplate is now the two-compartment ui_player_
+        // nameplate.png (name + team/Deity identity merged into one
+        // control - see BUILD_STATUS.md), wider than a plain name tag to
+        // fit its right compartment's team text + two symbol icons.
+        const width = isLocal ? 260 : seat === 'top' ? 120 : 94;
         const horizontal: CSSProperties =
           seat === 'left' ? { left: 10 } : seat === 'right' ? { right: 10 } : { left: CENTER_X - width / 2 };
 
         return (
           <div key={seat} data-ui="seat" data-seat={seat} style={{ position: 'absolute', top: tagTop, width, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isLocal ? 6 : 5, ...horizontal }}>
             {isLocal ? (
+              // Merged local identity nameplate (2026-09-10 asset handoff):
+              // ui_player_nameplate.png is a neutral two-compartment base
+              // with no baked text/symbols - this single control now
+              // covers what used to be two separate DOM blocks (a plain
+              // name tag, plus a lower "Team HUD" panel with its own
+              // procedural background). Left compartment: runtime player
+              // name only, never "(You)" (seatLabels['bottom'] already
+              // omits it - see renderGameView.ts's rawPlayerNameFor).
+              // Right compartment: runtime "TEAM COSMOS"/"TEAM CHAOS" text
+              // plus the two canonical deity_symbol_*.png masters for that
+              // team, with a small "YOU" marker under the local player's
+              // own symbol only (yourGodChip.label - see
+              // computeGameOverlayHudState) - "Kin" is deliberately kept
+              // on the teammate's symbol (teammateGodChip.label,
+              // unchanged) so it still reads as "the other Deity on my
+              // team" rather than an unlabeled second icon, per the GDD's
+              // Information Visibility rule. The local seat is never a
+              // delegate-selection target (a player can't delegate to
+              // themself), so there's no staged/tappable state to
+              // preserve here the way the remote seat tags below need to.
               <div
+                data-ui="local-nameplate"
                 style={{
                   width: '100%',
-                  padding: 1,
+                  minHeight: 56,
                   boxSizing: 'border-box',
-                  background: 'linear-gradient(180deg, rgba(212, 174, 88, 0.75), rgba(120, 92, 34, 0.5))',
-                  clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
-                  boxShadow: '0 0 30px rgba(196, 156, 66, 0.3)',
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  background: `linear-gradient(180deg, rgba(20, 16, 8, 0.15), rgba(4, 4, 3, 0.3)), url(${nameplateUrl()}) center/100% 100% no-repeat`,
+                  boxShadow: '0 0 30px rgba(196, 156, 66, 0.22)',
                 }}
               >
-                <div
-                  style={{
-                    minHeight: 46,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 11,
-                    // Real ui_player_nameplate.png applied here only - the
-                    // local seat is never a delegate-selection target (a
-                    // player can't delegate to themself), so there's no
-                    // staged/not-staged color cue to lose. The other three
-                    // seat tags below keep their teal/gold gradient
-                    // treatment, which does carry that state - see
-                    // BUILD_STATUS.md.
-                    background: `linear-gradient(180deg, rgba(20, 16, 8, 0.15), rgba(4, 4, 3, 0.3)), url(${nameplateUrl()}) center/100% 100% no-repeat`,
-                    clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
-                  }}
-                >
+                <div style={{ flex: '1.15 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '0 8px' }}>
                   <span style={{ color: 'oklch(0.84 0.11 84)', fontSize: 11, textShadow: '0 0 12px rgba(226, 182, 84, 0.8)' }}>✦</span>
-                  <span data-bind="player-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 20, letterSpacing: '0.03em', color: 'oklch(0.95 0.04 90)' }}>
-                    {seatLabels[seat]}
-                  </span>
                   <span
+                    data-bind="player-name"
                     style={{
-                      fontFamily: "'Cormorant Unicase', serif",
-                      fontWeight: 500,
-                      fontSize: 9,
-                      letterSpacing: '0.2em',
-                      color: 'rgba(228, 196, 128, 0.7)',
-                      borderLeft: '1px solid rgba(198, 160, 78, 0.4)',
-                      paddingLeft: 10,
+                      fontFamily: "'IM Fell English SC', serif",
+                      fontSize: 17,
+                      letterSpacing: '0.02em',
+                      color: 'oklch(0.95 0.04 90)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minWidth: 0,
                     }}
                   >
-                    Thee
+                    {seatLabels[seat]}
                   </span>
+                </div>
+                <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '4px 6px' }}>
+                  <span
+                    data-bind="team-name"
+                    style={{
+                      fontFamily: "'Cormorant Unicase', serif",
+                      fontWeight: 600,
+                      fontSize: 8,
+                      letterSpacing: '0.14em',
+                      color: 'oklch(0.88 0.09 88)',
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {teamName}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                    {[yourGodChip, teammateGodChip].map((chip) => {
+                      const motif = chip.god ? GOD_MOTIF[chip.god] : 'circle';
+                      return (
+                        <div key={chip.code} data-ui="god-chip" data-god={chip.code} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                          <div
+                            style={{
+                              width: 18,
+                              height: 18,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              borderRadius: motif === 'circle' ? '50%' : 0,
+                              clipPath: motif === 'hex' ? HEX_CLIP_PATH : undefined,
+                            }}
+                          >
+                            {chip.god && <img src={symbolArtUrl(chip.god)} alt={chip.code} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+                          </div>
+                          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 600, fontSize: 6, letterSpacing: '0.1em', color: 'rgba(252, 226, 164, 0.75)' }}>{chip.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                data-ui="seat-tag"
-                data-tappable={delegate.tappable}
-                onClick={delegate.tappable ? delegate.onPick : undefined}
-                disabled={!delegate.tappable}
-                style={{
-                  width: '100%',
-                  minHeight: 34,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: seat === 'top' ? 7 : 6,
-                  padding: seat === 'top' ? '0 10px' : '0 7px',
-                  boxSizing: 'border-box',
-                  border: '0',
-                  borderTop: `1px solid ${delegate.staged ? 'rgba(198, 160, 78, 0.55)' : 'rgba(120, 190, 178, 0.3)'}`,
-                  borderBottom: `1px solid ${delegate.staged ? 'rgba(198, 160, 78, 0.55)' : 'rgba(120, 190, 178, 0.3)'}`,
-                  background: delegate.staged
-                    ? 'linear-gradient(180deg, rgba(48, 36, 12, 0.86), rgba(20, 14, 5, 0.88))'
-                    : 'linear-gradient(180deg, rgba(10, 34, 36, 0.86), rgba(5, 14, 17, 0.88))',
-                  cursor: delegate.tappable ? 'pointer' : 'default',
-                  font: 'inherit',
-                  // The root overlay wrapper is deliberately click-through
-                  // (`pointerEvents: 'none'` at this file's own top) so
-                  // ordinary board/canvas taps reach the canvas beneath it -
-                  // every other real interactive element here (Sort/Action/
-                  // Menu/Redist-Log buttons) explicitly opts back in with its
-                  // own `pointerEvents: 'auto'`. This button never did, so it
-                  // inherited `none` and was genuinely unclickable by any
-                  // real pointer event even while `data-tappable`/`disabled`
-                  // correctly reported it as ready - confirmed live via
-                  // `document.elementFromPoint` at the button's own center
-                  // resolving to the canvas, not this element. Scoped to
-                  // `delegate.tappable` (rather than always 'auto') so a
-                  // non-tappable seat tag - true prior to the actual
-                  // selectDelegate phase, i.e. the game's usual state - still
-                  // lets ordinary board taps in that area reach the canvas
-                  // underneath, exactly as before this fix.
-                  pointerEvents: delegate.tappable ? 'auto' : 'none',
-                }}
-              >
-                <span style={{ color: 'rgba(120, 200, 186, 0.7)', fontSize: 9 }}>◆</span>
-                <span
-                  data-bind="player-name"
-                  style={{
-                    fontFamily: "'IM Fell English SC', serif",
-                    fontSize: seat === 'top' ? 15 : 14,
-                    letterSpacing: '0.02em',
-                    color: 'oklch(0.90 0.02 100)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    minWidth: 0,
-                  }}
-                >
-                  {seatLabels[seat]}
-                </span>
-              </button>
+              (() => {
+                // Real 4-state remote nameplate art (2026-09-10 asset
+                // handoff), replacing the former procedural teal/gold
+                // staged/not-staged treatment. Priority order top to
+                // bottom: `pressed` is the current, transient touch/
+                // pointer-down feedback and wins over everything else
+                // while the finger/mouse is actually down; `selected` is
+                // this task's own answer for "current confirmed/selected
+                // delegate" - this codebase has no persistent post-commit
+                // "confirmed delegate" interval to show it in (the whole
+                // delegate-picker UI disappears the instant the real
+                // selectDelegate action resolves), so per the handoff's own
+                // "retain the state for the confirmed transition or short
+                // confirmation state" instruction, it's mapped to the local
+                // pre-commit staged pick instead (`staged`) - see
+                // BUILD_STATUS.md; `eligible` is any other tappable target
+                // during selectDelegate; `neutral` is everything else
+                // (delegation not currently active). Every state still
+                // shows no team/Deity/teammate/suit information whatsoever
+                // - only the plain runtime name label, per the GDD's
+                // Information Visibility rule.
+                const visualState: RemoteNameplateState =
+                  delegate.tappable && pressedSeat === seat
+                    ? 'pressed'
+                    : delegate.staged
+                      ? 'selected'
+                      : delegate.tappable
+                        ? 'eligible'
+                        : 'neutral';
+                return (
+                  <button
+                    type="button"
+                    data-ui="seat-tag"
+                    data-tappable={delegate.tappable}
+                    data-visual-state={visualState}
+                    onClick={delegate.tappable ? delegate.onPick : undefined}
+                    onPointerDown={delegate.tappable ? () => setPressedSeat(seat) : undefined}
+                    onPointerUp={() => setPressedSeat((s) => (s === seat ? null : s))}
+                    onPointerLeave={() => setPressedSeat((s) => (s === seat ? null : s))}
+                    onPointerCancel={() => setPressedSeat((s) => (s === seat ? null : s))}
+                    disabled={!delegate.tappable}
+                    style={{
+                      width: '100%',
+                      minHeight: 34,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: seat === 'top' ? '0 10px' : '0 7px',
+                      boxSizing: 'border-box',
+                      border: 0,
+                      background: `url(${remoteNameplateUrl(visualState)}) center/100% 100% no-repeat`,
+                      cursor: delegate.tappable ? 'pointer' : 'default',
+                      font: 'inherit',
+                      // The root overlay wrapper is deliberately click-
+                      // through (`pointerEvents: 'none'` at this file's
+                      // own top) so ordinary board/canvas taps reach the
+                      // canvas beneath it - every other real interactive
+                      // element here (Sort/Action/Menu/Redist-Log buttons)
+                      // explicitly opts back in with its own
+                      // `pointerEvents: 'auto'`. Scoped to
+                      // `delegate.tappable` (rather than always 'auto') so
+                      // a non-tappable seat tag - true prior to the actual
+                      // selectDelegate phase, i.e. the game's usual state -
+                      // still lets ordinary board taps in that area reach
+                      // the canvas underneath.
+                      pointerEvents: delegate.tappable ? 'auto' : 'none',
+                    }}
+                  >
+                    <span
+                      data-bind="player-name"
+                      style={{
+                        fontFamily: "'IM Fell English SC', serif",
+                        fontSize: seat === 'top' ? 15 : 14,
+                        letterSpacing: '0.02em',
+                        color: 'oklch(0.90 0.02 100)',
+                        textShadow: '0 1px 3px rgba(0, 0, 0, 0.85)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                      }}
+                    >
+                      {seatLabels[seat]}
+                    </span>
+                  </button>
+                );
+              })()
             )}
             {isStarter && (
               <div
@@ -548,81 +647,6 @@ export function GameOverlay({
         );
       })}
 
-      {/* ===== Team / god identity HUD ===== */}
-      {/* Reduced to 50% size and sat flush against the local name tag's
-          bottom edge (zero gap) - a plain CSS scale on a wrapper sized/
-          positioned exactly as the original box keeps every inner value
-          (borders, shadows, chip sizes, fonts) uniformly halved rather
-          than needing every px value hand-edited. transformOrigin 'top
-          center' keeps it centered on CENTER_X and anchored to teamHudTop
-          (its own top edge doesn't move under the scale). */}
-      <div style={{ position: 'absolute', left: CENTER_X - 136, top: teamHudTop, width: 272, transform: 'scale(0.5)', transformOrigin: 'top center' }}>
-        <div
-          data-ui="team-hud"
-          style={{
-            minHeight: 50,
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 13px',
-            borderTop: '1px solid rgba(160, 120, 210, 0.3)',
-            borderBottom: '1px solid rgba(160, 120, 210, 0.3)',
-            background: 'linear-gradient(180deg, rgba(24, 18, 40, 0.9), rgba(9, 9, 16, 0.93))',
-            boxShadow: 'inset 0 0 34px rgba(104, 58, 168, 0.24)',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(196, 178, 224, 0.6)' }}>Thy covenant</span>
-            <span data-bind="team-name" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 18, lineHeight: 1.05, color: 'oklch(0.88 0.09 88)' }}>
-              {teamName}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div
-              data-ui="god-chip"
-              data-god={yourGodChip.code}
-              data-assigned="true"
-              style={{
-                width: 52,
-                height: 36,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid oklch(0.80 0.11 84)',
-                background: 'linear-gradient(180deg, rgba(92, 70, 20, 0.92), rgba(42, 32, 10, 0.92))',
-                boxShadow: '0 0 18px rgba(204, 162, 62, 0.42), inset 0 0 10px rgba(0,0,0,0.6)',
-                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-              }}
-            >
-              {yourGodChip.god && <img src={symbolArtUrl(yourGodChip.god)} alt={yourGodChip.code} style={{ width: 18, height: 18, objectFit: 'contain' }} />}
-              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(252, 226, 164, 0.75)' }}>{yourGodChip.label}</span>
-            </div>
-            <div
-              data-ui="god-chip"
-              data-god={teammateGodChip.code}
-              data-assigned="false"
-              style={{
-                width: 52,
-                height: 36,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px dashed rgba(190, 172, 222, 0.3)',
-                background: 'rgba(20, 18, 32, 0.75)',
-                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-              }}
-            >
-              {teammateGodChip.god && (
-                <img src={symbolArtUrl(teammateGodChip.god)} alt={teammateGodChip.code} style={{ width: 18, height: 18, objectFit: 'contain', opacity: 0.7 }} />
-              )}
-              <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 7, letterSpacing: '0.12em', color: 'rgba(186, 174, 212, 0.45)' }}>{teammateGodChip.label}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ===== Required Suit banner - real ===== */}
       <div
@@ -683,9 +707,10 @@ export function GameOverlay({
       {/* ===== Top-left: Menu - real =====
           New hub (dom/MenuModal.tsx) hosting Rules and the previous-trick
           log, replacing the old canvas-drawn top-bar Rules/Log buttons -
-          see ui/renderGameView.ts's renderTopBar. Square, carved black-
-          and-gold family matching the Play Card action button (per the
-          approved preview), via the real ui_action_slab.png art. */}
+          see ui/renderGameView.ts's renderTopBar. Real ui_square_control.
+          png background (2026-09-10 asset handoff) - resolves the prior
+          "no dedicated square-button asset exists" gap; shared by Menu/
+          Sort/Log alike, icon/label stay runtime content. */}
       <button
         type="button"
         data-ui="menu-button"
@@ -701,20 +726,14 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          // Procedural inset-stone treatment, not ui_action_slab.png: that
-          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
-          // ratio) and stretching it into a square distorted it into a
-          // washed-out flat-gold box rather than a carved control. No
-          // dedicated square-button asset exists for Menu/Set/Log.
-          background:
-            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
-          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
-          border: '1px solid rgba(198, 160, 78, 0.55)',
+          border: 0,
+          background: `url(${squareControlUrl()}) center/100% 100% no-repeat`,
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
           fontSize: 10,
           letterSpacing: '0.1em',
+          textShadow: '0 1px 3px rgba(0, 0, 0, 0.85)',
           cursor: 'pointer',
           pointerEvents: 'auto',
         }}
@@ -723,7 +742,10 @@ export function GameOverlay({
         Menu
       </button>
 
-      {/* ===== Bottom row, left: hand sort ("Set") - real ===== */}
+      {/* ===== Bottom row, left: hand sort ("Sort") - real =====
+          Same ui_square_control.png background as Menu/Log above. Label
+          corrected to "Sort" - "Set" was never the canonical label (see
+          suits-mp-screen-reference.md's own explicit correction). */}
       <button
         type="button"
         data-ui="sort-cards-button"
@@ -739,30 +761,25 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          // Procedural inset-stone treatment, not ui_action_slab.png: that
-          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
-          // ratio) and stretching it into a square distorted it into a
-          // washed-out flat-gold box rather than a carved control. No
-          // dedicated square-button asset exists for Menu/Set/Log.
-          background:
-            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
-          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
-          border: '1px solid rgba(198, 160, 78, 0.55)',
+          border: 0,
+          background: `url(${squareControlUrl()}) center/100% 100% no-repeat`,
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
           fontSize: 10,
           letterSpacing: '0.1em',
+          textShadow: '0 1px 3px rgba(0, 0, 0, 0.85)',
           cursor: 'pointer',
           pointerEvents: 'auto',
         }}
         aria-label={sortLabel}
       >
         <span style={{ fontSize: 15, lineHeight: 1 }}>⌘</span>
-        Set
+        Sort
       </button>
 
-      {/* ===== Bottom row, right: Redistribution log ("Log") - real ===== */}
+      {/* ===== Bottom row, right: Redistribution log ("Log") - real =====
+          Same ui_square_control.png background as Menu/Sort above. */}
       <button
         type="button"
         data-ui="redist-log-button"
@@ -778,20 +795,14 @@ export function GameOverlay({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 3,
-          // Procedural inset-stone treatment, not ui_action_slab.png: that
-          // asset is a wide bar (see BUILD_STATUS.md for its real aspect
-          // ratio) and stretching it into a square distorted it into a
-          // washed-out flat-gold box rather than a carved control. No
-          // dedicated square-button asset exists for Menu/Set/Log.
-          background:
-            'linear-gradient(180deg, rgba(30, 28, 24, 0.95), rgba(10, 9, 8, 0.97)), radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 55%)',
-          boxShadow: 'inset 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(198, 160, 78, 0.14)',
-          border: '1px solid rgba(198, 160, 78, 0.55)',
+          border: 0,
+          background: `url(${squareControlUrl()}) center/100% 100% no-repeat`,
           color: 'oklch(0.86 0.09 84)',
           fontFamily: "'Cormorant Unicase', serif",
           fontWeight: 500,
           fontSize: 10,
           letterSpacing: '0.1em',
+          textShadow: '0 1px 3px rgba(0, 0, 0, 0.85)',
           cursor: 'pointer',
           pointerEvents: 'auto',
         }}
@@ -800,65 +811,71 @@ export function GameOverlay({
         Log
       </button>
 
-      {/* ===== Bottom row, center: Action button - real ===== */}
+      {/* ===== Bottom row, center: Action button - real =====
+          Real 4-state ui_action_slab_*.png background (2026-09-10 asset
+          handoff), replacing the old two-layer procedural gold/gray
+          gradient treatment - resolves the prior "remains unresolved"
+          open question on whether an action-slab asset should back this
+          button. Label/hint stay runtime text (actionLabel/actionHint),
+          unchanged. State mapping (see BUILD_STATUS.md): `pressed` while
+          actively held down; `ready` when actionEnabled and not currently
+          pressed; when !actionEnabled, `waiting` if the real reason is
+          "not your turn at all" (computeActionButtonState's own "Waiting
+          for X..."/"Waiting..." labels - the one case this button can tell
+          apart from `actionLabel` itself, its only signal here) vs
+          `disabled` for every other not-yet-actionable case (e.g. "Select
+          a card to play" with nothing selected yet). */}
       <button
         type="button"
         data-ui="action-button"
         data-enabled={actionEnabled}
+        data-visual-state={actionVisualState}
         onClick={actionEnabled ? onAction : undefined}
+        onPointerDown={actionEnabled ? () => setActionPressed(true) : undefined}
+        onPointerUp={() => setActionPressed(false)}
+        onPointerLeave={() => setActionPressed(false)}
+        onPointerCancel={() => setActionPressed(false)}
         disabled={!actionEnabled}
         style={{
           position: 'absolute',
           left: CENTER_X - 77,
           bottom: BOTTOM_ROW_BOTTOM,
           width: 154,
-          padding: 1,
+          height: 58,
           boxSizing: 'border-box',
           border: 0,
-          background: actionEnabled ? 'linear-gradient(180deg, rgba(226, 188, 96, 0.9), rgba(120, 88, 30, 0.6))' : 'rgba(90, 104, 104, 0.22)',
-          clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
-          boxShadow: actionEnabled ? '0 0 40px rgba(212, 168, 66, 0.42)' : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1,
+          background: `url(${actionSlabStateUrl(actionVisualState)}) center/100% 100% no-repeat`,
           cursor: actionEnabled ? 'pointer' : 'not-allowed',
           pointerEvents: 'auto',
         }}
       >
         <span
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 1,
-            height: 56,
-            background: actionEnabled
-              ? 'linear-gradient(180deg, rgba(106, 78, 22, 0.96), rgba(38, 28, 10, 0.97))'
-              : 'linear-gradient(180deg, rgba(16, 24, 26, 0.9), rgba(8, 12, 14, 0.92))',
-            clipPath: 'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
+            fontFamily: "'IM Fell English SC', serif",
+            fontSize: 21,
+            letterSpacing: '0.06em',
+            color: actionEnabled ? 'oklch(0.97 0.04 92)' : 'rgba(150, 176, 174, 0.4)',
+            textShadow: actionEnabled ? '0 0 16px rgba(252, 216, 130, 0.6)' : '0 1px 3px rgba(0, 0, 0, 0.85)',
           }}
         >
-          <span
-            style={{
-              fontFamily: "'IM Fell English SC', serif",
-              fontSize: 21,
-              letterSpacing: '0.06em',
-              color: actionEnabled ? 'oklch(0.97 0.04 92)' : 'rgba(150, 176, 174, 0.4)',
-              textShadow: actionEnabled ? '0 0 16px rgba(252, 216, 130, 0.6)' : 'none',
-            }}
-          >
-            {actionLabel}
-          </span>
-          <span
-            data-bind="action-hint"
-            style={{
-              fontFamily: "'Cormorant Unicase', serif",
-              fontWeight: 500,
-              fontSize: 8,
-              letterSpacing: '0.18em',
-              color: actionEnabled ? 'rgba(252, 228, 170, 0.7)' : 'rgba(150, 176, 174, 0.32)',
-            }}
-          >
-            {actionHint}
-          </span>
+          {actionLabel}
+        </span>
+        <span
+          data-bind="action-hint"
+          style={{
+            fontFamily: "'Cormorant Unicase', serif",
+            fontWeight: 500,
+            fontSize: 8,
+            letterSpacing: '0.18em',
+            color: actionEnabled ? 'rgba(252, 228, 170, 0.7)' : 'rgba(150, 176, 174, 0.32)',
+          }}
+        >
+          {actionHint}
         </span>
       </button>
     </div>

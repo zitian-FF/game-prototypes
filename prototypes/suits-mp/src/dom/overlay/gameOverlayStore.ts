@@ -45,9 +45,12 @@ export interface GameOverlayUiState {
   // the board's utility-button family (see GameOverlay.tsx).
   onOpenMenu: () => void;
   seatDelegate: Record<SeatPosition, SeatDelegateState>;
-  // Real per-seat "P1"/"P2 (You)"/etc labels (seatLabelFor + the local
-  // seat's "(You)" suffix) - the only "name" this codebase actually has;
-  // there is no real player-nickname data anywhere in MaskedState/Roster.
+  // Real per-seat "Player 2"/etc labels - the only "name" this codebase
+  // actually has; there is no real player-nickname data anywhere in
+  // MaskedState/Roster. The local ("bottom") seat's own label never
+  // carries a "(You)" suffix (2026-09-10 asset handoff - it renders on the
+  // new two-compartment nameplate, which needs the plain name only); the
+  // other three seats' labels are unaffected.
   seatLabels: Record<SeatPosition, string>;
   // Null when indeterminate (e.g. between tricks, or an opponent is about
   // to lead but hasn't committed yet) - GameOverlay freezes the turn

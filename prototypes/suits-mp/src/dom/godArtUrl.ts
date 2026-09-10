@@ -48,6 +48,42 @@ export function currentTurnPointerUrl(): string {
   return 'assets/loose/ui_current_turn_pointer.webp';
 }
 
+// Remote (non-local) seat nameplate / delegate-selection button - one of 4
+// states sharing an identical 1774x887 canvas with no baked player text
+// (see the 2026-09-10 player-UI-asset-wave handoff). State is communicated
+// entirely through the art itself (brightness/depth/ticks/underline/
+// marker) - GameOverlay.tsx overlays only a centered runtime name label on
+// top, same convention as symbolArtUrl above.
+export type RemoteNameplateState = 'neutral' | 'eligible' | 'pressed' | 'selected';
+export function remoteNameplateUrl(state: RemoteNameplateState): string {
+  return `assets/loose/ui_remote_player_nameplate_${state}.webp`;
+}
+
+// Shared square background for the lower-hierarchy Menu/Sort/Log utility
+// buttons (replaces their old procedural inset-stone gradient - see
+// BUILD_STATUS.md) - icons/labels stay runtime content, same convention as
+// symbolArtUrl above.
+export function squareControlUrl(): string {
+  return 'assets/loose/ui_square_control.webp';
+}
+
+// Bottom-center Action button background - one of 4 states mapped from its
+// existing turnPhase/actionLabel/actionEnabled state machine (see
+// BUILD_STATUS.md for the exact mapping) - label/hint stay runtime text,
+// same convention as symbolArtUrl above. Distinct from the generic,
+// currently-unused `ui_action_slab.webp` (see actionSlabUrl above) - these
+// four are the real per-state variants this button now uses.
+export type ActionSlabState = 'waiting' | 'disabled' | 'ready' | 'pressed';
+export function actionSlabStateUrl(state: ActionSlabState): string {
+  return `assets/loose/ui_action_slab_${state}.webp`;
+}
+
+// Definitive transparent title logo for the landing screen - same
+// convention as symbolArtUrl above.
+export function titleLogoUrl(): string {
+  return 'assets/loose/logo_suits_of_madness.webp';
+}
+
 // A regular hexagon, apex at top-center, side vertices at ~20%/80% height -
 // the exact same proportions as ui/cardArt.ts's hexPolygon(). Shared by
 // every DOM spot that backs a Team Chaos god's symbol with a hex badge

@@ -125,8 +125,8 @@ const TOP_BAR_Y = 20;
 // taller cards (tune.cardStandardHeight 82->114, matching the Card Frame
 // design's true 300:816 proportions - see BUILD_STATUS.md). Keep these in
 // sync with dom/overlay/GameOverlay.tsx's matching constants (TOP_TAG_TOP/
-// SIDE_TAG_TOP/BOTTOM_TAG_TOP and the Team HUD's derived teamHudTop),
-// which anchor DOM chrome around these same canvas-drawn play areas.
+// SIDE_TAG_TOP/BOTTOM_TAG_TOP), which anchor DOM chrome around these same
+// canvas-drawn play areas.
 const TOP_BOX_Y = 150;
 const CLUSTER_CENTER_Y = 305;
 const BOTTOM_BOX_Y = 453;
@@ -941,7 +941,12 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
   const seatMap = buildSeatMap(state.yourSlot);
   const seatLabels = {} as Record<SeatPosition, string>;
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
-    seatLabels[seat] = playerLabelFor(state, seatMap[seat]);
+    // The local ('bottom') seat's own name renders on the new two-
+    // compartment ui_player_nameplate.png with no "(You)" suffix (see
+    // rawPlayerNameFor's own doc comment) - the other three remote seats
+    // are unaffected, since playerLabelFor never appended "(You)" to a
+    // non-local slot anyway.
+    seatLabels[seat] = seat === 'bottom' ? rawPlayerNameFor(state, seatMap[seat]) : playerLabelFor(state, seatMap[seat]);
   }
 
   const previewCardId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
@@ -956,7 +961,18 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
     starterSeat: leaderNode?.seat ?? null,
     leadGodIndex: leaderNode?.suit ? GOD_TO_SUIT_INDEX[leaderNode.suit] : null,
     teamName: `Team ${GOD_TEAM[state.yourGod]}`,
-    yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'Bound', god: state.yourGod },
+    // 'YOU' replaces the former 'Bound' label per the 2026-09-10 asset
+    // handoff's "small runtime YOU marker on the local player's own Deity
+    // symbol only" instruction - this chip is exactly that marker's real
+    // spot (rendered under the local player's own symbol icon, never
+    // beside the player name - see GameOverlay.tsx). 'Kin' on the
+    // teammate's chip is intentionally UNCHANGED: the handoff is silent on
+    // the teammate symbol, but the GDD's Information Visibility rule
+    // requires the local HUD to keep showing "the other Deity on my team"
+    // as a Team-level fact without connecting it to a seat - dropping its
+    // own distinguishing label would flatten that into an unlabeled
+    // second icon and lose the distinction. See BUILD_STATUS.md.
+    yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'YOU', god: state.yourGod },
     teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin', god: teammateGod },
     requiredSuitGod: state.requiredSuit,
   };
@@ -1514,6 +1530,21 @@ export function playerLabelFor(state: MaskedState, id: NetPlayerId): string {
   const name = state.seatNames[id]?.trim();
   const base = name || `Player ${fromNetPlayerId(id) + 1}`;
   return id === state.yourSlot ? `${base} (You)` : base;
+}
+
+// Same absolute name resolution as playerLabelFor above, without its
+// "(You)" suffix - the local player's own two-compartment nameplate
+// (ui_player_nameplate.png, 2026-09-10 player-UI-asset-wave handoff) shows
+// the runtime player name plain, per that handoff's explicit "never
+// append (You) to the player name" instruction. Scoped to just the seat-
+// label computation below (not a change to playerLabelFor itself), so
+// every other consumer of playerLabelFor (the delegate-target action
+// button label, the Redistribution Log, the Game Over identity reveal)
+// keeps its existing "(You)" behavior unchanged - none of those were
+// named by the handoff.
+function rawPlayerNameFor(state: MaskedState, id: NetPlayerId): string {
+  const name = state.seatNames[id]?.trim();
+  return name || `Player ${fromNetPlayerId(id) + 1}`;
 }
 
 // --- Action button --------------------------------------------------------

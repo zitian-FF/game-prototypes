@@ -4,6 +4,7 @@ import { ERRORS, SUBTITLES, type Screen, type ErrorKind } from './lobbyContent';
 import { seatModel, type SeatInfo } from './lobbySeats';
 import { goToJoinScreen, goToLandingScreen } from './lobbyUiStore';
 import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../net/lobbyCode';
+import { titleLogoUrl } from '../godArtUrl';
 
 // Display name is capped to this many characters (matches the wireframe's
 // fixed-width name column in the seat list) - enforced via the input's own
@@ -142,19 +143,29 @@ export function LobbyFlow({
           <span style={{ color: 'rgba(212, 176, 96, 0.8)', fontSize: 11 }}>✦</span>
           <span style={{ width: 34, height: 1, background: 'linear-gradient(90deg, rgba(176,142,66,0.6) 0%, rgba(176,142,66,0) 100%)' }} />
         </div>
-        <div
-          style={{
-            fontFamily: "'IM Fell English SC', serif",
-            fontSize: 30,
-            lineHeight: 1.05,
-            letterSpacing: '0.04em',
-            textAlign: 'center',
-            color: 'oklch(0.93 0.05 88)',
-            textShadow: '0 0 30px rgba(70, 180, 172, 0.45), 0 0 6px rgba(0,0,0,0.9)',
-          }}
-        >
-          Suit of Madness
-        </div>
+        {screen === 'landing' ? (
+          // Definitive transparent title logo (2026-09-10 asset handoff),
+          // shown on the landing screen specifically - the masthead
+          // itself is shared by every screen state (Lobby/Join/Waiting/
+          // error), and only the landing screen was named by the handoff.
+          // Width fixed, height auto so the browser preserves the image's
+          // own aspect ratio natively - no cropping/redrawing.
+          <img src={titleLogoUrl()} alt="Suit of Madness" style={{ width: 130, height: 'auto', display: 'block' }} />
+        ) : (
+          <div
+            style={{
+              fontFamily: "'IM Fell English SC', serif",
+              fontSize: 30,
+              lineHeight: 1.05,
+              letterSpacing: '0.04em',
+              textAlign: 'center',
+              color: 'oklch(0.93 0.05 88)',
+              textShadow: '0 0 30px rgba(70, 180, 172, 0.45), 0 0 6px rgba(0,0,0,0.9)',
+            }}
+          >
+            Suit of Madness
+          </div>
+        )}
         <div
           data-bind="screen-subtitle"
           style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 11, letterSpacing: '0.28em', color: 'oklch(0.76 0.06 178)' }}

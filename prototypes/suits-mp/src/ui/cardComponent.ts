@@ -10,8 +10,14 @@ import { buildCard } from './cardArt';
 // keeping this module itself dumb/reusable - callers own what a given
 // visual state *means* (legal/illegal/selected/assigned/etc.), this only
 // owns how a card *looks* once that's decided. Faceup cards render real
-// composited art (see ui/cardArt.ts); facedown/empty stay placeholder
-// primitives, since no card-back art was part of the Card Frame handoff.
+// composited art (see ui/cardArt.ts); facedown cards render the real,
+// complete `card_back.png` (2026-09-10 player-UI-asset-wave handoff) -
+// applies uniformly to every facedown context this shared component
+// serves (off-suit plays, and the redistribution-stack progress slots,
+// which already reused this same `{kind:'facedown'}` branch before this
+// task) rather than special-casing just the off-suit-play spot the
+// handoff named explicitly - see BUILD_STATUS.md. Empty slots stay a
+// placeholder primitive (no card sits there at all, nothing to depict).
 
 export interface CardDimensions {
   width: number;
@@ -81,14 +87,18 @@ export function drawCard(
   }
 
   if (face.kind === 'facedown') {
-    // No card-back art was part of this handoff (only the 40 face
-    // designs) - facedown cards stay the placeholder rectangle + stripe
-    // pattern.
-    const box = scene.add.rectangle(0, 0, dims.width, dims.height, style.fill, alpha);
-    box.setStrokeStyle(style.borderWidth ?? 1, style.border, alpha);
-    card.add(box);
-    drawFacedownPattern(scene, card, dims.width, dims.height, style.border, alpha);
-    return { container: card, hitArea: box };
+    // Complete standalone image (no Deity frame/symbol/rank/nameplate/face
+    // composited onto it, per the handoff) - drawn full-canvas the same
+    // way buildCard() draws a faceup card's own full-canvas frame layer.
+    // `alpha` (e.g. stackNeededStyle's 0.55 dim for a not-yet-filled
+    // redistribution slot) applies to the whole card the same way it
+    // already did for the old placeholder rectangle.
+    const back = scene.add.image(0, 0, 'card_back').setDisplaySize(dims.width, dims.height);
+    card.add(back);
+    card.setAlpha(alpha);
+    const hit = scene.add.rectangle(0, 0, dims.width, dims.height, 0x000000, 0.001);
+    card.add(hit);
+    return { container: card, hitArea: hit };
   }
 
   // Real card art (frame + god symbol/face + live rank Text) - see
@@ -174,19 +184,3 @@ function drawDashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w:
   }
 }
 
-// Placeholder card-back pattern: a few diagonal accent stripes over the
-// base fill, per BRIEF.md's "e.g. a diagonal stripe or pattern fill" -
-// deliberately not pixel-clipped to the card's exact bounds (would need a
-// rotation-aware Phaser geometry mask, real overkill for a primitives
-// placeholder that's getting re-skinned in a later art pass anyway); any
-// stripe overflow at the corners is a few px and reads fine at both card
-// sizes this project uses.
-function drawFacedownPattern(scene: Phaser.Scene, card: Phaser.GameObjects.Container, w: number, h: number, accent: number, alpha: number): void {
-  const diag = Math.hypot(w, h);
-  const stripeW = Math.max(2, w * 0.16);
-  for (const offset of [-w * 0.25, 0, w * 0.25]) {
-    const stripe = scene.add.rectangle(offset, 0, stripeW, diag, accent, alpha * 0.55);
-    stripe.setRotation(Math.PI / 4);
-    card.add(stripe);
-  }
-}
