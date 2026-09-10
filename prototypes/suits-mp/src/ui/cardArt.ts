@@ -3,6 +3,7 @@ import { backdropArtFile, faceArtFile, frameArtFile, nameplateArtFile, symbolArt
 import type { DeityCardState, God, Rank } from '../rules/types';
 import type { CardDimensions } from './cardComponent';
 import { PIXEL_RATIO } from '../render/pixelRatio';
+import tune from '../../tune.json';
 
 // Real card compositing per the approved runtime-composited three-state
 // card system (Numbered / Dormant / Powered). All masters are authored on a
@@ -164,8 +165,12 @@ function rankGlyphText(rank: Rank, state: CardVisualState): string {
 
 // Adds `textureKey` to `container`, contain-fit (aspect preserved, centered
 // on both axes) within `box` (given in reference-canvas pixels), scaled by
-// `k` into the caller's live display size. Silently skipped if the texture
-// isn't loaded, matching the rest of this module's defensive art lookups.
+// `k` into the caller's live display size. Silently skipped (returns null)
+// if the texture isn't loaded, matching the rest of this module's
+// defensive art lookups. Returns the placed Image so a caller that needs
+// to animate or mask it afterward (see playAwakenedEffect below) doesn't
+// have to re-derive its position/size independently - buildCard's own call
+// sites below simply ignore the return value, unchanged.
 function placeContain(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -174,8 +179,8 @@ function placeContain(
   k: number,
   authW: number,
   authH: number,
-): void {
-  if (!scene.textures.exists(textureKey)) return;
+): Phaser.GameObjects.Image | null {
+  if (!scene.textures.exists(textureKey)) return null;
   const image = scene.add.image(0, 0, textureKey);
   const srcFrame = image.frame;
   const boxW = box.w * k;
@@ -185,6 +190,7 @@ function placeContain(
   image.setX((box.x + box.w / 2 - authW / 2) * k);
   image.setY((box.y + box.h / 2 - authH / 2) * k);
   container.add(image);
+  return image;
 }
 
 export interface BuiltCard {
@@ -271,4 +277,94 @@ export function buildCard(
   container.add(hitArea);
 
   return { container, hitArea };
+}
+
+// The "Awakened" reveal flourish: a duplicate deity-face + star burst that
+// scales up to tune.awakenedBurstScale and fades out on top of a card
+// whose real, static art has *already* swapped to (or already was)
+// Powered - this never changes what's actually drawn underneath, it only
+// adds a temporary, self-destroying celebration on top of it. Two callers,
+// both in ui/renderGameView.ts:
+//   - renderCardFan, the instant a Dormant Deity Card still sitting in the
+//     local player's own hand becomes eligible to Awaken (any 10 appears
+//     in the current trick) - fired together with that card's underlying
+//     art actually swapping to Powered.
+//   - animateCardPlayIntoPlayArea, after another player's already-Powered
+//     play finishes landing in its play area - no underlying swap there,
+//     since the local player never saw that card Dormant to begin with
+//     (it was masked/hidden until played).
+// `container` must be the exact same local coordinate space buildCard()
+// placed its own layers into (card-center-relative, matching `dims`) -
+// both callers pass the outer container drawCard() itself returned, which
+// shares that origin with buildCard's inner one (see drawCard's own
+// `card.add(built.container)`, added at (0,0)).
+export function playAwakenedEffect(scene: Phaser.Scene, container: Phaser.GameObjects.Container, god: God, dims: CardDimensions): void {
+  const { w: authW, h: authH } = frameSize();
+  const k = dims.width / authW;
+
+  const faceBurst = placeContain(scene, container, faceKey(god), POWERED_FACE_BOX, k, authW, authH);
+  if (faceBurst) {
+    scene.tweens.add({
+      targets: faceBurst,
+      scale: tune.awakenedBurstScale,
+      alpha: 0,
+      duration: tune.awakenedBurstMs,
+      ease: tune.awakenedBurstEase,
+      onComplete: () => faceBurst.destroy(),
+    });
+
+    // Rainbow holo-foil shimmer: a single additive-blended rainbow-gradient
+    // quad, swept across the burst art once, masked to that same art's own
+    // alpha silhouette (a live BitmapMask reference, not a hand-authored
+    // shape) so the shine only ever shows through the Deity's actual
+    // painted outline - never as a stray rectangle, and never needing a
+    // second traced silhouette to stay in sync with the art. A tasteful
+    // gradient sweep was judged the better effort/quality tradeoff over a
+    // custom shader here - cheap (one Graphics quad + a stock Phaser mask)
+    // and already reads as a foil-card shine; see BUILD_STATUS.md.
+    // BitmapMask is WebGL-only (a no-op/unmasked in the Canvas renderer
+    // fallback) - skipped outright there rather than risk an unmasked
+    // rainbow rectangle floating free of the art.
+    if (scene.renderer.type === Phaser.WEBGL) {
+      const shimmer = scene.add.graphics();
+      const shimmerW = faceBurst.displayWidth * 1.4;
+      const shimmerH = faceBurst.displayHeight * 1.4;
+      shimmer.fillGradientStyle(0xff5ecb, 0xffe45e, 0x5ecbff, 0xa25eff, 1, 1, 1, 1);
+      shimmer.fillRect(-shimmerW / 2, -shimmerH / 2, shimmerW, shimmerH);
+      shimmer.setRotation(Math.PI / 6);
+      shimmer.setPosition(faceBurst.x - shimmerW * 0.6, faceBurst.y);
+      shimmer.setBlendMode(Phaser.BlendModes.ADD);
+      shimmer.setAlpha(tune.awakenedShimmerAlpha);
+      shimmer.setMask(new Phaser.Display.Masks.BitmapMask(scene, faceBurst));
+      container.add(shimmer);
+      scene.tweens.add({
+        targets: shimmer,
+        x: faceBurst.x + shimmerW * 0.6,
+        duration: tune.awakenedShimmerMs,
+        ease: 'Sine.easeInOut',
+        onComplete: () => shimmer.destroy(),
+      });
+    }
+  }
+
+  const starBurst = scene.add
+    .text((RUNTIME_RANK_CENTER.x - authW / 2) * k, (RUNTIME_RANK_CENTER.y - authH / 2) * k, '★', {
+      fontFamily: 'Georgia, serif',
+      fontStyle: 'bold',
+      fontSize: `${Math.round(RUNTIME_STAR_SIZE * k)}px`,
+      color: '#fff6df',
+      stroke: '#1a0f04',
+      strokeThickness: Math.max(2, Math.round(RUNTIME_STAR_SIZE * k * 0.12)),
+      resolution: PIXEL_RATIO,
+    })
+    .setOrigin(0.5);
+  container.add(starBurst);
+  scene.tweens.add({
+    targets: starBurst,
+    scale: tune.awakenedBurstScale,
+    alpha: 0,
+    duration: tune.awakenedBurstMs,
+    ease: tune.awakenedBurstEase,
+    onComplete: () => starBurst.destroy(),
+  });
 }
