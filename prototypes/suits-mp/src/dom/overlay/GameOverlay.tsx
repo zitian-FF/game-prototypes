@@ -490,6 +490,23 @@ export function GameOverlay({
                     : 'linear-gradient(180deg, rgba(10, 34, 36, 0.86), rgba(5, 14, 17, 0.88))',
                   cursor: delegate.tappable ? 'pointer' : 'default',
                   font: 'inherit',
+                  // The root overlay wrapper is deliberately click-through
+                  // (`pointerEvents: 'none'` at this file's own top) so
+                  // ordinary board/canvas taps reach the canvas beneath it -
+                  // every other real interactive element here (Sort/Action/
+                  // Menu/Redist-Log buttons) explicitly opts back in with its
+                  // own `pointerEvents: 'auto'`. This button never did, so it
+                  // inherited `none` and was genuinely unclickable by any
+                  // real pointer event even while `data-tappable`/`disabled`
+                  // correctly reported it as ready - confirmed live via
+                  // `document.elementFromPoint` at the button's own center
+                  // resolving to the canvas, not this element. Scoped to
+                  // `delegate.tappable` (rather than always 'auto') so a
+                  // non-tappable seat tag - true prior to the actual
+                  // selectDelegate phase, i.e. the game's usual state - still
+                  // lets ordinary board taps in that area reach the canvas
+                  // underneath, exactly as before this fix.
+                  pointerEvents: delegate.tappable ? 'auto' : 'none',
                 }}
               >
                 <span style={{ color: 'rgba(120, 200, 186, 0.7)', fontSize: 9 }}>◆</span>
