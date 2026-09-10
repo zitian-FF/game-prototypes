@@ -161,20 +161,31 @@ const RECESS_OFFSET_FRACTION = 0.3;
 // (where the bright metal ring gives way to the sunken recess) spans
 // ~0.273 of the bezel's own full width/height - about 45.8px at this
 // HUD's 168px display size. Every deity_symbol_<deity>.png master also
-// has real transparent padding baked around its own visible icon (its
-// content only fills ~59-68% of its own 1024x1024 canvas, confirmed by
-// trimming each master to its non-transparent bounding box) - since
-// `objectFit: contain` scales that whole padded canvas uniformly, sizing
-// this container to the recess's raw diameter would leave the *visible*
-// icon noticeably smaller than the recess. Scaled up instead so the
-// visible icon's own larger axis (height, 0.681 of canvas, the limiting
-// case across all four symbols) reaches the recess opening with a small
-// safety margin against the ring - tunable live via `?debug=1` since this
-// is a feel/fit value, not a fixed geometric fact like RECESS_OFFSET_
-// FRACTION above. Each symbol master's own visible content is already
-// centered within its own canvas (confirmed via the same bounding-box
-// measurement), so no separate centering offset is needed beyond the
-// existing translate/objectFit centering below.
+// has real transparent padding baked around its own visible backplate
+// (the hex/circle badge itself, not just the glyph inside it) - it only
+// fills ~59-68% of its own 1024x1024 canvas, confirmed by trimming each
+// master to its non-transparent bounding box - since `objectFit: contain`
+// scales that whole padded canvas uniformly, the *visible* backplate ends
+// up noticeably smaller than this container. Per the 2026-09-10 live-
+// asset-layout-corrections brief, the visible backplate should land at
+// ~75-80% of the recess's own diameter (not fill or exceed it, per the
+// prior task's 0.37 fraction, which put it closer to ~88% and let it
+// crowd the ring) - sized here against the limiting (largest) content-
+// fill fraction across all four symbols (0.681, Cthulhu/Nyarlathotep's
+// own canvas height) so no single Deity's backplate exceeds that ~75-80%
+// band: 0.775 (midpoint) * 0.273 (recess) / 0.681 (limiting fill) =
+// ~0.311 as a starting point, nudged up to 0.335 after a live screenshot
+// pass measured the actual rendered badge (its own dark backplate fill,
+// not the brighter glow/icon inside it) landing a little under that band
+// at 0.311 - tunable live via `?debug=1` since this is a feel/fit value,
+// not a fixed geometric fact like RECESS_OFFSET_FRACTION above. Each
+// symbol master's own visible content is already centered within its own
+// canvas (confirmed via the same bounding-box measurement, per the
+// brief's "center using visible alpha bounds" requirement), so no
+// separate centering offset is needed beyond the existing translate/
+// objectFit centering below - the counter-rotation pivot (this same
+// anchor's own center) already coincides with both the recess center and
+// the symbol's own visible center as a result.
 const RECESS_SYMBOL_SIZE = HUD_SIZE * tune.suitCycleSymbolSizeFraction;
 const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
 // The pointer PNG's own tip sits ~0.946 of its half-height from the
@@ -458,7 +469,21 @@ export function GameOverlay({
         // nameplate.png (name + team/Deity identity merged into one
         // control - see BUILD_STATUS.md), wider than a plain name tag to
         // fit its right compartment's team text + two symbol icons.
-        const width = isLocal ? 260 : seat === 'top' ? 120 : 94;
+        //
+        // The three remote seats share one uniform width/height
+        // (tune.remoteNameplateWidth, height derived from the real
+        // ui_remote_player_nameplate_*.webp source aspect ratio - a
+        // measured, exact 1774:887 = 2:1 across all four states) per the
+        // 2026-09-10 live-asset-layout-corrections brief: the prior width-
+        // only sizing (94-120px wide, squashed into a flat 34px-tall box)
+        // ignored that real aspect ratio, crushing the carved plate into
+        // an illegible sliver. Width can't grow much further at left/
+        // right - it's anchored at a fixed 10px from the screen edge and
+        // the Center HUD's own box starts at x=111, so 96px leaves a ~5px
+        // clearance - which is exactly why the brief calls for growing
+        // height instead of stretching width.
+        const width = isLocal ? 260 : tune.remoteNameplateWidth;
+        const remoteHeight = tune.remoteNameplateWidth / 2;
         const horizontal: CSSProperties =
           seat === 'left' ? { left: 10 } : seat === 'right' ? { right: 10 } : { left: CENTER_X - width / 2 };
 
@@ -477,19 +502,25 @@ export function GameOverlay({
               // plus the two canonical deity_symbol_*.png masters for that
               // team, with a small "YOU" marker under the local player's
               // own symbol only (yourGodChip.label - see
-              // computeGameOverlayHudState) - "Kin" is deliberately kept
-              // on the teammate's symbol (teammateGodChip.label,
-              // unchanged) so it still reads as "the other Deity on my
-              // team" rather than an unlabeled second icon, per the GDD's
-              // Information Visibility rule. The local seat is never a
-              // delegate-selection target (a player can't delegate to
-              // themself), so there's no staged/tappable state to
-              // preserve here the way the remote seat tags below need to.
+              // computeGameOverlayHudState). Per the 2026-09-10 live-
+              // asset-layout-corrections brief, this reconciles the prior
+              // task's own interim "Kin" label choice on the teammate's
+              // symbol (kept then only pending explicit clarification,
+              // per that task's own BUILD_STATUS.md open question) - the
+              // brief is that clarification, and it calls for no label at
+              // all on the teammate's icon; not revealing which remote
+              // seat *is* that teammate is unaffected either way, since
+              // this whole compartment already only ever showed the
+              // Team's two Deities, never a seat/player identity. The
+              // local seat is never a delegate-selection target (a player
+              // can't delegate to themself), so there's no staged/
+              // tappable state to preserve here the way the remote seat
+              // tags below need to.
               <div
                 data-ui="local-nameplate"
                 style={{
                   width: '100%',
-                  minHeight: 56,
+                  minHeight: 64,
                   boxSizing: 'border-box',
                   display: 'flex',
                   alignItems: 'stretch',
@@ -530,15 +561,26 @@ export function GameOverlay({
                   >
                     {teamName}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    {/* Symbols sized to tune.localTeamSymbolSize - ~2x the
+                        prior fixed 18px, per the brief's "increase both
+                        Deity symbols to approximately twice their current
+                        size" - the outer compartment's own minHeight above
+                        was grown to fit this cleanly. teammateGodChip.label
+                        is now '' (see computeGameOverlayHudState) - a
+                        fixed-height label slot is still reserved for both
+                        chips regardless of whether either has real text,
+                        so the two icons stay aligned at the same vertical
+                        position rather than the labelled one sitting
+                        visually higher. */}
                     {[yourGodChip, teammateGodChip].map((chip) => {
                       const motif = chip.god ? GOD_MOTIF[chip.god] : 'circle';
                       return (
                         <div key={chip.code} data-ui="god-chip" data-god={chip.code} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                           <div
                             style={{
-                              width: 18,
-                              height: 18,
+                              width: tune.localTeamSymbolSize,
+                              height: tune.localTeamSymbolSize,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -549,7 +591,9 @@ export function GameOverlay({
                           >
                             {chip.god && <img src={symbolArtUrl(chip.god)} alt={chip.code} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
                           </div>
-                          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 600, fontSize: 6, letterSpacing: '0.1em', color: 'rgba(252, 226, 164, 0.75)' }}>{chip.label}</span>
+                          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 600, fontSize: 6, letterSpacing: '0.1em', color: 'rgba(252, 226, 164, 0.75)', minHeight: 7 }}>
+                            {chip.label}
+                          </span>
                         </div>
                       );
                     })}
@@ -600,7 +644,7 @@ export function GameOverlay({
                     disabled={!delegate.tappable}
                     style={{
                       width: '100%',
-                      minHeight: 34,
+                      height: remoteHeight,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -667,20 +711,32 @@ export function GameOverlay({
       })}
 
 
-      {/* ===== Required Suit banner - real ===== */}
+      {/* ===== Contextual hint panel (Required Suit / Any Suit) - real =====
+          Reusable region for a short contextual hint - Required Suit today,
+          future tutorial/gameplay hints later (per the 2026-09-10 live-
+          asset-layout-corrections brief) - sitting strictly between the
+          local nameplate and the hand fan (never overlapping either).
+          Previously full-width (390 - 2*14 = 362px), which read as an
+          oversized bar crowding the hand below it; now sized/centered per
+          the brief's own explicit numbers (~58% of the 390px reference
+          viewport width, ~45-50px tall) rather than stretching edge to
+          edge. "Required Suit" shortened to "Suit" so the longest
+          canonical god name (Nyarlathotep, 12 characters) still fits
+          alongside the icon and label at this narrower width. */}
       <div
         data-ui="required-suit-banner"
         style={{
           position: 'absolute',
-          left: 14,
-          right: 14,
+          left: CENTER_X - tune.contextualHintWidth / 2,
+          width: tune.contextualHintWidth,
           top: REQUIRED_SUIT_BANNER_TOP,
-          height: 34,
+          height: tune.contextualHintHeight,
           boxSizing: 'border-box',
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '0 12px',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '0 10px',
           background: 'linear-gradient(180deg, rgba(10, 34, 36, 0.82), rgba(5, 14, 17, 0.86))',
           border: '1px solid rgba(120, 190, 178, 0.28)',
         }}
@@ -690,6 +746,7 @@ export function GameOverlay({
             style={{
               width: 18,
               height: 18,
+              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -708,15 +765,20 @@ export function GameOverlay({
             fontSize: 9,
             letterSpacing: '0.16em',
             color: 'rgba(158, 196, 186, 0.6)',
+            whiteSpace: 'nowrap',
           }}
         >
-          Required Suit
+          Suit
         </span>
         <span
           style={{
             fontFamily: "'IM Fell English SC', serif",
             fontSize: 15,
             color: 'oklch(0.86 0.09 178)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            minWidth: 0,
           }}
         >
           {requiredSuitGod ? GOD_DISPLAY_NAME[requiredSuitGod] : 'Any Suit'}
@@ -843,7 +905,17 @@ export function GameOverlay({
           for X..."/"Waiting..." labels - the one case this button can tell
           apart from `actionLabel` itself, its only signal here) vs
           `disabled` for every other not-yet-actionable case (e.g. "Select
-          a card to play" with nothing selected yet). */}
+          a card to play" with nothing selected yet).
+
+          Sized via tune.actionButtonWidth/Height (177x78, ~15% wider and
+          ~35% taller than the prior fixed 154x58) per the 2026-09-10 live-
+          asset-layout-corrections brief - the old box was short enough
+          that two-line label+hint text (e.g. "Delegate to Player 2" /
+          "Commit the chosen card") could overflow past the visible slab
+          art's own top/bottom edge. Text stays centered via flex within
+          this same box (bound to the asset's own bounds, not separate
+          procedural coordinates), so it re-centers automatically at the
+          new size with no layout math of its own to update. */}
       <button
         type="button"
         data-ui="action-button"
@@ -857,17 +929,18 @@ export function GameOverlay({
         disabled={!actionEnabled}
         style={{
           position: 'absolute',
-          left: CENTER_X - 77,
+          left: CENTER_X - tune.actionButtonWidth / 2,
           bottom: BOTTOM_ROW_BOTTOM,
-          width: 154,
-          height: 58,
+          width: tune.actionButtonWidth,
+          height: tune.actionButtonHeight,
           boxSizing: 'border-box',
           border: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 1,
+          gap: 2,
+          padding: '0 16px',
           background: `url(${actionSlabStateUrl(actionVisualState)}) center/100% 100% no-repeat`,
           cursor: actionEnabled ? 'pointer' : 'not-allowed',
           pointerEvents: 'auto',
