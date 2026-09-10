@@ -295,6 +295,42 @@ export interface PersistentUIState {
   // next trick, and a card that *was* played simply falls out of
   // `state.yourHand` and stops being looked up here at all.
   awakenedHandCardIds: Set<CardId>;
+  // End-of-trick "cards to collector" animation bookkeeping (see
+  // presentGameView/prepareCollectAnimation/renderCardFan below).
+  // `collectAnimatedTrickKey` fires the animation exactly once per
+  // distinct completed trick - the same `previousTrickKey` fingerprint
+  // presentGameView's own dwell logic already uses, since a completed
+  // trick's `previousTrick` is "replaced wholesale, never accumulated"
+  // (host/mask.ts) each time a new one resolves, making an unchanged
+  // fingerprint a reliable "already handled" guard here too. Two
+  // independent call sites both go through this one guard: the dwell's
+  // own embedded scheduling (single win, collector known instantly) and
+  // a plain per-render check (double win, collector only known once the
+  // winner's chosen delegate's `redistribute` action actually resolves -
+  // no dwell-like wait applies there).
+  collectAnimatedTrickKey: string;
+  // Non-null for exactly the one render pass where the local player is
+  // the trick's collector and their hand fan must animate the 4 (or 5,
+  // on a Twin Awakening double win) incoming cards flying in rather than
+  // snapping straight to their final sorted slot - see renderCardFan.
+  // Keyed by CardId for a real (faceup) incoming card; a facedown
+  // incoming card is looked up the same way (its real id is already in
+  // `state.yourHand` by the time this fires, see host/mask.ts's
+  // collection step) but rendered from `pendingHandCollectFaces` instead
+  // of the id, so its real identity is never actually looked up for
+  // drawing purposes - see that field's own doc comment.
+  pendingHandCollectOrigins: Map<CardId, { x: number; y: number }> | null;
+  // The masked CardFace to render a pending incoming card as WHILE
+  // FLYING - computed once, up front, from `previousTrick` via the same
+  // `maskedPlayFaces` every other animation in this file already uses,
+  // deliberately never from the collector's own (by-then-unmasked)
+  // `state.yourHand`. This is what keeps a facedown collected card
+  // rendering as the generic card-back for its entire flight into the
+  // local player's hand, even though the real id backing it is already
+  // sitting in cleartext in `state.yourHand` by the time this animation
+  // runs - the animation's own visuals are built exclusively from this
+  // pre-masked source, never from that cleartext hand array.
+  pendingHandCollectFaces: Map<CardId, CardFace> | null;
 }
 
 export function createPersistentUIState(): PersistentUIState {
@@ -308,6 +344,9 @@ export function createPersistentUIState(): PersistentUIState {
     animatedPlayKeyBySeat: { p0: '', p1: '', p2: '', p3: '' },
     cardsAnimatingThisRender: [],
     awakenedHandCardIds: new Set(),
+    collectAnimatedTrickKey: '',
+    pendingHandCollectOrigins: null,
+    pendingHandCollectFaces: null,
   };
 }
 
@@ -375,6 +414,18 @@ export function presentGameView(
   const justCompletedTrick = ui.hasPresentedOnce && masked.previousTrick !== null && key !== ui.lastPreviousTrickKey;
   ui.lastPreviousTrickKey = key;
   ui.hasPresentedOnce = true;
+  // Snapshot BEFORE anything below renders this (or any later) state -
+  // see prepareCollectAnimation's own doc comment for why this can't be
+  // read fresh from `ui.lastHandLayoutsByCardId` at the point that
+  // function actually runs. This is "the hand as of the last render",
+  // not necessarily "the hand before this trick's collection" - if the
+  // local player's own play was what just ended this trick, that card
+  // already left the hand at an *earlier* render (the one right after
+  // they played it), so it's correctly absent here too; only a card
+  // that's about to be freshly collected into the hand (never one that
+  // simply left it by being played) will ever differ from `masked.
+  // yourHand` by more than that.
+  const oldHandIds = new Set(ui.lastHandLayoutsByCardId.keys());
 
   if (ui.pendingHoldMasked) {
     // Already holding on an earlier trick-completion - remember the
@@ -389,6 +440,17 @@ export function presentGameView(
 
   if (!justCompletedTrick) {
     renderGameView(scene, container, masked, sendAction, ui);
+    // Double-win path for the "cards to collector" animation (see its own
+    // doc comment below): the collector isn't known the instant a double
+    // win's trick resolves - only once the winner's chosen delegate's
+    // `redistribute` action actually goes through, a real player
+    // interaction with no dwell-like wait of its own. That moment shows up
+    // right here, as an entirely ordinary (non-trick-completing) render
+    // where `turnPhase` has just become `'redistribute'` - no special
+    // detection needed beyond this cheap, always-false-in-the-common-case
+    // check.
+    const descriptor = prepareCollectAnimation(masked, oldHandIds, ui);
+    if (descriptor) finishCollectAnimation(scene, container, descriptor, ui);
     return;
   }
 
@@ -402,10 +464,24 @@ export function presentGameView(
   // take on between real decisions, not a fabricated state shape - which
   // disables every interactive element (hand-fan taps, seat-tag delegate
   // picks, the action button) exactly as required: nobody can act during
-  // the hold. No fading or animation is needed for this to read as
-  // "holding" - the frame simply doesn't change until the hold ends.
+  // the hold. `yourHand` strips out anything not already in `oldHandIds`
+  // (a local collector's newly-collected cards, including a facedown
+  // one whose real id is already sitting in `masked.yourHand` in
+  // cleartext by now - see host/mask.ts's collection step) rather than
+  // using `masked.yourHand` as-is - without this, those cards would
+  // already be visible in the hand fan during this static beat, before
+  // the collect flight - and this task's own masking requirement - even
+  // begins. Filtering `masked.yourHand` down (rather than substituting
+  // `oldHandIds` wholesale) keeps this correct for a non-collector too:
+  // a card the local player just played themselves to *end* this trick
+  // (see `oldHandIds`'s own doc comment) is already, correctly, absent
+  // from `masked.yourHand` - substituting `oldHandIds` outright would
+  // wrongly resurrect it here. No fading or animation is needed for this
+  // to read as "holding" - the frame simply doesn't change until the
+  // hold ends.
   const frozen: MaskedState = {
     ...masked,
+    yourHand: masked.yourHand.filter((id) => oldHandIds.has(id)),
     currentTrick: masked.previousTrick ?? [],
     redistribution: null,
     currentTurn: null,
@@ -414,10 +490,196 @@ export function presentGameView(
   renderGameView(scene, container, frozen, sendAction, ui);
 
   ui.pendingHoldMasked = masked;
+
+  // Single-win path for the "cards to collector" animation: unlike a
+  // double win, the collector here is already known the instant the trick
+  // resolved (see rules/engine.ts's proceedFromTrickResult - a single
+  // win's winner is immediately also its own distributor, with no
+  // intervening chooseDelegate decision) - `masked` above already reflects
+  // this (it's the real, already-collected "next" state, just not yet
+  // rendered). So rather than wait for the dwell to end, embed the whole
+  // animation *inside* it: a brief static beat first (the finished trick
+  // stays visible/registerable, via the `frozen` render just above), then
+  // the collect flight - both must finish well before
+  // tune.trickResultDwellMs elapses, per this task's own "do not extend
+  // total dwell time" requirement. Consuming `ui.pendingHoldMasked` early
+  // here (once the animation actually triggers) makes the *outer*
+  // delayedCall below a no-op when it fires later, rather than redundantly
+  // re-rendering the exact same already-settled state.
+  const wonByDouble = (masked.previousTrick ?? []).some((p) => p.kind === 'double');
+  if (!wonByDouble) {
+    scene.time.delayedCall(tune.cardCollectStaticBeatMs, () => {
+      const latest = ui.pendingHoldMasked;
+      if (!latest) return; // a later trick's own hold already consumed/overwrote this
+      const descriptor = prepareCollectAnimation(latest, oldHandIds, ui);
+      if (descriptor) {
+        ui.pendingHoldMasked = null;
+        renderGameView(scene, container, latest, sendAction, ui);
+        finishCollectAnimation(scene, container, descriptor, ui);
+      }
+    });
+  }
+
   scene.time.delayedCall(tune.trickResultDwellMs, () => {
     const latest = ui.pendingHoldMasked;
     ui.pendingHoldMasked = null;
     if (latest) renderGameView(scene, container, latest, sendAction, ui);
+  });
+}
+
+// --- End-of-trick "cards to collector" animation ------------------------
+// Marks the end of a trick by visually flying all 4 (or 5, on a double
+// win) played cards toward whoever collects them - the trick's winner on
+// a single win, or their chosen delegate on a double win. Purely a
+// client-side presentation flourish, same category as every other
+// animation in this file: never touches host logic, never delays or
+// reorders any real state transition, only decides how *this client*
+// visualizes a transition it already received. See presentGameView's two
+// call sites above for when this fires for each win type.
+
+interface CollectIncomingCard {
+  face: CardFace;
+  origin: { x: number; y: number };
+}
+
+// The 4 (or 5) cards a completed trick's `previousTrick` collects,
+// resolved to already-masked CardFaces and each one's own play-area
+// origin (the seat that actually played it, from this viewer's own
+// perspective) - reuses `maskedPlayFaces` exactly as every other
+// animation here does, so a facedown play here is exactly as
+// unidentifiable as it already is everywhere else; this is the one and
+// only data source both collect-animation branches below draw from.
+function computeIncomingCollectCards(previousTrick: MaskedTrickPlay[], yourSlot: NetPlayerId): CollectIncomingCard[] {
+  const result: CollectIncomingCard[] = [];
+  for (const play of previousTrick) {
+    const origin = seatCenter(seatFor(play.player, yourSlot));
+    for (const face of maskedPlayFaces(play, yourSlot)) result.push({ face, origin });
+  }
+  return result;
+}
+
+interface CollectAnimationDescriptor {
+  isLocalCollector: boolean;
+  incoming: CollectIncomingCard[];
+  destSeat: 'top' | 'left' | 'right' | null;
+}
+
+// Fires at most once per distinct completed trick (see
+// PersistentUIState.collectAnimatedTrickKey) - null otherwise, including
+// every ordinary re-render of an already-triggered trick's redistribute
+// phase (e.g. the collector tapping cards to assign gifts). When it does
+// fire for a LOCAL collector, it also seeds
+// `ui.pendingHandCollectOrigins`/`pendingHandCollectFaces` - the caller
+// must render `state` (via renderGameView) immediately after this returns
+// and before calling finishCollectAnimation, so renderCardFan's own
+// consumption of those two fields (see below) happens on the right pass.
+// `oldHandIds` must be captured by the caller *before* rendering anything
+// derived from this same masked-state push (see presentGameView's own
+// call sites) - renderCardFan unconditionally overwrites
+// `ui.lastHandLayoutsByCardId` to the state it's given every single time
+// it runs, so reading that field in here directly would, in every real
+// call path, already reflect the very state whose "what's new" this
+// function needs to diff against, making every id look pre-existing.
+function prepareCollectAnimation(state: MaskedState, oldHandIds: ReadonlySet<CardId>, ui: PersistentUIState): CollectAnimationDescriptor | null {
+  if (state.turnPhase !== 'redistribute' || state.currentTurn === null || !state.previousTrick) return null;
+  const key = previousTrickKey(state);
+  if (key === ui.collectAnimatedTrickKey) return null;
+  ui.collectAnimatedTrickKey = key;
+
+  const isLocalCollector = state.currentTurn === state.yourSlot;
+  const incoming = computeIncomingCollectCards(state.previousTrick, state.yourSlot);
+
+  if (isLocalCollector) {
+    // Real (faceup) incoming cards are keyed directly by their own real
+    // id. A facedown incoming card has no id to key by in its own
+    // CardFace (by design - see cardComponent.ts's CardFace doc comment)
+    // but its real id is already sitting in `state.yourHand` by now (see
+    // host/mask.ts's collection step) - recoverable here purely by
+    // elimination (every id newly present in `state.yourHand` since the
+    // last render, minus every id a *visible* incoming face already
+    // named), never by looking at the hidden play's own contents. This
+    // recovers WHICH id to key the pending-origin/face maps by, not what
+    // it actually is - `pendingHandCollectFaces` still renders it
+    // strictly as `{kind:'facedown'}` for the whole flight regardless.
+    const newIds = state.yourHand.filter((id) => !oldHandIds.has(id));
+    const visibleIncoming = incoming.filter((c) => c.face.kind === 'faceup');
+    const hiddenIncoming = incoming.filter((c) => c.face.kind === 'facedown');
+    const visibleIds = new Set(visibleIncoming.map((c) => (c.face as { kind: 'faceup'; cardId: CardId }).cardId));
+    const hiddenIds = newIds.filter((id) => !visibleIds.has(id));
+
+    const origins = new Map<CardId, { x: number; y: number }>();
+    const faces = new Map<CardId, CardFace>();
+    for (const c of visibleIncoming) {
+      const id = (c.face as { kind: 'faceup'; cardId: CardId }).cardId;
+      origins.set(id, c.origin);
+      faces.set(id, c.face);
+    }
+    hiddenIncoming.forEach((c, i) => {
+      const id = hiddenIds[i];
+      if (!id) return; // defensive - counts should always match; never draw a guessed origin
+      origins.set(id, c.origin);
+      faces.set(id, { kind: 'facedown' });
+    });
+
+    ui.pendingHandCollectOrigins = origins;
+    ui.pendingHandCollectFaces = faces;
+    return { isLocalCollector: true, incoming, destSeat: null };
+  }
+
+  return { isLocalCollector: false, incoming, destSeat: seatFor(state.currentTurn, state.yourSlot) as 'top' | 'left' | 'right' };
+}
+
+// Completes whatever prepareCollectAnimation started, once the caller has
+// already rendered the state it returned a descriptor for. For a local
+// collector this just releases the pending maps renderCardFan already
+// consumed while drawing that one render. For a remote collector, the
+// preceding render already emptied every play area (state.currentTrick is
+// genuinely `[]` by now) - this spawns the 4/5 flying cards on top of that
+// already-settled render and tweens them toward the collector's own
+// nameplate, fading out once they arrive (leaving this client's board -
+// conceptually moving into a hand it can't see).
+function finishCollectAnimation(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  descriptor: CollectAnimationDescriptor,
+  ui: PersistentUIState,
+): void {
+  if (descriptor.isLocalCollector) {
+    ui.pendingHandCollectOrigins = null;
+    ui.pendingHandCollectFaces = null;
+    return;
+  }
+
+  const dest = REMOTE_NAMEPLATE_ORIGIN[descriptor.destSeat!];
+  descriptor.incoming.forEach(({ face, origin }, i) => {
+    const style = playAreaStyle(face);
+    const drawn = drawCard(scene, container, origin.x, origin.y, 0, face, style, CARD_DIMS_STANDARD);
+    // Added strictly after this pass's own render already finished (see
+    // this function's own doc comment) - already the topmost children in
+    // the container by construction, no deferred bringToTop needed the
+    // way the play-area fly-in animation requires (see
+    // PersistentUIState.cardsAnimatingThisRender's own doc comment).
+    scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: tune.cardCollectTravelMs,
+      delay: i * tune.cardCollectStaggerMs,
+      ease: tune.cardCollectEase,
+      onUpdate: (_tween, _target, _key, t: number) => {
+        drawn.container.x = origin.x + (dest.x - origin.x) * t;
+        drawn.container.y = origin.y + (dest.y - origin.y) * t - tune.cardCollectArcHeight * Math.sin(Math.PI * t);
+      },
+      onComplete: () => {
+        drawn.container.setPosition(dest.x, dest.y);
+        scene.tweens.add({
+          targets: drawn.container,
+          alpha: 0,
+          scale: tune.cardCollectFadeScale,
+          duration: tune.cardCollectFadeMs,
+          onComplete: () => drawn.container.destroy(),
+        });
+      },
+    });
   });
 }
 
@@ -1008,6 +1270,18 @@ function renderCardFan(
   const sorter = ui.sortMode === 'suit' ? sortCardIds : sortCardIdsByRank;
   const hand = sorter(state.yourHand);
 
+  // End-of-trick "cards to collector" animation (see
+  // PersistentUIState.pendingHandCollectOrigins's own doc comment):
+  // captured *before* the unconditional overwrite below replaces it with
+  // this render's own fresh layout, so a card that was already in hand
+  // last render can tween from where it actually sat then, not snap.
+  // Only non-null for the one render prepareCollectAnimation seeds it for
+  // (a local-collector trick just resolved) - every other render behaves
+  // exactly as before this task, snapping straight to the fresh layout.
+  const oldHandLayouts = ui.lastHandLayoutsByCardId;
+  const collectOrigins = ui.pendingHandCollectOrigins;
+  const collectFaces = ui.pendingHandCollectFaces;
+
   // "Awakened" preview (see PersistentUIState.awakenedHandCardIds's own
   // doc comment): an empty currentTrick is the exact same trick-scoped
   // reset boundary the real engine uses for its own equivalent tracking,
@@ -1119,16 +1393,67 @@ function renderCardFan(
     // comment), so this client-side preview is deliberately the only
     // place a hand card's face can show Powered art at all.
     const deityCardState = ui.awakenedHandCardIds.has(entry.id) ? 'powered' : null;
+    // `collectFaces` overrides a pending incoming card's face for its
+    // whole flight (facedown for a masked collected card, real faceup
+    // otherwise) - see PersistentUIState.pendingHandCollectFaces's own
+    // doc comment for why this, and never the id itself, is the source of
+    // truth for whether a card is drawn facedown here.
+    const face: CardFace = collectFaces?.get(entry.id) ?? { kind: 'faceup', cardId: entry.id, deityCardState };
+    // Reflow origin (see PersistentUIState.pendingHandCollectOrigins's own
+    // doc comment) - gated strictly on `reflowing` (this render is the
+    // one prepareCollectAnimation seeded), never merely on whether
+    // `oldHandLayouts` happens to already have this id: on any ordinary
+    // render, EVERY already-in-hand card trivially has an entry in
+    // `oldHandLayouts` too (it barely moved since last render), which
+    // would otherwise wrongly re-trigger this whole tween on every normal
+    // render instead of just the one collect render. An incoming card's
+    // origin is its own play-area seat (from `collectOrigins`); an
+    // already-in-hand card's origin is wherever it actually sat last
+    // render (from `oldHandLayouts`) - `reflowOrigin` is `undefined` for
+    // both outside a collect render, and also for a genuinely brand-new
+    // hand's very first-ever render (nothing to reflow from yet).
+    const reflowing = collectOrigins !== null;
+    const isIncoming = reflowing && collectOrigins!.has(entry.id);
+    const reflowOrigin = reflowing ? (isIncoming ? collectOrigins!.get(entry.id) : oldHandLayouts.get(entry.id)) : undefined;
+    const originRotationDeg = isIncoming ? entry.rotationDeg : oldHandLayouts.get(entry.id)?.rotationDeg ?? entry.rotationDeg;
     const { container: drawnContainer, hitArea } = drawCard(
       scene,
       container,
-      entry.x,
-      y,
-      entry.rotationDeg,
-      { kind: 'faceup', cardId: entry.id, deityCardState },
+      reflowOrigin?.x ?? entry.x,
+      reflowOrigin?.y ?? y,
+      reflowOrigin ? originRotationDeg : entry.rotationDeg,
+      face,
       style,
       dims,
     );
+    if (reflowOrigin) {
+      const originRotationRad = (originRotationDeg * Math.PI) / 180;
+      const finalRotationRad = (entry.rotationDeg * Math.PI) / 180;
+      // Existing cards just shuffling to a new slot get a flat slide (no
+      // arc - they're not coming from the table); incoming cards get the
+      // same mild arc as every other "coming from the table" flight in
+      // this file, for one cohesive motion rather than two disconnected
+      // ones (per this task's own requirement) - both share the exact
+      // same duration/easing either way.
+      const arcHeight = isIncoming ? tune.cardCollectArcHeight : 0;
+      const delay = isIncoming ? Array.from(collectOrigins!.keys()).indexOf(entry.id) * tune.cardCollectStaggerMs : 0;
+      scene.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: tune.cardCollectTravelMs,
+        delay: Math.max(0, delay),
+        ease: tune.cardCollectEase,
+        onUpdate: (_tween, _target, _key, t: number) => {
+          drawnContainer.x = reflowOrigin.x + (entry.x - reflowOrigin.x) * t;
+          drawnContainer.y = reflowOrigin.y + (y - reflowOrigin.y) * t - arcHeight * Math.sin(Math.PI * t);
+          drawnContainer.setRotation(originRotationRad + (finalRotationRad - originRotationRad) * t);
+        },
+        onComplete: () => {
+          drawnContainer.setPosition(entry.x, y);
+          drawnContainer.setRotation(finalRotationRad);
+        },
+      });
+    }
     // Fires once, only on the render where this specific card just became
     // eligible (see newlyAwakenedThisRender above) - every later render of
     // this same already-swapped card takes the branch above with no
