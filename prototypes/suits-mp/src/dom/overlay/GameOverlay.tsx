@@ -5,7 +5,6 @@ import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
-import { GOD_DISPLAY_NAME } from '../../rules/cards';
 import type { God } from '../../rules/types';
 import {
   HEX_CLIP_PATH,
@@ -62,7 +61,6 @@ export interface GameOverlayProps {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
-  requiredSuitGod: God | null;
 }
 
 // Accumulates forward-only rotation degrees from a real 0..order-1 index
@@ -133,17 +131,12 @@ const BOTTOM_TAG_TOP = 501;
 // anchor pushed its top edge 39px further up the screen, leaving no room
 // for a full-height hand-fan card between it and the contextual hint
 // panel above (see ui/renderGameView.ts's FAN_BASELINE_Y comment for the
-// full budget this and that value were jointly re-tuned against).
+// full budget this and that value were jointly re-tuned against). That
+// hint panel was deleted outright in a later task (2026-09-10 team-
+// nameplate-revision task, Part 3) - this value stayed at 16 (re-verified
+// via real screenshots, not readjusted) since removing the panel only
+// freed room above FAN_BASELINE_Y, not below it.
 const BOTTOM_ROW_BOTTOM = 16;
-// The Required Suit banner sits between the player cluster and the hand
-// fan - the player-facing prompt for what must be followed this trick, per
-// this task's board requirements (it does not duplicate the suit symbol
-// already shown by the Suit Cycle HUD ring above it - this is the only
-// spot that also names the suit in text). Nudged down from 590 (2026-09-10
-// nameplate-glow-lead-tag-cleanup task) - the local nameplate directly
-// above grew taller (56x56 Team symbols, up from 36x36) and its own
-// bottom edge now lands past the old 590, which would otherwise overlap.
-const REQUIRED_SUIT_BANNER_TOP = 596;
 // Center HUD geometry (asset-based replacement of the old procedural
 // rotating-rings HUD - see BUILD_STATUS.md). One carved-stone bezel
 // (ui_suit_cycle_bezel.png, four circular recesses + open center) plus one
@@ -204,6 +197,20 @@ const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
 // past the bezel's outer edge.
 const POINTER_SIZE = HUD_SIZE * 0.58;
 
+// Same limiting (largest) per-Deity content-fill fraction used for the
+// Center HUD's own recess symbols above (0.681, Cthulhu/Nyarlathotep's
+// own canvas height) - reused here for the local nameplate's Team
+// compartment symbols (tune.localTeamSymbolSize) so the "YOU" overlay
+// below can sit at the *visible* backplate's own lower edge rather than
+// the padded square container's edge (each deity_symbol_<deity>.png
+// master has real transparent padding around its own visible backplate -
+// see that same comment for the full measurement). All four masters'
+// own visible content is centered within their own canvas, so this same
+// fraction also gives the visible backplate's edge distance from the
+// container's edge on every side, not just the bottom.
+const TEAM_SYMBOL_BACKPLATE_FRACTION = 0.681;
+const TEAM_SYMBOL_EDGE_INSET = (tune.localTeamSymbolSize * (1 - TEAM_SYMBOL_BACKPLATE_FRACTION)) / 2;
+
 // Indexed 0-3, matching SUITS/GOD_TO_SUIT_INDEX's fixed order (Yog-Sothoth
 // top, Cthulhu right, Shub-Niggurath bottom, Nyarlathotep left).
 const RECESS_OFFSET: readonly { dx: number; dy: number }[] = [
@@ -242,7 +249,6 @@ export function GameOverlay({
   teamName,
   yourGodChip,
   teammateGodChip,
-  requiredSuitGod,
 }: GameOverlayProps): JSX.Element {
   const turnSeatIndex = currentTurnSeat === null ? null : SEAT_ORDER.indexOf(currentTurnSeat);
   const turnDeg = useForwardRotation(turnSeatIndex, 4, 90);
@@ -519,25 +525,30 @@ export function GameOverlay({
               // name tag, plus a lower "Team HUD" panel with its own
               // procedural background). Left compartment: runtime player
               // name only, never "(You)" (seatLabels['bottom'] already
-              // omits it - see renderGameView.ts's rawPlayerNameFor).
-              // Right compartment: runtime "TEAM COSMOS"/"TEAM CHAOS" text
-              // plus the two canonical deity_symbol_*.png masters for that
-              // team, with a small "YOU" marker under the local player's
-              // own symbol only (yourGodChip.label - see
-              // computeGameOverlayHudState). Per the 2026-09-10 live-
-              // asset-layout-corrections brief, this reconciles the prior
-              // task's own interim "Kin" label choice on the teammate's
-              // symbol (kept then only pending explicit clarification,
-              // per that task's own BUILD_STATUS.md open question) - the
-              // brief is that clarification, and it calls for no label at
-              // all on the teammate's icon; not revealing which remote
-              // seat *is* that teammate is unaffected either way, since
-              // this whole compartment already only ever showed the
-              // Team's two Deities, never a seat/player identity. The
-              // local seat is never a delegate-selection target (a player
-              // can't delegate to themself), so there's no staged/
-              // tappable state to preserve here the way the remote seat
-              // tags below need to.
+              // omits it - see renderGameView.ts's rawPlayerNameFor),
+              // vertically centered in its usable interior. Right
+              // compartment: a strict two-row layout per the revised
+              // Section 5 of the 2026-09-10 live-asset-layout-corrections
+              // brief (superseding that task's own original "match the
+              // Center HUD's symbol size" result, and this reconciles the
+              // still-earlier "Kin" label question the same way as
+              // before - no label on the teammate's icon) - top row is
+              // runtime "TEAM COSMOS"/"TEAM CHAOS" text
+              // (tune.localTeamHeaderFontSize), bottom row is the two
+              // canonical deity_symbol_*.png masters as a pair
+              // (tune.localTeamSymbolSize container each, tune.
+              // localTeamSymbolGap between them). "YOU" is an absolutely-
+              // positioned overlay along the *lower edge* of the local
+              // player's own symbol specifically (TEAM_SYMBOL_
+              // BACKPLATE_FRACTION below), not a third row - the brief is
+              // explicit that it must not add a row below the pair. Not
+              // revealing which remote seat is the teammate is unaffected
+              // either way, since this whole compartment already only
+              // ever showed the Team's two Deities, never a seat/player
+              // identity. The local seat is never a delegate-selection
+              // target (a player can't delegate to themself), so there's
+              // no staged/tappable state to preserve here the way the
+              // remote seat tags below need to.
               //
               // No boxShadow here - a `0 0 30px rgba(196, 156, 66, 0.22)`
               // ambient glow used to sit on this div (removed per the
@@ -558,7 +569,7 @@ export function GameOverlay({
                 data-ui="local-nameplate"
                 style={{
                   width: '100%',
-                  minHeight: 64,
+                  height: tune.localNameplateHeight,
                   boxSizing: 'border-box',
                   display: 'flex',
                   alignItems: 'stretch',
@@ -583,13 +594,16 @@ export function GameOverlay({
                     {seatLabels[seat]}
                   </span>
                 </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '4px 6px' }}>
+                {/* Right compartment - strict two-row layout, positioned
+                    relative to this flex box's own runtime bounds (not
+                    absolute coordinates), per the revised Section 5. */}
+                <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '4px 6px' }}>
                   <span
                     data-bind="team-name"
                     style={{
                       fontFamily: "'Cormorant Unicase', serif",
                       fontWeight: 600,
-                      fontSize: 8,
+                      fontSize: tune.localTeamHeaderFontSize,
                       letterSpacing: '0.14em',
                       color: 'oklch(0.88 0.09 88)',
                       textTransform: 'uppercase',
@@ -598,26 +612,39 @@ export function GameOverlay({
                   >
                     {teamName}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    {/* Symbols sized to tune.localTeamSymbolSize - ~2x the
-                        prior fixed 18px, per the brief's "increase both
-                        Deity symbols to approximately twice their current
-                        size" - the outer compartment's own minHeight above
-                        was grown to fit this cleanly. teammateGodChip.label
-                        is now '' (see computeGameOverlayHudState) - a
-                        fixed-height label slot is still reserved for both
-                        chips regardless of whether either has real text,
-                        so the two icons stay aligned at the same vertical
-                        position rather than the labelled one sitting
-                        visually higher. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: tune.localTeamSymbolGap }}>
+                    {/* Bottom row: the two Deity symbols as a pair, no
+                        label row beneath them - tune.localTeamSymbolSize
+                        is the padded square container (objectFit:contain
+                        already centers each master's own visible content
+                        within it, per that content's own centered-in-
+                        canvas alpha bounds - confirmed via the same
+                        bounding-box measurement used for the Center HUD's
+                        recess symbols), sized so the *visible* backplate
+                        lands at ~26-28px (TEAM_SYMBOL_BACKPLATE_FRACTION
+                        above) rather than matching the Center HUD's own
+                        (much larger) symbol size, which the revised brief
+                        explicitly replaces. "YOU" overlays the local
+                        player's own symbol only (yourGodChip is always
+                        this array's first element), absolutely positioned
+                        at that symbol's visible lower edge - not a new row
+                        - via TEAM_SYMBOL_EDGE_INSET. teammateGodChip.label
+                        stays '' (see computeGameOverlayHudState) - no
+                        label on the teammate's icon. */}
                     {[yourGodChip, teammateGodChip].map((chip) => {
                       const motif = chip.god ? GOD_MOTIF[chip.god] : 'circle';
+                      const isLocalChip = chip === yourGodChip;
                       return (
-                        <div key={chip.code} data-ui="god-chip" data-god={chip.code} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <div
+                          key={chip.code}
+                          data-ui="god-chip"
+                          data-god={chip.code}
+                          style={{ position: 'relative', width: tune.localTeamSymbolSize, height: tune.localTeamSymbolSize }}
+                        >
                           <div
                             style={{
-                              width: tune.localTeamSymbolSize,
-                              height: tune.localTeamSymbolSize,
+                              position: 'absolute',
+                              inset: 0,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -628,9 +655,26 @@ export function GameOverlay({
                           >
                             {chip.god && <img src={symbolArtUrl(chip.god)} alt={chip.code} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
                           </div>
-                          <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 600, fontSize: 6, letterSpacing: '0.1em', color: 'rgba(252, 226, 164, 0.75)', minHeight: 7 }}>
-                            {chip.label}
-                          </span>
+                          {isLocalChip && (
+                            <span
+                              data-ui="you-overlay"
+                              style={{
+                                position: 'absolute',
+                                left: '50%',
+                                bottom: TEAM_SYMBOL_EDGE_INSET,
+                                transform: 'translate(-50%, 50%)',
+                                fontFamily: "'Cormorant Unicase', serif",
+                                fontWeight: 700,
+                                fontSize: 6,
+                                letterSpacing: '0.08em',
+                                color: 'oklch(0.96 0.04 90)',
+                                textShadow: '0 0 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95)',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              YOU
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -730,80 +774,6 @@ export function GameOverlay({
         );
       })}
 
-
-      {/* ===== Contextual hint panel (Required Suit / Any Suit) - real =====
-          Reusable region for a short contextual hint - Required Suit today,
-          future tutorial/gameplay hints later (per the 2026-09-10 live-
-          asset-layout-corrections brief) - sitting strictly between the
-          local nameplate and the hand fan (never overlapping either).
-          Previously full-width (390 - 2*14 = 362px), which read as an
-          oversized bar crowding the hand below it; now sized/centered per
-          the brief's own explicit numbers (~58% of the 390px reference
-          viewport width, ~45-50px tall) rather than stretching edge to
-          edge. "Required Suit" shortened to "Suit" so the longest
-          canonical god name (Nyarlathotep, 12 characters) still fits
-          alongside the icon and label at this narrower width. */}
-      <div
-        data-ui="required-suit-banner"
-        style={{
-          position: 'absolute',
-          left: CENTER_X - tune.contextualHintWidth / 2,
-          width: tune.contextualHintWidth,
-          top: REQUIRED_SUIT_BANNER_TOP,
-          height: tune.contextualHintHeight,
-          boxSizing: 'border-box',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          padding: '0 10px',
-          background: 'linear-gradient(180deg, rgba(10, 34, 36, 0.82), rgba(5, 14, 17, 0.86))',
-          border: '1px solid rgba(120, 190, 178, 0.28)',
-        }}
-      >
-        {requiredSuitGod ? (
-          <span
-            style={{
-              width: 18,
-              height: 18,
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: GOD_MOTIF[requiredSuitGod] === 'circle' ? '50%' : 0,
-              clipPath: GOD_MOTIF[requiredSuitGod] === 'hex' ? HEX_CLIP_PATH : undefined,
-            }}
-          >
-            <img src={symbolArtUrl(requiredSuitGod)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          </span>
-        ) : null}
-        <span
-          style={{
-            fontFamily: "'Cormorant Unicase', serif",
-            fontWeight: 500,
-            fontSize: 9,
-            letterSpacing: '0.16em',
-            color: 'rgba(158, 196, 186, 0.6)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Suit
-        </span>
-        <span
-          style={{
-            fontFamily: "'IM Fell English SC', serif",
-            fontSize: 15,
-            color: 'oklch(0.86 0.09 178)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            minWidth: 0,
-          }}
-        >
-          {requiredSuitGod ? GOD_DISPLAY_NAME[requiredSuitGod] : 'Any Suit'}
-        </span>
-      </div>
 
       {/* ===== Top-left: Menu - real =====
           New hub (dom/MenuModal.tsx) hosting Rules and the previous-trick

@@ -95,7 +95,6 @@ export function DomRoot(): JSX.Element {
           teamName={gameOverlay.teamName}
           yourGodChip={gameOverlay.yourGodChip}
           teammateGodChip={gameOverlay.teammateGodChip}
-          requiredSuitGod={gameOverlay.requiredSuitGod}
         />
       )}
     </>
