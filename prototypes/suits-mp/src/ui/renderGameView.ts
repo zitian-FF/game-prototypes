@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
-import type { CardId } from '../rules/types';
+import type { CardId, DeityCardState } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
@@ -651,8 +651,15 @@ function prepareCollectAnimation(state: MaskedState, oldHandIds: ReadonlySet<Car
 // consumed while drawing that one render. For a remote collector, the
 // preceding render already emptied every play area (state.currentTrick is
 // genuinely `[]` by now) - this spawns the 4/5 flying cards on top of that
-// already-settled render and tweens them toward the collector's own
-// nameplate, fading out once they arrive (leaving this client's board -
+// already-settled render and tweens them toward the collector's own PLAY
+// AREA (2026-09-10 collector-destination-autoreveal task - previously the
+// collector's nameplate, via REMOTE_NAMEPLATE_ORIGIN; changed to
+// seatCenter's own coordinates instead, deliberately NOT by repointing
+// REMOTE_NAMEPLATE_ORIGIN itself, since that shared constant also serves
+// as the *origin* for the unrelated remote-seat card-PLAY animation
+// further down this file (animateCardPlayIntoPlayArea's own call site) -
+// repointing it here would have silently changed that animation's origin
+// too), fading out once they arrive (leaving this client's board -
 // conceptually moving into a hand it can't see).
 function finishCollectAnimation(
   scene: Phaser.Scene,
@@ -666,7 +673,7 @@ function finishCollectAnimation(
     return;
   }
 
-  const dest = REMOTE_NAMEPLATE_ORIGIN[descriptor.destSeat!];
+  const dest = seatCenter(descriptor.destSeat!);
   descriptor.incoming.forEach(({ face, origin }, i) => {
     const style = playAreaStyle(face);
     const drawn = drawCard(scene, container, origin.x, origin.y, 0, face, style, CARD_DIMS_STANDARD);
@@ -1203,6 +1210,59 @@ function animateCardPlayIntoPlayArea(
   }
 }
 
+// Flips a just-collected, previously-facedown hand card to reveal its
+// real identity, once it's already landed at its final hand slot (see
+// renderCardFan's own reflow-tween onComplete, the only caller) - a
+// genuine "you couldn't see this until now" reveal, not just a
+// flourish. The masked identity host/mask.ts withholds is about hiding
+// an off-suit play from *opponents* while it sits in the trick; the
+// real id is already sitting in `state.yourHand` (hence `MaskedState.
+// yourHand`) the instant it's collected into the local player's own
+// hand - see prepareCollectAnimation's own doc comment for how this
+// file already recovers that id by elimination. This function only
+// decides how the client shows that already-known transition, rather
+// than the previous behavior of leaving the card drawn facedown
+// (baked in at reflow-draw time, never updated) until whatever
+// unrelated render happened to come along next silently redrew it
+// correctly with no transition at all.
+//
+// A classic scale-through-zero flip: the still-facedown container
+// shrinks to nothing on the X axis, is swapped for a freshly-drawn
+// faceup container at the exact same position/rotation, then grows
+// back out - the swap itself happens at the invisible zero-width
+// midpoint, so a facedown/faceup blend is never visible mid-transition.
+function playCardRevealFlip(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  oldContainer: Phaser.GameObjects.Container,
+  x: number,
+  y: number,
+  rotationRad: number,
+  style: CardStyle,
+  dims: CardDimensions,
+  cardId: CardId,
+  deityCardState: DeityCardState | null,
+): void {
+  const halfMs = tune.cardRevealFlipMs / 2;
+  scene.tweens.add({
+    targets: oldContainer,
+    scaleX: 0,
+    duration: halfMs,
+    ease: tune.cardRevealFlipEase,
+    onComplete: () => {
+      oldContainer.destroy();
+      const revealed = drawCard(scene, container, x, y, (rotationRad * 180) / Math.PI, { kind: 'faceup', cardId, deityCardState }, style, dims);
+      revealed.container.setScale(0, 1);
+      scene.tweens.add({
+        targets: revealed.container,
+        scaleX: 1,
+        duration: halfMs,
+        ease: tune.cardRevealFlipEase,
+      });
+    },
+  });
+}
+
 // Draws 1-2 cards (a play is 1 card for normal/offsuit, 2 for a double)
 // centered as a row at (x, y) - shared by play areas and the
 // previous-trick log, since both need to show a multi-card play as a
@@ -1509,6 +1569,17 @@ function renderCardFan(
         onComplete: () => {
           drawnContainer.setPosition(entry.x, y);
           drawnContainer.setRotation(finalRotationRad);
+          // A just-collected card that was masked facedown while it sat
+          // in the trick - see playCardRevealFlip's own doc comment for
+          // why this is safe to reveal now (the real id is already
+          // `entry.id`, this file already had to recover it to get this
+          // far - see prepareCollectAnimation) and why a flip, not an
+          // instant swap. Only ever true for `isIncoming` cards (an
+          // already-resident card reflowing to a new fan slot never had
+          // a masked face to begin with).
+          if (isIncoming && face.kind === 'facedown') {
+            playCardRevealFlip(scene, container, drawnContainer, entry.x, y, finalRotationRad, style, dims, entry.id, deityCardState);
+          }
         },
       });
     }
