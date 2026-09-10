@@ -134,7 +134,13 @@ const SIDE_BOX_Y = CLUSTER_CENTER_Y;
 const LEFT_BOX_X = 58;
 const RIGHT_BOX_X = WIDTH - 58;
 
-const FAN_BASELINE_Y = 648;
+// Shifted down 14px (from 648) to clear the contextual hint panel's own
+// height growth (34px -> tune.contextualHintHeight, 48px) - see
+// dom/overlay/GameOverlay.tsx's "required-suit-banner" - per the
+// 2026-09-10 live-asset-layout-corrections brief's "move the hand
+// downward only as necessary; do not resize cards" instruction. Cards
+// themselves (CARD_DIMS_STANDARD) are untouched.
+const FAN_BASELINE_Y = 662;
 
 const FAN_CONFIG: FanConfig = {
   perCardStepDeg: tune.handFanPerCardStepDeg,
@@ -965,15 +971,16 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
     // handoff's "small runtime YOU marker on the local player's own Deity
     // symbol only" instruction - this chip is exactly that marker's real
     // spot (rendered under the local player's own symbol icon, never
-    // beside the player name - see GameOverlay.tsx). 'Kin' on the
-    // teammate's chip is intentionally UNCHANGED: the handoff is silent on
-    // the teammate symbol, but the GDD's Information Visibility rule
-    // requires the local HUD to keep showing "the other Deity on my team"
-    // as a Team-level fact without connecting it to a seat - dropping its
-    // own distinguishing label would flatten that into an unlabeled
-    // second icon and lose the distinction. See BUILD_STATUS.md.
+    // beside the player name - see GameOverlay.tsx). The teammate's own
+    // chip now carries no label at all, per the 2026-09-10 live-asset-
+    // layout-corrections brief's explicit "Remove KIN; the other symbol
+    // needs no label" - that brief is the clarification the prior task's
+    // BUILD_STATUS.md flagged as still open (it had kept 'Kin' only
+    // pending exactly this). Not revealing which remote seat holds the
+    // teammate Deity is unaffected: this compartment never showed a seat/
+    // player identity to begin with, only the Team's two Deity symbols.
     yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'YOU', god: state.yourGod },
-    teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: 'Kin', god: teammateGod },
+    teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: '', god: teammateGod },
     requiredSuitGod: state.requiredSuit,
   };
 }
