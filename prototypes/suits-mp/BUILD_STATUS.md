@@ -1,106 +1,118 @@
 ## Current milestone
 
-Fixed a bug reported from real gameplay: after winning a trick via a
-Double, the seat nameplates that should be tappable to pick a delegate
-were never actually clickable by a real mouse/touch event, even though
-every piece of state and DOM wiring involved was already correct.
+Fixed a Double-play layout issue: a seat's play area drew a Double's 2
+cards side by side at full width + gap, which could run off the
+viewport at the left/right seats (closest to the screen edges). They
+now overlap significantly instead.
 
 ## What changed
 
-**Files changed**: `dom/overlay/GameOverlay.tsx` (one style property on
-the seat-tag `<button>`). No changes to `rules/engine.ts`,
-`host/gameHost.ts`, `host/mask.ts`, or `ui/renderGameView.ts` - the real
-state and its computation were never the problem (see root cause below).
+**Files changed**: `ui/renderGameView.ts` (`drawCardRow`'s spacing
+logic), `tune.json` (1 new value). No changes to `rules/engine.ts`,
+`host/gameHost.ts`, or network/broadcast timing - purely a canvas-layer
+layout change to how an already-correct multi-card play is drawn.
 
-- **Root cause**: `GameOverlay.tsx`'s root wrapper (`<div style={{
-  position: 'absolute', inset: 0, pointerEvents: 'none' }}>`, near the
-  top of the component) is deliberately click-through, so ordinary
-  board/canvas taps (card selection, etc.) pass through the DOM chrome
-  layer to the Phaser canvas beneath it. Every *other* real interactive
-  DOM element in this file (the Sort/Action/Menu/Redistribution-Log
-  buttons) explicitly opts back in with its own `pointerEvents: 'auto'`
-  - the seat-tag `<button>` (rendered per non-local seat, the only way
-  to pick a delegate) never did. It inherited `pointer-events: none`
-  from the root wrapper, so a real click or tap at its screen position
-  was resolved by the browser to the canvas sitting behind it,
-  regardless of the button's own `data-tappable`/`disabled`/`onClick`
-  wiring - all of which were already completely correct, exactly as the
-  bug report's own static reading suspected.
-- **Fix**: added `pointerEvents: delegate.tappable ? 'auto' : 'none'`
-  to the seat-tag button's style. Scoped to `delegate.tappable` (rather
-  than an unconditional `'auto'`) so a non-tappable seat tag - true for
-  the entire game outside the brief selectDelegate window - continues
-  to let ordinary board taps in that screen area reach the canvas
-  underneath, unchanged from before this fix.
-- **Why this wasn't caught by prior tasks' own Playwright verification**:
-  every earlier task that needed to drive a delegate pick through this
-  same button (the end-of-trick collect-animation task, most recently)
-  hit the identical "canvas intercepts pointer events" error from a
-  normal coordinate-based Playwright click, including with
-  `{force: true}`, and worked around it by invoking the DOM element's
-  own `.click()` directly via `page.evaluate()`. That workaround
-  bypasses the browser's real pointer-event hit-testing entirely (a
-  direct JS `.click()` call fires the element's handlers regardless of
-  what's on top of it at that screen position) - so it correctly
-  exercised the state/handler logic, but never noticed that a *real*
-  mouse or touch event could never reach the button in the first place.
-  This bug was real all along; only the test methodology used to reach
-  past it obscured it.
+- **`drawCardRow`**: previously spaced every card at
+  `dims.width + CARD_GAP` regardless of count. Now: a single card
+  (`faces.length === 1`, the common case - normal/offsuit plays) is
+  completely unchanged, byte-for-byte the same math as before (the new
+  formula reduces to the old one exactly when `faces.length === 1`,
+  since the overlap term is multiplied by `faces.length - 1 = 0`).
+  Multiple cards (currently only ever 2, a Double) now space at
+  `dims.width * (1 - tune.doublePlayOverlapFraction)` instead - a
+  significant overlap rather than full width + gap. Kept general to
+  `faces.length` (a loop, not "2 cards" hardcoded) per the task's own
+  instruction, even though nothing currently calls this with more than
+  2 faces.
+- **No z-order/depth change needed**: Phaser's container display list
+  already draws later-added children on top of earlier ones, and
+  `drawCardRow`'s existing `for (const face of faces)` loop already
+  draws left-to-right in array order - so the left card was already
+  "behind" and the right card already "in front" before this task.
+  Only the *spacing* between them needed to change.
+- **`tune.doublePlayOverlapFraction: 0.72`**: how much of each card's
+  width the next card covers. Chosen by iterating with real Playwright
+  screenshots at the left/right seats specifically (the tightest fit -
+  see verification below): started at 0.6, which left only ~4.8px
+  margin from the screen edge at those seats - too tight to call
+  "comfortably within the viewport." Raised to 0.72, which gives ~9.4px
+  margin on both sides (matching this codebase's existing
+  `handFanEdgeMarginPx: 10` convention for what counts as a comfortable
+  edge margin elsewhere), while a zoomed-in crop of the rendered result
+  confirmed the covered (back) card's rank badge stays fully legible
+  and a recognizable strip of its god symbol/frame remains visible -
+  both card ranks in the crops read clearly at every seat tested.
+  Binds automatically to the existing generic `?debug=1` Tweakpane
+  panel, confirmed live.
+- `drawCardRow` is shared by both the live play areas and the
+  previous-trick log overlay (`renderPreviousTrickOverlay`, `CARD_DIMS_
+  MINI`) - the fix applies to both call sites uniformly, rather than
+  special-casing the play area only, since the log's own multi-card
+  rows benefit from the same fraction-of-width overlap logic scaling
+  correctly to its smaller card size.
 
 ## How this was verified
 
 Real gameplay via Playwright (temporary `ForcedDeal`-based debug hooks
 in `HostGameScene.ts`/`main.ts`, added and fully reverted before this
-PR - `git diff --stat` against `main` confirms only
-`dom/overlay/GameOverlay.tsx` changed), reaching an actual Double-win
-selectDelegate phase as the local player.
+PR - `git diff --stat` against `main` confirms only `ui/renderGameView.
+ts` and `tune.json` changed).
 
 - `npm run typecheck` / `npm run build` (repo root) - clean.
-- **Reproduced the bug first, before any fix**: forced a deal giving
-  the local player a legal Double win. Confirmed live that
-  `state.delegateChoices` was correctly non-null
-  (`["p1","p2","p3"]`) and `state.currentTurn` correctly named the
-  winner (`p0`, local) - state-side, everything the bug report
-  suspected as a possible root cause (item 2) was already right.
-  Direct DOM inspection of the 'left' seat's tag showed
-  `data-tappable="true"`, `disabled: false` (also already correct),
-  but `getComputedStyle(...).pointerEvents === 'none'`, and
-  `document.elementFromPoint()` at the button's own center resolved to
-  the `<canvas>` element, not the button - confirming item 3's
-  suspicion precisely. A real, coordinate-based Playwright click
-  (`locator.click()`, no `force`, no JS-evaluated bypass) on that seat
-  tag timed out with "canvas intercepts pointer events" - the same
-  failure a real user's tap would hit.
-- **After the fix**: the identical scenario, the identical real
-  coordinate-based click - `getComputedStyle(...).pointerEvents` now
-  reads `'auto'`, the click succeeds with no error, and the action
-  button's label updates to `"Delegate to Player 2Commit the chosen
-  card"`, confirming the tap correctly staged `view.delegateChoice`
-  (item 4's "is there a distinct confirm step" - yes, confirmed: a
-  seat tap only stages the pick locally; the existing action button's
-  label/enabled state already correctly reflects "confirm this
-  delegate" once one is staged, and was not itself part of the bug).
-  Clicking that action button then sent the real `selectDelegate`
-  network action and the state transitioned to `turnPhase:
-  'redistribute'` with `currentTurn: 'p1'` - exactly the seat that was
-  tapped, confirming the full real interaction end-to-end: tap a seat,
-  see it stage, confirm/submit, and the real network action fires with
-  the correct target.
+- A Double play is never legal as the very first card of a trick
+  (`rules/engine.ts`'s `playCard` forces `kind: 'normal'`, single card,
+  at position 0), and which of the 3 non-leading positions is legal
+  for a Double depends on that position's required suit versus the
+  player's hand - and a bot's own choice between an eligible Double and
+  an eligible offsuit single is genuinely random (`host/botAI.ts`'s
+  `pickRandom`), not forceable through real legal-move selection alone.
+  Rather than accept a per-seat 1-in-3 retry loop for a purely visual
+  layout check, this task added one more temporary debug hook
+  (`debugPlayCard`, calling the real `applyAction`/`playCard` validation
+  directly for a specific slot - never bypassing legality, only
+  bypassing which *legal* move a bot's own dice roll would have picked)
+  and drove all 4 trick positions itself, deterministically, for 4
+  separate scenarios - one per seat (`p0`/`p1`/`p2`/`p3`, i.e. bottom/
+  left/top/right from the local viewer's own fixed `seatFor` mapping).
+  Every play in every scenario was still a genuinely legal move by the
+  real engine's own rules (an illegal `debugPlayCard` call is rejected
+  exactly like any other), just chosen directly instead of by a bot's
+  random pick.
+- Confirmed via real rendered container geometry (not just eyeballing):
+  at the left seat, the Double's row spans `[9.4, 106.6]` out of the
+  390-wide screen; at the right seat, `[283.4, 380.6]` - both comfortably
+  inside the viewport with matching ~9.4px margins on the side closest
+  to the screen edge. Top and bottom (which sit near the horizontal
+  center, not an edge) had far more room to spare in the screenshots.
+- Playwright screenshots taken at all 4 seat positions (bottom/left/
+  top/right) with a real Double rendered at each, confirming: the full
+  card row stays within the viewport at every position (worst case the
+  left/right seats, checked numerically above); zoomed-in crops at the
+  left and right seats confirm the back card's rank badge stays fully
+  legible and its symbol/frame remains recognizably visible under the
+  overlap; a Single-card play elsewhere in the same screenshots (the
+  leader's own play, plus the two non-Double positions in each
+  scenario) is visually unchanged from its normal full-width
+  appearance, consistent with the code proof above that the single-card
+  formula is untouched.
 - Browser console clean on a real, unforced boot into Single Player
   under `?debug=1` (only the pre-existing, unrelated sandboxed network
   noise - `net::ERR_CONNECTION_RESET` / a 404 - present on every boot
   in this environment).
-- Visual check: the fix is a pure interactivity change (a CSS property
-  with no visible rendering effect) - confirmed no visual difference
-  in the seat-tag's appearance before/after.
+
+**This change benefits from the user's own live verification on a
+real device**, per the task's own explicit note - the numeric bounds
+and zoomed crops above confirm the geometry and legibility are
+correct, but "does 0.72 feel like the right amount of overlap, or
+should it be tighter/looser" is a feel judgment the
+`doublePlayOverlapFraction` Tweakpane field exists to retune live.
 
 ## Open questions
 
-None - the bug report's own four-point diagnostic structure (check
-real state, check for a real-state bug, check for a pointer-blocking
-issue, check for a distinct confirm step) mapped directly onto the
-actual root cause and its resolution, with no ambiguity requiring a
-mid-session decision.
+None - the task's own instructions (keep it general to `faces.length`,
+don't touch the single-card case, verify visually at left/right
+specifically) were specific enough that no mid-session clarification
+was needed.
 
 ## Known issues
 
@@ -111,26 +123,22 @@ Setup section, off-suit hidden-identity nature unstated in the copy);
 visual differentiation from `'legal'`; the itch.io iframe canvas-scale
 fix, the asset pipeline's downscale/recompress output, the hand-fan
 edge-bound fix, the Center HUD easing curve, the trick-result dwell
-hold, the card-play arc animation, the Awakened reveal, and the
-end-of-trick collect animation all still want a real-device/live-
-deploy glance. Also still worth flagging: suits-mp still has no
-permanent `?debug=1`-gated `ForcedDeal` hook (unlike the sibling
-`suits` prototype's `rules/debugScenarios.ts`) - this is the fifth
-task in this feature area to build and tear down its own one-off
-version, and the *class* of bug this task found (a real click silently
-swallowed by the canvas underneath, invisible to a JS-evaluated-click
-test workaround) is a strong argument for that permanent hook also
-supporting a "drive it with real coordinate clicks, not JS .click()
-bypasses" mode for interactive-element verification specifically,
-since the bypass is exactly what let this bug through undetected in
-every prior task that exercised this same button.
+hold, the card-play arc animation, the Awakened reveal, the
+end-of-trick collect animation, and now this Double-overlap fix all
+still want a real-device/live-deploy glance. Also still worth flagging:
+suits-mp still has no permanent `?debug=1`-gated `ForcedDeal` hook
+(unlike the sibling `suits` prototype's `rules/debugScenarios.ts`) -
+this is the sixth task in this feature area to build and tear down its
+own one-off version, and this task specifically also needed a way to
+drive a *specific* legal move deterministically (not just deal a
+specific hand) to avoid a slow per-seat retry loop for a bot's own
+random Double-vs-offsuit choice - worth folding that capability in too
+if a permanent hook is ever built.
 
 ## Next proposed step
 
-Worth a targeted audit of every other DOM-overlay interactive element
-for the same class of bug (missing `pointerEvents: 'auto'` under the
-click-through root wrapper) now that one concrete instance has been
-found - the redistribution-assignment UI and any other per-seat tap
-target introduced since GameOverlay.tsx's original handoff are the
-most likely remaining candidates, since they share the same seat-tag-
-adjacent layout region as the bug just fixed here.
+A real-device/live-deploy pass covering everything listed under "Known
+issues" remains the next open loop - this Double-overlap fix's own
+0.72 fraction (does it feel right at a glance, on a real phone,
+compared to eyeballing screenshots) would be the highest-value addition
+from this task's own follow-up.
