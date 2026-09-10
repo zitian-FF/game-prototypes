@@ -156,7 +156,26 @@ const HUD_SIZE = 168;
 // home position for SUITS[0]/Yog-Sothoth, matching the same top/right/
 // bottom/left seat geometry SEAT_ORDER/SEAT_DEG use.
 const RECESS_OFFSET_FRACTION = 0.3;
-const RECESS_SYMBOL_SIZE = HUD_SIZE * 0.24;
+// Sized against the recess's own real opening, not guessed: measured
+// directly off ui_suit_cycle_bezel.png's pixels, the dark circular well
+// (where the bright metal ring gives way to the sunken recess) spans
+// ~0.273 of the bezel's own full width/height - about 45.8px at this
+// HUD's 168px display size. Every deity_symbol_<deity>.png master also
+// has real transparent padding baked around its own visible icon (its
+// content only fills ~59-68% of its own 1024x1024 canvas, confirmed by
+// trimming each master to its non-transparent bounding box) - since
+// `objectFit: contain` scales that whole padded canvas uniformly, sizing
+// this container to the recess's raw diameter would leave the *visible*
+// icon noticeably smaller than the recess. Scaled up instead so the
+// visible icon's own larger axis (height, 0.681 of canvas, the limiting
+// case across all four symbols) reaches the recess opening with a small
+// safety margin against the ring - tunable live via `?debug=1` since this
+// is a feel/fit value, not a fixed geometric fact like RECESS_OFFSET_
+// FRACTION above. Each symbol master's own visible content is already
+// centered within its own canvas (confirmed via the same bounding-box
+// measurement), so no separate centering offset is needed beyond the
+// existing translate/objectFit centering below.
+const RECESS_SYMBOL_SIZE = HUD_SIZE * tune.suitCycleSymbolSizeFraction;
 const RECESS_GLOW_SIZE = HUD_SIZE * 0.34;
 // The pointer PNG's own tip sits ~0.946 of its half-height from the
 // image's center (long needle, short blunt counterweight) - sized here so

@@ -41,5 +41,6 @@
   "cardCollectEase": "Cubic.easeInOut",
   "cardCollectFadeMs": 250,
   "cardCollectFadeScale": 0.4,
-  "doublePlayOverlapFraction": 0.72
+  "doublePlayOverlapFraction": 0.72,
+  "suitCycleSymbolSizeFraction": 0.37
 }
