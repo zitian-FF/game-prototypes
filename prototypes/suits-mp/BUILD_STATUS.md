@@ -1,198 +1,235 @@
 ## Current milestone
 
-Extended the card-play fly-in animation (previously local-player-only)
-to all four seats: a higher, genuinely-arced toss motion with a
-scale-punch settle on arrival, referencing the Yu-Gi-Oh Master
-Duel-style card-play feel. Remote seats now fly in from their
-nameplate position instead of appearing instantly; the local player's
-origin/behavior is unchanged from the prior task.
+Added the "Awakened" reveal: a burst flourish (duplicate Deity-face +
+star art scaling up to 2.5x and fading out, plus a rainbow holo-foil
+shimmer) that plays once whenever a Deity Card's Dormant→Powered state
+becomes visible - either as a client-side-only preview on a Dormant
+Deity Card still sitting in the local player's own hand (fires the
+instant any 10 appears in the current trick, persists until played or
+the trick ends), or on another player's already-Powered play once it
+finishes landing in its play area.
 
 ## What changed
 
-**Files changed**: `ui/renderGameView.ts` (`animateOwnPlayIntoPlayArea`
-renamed to `animateCardPlayIntoPlayArea` and generalized to all seats,
-`PersistentUIState` extended, `renderPlayArea`/`renderPlayerCluster`
-threaded to support it, new `REMOTE_NAMEPLATE_ORIGIN` constant),
-`tune.json` (one new value, one adjusted). No changes to
-`ui/cardComponent.ts`/`ui/cardFan.ts`/`host/mask.ts` - all reused
-exactly as they already were, which is also why the masking guarantee
-below holds structurally, not just by convention.
+**Files changed**: `ui/cardArt.ts` (new exported `playAwakenedEffect`;
+`placeContain` now returns the placed Image instead of void), `ui/
+renderGameView.ts` (`PersistentUIState` extended, `renderCardFan`'s
+trigger detection + hand-card rendering, `animateCardPlayIntoPlayArea`'s
+punch-tween `onComplete` chaining), `tune.json` (5 new values). No
+changes to `rules/engine.ts`, `host/mask.ts`, `net/actions.ts`, or
+`cardComponent.ts` - the real engine's own Dormant/Powered computation
+and the network payload it produces are untouched; this task is purely
+a new client-side preview layered on top of them, plus a shared
+presentation flourish for both scenarios.
 
-- **Per-seat animation trigger**: `PersistentUIState.animatedOwnPlayKey`
-  (a single string) became `animatedPlayKeyBySeat: Record<NetPlayerId,
-  string>` - the same "fingerprint changed since last animated" logic
-  as before, just one independent slot per seat instead of one shared
-  slot for the local player only. Every seat resets its own slot to
-  `''` when that seat's play area returns to empty between tricks.
-- **Per-seat origin**: `renderPlayArea` now takes the seat name and
-  passes `isOwnSeat ? null : REMOTE_NAMEPLATE_ORIGIN[seat]` into
-  `animateCardPlayIntoPlayArea`. `REMOTE_NAMEPLATE_ORIGIN` is a new
-  constant (`{top, left, right}`, no `bottom` entry - the local player
-  never uses it) whose coordinates are derived from
-  `dom/overlay/GameOverlay.tsx`'s own `TOP_TAG_TOP`/`SIDE_TAG_TOP`
-  nameplate anchor constants plus roughly half that tag's own height,
-  kept in sync by value the same way this file's other row anchors
-  already are documented to be. Inside
-  `animateCardPlayIntoPlayArea`, `remoteOrigin ?? handOrigin` picks
-  the nameplate point for a remote seat or the real captured
-  `lastHandLayoutsByCardId` position for the local player, unchanged
-  from the prior task; a remote seat's starting rotation is always 0
-  (a nameplate has no "tilt" to animate out of, unlike a fanned hand
-  card).
-- **A genuine arc, not a straight line**: replaced the previous
-  `scene.tweens.add({x, y, rotation, ...})` targets-based tween with
-  `scene.tweens.addCounter({from: 0, to: 1, ...})` driving a manual
-  `onUpdate`. This was a necessary rewrite, not a style choice -
-  Phaser's targets-based tweens always interpolate the named
-  properties along a straight line between their start and end
-  values; easing reshapes *speed over time* along that line, it never
-  bends the path itself. `addCounter` instead hands back a single
-  eased progress value `t` per frame, which `onUpdate` uses to compute
-  `x`/`y` manually: a straight lerp between origin and landing, minus
-  `tune.cardPlayArcHeight * Math.sin(Math.PI * t)` on `y` (screen y
-  grows downward, so subtracting lifts the card; the `sin` shape rises
-  from 0, peaks at the midpoint, and returns to 0, so the card starts
-  and lands exactly on the straight-line endpoints and only bulges
-  upward in between) - a real toss trajectory. `onComplete` still
-  snaps to the exact final `x`/`y`/`rotation` to eliminate any float
-  residue from the manual lerp, then chains the same scale-punch tween
-  as before.
-- **Z-order bug found and fixed (affects the previous task's animation
-  too, not just this one's remote seats)**: the original
-  `container.bringToTop(drawn.container)` call happened immediately
-  inside the animation function, during `renderPlayerCluster`'s own
-  pass. But `renderCardFan` (the hand fan) runs *after*
-  `renderPlayerCluster` in the same render pass and adds its own new
-  children to the same shared container - so any hand-fan card drawn
-  afterward would still end up rendered *on top of* an already-flying
-  card for its entire flight, violating "must render above other
-  elements during flight." This was a latent bug in the prior task's
-  local-only animation as well, just never surfaced there because nothing
-  else that render pass happened to occupy the same visual moment as
-  clearly. Fixed with a new `PersistentUIState.cardsAnimatingThisRender`
-  scratch array: `animateCardPlayIntoPlayArea` now pushes the flying
-  container here instead of calling `bringToTop` immediately, and
-  `renderWithView` drains it (`bringToTop` for real) once, at the very
-  end of the whole render pass, after everything else that pass could
-  possibly draw - hand fan included - is already in place.
-- **Masking correctness during flight**: `renderPlayArea` computes
-  `maskedPlayFaces(play, state.yourSlot)` *before* deciding whether to
-  animate, exactly as it did before this task - a hidden off-suit
-  play is already reduced to a single `{kind: 'facedown'}` face with
-  no card id at all by the time the animation function ever sees it.
-  The animation draws exactly that face for the entire flight, so
-  there is no code path (old or new) by which real Deity/rank art
-  could appear mid-flight for a masked play - the same placeholder
-  rectangle-and-stripe treatment (`cardComponent.ts`'s `facedown`
-  branch) used at rest is used throughout the toss too. No temporary
-  or substitute card-back asset was built for this task, per the
-  explicit instruction that a real card-back is a future, drop-in
-  replacement at that same rendering branch.
-- **`tune.json`**: `cardPlayArcHeight: 70` (new - the arc's peak
-  height in pixels, clearly higher than a subtle curve, tunable
-  independently of everything else). `cardPlayTravelMs` bumped from
-  160 to 190 (a slightly longer window felt necessary for a 70px arc
-  to read clearly rather than as a blur - still fast/snappy, not a
-  float). `cardPlayPunchMs`/`cardPlayPunchScale`/`cardPlayPunchEase`
-  unchanged from the prior task. All six bind automatically to the
-  existing generic `?debug=1` Tweakpane panel - confirmed live.
+- **Scenario 1 - own dormant card, in hand, a 10 gets played**: new
+  `PersistentUIState.awakenedHandCardIds: Set<CardId>` tracks which of
+  the local player's own Dormant Deity Cards are currently showing
+  their swapped/Powered look. `renderCardFan` computes, on every
+  render, whether any 10 has already appeared in `state.currentTrick`
+  (`play.cards.some(id => cardById(id).rank === 10)` - this only ever
+  sees cards the client already has real ids for, since a masked
+  offsuit play's `cards` is already `[]` by the time it reaches here;
+  the preview is deliberately bounded by the same information the real
+  player has, not omniscient) - if so, every Deity Card in
+  `state.yourHand` not already in the Set gets added (and the burst
+  fires for each, independently - handles holding two at once for
+  free) and drawn with `deityCardState: 'powered'` from then on. An
+  empty `state.currentTrick` clears the whole Set unconditionally -
+  this is the exact same trick-scoped boundary the real engine resets
+  its own equivalent tracking at (`state.plays` reset to `[]` the
+  instant a trick's 4th card is played, in `rules/engine.ts`'s
+  `playCard`), so clearing here is correct both at a genuine fresh
+  trick's start and right after a real reset; the trick-result dwell
+  hold's frozen render (which substitutes `previousTrick` into
+  `currentTrick`, never empty for a trick that actually completed)
+  correctly does *not* clear early, so an unplayed Awakened card
+  keeps showing through the whole dwell and only reverts once the
+  real next state renders.
+- **Scenario 2 - another player plays an already-Powered card**:
+  `animateCardPlayIntoPlayArea`'s existing punch-tween `onComplete` (the
+  point where a play has fully finished landing - travel, then the
+  arrival punch) now also fires `playAwakenedEffect` when
+  `remoteOrigin !== null` (a remote seat, never the local player's own
+  play - `remoteOrigin` doubles as the existing "is this a remote
+  seat" signal from PR #91, no new parameter needed) and
+  `face.deityCardState === 'powered'`. No underlying art swap here -
+  `maskedPlayFaces` already resolved the real, correct Powered face
+  before this card was ever drawn, exactly as it did before this task,
+  so the burst plays on top of art that was already right from its
+  very first frame. Piggybacks on the same per-seat
+  `animatedPlayKeyBySeat` fingerprint the fly-in itself already uses,
+  so it needs zero new bookkeeping and structurally cannot re-fire on
+  a later re-render of the same already-landed play.
+- **`playAwakenedEffect(scene, container, god, dims)`** (new, `ui/
+  cardArt.ts`): spawns a duplicate `deity_face_<god>` Image (same
+  `POWERED_FACE_BOX` placement `buildCard` already uses) and a
+  duplicate `'★'` Text (same `RUNTIME_RANK_CENTER`/`RUNTIME_STAR_SIZE`
+  as the real glyph), each tweened to `tune.awakenedBurstScale` (2.5x)
+  with alpha to 0 over `tune.awakenedBurstMs`, self-destroying on
+  `onComplete`. `container` must be the same card-center-relative local
+  space `buildCard` placed its own layers into - both callers pass the
+  outer container `drawCard()` itself returns, which shares that
+  origin with `buildCard`'s inner one.
+  - **Rainbow holo-foil shimmer**: one additive-blended rainbow-gradient
+    `Graphics` quad, swept once across the burst face art over
+    `tune.awakenedShimmerMs`, masked to that same face art's own alpha
+    silhouette via a live `Phaser.Display.Masks.BitmapMask` reference (not
+    a hand-traced shape, so it can never drift out of sync with the art,
+    and it inherits the face art's own scale-up/fade-out automatically
+    since the mask samples its live rendered state each frame). Chosen
+    over a custom shader as the better effort/quality tradeoff - a
+    single Graphics quad plus a stock Phaser mask already reads as a
+    foil-card shine, and the task explicitly allowed this technique.
+    Skipped outright when `scene.renderer.type !== Phaser.WEBGL`
+    (BitmapMask is WebGL-only) rather than risk an unmasked rainbow
+    rectangle floating free of the art in a Canvas-renderer fallback -
+    the burst's scale/fade still plays either way.
+- **`placeContain`** (`ui/cardArt.ts`) now returns the placed
+  `Phaser.GameObjects.Image` (or `null` if the texture isn't loaded)
+  instead of `void`, so `playAwakenedEffect` can tween/mask the exact
+  image it just placed rather than re-deriving its position
+  independently. `buildCard`'s own four call sites are unaffected -
+  they already ignored the return value.
+- **`tune.json`**: `awakenedBurstScale: 2.5`, `awakenedBurstMs: 550`,
+  `awakenedBurstEase: "Cubic.easeOut"`, `awakenedShimmerMs: 700`,
+  `awakenedShimmerAlpha: 0.55` - five independent values so the burst's
+  size/speed/feel and the shimmer's duration/opacity can each be
+  retuned without touching the others. All five bind automatically to
+  the existing generic `?debug=1` Tweakpane panel - confirmed live.
 
 ## How this was verified
 
-Real gameplay, not fabricated/injected state, per the pattern
-established across the last several tasks in this feature area:
+Real gameplay, not fabricated/injected state - but per the task's own
+explicit allowance, some of these combinations (holding two Deity
+Cards at once, an opponent's Deity Card resolving Powered) are rare
+under real shuffle luck, so the same debug-hook-then-revert pattern
+established in prior tasks was used to construct them deterministically
+via `rules/types.ts`'s existing `ForcedDeal` mechanism (`initGame`'s
+`forced` parameter - already wired for `?debug=1` scenario forcing in
+this repo's sibling `suits` prototype, just not yet exposed in
+suits-mp). Two temporary hooks (`HostGameScene.ts`'s `debugForceDeal`
++ its own masked-state/container exposure; `main.ts`'s `window.__gs`/
+`__container`/`__forceDeal`/`__handCardClickTarget`, the last one
+replicating `renderCardFan`'s own fan-layout math to click a
+*specific* hand card by id rather than just any legal one) were added,
+used, then fully reverted via `git checkout` (both files carry zero
+permanent changes this task) - confirmed via `git diff --stat` against
+`main` showing exactly `ui/cardArt.ts`, `ui/renderGameView.ts`, and
+`tune.json` changed, nothing else.
 
 - `npm run typecheck` / `npm run build` (repo root) - clean.
-- Confirmed all six `cardPlay*` keys appear as live-editable Tweakpane
-  fields under `?debug=1`.
-- Temporary, read-only debug hooks (`HostGameScene.ts` exposing its
-  own last-built real `MaskedState` and container; `main.ts` exposing
-  those plus a real-legal-card click-target helper and a real
-  redistribute-plan helper - same pattern as prior tasks) were added,
-  used, then fully reverted via targeted edits (not a blanket
-  `git checkout`, since `HostGameScene.ts` also carries real permanent
-  code from an earlier task) - confirmed via `git diff --stat` against
-  `main` showing exactly `ui/renderGameView.ts` and `tune.json`
-  changed, nothing else.
-- A Playwright script played a real Single Player game end-to-end,
-  watching for the first genuine occurrence of each of three cases and
-  sampling the top-of-container object 8 times (15ms apart) as each
-  occurred:
-  - **Local player's own play**: landed at exactly `(195, 453)` -
-    `renderPlayArea`'s real, unmodified bottom-seat landing spot -
-    with real card art visible throughout, matching the always-shown
-    local-hand behavior.
-  - **A bot/remote seat's face-up play** (`p2`, on-suit): landed at
-    exactly `(195, 150)` - the top seat's real landing spot - with
-    real Deity/rank art visible throughout, correct for a legal,
-    unmasked play.
-  - **A bot/remote seat's facedown off-suit play** (`p3`): landed at
-    exactly `(332, 305)` - the right seat's real landing spot - with
-    **zero** Image-type descendants (`hasImage: false`) across all 8
-    samples spanning the entire animation and rest, i.e. never showing
-    real art for even one sampled frame. This is the task's CRITICAL
-    masking requirement, and it held.
-- **Arc shape itself, directly traced**: rather than trust an external
-  poller (which raced the click-to-render round trip in an earlier,
-  discarded diagnostic attempt - see Known issues below for what that
-  looked like and why it was a test artifact, not a bug), a temporary
-  `onUpdate` hook pushed the tween's own computed `{t, x, y}` into a
-  buffer read back after the animation settled. One real local play's
-  trace: at `t≈0.59`, `y≈466.6` versus a straight-line prediction
-  between origin and landing of `y≈533.8` at that same `t` - the card
-  sat about 67px higher than a direct line would put it (consistent
-  with `cardPlayArcHeight: 70` peaking near the midpoint), then
-  converged to exactly the final `(195, 453)` by `t=1`. Confirms the
-  arc is real, not just declared in code.
+- Confirmed all five new `awakened*` keys appear as live-editable
+  Tweakpane fields under `?debug=1`.
+- A forced deal gave the local player two Dormant Deity Cards
+  (`Nyarlathotep-DeityCard`, `Cthulhu-DeityCard`) and rigged the trick
+  so bots at earlier positions played two separate 10s before the
+  local player's own turn. A Playwright script scanned the whole
+  render container (counting `'★'` Text nodes and `deity_face_*`
+  Image nodes) at each step of a real trick:
+  - **The first 10 lands** → count jumped from the steady 2 (both
+    cards' permanent Powered markers) to 4 for ~150-250ms (each
+    card's own transient burst pair layered on top), then back to 2 -
+    confirms the trigger fires and both cards animate independently in
+    the same render (cases a + e).
+  - **A second 10 lands** later the same trick → count stayed flat at
+    2 across 8 samples spanning ~1s - confirms no re-trigger (case b).
+  - **The local player plays the already-swapped
+    `Nyarlathotep-DeityCard`** → count rose to 3, but for a fully
+    accounted-for reason unrelated to any bug: the local player won
+    this trick with it (Powered scores 11, beating the two 10s), and
+    `advanceBlocker` collects the trick's cards straight back into the
+    winner's (distributor's) hand ahead of redistribution - so during
+    the following trick-result dwell, the *same* card is legitimately
+    showing twice at once (once frozen in its just-landed play-area
+    slot, once again in the hand fan, now inflated with the collected
+    cards) with no new burst tween running either time - confirms case
+    d (moves silently, no second animation).
+  - **Once the dwell actually ends** (polled the canvas itself, not
+    `window.__gs()` - the masked state the host hands back updates
+    ahead of what's actually rendered, since `presentGameView`'s dwell
+    only delays the render, not the state snapshot a debug hook reads)
+    → both Deity Cards (now sitting in the distributor's inflated,
+    still-unredistributed hand) read exactly 0 stars / 0 face images /
+    2 plain "1" numerals - confirms the still-unplayed
+    `Cthulhu-DeityCard` reverted to Dormant at the real trick boundary
+    (case c).
+- A second forced deal gave a bot an already-Powered
+  `Cthulhu-DeityCard` (a 10 played by the leader first, then the bot's
+  only legal card was its own suit's Deity Card). Sampling from the
+  instant that play first appeared in `currentTrick`: real Powered art
+  visible immediately (1 star/1 face, no swap, correct for a card the
+  local player never saw Dormant) through the whole ~370ms fly-in
+  (`cardPlayTravelMs` + `cardPlayPunchMs`×2), then the burst fired
+  right on schedule (2/2 for ~500ms, matching `awakenedBurstMs`),
+  self-destroying back to 1/1 - confirms case f, sequenced strictly
+  after landing.
+- Masking correctness for this task specifically: Scenario 2's burst
+  condition (`face.kind === 'faceup' && face.deityCardState ===
+  'powered'`) can structurally never be true for a masked/hidden
+  offsuit play - `maskedPlayFaces` already reduces those to a single
+  `{kind: 'facedown'}` face with no `deityCardState` at all before
+  this code ever runs, unchanged from PR #91 - so this task introduces
+  no new way for a hidden play's real state to leak.
 - Browser console clean on boot under `?debug=1` (only the
   pre-existing, unrelated sandboxed network noise - `net::ERR_CONNECTION_RESET`
-  / a 404 - present on every boot in this environment, unchanged from
-  prior tasks) - checked with temporary hooks removed.
+  / a 404 - present on every boot in this environment) - checked with
+  all temporary hooks removed.
 
 **This change benefits from the user's own live verification on a
-real device.** The traced tween data proves the arc's shape and
-landing pixel are exactly as configured, but "does a 70px arc at 190ms
-read as a real toss, Master-Duel-style, on a real phone, for all four
-seats" is a feel judgment this automated check can't make - the six
-`cardPlay*` Tweakpane fields under `?debug=1` are there to retune live
-if the numbers don't land right on first look.
+real device**, per the task's own explicit note. The counted-node
+sampling above proves the burst and shimmer are genuinely running on
+schedule and self-destroying cleanly, but "does a 2.5x face+star burst
+with a rainbow foil sweep actually read as an exciting Awakened
+reveal, on a real phone" is a feel/quality judgment this automated
+check can't make - the five `awakened*` Tweakpane fields under
+`?debug=1` are there to retune live if the numbers or the shimmer's
+look don't land right on first look. The shimmer technique in
+particular (a gradient quad masked to the face art's silhouette,
+additive-blended) was a deliberate cheap/effective choice over a
+custom shader - worth a specific look to confirm it reads as a foil
+shine rather than a wash of color.
 
 ## Open questions
 
-None new - the task's own requirements (arc height as a tunable value,
-per-seat origin rules, the masking constraint, continuing to use the
-placeholder facedown treatment rather than building a substitute
-asset) were specific enough that no mid-session clarification was
-needed.
+None new - the task's own two-scenario split, the explicit
+client-side-only/non-predictive framing of the hand preview, the
+trick-scoped reset rule, and the addendum about reusing the existing
+facedown placeholder verbatim (no substitute card-back asset, no
+filename assumptions about a future one) were specific enough that no
+mid-session clarification was needed.
 
 ## Known issues
 
-Carried over, mostly untouched by this task: Rules-modal content gaps
-(no Setup section, off-suit hidden-identity nature unstated in the
-copy); `ui_player_nameplate.png` still applies to the local seat tag
-only (deliberate); the `'partner'` hand-fan state still has no working
+Carried over, untouched by this task: Rules-modal content gaps (no
+Setup section, off-suit hidden-identity nature unstated in the copy);
+`ui_player_nameplate.png` still applies to the local seat tag only
+(deliberate); the `'partner'` hand-fan state still has no working
 visual differentiation from `'legal'`; the itch.io iframe canvas-scale
 fix, the asset pipeline's downscale/recompress output, the hand-fan
 edge-bound fix, the Center HUD easing curve, the trick-result dwell
-hold, and now this arc animation's feel all still want a real-device/
-live-deploy glance; a Twin Awakening double-card play's own animation
-(two cards animating independently to their shared row) uses the same
-per-card loop as the already-verified single-card case but wasn't
-separately exercised this pass. Also carried over: an early attempt at
-directly sampling the arc's mid-flight shape via an external
-`requestAnimationFrame` poller produced a misleading "frozen position"
-result - it was racing the click's async state-update round trip and,
-during that race window, sampled a stale pre-play hand-fan object
-instead of the flying card. This was a test-methodology artifact, not
-a real bug (resolved by tracing the tween's own values directly
-instead, per "How this was verified" above), but is worth remembering
-if a future task's own external polling produces a similarly
-suspicious frozen reading early in a click-driven state transition.
+hold, the card-play arc animation, and now this Awakened reveal's own
+feel/shimmer quality all still want a real-device/live-deploy glance;
+a Twin Awakening double-card play landing with a Powered Deity Card as
+one of its two cards wasn't separately exercised this pass (the same
+per-face loop in `animateCardPlayIntoPlayArea` already handles it, just
+not empirically confirmed for the double case specifically). Also
+worth flagging for a future task: `rules/types.ts`'s `ForcedDeal`
+mechanism already exists and is wired through `initGame`, but suits-mp
+has no permanent `?debug=1`-gated way to invoke it yet (unlike the
+sibling `suits` prototype's `rules/debugScenarios.ts`) - every task in
+this feature area so far, this one included, has had to build and
+tear down its own temporary hook to reach it, which is worth
+promoting to a real, permanent debug feature if forced-deal scenarios
+keep coming up.
 
 ## Next proposed step
 
 A real-device/live-deploy pass covering everything listed under "Known
-issues" remains the next open loop - the arc's height/timing/feel
-across all four seats specifically, and a live look at a real Twin
-Awakening double-play's animation, would be the highest-value
-additions to this task's own follow-up.
+issues" remains the next open loop - the Awakened burst's scale/timing
+and the rainbow shimmer's look specifically (does it read as foil, not
+noise) would be the highest-value addition from this task's own
+follow-up. Separately, promoting a permanent `?debug=1` forced-deal
+hook (matching `suits/src/rules/debugScenarios.ts`'s existing pattern)
+would remove the need for every future task in this area to build and
+revert its own one-off version.

@@ -28,5 +28,10 @@
   "cardPlayArcHeight": 70,
   "cardPlayPunchMs": 90,
   "cardPlayPunchScale": 1.12,
-  "cardPlayPunchEase": "Sine.easeInOut"
+  "cardPlayPunchEase": "Sine.easeInOut",
+  "awakenedBurstScale": 2.5,
+  "awakenedBurstMs": 550,
+  "awakenedBurstEase": "Cubic.easeOut",
+  "awakenedShimmerMs": 700,
+  "awakenedShimmerAlpha": 0.55
 }

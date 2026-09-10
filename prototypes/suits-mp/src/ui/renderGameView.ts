@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, sortCardIds, sortCardIdsByRank } from '../rules/cards';
+import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
 import type { CardId, God } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
@@ -14,6 +14,7 @@ import { computeFanLayouts, computeFanScale } from './cardFan';
 import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
+import { playAwakenedEffect } from './cardArt';
 import { closeMenu, closeRedistLog, closeRules, openMenu, openRedistLog, openRules } from '../dom/domUiStore';
 import type { RedistLogEntry } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
@@ -277,6 +278,23 @@ export interface PersistentUIState {
   // actually guarantee "renders above every other element" for the whole
   // flight, not just above whatever existed at the moment it was drawn.
   cardsAnimatingThisRender: Phaser.GameObjects.Container[];
+  // "Awakened" preview bookkeeping (see renderCardFan below) - which of
+  // the local player's own Dormant Deity Cards, still unplayed in hand,
+  // are currently showing their swapped/Powered look because a 10 has
+  // already appeared somewhere in the current trick. This is a client-
+  // side-only preview of what the real engine's own computeDeityCardState
+  // rule (rules/engine.ts) would resolve if that card were played right
+  // now - it never feeds back into or predicts real engine state, and a
+  // card only ever enters this set once, the first render where the
+  // condition becomes true (never re-triggering on a later 10 in the same
+  // trick, per the GDD rule that multiple 10s don't stack). Cleared
+  // wholesale every time `state.currentTrick` is empty - the exact same
+  // trick-scoped boundary the real engine resets its own equivalent
+  // tracking at (state.plays, reset the instant a trick's 4th card is
+  // played) - so a card that was never played reverts to Dormant for the
+  // next trick, and a card that *was* played simply falls out of
+  // `state.yourHand` and stops being looked up here at all.
+  awakenedHandCardIds: Set<CardId>;
 }
 
 export function createPersistentUIState(): PersistentUIState {
@@ -289,6 +307,7 @@ export function createPersistentUIState(): PersistentUIState {
     lastHandLayoutsByCardId: new Map(),
     animatedPlayKeyBySeat: { p0: '', p1: '', p2: '', p3: '' },
     cardsAnimatingThisRender: [],
+    awakenedHandCardIds: new Set(),
   };
 }
 
@@ -866,6 +885,26 @@ function animateCardPlayIntoPlayArea(
           duration: tune.cardPlayPunchMs,
           ease: tune.cardPlayPunchEase,
           yoyo: true,
+          onComplete: () => {
+            // Scenario 2 of the "Awakened" reveal (see cardArt.ts's
+            // playAwakenedEffect doc comment): another player's play that
+            // already resolved Powered before it ever reached this
+            // client - never the local player's own seat, whose Deity
+            // Card either already got this treatment back when it was
+            // still an eligible hand card (see renderCardFan), or has no
+            // captured hand origin at all (the `!origin` fallback above,
+            // which never reaches this tween in the first place). Fires
+            // only once the whole landing sequence - travel, then this
+            // punch - has fully settled, per the task's own "sequenced
+            // AFTER it finishes landing" requirement. No underlying art
+            // swap here: `face.deityCardState` already resolved Powered
+            // before this card was ever drawn, so the real static art
+            // this burst plays on top of was already correct from its
+            // very first frame.
+            if (remoteOrigin !== null && face.kind === 'faceup' && face.deityCardState === 'powered') {
+              playAwakenedEffect(scene, drawn.container, cardById(face.cardId).god, dims);
+            }
+          },
         });
       },
     });
@@ -969,6 +1008,36 @@ function renderCardFan(
   const sorter = ui.sortMode === 'suit' ? sortCardIds : sortCardIdsByRank;
   const hand = sorter(state.yourHand);
 
+  // "Awakened" preview (see PersistentUIState.awakenedHandCardIds's own
+  // doc comment): an empty currentTrick is the exact same trick-scoped
+  // reset boundary the real engine uses for its own equivalent tracking,
+  // so clearing here on every such render is idempotent and always
+  // correct - it's true both at the very start of a fresh trick (nothing
+  // should be showing Powered yet) and right after a real reset (nothing
+  // that went unplayed should keep showing it). Note the trick-result
+  // dwell hold (presentGameView) substitutes `previousTrick` into
+  // `currentTrick` for its frozen render, which is never empty for a
+  // trick that actually completed - so a still-unplayed Awakened card
+  // keeps showing its swapped look throughout the dwell, and only reverts
+  // once the real *next* state (now between tricks) renders for real.
+  // Only ever grown by one Deity Card id at a time below, capped at the
+  // 4 Deity Cards that exist in the whole game, so this never needs
+  // pruning beyond this wholesale clear.
+  const newlyAwakenedThisRender = new Set<CardId>();
+  if (state.currentTrick.length === 0) {
+    ui.awakenedHandCardIds.clear();
+  } else {
+    const tenAlreadyPlayed = state.currentTrick.some((play) => play.cards.some((id) => cardById(id).rank === 10));
+    if (tenAlreadyPlayed) {
+      for (const id of state.yourHand) {
+        if (cardById(id).rank === 'DeityCard' && !ui.awakenedHandCardIds.has(id)) {
+          ui.awakenedHandCardIds.add(id);
+          newlyAwakenedThisRender.add(id);
+        }
+      }
+    }
+  }
+
   const isYourTurn = state.currentTurn === state.yourSlot;
   const inPlayPhase = isYourTurn && state.turnPhase === 'play';
   const inRedistributePhase = state.redistribution !== null;
@@ -1042,7 +1111,31 @@ function renderCardFan(
         }
       : scaledDims;
     const style = handCardStyle(entry.cardState);
-    const { hitArea } = drawCard(scene, container, entry.x, y, entry.rotationDeg, { kind: 'faceup', cardId: entry.id }, style, dims);
+    // `ui.awakenedHandCardIds` is the only source of a Dormant hand card's
+    // Powered look - see this function's own trigger-detection block
+    // above. A card never carries `deityCardState` from anywhere else
+    // while sitting in a hand (the real engine only resolves it once a
+    // card is actually played - see cardComponent.ts's CardFace doc
+    // comment), so this client-side preview is deliberately the only
+    // place a hand card's face can show Powered art at all.
+    const deityCardState = ui.awakenedHandCardIds.has(entry.id) ? 'powered' : null;
+    const { container: drawnContainer, hitArea } = drawCard(
+      scene,
+      container,
+      entry.x,
+      y,
+      entry.rotationDeg,
+      { kind: 'faceup', cardId: entry.id, deityCardState },
+      style,
+      dims,
+    );
+    // Fires once, only on the render where this specific card just became
+    // eligible (see newlyAwakenedThisRender above) - every later render of
+    // this same already-swapped card takes the branch above with no
+    // burst, matching the "multiple 10s don't stack, no re-trigger" rule.
+    if (newlyAwakenedThisRender.has(entry.id)) {
+      playAwakenedEffect(scene, drawnContainer, cardById(entry.id).god, dims);
+    }
 
     const canTapPlay = inPlayPhase && legality && entry.cardState !== 'illegal' && entry.cardState !== null;
     const canTapRedistribute = inRedistributePhase && entry.cardState !== 'illegal';
