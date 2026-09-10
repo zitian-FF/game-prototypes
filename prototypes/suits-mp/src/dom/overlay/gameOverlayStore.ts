@@ -66,7 +66,6 @@ export interface GameOverlayUiState {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
-  requiredSuitGod: God | null;
 }
 
 const HIDDEN_STATE: GameOverlayUiState = {
@@ -87,7 +86,6 @@ const HIDDEN_STATE: GameOverlayUiState = {
   teamName: '',
   yourGodChip: BLANK_CHIP,
   teammateGodChip: BLANK_CHIP,
-  requiredSuitGod: null,
 };
 
 let state: GameOverlayUiState = HIDDEN_STATE;

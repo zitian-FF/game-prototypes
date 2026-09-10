@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
-import type { CardId, God } from '../rules/types';
+import type { CardId } from '../rules/types';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
@@ -66,7 +66,7 @@ const TABLETOP_KEY = 'background_tabletop_stone';
 // its live getBoundingClientRect() back into canvas-logical coordinates,
 // same method as the original alignment fix) rather than literal canvas
 // center: the canvas has more UI below its vertical midpoint than above
-// it (hand fan, Required Suit banner, seat bar), so CLUSTER_CENTER_Y sits
+// it (hand fan, local nameplate, seat bar), so CLUSTER_CENTER_Y sits
 // well above HEIGHT / 2, the point a naive fix would anchor to instead.
 const TABLETOP_SIGIL_ANCHOR = { x: 0.499, y: 0.474 };
 
@@ -134,41 +134,22 @@ const SIDE_BOX_Y = CLUSTER_CENTER_Y;
 const LEFT_BOX_X = 58;
 const RIGHT_BOX_X = WIDTH - 58;
 
-// Shifted down 14px (from 648) to clear the contextual hint panel's own
-// height growth (34px -> tune.contextualHintHeight, 48px) - see
-// dom/overlay/GameOverlay.tsx's "required-suit-banner" - per the
-// 2026-09-10 live-asset-layout-corrections brief's "move the hand
-// downward only as necessary; do not resize cards" instruction. Cards
-// themselves (CARD_DIMS_STANDARD) are untouched.
-//
-// Nudged down again, 662 -> 670 (2026-09-10 nameplate-glow-lead-tag-
-// cleanup task's "lower the fan further"), but only by what the
-// available vertical budget actually allows once the other changes in
-// that same task are accounted for - this is a genuinely tight fit, not
-// a free choice:
-//   - The local nameplate directly above the hint panel grew taller
-//     (Team symbols now match the Center HUD's own 56x56, up from
-//     36x36), pushing the hint panel's own top down (GameOverlay.tsx's
-//     REQUIRED_SUIT_BANNER_TOP, 590 -> 596).
-//   - The bottom action button grew 50% larger in the same task
-//     (GameOverlay.tsx's tune.actionButtonWidth/Height, 177x78 ->
-//     266x117), which - grown in place at its old bottom anchor - would
-//     have pushed its own top edge 39px further up the screen, leaving
-//     no room at all for a full 114px-tall card between it and the hint
-//     panel above. Reclaimed most of that room by lowering the whole
-//     bottom row's own anchor instead (GameOverlay.tsx's
-//     BOTTOM_ROW_BOTTOM, 54 -> 16, by explicit user direction after
-//     flagging this as a real space conflict rather than guessing a
-//     compromise).
-//   - Net result: the action button's top edge still ends up 1px higher
-//     than it was before this task (711 vs the old 712) - close to a
-//     wash. A first pass at 670 (662 + 8) left generous clearance below
-//     (confirmed via a real screenshot) but almost none above, against
-//     the hint panel's own bottom edge - nudged to 674 to borrow a
-//     little of that spare room and even out both gaps, still comfortably
-//     clear of the button. Verified via a real screenshot with a full
-//     hand showing clean separation from both the hint panel above and
-//     the action button below.
+// Re-verified, unchanged at 674 (2026-09-10 team-nameplate-revision task,
+// Part 4). The contextual hint panel that used to sit directly above this
+// baseline (dom/overlay/GameOverlay.tsx's old "required-suit-banner") was
+// deleted outright in the same task (Part 3 - the brief no longer wants
+// that scaffolding kept around), and the local nameplate directly above
+// grew taller in its place (tune.localNameplateHeight, 89.27 -> 107, per
+// that task's own Part 2). Despite the taller nameplate, removing the
+// hint panel freed enough room that this baseline needed no adjustment:
+// confirmed via real screenshots that both the resting fan and the
+// worst-case popped-out/selected card (tune.handFanPopOutDistance +
+// handFanPopOutScale) clear the nameplate's new, lower bottom edge with
+// comfortable margin, and the bottom Play Card button (grown to
+// actionButtonWidth/Height 266x117 once a card is selected) still clears
+// the fan's own bottom edge the same way it did before this task -
+// resolving the prior nameplate-glow-lead-tag-cleanup task's "fully
+// spent" budget note without needing to touch BOTTOM_ROW_BOTTOM either.
 const FAN_BASELINE_Y = 674;
 
 const FAN_CONFIG: FanConfig = {
@@ -868,7 +849,6 @@ function renderWithView(
     teamName: hud.teamName,
     yourGodChip: hud.yourGodChip,
     teammateGodChip: hud.teammateGodChip,
-    requiredSuitGod: hud.requiredSuitGod,
   });
 
   // Now that every canvas element this render pass could possibly add is
@@ -964,7 +944,6 @@ export interface GameOverlayHudState {
   teamName: string;
   yourGodChip: GodChipState;
   teammateGodChip: GodChipState;
-  requiredSuitGod: God | null;
 }
 
 // Real display-ready HUD data for dom/overlay/GameOverlay.tsx - computed
@@ -1010,7 +989,6 @@ function computeGameOverlayHudState(state: MaskedState, view: ViewState): GameOv
     // player identity to begin with, only the Team's two Deity symbols.
     yourGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[state.yourGod]].code, label: 'YOU', god: state.yourGod },
     teammateGodChip: { code: SUITS[GOD_TO_SUIT_INDEX[teammateGod]].code, label: '', god: teammateGod },
-    requiredSuitGod: state.requiredSuit,
   };
 }
 
