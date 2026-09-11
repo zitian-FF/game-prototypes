@@ -329,7 +329,7 @@ export interface PersistentUIState {
   collectAnimatedTrickKey: string;
   // Non-null for exactly the one render pass where the local player is
   // the trick's collector and their hand fan must animate the 4 (or 5,
-  // on a Twin Awakening double win) incoming cards flying in rather than
+  // on a Double win) incoming cards flying in rather than
   // snapping straight to their final sorted slot - see renderCardFan.
   // Keyed by CardId for a real (faceup) incoming card; a facedown
   // incoming card is looked up the same way (its real id is already in
@@ -1515,7 +1515,7 @@ function renderCardFan(
 
   // Item 3: selected card(s) pop out of the fan - translated up and drawn
   // last (so they're on top, unobscured by neighbors). A two-pass split
-  // rather than a z-index call handles both single and Twin Awakening
+  // rather than a z-index call handles both single and Double
   // pair selections uniformly, since both cards of a pair carry the
   // 'selected' state already.
   const nonSelected = entries.filter((e) => e.cardState !== 'selected');
@@ -1704,7 +1704,22 @@ function computeActionButtonState(
     if (legality?.playType) {
       const type = legality.playType;
       const cards = [...view.selectedCards];
-      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Twin Awakening' : 'Facedown Card';
+      // One off-suit card staged with a same-rank partner still elsewhere in
+      // hand: a facedown single is already a legal commit here, but
+      // surfacing that first would bury the fact that a Double is still
+      // reachable - guide toward completing it instead of silently letting
+      // the moment pass. Only fires for this exact staged-facedownSingle
+      // shape; a genuine one-card-only hand (no partner) falls through to
+      // the Facedown Card label below unchanged, since a facedown single is
+      // the only real option there.
+      if (type === 'facedownSingle' && cards.length === 1) {
+        const rank = cardById(cards[0]).rank;
+        const hasPartner = state.yourHand.some((id) => id !== cards[0] && cardById(id).rank === rank);
+        if (hasPartner) {
+          return { label: 'Double', hint: 'Select two cards of the same rank.', enabled: false, onClick: NO_OP };
+        }
+      }
+      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Play Double' : 'Facedown Card';
       return { label, hint: 'Commit the chosen card', enabled: true, onClick: () => sendAction({ action: 'playCard', playType: type, cards }) };
     }
     return { label: 'Select a card to play', hint: '', enabled: false, onClick: NO_OP };
