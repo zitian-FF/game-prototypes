@@ -79,7 +79,7 @@ export function LobbyFlow({
   const copy = (what: 'code' | 'link'): void => {
     const text = what === 'code' ? roomCode : `${location.origin}${location.pathname}?lobby=${roomCode}`;
     if (navigator.clipboard) void navigator.clipboard.writeText(text).catch(() => {});
-    setCopyToast(what === 'code' ? 'Sigil copied.' : 'Summons copied.');
+    setCopyToast(what === 'code' ? 'Code copied.' : 'Summons copied.');
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setCopyToast(''), 2200);
   };
@@ -166,12 +166,18 @@ export function LobbyFlow({
             Suit of Madness
           </div>
         )}
-        <div
-          data-bind="screen-subtitle"
-          style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 11, letterSpacing: '0.28em', color: 'oklch(0.76 0.06 178)' }}
-        >
-          {SUBTITLES[screen]}
-        </div>
+        {/* Landing shows only the logo's own baked-in title art (no separate
+            subtitle - see the logo <img> above), and every error screen
+            omits this subtitle entirely per the GDD - both are real "no
+            text" cases, not just an empty SUBTITLES value threaded through. */}
+        {screen !== 'landing' && !isErrorKind(screen) && (
+          <div
+            data-bind="screen-subtitle"
+            style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 11, letterSpacing: '0.28em', color: 'oklch(0.76 0.06 178)' }}
+          >
+            {SUBTITLES[screen]}
+          </div>
+        )}
       </div>
 
       {screen === 'landing' && (
@@ -194,7 +200,7 @@ export function LobbyFlow({
                 color: 'rgba(212, 186, 132, 0.6)',
               }}
             >
-              Thy name (optional)
+              Player Name (optional)
             </span>
             <input
               data-ui="display-name-input"
@@ -204,7 +210,7 @@ export function LobbyFlow({
               maxLength={DISPLAY_NAME_MAX_LENGTH}
               autoComplete="off"
               spellCheck={false}
-              placeholder="Nameless wanderer"
+              placeholder="Player"
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -251,7 +257,7 @@ export function LobbyFlow({
               }}
             >
               <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.97 0.04 92)', textShadow: '0 0 16px rgba(252, 216, 130, 0.55)' }}>
-                Open a Circle
+                Create Room
               </span>
               <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 9, letterSpacing: '0.18em', color: 'rgba(252, 228, 170, 0.72)' }}>
                 Host · summon three others
@@ -278,13 +284,13 @@ export function LobbyFlow({
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.93 0.04 176)' }}>Enter a Circle</span>
+            <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.93 0.04 176)' }}>Join Room</span>
             <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 9, letterSpacing: '0.18em', color: 'rgba(158, 210, 198, 0.7)' }}>
-              Join · with a five-mark sigil
+              Join · with a five-character code
             </span>
           </button>
           <div style={{ textAlign: 'center', fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: 13, color: 'rgba(158, 196, 186, 0.5)' }}>
-            Four must sit before the deal.
+            Four players are needed to begin.
           </div>
           <button
             type="button"
@@ -303,7 +309,7 @@ export function LobbyFlow({
               cursor: 'pointer',
             }}
           >
-            Single Player (play with bots)
+            Single Player
           </button>
         </div>
       )}
@@ -322,7 +328,7 @@ export function LobbyFlow({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <span style={{ fontFamily: "'Cormorant Unicase', serif", fontWeight: 500, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(212, 186, 132, 0.65)' }}>
-                Sigil of the circle
+                Room Code
               </span>
               <button
                 type="button"
@@ -386,7 +392,7 @@ export function LobbyFlow({
                   cursor: 'pointer',
                 }}
               >
-                ◫ Copy sigil
+                ◫ Copy Code
               </button>
               <button
                 type="button"
@@ -506,7 +512,7 @@ export function LobbyFlow({
                       cursor: 'pointer',
                     }}
                   >
-                    ✦ Bind a thrall
+                    Add Bot
                   </button>
                 )}
                 {seat.canRelease && (
@@ -527,7 +533,7 @@ export function LobbyFlow({
                       cursor: 'pointer',
                     }}
                   >
-                    Release
+                    Remove Bot
                   </button>
                 )}
               </div>
@@ -568,7 +574,7 @@ export function LobbyFlow({
               }}
             >
               <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 22, letterSpacing: '0.05em', color: canStart ? 'oklch(0.97 0.04 92)' : 'rgba(150, 176, 174, 0.4)' }}>
-                Begin the Rite
+                Start Game
               </span>
               <span
                 data-bind="start-hint"
@@ -590,7 +596,7 @@ export function LobbyFlow({
       {screen === 'join' && (
         <div data-ui="screen-join" style={{ position: 'absolute', left: 26, right: 26, top: 268, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ textAlign: 'center', fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: 'rgba(178, 210, 202, 0.7)' }}>
-            Speak the five marks given thee.
+            Enter the five-character Room Code provided by the Host.
           </div>
 
           <div
@@ -603,6 +609,20 @@ export function LobbyFlow({
               boxShadow: 'inset 0 0 40px rgba(28, 120, 116, 0.2)',
             }}
           >
+            <span
+              data-ui="room-code-input-label"
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                fontFamily: "'Cormorant Unicase', serif",
+                fontWeight: 500,
+                fontSize: 9,
+                letterSpacing: '0.2em',
+                color: 'rgba(158, 196, 186, 0.6)',
+              }}
+            >
+              Room Code
+            </span>
             <div style={{ position: 'relative' }}>
               <input
                 data-ui="room-code-input"
@@ -658,7 +678,7 @@ export function LobbyFlow({
                 color: codeValid ? 'oklch(0.82 0.09 84)' : 'rgba(158, 196, 186, 0.5)',
               }}
             >
-              {codeValid ? 'The sigil is whole' : `${LOBBY_CODE_LENGTH - code.length} marks remain`}
+              {codeValid ? 'Room Code complete' : `${LOBBY_CODE_LENGTH - code.length} characters remain`}
             </div>
           </div>
 
@@ -697,7 +717,7 @@ export function LobbyFlow({
                 color: codeValid ? 'oklch(0.95 0.04 176)' : 'rgba(150, 176, 174, 0.4)',
               }}
             >
-              Enter
+              Join Room
             </span>
           </button>
           <button
@@ -743,7 +763,7 @@ export function LobbyFlow({
             data-bind="waiting-title"
             style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 22, letterSpacing: '0.04em', color: 'oklch(0.93 0.04 88)' }}
           >
-            {hostLeft ? 'The host has vanished' : 'Thou art seated'}
+            {hostLeft ? 'Host Disconnected' : 'Waiting for Players'}
           </div>
           <div
             data-bind="waiting-detail"
@@ -756,10 +776,29 @@ export function LobbyFlow({
               color: 'rgba(178, 210, 202, 0.72)',
             }}
           >
-            {hostLeft
-              ? 'The circle has been severed. This session has ended.'
-              : 'Waiting for the host to gather the rest and begin the rite.'}
+            {hostLeft ? 'The Room has closed because the Host left.' : 'Waiting for the Host to start the Game.'}
           </div>
+          {hostLeft && (
+            <button
+              type="button"
+              data-ui="return-to-menu-button"
+              onClick={onBack}
+              style={{
+                marginTop: 4,
+                padding: '10px 16px',
+                background: 'transparent',
+                border: '1px solid rgba(158, 196, 186, 0.24)',
+                color: 'rgba(178, 210, 202, 0.7)',
+                fontFamily: "'Cormorant Unicase', serif",
+                fontWeight: 500,
+                fontSize: 9,
+                letterSpacing: '0.18em',
+                cursor: 'pointer',
+              }}
+            >
+              Return to Main Menu
+            </button>
+          )}
         </div>
       )}
 
@@ -813,7 +852,7 @@ export function LobbyFlow({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
             <div data-bind="busy-title" style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 23, letterSpacing: '0.04em', color: 'oklch(0.93 0.04 88)' }}>
-              {screen === 'reconnecting' ? 'Holding the thread' : 'Crossing over'}
+              {screen === 'reconnecting' ? 'Reconnecting' : 'Joining Room'}
             </div>
             <div
               data-bind="busy-detail"
@@ -828,9 +867,7 @@ export function LobbyFlow({
                 animation: 'somPulse 3.4s ease-in-out infinite',
               }}
             >
-              {screen === 'reconnecting'
-                ? 'The link faltered. Waiting a moment before we call the circle again.'
-                : 'Announcing thyself to the circle and opening the passage.'}
+              {screen === 'reconnecting' ? 'The connection was interrupted. Trying to reconnect…' : 'Connecting to the Room…'}
             </div>
           </div>
           <button
@@ -849,7 +886,7 @@ export function LobbyFlow({
               cursor: 'pointer',
             }}
           >
-            Sever the thread
+            {screen === 'reconnecting' ? 'Leave Room' : 'Cancel'}
           </button>
         </div>
       )}

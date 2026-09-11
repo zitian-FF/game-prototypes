@@ -142,14 +142,14 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                   textShadow: '0 0 24px rgba(70, 180, 172, 0.4)',
                 }}
               >
-                The Rites
+                Rules
               </span>
             </div>
             <button
               type="button"
               data-ui="rules-close-x"
               onClick={onClose}
-              aria-label="Close the rites"
+              aria-label="Close rules"
               style={{
                 flex: '0 0 auto',
                 width: 44,
@@ -490,7 +490,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                 color: 'rgba(158, 196, 186, 0.3)',
               }}
             >
-              ✦ Here the rites end ✦
+              ✦ End of rules ✦
             </div>
           </div>
 
