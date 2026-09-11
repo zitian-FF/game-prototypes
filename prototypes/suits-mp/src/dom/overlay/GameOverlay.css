@@ -43,8 +43,20 @@
   color: #dff6ee;
 }
 
-[data-ui='action-button']:not([data-enabled='false']):hover {
-  box-shadow: 0 0 56px rgba(232, 190, 90, 0.6);
+/* Gated to real-hover-capable pointers (a mouse) only - see BUILD_STATUS.md's
+   Part 1 investigation. Touchscreens have no genuine hover concept, and
+   mobile browsers commonly apply a tapped element's own :hover styles and
+   never clear them until some other element is tapped - on an ungated rule
+   this reads as a warm gold glow "stuck" on the action button indefinitely
+   after any tap, on exactly the touch devices this prototype's primary
+   audience (root CLAUDE.md's "every prototype must be playable on a
+   phone") actually uses. `:active` (below) is unaffected - that pseudo-
+   class reliably clears on touchend/touchcancel across mobile browsers,
+   unlike `:hover`. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='action-button']:not([data-enabled='false']):hover {
+    box-shadow: 0 0 56px rgba(232, 190, 90, 0.6);
+  }
 }
 [data-ui='action-button']:not([data-enabled='false']):active {
   transform: translateY(1px);

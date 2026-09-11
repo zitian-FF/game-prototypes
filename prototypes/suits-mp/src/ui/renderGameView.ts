@@ -103,8 +103,10 @@ function drawTabletop(scene: Phaser.Scene, container: Phaser.GameObjects.Contain
 
 // --- Card dimensions (shared component - see ui/cardComponent.ts) ------
 // "Standard" is used everywhere a full-size card appears (hand fan, every
-// play area); "mini" is used for the two compact contexts (redistribution
-// progress stacks, previous-trick log) - see BRIEF.md's amendment, item 1.
+// play area, and - since the 2026-09-11 modal-glow-redist-fullsize task -
+// the redistribution progress stack too, superseding BRIEF.md amendment
+// item 1's original "compact mini" call for that one context); "mini" is
+// now only the previous-trick log's own compact treatment.
 
 const CARD_DIMS_STANDARD: CardDimensions = {
   width: tune.cardStandardWidth,
@@ -1303,12 +1305,19 @@ function drawCardRow(
   }
 }
 
-// Redistribution progress (amendment item 4): one facedown mini card-back
-// per card this player is owed, dimmed until assigned, filled/accented
-// once it is - a small "have/need" label rides alongside for clarity, but
-// the card-back stack is the primary visual, per the brief. Tapping the
-// whole slot (while it's still unfulfilled and a candidate card is
-// staged in the fan) assigns the staged card here, exactly as before.
+// Redistribution progress (amendment item 4 - superseded by the 2026-09-11
+// modal-glow-redist-fullsize task's own explicit "full card size" call,
+// full-size facedown card-backs now, matching a real played/hand card
+// rather than the old compact mini treatment), dimmed until assigned,
+// filled/accented once it is. Tapping the whole slot (while it's still
+// unfulfilled and a candidate card is staged in the fan) assigns the
+// staged card here, exactly as before.
+//
+// A seat owed 2 cards (a Double win's contribution) is exactly the same
+// fitting problem drawCardRow already solved for a Double PLAY at a tight
+// seat position (left/right seats sit close to the screen edges) - reuses
+// that same overlap technique/logic (tune.doublePlayOverlapFraction, the
+// same tune key, not a duplicate) rather than a new spacing approach.
 function renderRedistributionStack(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -1323,17 +1332,36 @@ function renderRedistributionStack(
   const have = (view.redistributeAssignment[pid] ?? []).length;
   const fulfilled = have >= need;
 
-  const totalW = need * CARD_DIMS_MINI.width + (need - 1) * CARD_GAP;
-  let cx = x - totalW / 2 + CARD_DIMS_MINI.width / 2;
+  const dims = CARD_DIMS_STANDARD;
+  const step = need > 1 ? dims.width * (1 - tune.doublePlayOverlapFraction) : dims.width;
+  const totalW = dims.width + (need - 1) * step;
+  let cx = x - totalW / 2 + dims.width / 2;
   for (let i = 0; i < need; i++) {
     const filled = i < have;
-    drawCard(scene, container, cx, y, 0, { kind: 'facedown' }, filled ? stackFilledStyle() : stackNeededStyle(), CARD_DIMS_MINI);
-    cx += CARD_DIMS_MINI.width + CARD_GAP;
+    drawCard(scene, container, cx, y, 0, { kind: 'facedown' }, filled ? stackFilledStyle() : stackNeededStyle(), dims);
+    cx += step;
   }
-  text(x, y + CARD_DIMS_MINI.height / 2 + 12, `${have}/${need}`, fulfilled ? '#88ff99' : '#dddddd', 11);
+
+  // "X/Y" progress overlaid directly on the card art (a small dark/gold
+  // pill, same color language as dom/RedistLogModal.tsx's own card-count
+  // badge) rather than a separate label below the stack. Centered at the
+  // stack's own (x, y): for need>1, the later (rightmost) card is drawn on
+  // top by construction (see drawCardRow's own doc comment) and always
+  // covers this exact center point, so the badge never lands on a seam or
+  // a partially-covered card underneath.
+  const badgeLabel = `${have}/${need}`;
+  const badgeW = Math.max(38, badgeLabel.length * 9 + 16);
+  const badgeH = 22;
+  const g = scene.add.graphics();
+  g.fillStyle(0x060c0f, 0.95);
+  g.fillRoundedRect(x - badgeW / 2, y - badgeH / 2, badgeW, badgeH, 6);
+  g.lineStyle(1, 0xc6a04e, 0.7);
+  g.strokeRoundedRect(x - badgeW / 2, y - badgeH / 2, badgeW, badgeH, 6);
+  container.add(g);
+  text(x, y, badgeLabel, fulfilled ? '#88ff99' : '#f0d9a0', 12);
 
   if (!fulfilled && view.selectedCards.length === 1) {
-    const hit = scene.add.rectangle(x, y, Math.max(totalW, CARD_DIMS_MINI.width) + 12, CARD_DIMS_MINI.height + 20, 0x000000, 0.001);
+    const hit = scene.add.rectangle(x, y, totalW + 12, dims.height + 20, 0x000000, 0.001);
     container.add(hit);
     hit.setInteractive({ useHandCursor: true });
     bindTapIntent(hit, () => {
