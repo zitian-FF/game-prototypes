@@ -37,7 +37,7 @@ export const VIOLET: Tone = {
   bg: 'linear-gradient(180deg, rgba(20, 15, 34, 0.68), rgba(6, 8, 13, 0.6))',
 };
 
-export const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'] as const;
+export const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'] as const;
 
 export interface RuleSection {
   id: string;
@@ -51,6 +51,16 @@ export interface RuleSection {
 }
 
 export const SECTIONS: RuleSection[] = [
+  {
+    id: 'setup',
+    tone: VIOLET,
+    title: 'The Gathering',
+    kicker: 'Before the first trick',
+    body: [
+      "Each player is bound in secret to one of the four Deities — Cthulhu, Nyarlathotep, Shub-Niggurath, Yog-Sothoth — each appearing once, and to that Deity's covenant.",
+      'The full deck is shuffled and ten cards dealt to each player. Whoever holds the 2 of Yog-Sothoth must open the very first trick with it.',
+    ],
+  },
   {
     id: 'objective',
     tone: GOLD,
@@ -78,7 +88,7 @@ export const SECTIONS: RuleSection[] = [
     kicker: 'When thou canst not follow',
     isOffSuit: true,
     body: [
-      'Lacking the demanded suit, thou mayst lay a single card of any other suit — it is counted rank 0 and cannot take the trick.',
+      'Lacking the demanded suit, thou mayst lay a single card of any other suit, facedown — its rank, suit and Deity remain hidden from all. It is counted rank 0 and cannot take the trick.',
       'Or thou mayst lay a Twin Awakening: two cards of equal rank from any suits. A Twin may take the trick, and it binds thee to delegate the redistribution.',
     ],
   },
@@ -89,7 +99,7 @@ export const SECTIONS: RuleSection[] = [
     kicker: 'Highest, and latest',
     body: [
       'The highest rank laid takes the trick. Where ranks are equal, the card played later prevails.',
-      'Each Deity Card enters play Dormant, at rank 1 - unless a Ten already fell earlier in the same trick, in which case it enters Powered, at rank 11. A Ten played after a Deity Card never powers it retroactively.',
+      "Each Deity Card enters play Dormant, at rank 1, marked with a small '1' — unless a Ten already fell earlier in the same trick, in which case it enters Powered, at rank 11, marked with a '★'. A Ten played after a Deity Card never powers it retroactively.",
     ],
     note: 'Lateness is the tiebreaker throughout. Watch the order of play, not only the ranks.',
   },
@@ -105,12 +115,12 @@ export const SECTIONS: RuleSection[] = [
     note: 'Cards return facedown. Count what each player gave, and thou canst reason about what returns to them.',
   },
   {
-    id: 'invoker',
+    id: 'leadPlayer',
     tone: GOLD,
-    title: 'The Invoker',
+    title: 'The Lead Player',
     kicker: 'Who leads next',
     body: [
-      'Whoever performed the redistribution of the previous trick leads the one that follows. The Invoker tag sits beside their name.',
+      'Whoever performed the redistribution of the previous trick leads the one that follows.',
     ],
   },
   {
