@@ -1,164 +1,203 @@
 ## Current milestone
 
-Fixed the end-of-trick collector animation's destination for a remote
-winner (now flies cards into their own play area, not their nameplate -
-without repointing the shared constant the unrelated card-PLAY
-animation's origin also depends on), and added a genuine flip-reveal
-for a facedown card once it lands in the local player's own hand at
-the end of a trick they collected - confirmed this was a pure
-animation-timing gap (the real identity was already available), not a
-masking data gap.
+Investigated a reported warm gold/amber glow persisting near the bottom
+of the gameplay screen: **ruled out** the modal-leak hypothesis
+conclusively (all three modals genuinely unmount, no trace left behind),
+then found and fixed the real cause - an ungated `:hover` CSS rule on
+the action button that mobile browsers commonly leave "stuck" active
+after a tap, since touchscreens have no genuine hover concept. Also
+changed the redistribution progress stack to full card size with the
+"X/Y" progress overlaid on the card art, reusing the same Double-play
+overlap technique already proven for the Double-need (2-card) case at
+tight seat positions.
 
 ## What was implemented
 
-### Part 1: Collector destination - play area, not nameplate
+### Part 1: Modal-leak hypothesis ruled out; real cause found and fixed
 
-`ui/renderGameView.ts`'s `finishCollectAnimation` (the "cards fly to
-whoever wins the trick" animation, remote-collector branch) used
-`REMOTE_NAMEPLATE_ORIGIN[descriptor.destSeat!]` as its flight
-destination. Changed to `seatCenter(descriptor.destSeat!)` - the same
-function `renderPlayerCluster`/`renderPlayArea` already use to
-position that seat's own play area.
+**Modal-leak investigation (ruled out)**: Live-tested all three modals
+(`MenuModal.tsx`, `RulesModal.tsx`, `RedistLogModal.tsx`) via real
+Playwright open/close sequences during actual gameplay - opened each,
+closed it (via its own X button, and via scrim-click for Menu), and
+scanned the entire live DOM afterward for (a) any element bearing the
+modals' shared divider gradient (`rgba(48, 40, 18, 0.35) 45%`, the
+exact distinctive middle stop, not just the shared gold RGB triple -
+see caveat below) and (b) any element with a `data-ui` containing
+"modal"/"screen"/"scrim" at all. Both scans came back **empty in every
+case** - `DomRoot.tsx` renders each modal via a genuine `{flag &&
+<Modal/>}` conditional (a real unmount, not an opacity/visibility
+toggle), and `domUiStore.ts`'s `closeX()` functions correctly flip
+their boolean with no transition/fade delay holding the component
+mounted. No z-index or stacking-context issue found either - there's
+nothing left occupying paint or layout once a modal's flag goes false.
 
-**Deliberately did NOT repoint `REMOTE_NAMEPLATE_ORIGIN` itself**, per
-the task's own explicit warning: that constant is also the *origin* for
-the unrelated remote-seat card-PLAY animation (`animateCardPlayIntoPlayArea`'s
-call site in `renderPlayArea`, further down the same file) - a
-different animation showing where a remote player's card visually
-comes *from* when they play it, which must keep originating from the
-nameplate exactly as before. Giving the collector animation its own
-destination reference (`seatCenter`, already used elsewhere in this
-file for exactly this purpose) instead of repointing the shared
-constant keeps the two animations' concerns fully separate.
+**Caveat surfaced during investigation**: an early, cruder check (just
+searching for the RGB triple `198, 160, 78` anywhere) produced a false
+positive on `[data-ui="lead-glow"]` (the Center HUD's own intentional
+pulsing glow, explicitly out of scope) - `GOD_ACCENT_RGB.YogSothoth` in
+`GameOverlay.tsx` happens to be the exact same `198, 160, 78` as the
+modal divider's own first gradient stop, purely by coincidental design
+choice (both landed on the same "warm gold" value independently). Real
+position data (`lead-glow` sits at ~y:226, near the Center HUD, never
+near the bottom action button) and the more specific gradient-stop
+match ruled this out as the culprit too.
 
-The local player's own destination (their hand, via
-`pendingHandCollectOrigins`/reflow) is a completely separate code path
-(the `descriptor.isLocalCollector` branch) and is untouched.
+**Real cause found (not a guess - confirmed via live DOM inspection of
+the actual pressed/hovered state)**: `dom/overlay/GameOverlay.css`
+(a *file* GameOverlay.tsx doesn't itself contain, which is why a
+search scoped to the .tsx file alone found nothing):
+```css
+[data-ui='action-button']:not([data-enabled='false']):hover {
+  box-shadow: 0 0 56px rgba(232, 190, 90, 0.6);
+}
+```
+This is a real, active `boxShadow` - confirmed live via
+`getComputedStyle()` while the action button was genuinely
+mouse-hovered/pressed (`rgba(232, 190, 90, 0.6) 0px 0px 56px 0px`),
+sitting exactly at the reported location (the action button, "near the
+bottom of the gameplay screen"). `:hover` is a real CSS pseudo-class
+with no unmount/lifecycle of its own - nothing in `GameOverlay.tsx`
+needs to reference it for it to fire, matching the task's own "no
+known active cause in GameOverlay.tsx" observation literally.
 
-**Verified live, not just read**: real forced-deal scenarios (temporary
-debug hooks, fully reverted after - see below):
-- **Collector destination**: forced a remote seat ('top') to win a
-  trick outright (a required-suit follow beats the leader's low card
-  and two offsuit plays). Screenshots across the animation's timeline
-  show all 4 cards converging and landing squarely inside the 'top'
-  seat's own play-area box (the same dashed-outline rectangle
-  `renderPlayArea` always draws there) - not anywhere near the
-  nameplate position higher up the screen.
-- **Card-PLAY origin regression check**: rather than trying to catch a
-  190ms animation mid-flight via screenshot (timing-race-prone over a
-  real CDP round-trip), added a temporary debug hook exposing the live
-  x/y of whatever the most recent render flagged as still-animating
-  (`PersistentUIState.cardsAnimatingThisRender`), read synchronously
-  right after triggering a remote seat's play - before any
-  `requestAnimationFrame` tick could have advanced the tween, this
-  reliably samples the flight's true starting point. Result: `{x:57,
-  y:375}`, exactly `REMOTE_NAMEPLATE_ORIGIN.left` - confirmed distinct
-  from `seatCenter('left')` (`{x:58, y:305}`), proving the card-PLAY
-  animation's origin is genuinely unaffected by this change.
+**Root cause of the "persists" complaint**: touchscreens have no
+genuine hover concept, and mobile Safari/Chrome are well known to apply
+a tapped element's `:hover` styles and never clear them until some
+*other* element is tapped - there is no real "pointer leaves the
+button" event on a touch device the way there is with a mouse. The
+action button stays mounted and visible through the entire Play Card
+phase (unlike a modal close button, which vanishes the instant it's
+tapped), so a stuck `:hover` glow on it reads exactly as "persists...
+even during normal Play Card phase."
 
-### Part 2: Auto-reveal a collected facedown card - investigation + flip
+**Fix**: gated the rule to real-hover-capable pointers only:
+```css
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='action-button']:not([data-enabled='false']):hover {
+    box-shadow: 0 0 56px rgba(232, 190, 90, 0.6);
+  }
+}
+```
+`:active` (the separate `translateY(1px)` press-squish rule) is left
+untouched - that pseudo-class reliably clears on touchend/touchcancel
+across mobile browsers, unlike `:hover`, so it isn't exposed to the
+same bug.
 
-**Investigation result: Case 1** (pure client-side animation-timing
-gap, not a masking data gap). `host/mask.ts`'s `buildMaskedState`
-already sends `yourHand: state.players[forSlot].hand` - the real,
-completely unmasked hand array. The instant a card is collected into
-the local player's own hand, its real id is already present in that
-payload; `maskedCardIds`'s masking (`play.kind === 'offsuit' &&
-play.playerId !== forSlot` - the mechanism that hides a card from
-*opponents*) only ever applies to `state.currentTrick`/`previousTrick`,
-never to `yourHand`. `ui/renderGameView.ts`'s existing
-`prepareCollectAnimation` already relies on exactly this fact - it
-recovers a hidden incoming card's real id "by elimination" against
-`state.yourHand` (its own pre-existing doc comment says so). No
-`host/mask.ts` change was made or needed.
+**Verified live, both directions**: real Playwright contexts -
+- Mobile/touch (`hasTouch: true, isMobile: true`): confirmed
+  `matchMedia('(hover: hover)')` and `(pointer: fine)` both evaluate to
+  `false` in this context, and `getComputedStyle().boxShadow` stays
+  `"none"` even with the pointer sitting directly over the button -
+  exactly the condition that used to trigger the stuck glow.
+- Desktop (real mouse, no touch emulation): both media features
+  evaluate `true`, the glow correctly still appears while hovering
+  (`rgba(232, 190, 90, 0.6) 0px 0px 56px 0px`) and correctly clears the
+  instant the mouse moves away - the intended desktop affordance is
+  fully preserved, not just suppressed everywhere.
 
-**What was actually missing**: once a facedown incoming card's reflow
-tween finished, the drawn container - built once, at reflow-draw time,
-with `face: {kind:'facedown'}` baked in - was never updated again. It
-would keep showing the generic card-back indefinitely until whatever
-*unrelated* next full render happened to come along (the
-`trickResultDwellMs` re-render, ~850ms later in the common case) and
-silently redrew it correctly with the real face - an abrupt, untimed,
-transition-free swap, not a deliberate reveal.
+**Also checked, not touched**: `dom/modalChrome.css`'s own near-
+identical hover-glow rule (`rules-close-button`/`redist-log-close-
+button`, `box-shadow: 0 0 50px rgba(232, 190, 90, 0.5)`) has the same
+`:hover`-on-touch mechanism, but isn't exposed to the same *visible*
+bug - tapping either button immediately closes and unmounts its whole
+modal, so there's nothing left on screen for a stuck hover style to be
+seen on. Left as-is to stay scoped to the actual reported symptom
+rather than a speculative fix for an effect that can't actually be
+observed. `dom/lobby/LobbyFlow.css`'s own similar glow (pre-game
+screen, not "the gameplay screen" the report describes) is likewise
+untouched for the same reason.
 
-**Fix**: added `playCardRevealFlip` (`ui/renderGameView.ts`), triggered
-from the existing reflow tween's own `onComplete` whenever `isIncoming
-&& face.kind === 'facedown'` (i.e. a freshly-collected card whose
-identity was hidden while it sat in the trick). A classic scale-through-
-zero flip: the still-facedown container shrinks to nothing on the X
-axis, is swapped for a freshly-drawn faceup container (the real
-`entry.id`) at the exact same position/rotation, then grows back out -
-the swap happens at the invisible zero-width midpoint, so no
-facedown/faceup blend is ever visible mid-transition. New tune keys:
-`cardRevealFlipMs` (260, split evenly across the two halves) and
-`cardRevealFlipEase` ("Sine.easeInOut", matching the easing style
-already used for this file's other short settle/punch tweens).
+### Part 2: Redistribution progress stack - full card size, overlaid text, Double overlap
 
-**Verified live**: a real forced-deal single-win trick where the local
-player leads and wins with two opponents legitimately following suit
-(visible) and one playing genuinely offsuit (masked/facedown from
-local's perspective). Screenshots confirm: the hidden card shows the
-generic mandala card-back while it sits in the trick; after local
-collects (single win, no delegate step), that same card - identified
-by marker id `Nyarlathotep-6` - lands in the hand fan and, without any
-further render, transitions to its real composited face (purple,
-Nyarlathotep's eye motif, rank 6) with no lingering facedown state,
-confirmed stable 1.5s+ after the flip.
+`ui/renderGameView.ts`'s `renderRedistributionStack` (amendment item 4)
+now uses `CARD_DIMS_STANDARD` instead of `CARD_DIMS_MINI` - a full
+card-back per owed card, matching a real played/hand card rather than
+the old compact mini treatment. Updated the stale header comment at
+this file's own "Card dimensions" section (previously documented
+"mini" as covering both this stack and the previous-trick log; now
+only the log still uses it).
 
-**A real, pre-existing bug surfaced during verification - flagged, not
-silently fixed**: an *earlier* test scenario with **three**
-simultaneously-hidden cards in the same collected trick (all three
-non-local seats offsuit at once) left one of them stuck showing its
-card-back permanently, with no flip ever firing. Root-caused to
-`prepareCollectAnimation`'s existing id-recovery logic (`ui/
-renderGameView.ts`, well above this task's own changes): it matches
-`hiddenIds[i]` (from `state.yourHand`'s own natural order, filtered by
-elimination) to `hiddenIncoming[i]` (from `previousTrick`'s play order)
-purely *positionally*, assuming the two lists' orders always agree.
-Isolating the same scenario down to exactly one hidden card (removing
-any ordering ambiguity, since a length-1 list can't be
-mis-ordered) reveals the real identity correctly every time - so the
-flip mechanism itself is confirmed sound; the mismatch is specifically
-in the pre-existing multi-hidden-card id-matching step this task never
-touched. Per the task's own "flag clearly rather than silently bundle a
-fix" principle (stated for the case-1/case-2 masking question, but the
-same judgment applies here): **not fixed in this task**, since it's a
-distinct, deeper defect outside what was asked, and worth a dedicated
-look rather than a rushed patch alongside this animation work.
+**"X/Y" progress overlaid on the card art**: a small dark pill (`fill:
+0x060c0f @ 0.95 alpha`, gold `0xc6a04e` border) drawn via
+`scene.add.graphics()` directly on top of the card(s), centered at the
+stack's own `(x, y)`, with the `have/need` text centered inside it -
+replacing the old below-the-stack label. Color language matches
+`dom/RedistLogModal.tsx`'s own card-count badge for visual consistency
+across the DOM/canvas boundary.
+
+**Double-need (2-card) fitting - reused, not reimplemented**: when
+`need > 1`, spacing uses the exact same overlap formula
+`drawCardRow` already solved for a Double *play* (`tune.
+doublePlayOverlapFraction` - the same tune key, no duplicate added):
+`step = dims.width * (1 - overlapFraction)`, later card drawn on top of
+the earlier one. Verified the badge's center point always lands on the
+frontmost (fully visible) card, never a seam: for 2 cards, the overall
+footprint's horizontal center falls within the second (rightmost,
+topmost-by-draw-order) card's own bounds by construction - checked the
+arithmetic, not just eyeballed it.
+
+**Verified live**: a real forced-deal scenario where one non-leading
+player is forced to win via a genuine "Twin Awakening" double (two
+matching-rank cards, different suits - the only double in the trick,
+so `resolveTrick` forces them to win per its own "candidates = double
+plays only, when any exist" rule) and picks the *local* player as
+their delegate, so the local player's own screen renders the real
+redistribution UI:
+- **Left seat, need=2** (the tightest fit, exactly the case the task
+  named): two full-size facedown cards, overlapping, both fully within
+  the play-area recess bounds, "0/2" badge legible and centered on the
+  frontmost card.
+- **Top and right seats, need=1**: a single full-size facedown card
+  each, "0/1" badge legible and centered.
+- **Tap-to-assign still works**: staged a hand card, tapped the
+  left-seat (need=2) stack - badge updated live from "0/2" to "1/2",
+  confirming the interaction logic (unchanged) still functions
+  correctly against the new full-size hit-area bounds.
+
+**A debug-harness bug found and fixed along the way (test tooling
+only, not shipped code)**: the temporary `debugForceDeal` hook used to
+script this scenario could still have a bot's `scene.time.delayedCall`
+(scheduled *before* the temporary bot-pause flag was set, against the
+pre-forced random deal) fire *after* the forced deal was in place,
+silently consuming a card from a hand that should have been untouched.
+Fixed by having the temporary debug hook call `this.time.
+removeAllEvents()` before installing the forced state - this hook was
+fully reverted along with the rest of the temporary debug trio (see
+below), so this fix itself ships nowhere; noted here only because it
+cost real time to track down and would bite the next task that reaches
+for the same forceDeal pattern.
 
 ## Key technical decisions
 
-- Reused `seatCenter` (already the single source of truth for a seat's
-  play-area position elsewhere in this file) for the collector's new
-  destination, rather than hand-deriving the same coordinates a second
-  time or introducing a parallel constant.
-- Verified the card-PLAY origin regression via a synchronous live
-  position read (a temporary debug hook) instead of screenshot timing,
-  after confirming empirically that a real CDP screenshot round-trip's
-  own latency is comparable to or exceeds the 190ms animation it was
-  meant to catch mid-flight - a screenshot-based check would have
-  produced misleading "already settled" frames regardless of whether
-  the code was correct.
-- Chose a scale-through-zero flip (swap at the invisible zero-width
-  midpoint) over a cross-fade or an instant texture swap - matches "a
-  quick scale/rotate-through-zero card-flip" from the task's own
-  suggested default, and sidesteps `drawCard`'s multi-layer composited
-  art (frame + symbol + rank text) not being a single texture that
-  could cross-fade cleanly on its own.
-- Stopped at flagging the multi-hidden-card id-matching bug rather than
-  fixing it - it lives in code this task didn't touch (`prepareCollectAnimation`),
-  fixing it would mean redesigning how hidden-card identity gets
-  recovered (order-independent matching needs a different data
-  structure than a plain positional array), and the task's own explicit
-  instruction was to keep a discovered pre-existing gap separate and
-  flagged rather than silently bundling an unrelated fix into this
-  animation task.
+- Verified the modal-leak hypothesis with a *precise* gradient-stop
+  match plus a broad `data-ui` pattern scan, rather than trusting a
+  loose RGB-substring check - the loose version's own false positive
+  (the coincidentally-same-color `lead-glow`) was a useful lesson in
+  not concluding "found it" from a color match alone without also
+  checking real screen position and the element's own actual purpose.
+- Chose `@media (hover: hover) and (pointer: fine)` over deleting the
+  hover effect outright - it's a legitimate desktop affordance, and per
+  root CLAUDE.md's mobile-first house rule this is the standard,
+  narrowly-targeted fix for "effect misbehaves on touch, not on
+  desktop," not a reason to remove it for every user.
+- Left `modalChrome.css`'s and `LobbyFlow.css`'s own near-identical
+  hover-glow rules untouched rather than proactively "fixing" all
+  instances of the pattern - neither is exposed to a *visible* stuck-
+  glow bug (their host elements unmount immediately on tap, or live on
+  a different screen than the one reported), so changing them would be
+  unrequested, unverifiable scope creep.
+- Centered the redistribution badge at the stack's exact `(x, y)`
+  rather than offsetting it toward one edge - confirmed via the overlap
+  arithmetic that this point always falls on the topmost, fully-visible
+  card even in the 2-card case, so one placement rule works uniformly
+  for both need=1 and need=2 without a special case.
 
 ## Open questions
 
-None raised to the user this task - both parts were specified precisely
-enough (including the explicit shared-constant risk warning for Part 1)
-to implement and verify without needing a mid-task decision.
+None raised to the user this task - both parts were investigated and
+verified concretely enough (a confirmed live root cause for Part 1, a
+worked-through overlap-arithmetic proof for Part 2) without needing a
+mid-task decision.
 
 ## Known issues
 
@@ -167,33 +206,24 @@ Carried over, untouched by this task: Rules-modal content gaps; the
 from `'legal'`; the itch.io iframe canvas-scale fix, the asset
 pipeline's downscale/recompress output, the Center HUD easing curve,
 the card-play arc animation, and the Awakened reveal's own visual
-polish all still want a real-device/live-deploy glance. suits-mp still
-has no permanent `?debug=1`-gated `ForcedDeal` hook (unlike the sibling
-`suits` prototype's `rules/debugScenarios.ts`) - this task built and
-fully reverted its own temporary `debugForceDeal`/`debugPlayCard`/
-`debugSetBotsPaused`/`debugPeekAnimatingPositions` hooks in
-`HostGameScene.ts`/`main.ts`/`host/gameHost.ts` (confirmed via `git
-diff --stat` against `main`, empty for all three) - now a twelfth
-instance of the same one-off pattern.
-
-**New this task**: `ui/renderGameView.ts`'s `prepareCollectAnimation`
-can mismatch a collected card's real id to the wrong hidden-card slot
-when **more than one** card is hidden in the same collected trick (see
-Part 2's own write-up above for the root cause) - the symptom is a
-collected card stuck showing its facedown card-back permanently, with
-no flip and no later correction. Only reproduced with all three
-non-local seats offsuit in the same trick; a single hidden card (by far
-the more common case) is unaffected. Worth a dedicated task before this
-becomes visible in real play.
+polish all still want a real-device/live-deploy glance. The
+`prepareCollectAnimation` multi-hidden-card id-matching bug flagged in
+the immediately prior task (2026-09-10 collector-destination-
+autoreveal) is unrelated to and unaffected by this task's own changes -
+still open. suits-mp still has no permanent `?debug=1`-gated
+`ForcedDeal` hook (unlike the sibling `suits` prototype's `rules/
+debugScenarios.ts`) - this task built and fully reverted its own
+temporary `debugForceDeal`/`debugApplyAction`/`debugSetBotsPaused`/
+`debugGetState` hooks in `HostGameScene.ts`/`main.ts`/`host/
+gameHost.ts` (confirmed via `git diff --stat` against `main`, empty for
+all three) - now a thirteenth instance of the same one-off pattern.
 
 ## Next proposed step
 
-Investigate and fix the multi-hidden-card id-matching bug flagged
-above in `prepareCollectAnimation` - likely needs the hidden-card
-recovery to key off something more specific than list position (e.g.
-each hidden play's own seat/position, matched against where the
-collected card's rank/god combination could plausibly have come from,
-or restructuring the host's collection step to preserve per-card
-origin metadata through to the client). A real-device/live-deploy pass
-covering the rest of "Known issues" remains the standing next open
-loop after that.
+A real-device/live-deploy pass covering everything listed under "Known
+issues" remains the standing next open loop - nothing from this task
+adds to that list. Worth specifically re-checking Part 1's fix on a
+real phone during that pass (this task's own verification used
+Playwright's touch/mobile emulation, which is a strong proxy but not
+a substitute for a genuine device) to confirm the stuck-glow bug is
+actually gone in the field, not just under emulation.
