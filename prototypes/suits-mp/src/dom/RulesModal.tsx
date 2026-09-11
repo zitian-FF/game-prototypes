@@ -17,7 +17,7 @@ export interface RulesModalProps {
   onClose: () => void;
 }
 
-const DEFAULT_OPEN: Record<string, boolean> = { objective: true, cycle: true };
+const DEFAULT_OPEN: Record<string, boolean> = { goal: true, playCard: true };
 
 export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
   const [open, setOpen] = useState<Record<string, boolean>>(DEFAULT_OPEN);
@@ -195,7 +195,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                 textWrap: 'pretty',
               }}
             >
-              Four are seated, two covenants contend, and the suits turn in an order no player may break.
+              4 players, 2 secret Teams. Complete a Deity Suit to win.
             </p>
 
             {SECTIONS.map((sec, i) => {
@@ -407,7 +407,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                                 color: 'oklch(0.82 0.08 178)',
                               }}
                             >
-                              Single off-suit
+                              Off-suit Single
                             </span>
                             <span
                               style={{
@@ -417,7 +417,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                                 color: 'rgba(206, 222, 218, 0.78)',
                               }}
                             >
-                              Counts as rank 0. It never wins the trick.
+                              Face down. Rank 0. Cannot win.
                             </span>
                           </div>
                           <div
@@ -440,7 +440,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                                 color: 'oklch(0.84 0.09 300)',
                               }}
                             >
-                              Twin Awakening
+                              Double
                             </span>
                             <span
                               style={{
@@ -450,7 +450,7 @@ export function RulesModal({ onClose }: RulesModalProps): JSX.Element {
                                 color: 'rgba(214, 206, 232, 0.8)',
                               }}
                             >
-                              Two cards of equal rank, any suits. It may win.
+                              Same rank, any Suits. Beats every Single.
                             </span>
                           </div>
                         </div>

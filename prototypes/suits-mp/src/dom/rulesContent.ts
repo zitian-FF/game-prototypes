@@ -37,7 +37,7 @@ export const VIOLET: Tone = {
   bg: 'linear-gradient(180deg, rgba(20, 15, 34, 0.68), rgba(6, 8, 13, 0.6))',
 };
 
-export const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'] as const;
+export const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI'] as const;
 
 export interface RuleSection {
   id: string;
@@ -52,85 +52,83 @@ export interface RuleSection {
 
 export const SECTIONS: RuleSection[] = [
   {
-    id: 'setup',
-    tone: VIOLET,
-    title: 'The Gathering',
-    kicker: 'Before the first trick',
-    body: [
-      "Each player is bound in secret to one of the four Deities — Cthulhu, Nyarlathotep, Shub-Niggurath, Yog-Sothoth — each appearing once, and to that Deity's covenant.",
-      'The full deck is shuffled and ten cards dealt to each player. Whoever holds the 2 of Yog-Sothoth must open the very first trick with it.',
-    ],
-  },
-  {
-    id: 'objective',
+    id: 'goal',
     tone: GOLD,
-    title: 'The Objective',
-    kicker: 'Why we sit',
+    title: 'Goal',
+    kicker: '',
     body: [
-      'Each player is bound to a single Deity. Gather all ten cards of thy Deity Suit and thy covenant claims the victory.',
-      'Two covenants contend: Chaos, of the drowned deeps, and Cosmos, of the gold and violet dark. Thy kin holds the other Deity of thy covenant — either of you completing a Deity Suit wins it for both.',
+      'Your Deity and Team are secret.',
+      'Find your teammate through play.',
+      'Help yourself or your teammate collect all 10 cards of their Deity Suit.',
+      'Complete either Deity Suit: your Team wins.',
     ],
   },
   {
-    id: 'cycle',
+    id: 'start',
     tone: TEAL,
-    title: 'The Turning of Suits',
-    kicker: 'Order of the lead',
-    isCycle: true,
+    title: 'Start',
+    kicker: '',
     body: [
-      'The suits lead in a fixed cycle. Each player must follow with the next suit in the sequence — the order is never chosen, only obeyed.',
+      '4 Players. 4 Deities. 10 cards each.',
+      'Holder of the 2 of Yog-Sothoth leads the first Trick with that card.',
+      'Play clockwise.',
     ],
   },
   {
-    id: 'offsuit',
+    id: 'playCard',
     tone: VIOLET,
-    title: 'Straying from the Suit',
-    kicker: 'When thou canst not follow',
+    title: 'Play a Card',
+    kicker: '',
+    isCycle: true,
     isOffSuit: true,
     body: [
-      'Lacking the demanded suit, thou mayst lay a single card of any other suit, facedown — its rank, suit and Deity remain hidden from all. It is counted rank 0 and cannot take the trick.',
-      'Or thou mayst lay a Twin Awakening: two cards of equal rank from any suits. A Twin may take the trick, and it binds thee to delegate the redistribution.',
+      'First card: sets the Lead Suit.',
+      'Each next Player: Required Suit moves one step around the Suit Cycle.',
+      'Have the Required Suit: play 1 card of that Suit.',
+      'No Required Suit: choose one:',
+      'Off-suit Single, face down. Rank 0. Cannot win. Its suit, rank, and Deity stay hidden from every other player.',
+      'Double: 2 cards of the same rank, any Suits.',
     ],
   },
   {
-    id: 'trick',
+    id: 'winTrick',
+    tone: GOLD,
+    title: 'Win the Trick',
+    kicker: '',
+    body: [
+      'Any Double beats every Single.',
+      'Highest rank wins.',
+      'Same rank: latest play wins.',
+      "Deity Card: Dormant, rank 1, marked '1'.",
+      "Any 10 played earlier in the Trick: later Deity Cards become Powered, marked '★', rank 11.",
+      '10 played later: no effect on an earlier Deity Card.',
+    ],
+  },
+  {
+    id: 'redistribute',
     tone: TEAL,
-    title: 'Taking a Trick',
-    kicker: 'Highest, and latest',
+    title: 'Redistribute',
+    kicker: '',
     body: [
-      'The highest rank laid takes the trick. Where ranks are equal, the card played later prevails.',
-      "Each Deity Card enters play Dormant, at rank 1, marked with a small '1' — unless a Ten already fell earlier in the same trick, in which case it enters Powered, at rank 11, marked with a '★'. A Ten played after a Deity Card never powers it retroactively.",
-    ],
-    note: 'Lateness is the tiebreaker throughout. Watch the order of play, not only the ranks.',
-  },
-  {
-    id: 'redistribution',
-    tone: GOLD,
-    title: 'The Offerings',
-    kicker: 'Redistribution',
-    body: [
-      'The taker gathers every card of the trick, then deals one card facedown to each player — as many cards as that player contributed.',
-      'Won by a Twin Awakening, the redistribution is not thine to make: thou must delegate it to another player. Never thyself, and never declined.',
-    ],
-    note: 'Cards return facedown. Count what each player gave, and thou canst reason about what returns to them.',
-  },
-  {
-    id: 'leadPlayer',
-    tone: GOLD,
-    title: 'The Lead Player',
-    kicker: 'Who leads next',
-    body: [
-      'Whoever performed the redistribution of the previous trick leads the one that follows.',
+      'Single wins: winner redistributes the Trick cards.',
+      'Double wins: winner chooses another Player as Delegate (never themselves).',
+      'Delegate receives the Trick cards and redistributes them.',
+      'Cards returned face down.',
+      'Each Player receives the same number of cards they played.',
+      'Everyone ends with 10 cards.',
+      'Redistributor leads the next Trick with 1 card.',
     ],
   },
   {
-    id: 'noLimit',
+    id: 'endGame',
     tone: VIOLET,
-    title: 'Until the Suit is Claimed',
-    kicker: 'No trick limit',
+    title: 'End the Game',
+    kicker: '',
     body: [
-      'No trick limit binds this rite. Play continues, turning after turning, until a Deity Suit is gathered in full — however long the turning takes.',
-      'Should both covenants complete a Deity Suit within the same offering, the rite grants no victory; it ends in stalemate, and neither claims it.',
+      'Check for victory after redistribution.',
+      "Full Deity Suit: that Player's Team wins.",
+      'Both Teams complete a Suit together: stalemate.',
+      'No Trick limit. Play until a win or stalemate.',
     ],
   },
 ];
