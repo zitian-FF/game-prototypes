@@ -52,7 +52,7 @@ export interface HandLegality {
 //     could become a facedown single or start a double).
 //  4. Off-suit with one card selected: that card is 'selected', same-rank
 //     cards are 'partner' (highlighted, still legal - selecting one
-//     completes a Twin Awakening double), everything else stays plain
+//     completes a Double), everything else stays plain
 //     'legal' (a facedown single with just the one card is still a valid
 //     confirm). With two matching cards already selected, the double is
 //     complete and every other card becomes 'illegal' until a deselect.
@@ -122,8 +122,8 @@ export function nextSelectionAfterTap(
     return [tappedId];
   }
   if (tappedState === 'partner') {
-    // Matching rank as the one card already selected - completes the Twin
-    // Awakening double.
+    // Matching rank as the one card already selected - completes the
+    // Double.
     return [...current, tappedId];
   }
   // Off-suit, one card already selected, this tap is a different rank -

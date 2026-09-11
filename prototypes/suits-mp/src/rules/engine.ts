@@ -216,7 +216,7 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
 
   // Fourth play: resolve, but don't collect yet. Whoever ends up
   // redistributing the trick - the winner themself on a single-card win,
-  // or a delegate on a double-card (Twin Awakening) win, chosen only
+  // or a delegate on a double-card win, chosen only
   // after this point via chooseDelegate() - is the one who should
   // collect its cards into their own hand, since that's the hand
   // redistribute() draws gifts from. Collecting into the winner's hand
