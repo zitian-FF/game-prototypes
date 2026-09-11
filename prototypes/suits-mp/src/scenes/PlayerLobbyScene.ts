@@ -3,6 +3,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { showWaiting, setWaitingHostLeft, hideWaiting } from '../dom/lobby/lobbyUiStore';
+import { fetchTurnIceServers } from '../turn/turnConfig';
 import type { PlayerSessionData } from '../net/playerSession';
 
 // Presentation comes entirely from the DOM Lobby flow (dom/lobby/LobbyFlow.tsx,
@@ -29,7 +30,19 @@ export class PlayerLobbyScene extends Phaser.Scene {
 
     const { actions, room } = data;
 
-    showWaiting();
+    // Only reachable via the Host Disconnected sub-state's "Return to Main
+    // Menu" button - a rare, cold path, so a fresh (non-memoized)
+    // `getIceServers` is fine here even though it duplicates the memoized
+    // one `main.ts` built for the original Landing boot: `PlayerSessionData`
+    // doesn't carry that closure through to this scene (see BootData vs.
+    // SharedNetData), and a possible redundant TURN fetch on the next
+    // Host/Join attempt is harmless.
+    const toLanding = (): void => {
+      void room.leave();
+      this.scene.start('Landing', { clientId: data.clientId, getIceServers: () => fetchTurnIceServers() });
+    };
+
+    showWaiting(toLanding);
     // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
     // (only `Systems#shutdown`, which fires this event) - see
     // node_modules/phaser/src/scene/Systems.js.

@@ -27,9 +27,9 @@ export const ERRORS: Record<ErrorKind, ErrorContent> = {
     border: 'rgba(198, 160, 78, 0.45)',
     bg: 'linear-gradient(180deg, rgba(34, 26, 12, 0.9), rgba(8, 12, 15, 0.92))',
     inner: 'rgba(120, 88, 30, 0.28)',
-    title: 'No such circle',
-    primary: 'Speak the sigil anew',
-    detail: 'Those five marks answer to nothing. The sigil may be mistyped, or the circle has since closed.',
+    title: 'Room Not Found',
+    primary: 'Enter Code Again',
+    detail: 'Check the Room Code and try again. The Room may also have closed.',
   },
   connFailed: {
     glyph: '⚡',
@@ -38,9 +38,9 @@ export const ERRORS: Record<ErrorKind, ErrorContent> = {
     border: 'rgba(214, 106, 84, 0.45)',
     bg: 'linear-gradient(180deg, rgba(42, 18, 16, 0.9), rgba(10, 8, 10, 0.93))',
     inner: 'rgba(160, 60, 44, 0.26)',
-    title: 'The thread will not hold',
-    primary: 'Attempt the passage again',
-    detail: 'Direct and relayed passages were both refused. A firewall or strict network may stand between you.',
+    title: 'Connection Failed',
+    primary: 'Try Again',
+    detail: "We couldn't connect to the Room. Check your internet connection or network settings, then try again.",
   },
   timeout: {
     glyph: '◷',
@@ -49,9 +49,9 @@ export const ERRORS: Record<ErrorKind, ErrorContent> = {
     border: 'rgba(120, 190, 178, 0.4)',
     bg: 'linear-gradient(180deg, rgba(10, 30, 32, 0.9), rgba(5, 11, 14, 0.93))',
     inner: 'rgba(28, 120, 116, 0.24)',
-    title: 'Silence answered',
-    primary: 'Call once more',
-    detail: 'The circle did not reply in time. It may have gone quiet, or the host must re-announce the sigil.',
+    title: 'Room Did Not Respond',
+    primary: 'Try Again',
+    detail: 'The Room did not respond in time. Ask the Host to refresh the code, then try again.',
   },
   roomFull: {
     glyph: 'IV',
@@ -60,9 +60,9 @@ export const ERRORS: Record<ErrorKind, ErrorContent> = {
     border: 'rgba(170, 132, 216, 0.45)',
     bg: 'linear-gradient(180deg, rgba(26, 18, 42, 0.9), rgba(8, 8, 14, 0.93))',
     inner: 'rgba(104, 58, 168, 0.28)',
-    title: 'All four seats are taken',
-    primary: 'Watch for a vacancy',
-    detail: 'This circle is complete. Ask the host to release a thrall, or wait for a seat to empty.',
+    title: 'Room Full',
+    primary: 'Try Again',
+    detail: 'All four seats are occupied. Wait for a Player or Bot to leave before trying again.',
   },
   inProgress: {
     glyph: '✦',
@@ -71,9 +71,9 @@ export const ERRORS: Record<ErrorKind, ErrorContent> = {
     border: 'rgba(198, 160, 78, 0.45)',
     bg: 'linear-gradient(180deg, rgba(34, 26, 12, 0.9), rgba(8, 12, 15, 0.92))',
     inner: 'rgba(120, 88, 30, 0.28)',
-    title: 'The rite is under way',
-    primary: 'Try the sigil again',
-    detail: 'Cards are already dealt in this circle. Only a player rejoining their own seat may enter now.',
+    title: 'Game Already Started',
+    primary: 'Enter Another Code',
+    detail: "This Room's Game has already started. Only Players reconnecting to their existing seat can join.",
   },
 };
 
@@ -86,16 +86,27 @@ export type Screen =
   | 'waiting'
   | ErrorKind;
 
+// The 5 error kinds intentionally carry no subtitle at all now (see
+// LobbyFlow.tsx's own masthead - it skips rendering this map's value
+// entirely for an error screen) - kept as empty strings here rather than
+// removed from the map so this stays a total `Record<Screen, string>` with
+// no per-screen optionality to thread through every reader.
 export const SUBTITLES: Record<Screen, string> = {
-  landing: 'Four seats · one deal',
-  join: 'Enter the sigil',
-  joining: 'Crossing over',
-  lobby: 'The circle gathers',
-  reconnecting: 'Holding the thread',
-  waiting: 'Bound to the circle',
-  notFound: 'Turned away',
-  connFailed: 'Turned away',
-  timeout: 'Turned away',
-  roomFull: 'Turned away',
-  inProgress: 'Turned away',
+  // Landing shows only the baked-in logo art (see LobbyFlow.tsx's masthead)
+  // - no separate subtitle text, so this is unused/never rendered; kept
+  // empty for the same reason the error kinds are.
+  landing: '',
+  join: 'Join a Room',
+  joining: 'Joining Room',
+  lobby: 'Waiting for Players',
+  reconnecting: 'Reconnecting',
+  // Same copy as `lobby` above, deliberately - both mean "waiting for the
+  // game to start," just from the host's vs. a joined peer's own
+  // perspective respectively.
+  waiting: 'Waiting for Players',
+  notFound: '',
+  connFailed: '',
+  timeout: '',
+  roomFull: '',
+  inProgress: '',
 };

@@ -35,9 +35,10 @@ export interface LobbyUiState {
   onReleaseBot: (index: number) => void;
   onStartGame: () => void;
   onRefreshCode: () => void;
-  // Used by both the busy screen's "Sever the thread" cancel button and the
-  // error screen's secondary "Return to the threshold" button - both always
-  // give up on the current attempt and go back to the Landing scene.
+  // Used by the busy screen's Cancel/Leave Room button, the error screen's
+  // secondary "Return to the threshold" button, and the Host Disconnected
+  // sub-state's "Return to Main Menu" button - all always give up on the
+  // current attempt and go back to the Landing scene.
   onBack: () => void;
   // Error screen's primary button only - a smarter retry where one exists
   // (same-code reconnect for a transient failure), see ConnectingScene.
@@ -194,8 +195,8 @@ export function hideJoinFlow(): void {
 // during the lobby phase (only the lobbyJoined/gameStarted/roomFull/
 // alreadyInProgress signals) - adding that broadcast is a bigger, separate
 // piece of networking surface than this screen needs, see BUILD_STATUS.md.
-export function showWaiting(): void {
-  state = { ...idleState(), visible: true, screen: 'waiting', hostLeft: false };
+export function showWaiting(onBack: () => void): void {
+  state = { ...idleState(), visible: true, screen: 'waiting', hostLeft: false, onBack };
   emit();
 }
 

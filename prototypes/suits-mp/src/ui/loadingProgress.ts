@@ -112,7 +112,7 @@ export function showAssetLoadProgress(scene: Phaser.Scene): AssetLoadProgress {
   const handle: AssetLoadProgress = {
     hadError: false,
     showRetry(onRetry) {
-      statusText.setText('Something in the ritual circle failed to load.\nTap here to try again.');
+      statusText.setText('Something failed to load.\nTap here to try again.');
       statusText.setColor('#e0796a');
       statusText.setInteractive({ useHandCursor: true });
       statusText.once(Phaser.Input.Events.POINTER_DOWN, onRetry);

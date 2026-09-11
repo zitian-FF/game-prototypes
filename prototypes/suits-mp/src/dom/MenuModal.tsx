@@ -127,7 +127,7 @@ export function MenuModal({ onRules, onPreviousTrick, onClose }: MenuModalProps)
             </button>
           </div>
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <MenuButton label="The Rites" hint="Full rules reference" onClick={onRules} />
+            <MenuButton label="Rules" hint="Full rules reference" onClick={onRules} />
             <MenuButton label="Previous Trick" hint="Review the last trick played" onClick={onPreviousTrick} />
           </div>
         </div>
