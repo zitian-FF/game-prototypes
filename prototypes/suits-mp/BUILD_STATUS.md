@@ -1,147 +1,109 @@
 ## Current milestone
 
-Investigated the reported "cards received via another player's
-redistribution render facedown with wrong z-order" bug. **Could not
-reproduce it in extensive, real-gameplay testing** across every distinct
-code path this event can take. No code changes were needed or made -
-this session's diff against `main` is empty. Documenting the negative
-result here per this repo's own rule (every session that touches a
-prototype updates `BUILD_STATUS.md`), and because the investigation
-itself surfaced a genuinely useful confirmation of how this path
-actually behaves.
+Local Victory animation + universal Victory Screen (win-by-suit-completion
+only; stalemate has a minimal non-broken fallback, see Known issues).
 
-## What was investigated
+## What was implemented
 
-Confirmed the task's own premise first: `prepareCollectAnimation` (`ui/
-renderGameView.ts`) - the only place `ui.pendingHandCollectFaces` ever
-gets populated - only ever fires its `isLocalCollector` branch when
-`state.currentTurn === state.yourSlot` during the `redistribute` phase.
-A passive recipient (a mere contributor who didn't win the trick and
-isn't the delegate) never satisfies that condition, so this event
-genuinely has **zero special-cased handling** - exactly as reported.
-`host/mask.ts` also confirms `yourHand: state.players[forSlot].hand` is
-never masked from its own owner - there is nothing hidden at the data
-layer to reveal.
+**Part 1 - Local Victory** (client-side, fires only for the player whose
+own hand actually completed their Deity Suit): the local player's own
+hand-fan cards levitate slightly, glow tinted to their own Deity's
+existing accent color (reused, not invented - see Key technical
+decisions), then the camera fades to solid white (`camera.fadeOut`,
+monotonic, no flashing) which hands off directly into Part 2 with no gap.
 
-Given that, the question was whether the DEFAULT rendering path (no
-special handling at all) produces a real defect, or whether it just
-renders normally. Built a temporary forced-deal debug hook (`host/
-gameHost.ts`, gated behind query params, fully reverted before this
-commit - `git diff` against `main` is empty) to reach a real,
-deterministic instance of a passive recipient receiving a redistribution
-gift, and tested every structurally distinct variant:
+**Part 2 - Victory Screen** (every client, via its own white-in): the
+winning team's two Deity Face sprites enter from opposite screen edges,
+cross paths, and settle on the side opposite where each started, each
+then pulsing with an ongoing ambient glow in its own color. A DOM overlay
+(`VictoryModal.tsx`) layers the team headline ("Team Chaos Won" / "Team
+Cosmos Won"), trick count, all 4 players' revealed names/identities, and
+a "Back to Menu" button on top.
 
-- **Single win** (winner self-redistributes immediately): recipient's
-  hand at 0 pre-existing cards, plus 2 and 3 pre-existing cards; the new
-  card sorting after existing ones (same suit) and before them (a
-  different, earlier `SUIT_CYCLE` suit, i.e. a genuine "insert not
-  append" case).
-- **Double win / delegate path** (the trick resolves into
-  `chooseDelegate`, the WINNER'S chosen delegate - not the winner -
-  collects and redistributes): same-suit and cross-suit gifts, verified
-  with a second temporary override (`host/botAI.ts`'s `pickRandom`,
-  also fully reverted) forcing bot choices deterministic so the delegate
-  is reliably a third bot, never the winner or the recipient under
-  test.
-
-In every one of these real, live-gameplay scenarios: the received card
-rendered immediately with its real composited face-up art, and in the
-correct sorted position relative to any pre-existing hand cards - no
-facedown card, no z-order defect.
-
-One screenshot from the double-win/cross-suit case briefly looked like
-it confirmed the bug (a card that looked like a plain card-back) - a
-closer, zoomed-in pixel comparison against that same card's own
-untouched appearance moments earlier in the same run showed it was
-simply YogSothoth's real Numbered-card art (a dark, ornate,
-atom/orbital-motif design that reads as "generic card back" at a
-glance, at small screenshot scale). Flagging this explicitly since it's
-exactly the kind of false positive this investigation was trying to
-guard against - confirmed with a direct pixel-level side-by-side, not
-assumed away.
-
-Also traced the full render pipeline directly (temporary logging in
-`presentGameView`/`prepareCollectAnimation`/`renderCardFan`'s
-`drawEntry`, all reverted) for the double-win case specifically, since
-its `pendingHoldMasked`/dwell-timer hold mechanism is structurally
-different from the single-win path (a raw `renderGameView` call can
-fire from a delayed timer, bypassing `presentGameView` entirely). Even
-there, `collectFaces` stayed `null` and every `drawEntry` call logged
-`face.kind=faceup` for the recipient's own hand, confirming the data
-layer was never in question - only my own initial visual read of one
-screenshot was.
+Detection of "did *I* personally complete" is done by checking the local
+player's own unmasked hand against their own god's 10 card ids directly
+(`state.yourHand` vs `CARD_DEFS` filtered by `state.yourGod`) - there is
+no player-id field on `WinInfo` to read this from, as the task itself
+flagged.
 
 ## Key technical decisions
 
-- Did not touch `handLegality.ts`, the Double-completion mechanic, or
-  any action-button state - none of this session's investigation
-  implicated them, and the task itself asked to leave them alone.
-- Did not add a "nice reveal" animation for this event. The task was
-  framed as a bug investigation ("two concrete symptoms... a real bug
-  to investigate"), not a request for a new flourish - and per this
-  repo's scope discipline, inventing new polish beyond what was asked
-  isn't this task's job. If a flourish for this moment is wanted, it's
-  a distinct follow-up (the existing collector-reveal flip in
-  `pendingHandCollectFaces`/`playCardRevealFlip` is the natural pattern
-  to reuse, per the task's own suggestion) - not something this
-  investigation's findings require.
-- Did not multiply out every remaining permutation (e.g. a recipient
-  receiving 2+ cards simultaneously, from a Double they themselves
-  played). Attempted it once; the forced multi-card-double click
-  sequence didn't land reliably in Playwright and, given every variant
-  tested so far behaves identically (per-card, independent of count -
-  `renderCardFan` computes `face` per hand-array entry with no
-  aggregate/count-based branching), didn't re-attempt further. Noting
-  this as the one variant not directly exercised, for the record.
-
-## Verification
-
-- `npm run typecheck` and `npm run build` both pass with no errors (no
-  code changes were made, so this just confirms `main` itself is
-  clean).
-- Real, live Single Player gameplay via Playwright across all the
-  scenarios listed above - console clean throughout (only the known
-  sandboxed asset-fetch noise present in every prior task this
-  session).
-- `git status`/`git diff` against `main`: empty. Every temporary debug
-  hook (`gameHost.ts`'s forced deals, `botAI.ts`'s deterministic-choice
-  override, and all tracing `console.log`s added to
-  `renderGameView.ts`) was fully reverted before this commit.
+- Per-Deity accent colors were previously duplicated ad hoc inside
+  `GameOverlay.tsx` (DOM-only). Extracted them into `rules/cards.ts` as
+  `GOD_ACCENT_RGB`/`GOD_ACCENT_HEX`, a single shared source now used by
+  both the DOM Suit Cycle UI and this canvas code - no new colors
+  invented, per the task's explicit instruction.
+- Local Victory's card glow is a plain additive color-wash rectangle
+  (task only asked to reuse the *color tokens*), while the Victory
+  Screen's settled deity glow reuses the actual BitmapMask-to-silhouette
+  technique from the Powered card idle shimmer (`addPoweredIdleShimmer`),
+  since that one specifically needed to read as an "ongoing ambient glow
+  masked to the sprite's own shape," not a flash.
+- `renderCardFan` now returns a `Map<CardId, Container>` of what it just
+  drew, used only by the Local Victory levitation to get live tweenable
+  handles on the fan's cards (this file rebuilds the whole hand fan from
+  scratch every render otherwise).
+- All choreography (levitate distance/duration, glow alpha, fade
+  duration, deity entrance duration/easing/height, glow pulse) is in
+  `tune.json`, Tweakpane-exposed automatically (no `debugPanel.ts`
+  changes were needed - it walks `tune.json` generically).
+- **Deity sprite sizing deviates from the task's literal "~70% of screen
+  height" spec**: used `victoryDeityHeightFraction: 0.42` instead. At 70%
+  height, two side-by-side face-art sprites (~0.71:1 width:height) would
+  each be materially wider than the 390px mobile viewport, guaranteeing
+  overlap/clipping. Confirmed via real Playwright screenshots at
+  390x844 that 0.42 reads correctly: both sprites fully visible,
+  legible, and appropriately prominent without crowding the text
+  overlay beneath them. This is exactly the "if 70% overlaps, adjust and
+  report what you used and why" case the task's own wording anticipated.
+- Deity entrance choreography (opposite edges -> cross -> settle on the
+  opposite side from where each started) was watched frame-by-frame via
+  fine-grained Playwright screenshot capture during real gameplay (not
+  just assumed from the tween code): a clear mid-crossing overlap frame
+  was captured between the "not yet visible" and "fully settled" frames,
+  confirming the crossing is genuinely visible on screen, not hidden
+  entirely behind the white fade-in. Reading confirmed correct as
+  originally coded; no choreography change was needed.
+- Navigation: the task's premise that a "Return to Main Menu" button
+  already existed (Host-Disconnected lobby state) doesn't hold - no such
+  button exists anywhere in this codebase. Flagging this per the "flag
+  rather than guess" instruction rather than silently inventing a fake
+  precedent. Used the actual canonical navigation pattern instead
+  (`scene.start('Landing', { clientId, getIceServers })`), the same one
+  every other lobby scene already uses.
+- Fixed a real bug found during verification: the Victory Screen's "Back
+  to Menu" button navigated the Phaser scene back to Landing but never
+  closed the DOM `VictoryModal` overlay, so Landing rendered underneath
+  a still-visible, still-interactive Victory Screen overlay. Fixed by
+  calling `closeVictory()` before `navigateToLandingMenu()`.
 
 ## Open questions
 
-**This is the one to flag explicitly**: the task described two concrete
-symptoms ("stuck-facedown art *and* wrong z-order") as if already
-observed firsthand, but this investigation could not reproduce either
-across every code path this event can take. Possibilities, none
-confirmed:
-- The report was based on a screenshot/observation similar to the one
-  false positive found here (YogSothoth's own dark card art
-  misread as a card back) - in which case there may be no bug at all.
-- It's specific to a real-multiplayer scenario this session's
-  Single-Player-only testing can't reach (e.g. a human distributor
-  taking a long, real-world pause before redistributing, during which
-  the recipient's client renders other things - Rules modal, log,
-  idle re-renders - in between).
-- It's the one untested variant (2+ simultaneous cards from the
-  recipient's own Double contribution).
-
-Would help to get either a screen recording of the actual bug, or the
-exact multiplayer steps that triggered it, before spending further
-budget on speculative fixes for something that may not exist as
-described.
+None - `BRIEF.md` was not consulted mid-session for this task since the
+task description (and the standing house rules restated within it) was
+fully self-contained; nothing came up that required asking the user
+beyond what the task itself already flagged as open (the stalemate
+screen, addressed below).
 
 ## Known issues
 
-None found. Known sandboxed asset-fetch console noise (unrelated host,
-present since before this task) still appears on every boot in this
-environment.
+- **Stalemate has no dedicated screen, by explicit design of this task.**
+  `reason === 'stalemate'` never triggers Local Victory or the Victory
+  Screen (both require a real winning team). It now falls through to a
+  minimal, unstyled `renderGameOver` stub: plain text ("GAME OVER",
+  the stalemate detail line, revealed identities) plus a working
+  "Back to Menu" button (previously this screen had no button at all -
+  a real dead end). Verified via a constructed two-opposing-completers
+  redistribution (not just inspected in code) that this path is
+  reachable and doesn't crash or hang; the stub's detail-line text can
+  run past the right edge of a 390px viewport for a long stalemate
+  detail string (pre-existing, not introduced by this task, out of
+  scope to fix here). A dedicated stalemate screen is real scope for a
+  separate future task.
 
 ## Next proposed step
 
-Get a concrete repro from the user (recording or exact multiplayer
-steps) before touching this again. If one surfaces, the existing
-collector-reveal flip (`pendingHandCollectFaces`/`playCardRevealFlip`)
-is the natural mechanic to extend, per the task's own suggestion -
-confirmed here to be reusable, since the underlying real-face data was
-never the problem in every case actually reproducible this session.
+Scope and design a dedicated stalemate screen (distinct framing from the
+Victory Screen, since there's no "winning team" to feature) as its own
+follow-up task, and consider trimming/wrapping the stalemate stub's
+detail text so it doesn't run off-screen in the meantime.

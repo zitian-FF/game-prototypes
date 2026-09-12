@@ -26,6 +26,16 @@ export interface RedistLogEntry {
   groups: RedistLogGroup[];
 }
 
+// Display-ready shape for one Victory Screen identity row (see
+// ui/renderGameView.ts's showVictoryScreen) - resolved player label plus
+// revealed god display name, same "resolve game-state internals on the
+// canvas side, hand this DOM layer only plain strings" convention every
+// other piece of chrome in this file already follows.
+export interface VictoryIdentity {
+  label: string;
+  godDisplayName: string;
+}
+
 interface DomUiState {
   rulesOpen: boolean;
   closeRules: () => void;
@@ -36,6 +46,11 @@ interface DomUiState {
   onMenuRules: () => void;
   onMenuPreviousTrick: () => void;
   closeMenu: () => void;
+  victoryOpen: boolean;
+  victoryTeamHeadline: string;
+  victoryTrickNumber: number;
+  victoryIdentities: VictoryIdentity[];
+  onVictoryBackToMenu: () => void;
 }
 
 function idleState(): DomUiState {
@@ -49,6 +64,11 @@ function idleState(): DomUiState {
     onMenuRules: () => {},
     onMenuPreviousTrick: () => {},
     closeMenu: () => {},
+    victoryOpen: false,
+    victoryTeamHeadline: '',
+    victoryTrickNumber: 0,
+    victoryIdentities: [],
+    onVictoryBackToMenu: () => {},
   };
 }
 
@@ -99,5 +119,21 @@ export function openMenu(onRules: () => void, onPreviousTrick: () => void, onClo
 export function closeMenu(): void {
   if (!state.menuOpen) return;
   state = { ...state, menuOpen: false, onMenuRules: () => {}, onMenuPreviousTrick: () => {}, closeMenu: () => {} };
+  emit();
+}
+
+// Opened exactly once per game, right as the canvas side's own white-in
+// (camera.fadeIn) begins - see showVictoryScreen. No corresponding
+// canvas-driven close: the only way off this screen is its own Back to
+// Menu button, which navigates away (scene.start('Landing', ...)) rather
+// than closing this overlay in place.
+export function openVictory(teamHeadline: string, trickNumber: number, identities: VictoryIdentity[], onBackToMenu: () => void): void {
+  state = { ...state, victoryOpen: true, victoryTeamHeadline: teamHeadline, victoryTrickNumber: trickNumber, victoryIdentities: identities, onVictoryBackToMenu: onBackToMenu };
+  emit();
+}
+
+export function closeVictory(): void {
+  if (!state.victoryOpen) return;
+  state = { ...state, victoryOpen: false, victoryTeamHeadline: '', victoryTrickNumber: 0, victoryIdentities: [], onVictoryBackToMenu: () => {} };
   emit();
 }

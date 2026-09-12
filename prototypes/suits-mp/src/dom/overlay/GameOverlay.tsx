@@ -5,7 +5,7 @@ import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
 import { GOD_MOTIF } from '../../rules/godArt';
-import type { God } from '../../rules/types';
+import { GOD_ACCENT_RGB } from '../../rules/cards';
 import {
   HEX_CLIP_PATH,
   actionSlabStateUrl,
@@ -220,18 +220,6 @@ const RECESS_OFFSET: readonly { dx: number; dy: number }[] = [
   { dx: -HUD_SIZE * RECESS_OFFSET_FRACTION, dy: 0 },
 ];
 
-// Canonical per-Deity accent hue for the Lead recess glow - a neutral-
-// white core (shared, see the glow itself below) plus this hue, per the
-// approved spec: Cthulhu cyan, Nyarlathotep purple, Shub-Niggurath green,
-// Yog-Sothoth gold (gold value matches the existing gold accent already
-// used elsewhere in this file, e.g. the local seat tag's border).
-const GOD_ACCENT_RGB: Record<God, string> = {
-  Cthulhu: '90, 224, 210',
-  Nyarlathotep: '176, 120, 232',
-  ShubNiggurath: '120, 200, 110',
-  YogSothoth: '198, 160, 78',
-};
-
 export function GameOverlay({
   sortLabel,
   onToggleSort,
@@ -356,7 +344,7 @@ export function GameOverlay({
             const motif = GOD_MOTIF[suit.god];
             const offset = RECESS_OFFSET[i];
             const isLit = i === litGodIndex;
-            const accent = GOD_ACCENT_RGB[suit.god];
+            const accent = GOD_ACCENT_RGB[suit.god].join(', ');
             return (
               <div
                 key={suit.code}

@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
-import { GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
-import type { CardId, DeityCardState } from '../rules/types';
+import { getOrCreateClientId } from 'mp-core';
+import { ALL_GODS, CARD_DEFS, GOD_ACCENT_HEX, GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
+import type { CardId, DeityCardState, God } from '../rules/types';
+import { faceArtFile } from '../rules/godArt';
+import { fetchTurnIceServers } from '../turn/turnConfig';
 import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
@@ -15,8 +18,8 @@ import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
 import { playAwakenedEffect } from './cardArt';
-import { closeMenu, closeRedistLog, closeRules, openMenu, openRedistLog, openRules } from '../dom/domUiStore';
-import type { RedistLogEntry } from '../dom/domUiStore';
+import { closeMenu, closeRedistLog, closeRules, closeVictory, openMenu, openRedistLog, openRules, openVictory } from '../dom/domUiStore';
+import type { RedistLogEntry, VictoryIdentity } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
 import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
@@ -349,6 +352,13 @@ export interface PersistentUIState {
   // runs - the animation's own visuals are built exclusively from this
   // pre-masked source, never from that cleartext hand array.
   pendingHandCollectFaces: Map<CardId, CardFace> | null;
+  // Victory sequence (Local Victory + universal Victory Screen, see
+  // startVictorySequence below): fires at most once, the first render
+  // where `state.winner.reason === 'suit'` is seen. Once true, every
+  // later render of this same (terminal, never-changing-again) gameOver
+  // state is a no-op - the sequence's own tweens/timers own the screen
+  // from here, not further masked-state-driven renders.
+  victorySequenceStarted: boolean;
 }
 
 export function createPersistentUIState(): PersistentUIState {
@@ -365,6 +375,7 @@ export function createPersistentUIState(): PersistentUIState {
     collectAnimatedTrickKey: '',
     pendingHandCollectOrigins: null,
     pendingHandCollectFaces: null,
+    victorySequenceStarted: false,
   };
 }
 
@@ -819,8 +830,24 @@ function renderWithView(
   }
 
   if (state.winner) {
-    hideGameOverlay();
-    renderGameOver(state, rect, text, button, ui, rerender);
+    // A stalemate has no Local Victory / Victory Screen at all (see this
+    // task's own explicit scope note) - the plain stub stays exactly as
+    // it was, just with a real Back to Menu button added (previously
+    // this whole screen was an unstyled dead end with no navigation).
+    if (state.winner.reason === 'stalemate') {
+      hideGameOverlay();
+      renderGameOver(scene, state, rect, text, button);
+      return;
+    }
+    // A real suit-completion win: fires the victory sequence exactly
+    // once (see PersistentUIState.victorySequenceStarted's own doc
+    // comment) - every later render of this same terminal state is a
+    // no-op, since the sequence's own tweens/timers own the screen from
+    // here.
+    if (!ui.victorySequenceStarted) {
+      ui.victorySequenceStarted = true;
+      startVictorySequence(scene, container, state, view, ui);
+    }
     return;
   }
 
@@ -1395,6 +1422,13 @@ interface FanEntry {
   cardState: CardVisualState | null;
 }
 
+// Returns the just-drawn container for every hand card, keyed by CardId -
+// only the Local Victory sequence (see startVictorySequence below) uses
+// this; every other call site ignores the return value. Needed because
+// `drawCard()` builds a brand-new Container every render pass (this
+// whole file's `container.removeAll(true)` wipe-and-rebuild model), so
+// there is no other way to get a live, tweenable handle on "the hand
+// cards exactly as they look on screen right now."
 function renderCardFan(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -1403,7 +1437,8 @@ function renderCardFan(
   ui: PersistentUIState,
   legality: ReturnType<typeof computeHandLegality> | null,
   rerender: () => void,
-): void {
+): Map<CardId, Phaser.GameObjects.Container> {
+  const drawnByCardId = new Map<CardId, Phaser.GameObjects.Container>();
   const sorter = ui.sortMode === 'suit' ? sortCardIds : sortCardIdsByRank;
   const hand = sorter(state.yourHand);
 
@@ -1572,6 +1607,7 @@ function renderCardFan(
       style,
       dims,
     );
+    drawnByCardId.set(entry.id, drawnContainer);
     if (reflowOrigin) {
       const originRotationRad = (originRotationDeg * Math.PI) / 180;
       const finalRotationRad = (entry.rotationDeg * Math.PI) / 180;
@@ -1638,6 +1674,7 @@ function renderCardFan(
 
   for (const entry of nonSelected) drawEntry(entry, false);
   for (const entry of selected) drawEntry(entry, true);
+  return drawnByCardId;
 }
 
 // Player-facing identity label: the real displayName if one was entered
@@ -1823,20 +1860,20 @@ function computeRedistLogEntries(state: MaskedState): RedistLogEntry[] {
 
 // --- Game over --------------------------------------------------------
 
-function renderGameOver(
-  state: MaskedState,
-  rect: RectFn,
-  text: TextFn,
-  button: ButtonFn,
-  ui: PersistentUIState,
-  rerender: () => void,
-): void {
+// Stalemate-only fallback (see this function's call site): a real
+// "suit" win never reaches here at all - it goes through
+// startVictorySequence/showVictoryScreen instead. A stalemate has no
+// defined screen of its own per this task's explicit scope note ("do
+// not invent a stalemate screen"), so this stays the same plain stub it
+// already was, just no longer a dead end - it previously had no way
+// back to the menu at all.
+function renderGameOver(scene: Phaser.Scene, state: MaskedState, rect: RectFn, text: TextFn, button: ButtonFn): void {
   const winner = state.winner;
   if (!winner) return;
   rect(CENTER_X, HEIGHT / 2, WIDTH, HEIGHT, 0x0c0c10, 1);
   text(CENTER_X, 110, '--- GAME OVER ---', '#ffd27a', 18);
   text(CENTER_X, 150, winner.detail, '#eeeeee', 13);
-  text(CENTER_X, 178, `Winning team: ${winner.team ?? 'none (stalemate)'}`, '#ffd27a', 13);
+  text(CENTER_X, 178, 'Stalemate: no winning team', '#ffd27a', 13);
 
   const revealed = ALL_NET_PLAYER_IDS.filter((slot) => state.revealedGods[slot]);
   if (revealed.length > 0) {
@@ -1847,8 +1884,196 @@ function renderGameOver(
     });
   }
 
-  button(CENTER_X, HEIGHT - 60, 140, 36, 'Previous Trick Log', () => {
-    ui.overlay = 'log';
-    rerender();
-  }, { fill: COLOR_STUB_BUTTON, textColor: '#cccccc', fontSize: 11 });
+  button(CENTER_X, HEIGHT - 60, 160, 40, 'Back to Menu', () => navigateToLandingMenu(scene), {
+    fill: COLOR_STUB_BUTTON,
+    textColor: '#eeeeee',
+    fontSize: 13,
+  });
+}
+
+// The one real "return to Landing" mechanism this codebase already uses
+// (HostLobbyScene/PlayerLobbyScene/ConnectingScene/JoinEntryScene all do
+// exactly this - see BUILD_STATUS.md for the fuller survey; there is no
+// separate DOM-side navigation path to reuse instead). Constructs a
+// fresh BootData rather than threading the original one through every
+// intermediate scene: `clientId` is idempotent (persisted, not
+// regenerated) and `getIceServers` is cheap to recreate since nothing
+// here needs the eager-vs-lazy memoization main.ts's own long-lived
+// closure cares about - this is a one-shot navigation, not a session
+// kept alive across repeated calls.
+function navigateToLandingMenu(scene: Phaser.Scene): void {
+  scene.scene.start('Landing', {
+    clientId: getOrCreateClientId('suits-mp:clientId'),
+    getIceServers: () => fetchTurnIceServers(),
+  });
+}
+
+// --- Victory sequence (Local Victory + universal Victory Screen) -------
+// Fires once per game, the first time `state.winner.reason === 'suit'`
+// is seen (see this file's own `if (state.winner)` dispatch and
+// PersistentUIState.victorySequenceStarted). Two connected animations:
+// Local Victory (this client's own hand-fan cards levitate, glow in
+// their own Deity's colour, then the screen fades to white) plays only
+// for the actual completer - the local player whose OWN hand currently
+// holds all 10 cards of their OWN Deity Suit. There is no player-id
+// field on WinInfo identifying who completed (see rules/engine.ts's
+// checkSuitCompletion) - this is the only way to tell, and it's a
+// legitimate client-side check since a player's own hand is never
+// masked from them (see host/mask.ts's `yourHand`). Every other client
+// (a teammate who didn't personally complete, or a player on the
+// losing team) skips straight to the Victory Screen's own white-in.
+function startVictorySequence(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  state: MaskedState,
+  view: ViewState,
+  ui: PersistentUIState,
+): void {
+  hideGameOverlay();
+  const ownSuitCardIds = CARD_DEFS.filter((c) => c.god === state.yourGod).map((c) => c.id);
+  const isLocalVictory = ownSuitCardIds.every((id) => state.yourHand.includes(id));
+
+  if (!isLocalVictory) {
+    // No Local Victory for this client - straight to the Victory
+    // Screen's own white-in: an instant (zero-duration) fade to opaque
+    // white first, so there is no flash of whatever this render pass's
+    // own container.removeAll(true) already left on screen (nothing,
+    // in practice) before the reveal.
+    scene.cameras.main.fadeOut(0, 255, 255, 255);
+    showVictoryScreen(scene, container, state);
+    return;
+  }
+
+  // Draw the real, final hand fan one more time (the normal dispatch
+  // above this branch never reaches renderCardFan once state.winner is
+  // set) so there is something genuine on screen to levitate/glow -
+  // legality is null (nothing is playable any more) and rerender is a
+  // no-op (nothing here is interactive).
+  const drawn = renderCardFan(scene, container, state, view, ui, null, () => {});
+  const glowColor = GOD_ACCENT_HEX[state.yourGod];
+  for (const cardContainer of drawn.values()) {
+    scene.tweens.add({
+      targets: cardContainer,
+      y: cardContainer.y - tune.victoryLevitateDistance,
+      duration: tune.victoryLevitateMs,
+      ease: 'Sine.easeInOut',
+    });
+    // A plain ADD-blended colour wash sized to the card, not the Powered
+    // shimmer's BitmapMask-to-silhouette technique - this task only
+    // asks Local Victory to reuse the per-Deity colour tokens, not that
+    // specific masking mechanic (see showVictoryScreen's own deity-glow
+    // helper below, where the BitmapMask technique *is* the right reuse).
+    const glow = scene.add.rectangle(0, 0, CARD_DIMS_STANDARD.width, CARD_DIMS_STANDARD.height, glowColor, 0);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    cardContainer.add(glow);
+    scene.tweens.add({
+      targets: glow,
+      alpha: tune.victoryCardGlowAlpha,
+      duration: tune.victoryLevitateMs,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  scene.time.delayedCall(tune.victoryLevitateMs, () => {
+    // Gradual, monotonic fade only - camera.fadeOut ramps a single alpha
+    // value from 0 to 1 over the given duration with no oscillation,
+    // the hard accessibility requirement this task calls out
+    // explicitly (verified visually, not just assumed from the API).
+    scene.cameras.main.fadeOut(tune.victoryFadeMs, 255, 255, 255);
+    scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      showVictoryScreen(scene, container, state);
+    });
+  });
+}
+
+const VICTORY_DEITY_Y = HEIGHT * 0.44;
+
+// Ongoing ambient glow on a settled Victory Screen deity sprite - the
+// exact same BitmapMask-against-its-own-image technique as
+// cardArt.ts's addPoweredIdleShimmer (color only ever shows through the
+// sprite's own painted silhouette, never as a stray rectangle), reused
+// per this task's own suggestion, with a slow alpha pulse in place of
+// that effect's scrolling bands - "ongoing ambient glow", not a
+// scrolling shimmer, is what a settled victory portrait calls for.
+function addVictoryDeityGlow(scene: Phaser.Scene, container: Phaser.GameObjects.Container, image: Phaser.GameObjects.Image, color: number): void {
+  if (scene.renderer.type !== Phaser.WEBGL) return;
+  const glow = scene.add.graphics();
+  glow.fillStyle(color, 1);
+  glow.fillRect(-image.displayWidth / 2, -image.displayHeight / 2, image.displayWidth, image.displayHeight);
+  glow.setPosition(image.x, image.y);
+  glow.setBlendMode(Phaser.BlendModes.ADD);
+  glow.setAlpha(0);
+  glow.setMask(new Phaser.Display.Masks.BitmapMask(scene, image));
+  container.add(glow);
+  scene.tweens.add({
+    targets: glow,
+    alpha: tune.victoryGlowPulseAlpha,
+    duration: tune.victoryGlowPulseMs,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+}
+
+// Universal Victory Screen (every client sees this, whether or not they
+// personally saw Local Victory first) - the two Deity Face sprites
+// belonging to the winning team only, entering from opposite screen
+// edges, crossing paths, and settling on the side opposite where each
+// started. Canvas owns the whole choreography (WebGL glow included, per
+// root CLAUDE.md's canvas/DOM split); the DOM VictoryModal layered on
+// top owns only the static text/button (see dom/VictoryModal.tsx).
+function showVictoryScreen(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState): void {
+  container.removeAll(true);
+  drawTabletop(scene, container);
+
+  const winner = state.winner!;
+  const team = winner.team!; // reason === 'suit' (this function's only caller) always has a real team
+  const teamGods = ALL_GODS.filter((g) => GOD_TEAM[g] === team);
+  const [godA, godB] = teamGods;
+
+  const targetHeight = HEIGHT * tune.victoryDeityHeightFraction;
+  const makeDeitySprite = (god: God, startX: number): Phaser.GameObjects.Image => {
+    const image = scene.add.image(startX, VICTORY_DEITY_Y, faceArtFile(god));
+    const scale = targetHeight / image.frame.height;
+    image.setDisplaySize(image.frame.width * scale, targetHeight);
+    container.add(image);
+    return image;
+  };
+
+  // Start each sprite just off its own screen edge, end each on the
+  // OPPOSITE side of center from where it started (per this task's own
+  // "appear on either side before crossing each other and stop" - watched
+  // frame-by-frame via Playwright screenshots during real-gameplay
+  // verification, mid-crossing overlap clearly visible before settling)
+  // - a small restOffset rather than 0 so the two settled sprites read as
+  // standing side by side, not fully overlapping at dead center.
+  const restOffset = targetHeight * 0.16;
+  const spriteA = makeDeitySprite(godA, -targetHeight);
+  const spriteB = makeDeitySprite(godB, WIDTH + targetHeight);
+
+  scene.tweens.add({
+    targets: spriteA,
+    x: CENTER_X + restOffset,
+    duration: tune.victoryDeityEntranceMs,
+    ease: tune.victoryDeityEntranceEase,
+    onComplete: () => addVictoryDeityGlow(scene, container, spriteA, GOD_ACCENT_HEX[godA]),
+  });
+  scene.tweens.add({
+    targets: spriteB,
+    x: CENTER_X - restOffset,
+    duration: tune.victoryDeityEntranceMs,
+    ease: tune.victoryDeityEntranceEase,
+    onComplete: () => addVictoryDeityGlow(scene, container, spriteB, GOD_ACCENT_HEX[godB]),
+  });
+
+  const identities: VictoryIdentity[] = ALL_NET_PLAYER_IDS.filter((slot) => state.revealedGods[slot]).map((slot) => ({
+    label: playerLabelFor(state, slot),
+    godDisplayName: GOD_DISPLAY_NAME[state.revealedGods[slot]!],
+  }));
+  openVictory(`Team ${team} Won`, state.trickNumber, identities, () => {
+    closeVictory();
+    navigateToLandingMenu(scene);
+  });
+
+  scene.cameras.main.fadeIn(tune.victoryFadeMs, 255, 255, 255);
 }
