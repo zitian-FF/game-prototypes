@@ -4,13 +4,17 @@ import type { CardId, GameState, PlayerId } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, PlayType } from '../net/actions';
 
-// Level 1 - legal-random AI, the only level this task implements (Level
-// 2/3 suit/team-aware sophistication is explicitly deferred). A bot never
-// reads or mutates state directly; it only ever produces a ClientAction,
-// which the host applies through the exact same gameHost.applyAction path
-// as a real peer's action (see HostGameScene.driveBotsIfNeeded) - there is
-// no separate bot rules path, so this is a genuine exercise of the same
-// validation every human action goes through.
+// Legal-random AI, with one deliberate exception: redistribution is now
+// Tier A - self-interested suit-optimizing (see suits-mp-bot-ai-design.md,
+// Google Drive/Working/, for the full staged design this implements the
+// first tier of). choosePlayCardAction and chooseDelegateAction remain
+// uniform-random; only chooseRedistributeAction has any intentionality. A
+// bot never reads or mutates state directly; it only ever produces a
+// ClientAction, which the host applies through the exact same
+// gameHost.applyAction path as a real peer's action (see
+// HostGameScene.driveBotsIfNeeded) - there is no separate bot rules path,
+// so this is a genuine exercise of the same validation every human action
+// goes through.
 
 function pickRandom<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
@@ -67,16 +71,31 @@ function chooseDelegateAction(slot: PlayerId): ClientAction {
   return { action: 'selectDelegate', targetPlayer: pickRandom(others) };
 }
 
-// Splits the required count for each contributing recipient randomly among
-// the cards in the acting distributor's hand (not just this trick's cards
-// - unlike the masked payload shown to a human distributor, a bot has full
-// host-local access to the canonical state, so it's free to use the
-// engine's actual, more permissive pool). On a self-redistributed win the
-// distributor is the winner; on a delegated (double) win it's the
+// Tier A (suits-mp-bot-ai-design.md, section 2): self-interested, suit-
+// optimizing redistribution - the bot preferentially holds back cards of
+// its OWN Deity Suit rather than choosing what to keep at random. Still no
+// teammate/opponent awareness (that's Tier B) and still no preference
+// between which contributing recipient gets which giveaway card - only
+// the self/other split changes, not who among "others" benefits.
+//
+// Draws from the acting distributor's full hand (not just this trick's
+// cards - unlike the masked payload shown to a human distributor, a bot
+// has full host-local access to the canonical state, so it's free to use
+// the engine's actual, more permissive pool). On a self-redistributed win
+// the distributor is the winner; on a delegated (double) win it's the
 // delegate, who is the one who actually collected the trick's cards - see
 // rules/engine.ts's chooseDelegate/redistribute for where that hand-
 // ownership fix lives. Using the winner's hand unconditionally here would
-// reproduce the same bug for bot-driven delegated redistributions.
+// reproduce the same bug for bot-driven delegated redistributions - and
+// since `state.players[distributorId].god` is read from that same
+// distributor slot, a delegate's self-interest is correctly judged against
+// their OWN Deity Suit, never the original winner's.
+//
+// Masking honesty (design doc section 1.1): every value read here - the
+// distributor's own hand, their own Deity, the real per-recipient owed
+// counts - is exactly what the acting distributor is already entitled to
+// see and act on as themself; nothing here reaches into another player's
+// hand or hidden identity.
 function chooseRedistributeAction(state: GameState): ClientAction {
   const distributorId = state.pendingDistributorId;
   const trickResult = state.lastTrickResult;
@@ -89,11 +108,29 @@ function chooseRedistributeAction(state: GameState): ClientAction {
     }
   }
 
-  const pool = shuffled(state.players[distributorId].hand);
+  const pool = state.players[distributorId].hand;
+  const totalOwed = [...contribution.values()].reduce((sum, n) => sum + n, 0);
+  const ownHoldback = pool.length - totalOwed;
+
+  const ownGod = state.players[distributorId].god;
+  const ownSuitCards = shuffled(pool.filter((id) => cardById(id).god === ownGod));
+  const otherCards = shuffled(pool.filter((id) => cardById(id).god !== ownGod));
+
+  // Fill the holdback preferentially from own-suit cards. Any own-suit
+  // cards beyond what the holdback has room for (there are more needed
+  // cards than slots to keep them in) join the giveaway pool instead of
+  // being kept; if own-suit alone can't fill the holdback, the shortfall
+  // is topped up randomly from the other cards - both `ownSuitCards` and
+  // `otherCards` are already shuffled, so slicing off the front of either
+  // is itself a random pick within that group.
+  const keptOwnSuitCount = Math.min(ownSuitCards.length, ownHoldback);
+  const stillNeeded = ownHoldback - keptOwnSuitCount;
+  const giveaway = shuffled([...ownSuitCards.slice(keptOwnSuitCount), ...otherCards.slice(stillNeeded)]);
+
   const assignments: { toPlayer: ReturnType<typeof toNetPlayerId>; cards: CardId[] }[] = [];
   let idx = 0;
   for (const [playerId, count] of contribution) {
-    assignments.push({ toPlayer: toNetPlayerId(playerId), cards: pool.slice(idx, idx + count) });
+    assignments.push({ toPlayer: toNetPlayerId(playerId), cards: giveaway.slice(idx, idx + count) });
     idx += count;
   }
   return { action: 'redistribute', assignments };
