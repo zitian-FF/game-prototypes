@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { RulesModal } from './RulesModal';
 import { RedistLogModal } from './RedistLogModal';
 import { MenuModal } from './MenuModal';
+import { VictoryModal } from './VictoryModal';
 import { closeMenu, closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
 import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
@@ -26,6 +27,11 @@ export function DomRoot(): JSX.Element {
     onMenuRules,
     onMenuPreviousTrick,
     closeMenu: onCloseMenu,
+    victoryOpen,
+    victoryTeamHeadline,
+    victoryTrickNumber,
+    victoryIdentities,
+    onVictoryBackToMenu,
   } = useSyncExternalStore(subscribe, getSnapshot);
   const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
@@ -57,6 +63,14 @@ export function DomRoot(): JSX.Element {
             onCloseMenu();
             closeMenu();
           }}
+        />
+      )}
+      {victoryOpen && (
+        <VictoryModal
+          teamHeadline={victoryTeamHeadline}
+          trickNumber={victoryTrickNumber}
+          identities={victoryIdentities}
+          onBackToMenu={onVictoryBackToMenu}
         />
       )}
       {lobby.visible && (

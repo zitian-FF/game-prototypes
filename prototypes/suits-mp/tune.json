@@ -53,5 +53,14 @@
   "localTeamSymbolGap": 11,
   "remoteNameplateWidth": 96,
   "actionButtonWidth": 266,
-  "actionButtonHeight": 117
+  "actionButtonHeight": 117,
+  "victoryLevitateDistance": 26,
+  "victoryLevitateMs": 1100,
+  "victoryCardGlowAlpha": 0.5,
+  "victoryFadeMs": 1400,
+  "victoryDeityEntranceMs": 1300,
+  "victoryDeityEntranceEase": "Cubic.easeInOut",
+  "victoryDeityHeightFraction": 0.42,
+  "victoryGlowPulseMs": 2200,
+  "victoryGlowPulseAlpha": 0.45
 }

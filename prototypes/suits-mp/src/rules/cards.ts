@@ -76,6 +76,31 @@ export const GOD_TEAM: Record<God, Team> = {
   YogSothoth: 'Cosmos',
 };
 
+// Canonical per-Deity accent hue - the one source of truth for both the
+// DOM-drawn Suit Cycle recess glow (dom/overlay/GameOverlay.tsx, as an
+// `rgba()` triple) and any canvas-drawn glow (as a Phaser hex int), so
+// the two can never drift apart. Per the approved spec: Cthulhu cyan,
+// Nyarlathotep purple, Shub-Niggurath green, Yog-Sothoth gold (gold
+// value matches the existing gold accent already used elsewhere, e.g.
+// the local seat tag's border).
+export const GOD_ACCENT_RGB: Record<God, readonly [number, number, number]> = {
+  Cthulhu: [90, 224, 210],
+  Nyarlathotep: [176, 120, 232],
+  ShubNiggurath: [120, 200, 110],
+  YogSothoth: [198, 160, 78],
+};
+
+function rgbToHex([r, g, b]: readonly [number, number, number]): number {
+  return (r << 16) | (g << 8) | b;
+}
+
+export const GOD_ACCENT_HEX: Record<God, number> = {
+  Cthulhu: rgbToHex(GOD_ACCENT_RGB.Cthulhu),
+  Nyarlathotep: rgbToHex(GOD_ACCENT_RGB.Nyarlathotep),
+  ShubNiggurath: rgbToHex(GOD_ACCENT_RGB.ShubNiggurath),
+  YogSothoth: rgbToHex(GOD_ACCENT_RGB.YogSothoth),
+};
+
 // Fixed suit rotation cycle: Yog-Sothoth -> Cthulhu -> Shub-Niggurath ->
 // Nyarlathotep -> repeat.
 export const SUIT_CYCLE: readonly God[] = ['YogSothoth', 'Cthulhu', 'ShubNiggurath', 'Nyarlathotep'];
