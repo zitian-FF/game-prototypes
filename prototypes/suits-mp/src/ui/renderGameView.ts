@@ -1704,23 +1704,24 @@ function computeActionButtonState(
     if (legality?.playType) {
       const type = legality.playType;
       const cards = [...view.selectedCards];
+      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Play Double' : 'Facedown Card';
       // One off-suit card staged with a same-rank partner still elsewhere in
-      // hand: a facedown single is already a legal commit here, but
-      // surfacing that first would bury the fact that a Double is still
-      // reachable - guide toward completing it instead of silently letting
-      // the moment pass. Only fires for this exact staged-facedownSingle
-      // shape; a genuine one-card-only hand (no partner) falls through to
-      // the Facedown Card label below unchanged, since a facedown single is
-      // the only real option there.
+      // hand: the facedown single is already a legal commit - it must stay
+      // the primary action (a prior task made this Double-guidance replace
+      // it outright, a regression: it left no way to confirm an
+      // already-valid play). The Double is still reachable by tapping the
+      // partner card (unchanged, see nextSelectionAfterTap), so it's
+      // surfaced as secondary hint text instead, alongside the real commit
+      // action. A genuine one-card-only hand (no partner) keeps the plain
+      // hint below unchanged, since a facedown single is the only real
+      // option there.
+      let hint = 'Commit the chosen card';
       if (type === 'facedownSingle' && cards.length === 1) {
         const rank = cardById(cards[0]).rank;
         const hasPartner = state.yourHand.some((id) => id !== cards[0] && cardById(id).rank === rank);
-        if (hasPartner) {
-          return { label: 'Double', hint: 'Select two cards of the same rank.', enabled: false, onClick: NO_OP };
-        }
+        if (hasPartner) hint = 'Commit now, or select a matching card for a Double';
       }
-      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Play Double' : 'Facedown Card';
-      return { label, hint: 'Commit the chosen card', enabled: true, onClick: () => sendAction({ action: 'playCard', playType: type, cards }) };
+      return { label, hint, enabled: true, onClick: () => sendAction({ action: 'playCard', playType: type, cards }) };
     }
     return { label: 'Select a card to play', hint: '', enabled: false, onClick: NO_OP };
   }
