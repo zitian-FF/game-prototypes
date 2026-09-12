@@ -198,6 +198,87 @@ export interface BuiltCard {
   hitArea: Phaser.GameObjects.Rectangle;
 }
 
+// Ongoing "foil card" idle shimmer: every Powered Deity Card shows this for
+// as long as it keeps rendering Powered - wherever it's drawn (hand fan,
+// play area, previous-trick log) - not just during the one-shot
+// playAwakenedEffect reveal burst above (which still fires separately, only
+// on the render where a card first becomes eligible/lands Powered). Same
+// masked-to-the-art-silhouette approach as that burst (a BitmapMask
+// referencing the card's own face image, so the color only ever shows
+// through the painted Deity, never as a stray rectangle), but a
+// continuously scrolling rainbow band strip instead of a single gradient
+// that scales up and fades once - see addPoweredIdleShimmer's own body for
+// why a repeating band strip, not one smooth gradient quad, is what
+// actually reads clearly at hand-fan scale.
+//
+// Lifecycle/cleanup: this whole file has no persistent/incremental object
+// reuse - every render pass wipes and rebuilds the entire canvas tree from
+// scratch (renderGameView.ts's renderWithView calls `container.removeAll
+// (true)` at the top of every single pass, including ones triggered by a
+// mere hover/selection change, not just a real game-state update). Without
+// explicit cleanup, this looping tween would keep running forever against
+// an already-destroyed Graphics object - a real, accumulating leak given
+// how often a render pass fires. Container.destroy() cascades to every
+// descendant (Phaser containers default to `exclusive: true`), so this
+// shimmer's own DESTROY event reliably fires the instant this card's
+// container is torn down, on whichever render pass that happens to be -
+// including the very next one, if the card stops rendering Powered at all
+// (played, or the trick just ended and this Deity Card reverted to
+// Dormant) - which is also exactly how this effect "stops when the trick
+// is over": it's never drawn as anything but a plain static swap once
+// `deityCardState` is no longer 'powered', so nothing further is needed
+// to enforce that boundary here.
+function addPoweredIdleShimmer(scene: Phaser.Scene, container: Phaser.GameObjects.Container, faceImage: Phaser.GameObjects.Image): void {
+  // BitmapMask is WebGL-only (a no-op/unmasked in the Canvas renderer
+  // fallback) - skipped outright there, matching playAwakenedEffect's own
+  // identical guard, rather than risk an unmasked rainbow rectangle
+  // floating free of the art.
+  if (scene.renderer.type !== Phaser.WEBGL) return;
+
+  // NORMAL alpha blend, not ADD: additive light only brightens a pixel, so
+  // against pale/light card art (this washes out toward white - barely
+  // visible, the opposite of "obvious") it has little headroom left to
+  // add. Plain alpha-blended color shows the same rainbow hue clearly
+  // against any underlying brightness, dark or light.
+  //
+  // A repeating band strip, not one big 4-corner gradient: a single smooth
+  // gradient spread across a quad much larger than the card (needed so a
+  // rotating/sweeping quad never exposes a gap) puts the visible window
+  // near the gradient's own middle, where all 4 corner colors blend toward
+  // a similar in-between average - the card ends up seeing barely any hue
+  // change no matter how the quad moves. Explicit repeating bands, each
+  // sized as a fraction of the card's own width, guarantee real color
+  // *contrast* is always visible within the card itself, not just
+  // somewhere on a much bigger shape most of which the card never shows.
+  const bandColors = [0xff5ecb, 0xffe45e, 0x5ecbff, 0xa25eff];
+  const bandWidth = faceImage.displayWidth * 0.5;
+  const cycleWidth = bandWidth * bandColors.length;
+  const totalBands = bandColors.length * 3; // enough strip length either side of center to stay covered through one full loop
+  const shimmer = scene.add.graphics();
+  for (let i = 0; i < totalBands; i++) {
+    shimmer.fillStyle(bandColors[i % bandColors.length], 1);
+    shimmer.fillRect(i * bandWidth - (totalBands * bandWidth) / 2, (-faceImage.displayHeight * 1.3) / 2, bandWidth, faceImage.displayHeight * 1.3);
+  }
+  shimmer.setRotation(Math.PI / 6);
+  shimmer.setPosition(faceImage.x, faceImage.y);
+  shimmer.setAlpha(tune.awakenedIdleShimmerAlpha);
+  shimmer.setMask(new Phaser.Display.Masks.BitmapMask(scene, faceImage));
+  container.add(shimmer);
+
+  // Translating by exactly one full color-cycle (cycleWidth) makes the
+  // pattern tile seamlessly, so `repeat: -1` (no yoyo) loops with no
+  // visible snap - reads as an endlessly scrolling rainbow, not a sweep
+  // that pauses and reverses.
+  const tween = scene.tweens.add({
+    targets: shimmer,
+    x: faceImage.x - cycleWidth,
+    duration: tune.awakenedIdleShimmerMs,
+    ease: 'Linear',
+    repeat: -1,
+  });
+  shimmer.once(Phaser.GameObjects.Events.DESTROY, () => tween.stop());
+}
+
 // The one place a real (non-facedown, non-empty) card gets assembled -
 // backdrop + symbol/face + frame + (Powered's top symbol) + nameplate +
 // rank/state glyph - reusable wherever a face-up card appears (hand fan,
@@ -232,7 +313,8 @@ export function buildCard(
   //    see this file's header comment on the deviation from the original
   //    handoff, which sized these differently.
   if (state === 'powered') {
-    placeContain(scene, container, faceKey(god), POWERED_FACE_BOX, k, authW, authH);
+    const faceImage = placeContain(scene, container, faceKey(god), POWERED_FACE_BOX, k, authW, authH);
+    if (faceImage) addPoweredIdleShimmer(scene, container, faceImage);
   } else {
     placeContain(scene, container, symbolKey(god), SYMBOL_BOX, k, authW, authH);
   }

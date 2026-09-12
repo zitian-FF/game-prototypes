@@ -34,6 +34,8 @@
   "awakenedBurstEase": "Cubic.easeOut",
   "awakenedShimmerMs": 700,
   "awakenedShimmerAlpha": 0.55,
+  "awakenedIdleShimmerMs": 1100,
+  "awakenedIdleShimmerAlpha": 0.6,
   "cardCollectStaticBeatMs": 500,
   "cardCollectStaggerMs": 60,
   "cardCollectTravelMs": 650,
