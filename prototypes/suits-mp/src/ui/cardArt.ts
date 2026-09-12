@@ -3,6 +3,7 @@ import { backdropArtFile, faceArtFile, frameArtFile, nameplateArtFile, symbolArt
 import type { DeityCardState, God, Rank } from '../rules/types';
 import type { CardDimensions } from './cardComponent';
 import { PIXEL_RATIO } from '../render/pixelRatio';
+import { recordShimmerAttached, recordShimmerTweenTick } from '../debug/shimmerDiagnostics';
 import tune from '../../tune.json';
 
 // Real card compositing per the approved runtime-composited three-state
@@ -264,6 +265,10 @@ function addPoweredIdleShimmer(scene: Phaser.Scene, container: Phaser.GameObject
   shimmer.setAlpha(tune.awakenedIdleShimmerAlpha);
   shimmer.setMask(new Phaser.Display.Masks.BitmapMask(scene, faceImage));
   container.add(shimmer);
+  // See debug/shimmerDiagnostics.ts: the only way to confirm, on a real
+  // device with no devtools, that this actually attached to a real Powered
+  // card - the ?debug=1 panel surfaces this count read-only.
+  recordShimmerAttached();
 
   // Translating by exactly one full color-cycle (cycleWidth) makes the
   // pattern tile seamlessly, so `repeat: -1` (no yoyo) loops with no
@@ -275,6 +280,7 @@ function addPoweredIdleShimmer(scene: Phaser.Scene, container: Phaser.GameObject
     duration: tune.awakenedIdleShimmerMs,
     ease: 'Linear',
     repeat: -1,
+    onUpdate: () => recordShimmerTweenTick(shimmer.x),
   });
   shimmer.once(Phaser.GameObjects.Events.DESTROY, () => tween.stop());
 }

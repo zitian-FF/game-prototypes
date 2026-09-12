@@ -1,5 +1,6 @@
 import { Pane } from 'tweakpane';
 import tune from '../../tune.json';
+import { shimmerDiagnostics } from './shimmerDiagnostics';
 
 // Tweakpane panel exposing tune.json's values, available in production
 // builds via ?debug=1 (see "Tuning" in root CLAUDE.md).
@@ -21,4 +22,14 @@ export function mountDebugPanelIfRequested(): void {
   pane.addButton({ title: 'Copy JSON' }).on('click', () => {
     void navigator.clipboard.writeText(JSON.stringify(values, null, 2));
   });
+
+  // Read-only, polled monitors (not tune values - nothing here is
+  // writable) for diagnosing why the Powered idle shimmer might not be
+  // visible on a given device: see debug/shimmerDiagnostics.ts for what
+  // each field means and why it's the one thing a real-device tester with
+  // no devtools access can check directly.
+  const shimmerFolder = pane.addFolder({ title: 'Powered shimmer diagnostics' });
+  shimmerFolder.addBinding(shimmerDiagnostics, 'rendererType', { readonly: true, interval: 250 });
+  shimmerFolder.addBinding(shimmerDiagnostics, 'attachCount', { readonly: true, interval: 250 });
+  shimmerFolder.addBinding(shimmerDiagnostics, 'lastTweenX', { readonly: true, interval: 250 });
 }

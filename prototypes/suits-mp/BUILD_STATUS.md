@@ -1,136 +1,162 @@
 ## Current milestone
 
-Bot AI Tier A implemented: self-interested, suit-optimizing
-redistribution, per `suits-mp-bot-ai-design.md` (Google Drive,
-Working/). Only `chooseRedistributeAction` in `src/host/botAI.ts`
-changed - `choosePlayCardAction` and `chooseDelegateAction` remain
-uniform legal-random, exactly as the design doc scopes Tier A.
+Investigated why the Powered idle shimmer (`addPoweredIdleShimmer` in
+`ui/cardArt.ts`, built in the immediately preceding task) is "still not
+very obvious" in real play, per the required 3-step order: renderer
+fallback first, then genuine attach/animate confirmation, only then
+tuning. **Case 3 applies** - WebGL is active, the shimmer object
+genuinely attaches and animates, so this is a legitimate legibility
+question, not a rendering failure. Shipped a permanent, real-device-
+testable diagnostic; did not touch the tuned values themselves (that
+stays the user's call, per this repo's tuning rule).
 
 ## What was implemented
 
-- When the acting bot is the distributor (true for both a Single-win
-  self-redistribution and a Double-win delegate - both already flowed
-  through this same function), it now preferentially holds back cards
-  matching its OWN Deity Suit rather than choosing what to keep at
-  random.
-- Algorithm, exactly as specified:
-  1. `pool` = the distributor's full hand (unchanged from before).
-  2. `totalOwed` = sum of the contribution map's values (unchanged).
-  3. `ownHoldback = pool.length - totalOwed` - the fixed count of
-     cards the distributor keeps, unchanged by preference (only WHICH
-     cards fill it changes).
-  4. Pool partitioned into own-suit (`cardById(id).god === ownGod`)
-     and other, each independently shuffled.
-  5. Holdback filled from own-suit first (capped at `ownHoldback`);
-     any own-suit beyond the cap joins the giveaway pool; any shortfall
-     is topped up randomly from the other group.
-  6. Everything not held back forms the giveaway pool, shuffled and
-     sliced by each contributing recipient's owed count exactly as
-     before - no preference between recipients, since Tier A has no
-     ally/opponent awareness.
-- Updated the file's header comment: no longer describes redistribution
-  as purely legal-random, and points at `suits-mp-bot-ai-design.md`
-  for the fuller staged design rather than inlining the whole
-  rationale inline.
-- `chooseRedistributeAction`'s own doc comment expanded to cover the
-  Tier A behavior, the delegate-vs-winner hand-ownership note it
-  already had, and an explicit masking-honesty note (see below).
+- `debug/shimmerDiagnostics.ts` (new): a small shared, mutable object
+  (`rendererType`, `attachCount`, `lastTweenX`) plus three setter
+  functions, exposing exactly the two facts the investigation's steps 1
+  and 2 required a way to check on a real device with no devtools:
+  - `recordRendererType(type)` - called once from `main.ts`'s existing
+    `READY` handler with the real `game.renderer.type` the `AUTO` config
+    actually resolved to (only knowable after `Game#boot()`, which is
+    what `READY` already waits on - no new timing dependency introduced).
+  - `recordShimmerAttached()` / `recordShimmerTweenTick(x)` - called from
+    `addPoweredIdleShimmer()` itself (`ui/cardArt.ts`) every time it
+    actually runs and while its tween ticks.
+- `debug/debugPanel.ts`: added a "Powered shimmer diagnostics" folder to
+  the existing `?debug=1` Tweakpane panel, with three read-only, polled
+  (`interval: 250`) monitor bindings against the object above. Not tune
+  values (nothing here is written back to `tune.json`) - a diagnostic
+  addition alongside the existing tunable bindings, same pane.
+- `main.ts` / `ui/cardArt.ts`: minimal wiring calls into the above (see
+  diff - three small additions, no logic changed).
 
 ## Key technical decisions
 
-- `ownGod` is read as `state.players[distributorId].god` - the
-  DISTRIBUTOR's own assigned Deity, not the trick's original winner.
-  This matters specifically for a Double win: the delegate (chosen by
-  the winner, who may be a human or a different bot) is who actually
-  performs the redistribution and collects the trick's cards (see the
-  existing comment on the delegate/winner hand-ownership fix in
-  `rules/engine.ts`) - so a delegate bot's self-interest is correctly
-  judged against ITS OWN suit, never the winner's. Verified directly
-  via real gameplay (see below).
-- Masking honesty (design doc section 1.1): every value this function
-  reads - the distributor's own hand, their own Deity, the real
-  per-recipient owed counts from `trickResult.plays` - is exactly what
-  the acting distributor already had legitimate access to as
-  themself, unchanged from before this task. No new read of another
-  player's hand or hidden identity was introduced; confirmed by
-  re-reading the diff with this specific question in mind.
-- Both `ownSuitCards` and `otherCards` are shuffled independently
-  before slicing, so "preferentially keep own-suit" only ever
-  determines WHICH GROUP a card is drawn from, never which specific
-  card within a group - satisfying "no preference among own-suit
-  cards" (they're all equally needed, since there are no duplicate
-  cards in the deck) and "no preference between recipients" (the
-  giveaway pool is itself re-shuffled before being sliced per
-  recipient) in the same pass.
+- **Investigated in the required order, did not jump straight to
+  tuning.** Confirmed via Phaser's own source
+  (`node_modules/phaser/src/core/CreateRenderer.js` /
+  `device/Features.js`) that this prototype's `type: Phaser.AUTO`
+  config (`main.ts`) is a genuine risk: `AUTO` resolves via a real
+  `canvas.getContext('webgl')` feature-detection test at boot, which can
+  legitimately return Canvas on some real devices/browsers (battery-saver
+  GPU throttling, embedded/in-app webviews, very old hardware, privacy-
+  hardened browsers) - and `addPoweredIdleShimmer`'s existing
+  `scene.renderer.type !== Phaser.WEBGL` guard makes it a complete no-op
+  under Canvas. This is why the diagnostic's first field is
+  `rendererType`, read from the real post-boot value, not assumed.
+- **Confirmed step 2 end-to-end, not just theoretically.** Built a
+  temporary forced-deal (`ForcedDeal`, already a permanent engine/type
+  since a much earlier task - only the debug-only call site was
+  temporary) to reach a real Powered Deity Card almost immediately, fully
+  reverted before commit (`git status`/`git diff` show only the four
+  files above changed - `host/gameHost.ts` shows zero diff). This
+  surfaced a real bug in my first attempt at the forced deal: the
+  required suit for each position in a trick is **not** simply the
+  leader's own suit - it rotates through `SUIT_CYCLE` one step per
+  position (`requiredSuitForPosition`/`suitAfterSteps`, `rules/
+  engine.ts`/`rules/cards.ts`), a mechanic I hadn't accounted for. Once
+  corrected, the forced Cthulhu Deity Card play resolved to
+  `deityCardState: "powered"` exactly as expected, and:
+  - `buildCard` was called with `state === 'powered'` and a real,
+    loaded `faceImage`.
+  - `addPoweredIdleShimmer` ran past its WebGL guard, attached the
+    shimmer (`attachCount` incremented), and its tween genuinely
+    animated (`lastTweenX` changed across repeated samples: -66, -29,
+    -80, -43, -7).
+  - **A real screenshot of this exact moment shows the rainbow shimmer
+    visibly rendering** across the Cthulhu Deity Card's face art in the
+    play area (sent to the user alongside this task) - this sandbox's
+    software-rendered WebGL (SwiftShader fallback, same as every prior
+    task's console warning) does **not** block BitmapMask-masked content
+    from painting here, contradicting the previous task's more
+    tentative "known verification gap" note. Whether that finding
+    generalizes to every software-WebGL path isn't something one
+    screenshot proves, but this sandbox's own instance of it clearly
+    renders.
+- **Did not change `awakenedIdleShimmerAlpha`/width/speed myself.**
+  Root CLAUDE.md is explicit that tuned values are the user's call, set
+  from actually playing the game - this task's own framing ("this
+  becomes a pure visibility/tuning question") is a diagnosis, not a
+  standing instruction to pick a new number. Recommendation, not applied:
+  the shimmer is real but visually subtle against dark/moody Deity face
+  art at alpha 0.6, and the concern about hand-fan scale specifically
+  (cards render markedly smaller there than in the play area shown in
+  the screenshot) is well-founded from this evidence - increasing alpha
+  and/or widening the bands are the most direct levers already exposed
+  in `tune.json`/Tweakpane.
+- **Considered and rejected forcing `type: Phaser.WEBGL`.** Per Phaser's
+  own `CreateRenderer.js`, forcing `WEBGL` on a device that genuinely
+  lacks WebGL support throws (`'Cannot create WebGL context, aborting.'`)
+  and the game fails to boot entirely - trading "one cosmetic effect
+  invisible for some users" for "unplayable for a different set of
+  users" is a worse trade without knowing this game's actual real-world
+  device mix, which this sandbox has no way to measure. Left `AUTO` as
+  is; the new `rendererType` diagnostic is the way to actually find out
+  whether this matters in practice, from real playtests.
 
 ## Verification
 
 - `npm run typecheck` and `npm run build` both pass with no errors.
-- All three required scenarios were verified through real, live
-  Single Player games (temporary forced-deal debug hook added to
-  `host/gameHost.ts`/`scenes/HostGameScene.ts` for deterministic hands,
-  fully reverted before commit - `git status` shows only `botAI.ts`
-  changed):
-
-  **(a) Single win, bot is distributor, own-suit EXCEEDS holdback.**
-  Bot1 (god=ShubNiggurath) won a trick with a Single, ending up with a
-  9-card pool containing 7 ShubNiggurath cards (own-suit) against only
-  2 other-suit cards, with `ownHoldback` computed at 6. Confirmed via
-  the real post-redistribution `GameState`: bot1 kept exactly 6 cards,
-  ALL of them ShubNiggurath, correctly excluding one of the 7 own-suit
-  cards (the cap) while giving away both non-own-suit cards in full -
-  own-suit is never displaced by an "other" card while there's still
-  own-suit available to spill instead.
-
-  **(b) Double win where the bot is the DELEGATE, not the winner.**
-  The human player (p0, god=Cthulhu) won a trick with a real Double
-  (`ShubNiggurath-9` + `Nyarlathotep-9`, both off-suit), then explicitly
-  picked bot1 (god=Nyarlathotep) as delegate via the real in-game seat-
-  tap UI. Confirmed via the real post-redistribution `GameState`: bot1
-  (the delegate) kept exactly 1 Nyarlathotep card out of the 2 in its
-  5-card pool (own-suit exceeded its `ownHoldback` of 1), giving away
-  the excess Nyarlathotep card alongside both non-own-suit cards - the
-  self-interest is clearly anchored to the DELEGATE's own suit
-  (Nyarlathotep), completely unrelated to the original winner p0's own
-  suit (Cthulhu), which never factored in at all.
-
-  **(c) `ownHoldback` exceeds available own-suit cards.** Bot1
-  (god=Nyarlathotep) won a trick with a Single, ending up with an
-  11-card pool containing only 3 Nyarlathotep cards against 8 other-
-  suit cards, with `ownHoldback` computed at 8. Confirmed via the real
-  post-redistribution `GameState`: bot1 kept all 3 own-suit cards (no
-  own-suit ever discarded when it's short of the cap) plus exactly 5
-  more cards randomly topped up from the 8 available "other" cards,
-  for exactly 8 kept total - no error, no under/over-counting, and the
-  remaining 3 "other" cards were correctly distributed to the 3
-  contributing recipients.
-
-- Browser console clean on boot and through all three real-gameplay
-  scenarios plus a final untouched-random game (only the known
-  sandboxed `fonts.googleapis.com`/asset-fetch 404 noise present in
-  every prior task this session).
-- Confirmed no debug-hook residue: `git status` shows only
-  `src/host/botAI.ts` changed - `host/gameHost.ts` and
-  `scenes/HostGameScene.ts` (both touched only for temporary
-  verification hooks) show no diff at all.
+- Playwright, this sandboxed headless Chromium only (see below for why
+  real-device testing could not be performed from this environment):
+  - Clean-boot console check, both with and without `?debug=1`, through
+    a full Single Player start: only the same known sandboxed noise
+    every prior task in this repo has logged (`ERR_CONNECTION_RESET`/404
+    on an unrelated resource, present before this task too) - no errors
+    introduced by the new diagnostics code.
+  - `rendererType` reads `"WEBGL"` in this sandbox (a software/
+    SwiftShader-backed WebGL context, per the same
+    "Automatic fallback to software WebGL has been deprecated" console
+    warning noted in the prior task) - confirms the diagnostic itself
+    reads a real value, not a stub.
+  - Forced-deal run (temporary, reverted): `attachCount` went from 0 to
+    2 (one per render pass) the instant the forced Powered play landed,
+    and `lastTweenX` kept changing on every ~700ms sample afterward -
+    both the "attach" and "still animating" halves of step 2 directly
+    confirmed, not just assumed reachable.
+  - Screenshot of that exact moment (sent alongside this task) shows the
+    shimmer visibly painting across the card - as close to a real visual
+    check as this sandbox allows.
+- **Real-device testing was not possible from this environment** (no
+  physical device access) - this is the one piece of the task's explicit
+  ask I could not perform. The new `rendererType`/`attachCount`/
+  `lastTweenX` monitors under `?debug=1` are shipped specifically so a
+  real playtest can check this directly next time, without needing
+  devtools: open the panel, watch `rendererType` (should read `WEBGL`)
+  and, during a trick where a Deity Card goes Powered, watch
+  `attachCount` increment and `lastTweenX` keep changing.
 
 ## Open questions
 
-None - the algorithm, masking-honesty constraint, and all three
-required verification scenarios were fully specified by the task; no
-ambiguity required asking the user mid-session.
+None that need a `BRIEF.md` update - this was a pure investigation task
+with an explicit 3-step order already fully specified by the user.
+One judgment call worth flagging explicitly even though it's resolved:
+whether to increase `awakenedIdleShimmerAlpha`/widen the bands is left
+to the user's own next real playtest (with the new diagnostic panel
+confirming rendererType first), per root CLAUDE.md's tuning rule -
+happy to make that change directly once a real-device (or at least a
+directly-observed) verdict on legibility comes back.
 
 ## Known issues
 
-None found. `choosePlayCardAction` and `chooseDelegateAction` remain
-completely untouched and still uniform legal-random, exactly as this
-task's scope requires - Tier B (team inference) and beyond are
-explicitly out of scope here per the design doc's own staged build
-order.
+- Known sandboxed asset-fetch console noise (unrelated host, present
+  since before this task) still appears on every boot in this
+  environment - not a regression, not investigated further here (out of
+  this task's scope).
+- No real-device confirmation yet that `rendererType` is `WEBGL` for
+  this game's actual player base on itch.io - the diagnostic panel now
+  makes that checkable, but nobody has checked it on a real phone yet.
 
 ## Next proposed step
 
-Per `suits-mp-bot-ai-design.md`'s recommended implementation order:
-underlying capability 3.1 (card counting) as its own independently-
-verifiable building block, ahead of Tier B (team inference via
-observable signals). Not started as part of this task.
+Per this task's own conclusion: get a real-device (or at minimum a
+teammate's non-sandboxed browser) read of the new `?debug=1` panel
+during an actual Powered trick. If `rendererType` reads `CANVAS` there,
+that's the real explanation and no tuning helps until that's addressed
+separately (a real-world-support-rate question, not a code one). If it
+reads `WEBGL` (as expected on most modern phones) and the shimmer still
+reads as too subtle by eye, increase `awakenedIdleShimmerAlpha` and/or
+widen the bands in `tune.json` - the two most direct levers already
+exposed - focusing specifically on hand-fan scale legibility, since
+that's the scale this task's own report singled out as the weaker case.
