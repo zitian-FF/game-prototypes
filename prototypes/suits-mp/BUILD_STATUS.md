@@ -1,153 +1,136 @@
 ## Current milestone
 
-Turned the Awakened/Powered Deity Card's foil effect from a one-shot
-reveal-only flourish into an ongoing, always-visible idle shimmer:
-every Powered Deity Card (hand fan, play area, previous-trick log)
-now continuously shows a scrolling rainbow foil sheen for as long as
-it stays Powered, stopping automatically the instant the trick ends
-(the same point it always reverted from Powered back to Dormant).
+Bot AI Tier A implemented: self-interested, suit-optimizing
+redistribution, per `suits-mp-bot-ai-design.md` (Google Drive,
+Working/). Only `chooseRedistributeAction` in `src/host/botAI.ts`
+changed - `choosePlayCardAction` and `chooseDelegateAction` remain
+uniform legal-random, exactly as the design doc scopes Tier A.
 
 ## What was implemented
 
-- New `addPoweredIdleShimmer()` in `ui/cardArt.ts`, called from
-  `buildCard()`'s existing Powered branch (right where the Deity face
-  art gets placed) so every Powered card - anywhere it's drawn - gets
-  the effect with no change to any call site.
-- The effect is a continuously scrolling repeating 4-color band strip
-  (pink/yellow/cyan/purple, the same palette `playAwakenedEffect`'s
-  one-shot burst already used), masked to the card's own face-art
-  silhouette via the same `BitmapMask` technique that burst already
-  established (so the color only ever shows through the painted
-  Deity, never as a stray rectangle). It translates by exactly one
-  full color-cycle per `tune.awakenedIdleShimmerMs`, so the pattern
-  tiles seamlessly and loops forever with no visible snap or reversal.
-- Two new tunables: `awakenedIdleShimmerMs` (1100) and
-  `awakenedIdleShimmerAlpha` (0.6) - both introduced fresh in this
-  task (not pre-existing human-tuned values), so tuned freely per
-  CLAUDE.md's rule that only *already-tuned* values are off-limits.
-- `playAwakenedEffect` (the existing one-shot reveal burst, fired once
-  right when a card first lands or becomes eligible for Powered) is
-  completely untouched - it still fires exactly as before; the new
-  idle shimmer is a separate, additional, ongoing effect that also
-  runs for as long as the card stays Powered afterward.
+- When the acting bot is the distributor (true for both a Single-win
+  self-redistribution and a Double-win delegate - both already flowed
+  through this same function), it now preferentially holds back cards
+  matching its OWN Deity Suit rather than choosing what to keep at
+  random.
+- Algorithm, exactly as specified:
+  1. `pool` = the distributor's full hand (unchanged from before).
+  2. `totalOwed` = sum of the contribution map's values (unchanged).
+  3. `ownHoldback = pool.length - totalOwed` - the fixed count of
+     cards the distributor keeps, unchanged by preference (only WHICH
+     cards fill it changes).
+  4. Pool partitioned into own-suit (`cardById(id).god === ownGod`)
+     and other, each independently shuffled.
+  5. Holdback filled from own-suit first (capped at `ownHoldback`);
+     any own-suit beyond the cap joins the giveaway pool; any shortfall
+     is topped up randomly from the other group.
+  6. Everything not held back forms the giveaway pool, shuffled and
+     sliced by each contributing recipient's owed count exactly as
+     before - no preference between recipients, since Tier A has no
+     ally/opponent awareness.
+- Updated the file's header comment: no longer describes redistribution
+  as purely legal-random, and points at `suits-mp-bot-ai-design.md`
+  for the fuller staged design rather than inlining the whole
+  rationale inline.
+- `chooseRedistributeAction`'s own doc comment expanded to cover the
+  Tier A behavior, the delegate-vs-winner hand-ownership note it
+  already had, and an explicit masking-honesty note (see below).
 
 ## Key technical decisions
 
-- **Normal alpha blend, not the burst's own ADD blend.** Additive
-  blending only ever brightens a pixel - against pale/light card art
-  (confirmed live: Yog-Sothoth's own face art is quite pale) it washes
-  out toward white with almost no visible color, which is the opposite
-  of "obvious." Plain alpha-blended color shows the same rainbow hue
-  clearly regardless of the underlying art's own brightness, dark or
-  light - required for a foil effect that has to look right across
-  all 4 Deities' face art, not just the ones with darker palettes.
-- **A repeating band strip, not one big 4-corner gradient.** The first
-  attempt reused the burst's own single smooth gradient, sized much
-  larger than the card (so a moving/rotating quad would never expose a
-  gap) - but that puts the *visible* window near the gradient's own
-  middle, where all 4 corner colors blend toward a similar average, so
-  the card barely shows any hue change no matter how the quad moves or
-  rotates. Explicit bands, each sized as a fraction of the card's own
-  width, guarantee real color *contrast* is always visible within the
-  card itself. This was found through direct pixel-level comparison
-  between captured frames (not just eyeballing screenshots) after two
-  earlier design attempts (a small positional sway, then a rotating
-  gradient) both proved to move too little relative to how small a
-  hand card actually renders on a phone-width canvas.
-- **Cleanup/lifecycle**: `ui/renderGameView.ts`'s `renderWithView`
-  wipes and rebuilds the *entire* canvas tree from scratch
-  (`container.removeAll(true)`) on every single render pass, including
-  ones triggered by a mere hover/selection change - not just real
-  game-state updates. Without explicit cleanup, an infinitely-looping
-  tween (`repeat: -1`) would keep running forever against an
-  already-destroyed Graphics object every time that happens - a real,
-  accumulating leak given how often a render pass fires. Since Phaser
-  containers default to `exclusive: true`, `Container.destroy()`
-  cascades to every descendant, so the shimmer's own `DESTROY` event
-  reliably fires the instant its card's container is torn down, on
-  whichever render pass that happens to be - so
-  `shimmer.once(Phaser.GameObjects.Events.DESTROY, () => tween.stop())`
-  is enough; no scene-level teardown bookkeeping was needed.
-- **"Stops when the trick is over" needed no separate mechanism.** The
-  effect only ever gets attached inside `buildCard()`'s `state ===
-  'powered'` branch, and `deityCardState` only resolves to `'powered'`
-  while the engine's own trick-scoped logic (`rules/engine.ts`'s
-  `computeDeityCardState`) says so - which is already reset the moment
-  a trick ends. The instant a card stops rendering Powered (played, or
-  the trick ended and it reverted to Dormant), the next render simply
-  never builds this effect for it at all - nothing further to enforce.
+- `ownGod` is read as `state.players[distributorId].god` - the
+  DISTRIBUTOR's own assigned Deity, not the trick's original winner.
+  This matters specifically for a Double win: the delegate (chosen by
+  the winner, who may be a human or a different bot) is who actually
+  performs the redistribution and collects the trick's cards (see the
+  existing comment on the delegate/winner hand-ownership fix in
+  `rules/engine.ts`) - so a delegate bot's self-interest is correctly
+  judged against ITS OWN suit, never the winner's. Verified directly
+  via real gameplay (see below).
+- Masking honesty (design doc section 1.1): every value this function
+  reads - the distributor's own hand, their own Deity, the real
+  per-recipient owed counts from `trickResult.plays` - is exactly what
+  the acting distributor already had legitimate access to as
+  themself, unchanged from before this task. No new read of another
+  player's hand or hidden identity was introduced; confirmed by
+  re-reading the diff with this specific question in mind.
+- Both `ownSuitCards` and `otherCards` are shuffled independently
+  before slicing, so "preferentially keep own-suit" only ever
+  determines WHICH GROUP a card is drawn from, never which specific
+  card within a group - satisfying "no preference among own-suit
+  cards" (they're all equally needed, since there are no duplicate
+  cards in the deck) and "no preference between recipients" (the
+  giveaway pool is itself re-shuffled before being sliced per
+  recipient) in the same pass.
 
 ## Verification
 
 - `npm run typecheck` and `npm run build` both pass with no errors.
-- Confirmed via a temporary forced-deal debug hook (added to
-  `host/gameHost.ts`/`scenes/HostGameScene.ts`, fully reverted before
-  commit - `git status` shows no diff on either file) driven through a
-  real, live Single Player game:
-  - The Dormant → Powered transition itself renders correctly (the
-    golden Deity-symbol art swaps to the Deity's face art, '1' marker
-    to '★'), confirmed via a precisely-timed before/after screenshot
-    pair (using the real `GameState.plays` array to know exactly when
-    the Ten had landed, not a guessed wait time).
-  - The shimmer's tween is genuinely running and animating (confirmed
-    by reading its live `x`/`angle` property directly across several
-    iterations of the design, before settling on the final approach).
-  - The final band-strip pattern, unmasked, renders vividly and
-    correctly (confirmed by a deliberate isolation test with the
-    `BitmapMask` temporarily removed) - proving the Graphics drawing
-    and tween-loop mechanics are correct.
-- **Known verification gap, and why it isn't a defect in this
-  change specifically**: with the `BitmapMask` back in place, no
-  masked/in-silhouette shimmer was visible in *this development
-  sandbox's* screenshots. Investigated directly rather than assumed:
-  this sandbox's browser falls back to software WebGL (SwiftShader;
-  confirmed via a console warning - "Automatic fallback to software
-  WebGL has been deprecated" - plus GPU-stall messages), and passing
-  explicit `--enable-unsafe-swiftshader`/`--use-gl=swiftshader` launch
-  flags didn't change the result. To isolate whether this was
-  something introduced by this task, the exact same test was run
-  against the pre-existing, completely untouched one-shot
-  `playAwakenedEffect` burst - it shows the identical symptom (no
-  visible masked shimmer at the moment a card lands Powered, in this
-  same sandbox). This confirms `BitmapMask` rendering itself doesn't
-  work in this specific software-rendering sandbox, for either effect,
-  old or new - not a regression from this change. `BitmapMask` is a
-  standard, broadly-supported Phaser WebGL feature on real (hardware-
-  accelerated) GPUs, which itch.io/browser deployment will actually
-  use; this sandbox's software fallback is the outlier, not real
-  deployment. Reporting this plainly rather than claiming a masked
-  screenshot that wasn't actually obtained.
-- Browser console clean on boot and through a real Single Player game
-  (only the known sandboxed `fonts.googleapis.com`/asset-fetch 404
-  noise present in every prior task this session, plus this
-  environment's own software-WebGL warnings - neither caused by this
-  change).
+- All three required scenarios were verified through real, live
+  Single Player games (temporary forced-deal debug hook added to
+  `host/gameHost.ts`/`scenes/HostGameScene.ts` for deterministic hands,
+  fully reverted before commit - `git status` shows only `botAI.ts`
+  changed):
+
+  **(a) Single win, bot is distributor, own-suit EXCEEDS holdback.**
+  Bot1 (god=ShubNiggurath) won a trick with a Single, ending up with a
+  9-card pool containing 7 ShubNiggurath cards (own-suit) against only
+  2 other-suit cards, with `ownHoldback` computed at 6. Confirmed via
+  the real post-redistribution `GameState`: bot1 kept exactly 6 cards,
+  ALL of them ShubNiggurath, correctly excluding one of the 7 own-suit
+  cards (the cap) while giving away both non-own-suit cards in full -
+  own-suit is never displaced by an "other" card while there's still
+  own-suit available to spill instead.
+
+  **(b) Double win where the bot is the DELEGATE, not the winner.**
+  The human player (p0, god=Cthulhu) won a trick with a real Double
+  (`ShubNiggurath-9` + `Nyarlathotep-9`, both off-suit), then explicitly
+  picked bot1 (god=Nyarlathotep) as delegate via the real in-game seat-
+  tap UI. Confirmed via the real post-redistribution `GameState`: bot1
+  (the delegate) kept exactly 1 Nyarlathotep card out of the 2 in its
+  5-card pool (own-suit exceeded its `ownHoldback` of 1), giving away
+  the excess Nyarlathotep card alongside both non-own-suit cards - the
+  self-interest is clearly anchored to the DELEGATE's own suit
+  (Nyarlathotep), completely unrelated to the original winner p0's own
+  suit (Cthulhu), which never factored in at all.
+
+  **(c) `ownHoldback` exceeds available own-suit cards.** Bot1
+  (god=Nyarlathotep) won a trick with a Single, ending up with an
+  11-card pool containing only 3 Nyarlathotep cards against 8 other-
+  suit cards, with `ownHoldback` computed at 8. Confirmed via the real
+  post-redistribution `GameState`: bot1 kept all 3 own-suit cards (no
+  own-suit ever discarded when it's short of the cap) plus exactly 5
+  more cards randomly topped up from the 8 available "other" cards,
+  for exactly 8 kept total - no error, no under/over-counting, and the
+  remaining 3 "other" cards were correctly distributed to the 3
+  contributing recipients.
+
+- Browser console clean on boot and through all three real-gameplay
+  scenarios plus a final untouched-random game (only the known
+  sandboxed `fonts.googleapis.com`/asset-fetch 404 noise present in
+  every prior task this session).
 - Confirmed no debug-hook residue: `git status` shows only
-  `ui/cardArt.ts` and `tune.json` changed.
+  `src/host/botAI.ts` changed - `host/gameHost.ts` and
+  `scenes/HostGameScene.ts` (both touched only for temporary
+  verification hooks) show no diff at all.
 
 ## Open questions
 
-None the user needs to weigh in on for this task's own scope. The one
-open item is the sandbox verification gap above, which is an
-environment limitation to keep in mind for any *future* task that
-needs to visually confirm a `BitmapMask`-based effect in this same
-development sandbox - not something this task itself left unresolved.
+None - the algorithm, masking-honesty constraint, and all three
+required verification scenarios were fully specified by the task; no
+ambiguity required asking the user mid-session.
 
 ## Known issues
 
-The verification gap described above: this development sandbox cannot
-render `BitmapMask`-masked content at all (confirmed against the
-pre-existing burst effect too), so a truly masked-in-silhouette
-screenshot of either the old burst or this new idle shimmer could not
-be captured here. Real (hardware-accelerated) browsers are expected to
-render both correctly, since `BitmapMask` is standard, broadly-
-supported Phaser functionality - but this should be spot-checked on a
-real device/browser (not just this sandbox) the next time this
-prototype is played for real, to close the loop on this specific gap.
+None found. `choosePlayCardAction` and `chooseDelegateAction` remain
+completely untouched and still uniform legal-random, exactly as this
+task's scope requires - Tier B (team inference) and beyond are
+explicitly out of scope here per the design doc's own staged build
+order.
 
 ## Next proposed step
 
-None specified by this task; awaiting further direction. If a real-
-device check of the effect (see Known issues) turns up that it reads
-too strong/weak/fast, `awakenedIdleShimmerAlpha`/`awakenedIdleShimmerMs`
-in `tune.json` are the two knobs to adjust.
+Per `suits-mp-bot-ai-design.md`'s recommended implementation order:
+underlying capability 3.1 (card counting) as its own independently-
+verifiable building block, ahead of Tier B (team inference via
+observable signals). Not started as part of this task.
