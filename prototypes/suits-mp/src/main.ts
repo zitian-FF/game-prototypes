@@ -4,6 +4,7 @@ import { getOrCreateClientId } from 'mp-core';
 import { fetchTurnIceServers } from './turn/turnConfig';
 import { normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
+import { recordRendererType } from './debug/shimmerDiagnostics';
 import { LandingScene } from './scenes/LandingScene';
 import { JoinEntryScene } from './scenes/JoinEntryScene';
 import { ConnectingScene } from './scenes/ConnectingScene';
@@ -75,7 +76,15 @@ if (appEl) {
 // `game.domContainer` isn't created until Game#boot runs (after
 // DOMContentLoaded), so mounting must wait for the `ready` event rather
 // than happening synchronously right after construction.
-game.events.once(Phaser.Core.Events.READY, () => mountDom(game));
+game.events.once(Phaser.Core.Events.READY, () => {
+  mountDom(game);
+  // game.renderer only exists once boot() has run (see Game.js), which is
+  // what READY waits on - the earliest point the real AUTO->WEBGL/CANVAS
+  // resolution is known. Surfaced read-only in the ?debug=1 panel (see
+  // debug/shimmerDiagnostics.ts) so a real-device tester can confirm which
+  // renderer actually got chosen, without needing devtools.
+  recordRendererType(game.renderer.type);
+});
 
 game.scene.add('Landing', LandingScene, false);
 game.scene.add('JoinEntry', JoinEntryScene, false);
