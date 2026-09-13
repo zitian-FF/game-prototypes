@@ -144,6 +144,78 @@ export const TUTORIAL_SCENE_2: TutorialScript = {
   ],
 };
 
+// Scene 3 - The Suit Cycle (suits-mp-tutorial-design.md, Section 3).
+// Continues directly from Scene 2's established scenario: same local
+// player Deity/hand lineage (Nyarlathotep, holding the familiar 5-card
+// Cthulhu hand) and same ally (Player 2/'p1', god Cthulhu) - Scene 2
+// confirmed real redistribution leaves that hand exactly as it started.
+// Because the local player redistributed in Scene 2, they lead the next
+// trick here - `leaderId: 0` (turnOrder(0) = [0,1,2,3]), unlike Scenes
+// 1-2's `leaderId: 1`. `trickNumber: 3` continues the narrative (trick 2
+// was redistributed in Scene 2) and, same as Scenes 1-2's own `2`,
+// sidesteps isForcedTrick1Opener - trick 1's leader must open with
+// exactly the 2 of Yog-Sothoth, which would override this scene's own
+// scripted Cthulhu-2 lead.
+//
+// Leading has no suit constraint - real legality already marks every
+// hand card 'legal' while `state.currentTrick` is empty (see
+// handLegality.ts's `leading` branch, `pool = leading ? hand : ...`) -
+// so per this project's established hard-lock rule, the single scripted
+// lead card is still locked via the same `applyTutorialLock`/`handCard`
+// mechanism Scene 1 uses, with the other 4 legal-but-not-the-lesson
+// Cthulhu cards hard-locked out. Deliberately scripted as Cthulhu-2 -
+// the WEAKEST card in hand, not the highest-rank one Scene 1 taught
+// winning with - since this scene's lesson is "any card leads", not
+// "play your best card".
+//
+// The other three seats' hands are scripted to genuinely need the
+// resulting Suit Cycle sequence once Cthulhu leads (suitAfterSteps from
+// rules/cards.ts, requiredSuitForPosition from rules/engine.ts - same
+// worked-through math Scene 1 established, not reintroducing that
+// scene's own first-attempt mismatch bug): position 1 (slot 1, the
+// ally) needs suitAfterSteps('Cthulhu', 1) = ShubNiggurath; position 2
+// (slot 2) needs suitAfterSteps('Cthulhu', 2) = Nyarlathotep; position 3
+// (slot 3) needs suitAfterSteps('Cthulhu', 3) = YogSothoth - so each of
+// their single-card hands holds exactly that suit, the same pattern
+// Scenes 1-2's own deal already used (just shifted one seat over, since
+// the leader moved from slot 1 to slot 0).
+//
+// This scene deliberately does NOT script the other three seats' own
+// follow-up plays at all - the lesson ("the lead suit sets the Required
+// Suit sequence for the other three seats") is fully conveyed by the
+// Suit Cycle wheel itself, which already updates from real game state
+// the instant a lead suit is known: `ui/renderGameView.ts`'s
+// `computeSuitRing` resolves every seat's required suit off
+// `state.leadSuit`/`state.currentTrick[0]` once a lead is committed, and
+// even LIVE-PREVIEWS it off the leader's own in-progress fan selection
+// beforehand (`previewCardId` - see computeSuitRing's own doc comment).
+// Confirmed via real-gameplay Playwright verification: no tutorial-
+// specific hook was needed to make the rotation real or legible - the
+// wheel already turns as soon as Cthulhu-2 is selected (the live
+// preview), and again once it's actually played (the real, committed
+// rotation) - both entirely existing, non-tutorial-specific behavior.
+// The script simply ends once this one wait step resolves - per the
+// design brief, this scene doesn't need to end in a trick win or
+// redistribution, and TutorialScene.finishScene() advances/falls back
+// exactly as it already does after any other scene's last step, with no
+// changes needed to pick this up.
+export const TUTORIAL_SCENE_3: TutorialScript = {
+  deal: {
+    ...TUTORIAL_SCENE_1.deal,
+    leaderId: 0,
+    trickNumber: 3,
+  },
+  steps: [
+    {
+      kind: 'wait',
+      allowedAction: { action: 'playCard', playType: 'single', cards: [cardId('Cthulhu', 2)] },
+      lock: { kind: 'handCard', cardId: cardId('Cthulhu', 2) },
+      pointer: { kind: 'handCard', cardId: cardId('Cthulhu', 2) },
+      lesson: "Leading has no suit rule - any card will do. Watch the wheel: your lead sets the Required Suit for the other three seats.",
+    },
+  ],
+};
+
 // The full 6-scene structure from suits-mp-tutorial-design.md's Section 3
 // - `null` for a scene not built yet. Tutorial prep (the task ahead of
 // Scene 2) is what first anticipated this whole array: the scene
@@ -153,4 +225,4 @@ export const TUTORIAL_SCENE_2: TutorialScript = {
 // entry here (and give TutorialScene a real script to run past
 // finishScene() with) - never touch the selector or the jump mechanism
 // itself.
-export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [TUTORIAL_SCENE_1, TUTORIAL_SCENE_2, null, null, null, null];
+export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [TUTORIAL_SCENE_1, TUTORIAL_SCENE_2, TUTORIAL_SCENE_3, null, null, null];

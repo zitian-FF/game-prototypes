@@ -1,226 +1,177 @@
 ## Current milestone
 
-Tutorial Scene 2: Redistribution - the first scene to exercise the
-`redistributeAssignments` hard-lock/pointer variant. Continues directly
-from Scene 1's own established scenario (same deal, same local
-Deity/hand lineage, same ally) and teaches the local player's own
-post-win redistribution: give one card back to each of the three other
-seats. `TutorialScene.finishScene()` now advances to the next scene
-when one exists, rather than always ending the tutorial - Scene 2 is
-the first scene this applies to.
+Tutorial Scene 3: The Suit Cycle. Continues directly from Scene 2's real
+final state (same local player Deity/hand lineage, same ally) - because
+the local player redistributed in Scene 2, they lead the next trick
+here, teaching that the lead card's suit sets the Required Suit
+sequence for the other three seats.
 
 ## What was implemented
 
-**Scene 2's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_2`
-reuses `TUTORIAL_SCENE_1.deal` verbatim, but scripts all 4 trick plays -
-including the local player's own Cthulhu-10 win - as `auto` steps this
-time (Scene 2 isn't re-teaching "highest rank wins", it fast-forwards
-through the already-taught win to reach redistribution). Once those 4
-auto steps resolve, the real engine has already collected the trick and
-moved to the `redistribute` phase on its own (a single win's winner is
-immediately their own distributor - no `chooseDelegate` step). One
-`TutorialWaitStep` follows, teaching the actual redistribution: give
-ShubNiggurath-4 back to Player 2 (p1, the ally), Nyarlathotep-6 to
-Player 3 (p2), YogSothoth-8 to Player 4 (p3) - each contributor gets
-back exactly the single off-suit filler card they themselves played
-this trick, none of which are the local player's own Cthulhu cards, so
-the lesson holds: several weak, non-own-suit cards are available to
-give away, and the correct assignment gives one to each of the other
-three seats. The plan (`SCENE_2_ASSIGNMENTS`) is a single shared
-`TutorialRedistributeAssignment[]` constant, read once as `lock` and
-once as `pointer` (and mapped into `allowedAction`'s `{toPlayer, cards}`
-shape) - one source of truth, not three copies that could drift.
+**Scene 3's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_3`
+reuses `TUTORIAL_SCENE_1.deal`'s hands/gods verbatim (`{ ...TUTORIAL_SCENE_1.deal,
+leaderId: 0, trickNumber: 3 }`) - same local 5-card Cthulhu hand, same
+ally at slot 1 - but flips `leaderId` from 1 to 0 so the local player
+leads instead of following. `trickNumber: 3` (not 1) sidesteps
+`isForcedTrick1Opener` the same way Scenes 1-2's `2` did, since trick
+1's leader must open with the 2 of Yog-Sothoth specifically.
 
-**The `redistributeAssignments` type variant is now real**
-(`tutorial/tutorialTypes.ts`): replaces the previously-reserved-but-
-unimplemented `redistributeTo` shape (which could only express a single
-card/seat pair) with `{ kind: 'redistributeAssignments'; assignments:
-TutorialRedistributeAssignment[] }` on both `TutorialLock` and
-`GuidePointerTarget` - a whole scripted plan (one entry per real
-contributor), not a single target, since the "next correct action"
-alternates between a hand card and a seat as the player progresses
-through several assignments in one wait step.
+The script is a **single `TutorialWaitStep`** - no auto steps at all,
+since there's nothing to fast-forward through before the lesson. The
+local player's real legality, while leading (`state.currentTrick` is
+empty), already marks every hand card `'legal'` (see
+`handLegality.ts`'s `leading` branch) - leading genuinely has no suit
+constraint. Per this project's established hard-lock rule, the single
+scripted lead card is still restricted to exactly one via the existing
+`{ kind: 'handCard' }` lock/pointer and `applyTutorialLock` (no new
+`TutorialLock`/`GuidePointerTarget` variant needed - `handCard` already
+covers this scene's one decision point, per the task's own note).
+Scripted as **Cthulhu-2**, deliberately the weakest card in the local
+hand, not the highest-rank one Scene 1 taught winning with - the lesson
+is "any card leads", not "play your best card", and reusing the
+strongest card here risked muddying that distinction.
 
-**Resolution logic (`ui/renderGameView.ts`):**
-- `nextTutorialRedistributeTarget(assignments, assignedIds, stagedId)` -
-  resolves live, every render, which of the plan's entries is still
-  unassigned, and whether the next correct tap is that entry's card (not
-  yet staged) or its seat (already staged). Driven entirely off the
-  *real* `view.redistributeAssignment`/`view.selectedCards` the ordinary
-  redistribution UI already tracks - never a separate tutorial-only
-  progress counter - so it naturally advances as the player actually
-  redistributes for real, with no need for `TutorialScene` to observe or
-  drive the intermediate multi-tap sequence itself (it only ever sees
-  the final dispatched `{action: 'redistribute', assignments}`, exactly
-  like Scene 1's single `playCard` dispatch model).
-- `applyTutorialRedistributeCardLock(cardState, id, target)` - layers
-  onto the real, already-computed `redistributeCardState` the same way
-  Scene 1's `applyTutorialLock` layers onto play-phase legality: an
-  already-`'illegal'` (assigned) or `'selected'` (staged) card is left
-  alone; every other card is forced `'illegal'` unless it's the one
-  pending target card. Wired into `renderCardFan`'s existing
-  `inRedistributePhase` branch - real disabled state (`canTapRedistribute`
-  already gates on `cardState !== 'illegal'`), not just a visual dim.
-- Seat-side gating required threading a `tutorial` parameter down through
-  `renderPlayerCluster` -> `renderPlayArea` -> `renderRedistributionStack`:
-  `renderPlayerCluster` resolves the same target once per render and
-  passes down `allowSeatTap` (true unless a tutorial redistribute-lock is
-  active and this isn't the one resolved seat), which
-  `renderRedistributionStack` uses to gate whether it creates its hit
-  rectangle at all - the same "don't make it interactive in the first
-  place" enforcement Scene 1's disabled `<button>` scene markers use, not
-  a click handler with an `if` guard.
-- The guide pointer's `renderWithView` branch resolves the same target a
-  third time (card position via the existing
-  `ui.lastHandLayoutsByCardId`, or seat position via
-  `seatCenter(seatFor(target.toPlayer, state.yourSlot))` - both already
-  existed, reused as-is) and points at whichever one is currently
-  pending.
+The other three seats' single-card hands are worked out the same way
+Scene 1's own Suit Cycle math was: with Cthulhu leading from slot 0
+(`turnOrder(0) = [0,1,2,3]`), `requiredSuitForPosition`/`suitAfterSteps`
+(rules/engine.ts, rules/cards.ts) give position 1 (slot 1, the ally)
+ShubNiggurath, position 2 (slot 2) Nyarlathotep, position 3 (slot 3)
+YogSothoth - so their hands hold exactly those suits (ShubNiggurath-4,
+Nyarlathotep-6, YogSothoth-8), the same three cards Scenes 1-2's own
+deal already used, just shifted one seat over since the leader moved
+from slot 1 to slot 0. This scene never scripts their actual follow-up
+plays, though - see below.
 
-**`TutorialScene.finishScene()` now advances scenes** (`scenes/
-TutorialScene.ts`): reaching the end of a scene's script advances to
-`currentSceneIndex + 1` (same `cutToBlack` -> `loadScene` cut a manual
-selector jump already uses) when `TUTORIAL_SCENES[nextIndex]` exists;
-falls back to the completion modal - the same one this function always
-showed - only when there's no next scene yet (`null` or past the end of
-the array). This fallback is what fires after Scene 2 today, since
-Scene 3 doesn't exist yet; a later task building Scene 3 replaces the
-fallback the same way it replaces the `null` entry, never by touching
-this method again beyond that.
+**The scene deliberately ends after just the lead play** - no trick
+win, no redistribution. Per the task's own explicit permission, the
+lesson ("the lead suit sets the Required Suit sequence for the other
+three seats") is fully conveyed once the wheel updates, which happens
+the instant a lead suit is known - there's no need to actually play out
+the other three seats' responses to show it. `TutorialScene.finishScene()`
+needed **no changes** to pick this up: the script's one step resolves,
+`markCompletedIfFinished()` marks Scene 3 done, and the existing
+advance-or-fallback logic (added in the Scene 2 task) takes over -
+advancing to Scene 4 if it existed, falling back to the completion modal
+since it doesn't yet.
 
-**`TutorialCompleteModal.tsx`'s copy is now scene-agnostic:** it
-previously hardcoded Scene 1's own lesson recap ("Tutorial: Part 1
-Complete... You just won a trick with the highest rank"), which became
-actively wrong the moment this same modal became Scene 2's fallback too
-(Scene 2 teaches redistribution, not trick-winning). Changed to
-"Tutorial: More Coming Soon... You've completed every lesson built so
-far" - generic on purpose, since which scene is "last built" keeps
-changing as later tasks add more, and this modal's whole purpose is to
-be that changing fallback.
+## Suit Cycle wheel rotation - confirmed real, no new hook needed
 
-## Bugs found and fixed during real-gameplay verification
+Task requirement 3 asked to *confirm* (not assume) the wheel already
+reflects the new lead suit, and report whether any tutorial-specific
+hook was needed. **None was needed.** Read `ui/renderGameView.ts`'s
+`computeSuitRing` and `dom/overlay/GameOverlay.tsx`'s `leadGodIndex`
+handling, then confirmed via real-gameplay Playwright verification
+(temporary debug hooks exposing `computeGameOverlayHudState`'s live
+`leadGodIndex`, removed before commit):
 
-- **The redistribute lock/pointer/lesson never reached the screen at
-  all**, even though `TutorialScene.pendingWait` was set correctly.
-  Scene 1's own `wait` step is reached *before* the local player's
-  trick-winning play, so it never collided with `presentGameView`'s
-  multi-beat trick-result dwell; Scene 2's redistribution `wait` step is
-  the first to immediately follow a trick-*completing* step (the
-  scripted auto-play of the local player's own winning card). The old
-  `runNextStep()` called `render()` once right after applying that
-  auto-step (with `pendingWait` still null - this render is what
-  actually detects the just-completed trick and starts the dwell), then
-  called itself again, which set `pendingWait` and called `render()` a
-  *second* time - but by then `presentGameView`'s `ui.pendingHoldMasked`
-  early-return path silently swallowed that second call's whole
-  `TutorialHudConfig`, including the correct lock/pointer/lesson. Every
-  later beat of the dwell replayed with the *first* call's config
-  (lock/pointer/lesson all null) instead. Caught via real-gameplay
-  Playwright verification - every hand card stayed fully tappable and no
-  lesson banner ever appeared - not just reasoned through.
+- **Before any tap:** `leadGodIndex: null` (indeterminate - nobody's
+  lead suit is known yet).
+- **The instant the locked Cthulhu-2 card is tapped (still just
+  selected, not yet committed):** `leadGodIndex` immediately becomes
+  `1` (Cthulhu's `GOD_TO_SUIT_INDEX`). This is `computeSuitRing`'s
+  existing `previewCardId`/`isLocalPreview` branch - built for the
+  *leader's own screen* to preview the lead suit before committing,
+  entirely pre-existing, non-tutorial-specific behavior - confirmed by
+  screenshot: the center wheel's "LEAD" badge visibly rotates from
+  Nyarlathotep's position to Cthulhu's the moment the card is tapped,
+  before the Play Card button is even pressed.
+- **After committing the play for real:** `leadGodIndex` stays `1`
+  (continuous with the preview - no jump), now driven by
+  `state.leadSuit`/`state.currentTrick[0]` instead of the preview path,
+  and `currentTurnSeat` genuinely advances to the next real position
+  (Player 2, awaiting a real ShubNiggurath follow) - confirming this
+  scene really did hand off to an ordinary, un-scripted next decision
+  point rather than faking a hand-off.
 
-  Fixed by restructuring so `pendingWait` is always resolved for
-  whatever step `stepIndex` now points at (`syncPendingWaitForCurrentStep`)
-  *before* the one render() call that might observe a trick completion,
-  rather than as a follow-up second call - `runNextStep` split into
-  `syncPendingWaitForCurrentStep()` (updates `pendingWait`) and
-  `scheduleNextIfAuto()` (schedules whatever comes next, given
-  `pendingWait` is already in sync), both called from `loadScene`,
-  the auto-step timer callback, and `onPlayerAction` in the same
-  sync-then-render-once order. This is a general fix, not a Scene-2-
-  specific patch: any future scene whose `wait` step immediately follows
-  a trick-completing step needs no special-casing, since the ordering
-  invariant now always holds.
+Nothing in `ui/renderGameView.ts` or `dom/overlay/GameOverlay.tsx`
+needed to change for this - the wheel was already this reactive to real
+game state before this task.
 
 ## Key technical decisions
 
-- Kept Scene 2's whole redistribution teaching moment as **one**
-  `TutorialWaitStep`, matching Scene 1's existing per-decision-point
-  shape, rather than modeling the 3-assignment sequence as multiple
-  scripted steps. The multi-tap progression (stage a card, then tap a
-  seat, three times over) is resolved entirely client-side, live, off
-  the real UI's own already-tracked staging state - `TutorialScene`
-  never needs to know it's mid-sequence, only that the final dispatched
-  action either matches `allowedAction` or doesn't.
-- `redistributeAssignments`'s `assignments` array order must match the
-  real engine's own `redistribution.contributions` order exactly (both
-  the type's own doc comment and Scene 2's own comment call this out) -
-  `TutorialScene.onPlayerAction` still uses the same plain
-  `JSON.stringify` equality check Scene 1 uses, not an order-independent
-  one, so getting this order right is load-bearing, not cosmetic.
-- Real engine behavior worth documenting since it wasn't obvious from
-  the design doc and was only confirmed via Playwright: `advanceBlocker()`
-  collects *every* card played this trick into the distributor's hand,
-  including the distributor's own winning play - so the local player's
-  hand briefly holds all 8 cards (5 original + 3 collected) mid-
-  redistribution, and since the winning Cthulhu-10 is never part of
-  `contribution` (that explicitly excludes the distributor's own play),
-  it's never gifted away either. The local player's hand after Scene 2
-  is exactly their original 5-card hand again, unchanged - not "5 minus
-  the played 10."
-- Seat-tap gating threads a plain `boolean` (`allowSeatTap`) down through
-  three function signatures rather than passing the whole `TutorialHudConfig`
-  that deep - keeps `renderRedistributionStack` (which has no other
-  reason to know about tutorials at all) as close to its pre-existing
-  shape as possible.
+- Kept Scene 3 to exactly one `TutorialWaitStep` with zero `auto` steps
+  - the shortest possible script shape the existing types already
+    support. No new infrastructure was needed anywhere: the same
+    `{ kind: 'handCard' }` lock/pointer, the same `applyTutorialLock`,
+    the same `syncPendingWaitForCurrentStep`/`scheduleNextIfAuto`
+    sequencing, and the same `finishScene()` advance-or-fallback logic
+    all worked unmodified.
+- Deliberately did not script the other three seats' own follow-up
+  plays after the local lead. The lesson is about the Required Suit
+  *sequence being set*, not about watching it get satisfied - the
+  wheel alone (already real, see above) carries the whole lesson, and
+  the task explicitly permitted ending here.
+- Reused `TUTORIAL_SCENE_1.deal`'s `hands`/`gods` via object spread
+  rather than retyping them, overriding only the two fields that
+  actually differ (`leaderId`, `trickNumber`) - keeps the "same
+  lineage" continuity explicit in the code itself, not just in a
+  comment.
 
-## What's general vs. Scene-2-specific (for a later scene)
+## Bugs found and fixed during verification
 
-**General, reusable as-is:**
-- The `redistributeAssignments` `TutorialLock`/`GuidePointerTarget`
-  variant and its whole resolution pipeline
-  (`nextTutorialRedistributeTarget`, `applyTutorialRedistributeCardLock`,
-  the seat-tap gating threaded through `renderPlayerCluster`/
-  `renderPlayArea`/`renderRedistributionStack`, and the pointer branch in
-  `renderWithView`) handle any number of assignment entries, in any
-  contribution-count shape (a Double win's 2-card gift is unaffected -
-  `redistributeCardState`/`renderRedistributionStack`'s own multi-card
-  stack handling was untouched). A future scene needing this again only
-  needs its own `assignments` array with the right `cardId`/`toPlayer`
-  pairs in real contribution order.
-- `TutorialScene`'s `syncPendingWaitForCurrentStep()`/
-  `scheduleNextIfAuto()` split is now the correct general pattern for
-  *any* step sequencing, not just Scene 2's - a future scene doesn't
-  need to think about the dwell-race bug this task fixed; it's handled
-  underneath regardless of whether a `wait` step happens to follow a
-  trick-completing step.
-- `finishScene()`'s advance-or-fallback logic needs no changes for Scene
-  3: it already checks `TUTORIAL_SCENES[nextIndex]` generically.
+None in the shipped code. One test-script-only false alarm during
+authoring, worth recording so it doesn't get mistaken for a real bug if
+rediscovered: an early verification script reused a `const c10 = await
+handPos('Cthulhu-10')` variable captured all the way back during
+Scene 1's own win (where Cthulhu-10 was legitimately `'legal'`) inside
+a later `console.log` meant to describe Scene 3's card states - making
+it look like Cthulhu-10 was still `'legal'` at Scene 3's wait step, when
+a fresh read of the real live state showed only Cthulhu-2 legal, exactly
+as scripted. Caught by re-querying live state directly rather than
+trusting a stale local variable - same category of test-timing
+artifact noted in this prototype's own tutorial-prep task, not a repeat
+of it.
 
-**Scene-2-specific, won't transfer as-is:**
-- `TUTORIAL_SCENE_2`'s own deal/steps/assignments are this scene's exact
-  authored content - a later scene designs its own from scratch, the
-  same way Scene 1's Suit Cycle math was worked out by hand.
-- The plain `{ kind: 'seat'; slot: NetPlayerId }` `GuidePointerTarget`
-  variant is still unimplemented/reserved (Scene 2 only needed the
-  `redistributeAssignments` variant, which resolves seat positions
-  internally without going through this standalone variant) - a future
-  delegate-selection scene (`delegateTo`/`chooseDelegate`) will likely
-  need to actually wire this one up.
-- `TutorialLock`'s `delegateTo`/`actionButton` variants remain reserved
-  shapes only, still untouched by this task.
+## What's general vs. Scene-3-specific (for a later scene)
+
+**General, reusable as-is (confirmed, not just assumed):**
+- The Suit Cycle wheel's live-preview-then-real-rotation behavior is
+  fully generic game-state-driven behavior, not anything this task
+  added - any future scene involving a lead decision gets this for
+  free.
+- `finishScene()`'s advance-or-fallback logic, `TutorialScene`'s
+  `syncPendingWaitForCurrentStep()`/`scheduleNextIfAuto()` sequencing,
+  and the `{ kind: 'handCard' }` lock/pointer/`applyTutorialLock` path
+  all needed zero changes - confirming (per Scene 2's own prediction)
+  that a scene whose only decision point is "play this one hand card"
+  is now a fully solved, reusable shape.
+
+**Scene-3-specific, won't transfer as-is:**
+- `TUTORIAL_SCENE_3`'s own deal/lead-card choice is this scene's exact
+  authored content.
+- The still-reserved `delegateTo` lock / plain `seat` pointer variants
+  remain untouched - a future double-win/delegate-selection scene is
+  still the most likely place those get implemented for real.
 
 ## Open questions
 
-None arose that needed asking - the brief specified the exact lesson
-mapping to design (one weak card per contributor) and the exact
-fallback behavior for a not-yet-built next scene, both handled per
-those explicit instructions.
+None arose that needed asking - the design doc and task instructions
+were explicit about the lesson, the lead-card framing ("any legal
+lead"), and that this scene doesn't need to end in a trick win.
 
 ## Known issues
 
-None beyond the dwell-race bug above, fixed and re-verified via
-real-gameplay Playwright runs on the final build (typecheck, build, and
-a full redistribution flow - wrong card, wrong seat, correct sequence,
-commit, scene-completion checkmarks, and the completion-modal fallback
-all confirmed against the actual rendered/interactive state, not just
-the underlying game state).
+None. Verified via `npm run typecheck`, `npm run build`, and
+real-gameplay Playwright runs on the final build (hard-lock rejecting a
+wrong card tap with zero state change, the live wheel preview firing on
+selection, the real committed rotation and turn hand-off, scene
+completion/checkmark, and the completion-modal fallback since Scene 4
+doesn't exist yet) - console clean on boot aside from a pre-existing,
+unrelated ICE-server fetch failure present in this sandboxed test
+environment on plain boot too.
 
 ## Next proposed step
 
-Scene 3 is next (per suits-mp-tutorial-design.md's Section 3) - replace
-`TUTORIAL_SCENES[2]`'s `null` with a real script. `finishScene()` needs
-no changes to pick it up automatically once it exists; the still-
-reserved `delegateTo` lock/`seat` pointer variants are the most likely
-next pieces of `tutorialTypes.ts` to actually implement, if Scene 3 (or
-whichever scene teaches double-win delegate selection) needs them.
+Scene 4 is next (per suits-mp-tutorial-design.md's Section 3) - Powered
+Deity Cards. Unlike Scenes 1-3, this one has the player *watch* three
+scripted plays resolve first (via the real card-play travel animation)
+before a 10 lands and their own Dormant Deity Card transforms (the real
+Awakened reveal effect, already built and reused elsewhere - see
+`ui/cardArt.ts`'s `playAwakenedEffect`) - then hands control back for
+the player to play that now-Powered card and win. This is the first
+scene that needs the player to sit through multiple scripted opponent
+plays *before* their own guided moment, which today's `auto`/`wait`
+step shape already supports (Scenes 1-2 already scripted multiple
+`auto` steps ahead of a `wait`) - likely no new step *kind* is needed,
+just careful authoring of delays so the reveal reads clearly against
+the real animation timing.
