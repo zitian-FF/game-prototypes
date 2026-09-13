@@ -73,5 +73,7 @@
   "tutorialPointerBounceMs": 500,
   "tutorialPointerColor": 14859360,
   "tutorialTransitionMs": 500,
-  "tutorialSceneCompleteDelayMs": 2200
+  "tutorialSceneCompleteDelayMs": 2200,
+  "tutorialSceneMarkerSize": 26,
+  "tutorialSceneMarkerGap": 8
 }

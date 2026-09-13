@@ -69,3 +69,14 @@ export const TUTORIAL_SCENE_1: TutorialScript = {
     },
   ],
 };
+
+// The full 6-scene structure from suits-mp-tutorial-design.md's Section 3
+// - `null` for a scene not built yet. This task (tutorial prep, ahead of
+// the Scene 2 task) is what first anticipates this whole array: the
+// scene selector (dom/tutorial/TutorialTopBar.tsx, TutorialScene.ts's own
+// jumpToScene) already renders a marker per array index and locks out
+// tapping any `null` entry, so a later task only ever needs to replace an
+// entry here (and give TutorialScene a real script to run past
+// finishScene() with) - never touch the selector or the jump mechanism
+// itself.
+export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [TUTORIAL_SCENE_1, null, null, null, null, null];

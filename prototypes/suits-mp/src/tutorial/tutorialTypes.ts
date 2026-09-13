@@ -75,15 +75,36 @@ export type GuidePointerTarget =
   | { kind: 'seat'; slot: NetPlayerId }
   | { kind: 'actionButton' };
 
+// One scene marker in the top-of-screen scene selector (see
+// dom/tutorial/TutorialTopBar.tsx) - 'locked' scenes aren't reachable yet
+// (not completed, and not the scene currently in progress), 'current' is
+// the scene in progress right now (tappable - re-runs it from the
+// start), 'completed' scenes show a checkmark and are also tappable
+// (jump back and re-run). `sceneNumber` is 1-based, matching what's
+// actually shown to the player.
+export type TutorialSceneStatus = 'locked' | 'current' | 'completed';
+
+export interface TutorialSceneMarker {
+  sceneNumber: number;
+  status: TutorialSceneStatus;
+}
+
 // Threaded optionally through renderGameView.ts's presentGameView/
 // renderGameView/renderWithView, layered on top of the real legality/
 // render pipeline rather than replacing any of it - undefined/null on
 // every real (non-tutorial) call site, so this has zero effect on normal
-// gameplay. Only ever non-null while a TutorialWaitStep is the active
-// step; auto steps and the gap between scenes pass null (nothing to lock
-// or point at while it's not the local player's real turn anyway).
+// gameplay. `lock`/`pointer`/`lesson` are only ever non-null while a
+// TutorialWaitStep is the active step (auto steps and the gap between
+// scenes pass null for those three - nothing to lock or point at while
+// it's not the local player's real turn anyway); `scenes`/`onSelectScene`/
+// `onQuit` are populated on every tutorial render regardless of step
+// kind, since the scene selector and quit control must stay reachable
+// throughout a scene, not just during a guided wait.
 export interface TutorialHudConfig {
   lock: TutorialLock | null;
   pointer: GuidePointerTarget | null;
   lesson: string | null;
+  scenes: TutorialSceneMarker[];
+  onSelectScene: (sceneNumber: number) => void;
+  onQuit: () => void;
 }

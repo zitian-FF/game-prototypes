@@ -25,7 +25,7 @@ import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlay
 import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
 import { drawGuidePointer } from '../tutorial/guidePointer';
 import type { TutorialHudConfig } from '../tutorial/tutorialTypes';
-import { closeTutorialLesson, openTutorialLesson } from '../dom/tutorial/tutorialUiStore';
+import { closeTutorialLesson, closeTutorialTopBar, openTutorialLesson, openTutorialTopBar } from '../dom/tutorial/tutorialUiStore';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
@@ -521,7 +521,7 @@ export function presentGameView(
     currentTurn: null,
     delegateChoices: null,
   };
-  renderGameView(scene, container, frozen, sendAction, ui);
+  renderGameView(scene, container, frozen, sendAction, ui, tutorial);
 
   ui.pendingHoldMasked = masked;
 
@@ -548,7 +548,7 @@ export function presentGameView(
       const descriptor = prepareCollectAnimation(latest, oldHandIds, ui);
       if (descriptor) {
         ui.pendingHoldMasked = null;
-        renderGameView(scene, container, latest, sendAction, ui);
+        renderGameView(scene, container, latest, sendAction, ui, tutorial);
         finishCollectAnimation(scene, container, descriptor, ui);
       }
     });
@@ -557,7 +557,7 @@ export function presentGameView(
   scene.time.delayedCall(tune.trickResultDwellMs, () => {
     const latest = ui.pendingHoldMasked;
     ui.pendingHoldMasked = null;
-    if (latest) renderGameView(scene, container, latest, sendAction, ui);
+    if (latest) renderGameView(scene, container, latest, sendAction, ui, tutorial);
   });
 }
 
@@ -759,6 +759,19 @@ function renderWithView(
   // in the sequence below.
   ui.cardsAnimatingThisRender = [];
 
+  // The tutorial's own scene-selector + quit top bar replaces the normal
+  // Trick/Phase readout for the whole duration of a tutorial session -
+  // updated here, before any of the early-return branches below (Rules/
+  // RedistLog/Menu modals, stalemate/Victory), so it stays reachable at
+  // every point within a scene per this task's own requirement, not just
+  // during the ordinary hand-fan render path further down. A real
+  // (non-tutorial) render never touches this at all.
+  if (tutorial) {
+    openTutorialTopBar(tutorial.scenes, tutorial.onSelectScene, tutorial.onQuit);
+  } else {
+    closeTutorialTopBar();
+  }
+
   // Tabletop treatment - drawn first so it always sits behind every other
   // canvas element this render pass adds (see board/UI requirements: real
   // R2-fetched art, loaded the same manifest-driven way as every card
@@ -875,7 +888,9 @@ function renderWithView(
     return;
   }
 
-  renderTopBar(state, text);
+  // The DOM TutorialTopBar (opened above) replaces this canvas readout for
+  // the whole duration of a tutorial session - never during real gameplay.
+  if (!tutorial) renderTopBar(state, text);
   renderPlayerCluster(scene, container, state, view, ui, rerender, text);
   let legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
   if (legality && tutorial?.lock?.kind === 'handCard') {
