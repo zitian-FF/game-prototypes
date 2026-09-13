@@ -1,13 +1,18 @@
 import '../modalChrome.css';
 
-// Shown once Part 1's single scripted scene finishes (see TutorialScene) -
-// Scenes 2-6 aren't built yet, so this is a deliberately simple stand-in
-// for an eventual real end-of-tutorial screen, not the final "Tutorial
-// Complete" Victory Screen appendage the full design calls for (that only
-// makes sense once Scene 6's real end-game sequence exists). Reuses the
-// exact same Back to Menu button styling as VictoryModal's, per this
-// project's convention of one real navigation mechanism, not a
-// second look-alike.
+// Shown once the player finishes whichever scene is currently the last
+// one built (see TutorialScene.finishScene's own doc comment) - a
+// deliberately simple, scene-agnostic stand-in for an eventual real
+// end-of-tutorial screen, not the final "Tutorial Complete" Victory
+// Screen appendage the full design calls for (that only makes sense once
+// Scene 6's real end-game sequence exists). Its own copy must never name
+// a specific scene's own lesson (e.g. "you just won a trick" was Scene
+// 1-specific text that became actively wrong once this same modal became
+// Scene 2's fallback too, following Scene 2's own redistribution lesson
+// instead) - it stays generic on purpose, since which scene is "last
+// built" keeps changing as later tasks add more. Reuses the exact same
+// Back to Menu button styling as VictoryModal's, per this project's
+// convention of one real navigation mechanism, not a second look-alike.
 export interface TutorialCompleteModalProps {
   onBackToMenu: () => void;
 }
@@ -42,10 +47,10 @@ export function TutorialCompleteModal({ onBackToMenu }: TutorialCompleteModalPro
           textShadow: '0 0 24px rgba(226, 182, 84, 0.4)',
         }}
       >
-        Tutorial: Part 1 Complete
+        Tutorial: More Coming Soon
       </span>
       <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, textAlign: 'center', maxWidth: 300 }}>
-        You just won a trick with the highest rank. More lessons are on the way.
+        You've completed every lesson built so far. More are on the way.
       </p>
       <div style={{ width: '100%', maxWidth: 300, marginTop: 8 }}>
         <button

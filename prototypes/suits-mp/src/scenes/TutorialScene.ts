@@ -41,13 +41,14 @@ const SEAT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4'] as const;
 // (see tutorial/tutorialTypes.ts) instead of real peer input or bot AI -
 // never a separate, simplified game-state representation.
 //
-// Drives TUTORIAL_SCENES generically (tutorial/tutorialScenes.ts) - only
-// index 0 (Scene 1) has a real script today, the rest are `null`
-// placeholders the scene selector (dom/tutorial/TutorialTopBar.tsx) locks
-// out of jumping to. Reaching the end of the *last built* scene's steps
-// still only ever calls finishScene() (a dead end back to Landing, not
-// "load the next scene") - see BUILD_STATUS.md for what a later task
-// needs to change here once Scene 2 exists.
+// Drives TUTORIAL_SCENES generically (tutorial/tutorialScenes.ts) - Scenes
+// 1-2 have real scripts today, the rest are still `null` placeholders the
+// scene selector (dom/tutorial/TutorialTopBar.tsx) locks out of jumping
+// to. Reaching the end of a scene's steps advances to the next scene
+// (see finishScene) when one is actually built, falling back to the
+// completion modal - a TEMPORARY stand-in, not a permanent dead end - once
+// there's no next scene yet (currently past Scene 2, since Scene 3
+// onward are still `null`). See BUILD_STATUS.md.
 export class TutorialScene extends Phaser.Scene {
   private state!: GameState;
   private container!: Phaser.GameObjects.Container;
@@ -64,7 +65,7 @@ export class TutorialScene extends Phaser.Scene {
   // canJumpToScene) reads this directly. Never cleared mid-session (a
   // completed scene stays jumpable even after jumping elsewhere).
   private readonly completedScenes = new Set<number>();
-  // The one outstanding scene.time.delayedCall from runNextStep (an
+  // The one outstanding scene.time.delayedCall from scheduleNextIfAuto (an
   // 'auto' step's own delay, or the post-completion delay before
   // finishScene) - loadScene() cancels whatever's still pending here
   // before starting a new scene/replay. Without this, jumping back into
@@ -158,10 +159,10 @@ export class TutorialScene extends Phaser.Scene {
     this.script = script;
     this.state = settleAutoPhases(initGame([...SEAT_NAMES], script.deal));
     this.stepIndex = 0;
-    this.pendingWait = null;
+    this.syncPendingWaitForCurrentStep();
     this.render();
     cutFromBlack(this);
-    this.runNextStep();
+    this.scheduleNextIfAuto();
   }
 
   private render(): void {
@@ -176,16 +177,42 @@ export class TutorialScene extends Phaser.Scene {
     });
   }
 
-  // Consumes script steps one at a time: an 'auto' step dispatches its
-  // scripted remote action after a real delay (standing in for a bot/peer
-  // turn - see tutorialTypes.ts) and immediately continues; a 'wait' step
-  // stops here and waits for onPlayerAction to supply the matching real
-  // action. Reaching the end of the script hands off to finishScene()
-  // once the real trick-result dwell has had time to play out, rather
-  // than covering it immediately - completion itself is marked earlier,
-  // by markCompletedIfFinished() right before the *triggering* render
-  // (see that function's own doc comment for why the ordering matters).
-  private runNextStep(): void {
+  // Keeps `this.pendingWait` in sync with whatever `this.stepIndex` now
+  // points at - null unless that step is genuinely a 'wait' step. Must
+  // always be called *before* the render() that will reflect a step
+  // transition, never after: a render() that observes a just-completed
+  // trick (see presentGameView's own dwell logic in ui/renderGameView.ts)
+  // starts a multi-beat dwell sequence that closes over whatever
+  // TutorialHudConfig *that one* render() call was given, and every later
+  // beat of the same dwell replays with that exact same config, not
+  // whatever a second, immediately-following render() call might carry -
+  // that second call's own config is silently discarded instead (see
+  // presentGameView's `ui.pendingHoldMasked` early-return). Scene 1 never
+  // exposed this, since its own 'wait' step is reached *before* the local
+  // player's trick-winning play, never right after one - Scene 2's
+  // redistribution 'wait' step is the first to immediately follow a
+  // trick-completing step (the scripted auto-play of the local player's
+  // own winning card), which is exactly the case this ordering fixes:
+  // without it, the redistribute lock/pointer/lesson would silently never
+  // reach the screen at all, even though `this.pendingWait` itself was
+  // set correctly - caught via real-gameplay Playwright verification
+  // (the hard-lock had no visible effect, every hand card stayed fully
+  // tappable) while authoring Scene 2, not just reasoned through.
+  private syncPendingWaitForCurrentStep(): void {
+    const step: TutorialStep | undefined = this.script.steps[this.stepIndex];
+    this.pendingWait = step?.kind === 'wait' ? step : null;
+  }
+
+  // Schedules whatever comes next, given `this.stepIndex`/`this.pendingWait`
+  // are already in sync (see syncPendingWaitForCurrentStep). A pending
+  // wait step needs no scheduling at all - it already rendered, and just
+  // sits there until onPlayerAction supplies the matching real action.
+  // Otherwise either the script is exhausted (schedule the completion
+  // delay, then finishScene()) or the current step is a genuine 'auto'
+  // step (schedule its own scripted-remote delay, then apply it and
+  // advance).
+  private scheduleNextIfAuto(): void {
+    if (this.pendingWait) return;
     if (this.stepIndex >= this.script.steps.length) {
       this.pendingTimer = this.time.delayedCall(tune.tutorialSceneCompleteDelayMs, () => {
         this.pendingTimer = null;
@@ -193,25 +220,21 @@ export class TutorialScene extends Phaser.Scene {
       });
       return;
     }
-    const step: TutorialStep = this.script.steps[this.stepIndex];
-    if (step.kind === 'auto') {
-      this.pendingTimer = this.time.delayedCall(step.delayMs, () => {
-        this.pendingTimer = null;
-        const result = applyAction(this.state, step.forSlot, step.action);
-        if (!result.ok) {
-          console.warn(`suits-mp tutorial: scripted step rejected: ${result.error}`);
-          return;
-        }
-        this.state = result.state;
-        this.stepIndex += 1;
-        this.markCompletedIfFinished();
-        this.render();
-        this.runNextStep();
-      });
-      return;
-    }
-    this.pendingWait = step;
-    this.render();
+    const step = this.script.steps[this.stepIndex] as Extract<TutorialStep, { kind: 'auto' }>;
+    this.pendingTimer = this.time.delayedCall(step.delayMs, () => {
+      this.pendingTimer = null;
+      const result = applyAction(this.state, step.forSlot, step.action);
+      if (!result.ok) {
+        console.warn(`suits-mp tutorial: scripted step rejected: ${result.error}`);
+        return;
+      }
+      this.state = result.state;
+      this.stepIndex += 1;
+      this.markCompletedIfFinished();
+      this.syncPendingWaitForCurrentStep();
+      this.render();
+      this.scheduleNextIfAuto();
+    });
   }
 
   // Marks the current scene completed the instant the script is
@@ -244,14 +267,30 @@ export class TutorialScene extends Phaser.Scene {
       return;
     }
     this.state = result.state;
-    this.pendingWait = null;
     this.stepIndex += 1;
     this.markCompletedIfFinished();
+    this.syncPendingWaitForCurrentStep();
     this.render();
-    this.runNextStep();
+    this.scheduleNextIfAuto();
   }
 
+  // Reaching the end of a scene's script advances to the next scene (same
+  // cutToBlack -> loadScene cut jumpToScene already uses for a manual
+  // selector jump) when one is actually built - Scene 2 is the first
+  // scene this applies to, since Scene 1 previously was the last one
+  // built. Falling off the end of TUTORIAL_SCENES, or landing on a still-
+  // `null` entry (Scene 3 onward, as of this task), is a TEMPORARY stand-
+  // in: fall back to the same completion modal this function always
+  // showed, rather than crash on a scene that doesn't exist yet - a later
+  // task building that next scene replaces this fallback the same way it
+  // replaces the `null` entry itself, never by touching this method
+  // again beyond that.
   private finishScene(): void {
+    const nextIndex = this.currentSceneIndex + 1;
+    if (TUTORIAL_SCENES[nextIndex]) {
+      cutToBlack(this, () => this.loadScene(nextIndex));
+      return;
+    }
     // Same "hide the bottom action HUD before covering the screen" step
     // the real Local Victory sequence already does (see
     // ui/renderGameView.ts's startVictorySequence) - without it, the last

@@ -51,27 +51,44 @@ export interface TutorialWaitStep {
 
 export type TutorialStep = TutorialAutoStep | TutorialWaitStep;
 
-// What the hard-lock gate restricts. Only 'handCard' is implemented this
-// task (Scene 1 only ever hard-locks to one hand card) - 'redistributeTo'/
-// 'delegateTo'/'actionButton' are the shapes Scenes 2/3/6 will need
-// (redistribution assignment targets, delegate-selection seat targets, a
-// bare confirm tap with no card selection involved) and are included here
-// so the union doesn't need reshaping later, but ui/renderGameView.ts's
-// applyTutorialLock only branches on 'handCard' today - see BUILD_STATUS.md.
+// One entry in a scripted redistribution plan: this specific card goes to
+// this specific seat. A whole plan (see TutorialLock/GuidePointerTarget's
+// own 'redistributeAssignments' variant below) is a list of these, one per
+// real contributor - ui/renderGameView.ts resolves *which one* is next
+// live, every render, from the real assignedIds/stagedId the ordinary
+// redistribution UI already tracks (never a separate tutorial-only
+// progress counter), so it naturally advances as the player actually
+// redistributes for real.
+export interface TutorialRedistributeAssignment {
+  cardId: CardId;
+  toPlayer: NetPlayerId;
+}
+
+// What the hard-lock gate restricts. 'handCard' (Scene 1) and
+// 'redistributeAssignments' (Scene 2) are both implemented -
+// 'delegateTo'/'actionButton' are still just reserved shapes for
+// Scenes 3/6 (delegate-selection seat targets, a bare confirm tap with
+// no card selection involved) so the union doesn't need reshaping again
+// later - see BUILD_STATUS.md.
 export type TutorialLock =
   | { kind: 'handCard'; cardId: CardId }
-  | { kind: 'redistributeTo'; toPlayer: NetPlayerId }
+  | { kind: 'redistributeAssignments'; assignments: TutorialRedistributeAssignment[] }
   | { kind: 'delegateTo'; toPlayer: NetPlayerId }
   | { kind: 'actionButton' };
 
-// What the guide pointer points at. Same story as TutorialLock: 'handCard'
-// is resolved to a real screen position today (via
-// PersistentUIState.lastHandLayoutsByCardId, already populated by
-// renderCardFan for exactly this purpose); 'seat'/'actionButton' are
-// reserved shapes for Scenes 2/3/6 that aren't wired to a position
-// resolver yet - see guidePointer.ts and BUILD_STATUS.md.
+// What the guide pointer points at. 'handCard' and 'redistributeAssignments'
+// are both resolved to a real screen position today (the former via
+// PersistentUIState.lastHandLayoutsByCardId; the latter resolves to
+// either a hand card's position or a seat's position depending on how
+// far the player has actually progressed - see
+// ui/renderGameView.ts's nextTutorialRedistributeTarget). 'seat' is a
+// plain, static single-seat point (used internally by
+// 'redistributeAssignments', and reserved standalone for a future
+// delegate-selection scene); 'actionButton' is still a reserved shape
+// nothing resolves yet - see BUILD_STATUS.md.
 export type GuidePointerTarget =
   | { kind: 'handCard'; cardId: CardId }
+  | { kind: 'redistributeAssignments'; assignments: TutorialRedistributeAssignment[] }
   | { kind: 'seat'; slot: NetPlayerId }
   | { kind: 'actionButton' };
 
