@@ -24,7 +24,7 @@ import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStor
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
 import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
 import { drawGuidePointer } from '../tutorial/guidePointer';
-import type { TutorialHudConfig } from '../tutorial/tutorialTypes';
+import type { TutorialHudConfig, TutorialRedistributeAssignment } from '../tutorial/tutorialTypes';
 import { closeTutorialLesson, closeTutorialTopBar, openTutorialLesson, openTutorialTopBar } from '../dom/tutorial/tutorialUiStore';
 import tune from '../../tune.json';
 
@@ -742,6 +742,45 @@ function applyTutorialLock(legality: ReturnType<typeof computeHandLegality>, loc
   return { ...legality, states };
 }
 
+// Redistribution's own hard-lock target (Scene 2): unlike a play-phase
+// lock, there's no single fixed thing to lock onto for the whole step -
+// the real UI's own tap-a-card-then-tap-a-seat flow (renderRedistributionStack)
+// means the *next* correct action alternates between a hand card and a
+// seat as the player actually progresses. Resolved fresh every render
+// from `assignments` (this scene's whole scripted plan) plus the real,
+// already-tracked `assignedIds`/`stagedId` (view.redistributeAssignment/
+// view.selectedCards - never a separate tutorial-only progress counter):
+// the first not-yet-assigned entry is "pending"; if its card is already
+// staged, the next correct tap is its seat, otherwise it's still its
+// card. `null` once every entry is assigned - nothing left to stage or
+// assign, only the real (already-enabled) action button remains.
+type TutorialRedistributeTarget = { kind: 'card'; cardId: CardId } | { kind: 'seat'; toPlayer: NetPlayerId } | null;
+
+function nextTutorialRedistributeTarget(
+  assignments: readonly TutorialRedistributeAssignment[],
+  assignedIds: ReadonlySet<CardId>,
+  stagedId: CardId | null,
+): TutorialRedistributeTarget {
+  const pending = assignments.find((a) => !assignedIds.has(a.cardId));
+  if (!pending) return null;
+  if (stagedId === pending.cardId) return { kind: 'seat', toPlayer: pending.toPlayer };
+  return { kind: 'card', cardId: pending.cardId };
+}
+
+// Layered on top of the real, already-computed per-card redistribute
+// state (redistributeCardState) the same way applyTutorialLock layers
+// onto play-phase legality: an already-'illegal' (assigned) or 'selected'
+// (correctly staged) card is left exactly as the real system computed it;
+// every other 'legal' card is forced 'illegal' unless it's the one
+// pending card this render's target actually names - `target === null` or
+// `target.kind === 'seat'` both mean "nothing left to stage right now",
+// so every otherwise-legal card locks out uniformly in either case.
+function applyTutorialRedistributeCardLock(cardState: CardVisualState, id: CardId, target: TutorialRedistributeTarget): CardVisualState {
+  if (cardState === 'illegal' || cardState === 'selected') return cardState;
+  if (!target || target.kind === 'seat') return 'illegal';
+  return id === target.cardId ? cardState : 'illegal';
+}
+
 function renderWithView(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -891,15 +930,26 @@ function renderWithView(
   // The DOM TutorialTopBar (opened above) replaces this canvas readout for
   // the whole duration of a tutorial session - never during real gameplay.
   if (!tutorial) renderTopBar(state, text);
-  renderPlayerCluster(scene, container, state, view, ui, rerender, text);
+  renderPlayerCluster(scene, container, state, view, ui, rerender, text, tutorial);
   let legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
   if (legality && tutorial?.lock?.kind === 'handCard') {
     legality = applyTutorialLock(legality, tutorial.lock.cardId);
   }
-  renderCardFan(scene, container, state, view, ui, legality, rerender);
+  renderCardFan(scene, container, state, view, ui, legality, rerender, tutorial);
   if (tutorial?.pointer?.kind === 'handCard') {
     const pos = ui.lastHandLayoutsByCardId.get(tutorial.pointer.cardId);
     if (pos) drawGuidePointer(scene, container, pos.x, pos.y);
+  } else if (tutorial?.pointer?.kind === 'redistributeAssignments') {
+    const assignedIds = new Set(Object.values(view.redistributeAssignment).flat());
+    const stagedId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
+    const target = nextTutorialRedistributeTarget(tutorial.pointer.assignments, assignedIds, stagedId);
+    if (target?.kind === 'card') {
+      const pos = ui.lastHandLayoutsByCardId.get(target.cardId);
+      if (pos) drawGuidePointer(scene, container, pos.x, pos.y);
+    } else if (target?.kind === 'seat') {
+      const pos = seatCenter(seatFor(target.toPlayer, state.yourSlot));
+      drawGuidePointer(scene, container, pos.x, pos.y);
+    }
   }
   if (tutorial?.lesson) {
     openTutorialLesson(tutorial.lesson);
@@ -988,14 +1038,31 @@ function renderPlayerCluster(
   ui: PersistentUIState,
   rerender: () => void,
   text: TextFn,
+  tutorial?: TutorialHudConfig | null,
 ): void {
   const seatMap = buildSeatMap(state.yourSlot);
   const redistCtx = state.redistribution;
 
+  // Same live resolution renderCardFan uses for the card side of a
+  // Scene-2-style redistribute lock (see nextTutorialRedistributeTarget's
+  // own doc comment) - recomputed here rather than threaded down from
+  // renderWithView/renderCardFan, since this function runs in its own
+  // scope and only needs the *seat* half of the result (which pid, if
+  // any, is the one correct tap right now).
+  let tutorialAllowedSeatTapPid: NetPlayerId | null = null;
+  if (redistCtx && tutorial?.lock?.kind === 'redistributeAssignments') {
+    const assignedIds = new Set(Object.values(view.redistributeAssignment).flat());
+    const stagedId = view.selectedCards.length === 1 ? view.selectedCards[0] : null;
+    const target = nextTutorialRedistributeTarget(tutorial.lock.assignments, assignedIds, stagedId);
+    if (target?.kind === 'seat') tutorialAllowedSeatTapPid = target.toPlayer;
+  }
+  const tutorialGatesSeatTaps = redistCtx !== null && tutorial?.lock?.kind === 'redistributeAssignments';
+
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
     const pid = seatMap[seat];
     const { x, y } = seatCenter(seat);
-    renderPlayArea(scene, container, state, view, ui, seat, pid, x, y, redistCtx, rerender, text);
+    const allowSeatTap = !tutorialGatesSeatTaps || pid === tutorialAllowedSeatTapPid;
+    renderPlayArea(scene, container, state, view, ui, seat, pid, x, y, redistCtx, rerender, text, allowSeatTap);
   }
 }
 
@@ -1139,13 +1206,14 @@ function renderPlayArea(
   redistCtx: MaskedState['redistribution'],
   rerender: () => void,
   text: TextFn,
+  allowSeatTap = true,
 ): void {
   drawPlayAreaRecess(scene, container, x, y);
 
   const contribution = redistCtx?.contributions.find((c) => c.player === pid) ?? null;
 
   if (redistCtx && contribution) {
-    renderRedistributionStack(scene, container, view, pid, x, y, contribution.count, rerender, text);
+    renderRedistributionStack(scene, container, view, pid, x, y, contribution.count, rerender, text, allowSeatTap);
     return;
   }
 
@@ -1406,6 +1474,7 @@ function renderRedistributionStack(
   need: number,
   rerender: () => void,
   text: TextFn,
+  allowTap = true,
 ): void {
   const have = (view.redistributeAssignment[pid] ?? []).length;
   const fulfilled = have >= need;
@@ -1438,7 +1507,7 @@ function renderRedistributionStack(
   container.add(g);
   text(x, y, badgeLabel, fulfilled ? '#88ff99' : '#f0d9a0', 12);
 
-  if (!fulfilled && view.selectedCards.length === 1) {
+  if (!fulfilled && view.selectedCards.length === 1 && allowTap) {
     const hit = scene.add.rectangle(x, y, totalW + 12, dims.height + 20, 0x000000, 0.001);
     container.add(hit);
     hit.setInteractive({ useHandCursor: true });
@@ -1488,6 +1557,7 @@ function renderCardFan(
   ui: PersistentUIState,
   legality: ReturnType<typeof computeHandLegality> | null,
   rerender: () => void,
+  tutorial?: TutorialHudConfig | null,
 ): Map<CardId, Phaser.GameObjects.Container> {
   const drawnByCardId = new Map<CardId, Phaser.GameObjects.Container>();
   const sorter = ui.sortMode === 'suit' ? sortCardIds : sortCardIdsByRank;
@@ -1583,10 +1653,20 @@ function renderCardFan(
   // just compacting it in place.
   const layouts = computeFanLayouts(hand.length, CENTER_X, FAN_BASELINE_Y + scaledFanConfig.radius, scaledFanConfig);
 
+  const tutorialRedistributeTarget =
+    inRedistributePhase && tutorial?.lock?.kind === 'redistributeAssignments'
+      ? nextTutorialRedistributeTarget(tutorial.lock.assignments, assignedIds, stagedId)
+      : null;
+
   const entries: FanEntry[] = hand.map((id, i) => {
     let cardState: CardVisualState | null = null;
     if (inPlayPhase && legality) cardState = legality.states.get(id) ?? null;
-    else if (inRedistributePhase) cardState = redistributeCardState(id, assignedIds, stagedId);
+    else if (inRedistributePhase) {
+      cardState = redistributeCardState(id, assignedIds, stagedId);
+      if (tutorial?.lock?.kind === 'redistributeAssignments') {
+        cardState = applyTutorialRedistributeCardLock(cardState, id, tutorialRedistributeTarget);
+      }
+    }
     return { id, x: layouts[i].x, y: layouts[i].y, rotationDeg: layouts[i].rotationDeg, cardState };
   });
 
