@@ -1958,6 +1958,16 @@ function startVictorySequence(
       duration: tune.victoryLevitateMs,
       ease: 'Sine.easeInOut',
     });
+    // Randomized per-card tilt (not a uniform wave) - a small permanent
+    // rotation offset added on top of the fan's own resting angle, eased
+    // in over the same span as the levitation drift above.
+    const tiltRad = (tune.victoryCardTiltMaxDeg * (Math.random() * 2 - 1) * Math.PI) / 180;
+    scene.tweens.add({
+      targets: cardContainer,
+      rotation: cardContainer.rotation + tiltRad,
+      duration: tune.victoryLevitateMs,
+      ease: 'Sine.easeInOut',
+    });
     // A plain ADD-blended colour wash sized to the card, not the Powered
     // shimmer's BitmapMask-to-silhouette technique - this task only
     // asks Local Victory to reuse the per-Deity colour tokens, not that
@@ -1972,6 +1982,7 @@ function startVictorySequence(
       duration: tune.victoryLevitateMs,
       ease: 'Sine.easeInOut',
     });
+    addVictoryCardFlipCycle(scene, cardContainer);
   }
 
   scene.time.delayedCall(tune.victoryLevitateMs, () => {
@@ -1983,6 +1994,75 @@ function startVictorySequence(
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       showVictoryScreen(scene, container, state);
     });
+  });
+}
+
+// One full front->back->front flip for a single Local Victory hand card,
+// on a random per-card delay so the whole hand reads as a chaotic
+// celebratory ripple rather than a mechanical synchronized wave (this
+// task's own requirement). Reuses the exact scale-through-zero technique
+// already established by playCardRevealFlip above (shrink to zero width,
+// swap the visible face at the invisible zero-width midpoint, grow back
+// out) rather than inventing a second flip mechanic - the only
+// difference is this flips twice (there and back) instead of once, and
+// mutates the existing card's own children in place instead of
+// destroying/redrawing a whole new card (there's no new `cardId` to draw
+// here - it's the same card before and after).
+function addVictoryCardFlipCycle(scene: Phaser.Scene, cardContainer: Phaser.GameObjects.Container): void {
+  // Whatever's already on the container at this point (the real composited
+  // card art, plus the colour-wash glow rectangle just added above) is the
+  // "front" - captured as a group so both hide/show together with the
+  // card back image, never a partial blend of the two.
+  const frontChildren = cardContainer.list.slice();
+  const back = scene.add.image(0, 0, 'card_back').setDisplaySize(CARD_DIMS_STANDARD.width, CARD_DIMS_STANDARD.height);
+  back.setVisible(false);
+  cardContainer.add(back);
+
+  const showFront = (): void => {
+    for (const child of frontChildren) (child as Phaser.GameObjects.GameObject & { setVisible: (v: boolean) => void }).setVisible(true);
+    back.setVisible(false);
+  };
+  const showBack = (): void => {
+    for (const child of frontChildren) (child as Phaser.GameObjects.GameObject & { setVisible: (v: boolean) => void }).setVisible(false);
+    back.setVisible(true);
+  };
+
+  const halfMs = tune.victoryCardFlipHalfMs;
+  const delay = Math.random() * tune.victoryCardFlipStaggerMaxMs;
+  scene.tweens.add({
+    targets: cardContainer,
+    scaleX: 0,
+    duration: halfMs,
+    delay,
+    ease: tune.cardRevealFlipEase,
+    onComplete: () => {
+      showBack();
+      scene.tweens.add({
+        targets: cardContainer,
+        scaleX: 1,
+        duration: halfMs,
+        ease: tune.cardRevealFlipEase,
+        onComplete: () => {
+          scene.time.delayedCall(tune.victoryCardFlipHoldMs, () => {
+            scene.tweens.add({
+              targets: cardContainer,
+              scaleX: 0,
+              duration: halfMs,
+              ease: tune.cardRevealFlipEase,
+              onComplete: () => {
+                showFront();
+                scene.tweens.add({
+                  targets: cardContainer,
+                  scaleX: 1,
+                  duration: halfMs,
+                  ease: tune.cardRevealFlipEase,
+                });
+              },
+            });
+          });
+        },
+      });
+    },
   });
 }
 
@@ -2031,6 +2111,18 @@ function showVictoryScreen(scene: Phaser.Scene, container: Phaser.GameObjects.Co
   const teamGods = ALL_GODS.filter((g) => GOD_TEAM[g] === team);
   const [godA, godB] = teamGods;
 
+  // tune.victoryDeityHeightFraction is 0.45, not the ~70% starting point
+  // this was first tried at - measured via real Playwright screenshots at
+  // the actual 390px-wide mobile viewport: at 0.7, each sprite's real
+  // displayWidth (~393px, this art's own ~0.666 width:height ratio) is
+  // wider than the whole screen, clipping ~96px off the outer edge of
+  // BOTH sprites simultaneously (confirmed visually, not just computed).
+  // 0.45 is the largest height fraction that keeps both sprites' outer
+  // edges fully on-screen at the existing 0.16 restOffset below (~7.8px
+  // clearance to either edge, verified via measured sprite bounds) -
+  // restOffset itself was deliberately left unchanged rather than shrunk
+  // to allow a bigger fraction, since a smaller offset visibly buried one
+  // sprite behind the other (tried and rejected - see BUILD_STATUS.md).
   const targetHeight = HEIGHT * tune.victoryDeityHeightFraction;
   const makeDeitySprite = (god: God, startX: number): Phaser.GameObjects.Image => {
     const image = scene.add.image(startX, VICTORY_DEITY_Y, faceArtFile(god));
