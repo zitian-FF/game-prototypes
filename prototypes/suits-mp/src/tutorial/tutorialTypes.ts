@@ -1,0 +1,89 @@
+import type { CardId, ForcedDeal, PlayerId } from '../rules/types';
+import type { ClientAction } from '../net/actions';
+import type { NetPlayerId } from '../net/netPlayerId';
+
+// Extends the existing ForcedDeal pattern (rules/types.ts, used by
+// rules/engine.ts's initGame) from "a forced starting deal" to "a forced
+// starting deal plus a scripted sequence of actions across the scene" -
+// per suits-mp-tutorial-design.md's Section 1.2. `deal` still goes through
+// initGame() exactly as any other ForcedDeal would (so the local player's
+// own hand/god/leader assignment is real, valid game data the real rules
+// engine operates on identically to a normal game); `steps` is new.
+//
+// Every step's action - local or scripted-remote - is dispatched through
+// the exact same host/gameHost.ts `applyAction` a real peer's action would
+// go through (see TutorialScene), so trick resolution, rank comparison,
+// and Powered/Dormant determination all run for real, never faked. This
+// does mean every seat's scripted cards must currently be genuinely legal
+// (in the real holder's hand, matching required suit, etc.) for
+// `applyAction` to accept them - the design doc's "fully fabricated/non-
+// deck-constrained" remote data is NOT yet supported as a bypass-legality
+// path. Scene 1 doesn't need that (its remote plays are ordinary legal
+// follows), so this is a known, called-out gap for whichever later scene
+// first needs genuinely invalid remote data - see BUILD_STATUS.md.
+export interface TutorialScript {
+  deal: ForcedDeal;
+  steps: TutorialStep[];
+}
+
+// Auto-played by the tutorial itself, standing in for a remote seat's
+// "move" - dispatched with a real delay so the existing card-play travel
+// animation has time to read, exactly as a real bot/peer turn would.
+export interface TutorialAutoStep {
+  kind: 'auto';
+  forSlot: PlayerId;
+  action: ClientAction;
+  delayMs: number;
+}
+
+// Waits for the local player to submit exactly `allowedAction` - every
+// other otherwise-legal option is hard-locked out for the duration (see
+// applyTutorialLock in ui/renderGameView.ts). `lock` is what the hard-lock
+// gate actually disables against; `pointer` is what the guide pointer
+// points at meanwhile; `lesson` is the callout text shown alongside it.
+export interface TutorialWaitStep {
+  kind: 'wait';
+  allowedAction: ClientAction;
+  lock: TutorialLock;
+  pointer: GuidePointerTarget;
+  lesson: string;
+}
+
+export type TutorialStep = TutorialAutoStep | TutorialWaitStep;
+
+// What the hard-lock gate restricts. Only 'handCard' is implemented this
+// task (Scene 1 only ever hard-locks to one hand card) - 'redistributeTo'/
+// 'delegateTo'/'actionButton' are the shapes Scenes 2/3/6 will need
+// (redistribution assignment targets, delegate-selection seat targets, a
+// bare confirm tap with no card selection involved) and are included here
+// so the union doesn't need reshaping later, but ui/renderGameView.ts's
+// applyTutorialLock only branches on 'handCard' today - see BUILD_STATUS.md.
+export type TutorialLock =
+  | { kind: 'handCard'; cardId: CardId }
+  | { kind: 'redistributeTo'; toPlayer: NetPlayerId }
+  | { kind: 'delegateTo'; toPlayer: NetPlayerId }
+  | { kind: 'actionButton' };
+
+// What the guide pointer points at. Same story as TutorialLock: 'handCard'
+// is resolved to a real screen position today (via
+// PersistentUIState.lastHandLayoutsByCardId, already populated by
+// renderCardFan for exactly this purpose); 'seat'/'actionButton' are
+// reserved shapes for Scenes 2/3/6 that aren't wired to a position
+// resolver yet - see guidePointer.ts and BUILD_STATUS.md.
+export type GuidePointerTarget =
+  | { kind: 'handCard'; cardId: CardId }
+  | { kind: 'seat'; slot: NetPlayerId }
+  | { kind: 'actionButton' };
+
+// Threaded optionally through renderGameView.ts's presentGameView/
+// renderGameView/renderWithView, layered on top of the real legality/
+// render pipeline rather than replacing any of it - undefined/null on
+// every real (non-tutorial) call site, so this has zero effect on normal
+// gameplay. Only ever non-null while a TutorialWaitStep is the active
+// step; auto steps and the gap between scenes pass null (nothing to lock
+// or point at while it's not the local player's real turn anyway).
+export interface TutorialHudConfig {
+  lock: TutorialLock | null;
+  pointer: GuidePointerTarget | null;
+  lesson: string | null;
+}

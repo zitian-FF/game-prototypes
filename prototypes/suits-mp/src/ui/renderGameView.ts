@@ -23,6 +23,9 @@ import type { RedistLogEntry, VictoryIdentity } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
 import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
+import { drawGuidePointer } from '../tutorial/guidePointer';
+import type { TutorialHudConfig } from '../tutorial/tutorialTypes';
+import { closeTutorialLesson, openTutorialLesson } from '../dom/tutorial/tutorialUiStore';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
@@ -397,8 +400,9 @@ export function renderGameView(
   state: MaskedState,
   sendAction: (action: ClientAction) => void,
   ui: PersistentUIState,
+  tutorial?: TutorialHudConfig | null,
 ): void {
-  renderWithView(scene, container, state, sendAction, freshViewState(), ui);
+  renderWithView(scene, container, state, sendAction, freshViewState(), ui, tutorial);
 }
 
 // Cheap content fingerprint for `previousTrick` (at most 4 small entries) -
@@ -438,6 +442,7 @@ export function presentGameView(
   masked: MaskedState,
   sendAction: (action: ClientAction) => void,
   ui: PersistentUIState,
+  tutorial?: TutorialHudConfig | null,
 ): void {
   const key = previousTrickKey(masked);
   const justCompletedTrick = ui.hasPresentedOnce && masked.previousTrick !== null && key !== ui.lastPreviousTrickKey;
@@ -468,7 +473,7 @@ export function presentGameView(
   }
 
   if (!justCompletedTrick) {
-    renderGameView(scene, container, masked, sendAction, ui);
+    renderGameView(scene, container, masked, sendAction, ui, tutorial);
     // Double-win path for the "cards to collector" animation (see its own
     // doc comment below): the collector isn't known the instant a double
     // win's trick resolves - only once the winner's chosen delegate's
@@ -719,6 +724,24 @@ function finishCollectAnimation(
   });
 }
 
+// Tutorial hard-lock gate (suits-mp-tutorial-design.md, Section 1.3):
+// layered on top of the real, already-computed legality rather than
+// replacing it - every card the real system marked legal/selected/
+// partner is forced to 'illegal' unless it's the one hard-locked card,
+// which keeps whatever real state it already had (so it can still
+// become 'selected' once tapped, exactly like a normal legal card).
+// `entry.cardState !== 'illegal'` gates both the visual dimmer and
+// tappability uniformly (see renderCardFan's canTapPlay) - forcing every
+// other card to 'illegal' here disables both for free, with no separate
+// interactivity override needed.
+function applyTutorialLock(legality: ReturnType<typeof computeHandLegality>, lockedCardId: CardId): ReturnType<typeof computeHandLegality> {
+  const states = new Map(legality.states);
+  for (const [id, cardState] of states) {
+    if (id !== lockedCardId && cardState !== 'illegal') states.set(id, 'illegal');
+  }
+  return { ...legality, states };
+}
+
 function renderWithView(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -726,9 +749,10 @@ function renderWithView(
   sendAction: (action: ClientAction) => void,
   view: ViewState,
   ui: PersistentUIState,
+  tutorial?: TutorialHudConfig | null,
 ): void {
   container.removeAll(true);
-  const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui);
+  const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui, tutorial);
   // Reset for this pass - see PersistentUIState.cardsAnimatingThisRender's
   // own doc comment for why the actual bringToTop happens once, at the
   // very end of this function, instead of at each animation's own point
@@ -853,8 +877,20 @@ function renderWithView(
 
   renderTopBar(state, text);
   renderPlayerCluster(scene, container, state, view, ui, rerender, text);
-  const legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
+  let legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
+  if (legality && tutorial?.lock?.kind === 'handCard') {
+    legality = applyTutorialLock(legality, tutorial.lock.cardId);
+  }
   renderCardFan(scene, container, state, view, ui, legality, rerender);
+  if (tutorial?.pointer?.kind === 'handCard') {
+    const pos = ui.lastHandLayoutsByCardId.get(tutorial.pointer.cardId);
+    if (pos) drawGuidePointer(scene, container, pos.x, pos.y);
+  }
+  if (tutorial?.lesson) {
+    openTutorialLesson(tutorial.lesson);
+  } else {
+    closeTutorialLesson();
+  }
   const action = computeActionButtonState(state, view, legality, sendAction);
   const hud = computeGameOverlayHudState(state, view);
   showGameOverlay({

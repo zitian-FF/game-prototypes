@@ -66,5 +66,12 @@
   "victoryDeityEntranceEase": "Cubic.easeInOut",
   "victoryDeityHeightFraction": 0.45,
   "victoryGlowPulseMs": 2200,
-  "victoryGlowPulseAlpha": 0.45
+  "victoryGlowPulseAlpha": 0.45,
+  "tutorialPointerSize": 26,
+  "tutorialPointerGap": 34,
+  "tutorialPointerBounceDistance": 10,
+  "tutorialPointerBounceMs": 500,
+  "tutorialPointerColor": 14859360,
+  "tutorialTransitionMs": 500,
+  "tutorialSceneCompleteDelayMs": 2200
 }

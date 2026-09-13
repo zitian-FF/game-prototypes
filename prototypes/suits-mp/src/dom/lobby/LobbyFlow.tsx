@@ -36,6 +36,7 @@ export interface LobbyFlowProps {
   hostLeft: boolean;
   refreshCodeError: boolean;
   onSinglePlayer: () => void;
+  onTutorial: () => void;
   onHost: (name: string) => void;
   onSubmitJoin: (code: string, name: string) => void;
   onFillBot: (index: number) => void;
@@ -55,6 +56,7 @@ export function LobbyFlow({
   hostLeft,
   refreshCodeError,
   onSinglePlayer,
+  onTutorial,
   onHost,
   onSubmitJoin,
   onFillBot,
@@ -310,6 +312,25 @@ export function LobbyFlow({
             }}
           >
             Single Player
+          </button>
+          <button
+            type="button"
+            data-ui="tutorial-button"
+            onClick={onTutorial}
+            style={{
+              alignSelf: 'center',
+              padding: '8px 4px',
+              background: 'transparent',
+              border: 0,
+              color: 'rgba(158, 196, 186, 0.4)',
+              fontFamily: "'Cormorant Unicase', serif",
+              fontWeight: 500,
+              fontSize: 9,
+              letterSpacing: '0.14em',
+              cursor: 'pointer',
+            }}
+          >
+            Tutorial
           </button>
         </div>
       )}

@@ -12,6 +12,7 @@ import { HostLobbyScene } from './scenes/HostLobbyScene';
 import { HostGameScene } from './scenes/HostGameScene';
 import { PlayerLobbyScene } from './scenes/PlayerLobbyScene';
 import { PlayerGameScene } from './scenes/PlayerGameScene';
+import { TutorialScene } from './scenes/TutorialScene';
 import { mountDom } from './dom/mountDom';
 import type { BootData } from './net/playerSession';
 
@@ -93,6 +94,7 @@ game.scene.add('HostLobby', HostLobbyScene, false);
 game.scene.add('HostGame', HostGameScene, false);
 game.scene.add('PlayerLobby', PlayerLobbyScene, false);
 game.scene.add('PlayerGame', PlayerGameScene, false);
+game.scene.add('Tutorial', TutorialScene, false);
 
 if (initialCode) {
   // An invite link boots straight into Connecting, bypassing Landing's own

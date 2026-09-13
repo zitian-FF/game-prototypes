@@ -13,8 +13,10 @@ import type { HostGameData } from './HostGameScene';
 // primitives - see root CLAUDE.md's "UI implementation split". This
 // scene's only remaining job is the version stamp/portrait guard (still
 // canvas-owned), showing/hiding that DOM view, wiring its Host/Join
-// buttons to the real networking scenes, and the one real non-networked
-// action it can still perform directly: Single Player.
+// buttons to the real networking scenes, and the two real non-networked
+// actions it can still perform directly: Single Player and Tutorial -
+// both skip networking entirely (no room code, no TURN fetch, no
+// Trystero call), going straight into their own local scene.
 //
 // Host transitions to HostLobbyScene, which owns real room creation
 // (net/room.ts, net/lobbyCode.ts) and pushes its own state back into the
@@ -38,6 +40,7 @@ export class LandingScene extends Phaser.Scene {
 
     showLanding(
       () => this.startSinglePlayer(data),
+      () => this.scene.start('Tutorial'),
       (displayName) => this.scene.start('HostLobby', { ...data, displayName }),
       (code, displayName) => this.scene.start('Connecting', { ...data, code, displayName }),
     );
