@@ -35,6 +35,18 @@ export function mountDom(game: Phaser.Game): void {
     'position: relative',
     'z-index: 1000',
     'pointer-events: none',
+    // Blanket tap-and-hold text-selection prevention for every static
+    // UI/text element in this whole overlay layer - a mobile browser's
+    // native "select/search/copy" popup on a long-press is disruptive
+    // over a game UI. The two real <input> elements (LobbyFlow.tsx's
+    // player-name and room-code fields) explicitly restore normal
+    // selection/editing behavior with their own inline style, since
+    // form controls are what this must never apply to.
+    'user-select: none',
+    '-webkit-user-select: none',
+    '-moz-user-select: none',
+    '-ms-user-select: none',
+    '-webkit-touch-callout: none',
   ].join('; ');
   container.appendChild(wrapper);
 

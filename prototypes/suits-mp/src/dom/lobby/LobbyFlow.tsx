@@ -226,6 +226,12 @@ export function LobbyFlow({
                 fontSize: 18,
                 color: 'oklch(0.93 0.04 88)',
                 caretColor: 'oklch(0.85 0.09 84)',
+                // Restores normal text selection/editing - the DOM
+                // overlay wrapper (mountDom.tsx) disables it globally for
+                // every other (static, non-input) element.
+                userSelect: 'text',
+                WebkitUserSelect: 'text',
+                WebkitTouchCallout: 'default',
               }}
             />
           </div>
@@ -299,19 +305,36 @@ export function LobbyFlow({
             data-ui="single-player-button"
             onClick={onSinglePlayer}
             style={{
-              alignSelf: 'center',
-              padding: '8px 4px',
-              background: 'transparent',
+              width: '100%',
+              height: 52,
+              padding: 1,
+              boxSizing: 'border-box',
               border: 0,
-              color: 'rgba(158, 196, 186, 0.4)',
-              fontFamily: "'Cormorant Unicase', serif",
-              fontWeight: 500,
-              fontSize: 9,
-              letterSpacing: '0.14em',
+              background: 'linear-gradient(180deg, rgba(150, 158, 164, 0.55), rgba(70, 76, 82, 0.4))',
+              clipPath:
+                'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
               cursor: 'pointer',
             }}
           >
-            Single Player
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(180deg, rgba(30, 32, 36, 0.9), rgba(14, 15, 17, 0.94))',
+                clipPath:
+                  'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
+                fontFamily: "'Cormorant Unicase', serif",
+                fontWeight: 500,
+                fontSize: 13,
+                letterSpacing: '0.16em',
+                color: 'rgba(210, 216, 220, 0.85)',
+              }}
+            >
+              Single Player
+            </span>
           </button>
           <button
             type="button"
@@ -319,18 +342,36 @@ export function LobbyFlow({
             onClick={onTutorial}
             style={{
               alignSelf: 'center',
-              padding: '8px 4px',
-              background: 'transparent',
+              width: '58%',
+              height: 34,
+              padding: 1,
+              boxSizing: 'border-box',
               border: 0,
-              color: 'rgba(158, 196, 186, 0.4)',
-              fontFamily: "'Cormorant Unicase', serif",
-              fontWeight: 500,
-              fontSize: 9,
-              letterSpacing: '0.14em',
+              background: 'linear-gradient(180deg, rgba(150, 158, 164, 0.32), rgba(70, 76, 82, 0.22))',
+              clipPath:
+                'polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)',
               cursor: 'pointer',
             }}
           >
-            Tutorial
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(180deg, rgba(24, 26, 29, 0.85), rgba(12, 13, 15, 0.9))',
+                clipPath:
+                  'polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)',
+                fontFamily: "'Cormorant Unicase', serif",
+                fontWeight: 500,
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                color: 'rgba(180, 188, 192, 0.7)',
+              }}
+            >
+              Tutorial
+            </span>
           </button>
         </div>
       )}
@@ -674,6 +715,12 @@ export function LobbyFlow({
                   textIndent: '0.24em',
                   color: 'oklch(0.95 0.04 176)',
                   caretColor: 'oklch(0.85 0.09 84)',
+                  // Restores normal text selection/editing - the DOM
+                  // overlay wrapper (mountDom.tsx) disables it globally
+                  // for every other (static, non-input) element.
+                  userSelect: 'text',
+                  WebkitUserSelect: 'text',
+                  WebkitTouchCallout: 'default',
                 }}
               />
             </div>

@@ -1,3 +1,5 @@
+import type { TutorialSceneMarker } from '../../tutorial/tutorialTypes';
+
 // Tutorial's own small external store, mirroring dom/domUiStore.ts's
 // bridge pattern (canvas calls open*/close*, React renders the snapshot) -
 // kept separate from domUiStore.ts the same way dom/overlay/
@@ -19,6 +21,15 @@ export interface TutorialUiState {
   // an eventual real end-of-tutorial screen.
   completeOpen: boolean;
   onCompleteBackToMenu: () => void;
+  // The top-of-screen scene selector + quit control - open for the
+  // entire duration of a tutorial session (every render while
+  // TutorialScene is active passes a fresh `scenes` snapshot, per
+  // TutorialHudConfig's own doc comment in tutorial/tutorialTypes.ts),
+  // not just during a guided wait step.
+  topBarOpen: boolean;
+  scenes: TutorialSceneMarker[];
+  onSelectScene: (sceneNumber: number) => void;
+  onQuit: () => void;
 }
 
 function idleState(): TutorialUiState {
@@ -29,6 +40,10 @@ function idleState(): TutorialUiState {
     lessonText: '',
     completeOpen: false,
     onCompleteBackToMenu: () => {},
+    topBarOpen: false,
+    scenes: [],
+    onSelectScene: () => {},
+    onQuit: () => {},
   };
 }
 
@@ -79,6 +94,17 @@ export function openTutorialComplete(onBackToMenu: () => void): void {
 export function closeTutorialComplete(): void {
   if (!state.completeOpen) return;
   state = { ...state, completeOpen: false, onCompleteBackToMenu: () => {} };
+  emit();
+}
+
+export function openTutorialTopBar(scenes: TutorialSceneMarker[], onSelectScene: (sceneNumber: number) => void, onQuit: () => void): void {
+  state = { ...state, topBarOpen: true, scenes, onSelectScene, onQuit };
+  emit();
+}
+
+export function closeTutorialTopBar(): void {
+  if (!state.topBarOpen) return;
+  state = { ...state, topBarOpen: false, scenes: [], onSelectScene: () => {}, onQuit: () => {} };
   emit();
 }
 

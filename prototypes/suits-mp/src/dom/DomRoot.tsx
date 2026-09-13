@@ -11,6 +11,7 @@ import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverla
 import { TutorialIntroModal } from './tutorial/TutorialIntroModal';
 import { TutorialLessonBanner } from './tutorial/TutorialLessonBanner';
 import { TutorialCompleteModal } from './tutorial/TutorialCompleteModal';
+import { TutorialTopBar } from './tutorial/TutorialTopBar';
 import { getSnapshot as getTutorialSnapshot, subscribe as subscribeTutorial } from './tutorial/tutorialUiStore';
 
 // Single React root for suits-mp's whole DOM overlay layer (see
@@ -118,6 +119,7 @@ export function DomRoot(): JSX.Element {
         />
       )}
       {tutorial.introOpen && <TutorialIntroModal onDismiss={tutorial.onIntroDismiss} />}
+      {tutorial.topBarOpen && <TutorialTopBar scenes={tutorial.scenes} onSelectScene={tutorial.onSelectScene} onQuit={tutorial.onQuit} />}
       {tutorial.lessonOpen && <TutorialLessonBanner text={tutorial.lessonText} />}
       {tutorial.completeOpen && <TutorialCompleteModal onBackToMenu={tutorial.onCompleteBackToMenu} />}
     </>
