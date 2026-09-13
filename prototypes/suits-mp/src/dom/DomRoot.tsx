@@ -8,6 +8,10 @@ import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
 import { GameOverlay } from './overlay/GameOverlay';
 import { getSnapshot as getGameOverlaySnapshot, subscribe as subscribeGameOverlay } from './overlay/gameOverlayStore';
+import { TutorialIntroModal } from './tutorial/TutorialIntroModal';
+import { TutorialLessonBanner } from './tutorial/TutorialLessonBanner';
+import { TutorialCompleteModal } from './tutorial/TutorialCompleteModal';
+import { getSnapshot as getTutorialSnapshot, subscribe as subscribeTutorial } from './tutorial/tutorialUiStore';
 
 // Single React root for suits-mp's whole DOM overlay layer (see
 // mountDom.ts). Add future DOM chrome (React + Tailwind, per root
@@ -35,6 +39,7 @@ export function DomRoot(): JSX.Element {
   } = useSyncExternalStore(subscribe, getSnapshot);
   const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
+  const tutorial = useSyncExternalStore(subscribeTutorial, getTutorialSnapshot);
 
   return (
     <>
@@ -81,6 +86,7 @@ export function DomRoot(): JSX.Element {
           hostLeft={lobby.hostLeft}
           refreshCodeError={lobby.refreshCodeError}
           onSinglePlayer={lobby.onSinglePlayer}
+          onTutorial={lobby.onTutorial}
           onHost={lobby.onHost}
           onSubmitJoin={lobby.onSubmitJoin}
           onFillBot={lobby.onFillBot}
@@ -111,6 +117,9 @@ export function DomRoot(): JSX.Element {
           teammateGodChip={gameOverlay.teammateGodChip}
         />
       )}
+      {tutorial.introOpen && <TutorialIntroModal onDismiss={tutorial.onIntroDismiss} />}
+      {tutorial.lessonOpen && <TutorialLessonBanner text={tutorial.lessonText} />}
+      {tutorial.completeOpen && <TutorialCompleteModal onBackToMenu={tutorial.onCompleteBackToMenu} />}
     </>
   );
 }

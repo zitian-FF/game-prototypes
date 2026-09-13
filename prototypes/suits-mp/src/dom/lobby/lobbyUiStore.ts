@@ -29,6 +29,7 @@ export interface LobbyUiState {
   // blocks the whole screen (compare showJoinError).
   refreshCodeError: boolean;
   onSinglePlayer: () => void;
+  onTutorial: () => void;
   onHost: (name: string) => void;
   onSubmitJoin: (code: string, name: string) => void;
   onFillBot: (index: number) => void;
@@ -63,6 +64,7 @@ function idleState(): LobbyUiState {
     hostLeft: false,
     refreshCodeError: false,
     onSinglePlayer: noop,
+    onTutorial: noop,
     onHost: noop,
     onSubmitJoin: noop,
     onFillBot: noop,
@@ -94,10 +96,11 @@ export function getSnapshot(): LobbyUiState {
 
 export function showLanding(
   onSinglePlayer: () => void,
+  onTutorial: () => void,
   onHost: (name: string) => void,
   onSubmitJoin: (code: string, name: string) => void,
 ): void {
-  state = { ...idleState(), visible: true, screen: 'landing', onSinglePlayer, onHost, onSubmitJoin };
+  state = { ...idleState(), visible: true, screen: 'landing', onSinglePlayer, onTutorial, onHost, onSubmitJoin };
   emit();
 }
 
