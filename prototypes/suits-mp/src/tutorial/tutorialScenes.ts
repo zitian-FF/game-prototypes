@@ -302,6 +302,99 @@ export const TUTORIAL_SCENE_4: TutorialScript = {
   ],
 };
 
+// Scene 5 - Off-suit (facedown) (suits-mp-tutorial-design.md, Section 3).
+// A new forced scenario (black-out/in cut), same narrative lineage as
+// every prior scene (local player's own god Nyarlathotep, same ally at
+// slot 1). `leaderId: 1` keeps the local player last to act, same shape
+// as Scenes 1 and 4; `trickNumber: 5` continues the narrative and, same
+// as every prior scene's own non-1 trick number, sidesteps
+// isForcedTrick1Opener.
+//
+// Unlike every prior scene, the local player's hand deliberately holds
+// NO Cthulhu cards at all (position 3's required suit, same Suit Cycle
+// math as Scenes 1/2/4's identical leaderId:1/ShubNiggurath-lead shape) -
+// genuinely off-suit, not just scripted around it - and its 3 cards
+// (Nyarlathotep-2, ShubNiggurath-5, YogSothoth-9) are 3 DIFFERENT ranks,
+// so no two of them can ever form a Double. Confirmed via the real
+// `ui/handLegality.ts`'s `computeHandLegality` (not just eyeballed):
+// with `state.requiredSuit === 'Cthulhu'` and zero suit-matching cards,
+// `rules/engine.ts`'s `legalOptions` returns `mustPlaySuit: null` and
+// `doubleRanks: []` (no rank appears twice), which routes
+// `computeHandLegality` straight into its off-suit branch with no
+// possible 'partner' state ever appearing for any card - `facedownSingle`
+// is mechanically the only playType this hand can ever produce, exactly
+// what this scene needs to demonstrate without hiding or restricting a
+// Double alternative that simply doesn't exist here.
+//
+// Investigation (this task's own open question from Scene 4's
+// BUILD_STATUS.md): does the existing `{ kind: 'handCard' }` lock/
+// `applyTutorialLock` cleanly cover a facedown confirm, or does the
+// still-reserved `actionButton` variant turn out to be the better fit?
+// Traced the real flow rather than assuming: `computeHandLegality`'s
+// off-suit branch marks EVERY hand card 'legal' before anything is
+// selected (any card could, in principle, start a Double) - unlike the
+// play-phase branch's already-narrowed pool, so `applyTutorialLock`
+// forcing every card but the one scripted `lockedCardId` to 'illegal'
+// is what narrows an otherwise-multi-card-legal moment down to exactly
+// one, same mechanism, same effect as Scene 1's own single-select lock.
+// Once that one card is tapped and becomes `state.selectedCards[0]`,
+// the NEXT render re-runs `computeHandLegality` fresh (now
+// `selected.length === 1`) and reapplies the exact same lock - the
+// locked card's own real state ('selected', since it matches
+// `selected[0]`) passes through untouched, and this hand's total lack
+// of a matching-rank 'partner' anywhere means every other card is
+// already 'illegal'-bound regardless, so the lock has nothing extra to
+// even suppress at that point. `computeActionButtonState`'s action
+// button already reads `legality.playType`/`onClick` completely
+// generically (the same "Facedown Card" label / real
+// `{ action: 'playCard', playType: 'facedownSingle', cards }` dispatch
+// every other scene's own action button already produces for its own
+// playType) - nothing tutorial-specific gates it, and nothing needs to.
+// **Conclusion: `{ kind: 'handCard' }` covers this scene completely -
+// no new `actionButton` TutorialLock/GuidePointerTarget variant was
+// needed.** Confirmed via real-gameplay Playwright verification, not
+// just this trace: only the one scripted card is ever tappable, and the
+// action button becomes real/enabled only once it's selected, same
+// two-tap shape (select the hard-locked card, then confirm) as every
+// prior scene.
+//
+// ShubNiggurath-5 is the scripted card - deliberately neither the local
+// player's own god (Nyarlathotep) nor their ally's (Cthulhu), so
+// nothing about the choice reads as thematically special; any of the
+// 3 hand cards would have been an equally legal facedown play, per the
+// design doc's own framing that this lesson is about the mechanic, not
+// which specific card.
+//
+// Ends once the facedown card is committed - no need to play the trick
+// out to resolution, mirroring Scenes 3-4's own precedent of ending
+// once the specific concept is conveyed. `TutorialScene.finishScene()`
+// needed no changes to pick this up.
+export const TUTORIAL_SCENE_5: TutorialScript = {
+  deal: {
+    hands: [
+      [cardId('Nyarlathotep', 2), cardId('ShubNiggurath', 5), cardId('YogSothoth', 9)],
+      [cardId('ShubNiggurath', 4)],
+      [cardId('Nyarlathotep', 6)],
+      [cardId('YogSothoth', 8)],
+    ],
+    gods: ['Nyarlathotep', 'Cthulhu', 'ShubNiggurath', 'YogSothoth'],
+    leaderId: 1,
+    trickNumber: 5,
+  },
+  steps: [
+    { kind: 'auto', forSlot: 1, action: { action: 'playCard', playType: 'single', cards: [cardId('ShubNiggurath', 4)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 2, action: { action: 'playCard', playType: 'single', cards: [cardId('Nyarlathotep', 6)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 3, action: { action: 'playCard', playType: 'single', cards: [cardId('YogSothoth', 8)] }, delayMs: 900 },
+    {
+      kind: 'wait',
+      allowedAction: { action: 'playCard', playType: 'facedownSingle', cards: [cardId('ShubNiggurath', 5)] },
+      lock: { kind: 'handCard', cardId: cardId('ShubNiggurath', 5) },
+      pointer: { kind: 'handCard', cardId: cardId('ShubNiggurath', 5) },
+      lesson: "No follow, no matching pair - your only legal play is a facedown Single. It concedes the trick, but stays hidden from everyone else.",
+    },
+  ],
+};
+
 // The full 6-scene structure from suits-mp-tutorial-design.md's Section 3
 // - `null` for a scene not built yet. Tutorial prep (the task ahead of
 // Scene 2) is what first anticipated this whole array: the scene
@@ -316,6 +409,6 @@ export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [
   TUTORIAL_SCENE_2,
   TUTORIAL_SCENE_3,
   TUTORIAL_SCENE_4,
-  null,
+  TUTORIAL_SCENE_5,
   null,
 ];
