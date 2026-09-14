@@ -216,6 +216,92 @@ export const TUTORIAL_SCENE_3: TutorialScript = {
   ],
 };
 
+// Scene 4 - Powered Deity Cards (suits-mp-tutorial-design.md, Section 3).
+// A NEW forced trick (a black-out/in cut, not a continuation of Scene 3's
+// unfinished one) - but keeps the same narrative lineage as every prior
+// scene: the local player again holds the familiar Cthulhu hand (their
+// own Dormant Cthulhu Deity Card among them) with the same ally at slot
+// 1. `leaderId: 1` (turnOrder(1) = [1,2,3,0]) puts the local player back
+// last to act, same shape as Scene 1; `trickNumber: 4` continues the
+// narrative (tricks 2-3 already happened in Scenes 2-3) and, same as
+// every prior scene's own non-1 trickNumber, sidesteps
+// isForcedTrick1Opener.
+//
+// This is the one deliberate exception to "the player always acts" the
+// design doc calls out: three scripted `auto` plays happen entirely
+// unattended before the player's own turn, specifically so the player
+// watches them resolve via the real card-play travel animation (the
+// same mechanism Scenes 1-2 already use for their own pre-turn auto
+// plays - nothing new needed here, just three in a row this time
+// instead of stopping to let the player act after them, since watching
+// IS the point this scene is making).
+//
+// The Suit Cycle math (same worked-through approach as every prior
+// scene) is identical to Scene 1's own: leading with a ShubNiggurath
+// card puts position 1 (slot 2) on Nyarlathotep, position 2 (slot 3) on
+// YogSothoth, and position 3 (slot 0, local) on Cthulhu. The one
+// deliberate change from Scene 1's own deal: slot 3's scripted card is
+// YogSothoth-**10**, not YogSothoth-8 - still a real, suit-matching
+// single (`kind: 'normal'`, visible, not masked facedown), but this
+// scene's own required "a real 10, played before the local player's
+// turn" (rules/engine.ts's `computeDeityCardState` checks for ANY
+// rank-10 card among the trick's prior plays, regardless of which god
+// it belongs to - it doesn't have to be a Cthulhu-10 to power a Cthulhu
+// Deity Card, see that function's own doc comment). Landing it as the
+// third (last) scripted play, immediately before the local player's own
+// turn, means the Awakened reveal has as long as the player wants to
+// read before they're ever asked to act - no auto-step delay follows it.
+//
+// The local player's hand is deliberately only 4 cards this time
+// (Cthulhu-2, 5, 9, DeityCard - no Cthulhu-10), unlike Scenes 1-2's
+// 5-card hand that included it: this scene's own real 10 belongs to
+// YogSothoth (slot 3's scripted play) instead, so the local player's
+// own Cthulhu-10 has no role to play here and would only be a
+// distraction sitting unplayed in hand.
+//
+// Confirmed via real-gameplay Playwright verification (see
+// BUILD_STATUS.md): the Awakened reveal on the local player's own
+// Dormant Deity Card fires entirely off real game state, the exact
+// same client-side preview `ui/renderGameView.ts`'s `renderCardFan`
+// already runs for every hand (the `tenAlreadyPlayed` check triggers
+// the instant YogSothoth-10 lands, regardless of suit) - no new
+// tutorial-specific hook or timing adjustment was needed anywhere.
+// `lesson` covers both the transformation and the correct next action
+// in the same wait step (mirroring Scene 3's precedent that a single
+// step can carry a "watch this happen" beat and "now act on it"
+// together, rather than needing a separate non-interactive pause step
+// the type system doesn't have a shape for regardless).
+//
+// The scripted DeityCard win needs no redistribution to make its point
+// (mirrors Scene 3's own precedent of ending once the specific concept
+// - here, a real Powered-rank win - is conveyed) - `finishScene()`
+// needs no changes to pick this up.
+export const TUTORIAL_SCENE_4: TutorialScript = {
+  deal: {
+    hands: [
+      [cardId('Cthulhu', 2), cardId('Cthulhu', 5), cardId('Cthulhu', 9), cardId('Cthulhu', 'DeityCard')],
+      [cardId('ShubNiggurath', 4)],
+      [cardId('Nyarlathotep', 6)],
+      [cardId('YogSothoth', 10)],
+    ],
+    gods: ['Nyarlathotep', 'Cthulhu', 'ShubNiggurath', 'YogSothoth'],
+    leaderId: 1,
+    trickNumber: 4,
+  },
+  steps: [
+    { kind: 'auto', forSlot: 1, action: { action: 'playCard', playType: 'single', cards: [cardId('ShubNiggurath', 4)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 2, action: { action: 'playCard', playType: 'single', cards: [cardId('Nyarlathotep', 6)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 3, action: { action: 'playCard', playType: 'single', cards: [cardId('YogSothoth', 10)] }, delayMs: 900 },
+    {
+      kind: 'wait',
+      allowedAction: { action: 'playCard', playType: 'single', cards: [cardId('Cthulhu', 'DeityCard')] },
+      lock: { kind: 'handCard', cardId: cardId('Cthulhu', 'DeityCard') },
+      pointer: { kind: 'handCard', cardId: cardId('Cthulhu', 'DeityCard') },
+      lesson: 'A 10 has been played - your Dormant Deity Card is now Powered (rank 11) and beats it. Play it to win the trick.',
+    },
+  ],
+};
+
 // The full 6-scene structure from suits-mp-tutorial-design.md's Section 3
 // - `null` for a scene not built yet. Tutorial prep (the task ahead of
 // Scene 2) is what first anticipated this whole array: the scene
@@ -225,4 +311,11 @@ export const TUTORIAL_SCENE_3: TutorialScript = {
 // entry here (and give TutorialScene a real script to run past
 // finishScene() with) - never touch the selector or the jump mechanism
 // itself.
-export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [TUTORIAL_SCENE_1, TUTORIAL_SCENE_2, TUTORIAL_SCENE_3, null, null, null];
+export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [
+  TUTORIAL_SCENE_1,
+  TUTORIAL_SCENE_2,
+  TUTORIAL_SCENE_3,
+  TUTORIAL_SCENE_4,
+  null,
+  null,
+];

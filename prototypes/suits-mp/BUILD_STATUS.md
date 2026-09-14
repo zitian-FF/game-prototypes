@@ -1,177 +1,175 @@
 ## Current milestone
 
-Tutorial Scene 3: The Suit Cycle. Continues directly from Scene 2's real
-final state (same local player Deity/hand lineage, same ally) - because
-the local player redistributed in Scene 2, they lead the next trick
-here, teaching that the lead card's suit sets the Required Suit
-sequence for the other three seats.
+Tutorial Scene 4: Powered Deity Cards. A new forced trick (black-out/in
+cut, not a continuation of Scene 3's unfinished one) that keeps the
+same narrative lineage - same local Cthulhu hand, same ally - but is
+the tutorial's first deliberate exception to "the player always acts":
+three scripted plays resolve entirely unattended, watched via the real
+card-play travel animation, before the player's own guided turn.
 
 ## What was implemented
 
-**Scene 3's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_3`
-reuses `TUTORIAL_SCENE_1.deal`'s hands/gods verbatim (`{ ...TUTORIAL_SCENE_1.deal,
-leaderId: 0, trickNumber: 3 }`) - same local 5-card Cthulhu hand, same
-ally at slot 1 - but flips `leaderId` from 1 to 0 so the local player
-leads instead of following. `trickNumber: 3` (not 1) sidesteps
-`isForcedTrick1Opener` the same way Scenes 1-2's `2` did, since trick
-1's leader must open with the 2 of Yog-Sothoth specifically.
+**Scene 4's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_4`
+reuses the same `leaderId: 1` shape Scene 1 established (local player
+last to act, `turnOrder(1) = [1,2,3,0]`), with `trickNumber: 4`
+continuing the narrative and sidestepping `isForcedTrick1Opener`, same
+as every prior scene's own non-1 trick number. Three `auto` steps
+(ShubNiggurath-4, Nyarlathotep-6, YogSothoth-**10**) play out
+unattended at 900ms delays each - the one deliberate change from Scene
+1's own deal is swapping YogSothoth-8 for YogSothoth-**10**, still a
+real, suit-matching single (visible, not masked facedown) per the same
+Suit Cycle math, but landing a genuine rank-10 card as the last
+scripted play before the local player's own turn.
 
-The script is a **single `TutorialWaitStep`** - no auto steps at all,
-since there's nothing to fast-forward through before the lesson. The
-local player's real legality, while leading (`state.currentTrick` is
-empty), already marks every hand card `'legal'` (see
-`handLegality.ts`'s `leading` branch) - leading genuinely has no suit
-constraint. Per this project's established hard-lock rule, the single
-scripted lead card is still restricted to exactly one via the existing
-`{ kind: 'handCard' }` lock/pointer and `applyTutorialLock` (no new
-`TutorialLock`/`GuidePointerTarget` variant needed - `handCard` already
-covers this scene's one decision point, per the task's own note).
-Scripted as **Cthulhu-2**, deliberately the weakest card in the local
-hand, not the highest-rank one Scene 1 taught winning with - the lesson
-is "any card leads", not "play your best card", and reusing the
-strongest card here risked muddying that distinction.
+The local player's hand is only 4 cards this time (Cthulhu-2, 5, 9,
+DeityCard - no Cthulhu-10): this scene's own real 10 belongs to
+YogSothoth instead, so the local player's own Cthulhu-10 has no role
+here and would only sit as a distraction. `rules/engine.ts`'s
+`computeDeityCardState` checks for *any* rank-10 card among the
+trick's prior plays regardless of which god it belongs to - a
+YogSothoth-10 powers a Cthulhu Deity Card exactly the same as a
+Cthulhu-10 would.
 
-The other three seats' single-card hands are worked out the same way
-Scene 1's own Suit Cycle math was: with Cthulhu leading from slot 0
-(`turnOrder(0) = [0,1,2,3]`), `requiredSuitForPosition`/`suitAfterSteps`
-(rules/engine.ts, rules/cards.ts) give position 1 (slot 1, the ally)
-ShubNiggurath, position 2 (slot 2) Nyarlathotep, position 3 (slot 3)
-YogSothoth - so their hands hold exactly those suits (ShubNiggurath-4,
-Nyarlathotep-6, YogSothoth-8), the same three cards Scenes 1-2's own
-deal already used, just shifted one seat over since the leader moved
-from slot 1 to slot 0. This scene never scripts their actual follow-up
-plays, though - see below.
+One `TutorialWaitStep` follows the three auto plays: `lesson` covers
+both the transformation ("now Powered... beats it") and the correct
+next action ("play it to win") in the same step, mirroring Scene 3's
+precedent that a single wait step can carry both a "watch this happen"
+beat and a "now act on it" beat - there's no separate non-interactive
+pause step in the type system, and none was needed. The correct action
+(playing the now-Powered Deity Card) is hard-locked via the existing
+`{ kind: 'handCard' }` lock/pointer and `applyTutorialLock` - no new
+`TutorialLock` variant needed, exactly as the task anticipated.
 
-**The scene deliberately ends after just the lead play** - no trick
-win, no redistribution. Per the task's own explicit permission, the
-lesson ("the lead suit sets the Required Suit sequence for the other
-three seats") is fully conveyed once the wheel updates, which happens
-the instant a lead suit is known - there's no need to actually play out
-the other three seats' responses to show it. `TutorialScene.finishScene()`
-needed **no changes** to pick this up: the script's one step resolves,
-`markCompletedIfFinished()` marks Scene 3 done, and the existing
-advance-or-fallback logic (added in the Scene 2 task) takes over -
-advancing to Scene 4 if it existed, falling back to the completion modal
-since it doesn't yet.
+The scene ends once the trick is won - no redistribution scripted,
+mirroring Scene 3's own precedent of ending once the specific concept
+(here, a real Powered-rank win) is conveyed. `TutorialScene.finishScene()`
+needed no changes to pick this up.
 
-## Suit Cycle wheel rotation - confirmed real, no new hook needed
+## Confirmed real, not assumed: the Awakened reveal and the travel animation
 
-Task requirement 3 asked to *confirm* (not assume) the wheel already
-reflects the new lead suit, and report whether any tutorial-specific
-hook was needed. **None was needed.** Read `ui/renderGameView.ts`'s
-`computeSuitRing` and `dom/overlay/GameOverlay.tsx`'s `leadGodIndex`
-handling, then confirmed via real-gameplay Playwright verification
-(temporary debug hooks exposing `computeGameOverlayHudState`'s live
-`leadGodIndex`, removed before commit):
+Per this task's own explicit ask (report, don't assume), both were
+verified via real-gameplay Playwright runs against the actual game
+state, not just reasoned through:
 
-- **Before any tap:** `leadGodIndex: null` (indeterminate - nobody's
-  lead suit is known yet).
-- **The instant the locked Cthulhu-2 card is tapped (still just
-  selected, not yet committed):** `leadGodIndex` immediately becomes
-  `1` (Cthulhu's `GOD_TO_SUIT_INDEX`). This is `computeSuitRing`'s
-  existing `previewCardId`/`isLocalPreview` branch - built for the
-  *leader's own screen* to preview the lead suit before committing,
-  entirely pre-existing, non-tutorial-specific behavior - confirmed by
-  screenshot: the center wheel's "LEAD" badge visibly rotates from
-  Nyarlathotep's position to Cthulhu's the moment the card is tapped,
-  before the Play Card button is even pressed.
-- **After committing the play for real:** `leadGodIndex` stays `1`
-  (continuous with the preview - no jump), now driven by
-  `state.leadSuit`/`state.currentTrick[0]` instead of the preview path,
-  and `currentTurnSeat` genuinely advances to the next real position
-  (Player 2, awaiting a real ShubNiggurath follow) - confirming this
-  scene really did hand off to an ordinary, un-scripted next decision
-  point rather than faking a hand-off.
+- **The three auto-plays genuinely animate.** Added a temporary debug
+  counter inside `animateCardPlayIntoPlayArea`'s existing tween
+  (incremented when a travel tween starts, decremented on its
+  `onComplete`), removed before commit. Polling it every 120ms across
+  the whole watch sequence caught it at `1` (a tween actively in
+  flight) on real samples - the card is genuinely mid-arc between its
+  remote-nameplate origin and its play-area destination over
+  `tune.cardPlayTravelMs` (190ms), never placed instantly.
+- **The Awakened reveal on the local player's own Dormant Deity Card
+  fires off real game state, with no new hook.** `ui/renderGameView.ts`'s
+  `renderCardFan` already runs a client-side "Awakened preview" check
+  on every render (`tenAlreadyPlayed` - any rank-10 card anywhere in
+  `state.currentTrick`, regardless of suit) that swaps a still-unplayed
+  Deity Card's art to its Powered look and fires `cardArt.ts`'s real
+  `playAwakenedEffect` the instant the condition first becomes true.
+  Confirmed via a temporary debug hook exposing `ui.awakenedHandCardIds`:
+  it contained `Cthulhu-DeityCard` at the wait step, and a screenshot
+  taken right as the wait step appeared shows the Deity Card already
+  wearing its distinct Powered artwork in the fan, clearly different
+  from the three plain Cthulhu cards beside it. **No tutorial-specific
+  timing adjustment was needed anywhere** - the existing 900ms
+  auto-step delay already gives the travel animation (190ms) generous
+  headroom, and since the wait step that follows has no time limit of
+  its own (it simply waits for the player, however long that takes),
+  the reveal has as long as the player wants to actually look at it.
 
-Nothing in `ui/renderGameView.ts` or `dom/overlay/GameOverlay.tsx`
-needed to change for this - the wheel was already this reactive to real
-game state before this task.
+Both debug hooks (the in-flight tween counter and the exposed
+`awakenedHandCardIds` array) were temporary, added only for this
+verification and fully removed before commit - no trace of them
+remains in the shipped diff.
 
 ## Key technical decisions
 
-- Kept Scene 3 to exactly one `TutorialWaitStep` with zero `auto` steps
-  - the shortest possible script shape the existing types already
-    support. No new infrastructure was needed anywhere: the same
-    `{ kind: 'handCard' }` lock/pointer, the same `applyTutorialLock`,
-    the same `syncPendingWaitForCurrentStep`/`scheduleNextIfAuto`
-    sequencing, and the same `finishScene()` advance-or-fallback logic
-    all worked unmodified.
-- Deliberately did not script the other three seats' own follow-up
-  plays after the local lead. The lesson is about the Required Suit
-  *sequence being set*, not about watching it get satisfied - the
-  wheel alone (already real, see above) carries the whole lesson, and
-  the task explicitly permitted ending here.
-- Reused `TUTORIAL_SCENE_1.deal`'s `hands`/`gods` via object spread
-  rather than retyping them, overriding only the two fields that
-  actually differ (`leaderId`, `trickNumber`) - keeps the "same
-  lineage" continuity explicit in the code itself, not just in a
-  comment.
+- Deliberately dropped Cthulhu-10 from the local player's hand for
+  this scene (unlike Scenes 1-2's 5-card hand). Keeping it would have
+  either sat as an unplayed distraction or, worse, been mistakable for
+  *this* scene's own "the 10" - the rank-10 card doing the real work
+  here is YogSothoth's, played by someone else, which is also what
+  makes the "any suit's 10 powers any Deity Card" rule legible rather
+  than accidentally suggesting the trigger is suit-specific.
+- Landed the scripted 10 as the *third* (last) auto-play, immediately
+  before the local player's own turn, rather than earlier in the
+  sequence - the reveal then has zero time pressure once it fires,
+  since the very next thing that happens is the wait step, not another
+  auto-play's own countdown.
+- Kept the "watch it transform" and "now act on it" beats as one wait
+  step rather than inventing a new non-interactive pause step kind -
+  same reasoning as Scene 3's own precedent, and it worked identically
+  well here: the lesson banner explains the transformation, the guide
+  pointer/hard-lock highlight the one correct card, and the Awakened
+  visual burst itself is what actually draws the eye to "look here" -
+  nothing about that needs to be a separate, blocking beat.
 
 ## Bugs found and fixed during verification
 
-None in the shipped code. One test-script-only false alarm during
-authoring, worth recording so it doesn't get mistaken for a real bug if
-rediscovered: an early verification script reused a `const c10 = await
-handPos('Cthulhu-10')` variable captured all the way back during
-Scene 1's own win (where Cthulhu-10 was legitimately `'legal'`) inside
-a later `console.log` meant to describe Scene 3's card states - making
-it look like Cthulhu-10 was still `'legal'` at Scene 3's wait step, when
-a fresh read of the real live state showed only Cthulhu-2 legal, exactly
-as scripted. Caught by re-querying live state directly rather than
-trusting a stale local variable - same category of test-timing
-artifact noted in this prototype's own tutorial-prep task, not a repeat
-of it.
+None. Every real behavior (hard-lock, travel animation, Awakened
+reveal, rank comparison at trick resolution) worked correctly on the
+first real-gameplay pass - this scene needed no infrastructure changes
+at all, only new authored content.
 
-## What's general vs. Scene-3-specific (for a later scene)
+## What's general vs. Scene-4-specific (for a later scene)
 
 **General, reusable as-is (confirmed, not just assumed):**
-- The Suit Cycle wheel's live-preview-then-real-rotation behavior is
-  fully generic game-state-driven behavior, not anything this task
-  added - any future scene involving a lead decision gets this for
-  free.
-- `finishScene()`'s advance-or-fallback logic, `TutorialScene`'s
-  `syncPendingWaitForCurrentStep()`/`scheduleNextIfAuto()` sequencing,
-  and the `{ kind: 'handCard' }` lock/pointer/`applyTutorialLock` path
-  all needed zero changes - confirming (per Scene 2's own prediction)
-  that a scene whose only decision point is "play this one hand card"
-  is now a fully solved, reusable shape.
+- The real card-play travel animation and the Awakened reveal effect
+  both already fire correctly for any number of consecutive `auto`
+  steps ahead of a `wait` step - Scenes 1-2 already exercised 3-4 auto
+  steps in a row, and this task's own verification confirms the
+  visuals riding along with them (travel animation, Awakened preview)
+  need no tutorial-specific plumbing regardless of how many `auto`
+  steps precede a `wait`.
+- `finishScene()`'s advance-or-fallback logic, the `syncPendingWaitForCurrentStep`/
+  `scheduleNextIfAuto` sequencing, and the `{ kind: 'handCard' }`
+  lock/pointer/`applyTutorialLock` path all needed zero changes again -
+  the fourth scene in a row to confirm this same core machinery is
+  fully general.
 
-**Scene-3-specific, won't transfer as-is:**
-- `TUTORIAL_SCENE_3`'s own deal/lead-card choice is this scene's exact
-  authored content.
+**Scene-4-specific, won't transfer as-is:**
+- `TUTORIAL_SCENE_4`'s own deal (the specific YogSothoth-10 substitution,
+  the 4-card local hand) is this scene's exact authored content.
 - The still-reserved `delegateTo` lock / plain `seat` pointer variants
-  remain untouched - a future double-win/delegate-selection scene is
-  still the most likely place those get implemented for real.
+  remain untouched - Scene 6 (Double, delegate, and winning the game)
+  is the design doc's own next place those would actually get used.
 
 ## Open questions
 
-None arose that needed asking - the design doc and task instructions
-were explicit about the lesson, the lead-card framing ("any legal
-lead"), and that this scene doesn't need to end in a trick win.
+None arose that needed asking - the task's own hard constraints (local
+player last to act, their own Dormant Deity Card in hand, a real 10
+landing before their turn via three `auto` steps) fully specified the
+deal's shape; only the exact card/rank choices needed authoring.
 
 ## Known issues
 
 None. Verified via `npm run typecheck`, `npm run build`, and
-real-gameplay Playwright runs on the final build (hard-lock rejecting a
-wrong card tap with zero state change, the live wheel preview firing on
-selection, the real committed rotation and turn hand-off, scene
-completion/checkmark, and the completion-modal fallback since Scene 4
-doesn't exist yet) - console clean on boot aside from a pre-existing,
-unrelated ICE-server fetch failure present in this sandboxed test
-environment on plain boot too.
+real-gameplay Playwright runs on the final build: the three auto-plays
+genuinely animate (confirmed via the temporary in-flight tween
+counter, not just visual impression), the real Awakened effect fires
+on the local player's own card at the correct moment (confirmed via
+the temporary `awakenedHandCardIds` exposure plus a screenshot showing
+the swapped art), only the Powered Deity Card is tappable at the
+guided step (a wrong-card tap is fully inert), and the trick resolves
+as a real win via rule evaluation (the real redistribution phase opens
+for the local player as winner/distributor, never faked). Console
+clean on boot aside from the same pre-existing, unrelated ICE-server
+fetch failure present in this sandboxed test environment on plain
+boot too.
 
 ## Next proposed step
 
-Scene 4 is next (per suits-mp-tutorial-design.md's Section 3) - Powered
-Deity Cards. Unlike Scenes 1-3, this one has the player *watch* three
-scripted plays resolve first (via the real card-play travel animation)
-before a 10 lands and their own Dormant Deity Card transforms (the real
-Awakened reveal effect, already built and reused elsewhere - see
-`ui/cardArt.ts`'s `playAwakenedEffect`) - then hands control back for
-the player to play that now-Powered card and win. This is the first
-scene that needs the player to sit through multiple scripted opponent
-plays *before* their own guided moment, which today's `auto`/`wait`
-step shape already supports (Scenes 1-2 already scripted multiple
-`auto` steps ahead of a `wait`) - likely no new step *kind* is needed,
-just careful authoring of delays so the reveal reads clearly against
-the real animation timing.
+Scene 5 is next (per suits-mp-tutorial-design.md's Section 3) - Off-suit
+(facedown). A new forced scenario where the player's hand is engineered
+so a Double is genuinely unavailable (no matching-rank pair), making
+facedown their only legal off-suit option - teaching the concept
+without needing to restrict/hide a Double alternative. This is the
+first scene to exercise the `facedownSingle` play type
+(`handLegality.ts`'s own off-suit selection state machine) - worth
+checking during that task whether the existing `{ kind: 'handCard' }`
+lock/`applyTutorialLock` still cover it cleanly (locking a facedown
+commit is still "one specific card, hard-locked", so it likely does),
+or whether the `actionButton` `TutorialLock`/`GuidePointerTarget`
+variant (still reserved, never implemented) turns out to be the
+better fit for a facedown confirm that isn't really "pick a card" so
+much as "commit the one already-selected off-suit option."
