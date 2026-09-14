@@ -1,175 +1,184 @@
 ## Current milestone
 
-Tutorial Scene 4: Powered Deity Cards. A new forced trick (black-out/in
-cut, not a continuation of Scene 3's unfinished one) that keeps the
-same narrative lineage - same local Cthulhu hand, same ally - but is
-the tutorial's first deliberate exception to "the player always acts":
-three scripted plays resolve entirely unattended, watched via the real
-card-play travel animation, before the player's own guided turn.
+Tutorial Scene 5: Off-suit (facedown). A new forced scenario (black-out/
+in cut) that keeps the same narrative lineage as every prior scene, and
+resolves the open question Scene 4's own report flagged: whether the
+existing `{ kind: 'handCard' }` lock/pointer cleanly covers a facedown
+confirm, or whether the still-reserved `actionButton` variant is
+actually needed. Traced the real flow and confirmed via Playwright:
+**`{ kind: 'handCard' }` covers it completely - no new variant was
+needed.**
 
 ## What was implemented
 
-**Scene 4's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_4`
-reuses the same `leaderId: 1` shape Scene 1 established (local player
-last to act, `turnOrder(1) = [1,2,3,0]`), with `trickNumber: 4`
-continuing the narrative and sidestepping `isForcedTrick1Opener`, same
-as every prior scene's own non-1 trick number. Three `auto` steps
-(ShubNiggurath-4, Nyarlathotep-6, YogSothoth-**10**) play out
-unattended at 900ms delays each - the one deliberate change from Scene
-1's own deal is swapping YogSothoth-8 for YogSothoth-**10**, still a
-real, suit-matching single (visible, not masked facedown) per the same
-Suit Cycle math, but landing a genuine rank-10 card as the last
-scripted play before the local player's own turn.
+**Scene 5's script (`tutorial/tutorialScenes.ts`):** `TUTORIAL_SCENE_5`
+keeps `leaderId: 1` (local player last to act, same shape as Scenes 1
+and 4) and `trickNumber: 5` (continuing the narrative, sidestepping
+`isForcedTrick1Opener` same as every prior scene). The local player's
+3-card hand (Nyarlathotep-2, ShubNiggurath-5, YogSothoth-9) is
+deliberately: (a) genuinely off-suit - zero Cthulhu cards, the real
+required suit at position 3 under this exact Suit Cycle shape - and
+(b) three DIFFERENT ranks, so no two cards can ever form a Double.
+Confirmed via the real `ui/handLegality.ts`'s `computeHandLegality`
+(not eyeballed): `rules/engine.ts`'s `legalOptions` returns
+`mustPlaySuit: null` and `doubleRanks: []` for this exact hand against
+`requiredSuit: 'Cthulhu'`, which routes `computeHandLegality` into its
+off-suit branch with `facedownSingle` as the only playType this hand
+can ever produce - no 'partner' state ever appears for any card.
 
-The local player's hand is only 4 cards this time (Cthulhu-2, 5, 9,
-DeityCard - no Cthulhu-10): this scene's own real 10 belongs to
-YogSothoth instead, so the local player's own Cthulhu-10 has no role
-here and would only sit as a distraction. `rules/engine.ts`'s
-`computeDeityCardState` checks for *any* rank-10 card among the
-trick's prior plays regardless of which god it belongs to - a
-YogSothoth-10 powers a Cthulhu Deity Card exactly the same as a
-Cthulhu-10 would.
-
-One `TutorialWaitStep` follows the three auto plays: `lesson` covers
-both the transformation ("now Powered... beats it") and the correct
-next action ("play it to win") in the same step, mirroring Scene 3's
-precedent that a single wait step can carry both a "watch this happen"
-beat and a "now act on it" beat - there's no separate non-interactive
-pause step in the type system, and none was needed. The correct action
-(playing the now-Powered Deity Card) is hard-locked via the existing
-`{ kind: 'handCard' }` lock/pointer and `applyTutorialLock` - no new
-`TutorialLock` variant needed, exactly as the task anticipated.
-
-The scene ends once the trick is won - no redistribution scripted,
-mirroring Scene 3's own precedent of ending once the specific concept
-(here, a real Powered-rank win) is conveyed. `TutorialScene.finishScene()`
+Three `auto` steps (ShubNiggurath-4, Nyarlathotep-6, YogSothoth-8) play
+out first, same pattern as every prior scene's pre-turn plays, before
+one `TutorialWaitStep` teaches the facedown play itself. The scripted
+card is ShubNiggurath-5 - deliberately neither the local player's own
+god (Nyarlathotep) nor their ally's (Cthulhu), so nothing about the
+choice reads as thematically special; any of the 3 hand cards would
+have been an equally legal facedown play. The scene ends once the
+facedown card is committed - no need to play the trick out to
+resolution, mirroring Scenes 3-4's own precedent. `TutorialScene.finishScene()`
 needed no changes to pick this up.
 
-## Confirmed real, not assumed: the Awakened reveal and the travel animation
+## Investigation: which TutorialLock shape does a facedown confirm need?
 
-Per this task's own explicit ask (report, don't assume), both were
-verified via real-gameplay Playwright runs against the actual game
-state, not just reasoned through:
+Traced the real off-suit/facedown flow end to end rather than assuming
+either way (per this task's own explicit ask, and Scene 4's own report
+flagging this as the next open question):
 
-- **The three auto-plays genuinely animate.** Added a temporary debug
-  counter inside `animateCardPlayIntoPlayArea`'s existing tween
-  (incremented when a travel tween starts, decremented on its
-  `onComplete`), removed before commit. Polling it every 120ms across
-  the whole watch sequence caught it at `1` (a tween actively in
-  flight) on real samples - the card is genuinely mid-arc between its
-  remote-nameplate origin and its play-area destination over
-  `tune.cardPlayTravelMs` (190ms), never placed instantly.
-- **The Awakened reveal on the local player's own Dormant Deity Card
-  fires off real game state, with no new hook.** `ui/renderGameView.ts`'s
-  `renderCardFan` already runs a client-side "Awakened preview" check
-  on every render (`tenAlreadyPlayed` - any rank-10 card anywhere in
-  `state.currentTrick`, regardless of suit) that swaps a still-unplayed
-  Deity Card's art to its Powered look and fires `cardArt.ts`'s real
-  `playAwakenedEffect` the instant the condition first becomes true.
-  Confirmed via a temporary debug hook exposing `ui.awakenedHandCardIds`:
-  it contained `Cthulhu-DeityCard` at the wait step, and a screenshot
-  taken right as the wait step appeared shows the Deity Card already
-  wearing its distinct Powered artwork in the fan, clearly different
-  from the three plain Cthulhu cards beside it. **No tutorial-specific
-  timing adjustment was needed anywhere** - the existing 900ms
-  auto-step delay already gives the travel animation (190ms) generous
-  headroom, and since the wait step that follows has no time limit of
-  its own (it simply waits for the player, however long that takes),
-  the reveal has as long as the player wants to actually look at it.
+- **Before any card is selected**, `computeHandLegality`'s off-suit
+  branch marks *every* hand card `'legal'` (any card could, in
+  principle, turn out to have a same-rank partner) - a materially wider
+  starting pool than the play-phase branch's already-narrowed
+  suit-matching pool Scenes 1/3/4 lock against. `applyTutorialLock`
+  forcing every card but the one scripted `lockedCardId` to `'illegal'`
+  narrows this exactly the same way regardless of how wide the starting
+  pool was - same mechanism, same effect.
+- **Once that one card is tapped** and becomes `view.selectedCards[0]`,
+  the next render re-runs `computeHandLegality` fresh (now
+  `selected.length === 1`) and `applyTutorialLock` reapplies: the locked
+  card's own real state (`'selected'`, since it matches `selected[0]`)
+  passes through untouched, and since this hand has no matching-rank
+  card anywhere, every other card was *already* going to end up
+  non-`'partner'`/effectively locked-out regardless - the tutorial lock
+  and the hand's own natural shape reinforce each other rather than
+  conflicting.
+- **The action button itself never needed any tutorial-specific
+  wiring.** `computeActionButtonState` already reads `legality.playType`/
+  `onClick` completely generically - the same "Facedown Card" label and
+  real `{ action: 'playCard', playType: 'facedownSingle', cards }`
+  dispatch every other scene's own action button already produces for
+  its own playType, just with a different label string.
 
-Both debug hooks (the in-flight tween counter and the exposed
-`awakenedHandCardIds` array) were temporary, added only for this
-verification and fully removed before commit - no trace of them
-remains in the shipped diff.
+**Conclusion, confirmed via real-gameplay Playwright verification (not
+just this trace): `{ kind: 'handCard' }` + `applyTutorialLock` covers a
+facedown confirm completely.** The still-reserved `actionButton`
+`TutorialLock`/`GuidePointerTarget` variant was not implemented - there
+was nothing left for it to do here. Verified directly:
+- Before selection: real legality reports `playType: null`, but the
+  hand-entry dump shows only ShubNiggurath-5 as `'legal'`, the other 2
+  cards `'illegal'` - the hard-lock narrowing an otherwise-wide-open
+  moment down to exactly one, same as every prior scene.
+- A wrong-card tap (Nyarlathotep-2) is fully inert - no selection
+  registers, the action button stays disabled.
+- After selecting the correct card: real legality reports
+  `playType: 'facedownSingle'`, no card anywhere shows `'partner'`, and
+  the action button reads "Facedown Card / Commit the chosen card" -
+  all driven by the real, unmodified `computeHandLegality`/
+  `computeActionButtonState`.
 
-## Key technical decisions
+## Masking confirmed real, not assumed
 
-- Deliberately dropped Cthulhu-10 from the local player's hand for
-  this scene (unlike Scenes 1-2's 5-card hand). Keeping it would have
-  either sat as an unplayed distraction or, worse, been mistakable for
-  *this* scene's own "the 10" - the rank-10 card doing the real work
-  here is YogSothoth's, played by someone else, which is also what
-  makes the "any suit's 10 powers any Deity Card" rule legible rather
-  than accidentally suggesting the trigger is suit-specific.
-- Landed the scripted 10 as the *third* (last) auto-play, immediately
-  before the local player's own turn, rather than earlier in the
-  sequence - the reveal then has zero time pressure once it fires,
-  since the very next thing that happens is the wait step, not another
-  auto-play's own countdown.
-- Kept the "watch it transform" and "now act on it" beats as one wait
-  step rather than inventing a new non-interactive pause step kind -
-  same reasoning as Scene 3's own precedent, and it worked identically
-  well here: the lesson banner explains the transformation, the guide
-  pointer/hard-lock highlight the one correct card, and the Awakened
-  visual burst itself is what actually draws the eye to "look here" -
-  nothing about that needs to be a separate, blocking beat.
+This is the first tutorial scene to ever produce an `offsuit`-kind
+play at all (every prior scene's auto-plays were deliberately real
+suit-matching `'normal'` plays, avoiding the masking question
+entirely). Confirmed via a temporary debug hook (removed before
+commit) exposing the real `state.currentTrick` right after the local
+player's facedown commit: their own play shows `kind: "offsuit"` in
+the actual game state - the exact classification `ui/renderGameView.ts`'s
+existing `maskedPlayFaces` already branches on
+(`play.kind === 'offsuit' && play.player !== yourSlot`) to decide
+whether to hide a play's real identity. Since that masking function is
+itself unchanged, pre-existing, and already exercised for real
+multiplayer games, confirming the play's real `kind` is correctly
+`'offsuit'` is sufficient to guarantee it would render as genuinely
+facedown (card_back-equivalent) to any other real viewer - this
+tutorial's single-client architecture always renders from the local
+player's own perspective, where `maskedPlayFaces` deliberately shows
+your *own* play plainly (there's no privacy concern in seeing your own
+card), so the local player's own screen correctly shows the real
+ShubNiggurath-5 art rather than a card-back - confirmed via screenshot,
+this is the expected, correct behavior, not a masking failure.
 
 ## Bugs found and fixed during verification
 
-None. Every real behavior (hard-lock, travel animation, Awakened
-reveal, rank comparison at trick resolution) worked correctly on the
-first real-gameplay pass - this scene needed no infrastructure changes
-at all, only new authored content.
+None. Every real behavior (the off-suit state machine, the hard-lock,
+the action button, and the real `kind: 'offsuit'` classification)
+worked correctly on the first real-gameplay pass.
 
-## What's general vs. Scene-4-specific (for a later scene)
+## Key technical decisions
+
+- Kept the local hand to exactly 3 cards (down from Scene 4's 4) -
+  the minimum needed to make "genuinely no possible Double" easy to
+  verify by inspection (3 distinct ranks) while still giving the
+  hard-lock something real to narrow down from.
+- Deliberately picked a scripted card (ShubNiggurath-5) that matches
+  neither the local player's own god nor their ally's, so the choice
+  reads as arbitrary rather than thematically loaded - reinforcing the
+  lesson's own point that any off-suit card would have worked.
+
+## What's general vs. Scene-5-specific (for a later scene)
 
 **General, reusable as-is (confirmed, not just assumed):**
-- The real card-play travel animation and the Awakened reveal effect
-  both already fire correctly for any number of consecutive `auto`
-  steps ahead of a `wait` step - Scenes 1-2 already exercised 3-4 auto
-  steps in a row, and this task's own verification confirms the
-  visuals riding along with them (travel animation, Awakened preview)
-  need no tutorial-specific plumbing regardless of how many `auto`
-  steps precede a `wait`.
-- `finishScene()`'s advance-or-fallback logic, the `syncPendingWaitForCurrentStep`/
-  `scheduleNextIfAuto` sequencing, and the `{ kind: 'handCard' }`
-  lock/pointer/`applyTutorialLock` path all needed zero changes again -
-  the fourth scene in a row to confirm this same core machinery is
-  fully general.
+- `{ kind: 'handCard' }`/`applyTutorialLock` now confirmed to work
+  identically well across every hand-legality branch this project
+  has (leading, required-suit-follow, and now off-suit/facedown) -
+  a future scene needing to hard-lock a single card commit, regardless
+  of which legality branch produces it, needs no new infrastructure.
+- The `actionButton` `TutorialLock`/`GuidePointerTarget` variant
+  remains genuinely unimplemented and, per this task's own
+  investigation, is NOT needed for any single-card-commit moment - it
+  would only make sense for a guided action that isn't really "pick a
+  card" at all (a bare confirm with no card selection involved, per
+  its own doc comment in `tutorialTypes.ts` - most likely Scene 6's
+  delegate-selection confirm, if that turns out to need it).
 
-**Scene-4-specific, won't transfer as-is:**
-- `TUTORIAL_SCENE_4`'s own deal (the specific YogSothoth-10 substitution,
-  the 4-card local hand) is this scene's exact authored content.
+**Scene-5-specific, won't transfer as-is:**
+- `TUTORIAL_SCENE_5`'s own deal (the specific off-suit, no-pair hand)
+  is this scene's exact authored content.
 - The still-reserved `delegateTo` lock / plain `seat` pointer variants
   remain untouched - Scene 6 (Double, delegate, and winning the game)
   is the design doc's own next place those would actually get used.
 
 ## Open questions
 
-None arose that needed asking - the task's own hard constraints (local
-player last to act, their own Dormant Deity Card in hand, a real 10
-landing before their turn via three `auto` steps) fully specified the
-deal's shape; only the exact card/rank choices needed authoring.
+None arose that needed asking - this task's own investigation question
+(which TutorialLock shape a facedown confirm needs) was fully
+resolved by tracing the real code and confirming via Playwright, per
+the task's own explicit instruction to investigate rather than assume.
 
 ## Known issues
 
 None. Verified via `npm run typecheck`, `npm run build`, and
-real-gameplay Playwright runs on the final build: the three auto-plays
-genuinely animate (confirmed via the temporary in-flight tween
-counter, not just visual impression), the real Awakened effect fires
-on the local player's own card at the correct moment (confirmed via
-the temporary `awakenedHandCardIds` exposure plus a screenshot showing
-the swapped art), only the Powered Deity Card is tappable at the
-guided step (a wrong-card tap is fully inert), and the trick resolves
-as a real win via rule evaluation (the real redistribution phase opens
-for the local player as winner/distributor, never faked). Console
-clean on boot aside from the same pre-existing, unrelated ICE-server
-fetch failure present in this sandboxed test environment on plain
-boot too.
+real-gameplay Playwright runs on the final build: the real legality
+computation offers only `facedownSingle` (never a Double) for this
+hand, only the correct action is tappable at every stage (a wrong-card
+tap is fully inert), the played card genuinely carries `kind: 'offsuit'`
+in real game state (confirmed via a temporary debug hook, removed
+before commit), and the local player's own screen correctly shows it
+plainly (per the pre-existing, correct "you see your own plays"
+masking rule) rather than as a false-positive card-back. Console clean
+on boot aside from the same pre-existing, unrelated ICE-server fetch
+failure present in this sandboxed test environment on plain boot too.
 
 ## Next proposed step
 
-Scene 5 is next (per suits-mp-tutorial-design.md's Section 3) - Off-suit
-(facedown). A new forced scenario where the player's hand is engineered
-so a Double is genuinely unavailable (no matching-rank pair), making
-facedown their only legal off-suit option - teaching the concept
-without needing to restrict/hide a Double alternative. This is the
-first scene to exercise the `facedownSingle` play type
-(`handLegality.ts`'s own off-suit selection state machine) - worth
-checking during that task whether the existing `{ kind: 'handCard' }`
-lock/`applyTutorialLock` still cover it cleanly (locking a facedown
-commit is still "one specific card, hard-locked", so it likely does),
-or whether the `actionButton` `TutorialLock`/`GuidePointerTarget`
-variant (still reserved, never implemented) turns out to be the
-better fit for a facedown confirm that isn't really "pick a card" so
-much as "commit the one already-selected off-suit option."
+Scene 6 is next (per suits-mp-tutorial-design.md's Section 3) - Double,
+delegate, and winning the game, the tutorial's final scene. It combines
+three concepts in one hand (playing a Double, delegating to a named
+ally, and the ally's own scripted redistribution completing the local
+player's Deity Suit for real) and triggers the REAL end-game sequence
+(Local Victory into the universal Victory Screen, appended with
+"Tutorial Complete" per the design doc). This is the first scene likely
+to actually need the still-reserved `delegateTo` `TutorialLock` and
+`seat` `GuidePointerTarget` variants (for the delegate-selection step)
+- worth tracing `chooseDelegate`'s real flow the same way this task
+traced the facedown flow before assuming either variant's exact shape
+is right.
