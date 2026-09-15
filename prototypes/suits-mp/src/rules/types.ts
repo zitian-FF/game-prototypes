@@ -94,8 +94,20 @@ export interface WinInfo {
   // mechanic entirely - that was removed along with trick-40 itself, per
   // GDD v2's "No Trick Limit". This 'stalemate' is GDD's Standard Win
   // Condition simultaneous-completion case, freshly implemented.)
-  readonly reason: 'suit' | 'stalemate';
+  // 'quit': a player voluntarily ended the game for everyone via the
+  // Return to Menu flow (see rules/engine.ts's endGame()) - not a real
+  // win/loss outcome at all, never routes through Local Victory/the
+  // Victory Screen (see ui/renderGameView.ts's dispatch on `reason`).
+  readonly reason: 'suit' | 'stalemate' | 'quit';
   readonly detail: string;
+  // Only set when reason === 'quit' - which player ended the game. Real
+  // display-name resolution for this id always happens client-side, the
+  // same way every other identity is resolved from MaskedState (see
+  // ui/renderGameView.ts's playerLabelFor) - PlayerState.name here is
+  // only ever the generic seat label ("Player N"), never a real chosen
+  // display name, so there is nothing more useful to store at this layer
+  // than the raw id.
+  readonly quitterId?: PlayerId;
 }
 
 // Dev-only hook (see rules/debugScenarios.ts) for forcing a specific deal so

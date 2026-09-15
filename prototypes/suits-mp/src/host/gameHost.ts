@@ -2,6 +2,7 @@ import {
   advanceBlocker,
   chooseDelegate,
   currentPlayerId,
+  endGame,
   initGame,
   playCard,
   proceedFromTrickResult,
@@ -84,6 +85,18 @@ export function applyAction(state: GameState, fromSlot: PlayerId, action: Client
           cardIds: a.cards,
         }));
         next = redistribute(state, gifts);
+        break;
+      }
+      case 'endGame': {
+        // Deliberately no turn/phase precondition - any of the 4 players
+        // may end the game at any time, unlike every other action here.
+        // Only rejected once the game is already over, so a stray
+        // double-confirm (e.g. two clients racing to quit) doesn't throw
+        // or overwrite an already-settled winner.
+        if (state.phase === 'gameOver') {
+          return { state, ok: false, error: 'game is already over' };
+        }
+        next = endGame(state, fromSlot);
         break;
       }
     }

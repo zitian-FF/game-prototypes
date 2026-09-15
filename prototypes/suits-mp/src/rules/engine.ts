@@ -308,6 +308,26 @@ export function checkSuitCompletion(players: readonly PlayerState[]): WinInfo | 
   return { team: winningTeam, reason: 'suit', detail };
 }
 
+// A player voluntarily ending the game for everyone (net/actions.ts's
+// 'endGame' ClientAction) - the only WinInfo-producing path that isn't
+// triggered by real play completing. Reuses the exact same 'gameOver'
+// phase/`winner` transition every other WinInfo already relies on (see
+// checkSuitCompletion above) rather than a separate "session ended"
+// state machine - any client already reacting to `state.winner` becoming
+// non-null (ui/renderGameView.ts) picks this up for free, branching only
+// on `reason` to show a distinct screen instead of Local Victory/the
+// Victory Screen. Callable from any phase - a deliberate quit isn't
+// gated behind whose turn it is the way playCard/chooseDelegate/
+// redistribute are; host/gameHost.ts's applyAction (the only caller) is
+// the one place that decides who may call this and when.
+export function endGame(state: GameState, quitterId: PlayerId): GameState {
+  return {
+    ...state,
+    phase: 'gameOver',
+    winner: { team: null, reason: 'quit', detail: `${state.players[quitterId].name} ended the game.`, quitterId },
+  };
+}
+
 // --- Trick result -> redistribution handoff -------------------------------
 
 export function proceedFromTrickResult(state: GameState): GameState {

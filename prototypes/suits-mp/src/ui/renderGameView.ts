@@ -18,7 +18,20 @@ import type { FanConfig } from './cardFan';
 import { drawCard } from './cardComponent';
 import type { CardDimensions, CardFace, CardStyle } from './cardComponent';
 import { playAwakenedEffect } from './cardArt';
-import { closeMenu, closeRedistLog, closeRules, closeVictory, openMenu, openRedistLog, openRules, openVictory } from '../dom/domUiStore';
+import {
+  closeEndGameConfirm,
+  closeGameEnded,
+  closeMenu,
+  closeRedistLog,
+  closeRules,
+  closeVictory,
+  openEndGameConfirm,
+  openGameEnded,
+  openMenu,
+  openRedistLog,
+  openRules,
+  openVictory,
+} from '../dom/domUiStore';
 import type { RedistLogEntry, VictoryIdentity } from '../dom/domUiStore';
 import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
 import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
@@ -249,7 +262,7 @@ function freshViewState(): ViewState {
   return { selectedCards: [], redistributeAssignment: {}, delegateChoice: null };
 }
 
-export type OverlayKind = 'none' | 'log' | 'rules' | 'redistLog' | 'menu';
+export type OverlayKind = 'none' | 'log' | 'rules' | 'redistLog' | 'menu' | 'endGameConfirm';
 export type SortMode = 'suit' | 'rank';
 
 // UI preferences that must survive every masked-state push from *any*
@@ -400,9 +413,10 @@ export function renderGameView(
   state: MaskedState,
   sendAction: (action: ClientAction) => void,
   ui: PersistentUIState,
+  isMultiplayer: boolean,
   tutorial?: TutorialHudConfig | null,
 ): void {
-  renderWithView(scene, container, state, sendAction, freshViewState(), ui, tutorial);
+  renderWithView(scene, container, state, sendAction, freshViewState(), ui, isMultiplayer, tutorial);
 }
 
 // Cheap content fingerprint for `previousTrick` (at most 4 small entries) -
@@ -442,6 +456,7 @@ export function presentGameView(
   masked: MaskedState,
   sendAction: (action: ClientAction) => void,
   ui: PersistentUIState,
+  isMultiplayer: boolean,
   tutorial?: TutorialHudConfig | null,
 ): void {
   const key = previousTrickKey(masked);
@@ -473,7 +488,7 @@ export function presentGameView(
   }
 
   if (!justCompletedTrick) {
-    renderGameView(scene, container, masked, sendAction, ui, tutorial);
+    renderGameView(scene, container, masked, sendAction, ui, isMultiplayer, tutorial);
     // Double-win path for the "cards to collector" animation (see its own
     // doc comment below): the collector isn't known the instant a double
     // win's trick resolves - only once the winner's chosen delegate's
@@ -521,7 +536,7 @@ export function presentGameView(
     currentTurn: null,
     delegateChoices: null,
   };
-  renderGameView(scene, container, frozen, sendAction, ui, tutorial);
+  renderGameView(scene, container, frozen, sendAction, ui, isMultiplayer, tutorial);
 
   ui.pendingHoldMasked = masked;
 
@@ -548,7 +563,7 @@ export function presentGameView(
       const descriptor = prepareCollectAnimation(latest, oldHandIds, ui);
       if (descriptor) {
         ui.pendingHoldMasked = null;
-        renderGameView(scene, container, latest, sendAction, ui, tutorial);
+        renderGameView(scene, container, latest, sendAction, ui, isMultiplayer, tutorial);
         finishCollectAnimation(scene, container, descriptor, ui);
       }
     });
@@ -557,7 +572,7 @@ export function presentGameView(
   scene.time.delayedCall(tune.trickResultDwellMs, () => {
     const latest = ui.pendingHoldMasked;
     ui.pendingHoldMasked = null;
-    if (latest) renderGameView(scene, container, latest, sendAction, ui, tutorial);
+    if (latest) renderGameView(scene, container, latest, sendAction, ui, isMultiplayer, tutorial);
   });
 }
 
@@ -788,10 +803,11 @@ function renderWithView(
   sendAction: (action: ClientAction) => void,
   view: ViewState,
   ui: PersistentUIState,
+  isMultiplayer: boolean,
   tutorial?: TutorialHudConfig | null,
 ): void {
   container.removeAll(true);
-  const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui, tutorial);
+  const rerender = (): void => renderWithView(scene, container, state, sendAction, view, ui, isMultiplayer, tutorial);
   // Reset for this pass - see PersistentUIState.cardsAnimatingThisRender's
   // own doc comment for why the actual bringToTop happens once, at the
   // very end of this function, instead of at each animation's own point
@@ -891,6 +907,11 @@ function renderWithView(
         rerender();
       },
       () => {
+        closeMenu();
+        ui.overlay = 'endGameConfirm';
+        rerender();
+      },
+      () => {
         ui.overlay = 'none';
         rerender();
       },
@@ -898,6 +919,52 @@ function renderWithView(
     return;
   }
   closeMenu();
+
+  // Return to Menu's warning confirmation (see dom/EndGameConfirmModal.tsx) -
+  // same DOM-overlay treatment as Rules/Redist Log/Menu above. Confirming
+  // does one of two genuinely different things depending on `isMultiplayer`
+  // (threaded in from whichever scene called presentGameView - HostGameScene
+  // passes `actions !== null`, PlayerGameScene always `true`, TutorialScene
+  // always `false`):
+  //  - Real multiplayer (host or peer): sends the real `endGame` action
+  //    through the exact same `sendAction` every other action already uses -
+  //    no separate wire plumbing. `ui.overlay` is reset to 'none' *before*
+  //    sending, never followed by this closure's own `rerender()` call: for
+  //    the host, sendAction's call chain is entirely synchronous
+  //    (HostGameScene.applyAndBroadcast -> broadcastAll -> a nested
+  //    presentGameView call using this exact same `ui`, which by then
+  //    already sees the real new state with `winner.reason === 'quit'` and
+  //    `ui.overlay === 'none'`) - a `rerender()` call here would re-run with
+  //    this closure's own *stale* `state` (still no winner) and stomp that
+  //    nested render's correct result. For a peer, sendAction only posts
+  //    over the network; the confirm dialog closes immediately (via
+  //    `closeEndGameConfirm()` below) and the Game Ended screen appears
+  //    once the host's own broadcasted response actually arrives and
+  //    triggers a real render, same latency any other action already has.
+  //  - Single Player/Tutorial: no network action exists to send at all -
+  //    navigates straight back to Landing, identical to every other local
+  //    "Back to Menu"/Quit in this codebase.
+  if (ui.overlay === 'endGameConfirm') {
+    hideGameOverlay();
+    openEndGameConfirm(
+      isMultiplayer,
+      () => {
+        ui.overlay = 'none';
+        closeEndGameConfirm();
+        if (isMultiplayer) {
+          sendAction({ action: 'endGame' });
+        } else {
+          navigateToLandingMenu(scene);
+        }
+      },
+      () => {
+        ui.overlay = 'none';
+        rerender();
+      },
+    );
+    return;
+  }
+  closeEndGameConfirm();
 
   if (ui.overlay !== 'none') {
     hideGameOverlay();
@@ -913,6 +980,24 @@ function renderWithView(
     if (state.winner.reason === 'stalemate') {
       hideGameOverlay();
       renderGameOver(scene, state, rect, text, button);
+      return;
+    }
+    // A player voluntarily ended the game (Return to Menu, confirmed) -
+    // never Local Victory/the Victory Screen, since nobody completed a
+    // suit. Every connected client, including the quitter's own, lands
+    // here identically - reusing playerLabelFor, the same real identity
+    // resolution the Victory Screen and Redistribution Log already use,
+    // for the quitter's display name. Called every render pass while this
+    // state persists (same idempotent-redraw precedent as the stalemate
+    // stub above), not gated behind a one-shot flag - there is no
+    // animated sequence here to avoid re-triggering.
+    if (state.winner.reason === 'quit') {
+      hideGameOverlay();
+      const quitterLabel = state.winner.quitterId ? playerLabelFor(state, state.winner.quitterId) : 'a player';
+      openGameEnded(quitterLabel, () => {
+        closeGameEnded();
+        navigateToLandingMenu(scene);
+      });
       return;
     }
     // A real suit-completion win: fires the victory sequence exactly
