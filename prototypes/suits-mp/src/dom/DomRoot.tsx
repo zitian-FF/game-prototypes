@@ -3,7 +3,9 @@ import { RulesModal } from './RulesModal';
 import { RedistLogModal } from './RedistLogModal';
 import { MenuModal } from './MenuModal';
 import { VictoryModal } from './VictoryModal';
-import { closeMenu, closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
+import { EndGameConfirmModal } from './EndGameConfirmModal';
+import { GameEndedModal } from './GameEndedModal';
+import { closeEndGameConfirm, closeMenu, closeRedistLog, closeRules, getSnapshot, subscribe } from './domUiStore';
 import { LobbyFlow } from './lobby/LobbyFlow';
 import { getSnapshot as getLobbySnapshot, subscribe as subscribeLobby } from './lobby/lobbyUiStore';
 import { GameOverlay } from './overlay/GameOverlay';
@@ -31,12 +33,20 @@ export function DomRoot(): JSX.Element {
     menuOpen,
     onMenuRules,
     onMenuPreviousTrick,
+    onMenuReturnToMenu,
     closeMenu: onCloseMenu,
     victoryOpen,
     victoryTeamHeadline,
     victoryTrickNumber,
     victoryIdentities,
     onVictoryBackToMenu,
+    endGameConfirmOpen,
+    endGameConfirmIsMultiplayer,
+    onEndGameConfirm,
+    onEndGameCancel,
+    gameEndedOpen,
+    gameEndedQuitterLabel,
+    onGameEndedBackToMenu,
   } = useSyncExternalStore(subscribe, getSnapshot);
   const lobby = useSyncExternalStore(subscribeLobby, getLobbySnapshot);
   const gameOverlay = useSyncExternalStore(subscribeGameOverlay, getGameOverlaySnapshot);
@@ -65,6 +75,7 @@ export function DomRoot(): JSX.Element {
         <MenuModal
           onRules={onMenuRules}
           onPreviousTrick={onMenuPreviousTrick}
+          onReturnToMenu={onMenuReturnToMenu}
           onClose={() => {
             onCloseMenu();
             closeMenu();
@@ -79,6 +90,17 @@ export function DomRoot(): JSX.Element {
           onBackToMenu={onVictoryBackToMenu}
         />
       )}
+      {endGameConfirmOpen && (
+        <EndGameConfirmModal
+          isMultiplayer={endGameConfirmIsMultiplayer}
+          onConfirm={onEndGameConfirm}
+          onCancel={() => {
+            onEndGameCancel();
+            closeEndGameConfirm();
+          }}
+        />
+      )}
+      {gameEndedOpen && <GameEndedModal quitterLabel={gameEndedQuitterLabel} onBackToMenu={onGameEndedBackToMenu} />}
       {lobby.visible && (
         <LobbyFlow
           screen={lobby.screen}

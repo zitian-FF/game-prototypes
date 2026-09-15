@@ -193,6 +193,13 @@ export function buildMaskedState(
     redistribution,
     delegateChoices,
     redistributionLog,
-    winner: state.winner ? { team: state.winner.team, reason: state.winner.reason, detail: state.winner.detail } : null,
+    winner: state.winner
+      ? {
+          team: state.winner.team,
+          reason: state.winner.reason,
+          detail: state.winner.detail,
+          quitterId: state.winner.quitterId !== undefined ? toNetPlayerId(state.winner.quitterId) : undefined,
+        }
+      : null,
   };
 }

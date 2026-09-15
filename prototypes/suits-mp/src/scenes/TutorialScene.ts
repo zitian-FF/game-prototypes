@@ -167,7 +167,7 @@ export class TutorialScene extends Phaser.Scene {
 
   private render(): void {
     const masked = buildMaskedState(this.state, LOCAL_SLOT, {});
-    presentGameView(this, this.container, masked, (action) => this.onPlayerAction(action), this.uiState, {
+    presentGameView(this, this.container, masked, (action) => this.onPlayerAction(action), this.uiState, false, {
       lock: this.pendingWait?.lock ?? null,
       pointer: this.pendingWait?.pointer ?? null,
       lesson: this.pendingWait?.lesson ?? null,

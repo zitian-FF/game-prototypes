@@ -200,7 +200,7 @@ export class HostGameScene extends Phaser.Scene {
     const slot = fromNetPlayerId(entry.slot);
     const masked = buildMaskedState(this.state, slot, this.seatNames());
     if (entry.isHost) {
-      presentGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState);
+      presentGameView(this, this.container, masked, (action) => this.applyAndBroadcast(slot, action), this.uiState, this.actions !== null);
     } else if (this.actions) {
       // Structurally unreachable in Single Player mode: its roster is only
       // ever the host plus bots, both handled above.

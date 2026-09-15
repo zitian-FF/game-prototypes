@@ -72,7 +72,7 @@ export class PlayerGameScene extends Phaser.Scene {
         loadingHidden = true;
         this.loading.hide();
       }
-      presentGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState);
+      presentGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState, true);
     };
 
     room.onPeerLeave = (peerId) => {

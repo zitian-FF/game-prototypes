@@ -31,7 +31,14 @@ export const PLAY_TYPE_TO_KIND: Record<PlayType, PlayKind> = {
 export type ClientAction =
   | { action: 'playCard'; playType: PlayType; cards: CardId[] }
   | { action: 'selectDelegate'; targetPlayer: NetPlayerId }
-  | { action: 'redistribute'; assignments: { toPlayer: NetPlayerId; cards: CardId[] }[] };
+  | { action: 'redistribute'; assignments: { toPlayer: NetPlayerId; cards: CardId[] }[] }
+  // Return to Menu, confirmed, in a real multiplayer session - any
+  // connected player (host or peer) may send this at any time; the host
+  // ends the game for everyone uniformly (see rules/engine.ts's
+  // endGame()), never abruptly disconnecting instead. Single Player and
+  // Tutorial never send this - both exit locally with no network action
+  // at all (see ui/renderGameView.ts's Return to Menu confirm handler).
+  | { action: 'endGame' };
 
 // --- Host -> peer masked game state -----------------------------------------
 // Always sent via a targeted per-peer send (see net/room.ts callers) -
@@ -111,6 +118,9 @@ export type NetWinInfo = {
   team: Team | null;
   reason: WinInfo['reason'];
   detail: string;
+  // Mirrors WinInfo.quitterId, translated to the wire's NetPlayerId shape
+  // at the host/mask.ts boundary - only set when reason === 'quit'.
+  quitterId?: NetPlayerId;
 };
 
 export type MaskedState = {

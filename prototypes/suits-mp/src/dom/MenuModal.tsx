@@ -11,6 +11,7 @@ import './modalChrome.css';
 export interface MenuModalProps {
   onRules: () => void;
   onPreviousTrick: () => void;
+  onReturnToMenu: () => void;
   onClose: () => void;
 }
 
@@ -57,7 +58,7 @@ function MenuButton({ label, hint, onClick }: { label: string; hint: string; onC
   );
 }
 
-export function MenuModal({ onRules, onPreviousTrick, onClose }: MenuModalProps): JSX.Element {
+export function MenuModal({ onRules, onPreviousTrick, onReturnToMenu, onClose }: MenuModalProps): JSX.Element {
   return (
     <div
       data-ui="menu-screen"
@@ -129,6 +130,7 @@ export function MenuModal({ onRules, onPreviousTrick, onClose }: MenuModalProps)
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <MenuButton label="Rules" hint="Full rules reference" onClick={onRules} />
             <MenuButton label="Previous Trick" hint="Review the last trick played" onClick={onPreviousTrick} />
+            <MenuButton label="Return to Menu" hint="Leave this game" onClick={onReturnToMenu} />
           </div>
         </div>
       </div>
