@@ -242,10 +242,14 @@ export function playCard(state: GameState, playerId: PlayerId, cardIds: CardId[]
 
 // A play's Dormant/Powered state, fixed at the moment it's made. `priorPlays`
 // must be exactly this trick's plays strictly before this one - see
-// playCard()'s call site, the only caller. Null for anything that isn't a
-// face-up Deity Card single/double (offsuit plays are always hidden and
-// scored 0, per GDD, so their contents never matter here).
-function computeDeityCardState(kind: PlayKind, cardIds: readonly CardId[], priorPlays: readonly TrickPlay[]): DeityCardState | null {
+// playCard()'s own call site. Null for anything that isn't a face-up Deity
+// Card single/double (offsuit plays are always hidden and scored 0, per
+// GDD, so their contents never matter here). Exported so host/botAI.ts can
+// build the same accurate hypothetical TrickPlay playCard() would produce
+// when checking whether a legal suit-card would currently win a trick -
+// reusing this instead of a second, bot-local copy of the Dormant/Powered
+// rule.
+export function computeDeityCardState(kind: PlayKind, cardIds: readonly CardId[], priorPlays: readonly TrickPlay[]): DeityCardState | null {
   if (kind === 'offsuit') return null;
   if (cardById(cardIds[0]).rank !== 'DeityCard') return null;
   const poweredByPriorTen = priorPlays.some((p) => p.cardIds.some((id) => cardById(id).rank === 10));
