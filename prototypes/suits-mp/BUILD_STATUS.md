@@ -1,283 +1,224 @@
 ## Current milestone
 
-Return to Menu: a warned confirmation dialog plus a uniform hard game-end
-for real multiplayer sessions. Any connected player (host or peer) can
-now voluntarily end a real multiplayer game for everyone via a new Menu
-option; Single Player and Tutorial get a lighter local-only quit with no
-networking at all. No mid-game equivalent of the lobby's Host
-Disconnected cascade existed before this task - this is genuinely new
-infrastructure, not a reuse of an existing "session ended" mechanism.
+Self-play simulation & logging infrastructure: a standalone Node script
+(`npm run simulate`) that runs full games with all four seats
+bot-controlled, driving the real, unmodified `rules/engine.ts` /
+`host/gameHost.ts` / `host/botAI.ts` directly - no Phaser, no rendering,
+no networking. Dev/analysis tool only, not reachable from the actual
+game UI. Used it to run a real 100-game verification batch, which
+surfaced a genuine, previously-unmeasured property of the current bot
+AI: a heavy-tailed trick-count distribution (see "Verification" below).
 
 ## What was implemented
 
-**Part 1 - Menu option (`dom/MenuModal.tsx`):** a new "Return to Menu"
-row alongside the existing Rules/Previous Trick options, wired through a
-new `onReturnToMenu` prop. Tapping it opens the confirmation dialog
-(Part 2) - it never acts immediately.
+**`scripts/simulate.ts`** - the actual simulation logic:
+- `playOneGame(gameIndex)`: calls `gameHost.createInitialState()`, then
+  loops `engine.activePlayerId(state)` -> `botAI.chooseBotAction(state,
+  slot)` -> `gameHost.applyAction(state, slot, action)` until `phase ===
+  'gameOver'`. This is exactly the same `applyAction`/`settleAutoPhases`
+  path a real peer's action goes through (see `host/gameHost.ts`'s own
+  doc comment: "used identically for real peer actions and for
+  host-local bot actions") - the simulation adds no separate rules path
+  of its own.
+- Per-game logging is built entirely from real engine output, not
+  fabricated commentary:
+  - **Tricks**: detected by reference-comparing `state.lastTrickResult`
+    before/after each `applyAction` call (a new object only appears
+    there when a trick actually completed) and logged straight from
+    that `TrickResult` - lead suit (derived from the first play's
+    card), each seat's play (card names/ids, kind, required suit,
+    Dormant/Powered state), winner, and whether it was won by Single or
+    Double. No per-play "why" is invented; `playType` in a bot's
+    `playCard` action is informational only per `host/botAI.ts`'s own
+    comment, so the logged `kind`/`requiredSuit`/`deityCardState` come
+    from the engine's own recorded `TrickPlay`, never from the action
+    the bot sent.
+  - **Redistributions**: logged directly from the bot's own
+    `{ action: 'redistribute', assignments }` at the moment it's
+    chosen, plus the distributor's real god/team from `state` - this is
+    the one place real decision-influence exists (Tier A self-interest,
+    see `host/botAI.ts`'s `chooseRedistributeAction`), so distributor
+    identity/god is logged clearly against the resulting assignments.
+  - **Delegate selections**: logged as the real winner/delegate pair
+    from a `selectDelegate` action - still uniform-random, so only the
+    outcome is recorded, no invented rationale.
+  - **Final result**: winning team, reason (`'suit'`/`'stalemate'`;
+    `'quit'` is handled in the type but can never actually occur in
+    self-play - bots never send `endGame`), trick count, and every
+    player's real god + team (via `rules/cards.ts`'s `GOD_TEAM`).
+- A safety cap (`MAX_ITERATIONS = 500000` actions) guards against a
+  genuine non-terminating cycle. If hit, that one game is logged as a
+  real, honest `incomplete: true` fact (not thrown as a crash) and the
+  batch continues - see "Verification" for why this cap exists and why
+  it's set where it is.
+- `aggregate(games)` computes: win rate by team, stalemate rate, win
+  rate by starting Lead Player **seat position** (0-3) - specifically
+  whether the team of whoever started as Lead Player in that seat won,
+  which is the structural signal the task asked for (does turn order
+  itself create an edge, independent of the random god/team deal) -
+  trick-count min/max/average/median, and total tricks played +
+  double-win share (falls out naturally from the trick log with no new
+  computation). Incomplete games are excluded from every rate/count
+  stat but reported as their own count.
+- Output: one JSON line per game (`scripts/simulate-output/run-
+  <timestamp>.jsonl`, full detail - every trick/redistribution/delegate
+  event) plus a one-line human-readable summary printed to stdout as
+  each game finishes, plus a final aggregate JSON written to both
+  `scripts/simulate-output/run-<timestamp>-summary.json` and stdout.
+  `scripts/simulate-output/` is gitignored - generated data, not
+  checked in.
 
-**Part 2 - Warning confirmation (`dom/EndGameConfirmModal.tsx`, new):**
-deliberately styled to read as a warning - a red/orange accent
-(`oklch(0.80 0.14 25)`, the same hue family already used for the lobby's
-own `connFailed` error screen), a `⚠` glyph, and a two-button
-Cancel/Confirm layout - distinct from the game's normal gold/teal
-Rules/Menu/RedistLog chrome. Copy branches on a new `isMultiplayer`
-flag threaded all the way from whichever scene is rendering (see
-below): real multiplayer gets "This ends the game for every player, not
-just you. This cannot be undone." with a "End Game for Everyone" confirm
-label; Single Player/Tutorial get "Are you sure you want to quit?" with
-a plain "Quit" label, since the "ends it for everyone" wording would
-simply be untrue there.
+**`scripts/run-simulate.mjs`** - a thin launcher. `simulate.ts` imports
+the game's real sources using the same extensionless, bundler-resolved
+TS imports those files already use everywhere else in the repo (e.g.
+`from './cards'`), so it's loaded through Vite's own SSR module graph
+(`createServer({ configFile: false, server: { middlewareMode: true } })`
++ `server.ssrLoadModule(...)`) rather than adding a TS-execution
+package (`tsx`/`ts-node`) as a new dependency just for this one script -
+Vite is already a project dependency and already knows how to resolve
+and transform these exact files, since it's the same resolution the
+real browser build uses.
 
-**Part 3 - Real multiplayer hard end:**
-- `net/actions.ts`: a new `{ action: 'endGame' }` `ClientAction` variant
-  - flows through the exact same wire mechanism every other action
-  already uses (`sendAction`/`room.makeAction<ClientAction>`), no new
-  plumbing needed.
-- `rules/types.ts`: `WinInfo.reason` extended to `'suit' | 'stalemate' |
-  'quit'`, plus a new `quitterId?: PlayerId` field (only set for
-  `'quit'`). `net/actions.ts`'s `NetWinInfo` mirrors this with
-  `quitterId?: NetPlayerId` (translated at the host/mask.ts boundary via
-  `toNetPlayerId`, the same PlayerId->NetPlayerId crossing every other
-  identity field in `MaskedState` already goes through).
-- `rules/engine.ts`: a new `endGame(state, quitterId)` function, placed
-  right after `checkSuitCompletion` - the only other `WinInfo`-producing
-  function. Sets `phase: 'gameOver'` and `winner: { team: null, reason:
-  'quit', detail, quitterId }`, reusing the exact same transition every
-  other win already relies on rather than a separate "session ended"
-  state machine. Callable from any phase - a deliberate quit isn't
-  gated behind whose turn it is.
-- `host/gameHost.ts`: a new `case 'endGame'` in `applyAction`'s switch,
-  with no turn/phase precondition (any of the 4 players may end the
-  game at any time) except rejecting an already-`'gameOver'` state (so
-  a stray double-confirm race doesn't throw or overwrite an
-  already-settled winner).
-- `host/mask.ts`: `buildMaskedState`'s `winner` field now also carries
-  the translated `quitterId`.
-- This works identically whether the quitter is the host or a peer with
-  **no special-casing anywhere**: `HostGameScene.applyAndBroadcast` is
-  already the single path both a real peer's network message and the
-  host's own local UI action go through (see `sendMaskedStateTo`'s
-  `entry.isHost` branch calling `applyAndBroadcast` in-process vs. a
-  peer's message arriving over the wire) - `endGame` needed nothing
-  extra to "know" who called it and broadcast to everyone correctly.
-  There is also no explicit `room.leave()`/teardown call for the host
-  to add: `HostGameScene`/`PlayerGameScene` never explicitly leave the
-  Trystero room on a normal win either (confirmed by reading both
-  files) - the graceful part is entirely that the real state broadcast
-  (`broadcastAll()`) completes synchronously as part of processing the
-  action, strictly *before* anyone (including the quitter) ever
-  navigates away - navigation only happens later, when a client taps
-  the Game Ended screen's own Back to Menu button, by which point the
-  broadcast has already reached every peer regardless of what the
-  quitter's own client does next.
+**Wiring**: `package.json` gained `"simulate": "node
+scripts/run-simulate.mjs"`. Root `tsconfig.json`'s `include` gained
+`"scripts"` so `scripts/simulate.ts` is actually type-checked by `npm
+run typecheck` (previously only `prototypes`/`vite.config.ts`/`env.d.ts`
+were roots - `scripts/*.js` files were never type-checked before this
+and still aren't, since `allowJs` is off; only the new `.ts` file is
+affected). `.gitignore` gained `scripts/simulate-output/`.
 
-**Part 4 - Game Ended screen (`dom/GameEndedModal.tsx`, new):** a
-deliberately much simpler screen than the Victory Screen - "Game
-Ended" / "The game has been ended by `<name>`." / a single Back to Menu
-button, reusing the exact same gold clipped-button chrome as
-VictoryModal/TutorialCompleteModal. Wired into `ui/renderGameView.ts`'s
-existing `if (state.winner)` dispatch as a new `reason === 'quit'`
-branch, checked *before* the `'suit'` branch reaches
-`startVictorySequence` - never triggers Local Victory or the Victory
-Screen. The quitter's display name is resolved via `playerLabelFor`,
-the exact same real identity resolution the Victory Screen and
-Redistribution Log already use (including its existing "(You)" suffix
-when the viewer is the quitter themself) - no new name-lookup mechanism
-was built. Called on every render pass while this state persists (same
-idempotent-redraw precedent as the pre-existing stalemate stub), not
-gated behind a one-shot flag - there's no animated sequence here that
-would need one.
-
-**Part 5 - Local exit (Single Player/Tutorial):** the confirm handler
-checks the new `isMultiplayer` flag; when false, it calls the same
-private `navigateToLandingMenu(scene)` this file already uses for every
-other "Back to Menu"/Quit action, with **no** `sendAction` call at all
-- confirmed via Playwright that no network-shaped request (TURN/relay/
-ICE) fires when a Single Player or Tutorial session is quit this way.
-
-## Threading `isMultiplayer` through the render pipeline
-
-`presentGameView`/`renderGameView`/`renderWithView` all gained a new
-required `isMultiplayer: boolean` parameter (placed before the existing
-optional `tutorial` param, so every call site must pass it explicitly -
-this is real, correctness-affecting behavior, not a tutorial-style
-"zero effect if omitted" parameter). Every call site was updated to
-pass the right value:
-- `HostGameScene.ts`: `this.actions !== null` - true for a real Host
-  session (even if no peer has joined yet, since Single Player is the
-  only path that ever passes `actions: null`), false for Single Player.
-- `PlayerGameScene.ts`: always `true` - a peer only exists in real
-  multiplayer.
-- `TutorialScene.ts`: always `false`.
-
-The new `'endGameConfirm'` `OverlayKind` slots into the existing
-Rules/RedistLog/Menu overlay-branch chain in `renderWithView`, in the
-same "check this kind, `return`, otherwise fall through to `closeX()`"
-shape every other overlay kind already uses. The one deliberate
-divergence from that shared pattern: the CONFIRM callback (not Cancel)
-never calls its own `rerender()` after sending the real `endGame`
-action - see that branch's own doc comment in `ui/renderGameView.ts`
-for why: for the host, `sendAction` is entirely synchronous
-(`applyAndBroadcast` -> `broadcastAll` -> a nested `presentGameView`
-call using the same `ui` object, which by then already reflects the
-real new state) - an extra `rerender()` afterward would re-run with
-*this* closure's own stale `state` (still no winner) and stomp the
-nested render's correct result. `ui.overlay` is still reset to `'none'`
-*before* sending, so whichever render actually happens next (the host's
-nested synchronous one, or a peer's eventual async one once the host's
-broadcast arrives) correctly falls through past the overlay checks into
-the real `state.winner` dispatch.
+No game logic, bot AI, or UI file was touched - confirmed by `git diff
+--stat` showing only new files under `scripts/` plus the three
+wiring-only edits above.
 
 ## Verification
 
-`npm run typecheck` and `npm run build` both pass cleanly.
+`npm run typecheck` and `npm run build` both pass cleanly (build output
+is unaffected - `scripts/simulate.ts` isn't part of any Vite build
+entry, confirmed by comparing the build's asset list before/after).
 
-Real-gameplay Playwright verification, to the extent this sandboxed
-environment allows (see the explicit limitation below):
+Before trusting the tool's own output, cross-checked one small real
+game's JSONL log entry by hand against the engine's actual rules:
+trick 1's leader held `YogSothoth-2` and opened with it (the forced
+trick-1-opener rule); required suits followed the fixed cycle
+(YogSothoth -> Cthulhu -> ShubNiggurath -> Nyarlathotep) exactly;
+manually recomputing `scoreOf` for all four logged plays picked the
+same `winnerId` the log recorded; the resulting redistribution's
+per-recipient card counts matched each contributor's actual play size.
+The tool's logged facts match the real engine's real computation.
 
-- **Single Player quit**: start a game, open Menu, Return to Menu shows
-  the local-only wording ("Quit to Menu?"/"Are you sure..."), Cancel
-  correctly leaves the game untouched (board still fully interactive),
-  confirming navigates straight to Landing with **no** Game Ended
-  screen and **no** TURN/relay/ICE network request observed (only an
-  ordinary image-asset fetch was seen during the whole flow).
-- **Tutorial quit via the new Menu option** (distinct from Tutorial's
-  own pre-existing, unconfirmed top-bar Quit button, which this task
-  never touched): same local-only wording, same direct exit to Landing,
-  no networking.
-- **A real "Host" multiplayer session, host quitting**: hosted a real
-  room (not Single Player - `data.actions` genuinely non-null),
-  filled all 3 remaining seats with bots, started the game. Return to
-  Menu correctly shows the multiplayer warning wording ("This ends the
-  game for every player..."/"End Game for Everyone"). Cancel leaves the
-  game running. Confirming runs the real `endGame` action through the
-  real `applyAction`/`gameHost.ts` pipeline, and the resulting Game
-  Ended screen correctly reads "The game has been ended by HostQuitter
-  (You)." - the real quitter name, through the real `playerLabelFor`
-  resolution, including its existing "(You)" suffix. Back to Menu
-  correctly returns to Landing, and starting a fresh session afterward
-  shows no stray confirm/Game-Ended modal state left over.
-- Console clean on boot throughout (aside from the pre-existing,
-  unrelated ICE-server-fetch/cert noise already present on plain boot
-  in this sandboxed test environment).
+**Real 100-game verification run** (`npm run simulate -- --games=100`,
+completed in ~4s):
 
-**Explicit limitation - could not test literal cross-browser peer
-transport.** A direct connectivity probe (two separate Playwright
-browser contexts, one hosting, one joining with the real room code)
-confirmed the sandbox's outbound proxy rejects the WebSocket tunnel to
-every one of the pinned public Nostr signaling relays
-(`relay.damus.io`, `nos.lol`, etc.) with "Establishing a tunnel via
-proxy server failed" / "connect_rejected (organization policy)" - so
-two real peers genuinely cannot discover each other in this
-environment, regardless of the code under test. This means the "a peer
-quits" and "a peer receives the host's broadcast" halves of the
-verification requirement could not be exercised with an actual second
-network client. What was verified instead, to close that gap as much
-as possible without real transport:
-- The **host-side** pipeline was verified completely end-to-end (engine
-  -> `gameHost.applyAction` -> `HostGameScene.applyAndBroadcast` ->
-  `host/mask.ts`'s `quitterId` translation -> `presentGameView` ->
-  `renderGameView.ts`'s new branches -> `GameEndedModal`) via a real
-  "Host" session, since a host's own screen renders through this exact
-  same pipeline regardless of whether any peer is actually connected.
-- The **peer-side** rendering code is not a separate implementation at
-  all: `PlayerGameScene.ts`'s `actions.state.onMessage` handler calls
-  the *exact same* `presentGameView` function the host's own local
-  render already uses, with the *exact same* masked-state shape
-  (confirmed correct above, `quitterId` included) as its only input -
-  there is no peer-specific branch anywhere in this feature. A peer
-  receiving that payload over a working connection would exercise
-  identical, already-verified code; the only untested link is the raw
-  network delivery itself, which is an environmental constraint of this
-  sandbox, not a property of the code.
-- `sendAction` for a peer (`(action) => void actions.gameAction.send(action)`,
-  `PlayerGameScene.ts`) already forwards *any* `ClientAction` generically
-  - confirmed by reading the code, this needed no change at all to
-  carry the new `{ action: 'endGame' }` variant, the same way it never
-  needed special-casing for `playCard`/`selectDelegate`/`redistribute`.
+```json
+{
+  "totalGamesRequested": 100,
+  "completedGames": 100,
+  "incompleteGames": 0,
+  "winsByTeam": { "Chaos": 52, "Cosmos": 48 },
+  "stalemates": 0,
+  "winRateByTeam": { "Chaos": 0.52, "Cosmos": 0.48 },
+  "stalemateRate": 0,
+  "winRateByStartingLeaderPosition": {
+    "0": { "games": 26, "leaderTeamWins": 17, "stalemates": 0, "leaderTeamWinRate": 0.6538 },
+    "1": { "games": 25, "leaderTeamWins": 9,  "stalemates": 0, "leaderTeamWinRate": 0.36 },
+    "2": { "games": 31, "leaderTeamWins": 15, "stalemates": 0, "leaderTeamWinRate": 0.4839 },
+    "3": { "games": 18, "leaderTeamWins": 11, "stalemates": 0, "leaderTeamWinRate": 0.6111 }
+  },
+  "trickCount": { "min": 22, "max": 13088, "average": 977.07, "median": 119 },
+  "totalTricksPlayed": 97707,
+  "doubleWinTrickShare": 0.0402
+}
+```
 
-If real network access to these relays is available in a different
-environment (or once mp-net/mp-console's own TURN worker is reachable),
-re-running the two-context connectivity probe in
-`scripts/`-adjacent scratch space (not committed - see this session's
-own scratchpad) would close this gap for real; nothing about the
-implementation itself is contingent on that follow-up.
+Sanity read: win rate is close to even (52/48, not lopsided), no
+crashes or rejected bot actions across ~98k logged tricks, every game
+reached a real `gameOver`. The per-seat `leaderTeamWinRate` spread
+(36%-65%) is a real, if noisy, structural signal worth more games to
+firm up - not something this task is scoped to act on, just to surface.
+
+**Genuine finding, not a script bug**: trick counts are extremely
+heavy-tailed. Most games finish under ~250 tricks, but this 100-game
+batch alone produced five games over 3000 tricks (up to 13088), and a
+smaller side-probe (30 games, 300k-action cap) found one game running
+108k+ actions / 21566 tricks before finishing - still a real `gameOver`,
+never a true infinite loop (0/30 hit the cap even at 300k). This is
+real behavior of the current bot AI under the GDD's "No Trick Limit"
+rule: only redistribution has any self-interest logic (Tier A); card
+play and delegate choice are uniform-random, so nothing pushes a game
+toward completing a suit, and by chance a game can cycle for a very
+long time before one happens to accumulate. The simulation's
+`MAX_ITERATIONS` safety cap (500000 actions) exists only to catch a
+genuine non-terminating cycle, comfortably above every real duration
+observed; hitting it would be logged as `incomplete: true` (a real
+fact) rather than crashing the batch, but this never happened across
+either verification run.
+
+No game hung or threw past a real cause during verification; the one
+early crash while developing this script (a 10000-action cap tripping
+on a legitimately long game, not a stuck loop) was root-caused via the
+side-probe above before raising the cap - see "Known issues" for why
+this is flagged as a real design signal rather than closed out as
+"just a script bug."
 
 ## Key technical decisions
 
-- `WinInfo`/`NetWinInfo` gained a `quitterId` field rather than baking a
-  display name into `detail` at the engine layer - the engine only ever
-  knows the generic seat name (`PlayerState.name`, always "Player N"),
-  never a real chosen display name (a pre-existing characteristic of
-  this codebase, confirmed by reading `checkSuitCompletion`'s own
-  `detail` strings, which have the same limitation). Storing the raw id
-  and resolving it client-side via the existing `playerLabelFor` is the
-  same pattern the Victory Screen and Redistribution Log already use
-  for every other identity shown in this game - not a new mechanism.
-- The Game Ended screen is called unconditionally on every render pass
-  once `state.winner.reason === 'quit'`, not gated behind a
-  `PersistentUIState` one-shot flag the way `victorySequenceStarted`
-  gates the animated Victory sequence - there's no animation here to
-  avoid re-triggering, so the simpler "redraw every time, same as the
-  pre-existing stalemate stub" approach was enough.
-- The confirm handler's asymmetric `rerender()` behavior (called on
-  Cancel, deliberately not called on Confirm) is the one place this
-  task's own render-pipeline change doesn't mirror the Rules/RedistLog/
-  Menu close-button pattern exactly - see its own doc comment in
-  `ui/renderGameView.ts` and this file's "Threading isMultiplayer"
-  section above for the full reasoning (avoiding a stale-state render
-  stomping the host's own synchronous nested re-render).
+- Loaded via Vite's `ssrLoadModule` rather than adding `tsx`/`ts-node`
+  as a new devDependency - per CLAUDE.md's stack-discipline rule ("do
+  not add dependencies to solve problems the stack already solves"),
+  and Vite already resolves/transforms these exact extensionless TS
+  imports for the real browser build, so this reuses proven resolution
+  rather than introducing a second one.
+- Trick/redistribution/delegate logging reads its facts from the
+  engine's own recorded state (`TrickResult`, the bot's own emitted
+  `ClientAction`) rather than re-deriving or annotating with invented
+  reasoning - per the task's explicit "real facts only" requirement,
+  since card-play choice and delegate choice have no real decision
+  logic to describe yet.
+- The safety cap fails soft (marks one game `incomplete`, continues the
+  batch) rather than hard (throws, kills the run) - a single
+  pathological game in a large batch shouldn't discard every other
+  game's real data, and a cap-hit is itself a fact worth keeping, not
+  an error to hide.
+- `winRateByStartingLeaderPosition` is keyed by seat **position**
+  (0-3), not by god/team - team assignment is randomized every game, so
+  only seat position is the fixed, comparable axis across games for
+  asking "does turn order create a structural edge."
 
-## What's general vs. specific to this feature
+## What's general vs. specific
 
-**General, reusable as-is:**
-- The `isMultiplayer` parameter now threaded through the whole render
-  pipeline is available to any future feature that needs to distinguish
-  a real multiplayer session from Single Player/Tutorial at render
-  time - this was the first feature to need that distinction.
-- `WinInfo.reason`'s three-way union and the `quitterId` field pattern
-  (store a raw id at the engine layer, resolve a display name
-  client-side) is the template for any future non-`'suit'`/`'stalemate'`
-  ending this game might eventually need.
+**General, reusable as-is:** the Vite-`ssrLoadModule` pattern for
+running any pure-logic TS module from this repo as a plain Node script
+without a new TS-execution dependency; the `run-simulate.mjs` launcher
+itself has nothing suits-mp-specific in it.
 
-**Specific to this feature:**
-- `EndGameConfirmModal`/`GameEndedModal` and their `domUiStore.ts`
-  entries are purpose-built for this one flow.
-- The asymmetric confirm-handler `rerender()` reasoning is specific to
-  this action's own synchronous-for-the-host call shape; a future
-  action that never ends the game this way likely doesn't need it.
+**Specific to this tool:** `scripts/simulate.ts`'s log shapes and
+aggregate stats are built around suits-mp's own `GameState`/`WinInfo`/
+`ClientAction` types and would need adapting (not reuse as-is) for any
+other prototype's own engine.
 
 ## Open questions
 
-None arose that needed asking - the task's own spec was explicit about
-every branch (multiplayer vs. local wording, host-vs-peer uniformity,
-what the Game Ended screen should and shouldn't trigger). The one
-finding worth flagging for whoever picks up networking work next:
-**this sandboxed environment cannot reach the public Nostr signaling
-relays at all** (outbound WebSocket tunnels are rejected by the proxy
-per organization policy) - any future task requiring genuine
-cross-browser multiplayer Playwright verification will hit this same
-wall and should plan around it (e.g., testing from an environment with
-real network access, or building a mock-transport test harness) rather
-than assuming it'll work.
+None arose that needed asking - the task's spec was explicit about
+scope (standalone script, not UI-reachable), what to log (real facts
+only, no fabricated reasoning), and what aggregates to compute.
 
 ## Known issues
 
-None in the shipped code, to the extent verified. The one known gap is
-the environmental one described above (cross-browser peer transport
-untestable in this sandbox) - not a defect in the implementation, which
-was reasoned through and verified as thoroughly as the environment
-allows.
+None in the shipped script. The heavy-tailed trick-count distribution
+described under Verification is not a bug in this tool or in the
+engine - it's a real, now-measured property of the current legal-random
++ Tier-A-only bot AI under "No Trick Limit," worth keeping in mind for
+whoever next works on bot AI (a smarter, suit-seeking bot would likely
+shorten this tail considerably) or on any future feature that assumes
+games stay short.
 
 ## Next proposed step
 
-If genuine multi-browser network access becomes available, re-run the
-peer-quit and host-quit-reaches-a-real-peer scenarios with two actual
-connected clients to close the one verification gap this task
-couldn't. Otherwise, the next natural mid-game infrastructure gap is
-the mid-game "Host disconnected" experience `scenes/PlayerGameScene.ts`
-still shows for an *unplanned* disconnect (a raw black Phaser overlay
-with no button, a dead end) - much more primitive than this task's own
-deliberate-quit flow, and worth bringing up to the same standard in a
-future task (the lobby-phase equivalent already has a real "Return to
-Main Menu" button; the mid-game one still doesn't).
+Now that this tool exists, natural follow-ups (not started, since this
+task was scoped to the tool itself): run a much larger batch (1000+
+games) to firm up the noisy per-seat win-rate signal seen in this
+100-game run; and once bot AI gains a Tier B (teammate-aware) or
+smarter card-play tier, re-run the same simulation to measure whether
+it shortens the heavy tail and shifts team win rates, using this same
+tool unmodified.

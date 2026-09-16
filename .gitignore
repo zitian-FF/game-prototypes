@@ -7,3 +7,4 @@ dist/
 public/
 prototypes/*/assets-src/
 prototypes/*/src/version.generated.ts
+scripts/simulate-output/
