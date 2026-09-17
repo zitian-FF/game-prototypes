@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { applyAction, createInitialState } from '../prototypes/suits-mp/src/host/gameHost';
 import { chooseBotAction } from '../prototypes/suits-mp/src/host/botAI';
+import { identifyFriendlyAlly } from '../prototypes/suits-mp/src/host/botTrust';
 import { activePlayerId } from '../prototypes/suits-mp/src/rules/engine';
 import { cardById, GOD_TEAM } from '../prototypes/suits-mp/src/rules/cards';
 import { fromNetPlayerId } from '../prototypes/suits-mp/src/net/netPlayerId';
@@ -56,6 +57,38 @@ interface DelegateLogEntry {
   readonly delegateId: PlayerId;
 }
 
+// Verification-only snapshot (host/botTrust.ts is not consumed by any
+// decision function yet - this exists purely to check, with real data,
+// whether the trust mechanism's "friendly" guess actually correlates with
+// real team membership). Computed once per game, from the FINAL state
+// (most accumulated evidence), using the exact same identifyFriendlyAlly
+// every one of the 4 seats would call for itself - this script additionally
+// knows each seat's real team (GOD_TEAM), which the bot itself never sees,
+// purely to grade the guess's accuracy from the outside.
+interface AllyGuessLogEntry {
+  readonly playerId: PlayerId;
+  readonly guessedFriendlyPlayer: PlayerId | null;
+  readonly guessedFriendlyPlayerDeity: God | null;
+  readonly actualTeammatePlayerId: PlayerId;
+  readonly correct: boolean;
+}
+
+function computeAllyGuesses(state: GameState): AllyGuessLogEntry[] {
+  return ([0, 1, 2, 3] as const).map((playerId) => {
+    const ownTeam = GOD_TEAM[state.players[playerId].god];
+    const actualTeammate = state.players.find((p) => p.id !== playerId && GOD_TEAM[p.god] === ownTeam);
+    if (!actualTeammate) throw new Error(`player ${playerId} has no teammate - GOD_TEAM pairing invariant violated`);
+    const guess = identifyFriendlyAlly(state, playerId);
+    return {
+      playerId,
+      guessedFriendlyPlayer: guess?.friendlyPlayer ?? null,
+      guessedFriendlyPlayerDeity: guess?.friendlyPlayerDeity ?? null,
+      actualTeammatePlayerId: actualTeammate.id,
+      correct: guess !== null && guess.friendlyPlayer === actualTeammate.id,
+    };
+  });
+}
+
 interface GameLog {
   readonly gameIndex: number;
   readonly startingLeaderId: PlayerId;
@@ -63,6 +96,7 @@ interface GameLog {
   readonly tricks: TrickLogEntry[];
   readonly redistributions: RedistributionLogEntry[];
   readonly delegateSelections: DelegateLogEntry[];
+  readonly allyGuesses: AllyGuessLogEntry[];
   // Null only when the game hit the safety-iteration cap before reaching
   // gameOver (see playOneGame's MAX_ITERATIONS) - a real, observed fact
   // about that specific run, not a fabricated result. Self-play with the
@@ -148,6 +182,7 @@ function playOneGame(gameIndex: number): GameLog {
         tricks,
         redistributions,
         delegateSelections,
+        allyGuesses: computeAllyGuesses(state),
         winner: null,
         trickCount: state.trickNumber,
         incomplete: true,
@@ -180,6 +215,7 @@ function playOneGame(gameIndex: number): GameLog {
     tricks,
     redistributions,
     delegateSelections,
+    allyGuesses: computeAllyGuesses(state),
     winner: state.winner,
     trickCount: state.trickNumber,
   };
@@ -207,6 +243,18 @@ interface Aggregates {
   readonly trickCount: { readonly min: number; readonly max: number; readonly average: number; readonly median: number };
   readonly totalTricksPlayed: number;
   readonly doubleWinTrickShare: number;
+  // Verification-only: how often host/botTrust.ts's identifyFriendlyAlly
+  // (computed from each game's FINAL state, per seat) actually names that
+  // seat's real teammate - not consumed by any decision logic yet, purely
+  // to check the trust mechanism against ground truth. Computed over every
+  // requested game (completed or not), 4 player-perspectives each.
+  readonly allyGuessAccuracy: {
+    readonly totalPlayerGames: number;
+    readonly confidentGuesses: number;
+    readonly correctGuesses: number;
+    readonly confidentGuessRate: number;
+    readonly accuracyAmongConfidentGuesses: number;
+  };
 }
 
 function median(sorted: readonly number[]): number {
@@ -217,6 +265,10 @@ function median(sorted: readonly number[]): number {
 function aggregate(allGames: readonly GameLog[]): Aggregates {
   const games = allGames.filter((g): g is GameLog & { winner: WinInfo } => !g.incomplete && g.winner !== null);
   const incompleteGames = allGames.length - games.length;
+
+  const allGuesses = allGames.flatMap((g) => g.allyGuesses);
+  const confidentGuesses = allGuesses.filter((g) => g.guessedFriendlyPlayer !== null);
+  const correctGuesses = confidentGuesses.filter((g) => g.correct);
 
   const winsByTeam: Record<Team, number> = { Chaos: 0, Cosmos: 0 };
   let stalemates = 0;
@@ -276,6 +328,13 @@ function aggregate(allGames: readonly GameLog[]): Aggregates {
     },
     totalTricksPlayed,
     doubleWinTrickShare: totalTricksPlayed > 0 ? doubleWinTricks / totalTricksPlayed : 0,
+    allyGuessAccuracy: {
+      totalPlayerGames: allGuesses.length,
+      confidentGuesses: confidentGuesses.length,
+      correctGuesses: correctGuesses.length,
+      confidentGuessRate: allGuesses.length > 0 ? confidentGuesses.length / allGuesses.length : 0,
+      accuracyAmongConfidentGuesses: confidentGuesses.length > 0 ? correctGuesses.length / confidentGuesses.length : 0,
+    },
   };
 }
 
