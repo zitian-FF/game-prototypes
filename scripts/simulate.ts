@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { applyAction, createInitialState } from '../prototypes/suits-mp/src/host/gameHost';
 import { chooseBotAction } from '../prototypes/suits-mp/src/host/botAI';
+import { determineRole } from '../prototypes/suits-mp/src/host/botRole';
 import { identifyFriendlyAlly } from '../prototypes/suits-mp/src/host/botTrust';
 import { activePlayerId } from '../prototypes/suits-mp/src/rules/engine';
 import { cardById, GOD_TEAM } from '../prototypes/suits-mp/src/rules/cards';
@@ -49,6 +50,15 @@ interface RedistributionLogEntry {
   readonly distributorGod: God;
   readonly wonByDouble: boolean;
   readonly assignments: { readonly toPlayerId: PlayerId; readonly cards: LoggedCard[] }[];
+  // Verification-only snapshot of the distributor's own role/ally view at
+  // the moment of this decision (host/botRole.ts's determineRole,
+  // host/botTrust.ts's identifyFriendlyAlly) - the same values
+  // chooseRedistributeAction itself used to build `assignments`, logged
+  // here purely so a real game's redistribution choices can be spot-
+  // checked against the role/ally state that produced them.
+  readonly role: 'completer' | 'assist';
+  readonly friendlyPlayerId: PlayerId | null;
+  readonly friendlyPlayerDeity: God | null;
 }
 
 interface DelegateLogEntry {
@@ -140,6 +150,7 @@ function logActionIfRelevant(
   if (action.action === 'redistribute') {
     const distributorId = state.pendingDistributorId;
     if (distributorId === null) throw new Error('redistribute action with no pendingDistributorId');
+    const ally = identifyFriendlyAlly(state, distributorId);
     redistributions.push({
       trickNumber: state.trickNumber,
       distributorId,
@@ -149,6 +160,9 @@ function logActionIfRelevant(
         toPlayerId: fromNetPlayerId(a.toPlayer),
         cards: a.cards.map(toLoggedCard),
       })),
+      role: determineRole(state, distributorId),
+      friendlyPlayerId: ally?.friendlyPlayer ?? null,
+      friendlyPlayerDeity: ally?.friendlyPlayerDeity ?? null,
     });
   } else if (action.action === 'selectDelegate') {
     if (state.pendingWinnerId === null) throw new Error('selectDelegate action with no pendingWinnerId');
