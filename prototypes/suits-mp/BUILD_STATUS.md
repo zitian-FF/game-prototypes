@@ -1,241 +1,249 @@
 ## Current milestone
 
-Bot AI: card-play extension to Tier A (`suits-mp-bot-ai-design.md` v3,
-Section 3's build-order step 1 - a single baseline heuristic, no
-personality variation yet). `host/botAI.ts`'s `choosePlayCardAction`
-was pure legal-random across all three branches; it now prefers
-not-needed cards when leading or discarding, and prefers winning with
-a not-needed card when following suit. Verified via a real, matched
-500-vs-500-game before/after simulation batch (same tool, same code
-paths, old bot AI vs. new): **median trick count dropped from 108.5 to
-20, mean from 728.3 to 20.3, max from 19266 to 40** - the task's stated
-goal, achieved dramatically. A real, honestly-reported side effect also
-showed up: team win-rate balance shifted and stalemate rate rose 5x -
-see "Verification" below, not hidden or minimized.
+Bot AI: trust modeling (`suits-mp-bot-ai-design.md` v5, Section 4).
+Built the actual first step the doc's own Section 10 build order
+skipped over - it assumes trust is "existing infrastructure" a later
+step (Section 5.1-5.2) can just reuse, but a direct source search
+confirmed no trust computation exists anywhere in `botAI.ts` yet. This
+task builds it: trust formation, friendly/hostile labeling, and the
+"a confirmed ally's specific Deity is known for free" mechanism -
+exposed as a clean, pure, unconsumed utility for the next task to build
+Section 5 on top of. Zero bot behavior changed (confirmed both
+structurally, via the diff, and empirically, via a real simulation run
+- see Verification).
+
+## Investigation (task's step 1)
+
+Confirmed exactly where the needed history already lives before
+designing anything new: `GameState.receivedLog` (`rules/types.ts`) is
+`Partial<Record<PlayerId, ReceivedRecord[]>>` - a cumulative,
+per-recipient log of every redistribution a player has ever received,
+each `ReceivedRecord` carrying `cardIds`, `fromPlayerId` (the
+distributor), `trickNumber`, and `wonByDouble`. This is populated by
+`rules/engine.ts`'s `redistribute()` on every single redistribution
+event in the game, for every recipient, unconditionally - not something
+that needs to be added or extended.
+
+Crucially, this is the EXACT SAME field the real Redistribution Log UI
+already reads for a human player: `host/mask.ts`'s
+`buildDistributedEntries`/its `receivedByMe` block (around line 165)
+reads `state.receivedLog[forSlot]` directly to build what a human
+player legitimately sees about cards they've received. A bot reading
+`state.receivedLog[slot]` for its own slot is using literally the same
+data source, at the same trust boundary, as the already-shipped human
+UI - not a new masking-sensitive channel.
+
+This confirms the task's own instinct: trust is a DERIVED value,
+computed fresh from this existing history on every call. No new
+persistent state was added to `GameState`, and `chooseBotAction`'s
+existing pure `(state, slot)` shape is completely untouched.
 
 ## What was implemented
 
-**Definitions** (per the task's own deliberate simplification of the
-design doc's "least valuable/needed" language into a binary, non-fuzzy
-distinction): a card is "needed" if its Deity matches the bot's own
-Deity; every other card is not-needed. `isNeeded(state, slot, cardId)`
-in `host/botAI.ts` is the one place this is computed.
+**New file: `host/botTrust.ts`** (not yet imported by `botAI.ts` -
+deliberately unconsumed, per this task's explicit scope):
 
-**1. Leading** (`choosePlayCardAction`, past the forced Trick-1
-opener): prefers a not-needed card via `pickRandom(notNeeded)`.
-Fallback for the all-needed-hand edge case (a real possibility, e.g.
-after heavy redistribution leaves a hand skewed to one suit): falls
-back to `pickRandom(hand)` - i.e. any legal card, uniformly at random,
-identical to the old fully-random behaviour for that one case.
+- **`computeTrustScores(state, slot): ReadonlyMap<PlayerId, number>`**
+  (design doc 4.2) - reads `state.receivedLog[slot]` and, for every
+  individual card in every record (a record can hold more than one card
+  if the bot's own contribution to that trick was a Double), adds +1 to
+  that record's `fromPlayerId` if the card's god matches the bot's own
+  god ("helped"), -1 otherwise. Missing entries (a seat that's never
+  redistributed to this bot) simply aren't in the map - documented as
+  "treat as 0," not "excluded," so callers don't accidentally skip an
+  all-zero seat when picking a maximum.
+- **`identifyFriendlyAlly(state, slot): FriendlyAlly | null`** (design
+  doc 4.2 + 4.3) - the exact `{ friendlyPlayer, friendlyPlayerDeity } |
+  null` shape the task asked for. Finds the other seat with the
+  strictly-highest trust score; if that score reaches
+  `FRIENDLY_TRUST_THRESHOLD` (currently `2`, an explicit placeholder -
+  not yet empirically tuned, matching how the design doc treats other
+  not-yet-tuned constants) and no other seat ties it, that seat is
+  friendly. Otherwise returns `null`. The other two seats being hostile
+  "by elimination" needs no separate field or computation - any
+  `PlayerId` that isn't `slot` or the returned `friendlyPlayer` is
+  hostile, for free.
+- Re-evaluated fresh from current `state` on every call, never cached -
+  matches Section 5.4's "live, ongoing" principle a task early, since a
+  derived value costs nothing extra to keep uncached.
 
-**2. Must-follow-suit**: reuses the engine's REAL trick-scoring logic
-rather than reimplementing rank/Double/Powered-Deity-Card comparison.
-A new `wouldWinIfPlayedNow(state, slot, cardId, requiredSuit)` builds
-the same accurate hypothetical `TrickPlay` `playCard()` itself would
-produce (via a newly-exported `rules/engine.ts`'s `computeDeityCardState`
-- previously private, now exported since this is the first caller
-outside `playCard()`) and feeds `[...state.plays, candidatePlay]`
-straight into the engine's existing, unmodified `resolveTrick()` - the
-exact function that decides every real trick's winner. "Would win right
-now" deliberately means "if the trick resolved on only the plays made
-so far plus this one" - no lookahead into other players' future plays,
-per the design doc's own "superhuman capability cap" constraint (Tier A
-has no multi-trick planning). Among the legal suit-cards:
-- If any would win: prefer a not-needed winning card; only spend a
-  needed card to win if every winning option is needed.
-- If none would win (losing is inevitable regardless of choice):
-  prefer a not-needed card over a needed one.
+**Masking honesty, explicitly checked**: every function in
+`botTrust.ts` reads only `state.players[slot]` (the bot's own seat) and
+`state.receivedLog[slot]` (redistributions the bot's own seat was the
+RECIPIENT of). Confirmed by reading the diff line by line - no other
+player's hand, `receivedLog` entry, or hidden identity is read
+anywhere. Trust is one-sided per design doc 4.1: nothing here compares
+one bot's computed scores against another's, or reads any
+cross-bot/shared state - each call is entirely self-contained to the
+one `slot` passed in.
 
-One structural note worth flagging: since every card in `opts.suitCards`
-necessarily shares the SAME god (the required suit), "needed" is
-actually all-or-nothing for the entire suit-card set in this branch,
-not a per-card split - if the required suit happens to be the bot's own
-Deity, every legal option is needed and there's no needed/not-needed
-choice to make at all (winning is still preferred when available). This
-is a real, correctly-handled consequence of the binary definition, not
-an oversight.
+## A deliberate deviation from the task's literal 4.3 phrasing (flagged, not silently resolved)
 
-**3. Off-suit facedownSingle candidates**: the candidate list (`hand.map`
--> `facedownCandidates.map`) is now built from not-needed cards when any
-exist, falling back to the whole hand otherwise (matching the design
-doc's "shed excess, not needed cards" item 2 - a facedownSingle can
-never win a trick per the GDD, so there's nothing to lose by discarding
-freely). The Double-generation branch immediately below it is completely
-untouched (still built from the full `hand`, unchanged code), and the
-final `pickRandom(moves)` is still one flat, uniform pick over the
-combined list - explicitly out of scope per the task. One honest
-caveat: narrowing the facedownSingle candidate list's SIZE (from
-`hand.length` entries down to however many not-needed cards exist) does
-shift the exact numeric proportion between "a facedownSingle move gets
-picked" and "a Double move gets picked" in that flat pool, as an
-unavoidable side effect of preferring specific cards within the
-facedownSingle set - the task's "stays exactly as random as before"
-note is read here as "the SELECTION MECHANISM (one flat pooled random
-pick, no new weighting scheme) is untouched," not "the exact resulting
-probability is bit-for-bit invariant," since no interpretation can
-satisfy both a narrowed-and-still-random candidate set AND an
-unchanged exact ratio simultaneously. Flagging this explicitly in case
-a future task wants ratio-invariance as its own separate, deliberate
-piece of work.
+The task's own restatement of 4.3 says a friendly player's Deity "is
+the same suit that raised trust in them." Read completely literally,
+this can't be correct for this game: the suit that raises trust in
+seat Y (via `computeTrustScores`) is, by definition, always the
+OBSERVING bot's OWN needed suit (that's what "helped" means) - and
+every seat's god is necessarily distinct from every other seat's, so
+the suit that raised MY trust can never equal Y's actual needed suit
+(worked through with a concrete example: if my god is Cthulhu, my
+trust rises when someone gives me Cthulhu cards - but my real ally's
+god is fixed at Nyarlathotep per `rules/cards.ts`'s `TEAMMATE_GOD`
+pairing, never Cthulhu; claiming otherwise would hand the next task
+exactly the wrong Deity to route cards toward).
 
-**Untouched, as required**: `chooseRedistributeAction` (Tier A's
-existing, unrelated logic), `chooseDelegateAction` (still intentionally
-random per the design doc), and the off-suit branch's overall
-Double-vs-facedownSingle move-generation code.
-
-**Masking honesty**: confirmed by reading the diff - every new function
-(`isNeeded`, `wouldWinIfPlayedNow`) takes only `state`, the bot's own
-`slot`, and a candidate `cardId`/`requiredSuit` already legal per
-`legalOptions()`; the only state read is `state.players[slot]` (the
-bot's own seat) and `state.plays` (the publicly observable trick in
-progress, already visible to every player at the table). No other
-player's hand or hidden identity is read anywhere in this change.
+What actually satisfies the design doc's stated INTENT ("already known
+for free," "no separate inference step," "no masking violation," "no
+new card-counting infrastructure") is `TEAMMATE_GOD[state.players[slot]
+.god]` - the game's own fixed team-pairing lookup. This isn't a new
+inference at all: it's the EXACT SAME fact the real UI already shows
+every human player about their own teammate's needed suit/colour (see
+`ui/renderGameView.ts`'s existing `TEAMMATE_GOD[state.yourGod]` HUD
+use) - never their identity, which is exactly what trust (4.2) newly
+supplies. `identifyFriendlyAlly` implements this reading; the doc
+comment above it in `botTrust.ts` spells out the same reasoning inline.
+Flagged here explicitly rather than silently picked, since this
+directly shapes an API contract "the next task will consume."
 
 ## Verification
 
 `npm run typecheck` and `npm run build` both pass cleanly.
 
-**Real, matched 500-vs-500-game before/after simulation** (same
-`npm run simulate` tool, same machine, same code paths - the OLD bot AI
-was measured by `git stash`-ing this task's two changed files, running
-the batch against the untouched baseline code, then restoring the
-changes and running the same batch size again):
+**Structural proof that no bot behavior changed**: `git diff --stat`
+shows exactly one new, currently-unimported file (`host/botTrust.ts`)
+and a purely additive change to `scripts/simulate.ts` (59 insertions, 0
+deletions - new logging only). `host/botAI.ts` - the only file that
+could route trust into an actual decision - has a **zero-line diff**,
+confirmed directly (`git diff prototypes/suits-mp/src/host/botAI.ts` is
+empty). Nothing new is called from any decision path.
 
-| | Before (old, pure legal-random) | After (new heuristic) |
-|---|---|---|
-| Games | 500 | 500 |
-| Median trick count | **108.5** | **20** |
-| Mean trick count | **728.3** | **20.3** |
-| Min / Max trick count | 12 / 19266 | 6 / 40 |
-| Total tricks played | 364169 | 10171 |
-| Win rate (Chaos / Cosmos) | 48.8% / 49.4% | 39.0% / 51.6% |
-| Stalemate rate | 1.8% (9/500) | 9.4% (47/500) |
-| Double-win trick share | 4.3% | 16.0% |
-| Wall-clock for the batch | ~15.4s | ~0.8s |
+**Real simulation run** (`npm run simulate -- --games=500`, extended for
+this task with a verification-only `allyGuesses` field per game -
+computed from each game's FINAL state, one guess per seat, entirely
+after-the-fact and read-only; never influences the actual game):
 
-Raw baseline JSON kept for the record:
 ```json
 {
-  "totalGamesRequested": 500, "completedGames": 500, "incompleteGames": 0,
-  "winsByTeam": { "Chaos": 244, "Cosmos": 247 }, "stalemates": 9,
-  "winRateByTeam": { "Chaos": 0.488, "Cosmos": 0.494 }, "stalemateRate": 0.018,
-  "trickCount": { "min": 12, "max": 19266, "average": 728.338, "median": 108.5 },
-  "totalTricksPlayed": 364169, "doubleWinTrickShare": 0.0435
-}
-```
-Raw after-change JSON:
-```json
-{
-  "totalGamesRequested": 500, "completedGames": 500, "incompleteGames": 0,
-  "winsByTeam": { "Chaos": 195, "Cosmos": 258 }, "stalemates": 47,
-  "winRateByTeam": { "Chaos": 0.39, "Cosmos": 0.516 }, "stalemateRate": 0.094,
-  "trickCount": { "min": 6, "max": 40, "average": 20.342, "median": 20 },
-  "totalTricksPlayed": 10171, "doubleWinTrickShare": 0.1601
+  "trickCount": { "min": 7, "max": 40, "average": 20.744, "median": 20 },
+  "winRateByTeam": { "Chaos": 0.444, "Cosmos": 0.426 },
+  "stalemateRate": 0.13,
+  "doubleWinTrickShare": 0.1584,
+  "allyGuessAccuracy": {
+    "totalPlayerGames": 2000,
+    "confidentGuesses": 403,
+    "correctGuesses": 135,
+    "confidentGuessRate": 0.2015,
+    "accuracyAmongConfidentGuesses": 0.335
+  }
 }
 ```
 
-**The trick-count goal is unambiguously met** - median dropped ~5.4x,
-mean ~35.8x, and the pathological heavy tail (max 19266) is gone
-entirely (max 40 across this 500-game sample - genuinely a natural
-result of the new heuristic converging fast, not a hidden cap;
-confirmed by grepping the whole diff plus `gameHost.ts`/`simulate.ts`
-for any hardcoded `40` - the only hit is unrelated deck-slicing code
-that deals 10 cards per player, `deck.slice(30, 40)`). Spot-checked the
-per-game JSONL from the after-run: trick counts are smoothly
-distributed (6, 12, 15, 17, 18, 20, 22, 23, 25, 29 at every 50th
-percentile of the sorted 500), only 1 of 500 games actually landed on
-exactly 40 - not evidence of truncation.
+Trick-count/win-rate/stalemate numbers land in the same range as the
+previous task's own 500-game "after" run (median 20, mean 20.342, max
+40, stalemate 9.4%) - the two runs use identical, unmodified decision
+code with fresh randomness each time, so this level of run-to-run
+variance is expected and itself corroborates that nothing behavior-
+affecting changed, on top of the structural diff proof above.
 
-**Honest side effect, reported plainly per the task's instruction not
-to paper over a real result**: team win-rate balance shifted
-noticeably (Chaos down from 48.8% to 39.0%, Cosmos up from 49.4% to
-51.6%) and the stalemate rate rose more than 5x (1.8% -> 9.4%). Among
-just the decided (non-stalemate) games, Chaos won 43.1% vs. Cosmos's
-56.9% after the change - a deviation from even large enough (roughly 3
-standard errors at this sample size) to be a real pattern, not sampling
-noise. This makes intuitive sense as an emergent consequence of the new
-heuristic, not a bug: every bot is now actively trying to win tricks
-(to gain redistribution rights) and hoard needed cards far more
-consistently than before, so both teams converge toward suit completion
-faster AND closer together in time, which is exactly what the
-simultaneous-completion stalemate rule is triggered by. This shift is
-real and worth tracking, but it is NOT something this task was scoped
-to fix - the design doc's own recommended build order (Section 8)
-explicitly stages personality variation and trust modeling as later,
-separate steps specifically because "card-play-level steering could
-plausibly work AGAINST the ~40-trick goal in ways that need real
-simulation data to evaluate, not a guess made up front" - this
-imbalance is exactly the kind of data that reasoning anticipated, now
-measured for real instead of assumed away.
+**Mechanism correctness, spot-checked by hand**: picked a real game
+with a confident guess (game 1, player 0/Nyarlathotep guessed player 2
+friendly with deity Cthulhu) and independently recomputed
+`computeTrustScores` from that game's raw logged `redistributions`
+array (summing +1/-1 per received card by hand, in a separate script) -
+got distributor scores `{1: -3, 2: +2, 3: -7}`, exactly matching the
+logged guess (`friendlyPlayer: 2`, crossing the threshold of 2;
+`friendlyPlayerDeity: Cthulhu`, matching `TEAMMATE_GOD.Nyarlathotep`).
+The guess happened to be WRONG in this instance (the real teammate was
+player 1, not player 2) - and that's expected, not a bug: see below.
+
+**Honest result, exactly as anticipated by the investigation above**:
+overall accuracy among confident guesses is 33.5% - statistically
+indistinguishable from picking one of the 3 other seats at random
+(1/3 ≈ 33.3%). This is not a defect in this task's implementation.
+Nothing in the current game currently makes redistribution correlate
+with real team membership at all - Tier A's redistribution logic
+(`chooseRedistributeAction`) decides self/other holdback based only on
+the DISTRIBUTOR's own suit, with zero regard for which specific other
+player receives which giveaway card. So "who happens to give me my
+needed suit" is, today, pure noise relative to who's actually my ally -
+exactly the gap Section 5 (deliberately NOT built in this task) exists
+to close, by making an Assist bot's redistribution choices actually
+route needed cards toward a confirmed ally. The trust MECHANISM itself
+is verified correct (per the hand-recomputation above); its accuracy is
+expected to improve materially only once Section 5 gives it real signal
+to work with, and that improvement needs to be measured then, not
+assumed now.
 
 ## Key technical decisions
 
-- `computeDeityCardState` was exported from `rules/engine.ts` (a pure
-  visibility change, zero behavior change to the function itself)
-  specifically so `wouldWinIfPlayedNow` could build an accurate
-  hypothetical `TrickPlay` without a second, bot-local reimplementation
-  of the Dormant/Powered rule - the task explicitly required reusing
-  real engine logic, not reimplementing it.
-- "Would win right now" is evaluated by extending `state.plays` with
-  one hypothetical play and calling the engine's real, unmodified
-  `resolveTrick()` on the result - this correctly handles every real
-  edge case (an earlier Double in the trick beats any Single regardless
-  of rank, Powered vs. Dormant Deity Cards) for free, since it's the
-  exact same comparison function a real completed trick uses, not a
-  partial reimplementation restricted to "just ranks."
-- The must-follow-suit branch's needed/not-needed distinction is
-  genuinely all-or-nothing per trick (see "What was implemented" above)
-  - documented rather than treated as a bug, since it's a correct,
-  direct consequence of the task's own deliberately simple binary
-  "needed" definition applied to a set of same-god cards.
-- The off-suit facedownSingle candidate list is filtered by narrowing
-  which specific cards can appear, not by reweighting the flat
-  `pickRandom(moves)` pick itself - documented in-code and above as the
-  one place a literal reading of "stays exactly as random as before"
-  can't be preserved bit-for-bit alongside the required per-card
-  preference; flagged rather than silently resolved either way.
+- Kept trust computation in its own new file (`host/botTrust.ts`)
+  rather than adding it into `botAI.ts` directly - `botAI.ts` is the
+  action-choice module; trust is a separate, reusable analysis this
+  task's own scope (and the next task, and personality parameterization
+  after that) all need independently.
+- `FRIENDLY_TRUST_THRESHOLD = 2` is an explicit, documented placeholder,
+  not a derived-from-anything value - there's no principled way to pick
+  this without real simulation data once Section 5 exists to give the
+  signal actual meaning, so it's deliberately left simple and flagged
+  for future tuning rather than over-engineered now.
+- `identifyFriendlyAlly` returns `null` on a tie at the maximum score,
+  rather than picking arbitrarily - the game's fixed 2v2 elimination
+  logic assumes exactly one relationship becomes confident before the
+  other two follow "by elimination"; a tie means the evidence isn't
+  there yet, and returning null (not a coin-flip) keeps the "always
+  known for free once identified" promise from ever assigning a value
+  it isn't actually confident in yet.
+- `scripts/simulate.ts`'s new `allyGuesses`/`allyGuessAccuracy` logging
+  deliberately grades the bot's guess against ground truth the SIMULATION
+  SCRIPT already has full access to (as a dev analysis tool), while the
+  bot's own call into `identifyFriendlyAlly(state, slot)` remains exactly
+  as masking-honest as it would be for a real decision - the grading is
+  external analysis, not something the bot itself sees.
 
 ## What's general vs. specific
 
-**General, reusable as-is:** `computeDeityCardState`'s export and the
-"extend `state.plays` with a hypothetical play, then call the real
-`resolveTrick()`" pattern is available to any future bot-AI tier
-(Section 5's personalities, Section 4's trust layer) that needs to
-evaluate a hypothetical play's outcome without hidden information.
+**General, reusable as-is:** `botTrust.ts`'s whole module - the next
+task (Section 5.1-5.2) is expected to import `identifyFriendlyAlly`
+directly, exactly as designed. `scripts/simulate.ts`'s
+`allyGuesses`/`allyGuessAccuracy` fields will keep working unmodified
+once Section 5 starts actually acting on trust - the accuracy number
+computed here is exactly the metric that should rise once that lands,
+with no changes needed to this verification logging itself.
 
-**Specific to this task:** the binary needed/not-needed heuristic
-itself is explicitly the FIRST, simplest step in the design doc's
-staged build order (Section 8) - personality variation (step 2) will
-parameterize HOW STRONGLY this same logic is followed, not replace it.
+**Specific to this task:** the `FRIENDLY_TRUST_THRESHOLD` placeholder
+value and the specific `TEAMMATE_GOD`-based reasoning for 4.3 (see the
+deviation section above) are both flagged as likely candidates for
+revisiting once Section 5 provides real data to tune against.
 
 ## Open questions
 
-None arose that needed asking - the task's spec was explicit about
-scope, the binary "needed" definition, and exactly which branches to
-touch vs. leave alone. The facedownSingle candidate-list ratio question
-(see "Key technical decisions") wasn't a question so much as an
-unavoidable interpretation call, made and documented rather than
-silently picked.
+The 4.3 "same suit" phrasing discrepancy (see above) is exactly the
+kind of thing worth flagging per CLAUDE.md's guidance: **the design
+doc itself may be worth a follow-up correction pass** - not just this
+task's own code comment - since the literal text, if implemented as
+written, would hand Section 5 a systematically wrong Deity for every
+identified ally. This wasn't asked mid-session because a technically
+sound, well-precedented alternative (`TEAMMATE_GOD`) was available and
+implemented directly rather than blocking on it, but the doc's next
+reader should know the "same suit" wording doesn't hold up.
 
 ## Known issues
 
-None in the shipped code. The win-rate/stalemate-balance shift
-described under Verification is a real, measured, honestly-reported
-side effect of this change - not a defect, and not something this
-task's scope covers fixing (see Section 8's staged build order: it's
-explicitly deferred to later personality/trust work, which the design
-doc itself expected might be needed to rebalance whatever this step
-alone produces).
+None in the shipped code. The near-chance ally-guess accuracy is a
+real, expected, and now-measured fact about the CURRENT game (see
+Verification) - not a defect, and explicitly the problem Section 5 is
+designed to fix next.
 
 ## Next proposed step
 
-Per the design doc's own recommended order (Section 8, step 2): build
-Section 5's four personalities (Rusher/Hoarder/Balanced/Wildcard),
-parameterizing how strongly THIS SAME heuristic is followed, and
-re-verify via the simulation tool broken down per-archetype (Section 6
-of the design doc explicitly calls for extending `scripts/simulate.ts`
-to aggregate by personality once personalities exist). That work should
-also take a first look at the win-rate/stalemate shift measured here -
-personality variation (some bots playing more conservatively) may
-naturally soften it, but that needs to be verified with real simulation
-data the same way this task was, not assumed.
+Per the design doc's own Section 10 (now correctly ordered, with this
+task providing the trust infrastructure it assumed already existed):
+Section 5.1-5.2 - redistribution priority and repurposed trick control
+once a bot's own hand composition puts it in the Assist role, built
+directly on `identifyFriendlyAlly`. Re-run the simulation tool
+afterward and watch two things specifically: whether
+`allyGuessAccuracy` actually rises now that redistribution has real
+ally-favoring signal to learn from, and whether the stalemate rate
+(currently ~9-13% across recent runs) actually falls, which is the
+whole reason this system exists per the design doc's own Section 0
+motivation.
