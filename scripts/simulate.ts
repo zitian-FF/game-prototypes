@@ -59,6 +59,10 @@ interface RedistributionLogEntry {
   readonly role: 'completer' | 'assist';
   readonly friendlyPlayerId: PlayerId | null;
   readonly friendlyPlayerDeity: God | null;
+  // True when the distributor's pool already held all 10 unique cards of
+  // their own suit before this redistribution - i.e. this redistribution
+  // locks the win for the distributor's team (botAI.ts's isWinLock).
+  readonly isWinLock: boolean;
 }
 
 interface DelegateLogEntry {
@@ -163,6 +167,7 @@ function logActionIfRelevant(
       role: determineRole(state, distributorId),
       friendlyPlayerId: ally?.friendlyPlayer ?? null,
       friendlyPlayerDeity: ally?.friendlyPlayerDeity ?? null,
+      isWinLock: state.players[distributorId].hand.filter((id) => cardById(id).god === state.players[distributorId].god).length === 10,
     });
   } else if (action.action === 'selectDelegate') {
     if (state.pendingWinnerId === null) throw new Error('selectDelegate action with no pendingWinnerId');
