@@ -176,11 +176,25 @@ function takeCards(pool: CardId[], count: number, preferredGod: God | null): Car
 }
 
 // Tier A (suits-mp-bot-ai-design.md v6, Section 2) self-interested holdback,
-// now with the Section 5 Completer/Assist role layered on top:
+// now with the Section 5 Completer/Assist role layered on top, plus a
+// win-lock override that takes priority over both:
 //
+// - WIN-LOCK (the distributor's pool already contains all 10 unique cards
+//   of their own suit, so holding all of them back completes their suit
+//   and locks the win for their team THIS redistribution - see isWinLock
+//   below): regardless of role, a confirmed ally gets no priority and no
+//   preferential cards - the team has already won this event, so nothing
+//   routed to the ally has any value ("ally receiving anything is
+//   wasted"). Bug fix: every one of a real 2000-game batch's stalemates
+//   traced to exactly this moment with the OLD unchanged Tier A logic
+//   (below) firing - it makes no ally/opponent distinction at all, so an
+//   identified ally sat in the same random pool as the two opponents with
+//   equal odds, including in the ~18% of stalemates where an ally HAD
+//   been identified.
 // - COMPLETER (own hand mono, i.e. concentrated toward the bot's own
 //   needed suit - host/botRole.ts's determineRole), OR no friendlyPlayer
-//   identified yet (host/botTrust.ts's identifyFriendlyAlly): unchanged
+//   identified yet (host/botTrust.ts's identifyFriendlyAlly), OR win-lock
+//   with no ally identified (nothing to route away from): unchanged
 //   Tier A baseline exactly as before - hold back own-suit preferentially,
 //   distribute the rest with no recipient distinction. This is the
 //   required fallback per the task spec, not a simplification of Assist
@@ -188,19 +202,19 @@ function takeCards(pool: CardId[], count: number, preferredGod: God | null): Car
 //   to route cards toward yet (design doc 4.1's masking honesty still
 //   applies: routing "toward a guess" isn't the same as routing toward a
 //   confirmed ally).
-// - ASSIST (own hand mixed AND a friendlyPlayer is identified): own-suit
-//   cards are dead weight to the bot itself now (design doc 5.1) -
-//   low-rank own-suit is never held back, and any own-suit card that must
-//   be given away is routed to OPPONENTS, never the identified ally (the
-//   ally can't use a card that isn't its own needed suit - design doc 5.1's
-//   own explicit reasoning: "would waste one of the ally's limited
-//   redistribution slots"). High-rank own-suit (9/10/Deity Card) is the one
-//   exception - retained for trick control (5.2) regardless of role.
-//   Cards matching the ally's own needed suit (`friendlyPlayerDeity`,
-//   already known via botTrust.ts's TEAMMATE_GOD lookup - never the bot's
-//   own suit, so this is always a disjoint pool from the bot's own cards)
-//   are reserved for the ally's contribution slot first, before any other
-//   recipient can draw from them.
+// - ASSIST (own hand mixed AND a friendlyPlayer is identified, AND not
+//   win-lock): own-suit cards are dead weight to the bot itself now
+//   (design doc 5.1) - low-rank own-suit is never held back, and any
+//   own-suit card that must be given away is routed to OPPONENTS, never
+//   the identified ally (the ally can't use a card that isn't its own
+//   needed suit - design doc 5.1's own explicit reasoning: "would waste
+//   one of the ally's limited redistribution slots"). High-rank own-suit
+//   (9/10/Deity Card) is the one exception - retained for trick control
+//   (5.2) regardless of role. Cards matching the ally's own needed suit
+//   (`friendlyPlayerDeity`, already known via botTrust.ts's TEAMMATE_GOD
+//   lookup - never the bot's own suit, so this is always a disjoint pool
+//   from the bot's own cards) are reserved for the ally's contribution
+//   slot first, before any other recipient can draw from them.
 //
 // Draws from the acting distributor's full hand (not just this trick's
 // cards - unlike the masked payload shown to a human distributor, a bot
@@ -211,15 +225,19 @@ function takeCards(pool: CardId[], count: number, preferredGod: God | null): Car
 // rules/engine.ts's chooseDelegate/redistribute for where that hand-
 // ownership fix lives. Using the winner's hand unconditionally here would
 // reproduce the same bug for bot-driven delegated redistributions - and
-// since `state.players[distributorId].god` (and now, role/ally) are read
-// from that same distributor slot, self-interest and role are correctly
-// judged against the actual distributor, never the original trick winner.
+// since `state.players[distributorId].god` (and now, role/ally/win-lock)
+// are read from that same distributor slot, every decision here is
+// correctly judged against the actual distributor, never the original
+// trick winner.
 //
 // Masking honesty (design doc section 1.1): every value read here - the
 // distributor's own hand, own Deity, own role, own identifyFriendlyAlly
 // result, and the real per-recipient owed counts - is exactly what the
 // acting distributor is already entitled to see and act on as themself;
 // nothing here reaches into another player's hand or hidden identity.
+// isWinLock in particular is detected purely from the distributor's own
+// hand/god (host/botRole.ts's own-suit-count metric, reused), the same
+// masking-safe self-knowledge every other check here already relies on.
 function chooseRedistributeAction(state: GameState): ClientAction {
   const distributorId = state.pendingDistributorId;
   const trickResult = state.lastTrickResult;
@@ -239,12 +257,30 @@ function chooseRedistributeAction(state: GameState): ClientAction {
 
   const ally = identifyFriendlyAlly(state, distributorId);
   const role = determineRole(state, distributorId);
+  const ownSuitCount = pool.filter((id) => cardById(id).god === ownGod).length;
+  const isWinLock = ownSuitCount === 10;
 
   let giveaway: CardId[];
   let friendlyPlayerId: PlayerId | null = null;
-  let allyGod: God | null = null;
+  let allyPreferredGod: God | null = null;
+  let serveAllyLast = false;
 
-  if (ally === null || role === 'completer') {
+  if (isWinLock && ally !== null) {
+    // Win-lock override - see doc comment above. Every own-suit card is
+    // necessarily held back (ownSuitCount === 10 means the own-suit
+    // holdback alone already exactly fills - or exceeds - ownHoldback in
+    // every branch below), so giveaway is exactly the non-own-suit cards
+    // regardless of which branch would otherwise have built it. The ally
+    // gets zero preference and is served last, from whatever's left after
+    // the two real opponents have drawn - engine-mandated exact-count
+    // delivery to every trick contributor (rules/engine.ts's
+    // redistribute()) means the ally still receives its exact owed count
+    // if it contributed to this trick, but with no say in which specific
+    // cards those are.
+    giveaway = shuffled(pool.filter((id) => cardById(id).god !== ownGod));
+    friendlyPlayerId = ally.friendlyPlayer;
+    serveAllyLast = true;
+  } else if (ally === null || role === 'completer') {
     // Unchanged Tier A baseline - see doc comment above.
     const ownSuitCards = shuffled(pool.filter((id) => cardById(id).god === ownGod));
     const otherCards = shuffled(pool.filter((id) => cardById(id).god !== ownGod));
@@ -253,12 +289,12 @@ function chooseRedistributeAction(state: GameState): ClientAction {
     giveaway = shuffled([...ownSuitCards.slice(keptOwnSuitCount), ...otherCards.slice(stillNeeded)]);
   } else {
     friendlyPlayerId = ally.friendlyPlayer;
-    allyGod = ally.friendlyPlayerDeity;
+    allyPreferredGod = ally.friendlyPlayerDeity;
 
     const ownHighRank = shuffled(pool.filter((id) => cardById(id).god === ownGod && isHighRank(id)));
     const ownLowRank = shuffled(pool.filter((id) => cardById(id).god === ownGod && !isHighRank(id)));
-    const allySuit = shuffled(pool.filter((id) => cardById(id).god === allyGod));
-    const genericOther = shuffled(pool.filter((id) => cardById(id).god !== ownGod && cardById(id).god !== allyGod));
+    const allySuit = shuffled(pool.filter((id) => cardById(id).god === allyPreferredGod));
+    const genericOther = shuffled(pool.filter((id) => cardById(id).god !== ownGod && cardById(id).god !== allyPreferredGod));
 
     // Holdback priority: retain high-rank own-suit for trick control
     // first (5.1's exception), then generic filler, then - only if the
@@ -276,23 +312,34 @@ function chooseRedistributeAction(state: GameState): ClientAction {
     giveaway = shuffled(pool.filter((id) => !held.has(id)));
   }
 
-  // The identified ally (if among this trick's contributors at all) draws
-  // first and preferentially from ally-suit cards in the giveaway pool;
-  // every other recipient (including the ally's own remainder once
-  // ally-suit cards run out) draws from whatever's left, in no particular
-  // order - it does not matter which opponent gets which dead-weight card
-  // (design doc 5.1: "any card that isn't the recipient's real needed suit
-  // is equally dead weight to them").
+  // Non-win-lock: the identified ally (if among this trick's contributors
+  // at all) draws first and preferentially from ally-suit cards in the
+  // giveaway pool. Win-lock: the ally draws LAST and with no preference
+  // (`allyPreferredGod` stays null in that branch) - everyone else draws
+  // from whatever's left either way, in no particular order among
+  // opponents themselves (design doc 5.1: "any card that isn't the
+  // recipient's real needed suit is equally dead weight to them").
   const remaining = giveaway.slice();
   const assignments: { toPlayer: ReturnType<typeof toNetPlayerId>; cards: CardId[] }[] = [];
 
-  if (friendlyPlayerId !== null && contribution.has(friendlyPlayerId)) {
+  const assignAlly = (): void => {
+    if (friendlyPlayerId === null || !contribution.has(friendlyPlayerId)) return;
     const count = contribution.get(friendlyPlayerId)!;
-    assignments.push({ toPlayer: toNetPlayerId(friendlyPlayerId), cards: takeCards(remaining, count, allyGod) });
-  }
-  for (const [playerId, count] of contribution) {
-    if (playerId === friendlyPlayerId) continue;
-    assignments.push({ toPlayer: toNetPlayerId(playerId), cards: takeCards(remaining, count, null) });
+    assignments.push({ toPlayer: toNetPlayerId(friendlyPlayerId), cards: takeCards(remaining, count, allyPreferredGod) });
+  };
+  const assignOthers = (): void => {
+    for (const [playerId, count] of contribution) {
+      if (playerId === friendlyPlayerId) continue;
+      assignments.push({ toPlayer: toNetPlayerId(playerId), cards: takeCards(remaining, count, null) });
+    }
+  };
+
+  if (serveAllyLast) {
+    assignOthers();
+    assignAlly();
+  } else {
+    assignAlly();
+    assignOthers();
   }
   return { action: 'redistribute', assignments };
 }
