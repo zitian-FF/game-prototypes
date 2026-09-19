@@ -138,8 +138,8 @@ const NAMEPLATE_BOX: RefBox = { x: 172, y: 1330, w: 680, h: 170 };
 // integrated lower-left rank quadrant. Numeral ~158px tall, star ~176px,
 // both on the 1024x1536 reference canvas.
 const RUNTIME_RANK_CENTER = { x: 220, y: 1308 };
-const RUNTIME_NUMERAL_SIZE = 158;
-const RUNTIME_STAR_SIZE = 176;
+const RUNTIME_NUMERAL_SIZE = 237;
+const RUNTIME_STAR_SIZE = 264;
 
 type CardVisualState = 'numbered' | 'dormant' | 'powered';
 
