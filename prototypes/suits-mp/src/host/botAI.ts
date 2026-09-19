@@ -1,10 +1,11 @@
 import { cardById } from '../rules/cards';
-import { computeDeityCardState, currentRequiredSuit, forcedTrick1Opener, legalOptions, resolveTrick } from '../rules/engine';
+import { computeDeityCardState, currentRequiredSuit, forcedTrick1Opener, legalOptions, requiredSuitForPosition, resolveTrick } from '../rules/engine';
 import type { CardId, GameState, God, PlayerId, TrickPlay } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { ClientAction, PlayType } from '../net/actions';
 import { determineRole } from './botRole';
 import { identifyFriendlyAlly } from './botTrust';
+import type { FriendlyAlly } from './botTrust';
 
 // Legal-random AI, with two deliberate exceptions: redistribution has Tier
 // A self-interested suit-optimizing logic, and choosePlayCardAction now has
@@ -30,6 +31,56 @@ import { identifyFriendlyAlly } from './botTrust';
 
 function isNeeded(state: GameState, slot: PlayerId, cardId: CardId): boolean {
   return cardById(cardId).god === state.players[slot].god;
+}
+
+// Design doc Section 5.3: a confirmed-ally Assist can solve, via the fixed
+// Suit Cycle, which lead suit would force a specific OPPONENT (never the
+// ally itself) to reveal/play the ally's needed suit - if the Assist then
+// wins that trick, it collects that card and routes it to the ally per
+// 5.1. Reuses engine.ts's own requiredSuitForPosition (position 0 = the
+// leader itself, no required suit; positions 1-3 = each subsequent seat
+// in Suit Cycle order from whatever suit is led) rather than
+// reimplementing the cycle math - `turnOrder(slot)` (this bot IS the
+// leader when choosing a lead card) means position p corresponds to seat
+// (slot + p) % 4, so `allySeatOffset` below is exactly the position at
+// which the ally themself sits.
+//
+// GATE (enforced by the only caller): role === 'assist' AND a STRICT
+// identifyFriendlyAlly(state, slot) result - never a looser guess. A
+// wrong ally guess here would actively misdirect this targeting toward
+// the wrong seat, which is worse than doing nothing (Section 3's
+// existing baseline already covers "nothing" safely).
+//
+// Only considers `notNeeded` cards (Section 3's own suit already
+// excluded) - this LAYERS a further preference on top of that existing
+// rule, it does not replace it. Returns null (caller falls back to
+// Section 3's unchanged baseline) when no held not-needed card's suit
+// satisfies both constraints:
+//   - excluded: the position that would be forced to reveal the ally's
+//     needed suit is the ally's OWN seat (position === allySeatOffset) -
+//     this would force the ally itself to leak a card it needs, per the
+//     design doc's own explicit warning.
+//   - preferred: that position belongs to one of the two real opponents
+//     instead - the actual extraction setup this section exists for.
+function chooseSuitCycleLeadForAlly(
+  slot: PlayerId,
+  ally: FriendlyAlly,
+  notNeeded: readonly CardId[]
+): CardId | null {
+  const allySeatOffset = (ally.friendlyPlayer - slot + 4) % 4;
+  const candidates = notNeeded.filter((id) => {
+    const candidateGod = cardById(id).god;
+    for (let position = 1; position <= 3; position++) {
+      if (requiredSuitForPosition(position, candidateGod) === ally.friendlyPlayerDeity) {
+        // Suit Cycle math: for a fixed lead suit, exactly one position
+        // (1-3) is ever required to play a given other suit - no need to
+        // keep scanning once found.
+        return position !== allySeatOffset;
+      }
+    }
+    return false;
+  });
+  return candidates.length > 0 ? pickRandom(candidates) : null;
 }
 
 // Would this legal suit-card win the trick if played right now, i.e. if the
@@ -66,12 +117,19 @@ function shuffled<T>(items: readonly T[]): T[] {
 }
 
 // Design doc Section 3's card-play extension to Tier A, applied uniformly
-// (no personality variation yet):
+// (no personality variation yet), plus Section 5.3's Suit-Cycle lead
+// engineering layered on top of item 1 for a confirmed-ally Assist:
 //   1. Leading: prefer a not-needed card - leading grants nothing directly,
 //      so there's no reason to risk a needed one. All-needed hand (a real
 //      possible edge case, e.g. a hand that's one suit after heavy
 //      redistribution) falls back to any legal card (pickRandom(hand)),
-//      unchanged from the old fully-random behaviour.
+//      unchanged from the old fully-random behaviour. Among not-needed
+//      candidates specifically, a role==='assist' bot with a STRICT
+//      identifyFriendlyAlly result first tries chooseSuitCycleLeadForAlly
+//      (Section 5.3) - if it finds a lead suit that forces an OPPONENT to
+//      reveal the ally's needed suit, that's preferred; otherwise this
+//      falls through to the plain pickRandom(notNeeded) baseline exactly
+//      as before 5.3 existed.
 //   2. Must-follow-suit: prefer winning (any Single win grants
 //      redistribution rights - unconditionally useful to a self-interested
 //      bot) using a not-needed card among winning options where possible;
@@ -102,8 +160,19 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
       return { action: 'playCard', playType: 'single', cards: [forcedOpener] };
     }
     const notNeeded = hand.filter((id) => !isNeeded(state, slot, id));
-    const leadCard = notNeeded.length > 0 ? pickRandom(notNeeded) : pickRandom(hand);
-    return { action: 'playCard', playType: 'single', cards: [leadCard] };
+    if (notNeeded.length === 0) {
+      return { action: 'playCard', playType: 'single', cards: [pickRandom(hand)] };
+    }
+    if (determineRole(state, slot) === 'assist') {
+      const ally = identifyFriendlyAlly(state, slot);
+      if (ally !== null) {
+        const targetedLead = chooseSuitCycleLeadForAlly(slot, ally, notNeeded);
+        if (targetedLead !== null) {
+          return { action: 'playCard', playType: 'single', cards: [targetedLead] };
+        }
+      }
+    }
+    return { action: 'playCard', playType: 'single', cards: [pickRandom(notNeeded)] };
   }
   if (opts.mustPlaySuit) {
     const requiredGod = opts.mustPlaySuit;
