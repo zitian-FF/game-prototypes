@@ -1,144 +1,119 @@
 ## Current milestone
 
-Bot AI Section 7: Personality archetypes (Rusher/Hoarder/Balanced/Wildcard).
-Implemented as specified: mechanic 1 (rank preference within Section 3's
-existing candidate sets), mechanic 2 (small role-threshold bias in
-botRole.ts), mechanic 3 (Wildcard per-trick mode roll, no mid-trick
-re-roll). Verified at 10000 games. Core game-health metrics unchanged vs
-baseline. Per-personality breakdown confirms mechanic 2 works as designed
-(Rusher/Hoarder pull the assist/completer split ~20pp in opposite
-directions from Balanced's midpoint).
+Engine perf fix: `GameState.receivedLog` O(n²)-with-trick-count cost
+eliminated. Internal representation change only - verified byte-identical
+external behavior (masking, Redistribution Log UI, game logic/stats).
 
 ## What was implemented
 
-- New `host/botPersonality.ts`: `Personality` (rusher/hoarder/balanced/
-  wildcard), `PersonalityMode` (aggressive/conservative/neutral),
-  `BotPersonalityState`, `createBotPersonality(s)`, `resolveMode(bot,
-  trickNumber)`. Random assignment per seat per game, host-side only, not
-  exposed to masked state/UI. The ONE deliberate exception to this bot
-  AI's "pure function of (state, slot)" principle: personality (fixed per
-  game) and Wildcard's per-trick roll (cached by trickNumber) are
-  inherently stateful and live entirely outside canonical `GameState`.
-- `botRole.ts`: `determineRole(state, slot, mode)` — new optional `mode`
-  param, default `'neutral'`. Applies `PERSONALITY_ROLE_BIAS = 0.1` to the
-  existing `ownSuitFraction` before thresholding (aggressive: -0.1,
-  conservative: +0.1). Does not touch the mono/mixed determination itself,
-  only nudges near-boundary hands.
-- `botAI.ts`: `cardRankValue(id)` (raw face rank 2-10, DeityCard=11),
-  `pickByPersonality`/`pickCardByPersonality` (mechanic 1). Applied to
-  every Section 3 card-choice `pickRandom` site in `choosePlayCardAction`
-  (leading fallback/baseline, all 4 must-follow-suit branches, off-suit
-  final move). NOT applied to `chooseSuitCycleLeadForAlly` (5.3) or the
-  Double-generation `shuffled(ofRank)` (no highest/lowest concept for a
-  same-rank pair). `chooseBotAction(state, slot, personality)` resolves
-  `mode` once via `resolveMode(personality, state.trickNumber)` and threads
-  it into both `choosePlayCardAction` and `chooseRedistributeAction`.
-- `HostGameScene.ts`: `botPersonalities` created once in `create()`,
-  passed into `chooseBotAction` in `driveBotsIfNeeded`.
-- `scripts/simulate.ts`: personality assigned per game, logged per player;
-  new `Aggregates.byPersonality` breakdown (seatInstances, winRate,
-  averageTrickCountOfGamesInvolved, decisionPoints, assistRoleShare) per
-  archetype.
+- `rules/types.ts`: new `ReceivedRecordNode` (persistent singly-linked-list
+  node: `{ record, prev }`). `GameState.receivedLog` field type changed
+  from `Partial<Record<PlayerId, ReceivedRecord[]>>` to
+  `Partial<Record<PlayerId, ReceivedRecordNode>>` - stores only each
+  recipient's latest node, not the full array.
+- `rules/engine.ts`: `redistribute()`'s per-gift write changed from
+  `receivedLog[id] = [...(receivedLog[id] ?? []), record]` (O(current
+  length) copy every gift) to `receivedLog[id] = { record, prev:
+  receivedLog[id] ?? null }` (O(1)). New exported `receivedRecordsFor(state,
+  slot)`: walks the linked list and returns the equivalent plain,
+  chronologically-ordered `ReceivedRecord[]` every consumer already
+  expected - same shape, same order, as the old field.
+- `host/botTrust.ts`, `host/mask.ts`: both read sites (`computeTrustScores`,
+  `buildDistributedEntries`, the `receivedByMe` masked-log source) switched
+  from indexing `state.receivedLog[slot]` as an array to calling
+  `receivedRecordsFor(state, slot)`. No behavior change - same records, same
+  order, same filtering logic downstream.
 
 ## Key technical decisions
 
-- Personality lives outside `GameState` (not a `PlayerState` field) —
-  avoids masking/network-payload changes for a bot-AI-only feature, and
-  matches the task's "do not expose to player-facing UI" instruction.
-- Mechanic 1 uses raw face rank, not the dynamic Dormant/Powered-adjusted
-  `scoreOf` used for real trick-winning — a simple, consistent "which
-  card" preference layered on Section 3's already-decided candidate set,
-  not a second opinion on whether it wins.
-- Redistribution isn't a named Section 3 decision point ("leading,
-  following, off-suit"), so `chooseRedistributeAction` only receives
-  `mode` for mechanic 2 (role bias), no mechanic-1 changes there.
-- No UI/rendering changes in this task — Playwright screenshot check
-  skipped, consistent with this series' established pattern for bot-AI-
-  only tasks (see prior Section 5.3 BUILD_STATUS.md).
+- Chose a persistent linked list over alternatives (e.g. a separate
+  `Map`-based structure, or batching writes) because it's the minimal
+  change that turns an O(n) full-array-copy per gift into an O(1) append,
+  while every consumer already needed a full traversal to derive its own
+  result (a trust score sum, a masked log) - so read cost is unchanged in
+  complexity, only the write's repeated-copying is removed.
+- Kept the field inside `GameState` (not moved to a side-channel) since
+  it's genuine canonical game state, unlike Section 7's personality data -
+  this task is representation-only, not an architecture change.
+- Did not touch `host/botTrust.ts`'s "recompute fresh every call, no
+  caching" design principle - `receivedRecordsFor` is still called fresh
+  each time, matching the rest of the bot AI's established pattern.
 
 ## Verification
 
 `npm run typecheck`: pass
-`npm run build`: pass (suits-mp bundle 299.35 kB / gzip 87.11 kB)
+`npm run build`: pass
 
-**Mechanic 3 spot-check** (targeted code-level check, 2000 trials): a
-Wildcard's `resolveMode` called repeatedly with the same `trickNumber`
-(simulating a lead choice, a follow, and a same-trick redistribution)
-returned the identical mode in all 2000/2000 trials; calling it again with
-`trickNumber + 1` correctly updates the cached roll. Confirms "no re-roll
-mid-trick" and "same trick's mode applies to both mechanic 1 and mechanic
-2" by construction, not just by observation.
+**Redistribution Log UI correctness** (the actual consumer of this data):
+verified with two independent, scratch (uncommitted) checks against real
+games driven through the real `applyAction`/`chooseBotAction` path:
+- 300 games: `receivedRecordsFor`'s internal consistency (chronological
+  order, count, linked-list-head match) - 0 mismatches.
+- 100 games: `buildMaskedState`'s `redistributionLog` (both `received` and
+  `distributed` perspectives) cross-checked against an independently
+  reconstructed shadow log built directly from the actual `redistribute`
+  actions applied - 15,126 gift-groups checked, 0 mismatches. Includes one
+  real traced example (game 0, trick 1): distributor's `distributed` entry
+  and the matching recipient's `received` entry for the same gift, both
+  correct.
 
-**10000-game run** (9999 completed, 1 incomplete — hit the existing
-500,000-iteration safety cap):
+**Performance fix, same 5000-game diagnostic that originally surfaced the
+bug** (re-run post-fix, uncommitted scratch script mirroring
+`scripts/simulate.ts`'s core loop with per-50k-iteration progress logging):
 
-| Metric | Baseline (prior task) | This run (10000 games) | Verdict |
+| | Before this fix | After this fix |
+|---|---|---|
+| Games hitting the 500,000-iteration cap | 3 / 5000 | 2 / 5000 |
+| Time for EACH capped game | ~167.5s | ~2.2-2.3s |
+| Per-50k-iteration-window cost | grew 477ms→33,709ms (9.5μs/iter→674μs/iter) | flat ~220-260ms (~4.4-5.2μs/iter) throughout |
+| Whole 5000-game batch wall time | (not fully measured; single capped game alone exceeded 160s) | **7.3s total** |
+
+The flat per-iteration cost after the fix (vs. the ~70x growth before)
+directly confirms the O(n²) growth is gone - remaining cost is O(1) per
+write, same as a normal game.
+
+**Full-scale re-verification**, `scripts/simulate.ts` (the real,
+committed tool, all logging enabled), 10000 games, run standalone with no
+other CPU-competing process (an earlier attempt overlapped with unrelated
+concurrent work and is not used for these numbers - see Known issues):
+completed in **53 seconds** (9993 completed, 7 incomplete/capped - capped
+games no longer dominate wall time).
+
+| Metric | Last recorded baseline | This run | Verdict |
 |---|---|---|---|
-| Trick count median | 23 | 23 | Unchanged |
-| Trick count mean | 26.09-26.13 | 25.92 | Unchanged (within noise) |
-| Ally-guess accuracy | 39.2-41.2% | 39.6% | Unchanged (within range) |
-| Stalemate rate | 9.69-9.86% | 9.44% | Unchanged (within noise) |
+| Trick count median | 23 | 23 | Unchanged (exact) |
+| Trick count mean | 25.92 | 25.80 | Unchanged (noise) |
+| Ally-guess accuracy | 39.6% | 38.2% | Unchanged (noise, matches this series' established ~1-2pp run-to-run variance) |
+| Stalemate rate | 9.44% | 9.41% | Unchanged (noise) |
 
-No regression to core game health from adding personalities.
-
-**Per-personality breakdown** (the actual point of the feature):
-
-| Personality | Win rate | Avg trick count | Assist role share |
-|---|---|---|---|
-| Rusher (aggressive) | 48.0% | 26.50 | **69.8%** |
-| Hoarder (conservative) | 50.9% | 25.53 | **32.4%** |
-| Balanced (neutral) | 50.2% | 26.03 | 50.6% |
-| Wildcard (oscillating) | 50.9% | 25.62 | 51.9% |
-
-Mechanic 2 shows a clear, correctly-directioned effect at full scale:
-Rusher pulls ~19pp toward assist, Hoarder pulls ~18pp toward completer,
-relative to Balanced's ~50.6% midpoint — matches design intent exactly
-(aggressive → assist bias, conservative → completer bias). Wildcard sits
-close to Balanced (51.9% vs 50.6%), consistent with its 50/50 per-trick
-oscillation averaging out over many decisions across a game. Win-rate
-spread is small (48.0-50.9%, Rusher lowest) — a minor, plausibly
-noise-level effect; personality isn't tied to team assignment, so team
-balance dominates win rate far more than personality does. Trick-count
-differences between personalities are also small (25.5-26.5).
-
-**Performance side-finding (investigated, not fixed — out of scope)**:
-a small fraction of games run extremely long (tens of thousands of
-tricks) and take disproportionate wall-clock time. Root-caused to a
-pre-existing property of `GameState.receivedLog` (rules/types.ts) — a
-cumulative, ever-growing per-player array rebuilt immutably on every
-redistribution, making per-redistribution cost, and therefore total game
-cost, scale roughly O(n²) with trick count. This was already latent
-before this task (previously observed max trick counts up to ~21566 in
-this series' history) but rarely mattered since games were almost always
-short. In a 5000-game diagnostic batch, 3 games hit the 500,000-iteration
-safety cap, each taking ~167s; all 3 involved a Rusher personality,
-suggesting Rusher's deterministic highest-rank tie-breaking (replacing
-Section 3's prior uniform-random tie-break) increases the odds of an
-extremely long game, which then exposes the pre-existing O(n²) cost more
-than before. This is core engine/redistribution-log architecture, not
-Section 7 decision logic — fixing it is out of this task's scope
-(explicitly: "personality only modulates card-choice-within-candidates
-and role-threshold-bias, never the underlying decision logic"). Flagged
-here for a future task.
+Per-personality breakdown (unaffected, included for completeness since
+`scripts/simulate.ts` already reports it): Rusher/Hoarder assist-role-share
+split (69.1%/32.5% vs. Balanced's 50.5%) still matches Section 7's design
+intent exactly, confirming this fix changed nothing about game logic or
+bot decisions - performance only.
 
 ## Open questions
 
-None required asking the user mid-session; BRIEF.md/task spec were
-unambiguous on all mechanics.
+None - task was unambiguous and self-contained.
 
 ## Known issues
 
-- `GameState.receivedLog`'s O(n²)-with-trick-count cost (see performance
-  side-finding above) — pre-existing, not introduced by this task, but
-  personality (specifically Rusher) appears to increase how often it's
-  hit. Not fixed here (out of scope).
-- Personality assignment is host-side and per-game only; no persistence,
-  no player-facing indicator (matches task scope).
+- One 10000-game verification attempt during this session took ~16
+  minutes instead of the expected ~1 minute. Investigated: it ran
+  concurrently with an unrelated task's dev server + several headless
+  Chromium/Playwright sessions on the same machine, competing for CPU. A
+  clean standalone re-run (numbers used above) completed in 53s,
+  confirming this was resource contention, not a residual code issue.
+- Rare extremely long games (tens of thousands of tricks) still occur and
+  still hit the existing 500,000-iteration safety cap (7/10000 this run) -
+  this is pre-existing, expected heavy-tail behavior under the GDD's "No
+  Trick Limit" rule, unchanged by this task. What changed is that each
+  such game is now cheap (~2s) instead of catastrophically expensive
+  (~167s).
 
 ## Next proposed step
 
-Either: (a) address the `receivedLog` O(n²) cost directly (separate,
-engine-level task, benefits every bot-AI feature not just personalities),
-or (b) accept current stalemate rate (~9.4-9.9%, flat across every fix in
-this series) as the practical floor and move to a different area of the
-design doc.
+None required for this fix specifically. The stalemate rate (~9.4%) and
+heavy-tailed trick-count distribution remain open, already-tracked areas
+from prior tasks in this series - not affected by this performance-only
+change.
