@@ -384,12 +384,37 @@ produces: zero, in every run (see "Verification status").
 
 ## Room code refresh (suits-mp and mp-net)
 
-Both prototypes share the same underlying issue: if the host sits idle in
-an empty lobby for a while, the Trystero/Nostr room announcement can
-lapse, making the room code silently undiscoverable to new joiners even
-though the host's session is still alive. `HostLobbyScene` in both now has
-a manual-only "Refresh code" button (pre-game only; there's no equivalent
-mid-game, and no passive/background refresh timer). On tap it:
+`HostLobbyScene` in both prototypes has a manual-only "Refresh code"
+button (pre-game only; there's no equivalent mid-game, and no passive/
+background refresh timer), originally built on the theory that "if the
+host sits idle in an empty lobby for a while, the Trystero/Nostr room
+announcement can lapse, making the room code silently undiscoverable to
+new joiners." **That theory doesn't hold** (found and corrected in
+suits-mp, see below) - Trystero's own strategy layer (`@trystero-p2p/
+core`) re-announces a non-passive room's presence automatically and
+continuously for as long as it's open (a fast warmup right after joining,
+settling into a steady ~5.3s interval, forever) - so a room's
+announcement never actually lapses on its own, and the original
+leave()-and-rejoin implementation (below, still mp-net's current
+behavior) was never actually necessary to keep a room discoverable. It
+did, however, have a real cost: `room.leave()` sends a goodbye to every
+connected peer and destroys their connections, so every refresh silently
+kicked every already-joined player - a real bug, not a documented
+trade-off, despite this brief previously describing it as one.
+
+**suits-mp** (fixed): the refresh button is now a pure UI confirmation -
+no room/actions/roster change, so it never touches an existing peer.
+See `HostLobbyScene.refreshRoomCode`'s own doc comment for the full
+investigation (including why a genuine "is my code now occupied by
+someone else" re-check turns out to be impossible without leaving first,
+since Trystero caches one room object per (appId, roomId) for the life of
+the page) and `BUILD_STATUS.md` for the real multi-client verification.
+
+**mp-net** (not yet fixed - out of scope for the suits-mp task that found
+this): still uses the original approach below, and still kicks every
+connected peer on refresh. Needs the identical fix.
+
+Original (still mp-net's current) implementation, on tap:
 
 1. Leaves the current Trystero room and rejoins under the *same* code -
    the closest equivalent to "re-announce presence" achievable through
@@ -407,10 +432,27 @@ mid-game, and no passive/background refresh timer). On tap it:
 Real peer connections don't survive the `room.leave()` this requires, so
 their roster entries are dropped on refresh (they'd need to reconnect on
 the possibly-new code); the host's own slot survives, and in suits-mp,
-bot seats survive too (they were never real network peers). This is a
-known, accepted trade-off given the failure scenario the button exists
-for is specifically "no one has successfully joined yet" - it isn't
-addressed further since it wasn't asked for.
+bot seats survive too (they were never real network peers).
+
+## Room discovery propagation race (investigated, suits-mp)
+
+Separately investigated: a real user report of "Room Not Found" on a
+genuinely fresh (<60s old) room, ruling out staleness. Confirmed a real
+race in Trystero's nostr strategy, independent of the refresh-button bug
+above: a joiner's relay subscription (`REQ ... since: now()`) only
+receives announce events published *after* it subscribes - it will miss
+an announce published moments earlier on the same relay. The host's
+announce loop's own warmup schedule is 233ms/533ms/1333ms after opening,
+then a steady ~5.3s interval - so a joiner who happens to subscribe
+between two announces must wait for the next one, up to ~5.3s in the
+worst case once past the warmup window. That eats into
+`connectionTimeoutMs`'s 8s budget before the actual WebRTC handshake even
+starts. A second, compounding factor: `makeSocket`'s `client.send` silently
+no-ops (no error, no retry) if a relay's WebSocket isn't in the OPEN
+state at send time, so an announce scheduled during a relay reconnect is
+silently dropped for that relay with no automatic retry of that specific
+attempt. Not fixed here - a fix (e.g. retry-with-backoff on join) is a
+separate follow-up task.
 
 ## UI (Phaser primitives, Stage 3a scope)
 

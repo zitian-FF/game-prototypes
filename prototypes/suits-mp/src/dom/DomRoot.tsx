@@ -107,7 +107,6 @@ export function DomRoot(): JSX.Element {
           roomCode={lobby.roomCode}
           seats={lobby.seats}
           hostLeft={lobby.hostLeft}
-          refreshCodeError={lobby.refreshCodeError}
           onSinglePlayer={lobby.onSinglePlayer}
           onTutorial={lobby.onTutorial}
           onHost={lobby.onHost}

@@ -8,13 +8,7 @@ import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
-import {
-  showHostSettingUp,
-  showHostLobby,
-  hideHostLobby,
-  showHostLobbyRefreshError,
-  clearHostLobbyRefreshError,
-} from '../dom/lobby/lobbyUiStore';
+import { showHostSettingUp, showHostLobby, hideHostLobby } from '../dom/lobby/lobbyUiStore';
 import type { SeatInfo } from '../dom/lobby/lobbySeats';
 import tune from '../../tune.json';
 import type { BootData } from '../net/playerSession';
@@ -60,7 +54,6 @@ export class HostLobbyScene extends Phaser.Scene {
   private iceServers: RTCIceServer[] | undefined;
   private hostClientId!: string;
   private code!: string;
-  private refreshing = false;
 
   // Debounces roster removal on disconnect (mobile connections blip
   // constantly) and is cancelled if the same client ID reappears before
@@ -167,9 +160,7 @@ export class HostLobbyScene extends Phaser.Scene {
     return `${location.origin}${location.pathname}?lobby=${this.code}`;
   }
 
-  // (Re)wires the identity/peer-leave handlers onto whatever `this.room` /
-  // `this.actions` currently are - split out so refreshRoomCode can call it
-  // again after swapping in a new room.
+  // Wires the identity/peer-leave handlers onto `this.room`/`this.actions`.
   private wireRoomHandlers(): void {
     this.actions.identity.onMessage = ({ clientId, displayName }, context) => {
       this.reconnectDebouncer.cancelPending(clientId);
@@ -236,68 +227,51 @@ export class HostLobbyScene extends Phaser.Scene {
     this.scene.start('HostGame', { room: this.room, actions: this.actions, roster: this.roster });
   }
 
-  // Manual-only room-code refresh (no passive/background timer): first
-  // tries to re-announce presence under the same code by leaving and
-  // rejoining the Trystero room under that identical code (there is no
-  // lower-level "reannounce" primitive exposed by Trystero's public API,
-  // so a clean leave+rejoin is the closest equivalent) - if that code is
-  // now occupied by someone else, falls back to generating a new one, same
-  // rules as the initial host setup. Real peer connections don't survive a
-  // room.leave() switch, so their roster entries are dropped (they'll need
-  // to reconnect on the possibly-new code); only the host's own slot and
-  // any host-local bot slots survive.
+  // Manual-only room-code refresh (no passive/background timer).
   //
-  // Wrapped in a real catch (this used to be a try/finally with no catch -
-  // the same class of silent-failure bug found and fixed in ConnectingScene
-  // and setUpRoom above, see BUILD_STATUS.md). Lower severity than that one:
-  // this is a user-initiated in-lobby retry, not a boot-time hang that
-  // blocks the whole screen, so on failure it logs and surfaces an inline
-  // error next to the refresh button rather than navigating away - the host
-  // stays on the lobby they were already on and can just try again.
-  private async refreshRoomCode(): Promise<void> {
-    if (this.refreshing) return;
-    this.refreshing = true;
-    clearHostLobbyRefreshError();
-
-    try {
-      await this.room.leave();
-
-      for (const [clientId, entry] of [...this.roster.entries()]) {
-        if (!entry.isHost && !entry.isBot) this.roster.delete(clientId);
-      }
-      this.reconnectDebouncer.clearAll();
-
-      let code = this.code;
-      let room = createNetworkRoom(code, { iceServers: this.iceServers });
-      let occupied = await this.checkOccupied(room);
-
-      if (occupied) {
-        await room.leave();
-        for (let attempt = 1; attempt < MAX_CODE_ATTEMPTS; attempt++) {
-          code = randomLobbyCode();
-          room = createNetworkRoom(code, { iceServers: this.iceServers });
-          occupied = await this.checkOccupied(room);
-          if (!occupied) break;
-          await room.leave();
-        }
-      }
-
-      if (!this.scene.isActive()) {
-        void room.leave();
-        return;
-      }
-
-      this.room = room;
-      this.code = code;
-      this.actions = createNetworkActions(room);
-      this.wireRoomHandlers();
-      this.pushLobbyState();
-    } catch (err: unknown) {
-      console.error('[suits-mp host] failed to refresh room code:', err);
-      showHostLobbyRefreshError();
-    } finally {
-      this.refreshing = false;
-    }
+  // Originally implemented as room.leave() + rejoin under the same code
+  // ("the closest equivalent to re-announce presence Trystero's public API
+  // exposes"). That was the bug: Trystero's Room.leave() (see
+  // @trystero-p2p/core's room.mjs) sends a goodbye to every peer and then
+  // destroys each of their connections - so a refresh silently kicked every
+  // already-connected player, not just this room's advertised presence.
+  //
+  // Investigated what Trystero actually supports here before picking a
+  // fix (rather than assuming leave+rejoin was the only option), by reading
+  // @trystero-p2p/core's own strategy implementation:
+  //
+  //   - A room only "stops announcing" if it's `passive` (this app never
+  //     sets that option) or has been left. For a normal, non-passive room
+  //     like this one, `strategy.mjs`'s internal announce loop re-publishes
+  //     presence forever on its own - a fast warmup (233ms, 533ms, 1333ms
+  //     after joining) settling into a steady ~5.3s interval - for as long
+  //     as the room stays open. There is no scenario where our own open
+  //     room's announcement "lapses" while it's alive; leaving and
+  //     rejoining was never actually necessary to keep it discoverable.
+  //   - Trystero also caches rooms per (appId, roomId) for the lifetime of
+  //     the page (`occupiedRooms` in strategy.mjs, only cleared by
+  //     leave()) - so re-checking "is my current code now occupied by
+  //     someone else" can't be done via a second, disposable room object
+  //     while this one stays open: joining the same code again just hands
+  //     back this exact room instance. A real occupancy re-check is only
+  //     possible by leaving first, which is the one thing this fix needs
+  //     to avoid.
+  //
+  // Given both of those, a refresh under the still-current code has
+  // nothing left to do at the network level - the room is already
+  // continuously, automatically announcing itself. This is now a pure UI
+  // confirmation: no room/actions/roster change, so no peer is ever
+  // touched, let alone dropped.
+  //
+  // Not handled: another host independently generating this exact code
+  // while this lobby sits idle. With 5-character codes drawn from a
+  // 32-character alphabet (~33.5 million combinations, see lobbyCode.ts)
+  // this is astronomically rare, and per the finding above it can no
+  // longer even be detected without leaving this room first - the one
+  // action this fix exists to avoid. See BUILD_STATUS.md's Known Issues
+  // for what a real fix would need if this ever turns out to matter.
+  private refreshRoomCode(): void {
+    this.pushLobbyState();
   }
 
   private pushLobbyState(): void {
@@ -305,7 +279,7 @@ export class HostLobbyScene extends Phaser.Scene {
       onFillBot: (i) => this.fillBot(ALL_NET_PLAYER_IDS[i]),
       onReleaseBot: (i) => this.releaseBot(ALL_NET_PLAYER_IDS[i]),
       onStartGame: () => this.startGame(),
-      onRefreshCode: () => void this.refreshRoomCode(),
+      onRefreshCode: () => this.refreshRoomCode(),
     });
   }
 }

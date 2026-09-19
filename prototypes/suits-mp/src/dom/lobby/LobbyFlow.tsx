@@ -34,7 +34,6 @@ export interface LobbyFlowProps {
   roomCode: string;
   seats: SeatInfo[];
   hostLeft: boolean;
-  refreshCodeError: boolean;
   onSinglePlayer: () => void;
   onTutorial: () => void;
   onHost: (name: string) => void;
@@ -54,7 +53,6 @@ export function LobbyFlow({
   roomCode,
   seats,
   hostLeft,
-  refreshCodeError,
   onSinglePlayer,
   onTutorial,
   onHost,
@@ -78,12 +76,24 @@ export function LobbyFlow({
     if (screen === 'join') setCode('');
   }, [screen]);
 
+  const showToast = (message: string): void => {
+    setCopyToast(message);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setCopyToast(''), 2200);
+  };
+
   const copy = (what: 'code' | 'link'): void => {
     const text = what === 'code' ? roomCode : `${location.origin}${location.pathname}?lobby=${roomCode}`;
     if (navigator.clipboard) void navigator.clipboard.writeText(text).catch(() => {});
-    setCopyToast(what === 'code' ? 'Code copied.' : 'Summons copied.');
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setCopyToast(''), 2200);
+    showToast(what === 'code' ? 'Code copied.' : 'Summons copied.');
+  };
+
+  // The refresh button no longer does anything at the network level (see
+  // HostLobbyScene.refreshRoomCode's own doc comment for why re-announcing
+  // is already automatic) - this just gives the tap a visible confirmation.
+  const reannounce = (): void => {
+    onRefreshCode();
+    showToast('Room re-announced.');
   };
 
   const filled = seats.filter((s) => s.occupancy !== null).length;
@@ -395,7 +405,7 @@ export function LobbyFlow({
               <button
                 type="button"
                 data-ui="refresh-code-button"
-                onClick={onRefreshCode}
+                onClick={reannounce}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -487,11 +497,11 @@ export function LobbyFlow({
                 fontFamily: "'EB Garamond', serif",
                 fontStyle: 'italic',
                 fontSize: 12,
-                color: !copyToast && refreshCodeError ? 'rgba(224, 120, 120, 0.85)' : 'rgba(180, 222, 212, 0.8)',
+                color: 'rgba(180, 222, 212, 0.8)',
                 minHeight: 16,
               }}
             >
-              {copyToast || (refreshCodeError ? 'Re-announcement failed — tap ↻ to try again.' : '')}
+              {copyToast}
             </div>
           </div>
 

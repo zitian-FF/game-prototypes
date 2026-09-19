@@ -22,12 +22,6 @@ export interface LobbyUiState {
   // setWaitingHostLeft) - whether the host disconnected while this peer was
   // waiting in the lobby.
   hostLeft: boolean;
-  // Only meaningful while screen === 'lobby' (see showHostLobbyRefreshError/
-  // clearHostLobbyRefreshError) - whether the last room-code refresh attempt
-  // threw. Surfaced as an inline message rather than navigating away, since
-  // this is a user-initiated in-lobby retry, not a boot-time failure that
-  // blocks the whole screen (compare showJoinError).
-  refreshCodeError: boolean;
   onSinglePlayer: () => void;
   onTutorial: () => void;
   onHost: (name: string) => void;
@@ -62,7 +56,6 @@ function idleState(): LobbyUiState {
     roomCode: '',
     seats: EMPTY_SEATS,
     hostLeft: false,
-    refreshCodeError: false,
     onSinglePlayer: noop,
     onTutorial: noop,
     onHost: noop,
@@ -151,25 +144,6 @@ export function showHostLobby(roomCode: string, seats: SeatInfo[], callbacks: Ho
 export function hideHostLobby(): void {
   if (!state.visible) return;
   state = idleState();
-  emit();
-}
-
-// Set when refreshRoomCode's async sequence throws (see HostLobbyScene) -
-// clears automatically the next time showHostLobby() runs (a successful
-// refresh, or fillBot/releaseBot/identity churn in between), since that
-// re-spreads idleState().
-export function showHostLobbyRefreshError(): void {
-  if (state.screen !== 'lobby') return;
-  state = { ...state, refreshCodeError: true };
-  emit();
-}
-
-// Called at the start of a fresh refresh attempt so a stale error from a
-// previous attempt doesn't linger on screen through a new, still-in-flight
-// one.
-export function clearHostLobbyRefreshError(): void {
-  if (state.screen !== 'lobby' || !state.refreshCodeError) return;
-  state = { ...state, refreshCodeError: false };
   emit();
 }
 
