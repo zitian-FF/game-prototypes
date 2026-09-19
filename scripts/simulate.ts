@@ -11,7 +11,7 @@ import { applyAction, createInitialState } from '../prototypes/suits-mp/src/host
 import { chooseBotAction } from '../prototypes/suits-mp/src/host/botAI';
 import { determineRole } from '../prototypes/suits-mp/src/host/botRole';
 import { identifyFriendlyAlly } from '../prototypes/suits-mp/src/host/botTrust';
-import { activePlayerId } from '../prototypes/suits-mp/src/rules/engine';
+import { activePlayerId, requiredSuitForPosition, turnOrder } from '../prototypes/suits-mp/src/rules/engine';
 import { cardById, GOD_TEAM } from '../prototypes/suits-mp/src/rules/cards';
 import { fromNetPlayerId } from '../prototypes/suits-mp/src/net/netPlayerId';
 import type { CardId, DeityCardState, God, GameState, PlayerId, PlayKind, Team, WinInfo } from '../prototypes/suits-mp/src/rules/types';
@@ -71,6 +71,42 @@ interface DelegateLogEntry {
   readonly delegateId: PlayerId;
 }
 
+// Verification-only: the leader's own role/ally view at the moment they
+// chose a lead card, plus an INDEPENDENTLY recomputed check (using the
+// same real engine.ts requiredSuitForPosition/turnOrder Section 5.3
+// itself uses, not read from bot internals) of whether this led suit
+// forces some other seat to reveal the logged friendlyPlayerDeity, and if
+// so whether that seat is the ally's own or an opponent's. Lets a real
+// game be spot-checked for Section 5.3 actually firing and targeting
+// correctly, without touching botAI.ts's own decision code at all.
+interface LeadChoiceLogEntry {
+  readonly trickNumber: number;
+  readonly leaderId: PlayerId;
+  readonly leaderGod: God;
+  readonly role: 'completer' | 'assist';
+  readonly friendlyPlayerId: PlayerId | null;
+  readonly friendlyPlayerDeity: God | null;
+  readonly ledCard: LoggedCard;
+  readonly suitCycleTarget: { readonly targetSeat: PlayerId; readonly isOpponent: boolean } | null;
+}
+
+function computeSuitCycleTarget(
+  leaderId: PlayerId,
+  leadGod: God,
+  friendlyPlayerId: PlayerId | null,
+  friendlyPlayerDeity: God | null
+): LeadChoiceLogEntry['suitCycleTarget'] {
+  if (friendlyPlayerId === null || friendlyPlayerDeity === null) return null;
+  const order = turnOrder(leaderId);
+  for (let position = 1; position <= 3; position++) {
+    if (requiredSuitForPosition(position, leadGod) === friendlyPlayerDeity) {
+      const targetSeat = order[position];
+      return { targetSeat, isOpponent: targetSeat !== friendlyPlayerId };
+    }
+  }
+  return null;
+}
+
 // Verification-only snapshot (host/botTrust.ts is not consumed by any
 // decision function yet - this exists purely to check, with real data,
 // whether the trust mechanism's "friendly" guess actually correlates with
@@ -110,6 +146,7 @@ interface GameLog {
   readonly tricks: TrickLogEntry[];
   readonly redistributions: RedistributionLogEntry[];
   readonly delegateSelections: DelegateLogEntry[];
+  readonly leadChoices: LeadChoiceLogEntry[];
   readonly allyGuesses: AllyGuessLogEntry[];
   // Null only when the game hit the safety-iteration cap before reaching
   // gameOver (see playOneGame's MAX_ITERATIONS) - a real, observed fact
@@ -149,8 +186,25 @@ function logActionIfRelevant(
   state: GameState,
   action: ClientAction,
   redistributions: RedistributionLogEntry[],
-  delegateSelections: DelegateLogEntry[]
+  delegateSelections: DelegateLogEntry[],
+  leadChoices: LeadChoiceLogEntry[]
 ): void {
+  if (action.action === 'playCard' && state.plays.length === 0) {
+    const leaderId = state.leaderId;
+    const ally = identifyFriendlyAlly(state, leaderId);
+    const ledCardId = action.cards[0];
+    const leadGod = cardById(ledCardId).god;
+    leadChoices.push({
+      trickNumber: state.trickNumber,
+      leaderId,
+      leaderGod: state.players[leaderId].god,
+      role: determineRole(state, leaderId),
+      friendlyPlayerId: ally?.friendlyPlayer ?? null,
+      friendlyPlayerDeity: ally?.friendlyPlayerDeity ?? null,
+      ledCard: toLoggedCard(ledCardId),
+      suitCycleTarget: computeSuitCycleTarget(leaderId, leadGod, ally?.friendlyPlayer ?? null, ally?.friendlyPlayerDeity ?? null),
+    });
+  }
   if (action.action === 'redistribute') {
     const distributorId = state.pendingDistributorId;
     if (distributorId === null) throw new Error('redistribute action with no pendingDistributorId');
@@ -185,6 +239,7 @@ function playOneGame(gameIndex: number): GameLog {
   const tricks: TrickLogEntry[] = [];
   const redistributions: RedistributionLogEntry[] = [];
   const delegateSelections: DelegateLogEntry[] = [];
+  const leadChoices: LeadChoiceLogEntry[] = [];
 
   let iterations = 0;
   // Empirically, a 300k-action budget comfortably covers the observed
@@ -201,6 +256,7 @@ function playOneGame(gameIndex: number): GameLog {
         tricks,
         redistributions,
         delegateSelections,
+        leadChoices,
         allyGuesses: computeAllyGuesses(state),
         winner: null,
         trickCount: state.trickNumber,
@@ -212,7 +268,7 @@ function playOneGame(gameIndex: number): GameLog {
       throw new Error(`game ${gameIndex}: no active player for phase "${state.phase}" - engine should never leave settleAutoPhases in this phase`);
     }
     const action = chooseBotAction(state, slot);
-    logActionIfRelevant(state, action, redistributions, delegateSelections);
+    logActionIfRelevant(state, action, redistributions, delegateSelections, leadChoices);
     const prevLastTrickResult = state.lastTrickResult;
     const result = applyAction(state, slot, action);
     if (!result.ok) {
@@ -234,6 +290,7 @@ function playOneGame(gameIndex: number): GameLog {
     tricks,
     redistributions,
     delegateSelections,
+    leadChoices,
     allyGuesses: computeAllyGuesses(state),
     winner: state.winner,
     trickCount: state.trickNumber,
