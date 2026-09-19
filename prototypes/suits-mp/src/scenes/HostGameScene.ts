@@ -5,6 +5,8 @@ import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { createInitialState, applyAction } from '../host/gameHost';
 import { chooseBotAction } from '../host/botAI';
+import { createBotPersonalities } from '../host/botPersonality';
+import type { BotPersonalityState } from '../host/botPersonality';
 import { buildMaskedState } from '../host/mask';
 import { activePlayerId } from '../rules/engine';
 import { createPersistentUIState, presentGameView } from '../ui/renderGameView';
@@ -48,6 +50,12 @@ export class HostGameScene extends Phaser.Scene {
   private roster!: Roster;
   private actions!: ReturnType<typeof createNetworkActions> | null;
   private state!: GameState;
+  // Section 7 (design doc v6): one random archetype per seat, assigned
+  // once at game init and never reassigned - host-side only, never sent
+  // to any client/masked payload. Applies uniformly to every seat
+  // (human-controlled seats simply never call chooseBotAction, so their
+  // entry here is inert).
+  private botPersonalities!: Record<PlayerId, BotPersonalityState>;
   private container!: Phaser.GameObjects.Container;
   // One instance for the scene's whole lifetime, not rebuilt per masked
   // state - see ui/renderGameView.ts's PersistentUIState doc comment.
@@ -88,6 +96,7 @@ export class HostGameScene extends Phaser.Scene {
     this.roster = data.roster;
     this.actions = data.actions;
     this.state = createInitialState();
+    this.botPersonalities = createBotPersonalities();
     this.container = this.add.container(0, 0);
 
     // Deliberately no room.onPeerLeave here: a mid-game disconnect
@@ -175,7 +184,7 @@ export class HostGameScene extends Phaser.Scene {
     if (!entry?.isBot) return;
 
     this.time.delayedCall(tune.botActionDelayMs, () => {
-      const action = chooseBotAction(this.state, active);
+      const action = chooseBotAction(this.state, active, this.botPersonalities[active]);
       const result = applyAction(this.state, active, action);
       if (!result.ok) {
         console.warn(`suits-mp host: bot action rejected for slot ${active}: ${result.error}`);

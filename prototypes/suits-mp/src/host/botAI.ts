@@ -6,19 +6,22 @@ import type { ClientAction, PlayType } from '../net/actions';
 import { determineRole } from './botRole';
 import { identifyFriendlyAlly } from './botTrust';
 import type { FriendlyAlly } from './botTrust';
+import { resolveMode } from './botPersonality';
+import type { BotPersonalityState, PersonalityMode } from './botPersonality';
 
-// Legal-random AI, with two deliberate exceptions: redistribution has Tier
-// A self-interested suit-optimizing logic, and choosePlayCardAction now has
-// the Section 3 "card-play extension to Tier A" baseline heuristic (see
-// suits-mp-bot-ai-design.md, Google Drive/Working/, v3) - a single, shared
-// heuristic with no personality variation yet (that's a later task).
-// chooseDelegateAction remains uniform-random, per the design doc.  A bot
-// never reads or mutates state directly; it only ever produces a
-// ClientAction, which the host applies through the exact same
-// gameHost.applyAction path as a real peer's action (see
-// HostGameScene.driveBotsIfNeeded) - there is no separate bot rules path,
-// so this is a genuine exercise of the same validation every human action
-// goes through.
+// Legal-random AI, layered with: Tier A self-interested redistribution,
+// Section 3's card-play heuristic, Section 5's Completer/Assist role
+// system (with 5.3's Suit-Cycle lead engineering for a confirmed ally),
+// and Section 7's personality system (host/botPersonality.ts) modulating
+// mechanic 1 (rank preference within Section 3's own candidate sets) and
+// mechanic 2 (a small bias on botRole.ts's mono/mixed threshold).
+// chooseDelegateAction remains uniform-random, per the design doc - never
+// touched by any personality mechanic. A bot never reads or mutates
+// canonical GameState directly; it only ever produces a ClientAction,
+// which the host applies through the exact same gameHost.applyAction path
+// as a real peer's action (see HostGameScene.driveBotsIfNeeded) - there is
+// no separate bot rules path, so this is a genuine exercise of the same
+// validation every human action goes through.
 //
 // "Needed" throughout this file means exactly one thing, per the design
 // doc's deliberately simple binary (not a fuzzy value scale): a card whose
@@ -31,6 +34,43 @@ import type { FriendlyAlly } from './botTrust';
 
 function isNeeded(state: GameState, slot: PlayerId, cardId: CardId): boolean {
   return cardById(cardId).god === state.players[slot].god;
+}
+
+// Section 7 (personalities), mechanic 1: a card's rank for personality
+// preference purposes - the fixed face value (2-10), with a Deity Card
+// treated as the highest value (11), matching its top-of-cycle position
+// in rules/cards.ts's own RANK_SORT_ORDER. Deliberately the RAW rank, not
+// the dynamic Dormant/Powered-adjusted trick score (rules/engine.ts's
+// scoreOf) - mechanic 1 is a simple, consistent "which specific card"
+// preference layered on top of whatever candidate set Section 3 already
+// narrowed a decision to, not a second opinion on whether that set's
+// members would win.
+function cardRankValue(id: CardId): number {
+  const rank = cardById(id).rank;
+  return rank === 'DeityCard' ? 11 : rank;
+}
+
+// Section 7, mechanic 1, general form: among `candidates`, aggressive
+// picks whichever has the highest `rankOf` value, conservative the
+// lowest, neutral (Balanced, or no personality context) leaves Section
+// 3's own tie-break - uniform random - completely untouched. This only
+// ever picks WITHIN a candidate set Section 3's own needed/not-needed
+// filtering already produced; it never changes which candidates are
+// eligible.
+function pickByPersonality<T>(candidates: readonly T[], rankOf: (item: T) => number, mode: PersonalityMode): T {
+  if (mode === 'aggressive') {
+    const best = Math.max(...candidates.map(rankOf));
+    return pickRandom(candidates.filter((c) => rankOf(c) === best));
+  }
+  if (mode === 'conservative') {
+    const worst = Math.min(...candidates.map(rankOf));
+    return pickRandom(candidates.filter((c) => rankOf(c) === worst));
+  }
+  return pickRandom(candidates);
+}
+
+function pickCardByPersonality(candidates: readonly CardId[], mode: PersonalityMode): CardId {
+  return pickByPersonality(candidates, cardRankValue, mode);
 }
 
 // Design doc Section 5.3: a confirmed-ally Assist can solve, via the fixed
@@ -116,20 +156,24 @@ function shuffled<T>(items: readonly T[]): T[] {
   return arr;
 }
 
-// Design doc Section 3's card-play extension to Tier A, applied uniformly
-// (no personality variation yet), plus Section 5.3's Suit-Cycle lead
-// engineering layered on top of item 1 for a confirmed-ally Assist:
+// Design doc Section 3's card-play extension to Tier A, plus Section
+// 5.3's Suit-Cycle lead engineering layered on top of item 1 for a
+// confirmed-ally Assist, plus Section 7's personality mechanic 1 layered
+// on top of EVERY pickRandom-over-a-candidate-set call site Section 3
+// itself owns (never 5.3's own chooseSuitCycleLeadForAlly, which stays
+// untouched per this task's scope):
 //   1. Leading: prefer a not-needed card - leading grants nothing directly,
 //      so there's no reason to risk a needed one. All-needed hand (a real
 //      possible edge case, e.g. a hand that's one suit after heavy
-//      redistribution) falls back to any legal card (pickRandom(hand)),
-//      unchanged from the old fully-random behaviour. Among not-needed
-//      candidates specifically, a role==='assist' bot with a STRICT
-//      identifyFriendlyAlly result first tries chooseSuitCycleLeadForAlly
-//      (Section 5.3) - if it finds a lead suit that forces an OPPONENT to
-//      reveal the ally's needed suit, that's preferred; otherwise this
-//      falls through to the plain pickRandom(notNeeded) baseline exactly
-//      as before 5.3 existed.
+//      redistribution) falls back to any legal card, unchanged from the
+//      old fully-random behaviour except for mechanic 1's rank
+//      preference. Among not-needed candidates specifically, a
+//      role==='assist' bot (role itself now personality-biased per
+//      botRole.ts's mechanic 2) with a STRICT identifyFriendlyAlly result
+//      first tries chooseSuitCycleLeadForAlly (Section 5.3) - if it finds
+//      a lead suit that forces an OPPONENT to reveal the ally's needed
+//      suit, that's preferred (personality-unmodified, per scope);
+//      otherwise this falls through to the notNeeded baseline.
 //   2. Must-follow-suit: prefer winning (any Single win grants
 //      redistribution rights - unconditionally useful to a self-interested
 //      bot) using a not-needed card among winning options where possible;
@@ -141,11 +185,19 @@ function shuffled<T>(items: readonly T[]): T[] {
 //      which specific card gets discarded (a facedownSingle can never win a
 //      trick, so there's nothing to lose by shedding a spendable card first)
 //      - falls back to the full hand if every card is needed. The overall
-//      Double-vs-facedownSingle choice itself (whether pickRandom(moves)
+//      Double-vs-facedownSingle choice itself (whether the final pick
 //      ends up choosing a Double attempt or a facedownSingle at all) stays
-//      exactly as random as before - only which cards become facedownSingle
-//      candidates changes, never the Double-generation branch below it.
-function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
+//      exactly as random as before mechanic 1 - only which cards become
+//      facedownSingle candidates changes, never the Double-generation
+//      branch below it; mechanic 1's rank preference is applied once, at
+//      the final combined pick, using each move's own card rank (a
+//      Double's two cards always share one rank).
+//
+// `mode` is this bot's already-resolved personality mode for the CURRENT
+// decision (host/botPersonality.ts's resolveMode, called once by
+// chooseBotAction) - 'neutral' (Balanced) leaves every pickRandom below
+// exactly as it always was.
+function choosePlayCardAction(state: GameState, slot: PlayerId, mode: PersonalityMode): ClientAction {
   const leading = state.plays.length === 0;
   const requiredSuit = leading ? null : currentRequiredSuit(state);
   const hand = state.players[slot].hand;
@@ -161,9 +213,9 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
     }
     const notNeeded = hand.filter((id) => !isNeeded(state, slot, id));
     if (notNeeded.length === 0) {
-      return { action: 'playCard', playType: 'single', cards: [pickRandom(hand)] };
+      return { action: 'playCard', playType: 'single', cards: [pickCardByPersonality(hand, mode)] };
     }
-    if (determineRole(state, slot) === 'assist') {
+    if (determineRole(state, slot, mode) === 'assist') {
       const ally = identifyFriendlyAlly(state, slot);
       if (ally !== null) {
         const targetedLead = chooseSuitCycleLeadForAlly(slot, ally, notNeeded);
@@ -172,7 +224,7 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
         }
       }
     }
-    return { action: 'playCard', playType: 'single', cards: [pickRandom(notNeeded)] };
+    return { action: 'playCard', playType: 'single', cards: [pickCardByPersonality(notNeeded, mode)] };
   }
   if (opts.mustPlaySuit) {
     const requiredGod = opts.mustPlaySuit;
@@ -180,10 +232,10 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
     let chosen: CardId;
     if (winningCards.length > 0) {
       const winningNotNeeded = winningCards.filter((id) => !isNeeded(state, slot, id));
-      chosen = winningNotNeeded.length > 0 ? pickRandom(winningNotNeeded) : pickRandom(winningCards);
+      chosen = winningNotNeeded.length > 0 ? pickCardByPersonality(winningNotNeeded, mode) : pickCardByPersonality(winningCards, mode);
     } else {
       const notNeeded = opts.suitCards.filter((id) => !isNeeded(state, slot, id));
-      chosen = notNeeded.length > 0 ? pickRandom(notNeeded) : pickRandom(opts.suitCards);
+      chosen = notNeeded.length > 0 ? pickCardByPersonality(notNeeded, mode) : pickCardByPersonality(opts.suitCards, mode);
     }
     return { action: 'playCard', playType: 'single', cards: [chosen] };
   }
@@ -199,7 +251,7 @@ function choosePlayCardAction(state: GameState, slot: PlayerId): ClientAction {
     const [a, b] = shuffled(ofRank);
     moves.push({ playType: 'double', cards: [a, b] });
   }
-  const move = pickRandom(moves);
+  const move = pickByPersonality(moves, (m) => cardRankValue(m.cards[0]), mode);
   return { action: 'playCard', playType: move.playType, cards: move.cards };
 }
 
@@ -307,7 +359,15 @@ function takeCards(pool: CardId[], count: number, preferredGod: God | null): Car
 // isWinLock in particular is detected purely from the distributor's own
 // hand/god (host/botRole.ts's own-suit-count metric, reused), the same
 // masking-safe self-knowledge every other check here already relies on.
-function chooseRedistributeAction(state: GameState): ClientAction {
+//
+// `mode` (Section 7 personalities) only ever reaches `determineRole`
+// below (mechanic 2's role-threshold bias) - this function has no
+// mechanic-1 rank-preference decisions of its own (redistribution isn't
+// one of Section 3's "leading/following/off-suit" card-play decision
+// points), and personality never touches this function's own
+// self-interest/win-lock/ally-routing logic (Section 5.1/5.2/5.3, out of
+// this task's scope).
+function chooseRedistributeAction(state: GameState, mode: PersonalityMode): ClientAction {
   const distributorId = state.pendingDistributorId;
   const trickResult = state.lastTrickResult;
   if (distributorId === null || !trickResult) throw new Error('bot: no trick result to redistribute from');
@@ -325,7 +385,7 @@ function chooseRedistributeAction(state: GameState): ClientAction {
   const ownGod = state.players[distributorId].god;
 
   const ally = identifyFriendlyAlly(state, distributorId);
-  const role = determineRole(state, distributorId);
+  const role = determineRole(state, distributorId, mode);
   const ownSuitCount = pool.filter((id) => cardById(id).god === ownGod).length;
   const isWinLock = ownSuitCount === 10;
 
@@ -413,14 +473,24 @@ function chooseRedistributeAction(state: GameState): ClientAction {
   return { action: 'redistribute', assignments };
 }
 
-export function chooseBotAction(state: GameState, slot: PlayerId): ClientAction {
+// `personality` is this bot seat's persistent Section 7 assignment
+// (host/botPersonality.ts), created once per game by whoever drives bots
+// (HostGameScene.ts for real play, scripts/simulate.ts for self-play) and
+// passed in here unchanged every call - the one piece of state in this
+// whole bot AI that isn't re-derived fresh from GameState each time (see
+// botPersonality.ts's own doc comment for why). `resolveMode` is called
+// once per decision, keyed by `state.trickNumber` so Wildcard's roll
+// stays consistent across every decision within one trick, including a
+// later redistribution that trick's outcome triggers.
+export function chooseBotAction(state: GameState, slot: PlayerId, personality: BotPersonalityState): ClientAction {
+  const mode = resolveMode(personality, state.trickNumber);
   switch (state.phase) {
     case 'turn':
-      return choosePlayCardAction(state, slot);
+      return choosePlayCardAction(state, slot, mode);
     case 'chooseDelegate':
       return chooseDelegateAction(slot);
     case 'redistribution':
-      return chooseRedistributeAction(state);
+      return chooseRedistributeAction(state, mode);
     default:
       throw new Error(`bot: no action defined for phase ${state.phase}`);
   }

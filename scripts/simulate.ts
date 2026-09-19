@@ -11,6 +11,8 @@ import { applyAction, createInitialState } from '../prototypes/suits-mp/src/host
 import { chooseBotAction } from '../prototypes/suits-mp/src/host/botAI';
 import { determineRole } from '../prototypes/suits-mp/src/host/botRole';
 import { identifyFriendlyAlly } from '../prototypes/suits-mp/src/host/botTrust';
+import { createBotPersonalities, resolveMode } from '../prototypes/suits-mp/src/host/botPersonality';
+import type { BotPersonalityState, Personality } from '../prototypes/suits-mp/src/host/botPersonality';
 import { activePlayerId, requiredSuitForPosition, turnOrder } from '../prototypes/suits-mp/src/rules/engine';
 import { cardById, GOD_TEAM } from '../prototypes/suits-mp/src/rules/cards';
 import { fromNetPlayerId } from '../prototypes/suits-mp/src/net/netPlayerId';
@@ -142,7 +144,7 @@ function computeAllyGuesses(state: GameState): AllyGuessLogEntry[] {
 interface GameLog {
   readonly gameIndex: number;
   readonly startingLeaderId: PlayerId;
-  readonly players: { readonly id: PlayerId; readonly god: God; readonly team: Team }[];
+  readonly players: { readonly id: PlayerId; readonly god: God; readonly team: Team; readonly personality: Personality }[];
   readonly tricks: TrickLogEntry[];
   readonly redistributions: RedistributionLogEntry[];
   readonly delegateSelections: DelegateLogEntry[];
@@ -187,18 +189,20 @@ function logActionIfRelevant(
   action: ClientAction,
   redistributions: RedistributionLogEntry[],
   delegateSelections: DelegateLogEntry[],
-  leadChoices: LeadChoiceLogEntry[]
+  leadChoices: LeadChoiceLogEntry[],
+  personalities: Record<PlayerId, BotPersonalityState>
 ): void {
   if (action.action === 'playCard' && state.plays.length === 0) {
     const leaderId = state.leaderId;
     const ally = identifyFriendlyAlly(state, leaderId);
     const ledCardId = action.cards[0];
     const leadGod = cardById(ledCardId).god;
+    const mode = resolveMode(personalities[leaderId], state.trickNumber);
     leadChoices.push({
       trickNumber: state.trickNumber,
       leaderId,
       leaderGod: state.players[leaderId].god,
-      role: determineRole(state, leaderId),
+      role: determineRole(state, leaderId, mode),
       friendlyPlayerId: ally?.friendlyPlayer ?? null,
       friendlyPlayerDeity: ally?.friendlyPlayerDeity ?? null,
       ledCard: toLoggedCard(ledCardId),
@@ -209,6 +213,7 @@ function logActionIfRelevant(
     const distributorId = state.pendingDistributorId;
     if (distributorId === null) throw new Error('redistribute action with no pendingDistributorId');
     const ally = identifyFriendlyAlly(state, distributorId);
+    const mode = resolveMode(personalities[distributorId], state.trickNumber);
     redistributions.push({
       trickNumber: state.trickNumber,
       distributorId,
@@ -218,7 +223,7 @@ function logActionIfRelevant(
         toPlayerId: fromNetPlayerId(a.toPlayer),
         cards: a.cards.map(toLoggedCard),
       })),
-      role: determineRole(state, distributorId),
+      role: determineRole(state, distributorId, mode),
       friendlyPlayerId: ally?.friendlyPlayer ?? null,
       friendlyPlayerDeity: ally?.friendlyPlayerDeity ?? null,
       isWinLock: state.players[distributorId].hand.filter((id) => cardById(id).god === state.players[distributorId].god).length === 10,
@@ -240,6 +245,11 @@ function playOneGame(gameIndex: number): GameLog {
   const redistributions: RedistributionLogEntry[] = [];
   const delegateSelections: DelegateLogEntry[] = [];
   const leadChoices: LeadChoiceLogEntry[] = [];
+  // One random archetype per seat, assigned once for this game's whole
+  // duration - see host/botPersonality.ts's own doc comment for why this
+  // is the one piece of persistent bot state in the whole AI.
+  const personalities = createBotPersonalities();
+  const withPersonality = (p: { id: PlayerId; god: God; team: Team }) => ({ ...p, personality: personalities[p.id].personality });
 
   let iterations = 0;
   // Empirically, a 300k-action budget comfortably covers the observed
@@ -252,7 +262,7 @@ function playOneGame(gameIndex: number): GameLog {
       return {
         gameIndex,
         startingLeaderId,
-        players: state.players.map((p) => ({ id: p.id, god: p.god, team: GOD_TEAM[p.god] })),
+        players: state.players.map((p) => withPersonality({ id: p.id, god: p.god, team: GOD_TEAM[p.god] })),
         tricks,
         redistributions,
         delegateSelections,
@@ -267,8 +277,8 @@ function playOneGame(gameIndex: number): GameLog {
     if (slot === null) {
       throw new Error(`game ${gameIndex}: no active player for phase "${state.phase}" - engine should never leave settleAutoPhases in this phase`);
     }
-    const action = chooseBotAction(state, slot);
-    logActionIfRelevant(state, action, redistributions, delegateSelections, leadChoices);
+    const action = chooseBotAction(state, slot, personalities[slot]);
+    logActionIfRelevant(state, action, redistributions, delegateSelections, leadChoices, personalities);
     const prevLastTrickResult = state.lastTrickResult;
     const result = applyAction(state, slot, action);
     if (!result.ok) {
@@ -286,7 +296,7 @@ function playOneGame(gameIndex: number): GameLog {
   return {
     gameIndex,
     startingLeaderId,
-    players: state.players.map((p) => ({ id: p.id, god: p.god, team: GOD_TEAM[p.god] })),
+    players: state.players.map((p) => withPersonality({ id: p.id, god: p.god, team: GOD_TEAM[p.god] })),
     tricks,
     redistributions,
     delegateSelections,
@@ -331,6 +341,22 @@ interface Aggregates {
     readonly confidentGuessRate: number;
     readonly accuracyAmongConfidentGuesses: number;
   };
+  // Section 7 (personalities): the actual point of the feature - do the 4
+  // archetypes behave distinctly? Aggregated per-SEAT-INSTANCE (each
+  // completed game contributes once per seat, so a game with e.g. two
+  // Rushers counts twice toward Rusher's stats) rather than per-game,
+  // since a single game's 4 seats can each carry a different archetype.
+  readonly byPersonality: Record<
+    Personality,
+    {
+      readonly seatInstances: number;
+      readonly decidedGames: number; // excludes stalemates from the win-rate denominator
+      readonly winRate: number; // this seat's TEAM winning, among decidedGames
+      readonly averageTrickCountOfGamesInvolved: number;
+      readonly decisionPoints: number; // total lead choices + redistributions this seat made
+      readonly assistRoleShare: number; // fraction of this seat's own decisionPoints that were role === 'assist'
+    }
+  >;
 }
 
 function median(sorted: readonly number[]): number {
@@ -384,6 +410,51 @@ function aggregate(allGames: readonly GameLog[]): Aggregates {
     })
   ) as Aggregates['winRateByStartingLeaderPosition'];
 
+  const personalityStats: Record<
+    Personality,
+    { seatInstances: number; decidedGames: number; wins: number; trickCountSum: number; decisionPoints: number; assistCount: number }
+  > = {
+    rusher: { seatInstances: 0, decidedGames: 0, wins: 0, trickCountSum: 0, decisionPoints: 0, assistCount: 0 },
+    hoarder: { seatInstances: 0, decidedGames: 0, wins: 0, trickCountSum: 0, decisionPoints: 0, assistCount: 0 },
+    balanced: { seatInstances: 0, decidedGames: 0, wins: 0, trickCountSum: 0, decisionPoints: 0, assistCount: 0 },
+    wildcard: { seatInstances: 0, decidedGames: 0, wins: 0, trickCountSum: 0, decisionPoints: 0, assistCount: 0 },
+  };
+  for (const g of games) {
+    const personalityBySeat = new Map(g.players.map((p) => [p.id, p.personality]));
+    for (const p of g.players) {
+      const s = personalityStats[p.personality];
+      s.seatInstances++;
+      s.trickCountSum += g.trickCount;
+      if (g.winner.reason !== 'stalemate' && g.winner.team) {
+        s.decidedGames++;
+        if (g.winner.team === p.team) s.wins++;
+      }
+    }
+    for (const lc of g.leadChoices) {
+      const s = personalityStats[personalityBySeat.get(lc.leaderId)!];
+      s.decisionPoints++;
+      if (lc.role === 'assist') s.assistCount++;
+    }
+    for (const r of g.redistributions) {
+      const s = personalityStats[personalityBySeat.get(r.distributorId)!];
+      s.decisionPoints++;
+      if (r.role === 'assist') s.assistCount++;
+    }
+  }
+  const byPersonality = Object.fromEntries(
+    (Object.entries(personalityStats) as [Personality, (typeof personalityStats)['rusher']][]).map(([personality, s]) => [
+      personality,
+      {
+        seatInstances: s.seatInstances,
+        decidedGames: s.decidedGames,
+        winRate: s.decidedGames > 0 ? s.wins / s.decidedGames : 0,
+        averageTrickCountOfGamesInvolved: s.seatInstances > 0 ? s.trickCountSum / s.seatInstances : 0,
+        decisionPoints: s.decisionPoints,
+        assistRoleShare: s.decisionPoints > 0 ? s.assistCount / s.decisionPoints : 0,
+      },
+    ])
+  ) as Aggregates['byPersonality'];
+
   return {
     totalGamesRequested: allGames.length,
     completedGames: games.length,
@@ -411,6 +482,7 @@ function aggregate(allGames: readonly GameLog[]): Aggregates {
       confidentGuessRate: allGuesses.length > 0 ? confidentGuesses.length / allGuesses.length : 0,
       accuracyAmongConfidentGuesses: confidentGuesses.length > 0 ? correctGuesses.length / confidentGuesses.length : 0,
     },
+    byPersonality,
   };
 }
 
