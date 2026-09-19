@@ -67,6 +67,21 @@ export interface ReceivedRecord {
   readonly wonByDouble: boolean;
 }
 
+// Persistent (structurally-shared) singly-linked-list node backing
+// GameState.receivedLog - see that field's own doc comment for why a plain
+// array there was a performance bug. `prev` chains back to the recipient's
+// previous node (or null for their first-ever received gift); appending a
+// new record is O(1) (just `{ record, prev: currentTailNode }`), unlike a
+// plain array append which would need to copy the whole prior array.
+// Nothing outside rules/engine.ts's receivedRecordsFor should walk `prev`
+// directly - callers always go through that function to get a plain,
+// chronologically-ordered array, matching this field's pre-existing public
+// shape exactly.
+export interface ReceivedRecordNode {
+  readonly record: ReceivedRecord;
+  readonly prev: ReceivedRecordNode | null;
+}
+
 export type Phase =
   | 'blocker'
   | 'turn'
@@ -134,7 +149,11 @@ export interface GameState {
   // Cumulative, per-recipient history of every redistribution received so
   // far this game (unlike lastReceived, which only ever holds the latest).
   // Powers the toggleable redistribution log; scoped per-player so it never
-  // reveals another player's receipts.
-  readonly receivedLog: Partial<Record<PlayerId, ReceivedRecord[]>>;
+  // reveals another player's receipts. Stores only each recipient's latest
+  // ReceivedRecordNode (a persistent linked list), not a plain array - see
+  // that type's own doc comment. Never read directly; go through
+  // rules/engine.ts's receivedRecordsFor to get the equivalent plain,
+  // chronologically-ordered ReceivedRecord[] a consumer actually wants.
+  readonly receivedLog: Partial<Record<PlayerId, ReceivedRecordNode>>;
   readonly winner: WinInfo | null;
 }

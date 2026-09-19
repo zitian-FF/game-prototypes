@@ -9,6 +9,7 @@ import type {
   PlayerId,
   PlayerState,
   Rank,
+  ReceivedRecord,
   RedistributionGift,
   TrickPlay,
   TrickResult,
@@ -477,7 +478,10 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
       wonByDouble: state.lastTrickResult.wonByDouble,
     };
     lastReceived[gift.toPlayerId] = record;
-    receivedLog[gift.toPlayerId] = [...(receivedLog[gift.toPlayerId] ?? []), record];
+    // O(1) append (see ReceivedRecordNode's own doc comment) - deliberately
+    // NOT `[...(receivedLog[gift.toPlayerId] ?? []), record]`, which would
+    // copy that recipient's entire prior history on every single gift.
+    receivedLog[gift.toPlayerId] = { record, prev: receivedLog[gift.toPlayerId] ?? null };
   }
 
   const win = checkSuitCompletion(players);
@@ -506,6 +510,23 @@ export function redistribute(state: GameState, gifts: readonly RedistributionGif
     phase: 'blocker',
     pendingBlocker: { forPlayerId: newLeaderId, next: 'turn' },
   };
+}
+
+// Materializes `state.receivedLog[slot]`'s persistent linked list (see
+// ReceivedRecordNode) into a plain array, oldest-first - the exact same
+// shape and order every consumer (host/botTrust.ts, host/mask.ts) got back
+// when this field was a plain array. Every read of receivedLog should go
+// through this rather than touching the linked list directly. O(n) in the
+// number of records for this one recipient, same as directly iterating a
+// plain array would already cost - the fix this function is part of is
+// that WRITES (redistribute() above) no longer pay that cost too, on every
+// single gift.
+export function receivedRecordsFor(state: GameState, slot: PlayerId): ReceivedRecord[] {
+  const records: ReceivedRecord[] = [];
+  for (let node = state.receivedLog[slot] ?? null; node !== null; node = node.prev) {
+    records.push(node.record);
+  }
+  return records.reverse();
 }
 
 // --- Rendering helpers ----------------------------------------------------
