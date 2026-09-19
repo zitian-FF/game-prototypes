@@ -1,5 +1,5 @@
 import { cardById } from '../rules/cards';
-import { activePlayerId, currentRequiredSuit } from '../rules/engine';
+import { activePlayerId, currentRequiredSuit, receivedRecordsFor } from '../rules/engine';
 import type { CardId, GameState, God, PlayerId, TrickPlay } from '../rules/types';
 import { ALL_NET_PLAYER_IDS, toNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
@@ -37,11 +37,11 @@ function buildDistributedEntries(state: GameState, forSlot: PlayerId): Redistrib
   // trick's own state.lastTrickResult onto every gift's record).
   const byTrick = new Map<number, { wonByDouble: boolean; byRecipient: Map<PlayerId, CardId[]> }>();
 
-  for (const [toPlayerIdKey, records] of Object.entries(state.receivedLog)) {
+  for (const toPlayerIdKey of Object.keys(state.receivedLog)) {
     const toPlayerId = Number(toPlayerIdKey) as PlayerId;
     if (toPlayerId === forSlot) continue;
 
-    for (const record of records ?? []) {
+    for (const record of receivedRecordsFor(state, toPlayerId)) {
       if (record.fromPlayerId !== forSlot) continue;
       let trick = byTrick.get(record.trickNumber);
       if (!trick) {
@@ -162,7 +162,7 @@ export function buildMaskedState(
     delegateChoices = ALL_NET_PLAYER_IDS.filter((id) => id !== yourSlotNet);
   }
 
-  const receivedByMe = state.receivedLog[forSlot] ?? [];
+  const receivedByMe = receivedRecordsFor(state, forSlot);
   const receivedEntries: RedistributionLogEntry[] = receivedByMe.map((record) => ({
     trickNumber: record.trickNumber,
     perspective: 'received',

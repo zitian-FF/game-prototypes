@@ -1,4 +1,5 @@
 import { TEAMMATE_GOD, cardById } from '../rules/cards';
+import { receivedRecordsFor } from '../rules/engine';
 import type { GameState, God, PlayerId } from '../rules/types';
 
 // Section 4 of suits-mp-bot-ai-design.md (v5): trust modeling. Every
@@ -48,7 +49,7 @@ export const FRIENDLY_TRUST_THRESHOLD = 2;
 export function computeTrustScores(state: GameState, slot: PlayerId): ReadonlyMap<PlayerId, number> {
   const ownGod = state.players[slot].god;
   const scores = new Map<PlayerId, number>();
-  const records = state.receivedLog[slot] ?? [];
+  const records = receivedRecordsFor(state, slot);
   for (const record of records) {
     let score = scores.get(record.fromPlayerId) ?? 0;
     for (const cardId of record.cardIds) {
