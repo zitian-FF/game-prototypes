@@ -1,119 +1,128 @@
 ## Current milestone
 
-Engine perf fix: `GameState.receivedLog` O(n²)-with-trick-count cost
-eliminated. Internal representation change only - verified byte-identical
-external behavior (masking, Redistribution Log UI, game logic/stats).
+Fixed: "Refresh Code" no longer kicks connected lobby players. Root cause
+was `room.leave()` (destroys all peer connections), used to work around a
+Trystero re-announce lapse that, on investigation, doesn't actually
+happen. Also investigated (separate, not fixed) a real relay-propagation
+race behind reported "Room Not Found" failures.
 
 ## What was implemented
 
-- `rules/types.ts`: new `ReceivedRecordNode` (persistent singly-linked-list
-  node: `{ record, prev }`). `GameState.receivedLog` field type changed
-  from `Partial<Record<PlayerId, ReceivedRecord[]>>` to
-  `Partial<Record<PlayerId, ReceivedRecordNode>>` - stores only each
-  recipient's latest node, not the full array.
-- `rules/engine.ts`: `redistribute()`'s per-gift write changed from
-  `receivedLog[id] = [...(receivedLog[id] ?? []), record]` (O(current
-  length) copy every gift) to `receivedLog[id] = { record, prev:
-  receivedLog[id] ?? null }` (O(1)). New exported `receivedRecordsFor(state,
-  slot)`: walks the linked list and returns the equivalent plain,
-  chronologically-ordered `ReceivedRecord[]` every consumer already
-  expected - same shape, same order, as the old field.
-- `host/botTrust.ts`, `host/mask.ts`: both read sites (`computeTrustScores`,
-  `buildDistributedEntries`, the `receivedByMe` masked-log source) switched
-  from indexing `state.receivedLog[slot]` as an array to calling
-  `receivedRecordsFor(state, slot)`. No behavior change - same records, same
-  order, same filtering logic downstream.
+- `HostLobbyScene.refreshRoomCode()`: rewritten from an async leave+rejoin
+  (+occupancy-check+fallback) sequence to a single synchronous
+  `this.pushLobbyState()` call. No `room`/`actions`/`roster` mutation at
+  all - no peer is ever touched.
+- Removed the now-dead `refreshCodeError` state end-to-end
+  (`lobbyUiStore.ts`'s `LobbyUiState` field + `showHostLobbyRefreshError`/
+  `clearHostLobbyRefreshError`, `LobbyFlow.tsx`'s prop + error-toast
+  branch, `DomRoot.tsx`'s pass-through) - there's no longer a failure mode
+  to report, since the refresh button does no networking.
+- `LobbyFlow.tsx`: refresh button now shows a local "Room re-announced."
+  toast (reusing the existing copy-toast mechanism) so the tap still gives
+  visible feedback.
+- `BRIEF.md`'s "Room code refresh" section corrected: the "announcement
+  can lapse" premise this feature was built on is wrong (see
+  investigation below); documented suits-mp as fixed and mp-net as
+  needing the identical fix (separate prototype, out of scope here). Also
+  added a new section documenting the relay-propagation race investigated
+  per this task's second ask.
 
-## Key technical decisions
+## Investigation (why this fix, not a same-code rejoin)
 
-- Chose a persistent linked list over alternatives (e.g. a separate
-  `Map`-based structure, or batching writes) because it's the minimal
-  change that turns an O(n) full-array-copy per gift into an O(1) append,
-  while every consumer already needed a full traversal to derive its own
-  result (a trust score sum, a masked log) - so read cost is unchanged in
-  complexity, only the write's repeated-copying is removed.
-- Kept the field inside `GameState` (not moved to a side-channel) since
-  it's genuine canonical game state, unlike Section 7's personality data -
-  this task is representation-only, not an architecture change.
-- Did not touch `host/botTrust.ts`'s "recompute fresh every call, no
-  caching" design principle - `receivedRecordsFor` is still called fresh
-  each time, matching the rest of the bot AI's established pattern.
+Read `@trystero-p2p/core`'s actual implementation before picking an
+approach, per this task's instruction:
+
+- **A non-passive room's announce never lapses.** `strategy.mjs`'s
+  internal loop re-publishes presence forever for any open room that
+  isn't `passive` (this app never sets that option): warmup at
+  233ms/533ms/1333ms after joining, then every ~5.3s, indefinitely, for
+  as long as the room stays open. `room.leave()` was never actually
+  necessary to keep the room discoverable - there is no scenario where an
+  open room's own announcement lapses.
+- **A same-code occupancy re-check is impossible without leaving first.**
+  Trystero caches one `Room` object per `(appId, roomId)` for the life of
+  the page (`occupiedRooms`, cleared only by `leave()`). Calling
+  `joinRoom()` again for the current code while the real room is still
+  open just returns that exact same room instance - there is no way to
+  probe "did someone else grab my code" via a second, disposable room
+  object without releasing the real one first. This is a genuine Trystero
+  constraint (reported per the task's instruction), not routed around.
+- Given both, a refresh under the still-current code has nothing left to
+  do at the network level - hence the fix being a pure UI no-op.
+- **Not handled**: a different host independently generating the exact
+  same 5-character code (32-char alphabet, ~33.5M combinations - see
+  `lobbyCode.ts`) while this lobby is idle. Astronomically rare, and per
+  the finding above no longer even detectable without the one action this
+  fix exists to avoid. If it ever needs handling, it requires either (a)
+  running two Trystero rooms in parallel (old one alive for existing
+  peers, new one for new joiners) - real added complexity since
+  `HostLobbyScene`/`HostGameScene` currently assume one room/actions pair
+  - or (b) broadcasting the new code to connected peers and having them
+  auto-rejoin (peer-side has no existing auto-reconnect trigger to reuse;
+  `PlayerLobbyScene` only reacts to peer-leave with a manual "Return to
+  Main Menu", it doesn't retry). Neither was built - not worth the
+  complexity for a case this unlikely, and out of scope for "stop kicking
+  players on a normal refresh."
 
 ## Verification
 
 `npm run typecheck`: pass
 `npm run build`: pass
 
-**Redistribution Log UI correctness** (the actual consumer of this data):
-verified with two independent, scratch (uncommitted) checks against real
-games driven through the real `applyAction`/`chooseBotAction` path:
-- 300 games: `receivedRecordsFor`'s internal consistency (chronological
-  order, count, linked-list-head match) - 0 mismatches.
-- 100 games: `buildMaskedState`'s `redistributionLog` (both `received` and
-  `distributed` perspectives) cross-checked against an independently
-  reconstructed shadow log built directly from the actual `redistribute`
-  actions applied - 15,126 gift-groups checked, 0 mismatches. Includes one
-  real traced example (game 0, trick 1): distributor's `distributed` entry
-  and the matching recipient's `received` entry for the same gift, both
-  correct.
+**Real multi-client test** (this sandbox's egress proxy blocks the real
+public Nostr relays outright - `connect_rejected: organization policy` -
+so this ran against a small scratch local relay implementing just the
+REQ/EVENT subset `trystero/nostr` sends, standing in for the blocked
+public ones; not committed, reverted after use):
 
-**Performance fix, same 5000-game diagnostic that originally surfaced the
-bug** (re-run post-fix, uncommitted scratch script mirroring
-`scripts/simulate.ts`'s core loop with per-50k-iteration progress logging):
+1. Host creates a room (real code, e.g. `3XB5Z`).
+2. Two separate real browser contexts join as peers - both reach the real
+   in-lobby waiting screen (full WebRTC handshake + identity exchange
+   completes for both).
+3. Host taps Refresh.
+4. Polled both peers' UI state at 50ms resolution for 5s after the tap:
+   **neither ever showed a host-disconnected state**, seat count stayed
+   at 3/4 throughout, and the displayed code never changed.
 
-| | Before this fix | After this fix |
-|---|---|---|
-| Games hitting the 500,000-iteration cap | 3 / 5000 | 2 / 5000 |
-| Time for EACH capped game | ~167.5s | ~2.2-2.3s |
-| Per-50k-iteration-window cost | grew 477ms→33,709ms (9.5μs/iter→674μs/iter) | flat ~220-260ms (~4.4-5.2μs/iter) throughout |
-| Whole 5000-game batch wall time | (not fully measured; single capped game alone exceeded 160s) | **7.3s total** |
+Sanity-checked the test itself isn't a false positive by temporarily
+reverting to the old `room.leave()`-based implementation and re-running:
+the peer's UI immediately (within ~1.4s) flips to a *permanent*
+host-disconnected state (there's no code path that clears it back once
+set) - confirming the test detects the real bug, and that the fix
+removes it.
 
-The flat per-iteration cost after the fix (vs. the ~70x growth before)
-directly confirms the O(n²) growth is gone - remaining cost is O(1) per
-write, same as a normal game.
-
-**Full-scale re-verification**, `scripts/simulate.ts` (the real,
-committed tool, all logging enabled), 10000 games, run standalone with no
-other CPU-competing process (an earlier attempt overlapped with unrelated
-concurrent work and is not used for these numbers - see Known issues):
-completed in **53 seconds** (9993 completed, 7 incomplete/capped - capped
-games no longer dominate wall time).
-
-| Metric | Last recorded baseline | This run | Verdict |
-|---|---|---|---|
-| Trick count median | 23 | 23 | Unchanged (exact) |
-| Trick count mean | 25.92 | 25.80 | Unchanged (noise) |
-| Ally-guess accuracy | 39.6% | 38.2% | Unchanged (noise, matches this series' established ~1-2pp run-to-run variance) |
-| Stalemate rate | 9.44% | 9.41% | Unchanged (noise) |
-
-Per-personality breakdown (unaffected, included for completeness since
-`scripts/simulate.ts` already reports it): Rusher/Hoarder assist-role-share
-split (69.1%/32.5% vs. Balanced's 50.5%) still matches Section 7's design
-intent exactly, confirming this fix changed nothing about game logic or
-bot decisions - performance only.
+**Redistribution/other game systems**: untouched - this task only changed
+lobby (pre-game) code.
 
 ## Open questions
 
-None - task was unambiguous and self-contained.
+None required asking the user mid-session - investigating the actual
+library behavior before implementing (as instructed) made the right fix
+unambiguous.
 
 ## Known issues
 
-- One 10000-game verification attempt during this session took ~16
-  minutes instead of the expected ~1 minute. Investigated: it ran
-  concurrently with an unrelated task's dev server + several headless
-  Chromium/Playwright sessions on the same machine, competing for CPU. A
-  clean standalone re-run (numbers used above) completed in 53s,
-  confirming this was resource contention, not a residual code issue.
-- Rare extremely long games (tens of thousands of tricks) still occur and
-  still hit the existing 500,000-iteration safety cap (7/10000 this run) -
-  this is pre-existing, expected heavy-tail behavior under the GDD's "No
-  Trick Limit" rule, unchanged by this task. What changed is that each
-  such game is now cheap (~2s) instead of catastrophically expensive
-  (~167s).
+- **mp-net has the identical bug** (documented in `BRIEF.md`) - separate
+  prototype, out of scope for this task, needs the same fix.
+- **Relay-propagation race** (investigated per this task's second ask,
+  not fixed): a joiner's subscription only receives announces published
+  *after* it subscribes (`REQ ... since: now()`), so it can miss an
+  announce published moments earlier and must wait for the next one - up
+  to ~5.3s once past the host's warmup window. This eats into
+  `connectionTimeoutMs`'s 8s budget before WebRTC handshaking even
+  starts, and is a plausible real contributor to reported "Room Not
+  Found" failures on genuinely fresh rooms. Compounding factor:
+  `makeSocket`'s `client.send` silently no-ops (no error) if a relay's
+  socket isn't OPEN at send time, so an announce due during a relay
+  reconnect is silently dropped for that relay with no targeted retry.
+  Not fixed here per this task's own scope note ("a fix... may be a
+  separate follow-up task, not blocking this one") - candidate fix would
+  be a retry-with-backoff on the joiner's own connection attempt.
+- The astronomically-rare same-code-collision-during-refresh case is
+  intentionally left unhandled (see Investigation above).
 
 ## Next proposed step
 
-None required for this fix specifically. The stalemate rate (~9.4%) and
-heavy-tailed trick-count distribution remain open, already-tracked areas
-from prior tasks in this series - not affected by this performance-only
-change.
+Either: (a) port this identical fix to mp-net's `HostLobbyScene`, or (b)
+address the relay-propagation race as its own task (retry-with-backoff on
+join, most likely).
