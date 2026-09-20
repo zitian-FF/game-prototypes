@@ -84,6 +84,24 @@ export function titleLogoUrl(): string {
   return 'assets/loose/logo_suits_of_madness.webp';
 }
 
+// Landing screen button/input chrome (suits-mp_landing_ui_assets_v001) -
+// same convention as symbolArtUrl above. `ui_landing_button_primary` is
+// shared by both Create Room and Join Room (equal-weight multiplayer entry
+// paths, per the asset handoff); their different behavior stays entirely
+// in LobbyFlow.tsx.
+export function landingButtonPrimaryUrl(): string {
+  return 'assets/loose/ui_landing_button_primary.webp';
+}
+export function landingButtonSecondaryUrl(): string {
+  return 'assets/loose/ui_landing_button_secondary.webp';
+}
+export function landingButtonTutorialUrl(): string {
+  return 'assets/loose/ui_landing_button_tutorial.webp';
+}
+export function landingInputUrl(): string {
+  return 'assets/loose/ui_landing_input.webp';
+}
+
 // A regular hexagon, apex at top-center, side vertices at ~20%/80% height -
 // the exact same proportions as ui/cardArt.ts's hexPolygon(). Shared by
 // every DOM spot that backs a Team Chaos god's symbol with a hex badge

@@ -42,6 +42,15 @@ const IMAGE_OPTIMIZATION_RULES = {
     // asset is already at, or slightly under, its ideal resolution for
     // its actual on-screen footprint. Recompress only, never downscale.
     { match: (name) => name === 'background_tabletop_stone', format: 'webp', quality: 88 },
+    // Landing-screen button/input chrome (suits-mp_landing_ui_assets_v001):
+    // authored at 2172x724 (3:1) and rendered as a full-width DOM background
+    // covering the whole landing button/input box (see dom/lobby/
+    // LobbyFlow.css) - unlike the card-art family below, this can
+    // legitimately need most of its own width in device pixels on a wide
+    // phone at high DPR (e.g. ~380 CSS px wide x up to 3x DPR ≈ 1140px).
+    // 1536 covers that with real margin while still being a meaningful
+    // reduction from the 2172px authoring canvas.
+    { match: (name) => name.startsWith('ui_landing_'), maxDimension: 1536, format: 'webp', quality: 88 },
     // Everything else (card_backdrop_*/card_frame_*/deity_symbol_*/
     // deity_face_*/deity_nameplate_*, the two ui_* chrome textures, and
     // the two now-unused rank_badge_* files still shipped from the R2
