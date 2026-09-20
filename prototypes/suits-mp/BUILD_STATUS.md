@@ -1,19 +1,13 @@
 ## Current milestone
 
-Landing screen art implemented: real chrome for Create Room, Join Room,
-Single Player, Tutorial, and the display-name input, replacing the
-placeholder gradient/clip-path bevels. All behavior/state/accessibility
-preserved.
+Landing screen art implemented and now confirmed live end-to-end: real
+chrome for Create Room, Join Room, Single Player, Tutorial, and the
+display-name input, replacing the placeholder gradient/clip-path bevels,
+sourced from the real R2 bucket (no remaining pipeline gap). All
+behavior/state/accessibility preserved.
 
 ## What was implemented
 
-- `scripts/fetch-assets.js`: new `--merge` flag - extracts a zip on top of
-  an existing `assets-src/` instead of wiping it first, with its own
-  per-object ETag cache key. Needed because this package
-  (`suits-mp_landing_ui_assets_v001.zip`) is a supplementary drop, not
-  suits-mp's main `suits-mp_assets.zip` - the existing script always
-  replaced `assets-src/` wholesale, which would have deleted every other
-  suits-mp asset.
 - `scripts/pack-assets.js`: new `ui_landing_*` optimization rule
   (maxDimension 1536, webp) ahead of the generic 512px card-art rule -
   these render as full-width DOM backgrounds (not small hand-fan cards),
@@ -44,18 +38,28 @@ preserved.
 
 ## Key technical decisions
 
-- **R2 upload gap found and worked around for verification, not routed
-  around silently.** `suits-mp_landing_ui_assets_v001.zip` does not exist
-  at the R2 bucket (confirmed 404 plus several plausible-name variants,
-  all 404) - it exists only in the Drive `Working/` folder (fileId
-  `1aed7kHm3yNt4KS6EMHrrcivJThfLFW20`). Downloaded it directly from Drive
-  to unblock local implementation/testing; this is **not** a substitute
-  asset (byte-identical content, verified below) and nothing is
-  committed either way (`.gitignore` excludes all art) - but production
-  deploys will have **no art for these 4 controls** (native/element
-  falls back to no background, controls stay fully functional) until
-  someone uploads this exact zip to R2. Flagged as a real, blocking
-  pipeline gap, not implemented around.
+- **R2 upload gap (previously flagged) is now resolved, confirmed by
+  re-fetch.** The prior session found `suits-mp_landing_ui_assets_v001.zip`
+  missing from R2 and used a Drive-downloaded copy for local verification
+  only. The user has since confirmed the R2 upload; re-checking found
+  R2 never gained that separately-named zip object (still 404) - instead
+  the main `suits-mp_assets.zip` was re-uploaded with the 4
+  `ui_landing_*.png` files folded directly into its own `loose/`. Detected
+  via the main zip's ETag/size changing since the last fetch, confirmed
+  by re-running the plain `npm run fetch:assets suits-mp` (no flags,
+  no separate object) and finding all 4 files present. Re-verified
+  integrity: each file's SHA256 hash matches byte-for-byte against the
+  earlier Drive-downloaded copies, so this is genuinely the same
+  unmodified art, delivered through the main package instead of a
+  supplementary one. A speculative `--merge` flag was added to
+  `scripts/fetch-assets.js` during the original implementation to support
+  fetching a supplementary zip non-destructively; since the real delivery
+  went through the main zip instead, that flag was never exercised
+  against real R2 content and has been reverted - `fetch-assets.js` is
+  back to its original single-zip, wipe-and-replace form. Re-ran
+  `pack-assets.js` and a fresh Playwright screenshot against the real
+  R2-sourced art; renders identically to the earlier Drive-sourced
+  verification, no new console errors.
 - **Verified package integrity per the existing standard**: valid zip,
   exactly the 4 `loose/*.png` files the manifest names, each confirmed
   2172×724 RGBA via `sharp` metadata - matches the manifest exactly, so
@@ -81,9 +85,14 @@ preserved.
 `npm run typecheck`: pass
 `npm run build`: pass
 
-**Asset integrity**: zip downloaded, valid, exactly 4 files matching the
-manifest, each verified 2172×724 RGBA via `sharp`. Packed output verified
-1536×512 (aspect preserved, no cropping) per file.
+**Asset integrity**: fetched from the real R2 bucket via the plain
+`npm run fetch:assets suits-mp` (main zip, no flags), exactly 4
+`ui_landing_*.png` files present, each verified 2172×724 RGBA via
+`sharp` and SHA256-matched byte-for-byte against the earlier
+Drive-downloaded copies used for initial implementation. Packed output
+verified 1536×512 (aspect preserved, no cropping) per file. Fresh
+Playwright screenshot against this real R2-sourced art renders
+identically to the earlier Drive-sourced verification.
 
 **Real interaction test** (Chromium via Playwright, dev server):
 - Create Room → real host flow, produced a genuine 5-character room code.
@@ -127,24 +136,14 @@ stale terminology) up front.
 
 ## Known issues
 
-- **R2 upload still pending** (see Key technical decisions) -
-  `suits-mp_landing_ui_assets_v001.zip` needs to be uploaded to the R2
-  bucket before a real deploy will actually show this art; until then,
-  `npm run fetch:assets suits-mp` (the primary, CI-invoked fetch) won't
-  pick these files up at all, and even the new `--merge` flag has nothing
-  to fetch from R2. Local testing for this task used a Drive-downloaded
-  copy of the exact same package (never committed).
-- `scripts/fetch-assets.js --merge` is new, minimal, and only exercised
-  for this one package so far - fine for the immediate need, but if a
-  wrapped-top-folder supplementary zip ever shows up, its flatten logic
-  wouldn't apply cleanly on top of an already-populated `assets-src/`
-  (see the function's own comment). Not a problem for this package
-  (confirmed unwrapped, `loose/` at top level).
+None outstanding. `suits-mp_landing_ui_assets_v001.zip` as a
+separately-named R2 object never materialized and is no longer expected
+to - the 4 landing files are live in R2 via the main
+`suits-mp_assets.zip` instead, which is what the primary CI-invoked
+`npm run fetch:assets suits-mp` already fetches.
 
 ## Next proposed step
 
-Upload `suits-mp_landing_ui_assets_v001.zip` to the R2 bucket (outside
-this repo's own tooling - no R2 write credentials here, by design) so a
-real deploy actually serves this art; then re-verify once with
-`npm run fetch:assets suits-mp suits-mp_landing_ui_assets_v001.zip
---merge` against the real R2 object instead of the Drive copy.
+None for this item - landing screen art is fully implemented and
+confirmed live against real R2-hosted assets, with no remaining
+blockers.

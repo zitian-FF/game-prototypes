@@ -2,14 +2,6 @@
 // Downloads <name>_assets.zip from the R2 art bucket and extracts it into
 // prototypes/<name>/assets-src/. Caches by the response ETag (never by
 // filename) so unchanged art is not re-downloaded.
-//
-// Pass --merge (after the object-name override) to extract a supplementary
-// package on top of an existing assets-src/ instead of replacing it - for
-// a named, versioned content drop (e.g. suits-mp_landing_ui_assets_v001.zip)
-// that adds a handful of loose/ files to a prototype whose main
-// <name>_assets.zip already has its own separate content. Default (no
-// --merge) behavior, used by every prototype's primary fetch, is unchanged:
-// assets-src/ is wiped and replaced wholesale.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,20 +26,8 @@ if (!existsSync(protoDir)) {
   fail(`prototype "${name}" does not exist at ${path.relative(rootDir, protoDir)}`);
 }
 
-// Optional 3rd arg overrides the R2 object name for a prototype whose art
-// was uploaded under a name that doesn't match "<name>_assets.zip".
-// Optional --merge flag (see this file's header comment) switches from
-// replace-wholesale to extract-on-top-of-existing.
-const rawArgs = process.argv.slice(3);
-const merge = rawArgs.includes('--merge');
-const zipObjectName = rawArgs.find((a) => a !== '--merge') || `${name}_assets.zip`;
-const zipUrl = `${BUCKET_URL}/${zipObjectName}`;
-
 const cacheDir = path.join(rootDir, '.cache');
-// Cache key is the actual object being fetched, not just the prototype
-// name - a merge-mode fetch of a supplementary package must not collide
-// with (or be mistaken for) the prototype's own primary-zip cache entry.
-const etagFile = path.join(cacheDir, `${zipObjectName.replace(/[^a-zA-Z0-9_.-]/g, '_')}.etag`);
+const etagFile = path.join(cacheDir, `${name}.etag`);
 const assetsSrcDir = path.join(protoDir, 'assets-src');
 const packedDir = path.join(assetsSrcDir, 'packed');
 const looseDir = path.join(assetsSrcDir, 'loose');
@@ -55,6 +35,10 @@ const looseDir = path.join(assetsSrcDir, 'loose');
 mkdirSync(cacheDir, { recursive: true });
 
 const previousEtag = existsSync(etagFile) ? readFileSync(etagFile, 'utf8').trim() : null;
+// Optional 3rd arg overrides the R2 object name for a prototype whose art
+// was uploaded under a name that doesn't match "<name>_assets.zip".
+const zipObjectName = process.argv[3] || `${name}_assets.zip`;
+const zipUrl = `${BUCKET_URL}/${zipObjectName}`;
 
 console.log(`fetch-assets: fetching ${zipUrl}`);
 
@@ -83,14 +67,10 @@ if (!response.ok) {
 }
 
 const etag = response.headers.get('etag');
-// In merge mode, this object's own etag file (keyed above by zipObjectName)
-// only exists once *this* package has actually been merged in before - so
-// the etag match alone is enough, unlike the default wholesale-replace
-// mode's extra guard against etag-says-fetched-but-directory-missing.
-const haveExtracted = merge || existsSync(packedDir) || existsSync(looseDir);
+const haveExtracted = existsSync(packedDir) || existsSync(looseDir);
 
 if (etag && previousEtag === etag && haveExtracted) {
-  console.log(`fetch-assets: ${zipObjectName} unchanged (ETag ${etag}), skipping download`);
+  console.log(`fetch-assets: ${name} art unchanged (ETag ${etag}), skipping download`);
   process.exit(0);
 }
 
@@ -108,16 +88,10 @@ if (entries.length === 0) {
   fail(`zip from ${zipUrl} is empty`);
 }
 
-if (!merge) {
-  rmSync(assetsSrcDir, { recursive: true, force: true });
-}
+rmSync(assetsSrcDir, { recursive: true, force: true });
 mkdirSync(assetsSrcDir, { recursive: true });
 
 try {
-  // `true` = overwrite - in merge mode this lets a re-fetch of the same
-  // package update files in place; it never touches files the zip doesn't
-  // contain, so the rest of assets-src/ (from the prototype's primary zip)
-  // is left alone.
   zip.extractAllTo(assetsSrcDir, true);
 } catch (err) {
   fail(`failed to extract zip: ${err.message}`);
@@ -153,4 +127,4 @@ if (etag) {
   writeFileSync(etagFile, etag);
 }
 
-console.log(`fetch-assets: extracted ${zipObjectName} into ${path.relative(rootDir, assetsSrcDir)}`);
+console.log(`fetch-assets: extracted ${name}_assets.zip into ${path.relative(rootDir, assetsSrcDir)}`);
