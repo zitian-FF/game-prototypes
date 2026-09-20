@@ -1,10 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import './LobbyFlow.css';
 import { ERRORS, SUBTITLES, type Screen, type ErrorKind } from './lobbyContent';
 import { seatModel, type SeatInfo } from './lobbySeats';
 import { goToJoinScreen, goToLandingScreen } from './lobbyUiStore';
 import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../net/lobbyCode';
-import { titleLogoUrl } from '../godArtUrl';
+import { titleLogoUrl, landingButtonPrimaryUrl, landingButtonSecondaryUrl, landingButtonTutorialUrl, landingInputUrl } from '../godArtUrl';
+
+// The `::before`-based decorative background art on each landing control
+// (see LobbyFlow.css's `.landingControl`) needs its own per-control image,
+// set via a CSS custom property so hover/pressed/disabled filters in CSS
+// can target just the art layer, never the live label text on top of it
+// (a plain `background` on the button itself, this file's convention
+// everywhere else art has no per-state filter, would apply any `filter`
+// to the text too). React's CSSProperties type doesn't know custom
+// properties by name, hence the cast - this is the standard pattern, not
+// a type-safety workaround for something else.
+function landingArtStyle(url: string): CSSProperties {
+  return { '--landing-control-art': `url(${url})` } as CSSProperties;
+}
 
 // Display name is capped to this many characters (matches the wireframe's
 // fixed-width name column in the seat list) - enforced via the input's own
@@ -194,15 +207,7 @@ export function LobbyFlow({
 
       {screen === 'landing' && (
         <div data-ui="screen-landing" style={{ position: 'absolute', left: 26, right: 26, top: 268, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div
-            data-ui="name-input-wrap"
-            style={{
-              padding: '10px 14px 12px',
-              borderTop: '1px solid rgba(198, 160, 78, 0.3)',
-              borderBottom: '1px solid rgba(198, 160, 78, 0.3)',
-              background: 'linear-gradient(180deg, rgba(20, 16, 8, 0.65), rgba(6, 10, 13, 0.7))',
-            }}
-          >
+          <div data-ui="name-input-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span
               style={{
                 fontFamily: "'Cormorant Unicase', serif",
@@ -225,15 +230,23 @@ export function LobbyFlow({
               placeholder="Player"
               style={{
                 width: '100%',
+                height: 46,
                 boxSizing: 'border-box',
-                marginTop: 4,
-                padding: '4px 0 6px',
-                background: 'transparent',
+                // Central safe zone per the art handoff (72% width / 42%
+                // height) - horizontal padding keeps typed text off the
+                // recessed bevel even at DISPLAY_NAME_MAX_LENGTH.
+                padding: '0 15%',
+                // Applied directly (not via ::before, unlike the buttons
+                // above) - `<input>` is a replaced element and doesn't
+                // reliably generate pseudo-element content across
+                // browsers, exactly as the art handoff's own example
+                // does for this control specifically.
+                background: `url(${landingInputUrl()}) center / 100% 100% no-repeat`,
                 border: 0,
-                borderBottom: '1px solid rgba(198, 160, 78, 0.28)',
                 outline: 'none',
                 fontFamily: "'EB Garamond', serif",
-                fontSize: 18,
+                fontSize: 17,
+                textAlign: 'center',
                 color: 'oklch(0.93 0.04 88)',
                 caretColor: 'oklch(0.85 0.09 84)',
                 // Restores normal text selection/editing - the DOM
@@ -248,32 +261,19 @@ export function LobbyFlow({
           <button
             type="button"
             data-ui="host-button"
+            className="landingControl"
             onClick={() => onHost(name.trim())}
             style={{
               width: '100%',
-              padding: 1,
+              height: 78,
               boxSizing: 'border-box',
               border: 0,
-              background: 'linear-gradient(180deg, rgba(226, 188, 96, 0.9), rgba(120, 88, 30, 0.55))',
-              clipPath:
-                'polygon(13px 0, calc(100% - 13px) 0, 100% 13px, 100% calc(100% - 13px), calc(100% - 13px) 100%, 13px 100%, 0 calc(100% - 13px), 0 13px)',
-              boxShadow: '0 0 40px rgba(212, 168, 66, 0.32)',
+              background: 'transparent',
               cursor: 'pointer',
+              ...landingArtStyle(landingButtonPrimaryUrl()),
             }}
           >
-            <span
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
-                height: 78,
-                background: 'linear-gradient(180deg, rgba(106, 78, 22, 0.96), rgba(38, 28, 10, 0.97))',
-                clipPath:
-                  'polygon(13px 0, calc(100% - 13px) 0, 100% 13px, 100% calc(100% - 13px), calc(100% - 13px) 100%, 13px 100%, 0 calc(100% - 13px), 0 13px)',
-              }}
-            >
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, height: '100%' }}>
               <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.97 0.04 92)', textShadow: '0 0 16px rgba(252, 216, 130, 0.55)' }}>
                 Create Room
               </span>
@@ -285,21 +285,21 @@ export function LobbyFlow({
           <button
             type="button"
             data-ui="join-button"
+            className="landingControl"
             onClick={goToJoinScreen}
             style={{
               width: '100%',
               height: 78,
+              boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 3,
-              background: 'linear-gradient(180deg, rgba(14, 40, 42, 0.9), rgba(6, 14, 18, 0.93))',
-              border: '1px solid rgba(120, 190, 178, 0.4)',
-              clipPath:
-                'polygon(13px 0, calc(100% - 13px) 0, 100% 13px, 100% calc(100% - 13px), calc(100% - 13px) 100%, 13px 100%, 0 calc(100% - 13px), 0 13px)',
-              boxShadow: 'inset 0 0 30px rgba(28, 120, 116, 0.22)',
+              background: 'transparent',
+              border: 0,
               cursor: 'pointer',
+              ...landingArtStyle(landingButtonPrimaryUrl()),
             }}
           >
             <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.93 0.04 176)' }}>Join Room</span>
@@ -313,17 +313,16 @@ export function LobbyFlow({
           <button
             type="button"
             data-ui="single-player-button"
+            className="landingControl"
             onClick={onSinglePlayer}
             style={{
               width: '100%',
               height: 52,
-              padding: 1,
               boxSizing: 'border-box',
               border: 0,
-              background: 'linear-gradient(180deg, rgba(150, 158, 164, 0.55), rgba(70, 76, 82, 0.4))',
-              clipPath:
-                'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
+              background: 'transparent',
               cursor: 'pointer',
+              ...landingArtStyle(landingButtonSecondaryUrl()),
             }}
           >
             <span
@@ -333,9 +332,6 @@ export function LobbyFlow({
                 justifyContent: 'center',
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(180deg, rgba(30, 32, 36, 0.9), rgba(14, 15, 17, 0.94))',
-                clipPath:
-                  'polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px)',
                 fontFamily: "'Cormorant Unicase', serif",
                 fontWeight: 500,
                 fontSize: 13,
@@ -349,18 +345,17 @@ export function LobbyFlow({
           <button
             type="button"
             data-ui="tutorial-button"
+            className="landingControl"
             onClick={onTutorial}
             style={{
               alignSelf: 'center',
               width: '58%',
               height: 34,
-              padding: 1,
               boxSizing: 'border-box',
               border: 0,
-              background: 'linear-gradient(180deg, rgba(150, 158, 164, 0.32), rgba(70, 76, 82, 0.22))',
-              clipPath:
-                'polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)',
+              background: 'transparent',
               cursor: 'pointer',
+              ...landingArtStyle(landingButtonTutorialUrl()),
             }}
           >
             <span
@@ -370,9 +365,6 @@ export function LobbyFlow({
                 justifyContent: 'center',
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(180deg, rgba(24, 26, 29, 0.85), rgba(12, 13, 15, 0.9))',
-                clipPath:
-                  'polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px)',
                 fontFamily: "'Cormorant Unicase', serif",
                 fontWeight: 500,
                 fontSize: 10,
