@@ -64,14 +64,14 @@ export const SECTIONS: RuleSection[] = [
     ],
   },
   {
-    id: 'start',
+    id: 'setup',
     tone: TEAL,
-    title: 'Start',
+    title: 'Setup',
     kicker: '',
     body: [
-      '4 Players. 4 Deities. 10 cards each.',
-      'Holder of the 2 of Yog-Sothoth leads the first Trick with that card.',
-      'Play clockwise.',
+      'Four players each receive one of the four Deities at random. Your Deity stays secret, and every Deity belongs to exactly one player.',
+      'The full deck has 40 cards: 10 cards in each Deity Suit. Deal 10 cards to each player.',
+      'The player holding the 2 of Yog-Sothoth is the first Lead Player. They must begin the first Trick by playing that card as a Single. Play then proceeds clockwise.',
     ],
   },
   {
@@ -86,7 +86,7 @@ export const SECTIONS: RuleSection[] = [
       'Each next Player: Required Suit moves one step around the Suit Cycle.',
       'Have the Required Suit: play 1 card of that Suit.',
       'No Required Suit: choose one:',
-      'Off-suit Single, face down. Rank 0. Cannot win. Its suit, rank, and Deity stay hidden from every other player.',
+      'Off-suit Single, face down. Rank 0. Cannot win. Other players see only an unidentified face-down card: its Deity Suit, rank, Deity Symbol, color, and identity stay private to the player who played it unless it is later given to someone during redistribution.',
       'Double: 2 cards of the same rank, any Suits.',
     ],
   },
