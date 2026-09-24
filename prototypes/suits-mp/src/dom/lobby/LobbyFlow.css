@@ -50,10 +50,18 @@
   content: '';
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
-  background: var(--landing-control-art) center / 100% 100% no-repeat;
+  border: 1px solid transparent;
+  border-image-source: var(--landing-control-art);
+  border-image-slice: 200 170 fill;
+  border-image-width: var(--landing-slice-widths);
+  border-image-repeat: stretch;
   filter: brightness(1);
+}
+.landingControl > * {
+  position: relative;
+  z-index: 1;
 }
 @media (prefers-reduced-motion: no-preference) {
   .landingControl::before {
