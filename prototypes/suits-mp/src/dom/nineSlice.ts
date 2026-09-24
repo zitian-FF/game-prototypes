@@ -3,7 +3,9 @@ import type { CSSProperties } from 'react';
 // Source pixels and destination border widths are paired so the end caps
 // retain their original proportions. Only the stone center is stretched.
 export const NINE_SLICE = {
-  localNameplate: { cuts: '70 95 fill', widths: '40px 54px' },
+  // The 95px source caps include each complete octagon. At the game's
+  // 107px plate height, 76px destination caps keep those housings square.
+  localNameplate: { cuts: '70 95 fill', widths: '40px 76px' },
   actionSlab: { cuts: '80 80 fill', widths: '44px 44px' },
   landingButton: { cuts: '200 170 fill', widths: '30px 26px' },
   landingSecondary: { cuts: '200 170 fill', widths: '20px 17px' },
