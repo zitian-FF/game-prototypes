@@ -5,6 +5,7 @@ import { seatModel, type SeatInfo } from './lobbySeats';
 import { goToJoinScreen, goToLandingScreen } from './lobbyUiStore';
 import { isValidLobbyCode, normalizeLobbyCode, LOBBY_CODE_LENGTH } from '../../net/lobbyCode';
 import { titleLogoUrl, landingButtonPrimaryUrl, landingButtonSecondaryUrl, landingButtonTutorialUrl, landingInputUrl } from '../godArtUrl';
+import { NINE_SLICE } from '../nineSlice';
 
 // The `::before`-based decorative background art on each landing control
 // (see LobbyFlow.css's `.landingControl`) needs its own per-control image,
@@ -15,8 +16,8 @@ import { titleLogoUrl, landingButtonPrimaryUrl, landingButtonSecondaryUrl, landi
 // to the text too). React's CSSProperties type doesn't know custom
 // properties by name, hence the cast - this is the standard pattern, not
 // a type-safety workaround for something else.
-function landingArtStyle(url: string): CSSProperties {
-  return { '--landing-control-art': `url(${url})` } as CSSProperties;
+function landingArtStyle(url: string, widths: string): CSSProperties {
+  return { '--landing-control-art': `url(${new URL(url, document.baseURI).href})`, '--landing-slice-widths': widths } as CSSProperties;
 }
 
 // Display name is capped to this many characters (matches the wireframe's
@@ -241,8 +242,12 @@ export function LobbyFlow({
                 // reliably generate pseudo-element content across
                 // browsers, exactly as the art handoff's own example
                 // does for this control specifically.
-                background: `url(${landingInputUrl()}) center / 100% 100% no-repeat`,
-                border: 0,
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderImageSource: `url(${landingInputUrl()})`,
+                borderImageSlice: NINE_SLICE.landingInput.cuts,
+                borderImageWidth: NINE_SLICE.landingInput.widths,
+                borderImageRepeat: 'stretch',
                 outline: 'none',
                 fontFamily: "'EB Garamond', serif",
                 fontSize: 17,
@@ -270,7 +275,7 @@ export function LobbyFlow({
               border: 0,
               background: 'transparent',
               cursor: 'pointer',
-              ...landingArtStyle(landingButtonPrimaryUrl()),
+              ...landingArtStyle(landingButtonPrimaryUrl(), NINE_SLICE.landingButton.widths),
             }}
           >
             <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, height: '100%' }}>
@@ -299,7 +304,7 @@ export function LobbyFlow({
               background: 'transparent',
               border: 0,
               cursor: 'pointer',
-              ...landingArtStyle(landingButtonPrimaryUrl()),
+              ...landingArtStyle(landingButtonPrimaryUrl(), NINE_SLICE.landingButton.widths),
             }}
           >
             <span style={{ fontFamily: "'IM Fell English SC', serif", fontSize: 24, letterSpacing: '0.05em', color: 'oklch(0.93 0.04 176)' }}>Join Room</span>
@@ -322,7 +327,7 @@ export function LobbyFlow({
               border: 0,
               background: 'transparent',
               cursor: 'pointer',
-              ...landingArtStyle(landingButtonSecondaryUrl()),
+              ...landingArtStyle(landingButtonSecondaryUrl(), NINE_SLICE.landingSecondary.widths),
             }}
           >
             <span
@@ -355,7 +360,7 @@ export function LobbyFlow({
               border: 0,
               background: 'transparent',
               cursor: 'pointer',
-              ...landingArtStyle(landingButtonTutorialUrl()),
+              ...landingArtStyle(landingButtonTutorialUrl(), NINE_SLICE.landingTutorial.widths),
             }}
           >
             <span

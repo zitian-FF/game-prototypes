@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './GameOverlay.css';
+import '../nineSlice.css';
+import { NINE_SLICE, nineSliceArt } from '../nineSlice';
 import { SEAT_DEG, SEAT_ORDER, SUITS } from './overlayContent';
 import type { GodChipState, SeatDelegateState } from './gameOverlayStore';
 import type { SeatPosition } from '../../ui/seating';
@@ -555,13 +557,14 @@ export function GameOverlay({
               // needs.
               <div
                 data-ui="local-nameplate"
+                className="nineSliceArt"
                 style={{
                   width: '100%',
                   height: tune.localNameplateHeight,
                   boxSizing: 'border-box',
                   display: 'flex',
                   alignItems: 'stretch',
-                  background: `linear-gradient(180deg, rgba(20, 16, 8, 0.15), rgba(4, 4, 3, 0.3)), url(${nameplateUrl()}) center/100% 100% no-repeat`,
+                  ...nineSliceArt(nameplateUrl(), NINE_SLICE.localNameplate),
                 }}
               >
                 <div style={{ flex: '1.15 1 0', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '0 8px' }}>
@@ -911,6 +914,7 @@ export function GameOverlay({
       <button
         type="button"
         data-ui="action-button"
+        className="nineSliceArt"
         data-enabled={actionEnabled}
         data-visual-state={actionVisualState}
         onClick={actionEnabled ? onAction : undefined}
@@ -933,7 +937,8 @@ export function GameOverlay({
           justifyContent: 'center',
           gap: 2,
           padding: '0 16px',
-          background: `url(${actionSlabStateUrl(actionVisualState)}) center/100% 100% no-repeat`,
+          background: 'transparent',
+          ...nineSliceArt(actionSlabStateUrl(actionVisualState), NINE_SLICE.actionSlab),
           cursor: actionEnabled ? 'pointer' : 'not-allowed',
           pointerEvents: 'auto',
         }}

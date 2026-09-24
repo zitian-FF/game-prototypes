@@ -1,16 +1,18 @@
 ## Current milestone
 
-Rules modal copy updated for setup and off-suit card privacy.
+Nine-slice rendering for the local player nameplate, action slab, and landing controls.
 
 ## What was implemented
 
-- Renamed the Start rules section to Setup and explained secret random Deity assignment, the 40-card deck and deal, the forced 2 of Yog-Sothoth Single opener, and clockwise play.
-- Clarified that an off-suit Single appears to other players only as an unidentified face-down card until a recipient may learn it through redistribution.
+- Replaced full-image stretching with CSS border-image slicing for the local nameplate and action slab.
+- Applied proportional end-cap slicing to the landing buttons and player-name input.
+- Kept the art in decorative layers so live labels and button hit targets retain their layout and behavior.
 
 ## Key technical decisions
 
-- Kept the existing accordion layout and changed only rules content. The new Setup section fits the phone viewport within the existing scroll area.
-- Used the existing canonical terms Deity Suit, Lead Player, Required Suit, and Deity Card where applicable.
+- Slice cuts are source-pixel measurements; destination border widths keep the ornate ends and nameplate octagons in proportion while the center stretches.
+- Resolved asset URLs against the page before placing them in CSS variables, so production CSS paths load correctly.
+- Left square controls and remote nameplates on their existing rendering paths because their displayed aspect ratios match their source art.
 
 ## Open questions
 
@@ -18,8 +20,8 @@ None.
 
 ## Known issues
 
-- Local browser verification recorded one external resource request denied by the environment. After fetching and packing the current R2 asset package, the missing local card-art errors disappeared. No page exception was observed.
+- Browser verification saw one external font request denied by the local sandbox. Local art loaded and no page exception was observed.
 
 ## Next proposed step
 
-Continue with the next suits-mp task after this copy change reaches main and the existing itch.io deployment runs.
+Merge this change and review the nameplate and landing controls in the deployed prototype.
