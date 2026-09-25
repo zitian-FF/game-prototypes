@@ -17,14 +17,14 @@ import type { GameState, PlayerId } from '../rules/types';
 import { TUTORIAL_SCENES } from '../tutorial/tutorialScenes';
 import type { TutorialScript, TutorialSceneMarker, TutorialStep, TutorialWaitStep } from '../tutorial/tutorialTypes';
 import { cutFromBlack, cutToBlack } from '../tutorial/sceneTransition';
-import { hideGameOverlay } from '../dom/overlay/gameOverlayStore';
+import { hideGameOverlay } from '../uiState/overlay/gameOverlayStore';
 import {
   closeTutorialIntro,
   closeTutorialLesson,
   openTutorialComplete,
   openTutorialIntro,
   resetTutorialUi,
-} from '../dom/tutorial/tutorialUiStore';
+} from '../uiState/tutorial/tutorialUiStore';
 import tune from '../../tune.json';
 
 const LOCAL_SLOT: PlayerId = 0;

@@ -6,14 +6,13 @@ import { normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { recordRendererType } from './debug/shimmerDiagnostics';
 import { LandingScene } from './scenes/LandingScene';
-import { JoinEntryScene } from './scenes/JoinEntryScene';
 import { ConnectingScene } from './scenes/ConnectingScene';
 import { HostLobbyScene } from './scenes/HostLobbyScene';
 import { HostGameScene } from './scenes/HostGameScene';
 import { PlayerLobbyScene } from './scenes/PlayerLobbyScene';
 import { PlayerGameScene } from './scenes/PlayerGameScene';
 import { TutorialScene } from './scenes/TutorialScene';
-import { mountDom } from './dom/mountDom';
+import { CanvasUiScene } from './ui/CanvasUiScene';
 import type { BootData } from './net/playerSession';
 
 mountDebugPanelIfRequested();
@@ -47,7 +46,6 @@ const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#111111',
-  dom: { createContainer: true },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -74,11 +72,7 @@ if (appEl) {
   new ResizeObserver(() => game.scale.refresh()).observe(appEl);
 }
 
-// `game.domContainer` isn't created until Game#boot runs (after
-// DOMContentLoaded), so mounting must wait for the `ready` event rather
-// than happening synchronously right after construction.
 game.events.once(Phaser.Core.Events.READY, () => {
-  mountDom(game);
   // game.renderer only exists once boot() has run (see Game.js), which is
   // what READY waits on - the earliest point the real AUTO->WEBGL/CANVAS
   // resolution is known. Surfaced read-only in the ?debug=1 panel (see
@@ -88,13 +82,14 @@ game.events.once(Phaser.Core.Events.READY, () => {
 });
 
 game.scene.add('Landing', LandingScene, false);
-game.scene.add('JoinEntry', JoinEntryScene, false);
 game.scene.add('Connecting', ConnectingScene, false);
 game.scene.add('HostLobby', HostLobbyScene, false);
 game.scene.add('HostGame', HostGameScene, false);
 game.scene.add('PlayerLobby', PlayerLobbyScene, false);
 game.scene.add('PlayerGame', PlayerGameScene, false);
 game.scene.add('Tutorial', TutorialScene, false);
+game.scene.add('CanvasUI', CanvasUiScene, false);
+game.scene.run('CanvasUI');
 
 if (initialCode) {
   // An invite link boots straight into Connecting, bypassing Landing's own
