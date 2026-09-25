@@ -38,10 +38,15 @@ Worker, debounced pre-game disconnect, identity-matched mid-game
 reconnect), with one addition:
 
 **Room capacity is hard-locked to exactly 4** (host + 3 peers).
-`HostLobbyScene` assigns each joiner the lowest free seat (`p1`..`p3`;
-host is always `p0`) and rejects a 5th joiner with a `roomFull` hostUI
+`HostLobbyScene` assigns each joiner the lowest free lobby seat (`p1`..`p3`)
+and rejects a 5th joiner with a `roomFull` hostUI
 message instead of `lobbyJoined`. Start Game stays disabled until all 4
 seats are filled, and re-disables if the room drops below 4 pre-game.
+Players enter or edit only their own names in the host, join, or waiting
+lobby. At Start Game, the host requests every peer's final name, waits
+briefly for replies, then shuffles all four game slots before dealing.
+Lobby names and blank-name fallback labels keep their pre-shuffle identity,
+so visible player numbers need not run sequentially around the table.
 
 `ConnectingScene` distinguishes five join outcomes: room not found,
 connection failed even after TURN fallback, generic timeout, game already

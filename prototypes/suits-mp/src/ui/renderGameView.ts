@@ -1479,16 +1479,16 @@ function playCardRevealFlip(
   const halfMs = tune.cardRevealFlipMs / 2;
   scene.tweens.add({
     targets: oldContainer,
-    scaleX: 0,
+    alpha: 0,
     duration: halfMs,
     ease: tune.cardRevealFlipEase,
     onComplete: () => {
       oldContainer.destroy();
       const revealed = drawCard(scene, container, x, y, (rotationRad * 180) / Math.PI, { kind: 'faceup', cardId, deityCardState }, style, dims);
-      revealed.container.setScale(0, 1);
+      revealed.container.setAlpha(0);
       scene.tweens.add({
         targets: revealed.container,
-        scaleX: 1,
+        alpha: 1,
         duration: halfMs,
         ease: tune.cardRevealFlipEase,
       });
@@ -2230,7 +2230,8 @@ function addVictoryCardFlipCycle(scene: Phaser.Scene, cardContainer: Phaser.Game
   // "front" - captured as a group so both hide/show together with the
   // card back image, never a partial blend of the two.
   const frontChildren = cardContainer.list.slice();
-  const back = scene.add.image(0, 0, 'card_back').setDisplaySize(CARD_DIMS_STANDARD.width, CARD_DIMS_STANDARD.height);
+  const back = scene.add.image(0, 0, 'card_back');
+  back.setScale(Math.min(CARD_DIMS_STANDARD.width / back.frame.width, CARD_DIMS_STANDARD.height / back.frame.height));
   back.setVisible(false);
   cardContainer.add(back);
 
@@ -2247,7 +2248,7 @@ function addVictoryCardFlipCycle(scene: Phaser.Scene, cardContainer: Phaser.Game
   const delay = Math.random() * tune.victoryCardFlipStaggerMaxMs;
   scene.tweens.add({
     targets: cardContainer,
-    scaleX: 0,
+    alpha: 0,
     duration: halfMs,
     delay,
     ease: tune.cardRevealFlipEase,
@@ -2255,21 +2256,21 @@ function addVictoryCardFlipCycle(scene: Phaser.Scene, cardContainer: Phaser.Game
       showBack();
       scene.tweens.add({
         targets: cardContainer,
-        scaleX: 1,
+        alpha: 1,
         duration: halfMs,
         ease: tune.cardRevealFlipEase,
         onComplete: () => {
           scene.time.delayedCall(tune.victoryCardFlipHoldMs, () => {
             scene.tweens.add({
               targets: cardContainer,
-              scaleX: 0,
+              alpha: 0,
               duration: halfMs,
               ease: tune.cardRevealFlipEase,
               onComplete: () => {
                 showFront();
                 scene.tweens.add({
                   targets: cardContainer,
-                  scaleX: 1,
+                  alpha: 1,
                   duration: halfMs,
                   ease: tune.cardRevealFlipEase,
                 });

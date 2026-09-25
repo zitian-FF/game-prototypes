@@ -105,6 +105,12 @@ function frameSize(): { w: number; h: number } {
   return { w: 1024, h: 1536 };
 }
 
+function addContainedLayer(scene: Phaser.Scene, container: Phaser.GameObjects.Container, key: string, dims: CardDimensions): void {
+  const image = scene.add.image(0, 0, key);
+  image.setScale(Math.min(dims.width / image.frame.width, dims.height / image.frame.height));
+  container.add(image);
+}
+
 interface RefBox {
   x: number;
   y: number;
@@ -309,7 +315,7 @@ export function buildCard(
   //    already keeps it inside the frame's silhouette (see this task's
   //    BUILD_STATUS.md) - never given an opaque rectangular container.
   if (scene.textures.exists(backdropKey(god))) {
-    container.add(scene.add.image(0, 0, backdropKey(god)).setDisplaySize(dims.width, dims.height));
+    addContainedLayer(scene, container, backdropKey(god), dims);
   }
 
   const state = cardVisualState(rank, deityCardState);
@@ -327,7 +333,7 @@ export function buildCard(
 
   // 3. Frame - full canvas, on top of the backdrop and main symbol/face
   //    layer.
-  container.add(scene.add.image(0, 0, frameKey(god)).setDisplaySize(dims.width, dims.height));
+  addContainedLayer(scene, container, frameKey(god), dims);
 
   // 4. Powered's small top-badge symbol - the one art layer that renders
   //    ABOVE the frame, per the approved spec, so it is never masked.

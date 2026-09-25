@@ -18,6 +18,8 @@ export interface LobbyUiState {
   screen: Screen;
   roomCode: string;
   seats: SeatInfo[];
+  ownName: string;
+  onOwnNameChange: (name: string) => void;
   // Only meaningful while screen === 'waiting' (see showWaiting/
   // setWaitingHostLeft) - whether the host disconnected while this peer was
   // waiting in the lobby.
@@ -55,6 +57,8 @@ function idleState(): LobbyUiState {
     screen: 'landing',
     roomCode: '',
     seats: EMPTY_SEATS,
+    ownName: '',
+    onOwnNameChange: noop,
     hostLeft: false,
     onSinglePlayer: noop,
     onTutorial: noop,
@@ -130,14 +134,15 @@ export function showHostSettingUp(): void {
 // the host (pre-existing gap in the mockup, not introduced by this wiring
 // - see BUILD_STATUS.md).
 export interface HostLobbyCallbacks {
+  onOwnNameChange: (name: string) => void;
   onFillBot: (index: number) => void;
   onReleaseBot: (index: number) => void;
   onStartGame: () => void;
   onRefreshCode: () => void;
 }
 
-export function showHostLobby(roomCode: string, seats: SeatInfo[], callbacks: HostLobbyCallbacks): void {
-  state = { ...idleState(), visible: true, screen: 'lobby', roomCode, seats, ...callbacks };
+export function showHostLobby(roomCode: string, seats: SeatInfo[], ownName: string, callbacks: HostLobbyCallbacks): void {
+  state = { ...idleState(), visible: true, screen: 'lobby', roomCode, seats, ownName, ...callbacks };
   emit();
 }
 
@@ -172,8 +177,14 @@ export function hideJoinFlow(): void {
 // during the lobby phase (only the lobbyJoined/gameStarted/roomFull/
 // alreadyInProgress signals) - adding that broadcast is a bigger, separate
 // piece of networking surface than this screen needs, see BUILD_STATUS.md.
-export function showWaiting(onBack: () => void): void {
-  state = { ...idleState(), visible: true, screen: 'waiting', hostLeft: false, onBack };
+export function showWaiting(roomCode: string, onBack: () => void, ownName: string, onOwnNameChange: (name: string) => void): void {
+  state = { ...idleState(), visible: true, screen: 'waiting', roomCode, hostLeft: false, ownName, onOwnNameChange, onBack };
+  emit();
+}
+
+export function setWaitingOwnName(ownName: string): void {
+  if (state.screen !== 'waiting') return;
+  state = { ...state, ownName };
   emit();
 }
 

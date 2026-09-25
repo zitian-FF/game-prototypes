@@ -3,6 +3,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
+import { shuffleRosterSeats } from '../net/shuffleSeats';
 import { showLanding, hideLanding } from '../uiState/lobby/lobbyUiStore';
 import type { BootData } from '../net/playerSession';
 import type { Roster } from '../net/types';
@@ -60,15 +61,17 @@ export class LandingScene extends Phaser.Scene {
     roster.set(data.clientId, {
       clientId: data.clientId,
       peerId: 'host',
-      displayName: '',
+      displayName: 'Player 1',
       slot: 'p0',
       isHost: true,
     });
     for (const slot of ALL_NET_PLAYER_IDS) {
       if (slot === 'p0') continue;
       const clientId = `bot:${slot}`;
-      roster.set(clientId, { clientId, peerId: 'bot', displayName: '', slot, isHost: false, isBot: true });
+      roster.set(clientId, { clientId, peerId: 'bot', displayName: `Player ${ALL_NET_PLAYER_IDS.indexOf(slot) + 1}`, slot, isHost: false, isBot: true });
     }
+
+    shuffleRosterSeats(roster);
 
     const gameData: HostGameData = { room: null, actions: null, roster };
     this.scene.start('HostGame', gameData);

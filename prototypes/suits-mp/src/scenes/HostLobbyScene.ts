@@ -8,6 +8,7 @@ import { createNetworkActions } from '../net/actions';
 import { randomLobbyCode } from '../net/lobbyCode';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
+import { shuffleRosterSeats } from '../net/shuffleSeats';
 import { showHostSettingUp, showHostLobby, hideHostLobby } from '../uiState/lobby/lobbyUiStore';
 import type { SeatInfo } from '../uiState/lobby/lobbySeats';
 import tune from '../../tune.json';
@@ -53,6 +54,7 @@ export class HostLobbyScene extends Phaser.Scene {
   private iceServers: RTCIceServer[] | undefined;
   private hostClientId!: string;
   private code!: string;
+  private starting = false;
 
   // Debounces roster removal on disconnect (mobile connections blip
   // constantly) and is cancelled if the same client ID reappears before
@@ -180,6 +182,9 @@ export class HostLobbyScene extends Phaser.Scene {
         return;
       }
 
+      const entry = this.roster.get(clientId);
+      if (entry && !entry.isHost && entry.peerId === context.peerId) entry.displayName = displayName.trim().slice(0, 20);
+
       void this.actions.hostUI.send({ type: 'lobbyJoined' }, { target: context.peerId });
       this.pushLobbyState();
     };
@@ -210,7 +215,35 @@ export class HostLobbyScene extends Phaser.Scene {
   }
 
   private startGame(): void {
-    if (this.roster.size !== ROOM_CAPACITY) return;
+    if (this.roster.size !== ROOM_CAPACITY || this.starting) return;
+    this.starting = true;
+    void this.collectNamesAndStart();
+  }
+
+  private async collectNamesAndStart(): Promise<void> {
+    const requestId = crypto.randomUUID();
+    const pending = new Set([...this.roster.values()].filter((entry) => !entry.isHost && !entry.isBot).map((entry) => entry.clientId));
+    this.actions.finalName.onMessage = ({ clientId, displayName, requestId: replyId }, context) => {
+      const entry = this.roster.get(clientId);
+      if (replyId !== requestId || !entry || entry.peerId !== context.peerId || !pending.has(clientId)) return;
+      entry.displayName = displayName.trim().slice(0, 20);
+      pending.delete(clientId);
+    };
+    if (pending.size) {
+      await this.actions.hostUI.send({ type: 'requestFinalNames', requestId });
+      await new Promise<void>((resolve) => {
+        const deadline = Date.now() + 3000;
+        const poll = () => pending.size === 0 || Date.now() >= deadline ? resolve() : setTimeout(poll, 50);
+        poll();
+      });
+    }
+    if (!this.scene.isActive()) return;
+    for (const entry of this.roster.values()) {
+      if (!entry.displayName.trim()) entry.displayName = `Player ${ALL_NET_PLAYER_IDS.indexOf(entry.slot) + 1}`;
+    }
+    // Shuffle occupants while preserving their names and peer identities.
+    // The engine's p0..p3 order now varies independently of lobby join order.
+    shuffleRosterSeats(this.roster);
 
     // Cancel any removals still pending debounce - once the game starts, a
     // disconnect preserves the roster slot instead, so nothing scheduled
@@ -273,7 +306,11 @@ export class HostLobbyScene extends Phaser.Scene {
   }
 
   private pushLobbyState(): void {
-    showHostLobby(this.code, rosterToSeats(this.roster), {
+    showHostLobby(this.code, rosterToSeats(this.roster), this.roster.get(this.hostClientId)?.displayName ?? '', {
+      onOwnNameChange: (name) => {
+        const host = this.roster.get(this.hostClientId);
+        if (host) { host.displayName = name.trim().slice(0, 20); this.pushLobbyState(); }
+      },
       onFillBot: (i) => this.fillBot(ALL_NET_PLAYER_IDS[i]),
       onReleaseBot: (i) => this.releaseBot(ALL_NET_PLAYER_IDS[i]),
       onStartGame: () => this.startGame(),
