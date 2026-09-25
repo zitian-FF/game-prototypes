@@ -4,8 +4,8 @@ import { createPortraitGuard } from '../orientation/orientation';
 import { createNetworkRoom } from '../net/room';
 import { createNetworkActions } from '../net/actions';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { showJoining, showJoinError, hideJoinFlow } from '../dom/lobby/lobbyUiStore';
-import type { ErrorKind } from '../dom/lobby/lobbyContent';
+import { showJoining, showJoinError, hideJoinFlow } from '../uiState/lobby/lobbyUiStore';
+import type { ErrorKind } from '../uiState/lobby/lobbyContent';
 import tune from '../../tune.json';
 import type { BootData, PlayerSessionData } from '../net/playerSession';
 

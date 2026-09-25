@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { showWaiting, setWaitingHostLeft, hideWaiting } from '../dom/lobby/lobbyUiStore';
+import { showWaiting, setWaitingHostLeft, hideWaiting } from '../uiState/lobby/lobbyUiStore';
 import { fetchTurnIceServers } from '../turn/turnConfig';
 import type { PlayerSessionData } from '../net/playerSession';
 

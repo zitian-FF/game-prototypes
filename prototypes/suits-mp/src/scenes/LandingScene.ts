@@ -3,7 +3,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS } from '../net/netPlayerId';
-import { showLanding, hideLanding } from '../dom/lobby/lobbyUiStore';
+import { showLanding, hideLanding } from '../uiState/lobby/lobbyUiStore';
 import type { BootData } from '../net/playerSession';
 import type { Roster } from '../net/types';
 import type { HostGameData } from './HostGameScene';

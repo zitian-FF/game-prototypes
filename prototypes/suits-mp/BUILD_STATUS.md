@@ -1,25 +1,25 @@
 ## Current milestone
 
-Fullscreen DOM overlay alignment corrected for itch.io's letterboxed viewport.
+The suits-mp interface is rendered in Phaser's canvas. The legacy React DOM overlay and the unused DOM join scene have been removed.
 
 ## What was implemented
 
-- Pinned Phaser's DOM overlay container to the game parent origin so its copied canvas margin is applied once during Scale.FIT centering.
-- Reproduced the original 74px canvas/DOM offset on the deployed itch.io game at 523x1280; verified the fix locally at 523x1280, 390x844, and 844x390.
-- Opened the Menu modal in the tall viewport and confirmed it is centered over the canvas.
+- Added a persistent `CanvasUiScene` for the landing, join, host lobby, waiting, error, game HUD, menu, rules, redistribution log, end-game, victory, and tutorial interfaces.
+- Moved name and room-code entry into an on-canvas keyboard. Host controls retain copy-code, copy-link, room refresh, bot management, and Start Game actions.
+- Kept the existing scene-to-UI state stores as plain TypeScript under `src/uiState/` and removed the React components, styles, DOM mount, and Phaser DOM container.
+- Nine-sliced the local nameplate, action slab, landing buttons, and landing input in canvas so carved end shapes keep their proportions.
 
-## Key technical decisions
+## Verification
 
-- Kept the fixed 390x844 logical game layout. The fix only aligns Phaser's DOM layer with its canvas after viewport centering and resize.
+- `npm run typecheck` and `npm run build` pass.
+- Browser checked at 390×844 and 523×1280. The board, nameplates, controls, keyboard, and menu render in the same canvas coordinates; the tall viewport places the canvas at y=74 with no second DOM layer.
+- Single Player and Menu opened in browser without page errors. The Join screen and name-entry keyboard were exercised.
 
 ## Open questions
 
-- The open-center nameplate and darker, list-based lobby are working mockups awaiting visual review; their new layout and art are not part of this code change.
+- The open-center nameplate and darker, list-based lobby remain separate working mockups awaiting visual review. This migration preserves the current shipped layout.
 
-## Known issues
+## Known limitations
 
-- Local browser verification saw one external font request denied by the sandbox. Local art loaded and no page exception was observed.
-
-## Next proposed step
-
-Review the fullscreen overlay alignment in the deployed prototype, then review the separate open-center nameplate and lobby working mockups before implementing them.
+- Modal styling has been recreated with canvas geometry and text; the old CSS blur, gradients, and decorative details are not pixel-identical.
+- Multiplayer host/join behavior was not exercised with multiple peers in this local visual pass.

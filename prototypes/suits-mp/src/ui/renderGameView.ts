@@ -31,14 +31,14 @@ import {
   openRedistLog,
   openRules,
   openVictory,
-} from '../dom/domUiStore';
-import type { RedistLogEntry, VictoryIdentity } from '../dom/domUiStore';
-import { hideGameOverlay, showGameOverlay } from '../dom/overlay/gameOverlayStore';
-import type { GodChipState, SeatDelegateState } from '../dom/overlay/gameOverlayStore';
-import { GOD_TO_SUIT_INDEX, SUITS } from '../dom/overlay/overlayContent';
+} from '../uiState/domUiStore';
+import type { RedistLogEntry, VictoryIdentity } from '../uiState/domUiStore';
+import { hideGameOverlay, showGameOverlay } from '../uiState/overlay/gameOverlayStore';
+import type { GodChipState, SeatDelegateState } from '../uiState/overlay/gameOverlayStore';
+import { GOD_TO_SUIT_INDEX, SUITS } from '../uiState/overlay/overlayContent';
 import { drawGuidePointer } from '../tutorial/guidePointer';
 import type { TutorialHudConfig, TutorialRedistributeAssignment } from '../tutorial/tutorialTypes';
-import { closeTutorialLesson, closeTutorialTopBar, openTutorialLesson, openTutorialTopBar } from '../dom/tutorial/tutorialUiStore';
+import { closeTutorialLesson, closeTutorialTopBar, openTutorialLesson, openTutorialTopBar } from '../uiState/tutorial/tutorialUiStore';
 import tune from '../../tune.json';
 
 // Stage 3a (+ amendment): the gameplay screen is laid out with Phaser
