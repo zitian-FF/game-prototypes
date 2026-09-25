@@ -75,6 +75,32 @@ export class CanvasUiScene extends Phaser.Scene {
       sy += sh[row]; dy += dh[row];
     }
   }
+  private playerNameplate(x: number, y: number, w: number, h: number): void {
+    const key = 'ui_player_nameplate';
+    if (!this.textures.exists(key)) return;
+    const texture = this.textures.get(key);
+    const source = texture.getSourceImage() as HTMLImageElement;
+    // The two 105px end caps contain the octagons. Scale every cap tile
+    // uniformly; only the plain center band changes width. Sample the
+    // center from before the baked divider so the divider disappears.
+    const capSource = 105;
+    const centerSource = 120;
+    const capWidth = capSource * h / source.height;
+    const sx = [0, capSource, source.width - capSource];
+    const sw = [capSource, centerSource, capSource];
+    const dw = [capWidth, w - 2 * capWidth, capWidth];
+    const sh = source.height / 3;
+    const dh = h / 3;
+    for (let row = 0; row < 3; row++) {
+      let dx = x - w / 2;
+      for (let col = 0; col < 3; col++) {
+        const frame = `__player_nameplate_${row}_${col}`;
+        if (!texture.has(frame)) texture.add(frame, 0, sx[col], row * sh, sw[col], sh);
+        this.track(this.add.image(dx + dw[col] / 2, y - h / 2 + (row + 0.5) * dh, key, frame).setDisplaySize(dw[col], dh));
+        dx += dw[col];
+      }
+    }
+  }
   private button(label: string, x: number, y: number, w: number, h: number, callback: () => void, art?: string, enabled = true, size = 17): void {
     if (art === 'ui_landing_input') this.nine(art, x, y, w, h, [200, 170], [18, 15]);
     else if (art?.startsWith('ui_landing_button')) this.nine(art, x, y, w, h, [200, 170], art.endsWith('primary') ? [30, 26] : art.endsWith('secondary') ? [20, 17] : [13, 11]);
@@ -241,12 +267,16 @@ export class CanvasUiScene extends Phaser.Scene {
       this.text(g.seatLabels[id], x, y, id === 'top' ? 15 : 14, PALE, width - 12);
       if (delegate.tappable) this.track(this.add.zone(x, y, width, width / 2).setInteractive().on('pointerup', delegate.onPick));
     });
-    this.nine('ui_player_nameplate', 195, 501 + tune.localNameplateHeight / 2, 260, tune.localNameplateHeight, [70, 95], [40, 76]);
-    this.text(g.seatLabels.bottom, 145, 554, 17, PALE, 110);
-    this.text(g.teamName, 268, 527, 11, GOLD, 105);
+    this.playerNameplate(195, 501 + tune.localNameplateHeight / 2, 260, tune.localNameplateHeight);
+    this.text(g.teamName, 195, 534, tune.localTeamHeaderFontSize, GOLD, 122);
+    this.text(g.seatLabels.bottom, 195, 560, 15, PALE, 122);
     [g.yourGodChip, g.teammateGodChip].forEach((chip, i) => {
-      if (chip.god) this.image(symbolArtFile(chip.god), 246 + i * 47, 560, tune.localTeamSymbolSize, tune.localTeamSymbolSize);
-      if (i === 0) this.text('YOU', 246, 578, 7, PALE, 35);
+      const symbolX = i === 0 ? 98 : 292;
+      if (chip.god) this.image(symbolArtFile(chip.god), symbolX, 554, tune.localTeamSymbolSize, tune.localTeamSymbolSize);
+      if (i === 0 && chip.god) {
+        this.rect(symbolX, 565, 29, 13, 0x071015, 0.9, 0xb99b60);
+        this.text('YOU', symbolX, 565, 8, PALE, 27);
+      }
     });
     this.smallControl('☰', 'Menu', 36, 44, g.onOpenMenu);
     this.smallControl('⌘', 'Sort', 36, 802, g.onToggleSort);
