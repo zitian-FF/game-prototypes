@@ -2,6 +2,13 @@
 // typed on phone keyboards, and copy-pasted between devices.
 const LOBBY_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const LOBBY_CODE_LENGTH = 5;
+const PUBLISHED_GAME_URL = 'https://zitian-ff.itch.io/suits-mp';
+
+// Invite links must point to the published game even when a host opens a
+// GitHub Pages or local preview build.
+export function lobbyInviteUrl(code: string): string {
+  return `${PUBLISHED_GAME_URL}?lobby=${encodeURIComponent(code)}`;
+}
 
 export function randomLobbyCode(): string {
   let code = '';

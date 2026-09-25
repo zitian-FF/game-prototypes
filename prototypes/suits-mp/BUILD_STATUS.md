@@ -1,25 +1,25 @@
 ## Current milestone
 
-The suits-mp interface is rendered in Phaser's canvas. The legacy React DOM overlay and the unused DOM join scene have been removed.
+Lobby invite links point to the published suits-mp itch.io page.
 
 ## What was implemented
 
-- Added a persistent `CanvasUiScene` for the landing, join, host lobby, waiting, error, game HUD, menu, rules, redistribution log, end-game, victory, and tutorial interfaces.
-- Moved name and room-code entry into an on-canvas keyboard. Host controls retain copy-code, copy-link, room refresh, bot management, and Start Game actions.
-- Kept the existing scene-to-UI state stores as plain TypeScript under `src/uiState/` and removed the React components, styles, DOM mount, and Phaser DOM container.
-- Nine-sliced the local nameplate, action slab, landing buttons, and landing input in canvas so carved end shapes keep their proportions.
+- Added one invite URL helper in `src/net/lobbyCode.ts` and used it for the host lobby's Copy Link control.
+- Removed an unused host-scene URL builder that still assembled links from the current page origin.
 
-## Verification
+## Key technical decisions
 
-- `npm run typecheck` and `npm run build` pass.
-- Browser checked at 390×844 and 523×1280. The board, nameplates, controls, keyboard, and menu render in the same canvas coordinates; the tall viewport places the canvas at y=74 with no second DOM layer.
-- Single Player and Menu opened in browser without page errors. The Join screen and name-entry keyboard were exercised.
+- Invite links use `https://zitian-ff.itch.io/suits-mp?lobby=<code>` regardless of whether the host opened a local, GitHub Pages, or itch.io build.
+- Room-code copying remains unchanged. `npm run typecheck` and `npm run build` pass; browser evaluation returned the itch.io URL for code `ABCDE`. A 390x844 browser screenshot was inspected, and no boot errors were reported.
 
 ## Open questions
 
-- The open-center nameplate and darker, list-based lobby remain separate working mockups awaiting visual review. This migration preserves the current shipped layout.
+- None for this fix.
 
-## Known limitations
+## Known issues
 
-- Modal styling has been recreated with canvas geometry and text; the old CSS blur, gradients, and decorative details are not pixel-identical.
-- Multiplayer host/join behavior was not exercised with multiple peers in this local visual pass.
+- The canvas UI modal styling remains less detailed than the former CSS treatment. Multiplayer peer joining was not exercised in this local check.
+
+## Next proposed step
+
+- Review a copied invite from the deployed host lobby on a second device.
