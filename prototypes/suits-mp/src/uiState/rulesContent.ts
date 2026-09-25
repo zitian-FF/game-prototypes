@@ -1,7 +1,5 @@
-// Ported verbatim from the Claude Design handoff (`Suit of Madness Rules.dc.html`,
-// selection.$preview / <script data-dc-script>). Copy and structure are the
-// design's; this file just gives them TypeScript types so RulesModal.tsx can
-// consume them.
+// Player-facing rules use the canonical Suits of Madness GDD's game terms.
+// Keep this summary consistent with the authoritative rules in that document.
 
 import type { God } from '../rules/types';
 
@@ -59,8 +57,8 @@ export const SECTIONS: RuleSection[] = [
     body: [
       'Your Deity and Team are secret.',
       'Find your teammate through play.',
-      'Help yourself or your teammate collect all 10 cards of their Deity Suit.',
-      'Complete either Deity Suit: your Team wins.',
+      "Help yourself or your teammate collect all 10 cards of that Player's Deity Suit.",
+      'When a Player completes their own Deity Suit, their Team wins.',
     ],
   },
   {
@@ -86,7 +84,7 @@ export const SECTIONS: RuleSection[] = [
       'Each next Player: Required Suit moves one step around the Suit Cycle.',
       'Have the Required Suit: play 1 card of that Suit.',
       'No Required Suit: choose one:',
-      'Off-suit Single, face down. Rank 0. Cannot win. Other players see only an unidentified face-down card: its Deity Suit, rank, Deity Symbol, color, and identity stay private to the player who played it unless it is later given to someone during redistribution.',
+      'Off-suit Single: play one card face down. Its effective rank is 0, so it cannot win. Other Players cannot see its Deity Suit, rank, symbol, color, or card identity.',
       'Double: 2 cards of the same rank, any Suits.',
     ],
   },

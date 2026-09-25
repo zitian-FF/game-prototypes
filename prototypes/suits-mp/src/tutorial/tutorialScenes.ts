@@ -139,7 +139,7 @@ export const TUTORIAL_SCENE_2: TutorialScript = {
       },
       lock: { kind: 'redistributeAssignments', assignments: SCENE_2_ASSIGNMENTS },
       pointer: { kind: 'redistributeAssignments', assignments: SCENE_2_ASSIGNMENTS },
-      lesson: "Give one card back to each of the other players. It's required - and it also shows them what you didn't need to keep.",
+      lesson: 'Give each other Player one card face down. Every Player must receive as many cards as they played.',
     },
   ],
 };
@@ -211,7 +211,7 @@ export const TUTORIAL_SCENE_3: TutorialScript = {
       allowedAction: { action: 'playCard', playType: 'single', cards: [cardId('Cthulhu', 2)] },
       lock: { kind: 'handCard', cardId: cardId('Cthulhu', 2) },
       pointer: { kind: 'handCard', cardId: cardId('Cthulhu', 2) },
-      lesson: "Leading has no suit rule - any card will do. Watch the wheel: your lead sets the Required Suit for the other three seats.",
+      lesson: 'Lead with any Single. Its Deity Suit sets the Required Suit for each following Player through the Suit Cycle.',
     },
   ],
 };
@@ -390,7 +390,7 @@ export const TUTORIAL_SCENE_5: TutorialScript = {
       allowedAction: { action: 'playCard', playType: 'facedownSingle', cards: [cardId('ShubNiggurath', 5)] },
       lock: { kind: 'handCard', cardId: cardId('ShubNiggurath', 5) },
       pointer: { kind: 'handCard', cardId: cardId('ShubNiggurath', 5) },
-      lesson: "No follow, no matching pair - your only legal play is a facedown Single. It concedes the trick, but stays hidden from everyone else.",
+      lesson: 'You have no card of the Required Suit and no same-rank pair. Play an off-suit Single face down. It cannot win the Trick, and other Players cannot see the card.',
     },
   ],
 };

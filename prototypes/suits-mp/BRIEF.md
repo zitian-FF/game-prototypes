@@ -31,6 +31,14 @@ just guards against a player rotating their phone sideways mid-session.
 
 ## Lobby and join flow
 
+Player-facing copy follows the canonical Suits of Madness GDD's UI
+Terminology and Canonical Screen Copy. Use clear Room, Player, Host, Bot,
+Connection, and Game terms in controls, instructions, statuses, and errors;
+do not reintroduce the discarded fantasy synonyms. Later user decisions
+take precedence where the GDD still says five-character codes or puts
+name entry on Landing: this build uses three-character codes and edits
+Player Names in the room flow.
+
 Ported from mp-net (landing screen, 3-character alphanumeric room code
 excluding lookalike letters and digits, copy-code/copy-invite-link, `?lobby=XXX` auto-join,
 TURN-servers-before-join fetched from mp-net's already-deployed Cloudflare

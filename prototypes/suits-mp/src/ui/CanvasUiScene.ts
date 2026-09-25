@@ -156,14 +156,15 @@ export class CanvasUiScene extends Phaser.Scene {
       this.button('Tutorial', 195, 696, 338, 65, l.onTutorial, 'ui_landing_button_tutorial', true, 21);
       return;
     }
-    this.text(SUBTITLES[l.screen] || 'SUITS OF MADNESS', 195, 98, 22, GOLD);
+    if (l.screen === 'waiting' && l.hostLeft) this.text('Host Disconnected', 195, 98, 22, GOLD);
+    else if (SUBTITLES[l.screen]) this.text(SUBTITLES[l.screen], 195, 98, 22, GOLD);
     if (l.screen === 'join') {
-      this.text(`Enter the ${LOBBY_CODE_LENGTH}-character Room Code`, 195, 282, 17);
-      this.button(this.code || 'ROOM CODE', 195, 352, 315, 58, () => this.edit('Room code', this.code, (v) => { this.code = normalizeLobbyCode(v); }), 'ui_landing_input', true, 20);
+      this.text(`Enter the ${LOBBY_CODE_LENGTH}-character Room Code provided by the Host.`, 195, 282, 15, PALE, 315);
+      this.button(this.code || 'ROOM CODE', 195, 352, 315, 58, () => this.edit('Room Code', this.code, (v) => { this.code = normalizeLobbyCode(v); }), 'ui_landing_input', true, 20);
       for (let i = 0; i < LOBBY_CODE_LENGTH; i++) this.rect(195 + (i - (LOBBY_CODE_LENGTH - 1) / 2) * 28, 403, 24, 2, i < this.code.length ? 0x9bcac4 : 0x36504e, 1, i < this.code.length ? 0x9bcac4 : 0x36504e);
       this.text(isValidLobbyCode(this.code) ? 'Room Code complete' : `${Math.max(0, LOBBY_CODE_LENGTH - this.code.length)} characters remain`, 195, 425, 11, TEAL);
-      this.text('YOUR NAME (OPTIONAL)', 195, 466, 11, GOLD);
-      this.button(this.name || 'Player', 195, 501, 315, 48, () => this.edit('Player name', this.name, (v) => { this.name = v.slice(0, DISPLAY_NAME_MAX_LENGTH); }), 'ui_landing_input');
+      this.text('PLAYER NAME (OPTIONAL)', 195, 466, 11, GOLD);
+      this.button(this.name || 'Player', 195, 501, 315, 48, () => this.edit('Player Name', this.name, (v) => { this.name = v.slice(0, DISPLAY_NAME_MAX_LENGTH); }), 'ui_landing_input');
       this.button('Join Room', 195, 587, 320, 70, () => l.onSubmitJoin(this.code, this.name.trim()), 'ui_landing_button_primary', isValidLobbyCode(this.code), 23);
       this.button('Back', 195, 682, 250, 55, goToLandingScreen);
       return;
@@ -172,36 +173,36 @@ export class CanvasUiScene extends Phaser.Scene {
       this.text('ROOM CODE', 195, 185, 12, TEAL);
       this.text(l.roomCode, 195, 225, 38, GOLD);
       this.button('Copy Code', 76, 277, 100, 35, () => { void navigator.clipboard?.writeText(l.roomCode); this.showToast('Code copied.'); }, undefined, true, 12);
-      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(lobbyInviteUrl(l.roomCode)); this.showToast('Summons copied.'); }, undefined, true, 12);
-      this.button('Refresh', 314, 277, 100, 35, l.onRefreshCode, undefined, true, 12);
+      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(lobbyInviteUrl(l.roomCode)); this.showToast('Link copied.'); }, undefined, true, 12);
+      this.button('Refresh Code', 314, 277, 100, 35, l.onRefreshCode, undefined, true, 10);
       if (this.toast) this.text(this.toast, 195, 307, 11, TEAL);
-      this.text('YOUR NAME (TAP TO EDIT)', 195, 315, 11, GOLD);
-      this.button(l.ownName || 'Player 1', 195, 346, 310, 42, () => this.edit('Player name', l.ownName, l.onOwnNameChange), 'ui_landing_input');
+      this.text('PLAYER NAME (TAP TO EDIT)', 195, 315, 11, GOLD);
+      this.button(l.ownName || 'Player 1', 195, 346, 310, 42, () => this.edit('Player Name', l.ownName, l.onOwnNameChange), 'ui_landing_input');
       seatModel(l.seats, l.onFillBot, l.onReleaseBot).forEach((seat, i) => {
         const y = 405 + i * 67;
         this.rect(195, y, 338, 65, seat.state === 'empty' ? 0x0b1519 : 0x182024);
         this.text(seat.numeral, 48, y, 20, GOLD, 40);
         this.text(seat.name, 155, y - 10, 18, PALE, 175);
         this.text(seat.role, 155, y + 13, 10, TEAL, 175);
-        if (seat.canFill) this.button('+ Bot', 314, y, 76, 35, seat.fill, undefined, true, 13);
-        if (seat.canRelease) this.button('Remove', 314, y, 76, 35, seat.release, undefined, true, 12);
+        if (seat.canFill) this.button('Add Bot', 314, y, 76, 35, seat.fill, undefined, true, 11);
+        if (seat.canRelease) this.button('Remove Bot', 314, y, 76, 35, seat.release, undefined, true, 10);
       });
       this.button('Start Game', 195, 705, 320, 68, l.onStartGame, 'ui_landing_button_primary', l.seats.every((s) => s.occupancy !== null), 23);
       return;
     }
     if (l.screen === 'waiting') {
-      this.text(l.hostLeft ? 'Host Disconnected' : 'Waiting for the Host', 195, 345, 27, GOLD);
-      this.text(l.hostLeft ? 'The room has closed.' : `Room ${l.roomCode || ''}\nThe host will begin when all seats are ready.`, 195, 407, 16, PALE);
+      if (!l.hostLeft) this.text(l.roomCode, 195, 345, 32, GOLD);
+      this.text(l.hostLeft ? 'The Room has closed because the Host left.' : 'Waiting for the Host to start the Game.', 195, 407, 16, PALE);
       if (!l.hostLeft) {
-        this.text('YOUR NAME (TAP TO EDIT)', 195, 492, 11, GOLD);
-        this.button(l.ownName || 'Player', 195, 527, 315, 48, () => this.edit('Player name', l.ownName, l.onOwnNameChange), 'ui_landing_input');
+        this.text('PLAYER NAME (TAP TO EDIT)', 195, 492, 11, GOLD);
+        this.button(l.ownName || 'Player', 195, 527, 315, 48, () => this.edit('Player Name', l.ownName, l.onOwnNameChange), 'ui_landing_input');
       }
       this.button('Return to Main Menu', 195, 656, 310, 60, l.onBack);
       return;
     }
     if (l.screen === 'joining' || l.screen === 'reconnecting') {
-      this.text(l.screen === 'joining' ? 'Opening the room…' : 'Reconnecting…', 195, 376, 23, GOLD);
-      this.button('Cancel', 195, 654, 280, 56, l.onBack);
+      this.text(l.screen === 'joining' ? 'Connecting to the Room…' : 'The connection was interrupted. Trying to reconnect…', 195, 376, l.screen === 'joining' ? 20 : 16, PALE, 315);
+      this.button(l.screen === 'joining' ? 'Cancel' : 'Leave Room', 195, 654, 280, 56, l.onBack);
       return;
     }
     const error = ERRORS[l.screen as ErrorKind];
@@ -225,7 +226,7 @@ export class CanvasUiScene extends Phaser.Scene {
     this.text(keyboard.title, 195, 210, 22, GOLD);
     this.rect(195, 271, 310, 51, 0x111d23);
     this.text(keyboard.value || ' ', 195, 271, 21, PALE, 285);
-    const rows = keyboard.title === 'Room code'
+    const rows = keyboard.title === 'Room Code'
       ? [LOBBY_CODE_CHARS.slice(0, 8), LOBBY_CODE_CHARS.slice(8, 16), LOBBY_CODE_CHARS.slice(16, 24), LOBBY_CODE_CHARS.slice(24)]
       : ['QWERTYUI', 'OPASDFGH', 'JKLZXCVB', 'NM 12345', '67890'];
     rows.forEach((row, rowIndex) => {
@@ -234,7 +235,7 @@ export class CanvasUiScene extends Phaser.Scene {
       const left = 195 - (chars.length * keyW + (chars.length - 1) * gap) / 2 + keyW / 2;
       chars.forEach((char, i) => this.button(char === ' ' ? 'Space' : char, left + i * (keyW + gap), 337 + rowIndex * 54, keyW, 45, () => {
         keyboard.value += char;
-        keyboard.value = keyboard.title === 'Room code'
+        keyboard.value = keyboard.title === 'Room Code'
           ? normalizeLobbyCode(keyboard.value).slice(0, LOBBY_CODE_LENGTH)
           : keyboard.value.slice(0, DISPLAY_NAME_MAX_LENGTH);
         this.redraw();
