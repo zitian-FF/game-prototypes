@@ -10,7 +10,7 @@ import { seatModel } from '../uiState/lobby/lobbySeats';
 import { ERRORS, SUBTITLES } from '../uiState/lobby/lobbyContent';
 import type { ErrorKind } from '../uiState/lobby/lobbyContent';
 import { SECTIONS } from '../uiState/rulesContent';
-import { isValidLobbyCode, lobbyInviteUrl, normalizeLobbyCode } from '../net/lobbyCode';
+import { isValidLobbyCode, lobbyInviteUrl, normalizeLobbyCode, LOBBY_CODE_CHARS, LOBBY_CODE_LENGTH } from '../net/lobbyCode';
 const DISPLAY_NAME_MAX_LENGTH = 20;
 import tune from '../../tune.json';
 
@@ -134,10 +134,10 @@ export class CanvasUiScene extends Phaser.Scene {
     }
     this.text(SUBTITLES[l.screen] || 'SUITS OF MADNESS', 195, 98, 22, GOLD);
     if (l.screen === 'join') {
-      this.text('Enter the five-character Room Code', 195, 282, 17);
+      this.text(`Enter the ${LOBBY_CODE_LENGTH}-character Room Code`, 195, 282, 17);
       this.button(this.code || 'ROOM CODE', 195, 352, 315, 58, () => this.edit('Room code', this.code, (v) => { this.code = normalizeLobbyCode(v); }), 'ui_landing_input', true, 20);
-      for (let i = 0; i < 5; i++) this.rect(139 + i * 28, 403, 24, 2, i < this.code.length ? 0x9bcac4 : 0x36504e, 1, i < this.code.length ? 0x9bcac4 : 0x36504e);
-      this.text(isValidLobbyCode(this.code) ? 'Room Code complete' : `${5 - this.code.length} characters remain`, 195, 425, 11, TEAL);
+      for (let i = 0; i < LOBBY_CODE_LENGTH; i++) this.rect(195 + (i - (LOBBY_CODE_LENGTH - 1) / 2) * 28, 403, 24, 2, i < this.code.length ? 0x9bcac4 : 0x36504e, 1, i < this.code.length ? 0x9bcac4 : 0x36504e);
+      this.text(isValidLobbyCode(this.code) ? 'Room Code complete' : `${Math.max(0, LOBBY_CODE_LENGTH - this.code.length)} characters remain`, 195, 425, 11, TEAL);
       this.button('Join Room', 195, 510, 320, 70, () => l.onSubmitJoin(this.code, this.name.trim()), 'ui_landing_button_primary', isValidLobbyCode(this.code), 23);
       this.button('Back', 195, 602, 250, 55, goToLandingScreen);
       return;
@@ -193,14 +193,18 @@ export class CanvasUiScene extends Phaser.Scene {
     this.text(keyboard.title, 195, 210, 22, GOLD);
     this.rect(195, 271, 310, 51, 0x111d23);
     this.text(keyboard.value || ' ', 195, 271, 21, PALE, 285);
-    const rows = keyboard.title === 'Room code' ? ['ABCDEFGH', 'IJKLMNOP', 'QRSTUVWX', 'YZ234567', '89'] : ['QWERTYUI', 'OPASDFGH', 'JKLZXCVB', 'NM 12345', '67890'];
+    const rows = keyboard.title === 'Room code'
+      ? [LOBBY_CODE_CHARS.slice(0, 8), LOBBY_CODE_CHARS.slice(8, 16), LOBBY_CODE_CHARS.slice(16, 24), LOBBY_CODE_CHARS.slice(24)]
+      : ['QWERTYUI', 'OPASDFGH', 'JKLZXCVB', 'NM 12345', '67890'];
     rows.forEach((row, rowIndex) => {
       const chars = [...row];
       const gap = 3, keyW = Math.min(37, (335 - (chars.length - 1) * gap) / chars.length);
       const left = 195 - (chars.length * keyW + (chars.length - 1) * gap) / 2 + keyW / 2;
       chars.forEach((char, i) => this.button(char === ' ' ? 'Space' : char, left + i * (keyW + gap), 337 + rowIndex * 54, keyW, 45, () => {
         keyboard.value += char;
-        keyboard.value = keyboard.title === 'Room code' ? normalizeLobbyCode(keyboard.value) : keyboard.value.slice(0, DISPLAY_NAME_MAX_LENGTH);
+        keyboard.value = keyboard.title === 'Room code'
+          ? normalizeLobbyCode(keyboard.value).slice(0, LOBBY_CODE_LENGTH)
+          : keyboard.value.slice(0, DISPLAY_NAME_MAX_LENGTH);
         this.redraw();
       }, undefined, true, char === ' ' ? 9 : 16));
     });

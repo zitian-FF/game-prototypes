@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { PIXEL_RATIO } from './render/pixelRatio';
 import { getOrCreateClientId } from 'mp-core';
 import { fetchTurnIceServers } from './turn/turnConfig';
-import { normalizeLobbyCode } from './net/lobbyCode';
+import { isValidLobbyCode, normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { recordRendererType } from './debug/shimmerDiagnostics';
 import { LandingScene } from './scenes/LandingScene';
@@ -35,7 +35,8 @@ const bootData: BootData = {
 };
 
 const lobbyParam = new URLSearchParams(location.search).get('lobby');
-const initialCode = lobbyParam ? normalizeLobbyCode(lobbyParam) : null;
+const normalizedLobbyParam = lobbyParam ? normalizeLobbyCode(lobbyParam) : null;
+const initialCode = normalizedLobbyParam && isValidLobbyCode(normalizedLobbyParam) ? normalizedLobbyParam : null;
 
 // Portrait on every screen, including the host - see root BRIEF for this
 // prototype (deliberately not mp-base/mp-net's landscape-host dashboard).
