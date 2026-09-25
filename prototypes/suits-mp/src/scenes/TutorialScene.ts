@@ -9,9 +9,6 @@ import { applyAction, settleAutoPhases } from '../host/gameHost';
 import { buildMaskedState } from '../host/mask';
 import { createPersistentUIState, presentGameView } from '../ui/renderGameView';
 import type { PersistentUIState } from '../ui/renderGameView';
-import { preloadCardArt } from '../ui/cardArt';
-import { showAssetLoadProgress } from '../ui/loadingProgress';
-import type { AssetLoadProgress } from '../ui/loadingProgress';
 import type { ClientAction } from '../net/actions';
 import type { GameState, PlayerId } from '../rules/types';
 import { TUTORIAL_SCENES } from '../tutorial/tutorialScenes';
@@ -53,7 +50,6 @@ export class TutorialScene extends Phaser.Scene {
   private state!: GameState;
   private container!: Phaser.GameObjects.Container;
   private uiState: PersistentUIState = createPersistentUIState();
-  private loading!: AssetLoadProgress;
   private script!: TutorialScript;
   private stepIndex = 0;
   private pendingWait: TutorialWaitStep | null = null;
@@ -80,18 +76,7 @@ export class TutorialScene extends Phaser.Scene {
     super('Tutorial');
   }
 
-  preload(): void {
-    this.loading = showAssetLoadProgress(this);
-    preloadCardArt(this);
-  }
-
   create(): void {
-    if (this.loading.hadError) {
-      this.loading.showRetry(() => this.scene.restart());
-      return;
-    }
-    this.loading.hide();
-
     addVersionStamp(this);
     createPortraitGuard(this);
     this.cameras.main.setZoom(PIXEL_RATIO);

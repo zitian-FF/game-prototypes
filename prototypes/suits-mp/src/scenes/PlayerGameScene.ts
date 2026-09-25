@@ -4,33 +4,13 @@ import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { createPersistentUIState, presentGameView } from '../ui/renderGameView';
 import type { PlayerSessionData } from '../net/playerSession';
-import { preloadCardArt } from '../ui/cardArt';
-import { showAssetLoadProgress } from '../ui/loadingProgress';
-import type { AssetLoadProgress } from '../ui/loadingProgress';
 
 export class PlayerGameScene extends Phaser.Scene {
-  private loading!: AssetLoadProgress;
-
   constructor() {
     super('PlayerGame');
   }
 
-  preload(): void {
-    this.loading = showAssetLoadProgress(this);
-    preloadCardArt(this);
-  }
-
   create(data: PlayerSessionData): void {
-    // A failed asset fetch mid-preload: stop here rather than proceeding
-    // into a game view missing card art. Retrying just restarts this same
-    // scene with the same data, which re-runs preload() - preloadCardArt's
-    // manifest-driven loader only re-requests textures that don't already
-    // exist, so a partial success isn't re-fetched from scratch.
-    if (this.loading.hadError) {
-      this.loading.showRetry(() => this.scene.restart(data));
-      return;
-    }
-
     addVersionStamp(this);
     createPortraitGuard(this);
     this.cameras.main.setZoom(PIXEL_RATIO);
@@ -57,20 +37,25 @@ export class PlayerGameScene extends Phaser.Scene {
       .setOrigin(0.5);
     overlay.add([overlayBg, overlayText]);
 
+    const waitingForState = this.add.container(0, 0).setDepth(19999);
+    waitingForState.add([
+      this.add.rectangle(0, 0, width, height, 0x05080a, 0.97).setOrigin(0),
+      this.add.text(width / 2, height / 2, 'Waiting for the host...', {
+        fontFamily: 'monospace', fontSize: '16px', color: '#d8c078', resolution: PIXEL_RATIO,
+      }).setOrigin(0.5),
+    ]);
+
     // No local-only "checking the rules overlay" / redistribution-log tap
     // targets yet - both are stubbed with placeholder text this stage (see
     // ui/renderGameView.ts) since real presentation is Stage 3.
-    let loadingHidden = false;
+    let waitingHidden = false;
     actions.state.onMessage = (masked, context) => {
       data.hostPeerId.current = context.peerId;
-      // Asset loading finished back in preload(), but this scene has
-      // nothing real to show until its first masked state arrives over the
-      // network - keep the loading overlay up until that actually happens,
-      // rather than hiding it as soon as preload completes, so there is no
-      // gap of blank canvas between the two.
-      if (!loadingHidden) {
-        loadingHidden = true;
-        this.loading.hide();
+      // All assets were prepared during Boot; wait only for the first real
+      // masked state from the host before revealing the board.
+      if (!waitingHidden) {
+        waitingHidden = true;
+        waitingForState.destroy();
       }
       presentGameView(this, container, masked, (action) => void actions.gameAction.send(action), uiState, true);
     };

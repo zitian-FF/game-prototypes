@@ -1,53 +1,25 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 
-// Shown during HostGameScene/PlayerGameScene's preload() - the asset set
-// (card backdrops/frames/symbols/faces/nameplates per Deity, several files
-// over 1MB) can take a visible amount of time to fetch, and until now
-// nothing was drawn during that gap: a blank/frozen canvas. Wired to the
-// Scene's own LoaderPlugin events (this.load's 'progress'/'loaderror'), not
-// a timed/faked animation, so the bar always reflects the loader's real
-// file-count progress (Phaser's own `this.load.progress`, computed as
-// completed-or-failed files / total queued files - the standard, accurate
-// signal every Phaser loading-bar follows, not an approximation).
-//
-// Canvas-drawn rather than a DOM overlay (root CLAUDE.md's UI split is
-// about who *designs* HUD chrome, not a hard rule against canvas-drawn
-// status text - see e.g. this same file's siblings: orientation.ts's
-// portrait guard and PlayerGameScene's own "Host disconnected" overlay,
-// both plain canvas primitives): preload() runs before create(), so the
-// canvas already exists and needs no coordination with when the DOM
-// overlay container becomes available, and a two-primitive progress bar
-// doesn't need the Claude-Design-mockup pipeline real HUD chrome goes
-// through.
-//
-// preloadCardArt() loads assets/manifest.json first, then enqueues the
-// loose images it lists once that completes - so the loader's total file
-// count grows partway through the load. Phaser's `progress` value is
-// recomputed against the queue as it stands at each event, so this can
-// show a brief backwards jump right after the manifest itself finishes
-// (100% of "1 file" becoming ~4% of "26 files") - an honest artifact of
-// showing the loader's real state at each moment, not a bug to mask with a
-// smoothed fake number.
+// Shown once during BootScene's preload(), before the lobby or game starts.
+// It reflects Phaser's real LoaderPlugin progress and reports failed files.
+// The manifest is loaded first, then its images are queued, so progress can
+// briefly move backwards when that larger queue appears.
 
 export interface AssetLoadProgress {
   /** True once any file in the queue has failed to load. */
   hadError: boolean;
   /** Reveals a retry prompt below the (now-stalled) bar; wires `onRetry` to it. */
   showRetry(onRetry: () => void): void;
-  /** Removes the whole overlay. Call once the real game view has actually rendered. */
+  /** Removes the overlay after startup assets have loaded. */
   hide(): void;
 }
 
 const BAR_WIDTH_MARGIN = 60;
 const BAR_HEIGHT = 10;
 
-export function showAssetLoadProgress(scene: Phaser.Scene): AssetLoadProgress {
-  // preload() runs before create() sets up each scene's usual camera
-  // zoom/center (see e.g. HostGameScene.create()) - apply the same PIXEL_RATIO
-  // zoom/center here too so this overlay's logical coordinates line up with
-  // every other scene element instead of rendering at the raw, unzoomed
-  // physical-pixel scale. create()'s later identical call is a harmless repeat.
+export function showAssetLoadProgress(scene: Phaser.Scene, titleText = 'Preparing the game...'): AssetLoadProgress {
+  // Apply the logical camera scale before BootScene.create() runs.
   scene.cameras.main.setZoom(PIXEL_RATIO);
   const width = scene.scale.width / PIXEL_RATIO;
   const height = scene.scale.height / PIXEL_RATIO;
@@ -61,7 +33,7 @@ export function showAssetLoadProgress(scene: Phaser.Scene): AssetLoadProgress {
 
   const bg = scene.add.rectangle(0, 0, width, height, 0x05080a, 0.97).setOrigin(0);
   const title = scene.add
-    .text(width / 2, height / 2 - 30, 'Preparing the cards...', {
+    .text(width / 2, height / 2 - 30, titleText, {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#d8c078',

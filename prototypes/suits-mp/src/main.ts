@@ -6,6 +6,7 @@ import { isValidLobbyCode, normalizeLobbyCode } from './net/lobbyCode';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { recordRendererType } from './debug/shimmerDiagnostics';
 import { LandingScene } from './scenes/LandingScene';
+import { BootScene } from './scenes/BootScene';
 import { ConnectingScene } from './scenes/ConnectingScene';
 import { HostLobbyScene } from './scenes/HostLobbyScene';
 import { HostGameScene } from './scenes/HostGameScene';
@@ -82,6 +83,7 @@ game.events.once(Phaser.Core.Events.READY, () => {
   recordRendererType(game.renderer.type);
 });
 
+game.scene.add('Boot', BootScene, false);
 game.scene.add('Landing', LandingScene, false);
 game.scene.add('Connecting', ConnectingScene, false);
 game.scene.add('HostLobby', HostLobbyScene, false);
@@ -92,12 +94,5 @@ game.scene.add('Tutorial', TutorialScene, false);
 game.scene.add('CanvasUI', CanvasUiScene, false);
 game.scene.run('CanvasUI');
 
-if (initialCode) {
-  // An invite link boots straight into Connecting, bypassing Landing's own
-  // name-entry field entirely - no UI has run yet to collect one, so this
-  // join sends an empty displayName like any other blank-name join (falls
-  // back to a seat-numbered "Player N" at render time, see lobbySeats.ts).
-  game.scene.start('Connecting', { ...bootData, code: initialCode, displayName: '' });
-} else {
-  game.scene.start('Landing', bootData);
-}
+// Boot prepares the entire packaged asset manifest before either path begins.
+game.scene.start('Boot', { ...bootData, initialCode });
