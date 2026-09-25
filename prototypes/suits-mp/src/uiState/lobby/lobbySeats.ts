@@ -54,8 +54,8 @@ export function seatModel(
       id: 'seat' + (i + 1),
       numeral: NUMERALS[i],
       state: occ === null ? 'empty' : occ,
-      name: isBot ? 'Bot' : isHost || isPeer ? realOrFallbackName : 'Awaiting a soul',
-      role: isBot ? 'Bot · bound by the host' : isHost ? 'Host · thee' : isPeer ? 'Player · connected' : 'Empty seat',
+      name: isBot ? 'Bot' : isHost || isPeer ? realOrFallbackName : 'Empty seat',
+      role: isBot ? 'Bot' : isHost ? 'Host (You)' : isPeer ? 'Player connected' : 'Available',
       glyph: filled ? (isBot ? '✦' : '◆') : '◇',
       line: filled ? accent + ' 0.34)' : 'rgba(158, 196, 186, 0.14)',
       bg: filled

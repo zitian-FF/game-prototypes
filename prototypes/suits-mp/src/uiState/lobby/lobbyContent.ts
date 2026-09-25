@@ -1,7 +1,6 @@
-// Ported verbatim from the Claude Design handoff (`Suit of Madness Lobby.dc.html`,
-// selection.$preview / <script data-dc-script>). Copy, palette, and the
-// error/subtitle tables are the design's; this file just gives them
-// TypeScript types so LobbyFlow.tsx can consume them.
+// Player-facing lobby and error copy follows the canonical Suits of Madness
+// GDD's UI Terminology and Canonical Screen Copy. The newer three-character
+// Room Code and in-lobby name entry are intentional user-directed updates.
 
 export const NUMERALS = ['I', 'II', 'III', 'IV'] as const;
 

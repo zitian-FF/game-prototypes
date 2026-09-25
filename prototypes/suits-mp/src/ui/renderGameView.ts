@@ -1928,9 +1928,8 @@ function rawPlayerNameFor(state: MaskedState, id: NetPlayerId): string {
 // DOM button (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts rather
 // than drawn here - same decision logic as before, just returned as data
 // instead of calling Phaser's `button()`. `hint` is the design's small
-// secondary line under the main label; it's only ever the one static
-// string the design itself uses ("Commit the chosen card"), shown
-// whenever there's a real committable action and blank otherwise.
+// secondary instruction under the main action label, shown only when it
+// helps the Player understand the next step.
 interface ActionButtonState {
   label: string;
   hint: string;
@@ -1957,7 +1956,7 @@ function computeActionButtonState(
     if (legality?.playType) {
       const type = legality.playType;
       const cards = [...view.selectedCards];
-      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Play Double' : 'Facedown Card';
+      const label = type === 'single' ? 'Play Card' : type === 'double' ? 'Play Double' : 'Play Face-Down Single';
       // One off-suit card staged with a same-rank partner still elsewhere in
       // hand: the facedown single is already a legal commit - it must stay
       // the primary action (a prior task made this Double-guidance replace
@@ -1968,11 +1967,11 @@ function computeActionButtonState(
       // action. A genuine one-card-only hand (no partner) keeps the plain
       // hint below unchanged, since a facedown single is the only real
       // option there.
-      let hint = 'Commit the chosen card';
+      let hint = 'Confirm your play';
       if (type === 'facedownSingle' && cards.length === 1) {
         const rank = cardById(cards[0]).rank;
         const hasPartner = state.yourHand.some((id) => id !== cards[0] && cardById(id).rank === rank);
-        if (hasPartner) hint = 'Commit now, or select a matching card for a Double';
+        if (hasPartner) hint = 'Or select a same-rank card to play a Double';
       }
       return { label, hint, enabled: true, onClick: () => sendAction({ action: 'playCard', playType: type, cards }) };
     }
@@ -1984,7 +1983,7 @@ function computeActionButtonState(
       const target = view.delegateChoice;
       return {
         label: `Delegate to ${playerLabelFor(state, target)}`,
-        hint: 'Commit the chosen card',
+        hint: 'Confirm your Delegate',
         enabled: true,
         onClick: () => sendAction({ action: 'selectDelegate', targetPlayer: target }),
       };
@@ -1997,7 +1996,7 @@ function computeActionButtonState(
   if (allAssigned && ctx) {
     return {
       label: 'Redistribute',
-      hint: 'Commit the chosen card',
+      hint: 'Confirm redistribution',
       enabled: true,
       onClick: () =>
         sendAction({
