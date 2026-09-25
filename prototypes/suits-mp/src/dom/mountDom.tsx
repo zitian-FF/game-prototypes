@@ -26,6 +26,14 @@ export function mountDom(game: Phaser.Game): void {
   const container = game.domContainer;
   if (!container) return;
 
+  // Phaser copies the canvas's centering margins and scale onto this
+  // absolutely positioned container, but leaves its top/left at `auto`.
+  // In a taller itch.io fullscreen viewport the static-position fallback
+  // starts below the canvas's top margin, then applies that margin again.
+  // Pin the origin to #app so both layers receive the same centering margin.
+  container.style.top = '0';
+  container.style.left = '0';
+
   const wrapper = document.createElement('div');
   wrapper.style.cssText = [
     `width: ${WIDTH}px`,
