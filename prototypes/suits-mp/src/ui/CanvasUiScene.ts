@@ -10,7 +10,7 @@ import { seatModel } from '../uiState/lobby/lobbySeats';
 import { ERRORS, SUBTITLES } from '../uiState/lobby/lobbyContent';
 import type { ErrorKind } from '../uiState/lobby/lobbyContent';
 import { SECTIONS } from '../uiState/rulesContent';
-import { isValidLobbyCode, normalizeLobbyCode } from '../net/lobbyCode';
+import { isValidLobbyCode, lobbyInviteUrl, normalizeLobbyCode } from '../net/lobbyCode';
 const DISPLAY_NAME_MAX_LENGTH = 20;
 import tune from '../../tune.json';
 
@@ -146,7 +146,7 @@ export class CanvasUiScene extends Phaser.Scene {
       this.text('ROOM CODE', 195, 185, 12, TEAL);
       this.text(l.roomCode, 195, 225, 38, GOLD);
       this.button('Copy Code', 76, 277, 100, 35, () => { void navigator.clipboard?.writeText(l.roomCode); this.showToast('Code copied.'); }, undefined, true, 12);
-      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(`${location.origin}${location.pathname}?lobby=${l.roomCode}`); this.showToast('Summons copied.'); }, undefined, true, 12);
+      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(lobbyInviteUrl(l.roomCode)); this.showToast('Summons copied.'); }, undefined, true, 12);
       this.button('Refresh', 314, 277, 100, 35, l.onRefreshCode, undefined, true, 12);
       if (this.toast) this.text(this.toast, 195, 307, 11, TEAL);
       seatModel(l.seats, l.onFillBot, l.onReleaseBot).forEach((seat, i) => {

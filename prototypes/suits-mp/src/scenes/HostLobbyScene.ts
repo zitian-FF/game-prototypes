@@ -156,10 +156,6 @@ export class HostLobbyScene extends Phaser.Scene {
     });
   }
 
-  private inviteUrl(): string {
-    return `${location.origin}${location.pathname}?lobby=${this.code}`;
-  }
-
   // Wires the identity/peer-leave handlers onto `this.room`/`this.actions`.
   private wireRoomHandlers(): void {
     this.actions.identity.onMessage = ({ clientId, displayName }, context) => {
