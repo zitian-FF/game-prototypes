@@ -31,8 +31,8 @@ just guards against a player rotating their phone sideways mid-session.
 
 ## Lobby and join flow
 
-Ported directly from mp-net (landing screen, 5-character room code
-excluding 0/O/1/I/L, copy-code/copy-invite-link, `?lobby=XXXXX` auto-join,
+Ported from mp-net (landing screen, 3-character alphanumeric room code
+excluding lookalike letters and digits, copy-code/copy-invite-link, `?lobby=XXX` auto-join,
 TURN-servers-before-join fetched from mp-net's already-deployed Cloudflare
 Worker, debounced pre-game disconnect, identity-matched mid-game
 reconnect), with one addition:

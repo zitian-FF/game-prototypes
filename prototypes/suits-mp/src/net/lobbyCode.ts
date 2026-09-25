@@ -1,7 +1,7 @@
-// Excludes ambiguous characters (0/O, 1/I/L) since codes get read aloud,
-// typed on phone keyboards, and copy-pasted between devices.
-const LOBBY_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-export const LOBBY_CODE_LENGTH = 5;
+// Keep one side of each easily confused pair: 0/O, 1/I/L, 2/Z, 5/S,
+// 6/G and 8/B. Codes are read aloud and entered on phone screens.
+export const LOBBY_CODE_CHARS = 'ACDEFHJKMNPQRTUVWXY23456789';
+export const LOBBY_CODE_LENGTH = 3;
 const PUBLISHED_GAME_URL = 'https://zitian-ff.itch.io/suits-mp';
 
 // Invite links must point to the published game even when a host opens a

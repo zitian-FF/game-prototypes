@@ -20,9 +20,8 @@ export interface HostLobbyData extends BootData {
   displayName: string;
 }
 
-// Safety cap on the collision-retry loop; with a 32-character, 5-slot
-// alphabet a real collision run this long is not expected in practice,
-// this just avoids ever hanging forever.
+// Short codes make collisions possible. Check every candidate before showing
+// it, and cap retries so room setup cannot hang indefinitely.
 const MAX_CODE_ATTEMPTS = 5;
 
 function nextAvailableSlot(roster: Roster) {
@@ -113,9 +112,13 @@ export class HostLobbyScene extends Phaser.Scene {
     console.log(`[suits-mp host] creating room for code ${code}...`);
     let room = createNetworkRoom(code, { iceServers: this.iceServers });
 
-    for (let attempt = 1; attempt < MAX_CODE_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
       const occupied = await this.checkOccupied(room);
       if (!occupied) break;
+      if (attempt === MAX_CODE_ATTEMPTS - 1) {
+        await room.leave();
+        throw new Error('could not find an available room code');
+      }
       console.log(`[suits-mp host] code ${code} already occupied, trying a new one...`);
       await room.leave();
       code = randomLobbyCode();
@@ -260,10 +263,9 @@ export class HostLobbyScene extends Phaser.Scene {
   // touched, let alone dropped.
   //
   // Not handled: another host independently generating this exact code
-  // while this lobby sits idle. With 5-character codes drawn from a
-  // 32-character alphabet (~33.5 million combinations, see lobbyCode.ts)
-  // this is astronomically rare, and per the finding above it can no
-  // longer even be detected without leaving this room first - the one
+  // while this lobby sits idle. This is more likely with three-character
+  // codes; per the finding above it cannot be detected without leaving
+  // this room first - the one
   // action this fix exists to avoid. See BUILD_STATUS.md's Known Issues
   // for what a real fix would need if this ever turns out to matter.
   private refreshRoomCode(): void {
