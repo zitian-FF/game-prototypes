@@ -8,6 +8,7 @@ import type { NetPlayerId } from './netPlayerId';
 export type HostUIMessage =
   | { type: 'lobbyJoined' }
   | { type: 'gameStarted' }
+  | { type: 'requestFinalNames'; requestId: string }
   | { type: 'alreadyInProgress' }
   | { type: 'roomFull' };
 
@@ -167,6 +168,7 @@ export function createNetworkActions(room: Room) {
     // name, sent on (re)join. Shared with every mp-* prototype that opts
     // into the named-identity payload - see packages/mp-core.
     identity: createIdentityActionWithName(room),
+    finalName: room.makeAction<{ clientId: string; displayName: string; requestId: string }>('finalName'),
     // Host -> peer(s) lobby/session UI pushes, optionally targeted.
     hostUI: createHostUIAction<HostUIMessage>(room),
     // Player -> host game actions (playCard/selectDelegate/redistribute/

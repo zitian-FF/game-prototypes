@@ -7,6 +7,7 @@ import type { SharedNetData } from './types';
 // scene reads the same box so a `room.onPeerLeave` in any of them can
 // recognize "that was the host" without re-deriving it.
 export interface PlayerSessionData extends SharedNetData {
+  displayName: string;
   hostPeerId: { current: string | null };
 }
 

@@ -1,28 +1,29 @@
 ## Current milestone
 
-Suits-mp prepares its packaged game assets during initial boot, before the landing or invite flow appears.
+Lobby names, randomized seating, and aspect-safe game art are implemented.
 
 ## What was implemented
 
-- Added a Boot scene that loads the asset manifest and all current loose images before entering Landing or Connecting.
-- Extended manifest loading to include packed atlases if the art pipeline adds them later.
-- Removed the asset-loading progress screen from HostGame, PlayerGame, and Tutorial so starting a round does not launch a second texture load.
-- Kept a simple Waiting for the host message in PlayerGame until its first masked state arrives.
-- Moved load failure and retry handling to Boot.
+- Moved name entry off the landing screen. The host edits their own name in the room lobby; a joiner enters it with the code and can edit it while waiting. Other roster entries are read only.
+- On Start Game, the host requests each peer's final name, collects replies for up to three seconds, locks blank-name labels, and shuffles the four game slots before dealing. Single Player seating is shuffled too.
+- Canvas images and card layers now fit their boxes with uniform scale. Intentional card squash flips became fades. Existing nine-slice assets retain their segmented resizing.
+- Updated the brief for lobby names and shuffled seats.
 
 ## Key technical decisions
 
-- The packaged manifest is the source of truth for startup assets. In the current build it lists 40 optimized images; boot also requests the manifest itself.
-- `npm run typecheck` and `npm run build` pass. At 390x844, the browser loaded 41 asset requests before Landing, and that count stayed at 41 after entering Single Player and Tutorial. Screenshots were inspected and no page errors were observed.
+- Lobby roster rows keep join order for bot controls. The game slot shuffle happens once after final names are collected, so turn order and seats vary while player identities stay stable.
+- Name replies are accepted only for a matching request ID, client ID, and current peer ID. A missing reply retains the latest name received at join or edit time.
+- Typecheck and production build passed. Browser screenshots of join, host, and game layouts at 390x844 were inspected; no browser errors appeared. A host-plus-three-bots game showed non-sequential player labels around the table.
 
 ## Open questions
 
-- None for this change.
+- None.
 
 ## Known issues
 
-- The startup progress percentage can briefly move backward when the manifest finishes and adds its images to the loader queue. Loading now happens before the first playable screen.
+- A live four-device name collection was not verified in this session; the room signaling service is external.
+- This prototype's identity handshake uses a persistent client ID rather than authenticated accounts, so it does not protect against deliberate client ID spoofing.
 
 ## Next proposed step
 
-- Review the initial loading experience on itch.io on a phone or slower connection.
+- Human review the merged itch.io build on separate devices, including a name edit immediately before Start Game.

@@ -9,8 +9,9 @@ export type SharedNetData = CoreSharedNetData<NetworkActions>;
 
 // Host-side roster entry, keyed by persistent client ID (not trystero's
 // transient peerId) so a reconnect can be matched back to the same slot.
-// `slot` is the fixed seat assignment ("p0".."p3", host is always "p0")
-// used both for turn order and for every masked-state/action payload.
+// `slot` is a temporary lobby row assignment, shuffled among all four
+// occupants at game start. The shuffled slot controls turn order and every
+// masked-state/action payload; the host can hold any game slot.
 // `isBot` marks a host-local AI seat (see host/botAI.ts) - it has no real
 // network peer, so `peerId` is a harmless placeholder never used for
 // sending. `displayName` is narrowed back to required here - suits-mp

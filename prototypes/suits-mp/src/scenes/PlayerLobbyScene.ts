@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addVersionStamp } from '../version/versionStamp';
 import { createPortraitGuard } from '../orientation/orientation';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { showWaiting, setWaitingHostLeft, hideWaiting } from '../uiState/lobby/lobbyUiStore';
+import { showWaiting, setWaitingOwnName, setWaitingHostLeft, hideWaiting } from '../uiState/lobby/lobbyUiStore';
 import { fetchTurnIceServers } from '../turn/turnConfig';
 import type { PlayerSessionData } from '../net/playerSession';
 
@@ -42,7 +42,13 @@ export class PlayerLobbyScene extends Phaser.Scene {
       this.scene.start('Landing', { clientId: data.clientId, getIceServers: () => fetchTurnIceServers() });
     };
 
-    showWaiting(toLanding);
+    let ownName = data.displayName;
+    showWaiting(data.lobbyCode, toLanding, ownName, (name) => {
+      ownName = name.trim().slice(0, 20);
+      data.displayName = ownName;
+      setWaitingOwnName(ownName);
+      if (data.hostPeerId.current) void actions.identity.send({ clientId: data.clientId, displayName: ownName }, { target: data.hostPeerId.current });
+    });
     // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
     // (only `Systems#shutdown`, which fires this event) - see
     // node_modules/phaser/src/scene/Systems.js.
@@ -50,6 +56,9 @@ export class PlayerLobbyScene extends Phaser.Scene {
 
     actions.hostUI.onMessage = (message, context) => {
       data.hostPeerId.current = context.peerId;
+      if (message.type === 'requestFinalNames') {
+        void actions.finalName.send({ clientId: data.clientId, displayName: ownName, requestId: message.requestId }, { target: context.peerId });
+      }
       if (message.type === 'gameStarted') {
         this.scene.start('PlayerGame', data);
       }

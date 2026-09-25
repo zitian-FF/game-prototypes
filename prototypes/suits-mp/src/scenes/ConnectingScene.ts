@@ -94,6 +94,7 @@ export class ConnectingScene extends Phaser.Scene {
         actions: actions!,
         clientId: data.clientId,
         lobbyCode: data.code,
+        displayName: data.displayName,
         hostPeerId: { current: hostPeerId },
       };
       this.scene.start(toGameScreen ? 'PlayerGame' : 'PlayerLobby', sessionData);

@@ -93,7 +93,8 @@ export function drawCard(
     // `alpha` (e.g. stackNeededStyle's 0.55 dim for a not-yet-filled
     // redistribution slot) applies to the whole card the same way it
     // already did for the old placeholder rectangle.
-    const back = scene.add.image(0, 0, 'card_back').setDisplaySize(dims.width, dims.height);
+    const back = scene.add.image(0, 0, 'card_back');
+    back.setScale(Math.min(dims.width / back.frame.width, dims.height / back.frame.height));
     card.add(back);
     card.setAlpha(alpha);
     const hit = scene.add.rectangle(0, 0, dims.width, dims.height, 0x000000, 0.001);
