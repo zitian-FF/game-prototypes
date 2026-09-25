@@ -62,7 +62,7 @@ const HEIGHT = 844;
 const CENTER_X = WIDTH / 2;
 
 // background_tabletop_stone.png - texture key matches the manifest filename
-// minus extension, per preloadCardArt's manifest-driven loose-image loader
+// minus extension, per preloadGameAssets' manifest-driven loose-image loader
 // (ui/cardArt.ts) - loaded the same way as every card texture, no second
 // loader.
 const TABLETOP_KEY = 'background_tabletop_stone';
@@ -830,7 +830,7 @@ function renderWithView(
   // Tabletop treatment - drawn first so it always sits behind every other
   // canvas element this render pass adds (see board/UI requirements: real
   // R2-fetched art, loaded the same manifest-driven way as every card
-  // texture - see preloadCardArt).
+  // texture - see preloadGameAssets).
   drawTabletop(scene, container);
 
   const rect: RectFn = (x, y, w, h, fill, alpha = 1) => {

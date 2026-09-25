@@ -1,20 +1,19 @@
 ## Current milestone
 
-Suits-mp room codes are three-character alphanumeric codes with lookalike characters excluded.
+Suits-mp prepares its packaged game assets during initial boot, before the landing or invite flow appears.
 
 ## What was implemented
 
-- Changed code generation and validation from five characters to three.
-- Removed 0/O, 1/I/L, 2/Z, 5/S, 6/G, and 8/B lookalikes from the allowed character set.
-- Updated the join screen's copy, progress marks, and on-canvas keyboard; input stops at three characters.
-- Validated invite-link codes before auto-joining and made the host check every candidate code before showing it.
-- Updated the prototype brief to reflect the new code rule.
+- Added a Boot scene that loads the asset manifest and all current loose images before entering Landing or Connecting.
+- Extended manifest loading to include packed atlases if the art pipeline adds them later.
+- Removed the asset-loading progress screen from HostGame, PlayerGame, and Tutorial so starting a round does not launch a second texture load.
+- Kept a simple Waiting for the host message in PlayerGame until its first masked state arrives.
+- Moved load failure and retry handling to Boot.
 
 ## Key technical decisions
 
-- The 27-character alphabet permits 19,683 three-character codes. The host checks for an occupied code and retries up to five times.
-- Invite links retain the published itch.io URL and use the shorter code.
-- `npm run typecheck` and `npm run build` pass. Browser checks at 390x844 covered the join screen, allowed keyboard characters, three-character cap, valid/invalid codes, and a clear console.
+- The packaged manifest is the source of truth for startup assets. In the current build it lists 40 optimized images; boot also requests the manifest itself.
+- `npm run typecheck` and `npm run build` pass. At 390x844, the browser loaded 41 asset requests before Landing, and that count stayed at 41 after entering Single Player and Tutorial. Screenshots were inspected and no page errors were observed.
 
 ## Open questions
 
@@ -22,8 +21,8 @@ Suits-mp room codes are three-character alphanumeric codes with lookalike charac
 
 ## Known issues
 
-- Two hosts can still independently choose the same code after their initial occupancy checks. The shorter code space makes this more likely than before; the current Trystero room cannot re-check its code without disconnecting existing peers.
+- The startup progress percentage can briefly move backward when the manifest finishes and adds its images to the loader queue. Loading now happens before the first playable screen.
 
 ## Next proposed step
 
-- Review the three-character code and invite flow on the deployed itch.io game with two devices.
+- Review the initial loading experience on itch.io on a phone or slower connection.

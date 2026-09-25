@@ -59,12 +59,9 @@ function nameplateKey(god: God): string {
   return nameplateArtFile(god);
 }
 
-// Loads the R2-fetched loose PNGs (see art/manifest.json, produced by
-// scripts/pack-assets.js from prototypes/suits-mp/assets-src/loose/) the
-// same manifest-driven way every other prototype with loose art loads it
-// (see prototypes/digger/src/main.ts's preload) - discovering filenames
-// from the manifest rather than hardcoding them keeps this working if art
-// gets re-exported under different filenames later.
+// Boot loads every asset in the packaged manifest before any lobby or game
+// scene starts. Keeping discovery here avoids a second late load when a round
+// begins and picks up future loose images or packed atlases automatically.
 interface ManifestEntry {
   path: string;
   hash: string;
@@ -73,27 +70,30 @@ interface ManifestEntry {
 
 const MANIFEST_KEY = '__suitsMpCardArtManifest';
 
-function queueLooseImages(scene: Phaser.Scene): void {
+function queueGameAssets(scene: Phaser.Scene): void {
   const manifest = scene.cache.json.get(MANIFEST_KEY) as ManifestEntry[];
+  const paths = new Set(manifest.map((entry) => entry.path));
   for (const entry of manifest) {
-    if (!entry.path.startsWith('loose/')) continue;
-    const key = entry.path.slice('loose/'.length).replace(/\.[^.]+$/, '');
-    if (!scene.textures.exists(key)) scene.load.image(key, `assets/${entry.path}`);
+    if (entry.path.startsWith('loose/') && /\.(png|jpe?g|webp)$/i.test(entry.path)) {
+      const key = entry.path.slice('loose/'.length).replace(/\.[^.]+$/, '');
+      if (!scene.textures.exists(key)) scene.load.image(key, `assets/${entry.path}`);
+    } else if (entry.path.startsWith('atlas/') && entry.path.endsWith('.json')) {
+      const imagePath = entry.path.replace(/\.json$/, '.png');
+      if (!paths.has(imagePath)) continue;
+      const key = entry.path.slice('atlas/'.length).replace(/\.json$/, '');
+      if (!scene.textures.exists(key)) scene.load.atlas(key, `assets/${imagePath}`, `assets/${entry.path}`);
+    }
   }
 }
 
-export function preloadCardArt(scene: Phaser.Scene): void {
+export function preloadGameAssets(scene: Phaser.Scene): void {
   if (scene.cache.json.exists(MANIFEST_KEY)) {
-    // A previous scene instance in this same Game already loaded the
-    // manifest (and, via the completion handler below, the images it
-    // lists) - re-queuing loads for keys that already exist in the
-    // Texture Manager is a no-op per queueLooseImages' own guard, so this
-    // only matters the first time any scene reaches here.
-    queueLooseImages(scene);
+    // Retry only missing textures after an interrupted or failed boot.
+    queueGameAssets(scene);
     return;
   }
   scene.load.json(MANIFEST_KEY, 'assets/manifest.json');
-  scene.load.once(`filecomplete-json-${MANIFEST_KEY}`, () => queueLooseImages(scene));
+  scene.load.once(`filecomplete-json-${MANIFEST_KEY}`, () => queueGameAssets(scene));
 }
 
 // --- Reference-canvas placement, per the approved handoff's placement table

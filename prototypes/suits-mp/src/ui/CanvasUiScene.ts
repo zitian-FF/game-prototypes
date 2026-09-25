@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO } from '../render/pixelRatio';
-import { preloadCardArt } from './cardArt';
 import { symbolArtFile } from '../rules/godArt';
 import { getSnapshot as lobby, subscribe as subscribeLobby, goToJoinScreen, goToLandingScreen } from '../uiState/lobby/lobbyUiStore';
 import { getSnapshot as overlay, subscribe as subscribeOverlay } from '../uiState/overlay/gameOverlayStore';
@@ -30,7 +29,6 @@ export class CanvasUiScene extends Phaser.Scene {
   private toast = '';
 
   constructor() { super({ key: 'CanvasUI' }); }
-  preload(): void { preloadCardArt(this); }
   create(): void {
     this.cameras.main.setZoom(PIXEL_RATIO);
     this.cameras.main.centerOn(W / 2, H / 2);
