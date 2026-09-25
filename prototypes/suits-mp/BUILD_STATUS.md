@@ -1,15 +1,16 @@
 ## Current milestone
 
-Local nameplate octagon proportions corrected in the nine-slice renderer.
+Fullscreen DOM overlay alignment corrected for itch.io's letterboxed viewport.
 
 ## What was implemented
 
-- Widened the destination caps of the local nameplate slice from 54px to 76px at the game's 260x107 display size.
-- Verified the resulting nameplate in a Playwright screenshot of the single-player game at 390x844.
+- Pinned Phaser's DOM overlay container to the game parent origin so its copied canvas margin is applied once during Scale.FIT centering.
+- Reproduced the original 74px canvas/DOM offset on the deployed itch.io game at 523x1280; verified the fix locally at 523x1280, 390x844, and 844x390.
+- Opened the Menu modal in the tall viewport and confirmed it is centered over the canvas.
 
 ## Key technical decisions
 
-- Kept the original 95px source cuts so each full octagon remains inside a cap. Only the destination cap width changed; the center continues to stretch.
+- Kept the fixed 390x844 logical game layout. The fix only aligns Phaser's DOM layer with its canvas after viewport centering and resize.
 
 ## Open questions
 
@@ -21,4 +22,4 @@ Local nameplate octagon proportions corrected in the nine-slice renderer.
 
 ## Next proposed step
 
-Review the corrected live nameplate after merge, and review the separate open-center nameplate and lobby working mockups before implementing them.
+Review the fullscreen overlay alignment in the deployed prototype, then review the separate open-center nameplate and lobby working mockups before implementing them.
