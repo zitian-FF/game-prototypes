@@ -27,6 +27,7 @@ export class CanvasUiScene extends Phaser.Scene {
   private rulesPage = 0;
   private logPage = 0;
   private keyboard: { title: string; value: string; save: (value: string) => void } | null = null;
+  private toast = '';
 
   constructor() { super({ key: 'CanvasUI' }); }
   preload(): void { preloadCardArt(this); }
@@ -96,8 +97,19 @@ export class CanvasUiScene extends Phaser.Scene {
     if (g.visible) this.drawGame();
     if (t.topBarOpen) this.drawTutorialBar();
     if (t.lessonOpen) { this.rect(195, 711, 350, 82, 0x0b2022, 0.96); this.text(t.lessonText, 195, 711, 14, PALE, 320); }
-    if (t.introOpen) { this.scrim(); this.frame('Learn to Play', 'THE FIRST TRICK'); this.text('Follow the guided cards to learn the rules of Suits of Madness.', 195, 360, 20); this.button('Begin', 195, 690, 240, 58, t.onIntroDismiss); }
-    if (t.completeOpen) { this.scrim(); this.frame('Tutorial Complete'); this.button('Back to Menu', 195, 670, 250, 58, t.onCompleteBackToMenu); }
+    if (t.introOpen) {
+      this.scrim();
+      this.text('How to Play', 195, 273, 26, PALE);
+      this.text('4 players. 2 hidden teams of 2.', 195, 338, 17);
+      this.text('Your goal: collect one full Deity Suit — all 10 cards of one god.', 195, 402, 17, PALE, 320);
+      this.text('For this tutorial, Player 2 is your ally. In a real game your ally is hidden — you have to work it out from how people play.', 195, 500, 16, PALE, 320);
+      this.button('Tap to continue', 195, 664, 250, 55, t.onIntroDismiss, undefined, true, 14);
+    }
+    if (t.completeOpen) {
+      this.scrim(); this.text('Tutorial: More Coming Soon', 195, 322, 25, PALE);
+      this.text("You've completed every lesson built so far. More are on the way.", 195, 410, 16, PALE, 300);
+      this.button('Back to Menu', 195, 670, 250, 58, t.onCompleteBackToMenu);
+    }
     if (m.menuOpen) this.drawMenu();
     if (m.rulesOpen) this.drawRules();
     if (m.redistLogOpen) this.drawLog();
@@ -124,16 +136,19 @@ export class CanvasUiScene extends Phaser.Scene {
     if (l.screen === 'join') {
       this.text('Enter the five-character Room Code', 195, 282, 17);
       this.button(this.code || 'ROOM CODE', 195, 352, 315, 58, () => this.edit('Room code', this.code, (v) => { this.code = normalizeLobbyCode(v); }), 'ui_landing_input', true, 20);
-      this.button('Join Room', 195, 453, 320, 70, () => l.onSubmitJoin(this.code, this.name.trim()), 'ui_landing_button_primary', isValidLobbyCode(this.code), 23);
-      this.button('Back', 195, 565, 250, 55, goToLandingScreen);
+      for (let i = 0; i < 5; i++) this.rect(139 + i * 28, 403, 24, 2, i < this.code.length ? 0x9bcac4 : 0x36504e, 1, i < this.code.length ? 0x9bcac4 : 0x36504e);
+      this.text(isValidLobbyCode(this.code) ? 'Room Code complete' : `${5 - this.code.length} characters remain`, 195, 425, 11, TEAL);
+      this.button('Join Room', 195, 510, 320, 70, () => l.onSubmitJoin(this.code, this.name.trim()), 'ui_landing_button_primary', isValidLobbyCode(this.code), 23);
+      this.button('Back', 195, 602, 250, 55, goToLandingScreen);
       return;
     }
     if (l.screen === 'lobby') {
       this.text('ROOM CODE', 195, 185, 12, TEAL);
       this.text(l.roomCode, 195, 225, 38, GOLD);
-      this.button('Copy Code', 76, 277, 100, 35, () => { void navigator.clipboard?.writeText(l.roomCode); }, undefined, true, 12);
-      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(`${location.origin}${location.pathname}?lobby=${l.roomCode}`); }, undefined, true, 12);
+      this.button('Copy Code', 76, 277, 100, 35, () => { void navigator.clipboard?.writeText(l.roomCode); this.showToast('Code copied.'); }, undefined, true, 12);
+      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(`${location.origin}${location.pathname}?lobby=${l.roomCode}`); this.showToast('Summons copied.'); }, undefined, true, 12);
       this.button('Refresh', 314, 277, 100, 35, l.onRefreshCode, undefined, true, 12);
+      if (this.toast) this.text(this.toast, 195, 307, 11, TEAL);
       seatModel(l.seats, l.onFillBot, l.onReleaseBot).forEach((seat, i) => {
         const y = 340 + i * 75;
         this.rect(195, y, 338, 65, seat.state === 'empty' ? 0x0b1519 : 0x182024);
@@ -272,21 +287,28 @@ export class CanvasUiScene extends Phaser.Scene {
     this.button('Close', 195, 692, 140, 48, () => { m.closeRedistLog(); closeRedistLog(); });
   }
   private drawConfirm(): void {
-    const m = modal(); this.scrim(); this.frame('Leave Game?');
-    this.text(m.endGameConfirmIsMultiplayer ? 'Leaving will end the game for everyone in this room.' : 'Your current game will end.', 195, 350, 19);
-    this.button('Leave Game', 195, 505, 280, 60, m.onEndGameConfirm);
-    this.button('Keep Playing', 195, 590, 280, 58, () => { m.onEndGameCancel(); closeEndGameConfirm(); });
+    const m = modal(); this.scrim(); this.rect(195, 422, 350, 360, 0x1a0c0c, 0.99, 0x9b5350);
+    this.text('⚠', 195, 298, 32, '#d58f82');
+    this.text(m.endGameConfirmIsMultiplayer ? 'End the Game?' : 'Quit to Menu?', 195, 348, 23, '#e6b4a8');
+    this.text(m.endGameConfirmIsMultiplayer ? 'This ends the game for every player, not just you. This cannot be undone.' : 'Are you sure you want to quit? Your progress in this session will be lost.', 195, 422, 15, PALE, 290);
+    this.button('Cancel', 110, 538, 135, 54, () => { m.onEndGameCancel(); closeEndGameConfirm(); }, undefined, true, 16);
+    this.button(m.endGameConfirmIsMultiplayer ? 'End for Everyone' : 'Quit', 280, 538, 135, 54, m.onEndGameConfirm, undefined, true, 15);
+  }
+  private showToast(message: string): void {
+    this.toast = message; this.redraw();
+    this.time.delayedCall(2200, () => { if (this.toast === message) { this.toast = ''; this.redraw(); } });
   }
   private drawVictory(): void {
-    const m = modal(); this.scrim(); this.frame('Victory');
-    this.text(m.victoryTeamHeadline, 195, 195, 26, GOLD);
-    this.text(`Trick ${m.victoryTrickNumber}`, 195, 245, 15, TEAL);
-    m.victoryIdentities.forEach((identity, i) => this.text(`${identity.label} · ${identity.godDisplayName}`, 195, 340 + i * 48, 17, PALE));
-    this.button('Back to Menu', 195, 702, 280, 60, m.onVictoryBackToMenu);
+    const m = modal();
+    // The victory scene draws the deity art behind this text; keep it visible.
+    this.text(m.victoryTeamHeadline, 195, 63, 30, PALE);
+    this.text(`After ${m.victoryTrickNumber} tricks`, 195, 98, 12, PALE);
+    m.victoryIdentities.forEach((identity, i) => this.text(`${identity.label} — ${identity.godDisplayName}`, 195, 634 + i * 23, 13, PALE));
+    this.button('Back to Menu', 195, 781, 280, 54, m.onVictoryBackToMenu);
   }
   private drawGameEnded(): void {
     const m = modal(); this.scrim(); this.frame('Game Ended');
-    this.text(`${m.gameEndedQuitterLabel} left the game.`, 195, 377, 20);
+    this.text(`The game has been ended by ${m.gameEndedQuitterLabel}.`, 195, 377, 18);
     this.button('Back to Menu', 195, 682, 280, 60, m.onGameEndedBackToMenu);
   }
   private drawTutorialBar(): void {
