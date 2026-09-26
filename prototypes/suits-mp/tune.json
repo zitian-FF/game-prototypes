@@ -1,4 +1,9 @@
 {
+  "titleOrbitPeriodMs": 180000,
+  "titleDustPeriodMs": 24000,
+  "titleDustTravelPx": 5,
+  "titleMoonPeriodMs": 32000,
+  "titleMoonTravelPx": 7,
   "connectionTimeoutMs": 8000,
   "hostOccupancyCheckMs": 1500,
   "disconnectDebounceMs": 2500,
