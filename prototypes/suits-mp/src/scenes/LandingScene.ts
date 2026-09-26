@@ -8,25 +8,19 @@ import { showLanding, hideLanding } from '../uiState/lobby/lobbyUiStore';
 import type { BootData } from '../net/playerSession';
 import type { Roster } from '../net/types';
 import type { HostGameData } from './HostGameScene';
+import tune from '../../tune.json';
 
-// Presentation now comes entirely from the DOM Lobby flow
-// (dom/lobby/LobbyFlow.tsx, mounted via lobbyUiStore) rather than Phaser
-// primitives - see root CLAUDE.md's "UI implementation split". This
-// scene's only remaining job is the version stamp/portrait guard (still
-// canvas-owned), showing/hiding that DOM view, wiring its Host/Join
-// buttons to the real networking scenes, and the two real non-networked
-// actions it can still perform directly: Single Player and Tutorial -
-// both skip networking entirely (no room code, no TURN fetch, no
-// Trystero call), going straight into their own local scene.
-//
-// Host transitions to HostLobbyScene, which owns real room creation
-// (net/room.ts, net/lobbyCode.ts) and pushes its own state back into the
-// same DOM store as it becomes available. Join's code-entry screen lives
-// entirely in the DOM now (LobbyFlow's own 'join' screen replaced
-// JoinEntryScene's plain-Phaser-DOM `<input>` - that scene is no longer
-// reachable from anywhere and is a candidate for removal); submitting a
-// code transitions straight to the real ConnectingScene.
+// Animated title art sits behind CanvasUiScene, which owns the approved
+// logo, buttons, and lobby controls. The art stops updating when the page
+// is hidden or the player requests reduced motion.
 export class LandingScene extends Phaser.Scene {
+  private orbit?: Phaser.GameObjects.Graphics;
+  private dust?: Phaser.GameObjects.Graphics;
+  private moon?: Phaser.GameObjects.Image;
+  private motionTime = 0;
+  private reducedMotion = false;
+  private motionQuery?: MediaQueryList;
+  private readonly onMotionChange = (event: MediaQueryListEvent): void => { this.reducedMotion = event.matches; };
   constructor() {
     super('Landing');
   }
@@ -39,6 +33,11 @@ export class LandingScene extends Phaser.Scene {
     const height = this.scale.height / PIXEL_RATIO;
     this.cameras.main.centerOn(width / 2, height / 2);
 
+    this.motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = this.motionQuery.matches;
+    this.motionQuery.addEventListener('change', this.onMotionChange);
+    this.createTitleArt(width, height);
+
     showLanding(
       () => this.startSinglePlayer(data),
       () => this.scene.start('Tutorial'),
@@ -48,7 +47,48 @@ export class LandingScene extends Phaser.Scene {
     // Phaser doesn't auto-call a `shutdown()` method on Scene subclasses
     // (only `Systems#shutdown`, which fires this event) - see
     // node_modules/phaser/src/scene/Systems.js.
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideLanding);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      hideLanding();
+      this.motionQuery?.removeEventListener('change', this.onMotionChange);
+    });
+  }
+
+  private createTitleArt(width: number, height: number): void {
+    this.add.image(width / 2, height / 2, 'title_cosmos_background').setDisplaySize(width, height);
+
+    // Each layer is independently positioned. Graphics are drawn once;
+    // movement only changes transforms, avoiding per-frame texture uploads.
+    this.orbit = this.add.graphics({ x: width / 2, y: 285 });
+    this.orbit.lineStyle(0.55, 0x9fb6bb, 0.15);
+    this.orbit.strokeCircle(0, 0, 138);
+    this.orbit.strokeCircle(0, 0, 126);
+    for (let i = 0; i < 8; i++) {
+      const angle = i * Math.PI / 4;
+      this.orbit.lineBetween(Math.cos(angle) * 126, Math.sin(angle) * 126, Math.cos(angle) * 138, Math.sin(angle) * 138);
+    }
+    this.orbit.setAlpha(0.5);
+
+    this.dust = this.add.graphics();
+    for (let i = 0; i < 30; i++) {
+      const x = (i * 137.508 + 39) % width;
+      const y = (i * 251.17 + 71) % (height - 100);
+      this.dust.fillStyle(0xc9d9d7, 0.06 + (i % 4) * 0.025);
+      this.dust.fillCircle(x, y, i % 7 === 0 ? 1.2 : 0.6);
+    }
+
+    this.moon = this.add.image(324, 236, 'title_celestial_moon').setDisplaySize(55, 55).setAlpha(0.56);
+  }
+
+  update(_time: number, delta: number): void {
+    if (this.reducedMotion || document.hidden) return;
+    this.motionTime += Math.min(delta, 50);
+    const t = this.motionTime;
+    if (this.orbit) this.orbit.rotation = t * (Math.PI * 2 / tune.titleOrbitPeriodMs);
+    if (this.dust) this.dust.y = Math.sin(t * Math.PI * 2 / tune.titleDustPeriodMs) * tune.titleDustTravelPx;
+    if (this.moon) {
+      this.moon.x = 324 + Math.sin(t * Math.PI * 2 / tune.titleMoonPeriodMs) * tune.titleMoonTravelPx;
+      this.moon.y = 236 + Math.cos(t * Math.PI * 2 / tune.titleMoonPeriodMs) * tune.titleMoonTravelPx * 0.4;
+    }
   }
 
   // No lobby, no room code, no networking of any kind (see BootData's

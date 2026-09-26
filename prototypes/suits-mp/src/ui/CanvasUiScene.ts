@@ -146,7 +146,7 @@ export class CanvasUiScene extends Phaser.Scene {
   }
   private drawLobby(): void {
     const l = lobby();
-    this.track(this.add.rectangle(195, 422, 390, 844, 0x071015, 0.92));
+    if (l.screen !== 'landing') this.track(this.add.rectangle(195, 422, 390, 844, 0x071015, 0.92));
     if (l.screen === 'landing') {
       this.image('logo_suits_of_madness', 195, 160, 345, 180);
       this.button('Create Room', 195, 345, 338, 76, () => l.onHost(''), 'ui_landing_button_primary', true, 24);
