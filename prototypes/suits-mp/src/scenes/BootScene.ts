@@ -3,8 +3,10 @@ import { preloadGameAssets } from '../ui/cardArt';
 import { showAssetLoadProgress } from '../ui/loadingProgress';
 import type { AssetLoadProgress } from '../ui/loadingProgress';
 import type { BootData } from '../net/playerSession';
-import titleBackgroundUrl from '../titleArt/title_cosmos_background.webp?url';
+import titleBackgroundUrl from '../titleArt/title_cosmos_backdrop_v2.webp?url';
 import titleMoonUrl from '../titleArt/title_celestial_moon.webp?url';
+import titleVioletUrl from '../titleArt/title_planet_amethyst.webp?url';
+import titleOchreUrl from '../titleArt/title_planet_ochre.webp?url';
 
 interface StartupData extends BootData {
   initialCode: string | null;
@@ -20,8 +22,10 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     this.loading = showAssetLoadProgress(this, 'Preparing the game...');
     preloadGameAssets(this);
-    this.load.image('title_cosmos_background', titleBackgroundUrl);
+    this.load.image('title_cosmos_backdrop_v2', titleBackgroundUrl);
     this.load.image('title_celestial_moon', titleMoonUrl);
+    this.load.image('title_planet_amethyst', titleVioletUrl);
+    this.load.image('title_planet_ochre', titleOchreUrl);
   }
 
   create(data: StartupData): void {

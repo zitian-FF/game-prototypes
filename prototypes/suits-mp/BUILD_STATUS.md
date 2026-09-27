@@ -1,19 +1,20 @@
 ## Current milestone
 
-Layered title art has been added to the landing screen.
+The landing title has independently animated art layers instead of a flattened celestial scene.
 
 ## What was implemented
 
-- Added a blue-black cosmic mineral background and a separately moving moon, each compressed to WebP.
-- Added independent faint orbital-circle and drifting dust layers using Phaser graphics.
-- Kept the approved logo and button artwork unchanged and revealed the title art behind the landing controls.
-- Added reduced-motion and hidden-page handling for title animation.
+- Replaced the old plate with a dark starfield and mineral floor that contain no baked planets or orbit lines.
+- Added separate blue, violet, and ochre planet sprites; each has its own position, size, and drift period.
+- Added an independently rotating occult circle, two drifting particle depths, and subtle floor glints.
+- Kept the approved logo and buttons unchanged.
+- Reduced-motion preference now lowers motion amplitude and removes glint pulsing while keeping the title gently alive; hidden pages pause updates.
 
 ## Key technical decisions
 
-- The two new image assets total about 30 KB and are imported through Vite so they ship with the game build. BootScene loads them before the landing screen.
-- The motion layers are drawn once and animated with transforms. Their periods and travel distances live in tune.json.
-- Typecheck and production build passed. A 390x844 browser screenshot was inspected and the browser reported no errors.
+- The four runtime WebP title assets total about 44 KB; Phaser graphics layers are drawn once and moved by transform updates.
+- All motion periods and distances are stored in tune.json.
+- Typecheck and production build passed. Two mobile browser frames showed planetary and circle movement; browser warnings and errors were empty.
 
 ## Open questions
 
@@ -21,8 +22,8 @@ Layered title art has been added to the landing screen.
 
 ## Known issues
 
-- The image-generated background is a flattened plate; its distant built-in celestial details remain static. The foreground moon, orbit, and dust are independently animated.
+- None found in the local title preview.
 
 ## Next proposed step
 
-- Review the title composition on the deployed itch.io build and tune the layer positions or motion if needed.
+- Review the title motion in the merged itch.io build on a phone.
