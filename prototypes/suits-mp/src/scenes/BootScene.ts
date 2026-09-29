@@ -20,7 +20,7 @@ export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
   preload(): void {
-    this.loading = showAssetLoadProgress(this, 'Preparing the game...');
+    this.loading = showAssetLoadProgress(this, 'Preparing the game');
     preloadGameAssets(this);
     this.load.image('title_cosmos_backdrop_v2', titleBackgroundUrl);
     this.load.image('title_celestial_moon', titleMoonUrl);

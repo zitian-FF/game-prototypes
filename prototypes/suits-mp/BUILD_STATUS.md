@@ -1,20 +1,18 @@
 ## Current milestone
 
-The landing title has independently animated art layers instead of a flattened celestial scene.
+The title screen now uses matching, uniformly scaled button frames and an on-brand loading screen.
 
 ## What was implemented
 
-- Replaced the old plate with a dark starfield and mineral floor that contain no baked planets or orbit lines.
-- Added separate blue, violet, and ochre planet sprites; each has its own position, size, and drift period.
-- Added an independently rotating occult circle, two drifting particle depths, and subtle floor glints.
-- Kept the approved logo and buttons unchanged.
-- Reduced-motion preference now lowers motion amplitude and removes glint pulsing while keeping the title gently alive; hidden pages pause updates.
+- Rendered the approved landing button art as a trimmed texture frame with one scale factor, preserving the decorated corners and border.
+- Applied the same primary button texture, dimensions, and text size to Create Room, Join Room, Single Player, and Tutorial on the title screen.
+- Replaced the plain loading overlay with a dark cosmic field, occult ring, four restrained deity colors, branded typography, and a framed progress bar. The loader uses Phaser graphics and adds no image download.
 
 ## Key technical decisions
 
-- The four runtime WebP title assets total about 44 KB; Phaser graphics layers are drawn once and moved by transform updates.
-- All motion periods and distances are stored in tune.json.
-- Typecheck and production build passed. Two mobile browser frames showed planetary and circle movement; browser warnings and errors were empty.
+- Source button art is unchanged. Alpha-padding bounds are cropped in Phaser, then the visible texture is scaled uniformly. Other uses of landing button textures receive the same uniform rendering.
+- Existing loading progress, error reporting, and retry behavior remain connected to Phaser's real asset loader.
+- Typecheck and production build passed. Mobile screenshots of the delayed loading screen and finished title were inspected; the browser reported no errors.
 
 ## Open questions
 
@@ -22,8 +20,8 @@ The landing title has independently animated art layers instead of a flattened c
 
 ## Known issues
 
-- None found in the local title preview.
+- None found in local preview.
 
 ## Next proposed step
 
-- Review the title motion in the merged itch.io build on a phone.
+- Review the title buttons and loading screen in the merged itch.io build on a phone.
