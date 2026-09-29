@@ -81,7 +81,11 @@ reach.
 
 ## Stamina, Health, Stun, Fatigue
 - Stamina spent by attacking, dodging, holding Guard. Moderate regen when
-  not attacking, fastest with no input. Zero = forced Vulnerable.
+  not attacking, fastest with no input. Zero = forced Vulnerable ("low
+  stamina"), which lasts until stamina climbs back to 30; regen is much
+  slower during that state.
+- Vulnerable means "no guard": every hit uses the full-damage Vulnerable
+  row, no crit bonus. Guest's view is not mirrored.
 - Health zero = KO (win condition).
 - Stun meter builds from direct hits taken and from attacking into Perfect
   Guard; decays otherwise. Over threshold = stunned for base + overflow.

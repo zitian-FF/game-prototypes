@@ -544,7 +544,9 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   } else if (!f.punch && !f.dodge) {
     const noInput =
       input.mx === 0 && input.my === 0 && !input.jab && !input.cross && !input.hook && !input.uppercut && !input.dodge && !input.guard;
-    const rate = noInput ? tune.stamina.regenIdlePerSec : tune.stamina.regenActivePerSec;
+    let rate = noInput ? tune.stamina.regenIdlePerSec : tune.stamina.regenActivePerSec;
+    // Exhausted (hit 0, Vulnerable): much slower climb back to exhaustRecoverAt.
+    if (f.exhausted) rate *= tune.stamina.exhaustedRegenMult;
     gainStamina(f, rate / TICK_RATE);
   }
 
