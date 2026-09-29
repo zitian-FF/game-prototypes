@@ -10,12 +10,30 @@ import type Phaser from 'phaser';
 
 export const PIXEL_RATIO = Math.min(Math.ceil(window.devicePixelRatio || 1), 2);
 
-// Logical (CSS-pixel) play space. Landscape phone proportions.
-export const LOGICAL_WIDTH = 844;
-export const LOGICAL_HEIGHT = 390;
+// Fixed logical world. The ring and all gameplay live in this space on
+// every device (so PvP peers share identical geometry).
+export const WORLD_WIDTH = 844;
+export const WORLD_HEIGHT = 390;
+
+// Responsive view: the visible area grows beyond the world to match the
+// device's landscape aspect ratio (wider phones get extra width, squarer
+// tablets extra height). HUD and controls anchor to VIEW edges.
+function computeView() {
+  const long = Math.max(window.innerWidth, window.innerHeight) || WORLD_WIDTH;
+  const short = Math.min(window.innerWidth, window.innerHeight) || WORLD_HEIGHT;
+  const aspect = long / short;
+  const worldAspect = WORLD_WIDTH / WORLD_HEIGHT;
+  const width = aspect >= worldAspect ? Math.round(WORLD_HEIGHT * aspect) : WORLD_WIDTH;
+  const height = aspect >= worldAspect ? WORLD_HEIGHT : Math.round(WORLD_WIDTH / aspect);
+  const left = (WORLD_WIDTH - width) / 2;
+  const top = (WORLD_HEIGHT - height) / 2;
+  return { width, height, left, top, right: left + width, bottom: top + height, cx: WORLD_WIDTH / 2, cy: WORLD_HEIGHT / 2 };
+}
+
+export const VIEW = computeView();
 
 export function applyCameraPixelRatio(scene: Phaser.Scene): void {
   const cam = scene.cameras.main;
   cam.setZoom(PIXEL_RATIO);
-  cam.centerOn(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2);
+  cam.centerOn(VIEW.cx, VIEW.cy);
 }

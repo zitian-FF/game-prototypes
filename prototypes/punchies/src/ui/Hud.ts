@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import type { SimState } from '../sim/types';
 import { remainingSeconds } from '../sim/sim';
-import { LOGICAL_WIDTH, PIXEL_RATIO } from '../render/pixelRatio';
+import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 
 // In-canvas match HUD: health, stamina and stun meters per fighter, and the
 // match timer. Star Power lives on the Uppercut button, fatigue on the punch
@@ -19,10 +19,10 @@ export class Hud {
   constructor(scene: Phaser.Scene, names: [string, string]) {
     this.g = scene.add.graphics().setDepth(90);
     const style = { fontFamily: 'monospace', fontSize: '10px', color: '#cccccc', resolution: PIXEL_RATIO };
-    scene.add.text(MARGIN, 34, names[0], style).setDepth(91);
-    scene.add.text(LOGICAL_WIDTH - MARGIN, 34, names[1], style).setOrigin(1, 0).setDepth(91);
+    scene.add.text(VIEW.left + MARGIN, VIEW.top + 34, names[0], style).setDepth(91);
+    scene.add.text(VIEW.right - MARGIN, VIEW.top + 34, names[1], style).setOrigin(1, 0).setDepth(91);
     this.timer = scene.add
-      .text(LOGICAL_WIDTH / 2, 6, '', { fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.top + 6, '', { fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5, 0)
       .setDepth(91);
     this.shownHealth = [tune.health.max, tune.health.max];
@@ -34,15 +34,16 @@ export class Hud {
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i];
       const left = i === 0;
-      const x = left ? MARGIN : LOGICAL_WIDTH - MARGIN - BAR_W;
+      const x = left ? VIEW.left + MARGIN : VIEW.right - MARGIN - BAR_W;
+      const y = VIEW.top;
       // Trailing "recent damage" chunk so hits read clearly.
       this.shownHealth[i] = Math.max(f.health, this.shownHealth[i] - 0.4);
-      this.bar(x, 8, 14, f.health / tune.health.max, this.shownHealth[i] / tune.health.max, 0x3ad06a, left);
+      this.bar(x, y + 8, 14, f.health / tune.health.max, this.shownHealth[i] / tune.health.max, 0x3ad06a, left);
       const staminaColor = f.exhausted ? 0xff5a3a : 0x3ab0e0;
-      this.bar(x, 25, 6, f.stamina / tune.stamina.max, 0, staminaColor, left);
+      this.bar(x, y + 25, 6, f.stamina / tune.stamina.max, 0, staminaColor, left);
       const stunFrac = Math.min(1, f.stun / tune.stun.threshold);
       const stunColor = f.stunFromMeter ? 0xffe03a : stunFrac > 0.7 ? 0xffa03a : 0xb07a3a;
-      this.bar(x + BAR_W * 0.35, 34, 5, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, BAR_W * 0.65);
+      this.bar(x + BAR_W * 0.35, y + 34, 5, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, BAR_W * 0.65);
     }
     this.timer.setText(s.timed ? String(remainingSeconds(s)) : '--');
   }

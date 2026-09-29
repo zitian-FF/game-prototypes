@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
-import { LOGICAL_HEIGHT, LOGICAL_WIDTH, PIXEL_RATIO } from './pixelRatio';
+import { PIXEL_RATIO, VIEW } from './pixelRatio';
 
 // Turns sim events into visual and audio feedback: sweet sparks, counter
 // flash, block/perfect-guard rings, callout labels. Presentation only.
@@ -10,7 +10,7 @@ export class Effects {
 
   constructor(private scene: Phaser.Scene) {
     this.flashRect = scene.add
-      .rectangle(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2, LOGICAL_WIDTH, LOGICAL_HEIGHT, 0xffffff, 0)
+      .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
       .setDepth(80);
   }
 
@@ -123,7 +123,7 @@ export class Effects {
 
   private banner(text: string): void {
     const t = this.scene.add
-      .text(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 20, text, {
+      .text(VIEW.cx, VIEW.cy - 20, text, {
         fontFamily: 'monospace',
         fontSize: '56px',
         fontStyle: 'bold',

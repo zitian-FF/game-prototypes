@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { LOGICAL_HEIGHT, LOGICAL_WIDTH, PIXEL_RATIO } from './render/pixelRatio';
+import { PIXEL_RATIO, VIEW } from './render/pixelRatio';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { TrainingScene } from './scenes/TrainingScene';
+import { setupOrientation } from './orientation/orientation';
 
 mountDebugPanelIfRequested();
 
@@ -13,9 +14,10 @@ const game = new Phaser.Game({
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: LOGICAL_WIDTH * PIXEL_RATIO,
-    height: LOGICAL_HEIGHT * PIXEL_RATIO,
+    width: VIEW.width * PIXEL_RATIO,
+    height: VIEW.height * PIXEL_RATIO,
   },
 });
 
+setupOrientation(game);
 game.scene.add('Training', TrainingScene, true);

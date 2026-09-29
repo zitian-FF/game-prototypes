@@ -23,6 +23,14 @@ to the Current WIP itch.io slot. Online PvP (step 5) not started.
   counter flash + shake, block/perfect-guard rings, callout labels), DPR
   handling (capped 2x, camera zoom, Text resolution).
 - `src/audio/sfx.ts`: WebAudio placeholder cues (distinct counter sound).
+- Orientation (`src/orientation/`): no rotate-your-phone overlay. On
+  touch devices it requests a landscape lock on first tap (Android
+  fullscreen); if still portrait, the game container is CSS-rotated 90deg
+  and Phaser's parent bounds, canvas centering and pointer mapping are
+  patched to match.
+- Responsive view: fixed 844x390 world (identical ring for PvP), visible
+  area extended to the device's aspect ratio; HUD, controls and version
+  stamp anchor to view edges.
 - Training scene with dummy IDLE/GUARD toggle and RESET; dummy health
   refills after a pause; KO resets after 1.5 s.
 - tune.json with every tunable; Tweakpane via ?debug=1 with nested
@@ -67,7 +75,10 @@ to the Current WIP itch.io slot. Online PvP (step 5) not started.
 
 - All tune numbers are first-pass placeholders; none were set by playing.
 - On slow devices the sim runs in slow motion rather than dropping ticks.
-- Not yet verified on a real phone (only Playwright mobile emulation).
+- Not yet verified on a real phone (only Playwright mobile emulation:
+  portrait 390x844 rotated, 915x412, 1024x768). The rotation fallback
+  patches Phaser internals (ScaleManager.getParentBounds/updateCenter,
+  InputManager.transformPointer); recheck on any Phaser upgrade.
 - Deployed via the Current WIP itch.io slot (`deploy-wip-itch.yml`,
   formerly suits' project); the itch page title/description still say
   "suits" until renamed on itch.io.
