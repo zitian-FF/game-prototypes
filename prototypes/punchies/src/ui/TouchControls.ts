@@ -3,7 +3,7 @@ import type { IntentLayer, TapIntent } from '../input/intents';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
 import { fatigueLevel } from '../sim/sim';
-import { LOGICAL_WIDTH, PIXEL_RATIO } from '../render/pixelRatio';
+import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 
 // MOBA-style touch controls drawn in-canvas. Left side: floating joystick.
 // Right side: a main button split into Jab (left half) / Cross (right half),
@@ -20,16 +20,17 @@ interface ArcButton {
   label: string;
 }
 
-const MAIN = { x: 752, y: 300, r: 58 };
+// Anchored to the bottom-right of the visible view (see VIEW).
+const MAIN = { x: VIEW.right - 92, y: VIEW.bottom - 90, r: 58 };
 const ARC_BUTTONS: ArcButton[] = [
-  { id: 'hook', x: 652, y: 318, r: 28, label: 'HOOK' },
-  { id: 'guard', x: 668, y: 236, r: 28, label: 'GUARD' },
-  { id: 'dodge', x: 722, y: 190, r: 26, label: 'DODGE' },
-  { id: 'uppercut', x: 794, y: 184, r: 32, label: 'UPPER' },
+  { id: 'hook', x: MAIN.x - 100, y: MAIN.y + 18, r: 28, label: 'HOOK' },
+  { id: 'guard', x: MAIN.x - 84, y: MAIN.y - 64, r: 28, label: 'GUARD' },
+  { id: 'dodge', x: MAIN.x - 30, y: MAIN.y - 110, r: 26, label: 'DODGE' },
+  { id: 'uppercut', x: MAIN.x + 42, y: MAIN.y - 116, r: 32, label: 'UPPER' },
 ];
-const JOYSTICK_ZONE_RIGHT = LOGICAL_WIDTH * 0.45;
-const JOYSTICK_ZONE_TOP = 64;
-const JOYSTICK_HINT = { x: 110, y: 300 };
+const JOYSTICK_ZONE_RIGHT = VIEW.left + VIEW.width * 0.45;
+const JOYSTICK_ZONE_TOP = VIEW.top + 64;
+const JOYSTICK_HINT = { x: VIEW.left + 110, y: VIEW.bottom - 90 };
 // Extra touch slop beyond the drawn radius, since thumbs land imprecisely.
 const TOUCH_SLOP = 8;
 

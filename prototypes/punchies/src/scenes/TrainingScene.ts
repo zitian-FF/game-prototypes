@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { applyCameraPixelRatio, LOGICAL_WIDTH, PIXEL_RATIO } from '../render/pixelRatio';
+import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { bindKeyboard, IntentLayer } from '../input/intents';
 import { TouchControls } from '../ui/TouchControls';
@@ -52,8 +52,8 @@ export class TrainingScene extends Phaser.Scene {
     this.controls = new TouchControls(this, this.intents);
     this.pollKeyboard = bindKeyboard(this, this.intents);
 
-    this.dummyLabel = this.menuButton(LOGICAL_WIDTH / 2 - 50, 46, 92, '', () => this.toggleDummy());
-    this.menuButton(LOGICAL_WIDTH / 2 + 50, 46, 64, 'RESET', () => this.newSim());
+    this.dummyLabel = this.menuButton(VIEW.cx - 50, VIEW.top + 46, 92, '', () => this.toggleDummy());
+    this.menuButton(VIEW.cx + 50, VIEW.top + 46, 64, 'RESET', () => this.newSim());
     this.refreshDummyLabel();
 
     this.input.on('pointerdown', unlockAudio);
