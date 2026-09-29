@@ -83,7 +83,11 @@ export class TouchControls {
     return null;
   }
 
+  // Set false while a full-screen overlay (the "i" panel) is open.
+  enabled = true;
+
   private onDown(p: Phaser.Input.Pointer): void {
+    if (!this.enabled) return;
     const x = p.worldX;
     const y = p.worldY;
     const hit = this.hitTest(x, y);

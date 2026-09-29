@@ -3,6 +3,8 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
 import { normalizeRoomCode } from '../net/roomCode';
+import { addFullscreenButton } from '../ui/fullscreen';
+import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -19,6 +21,19 @@ export class MenuScene extends Phaser.Scene {
     makeButton(this, VIEW.cx, VIEW.cy - 30, 220, 'TRAINING', () => this.scene.start('Training'), 44, 16);
     makeButton(this, VIEW.cx, VIEW.cy + 26, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 44, 16);
     makeButton(this, VIEW.cx, VIEW.cy + 82, 220, 'JOIN WITH CODE', () => this.join(), 44, 16);
+    const tuneLabel = this.add
+      .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
+      .setOrigin(1, 0.5);
+    const syncBtn = makeButton(this, VIEW.right - 70, VIEW.bottom - 20, 120, 'SYNC TUNE', () => {
+      if (syncBtn.text === 'SYNCING...') return;
+      syncBtn.setText('SYNCING...');
+      void syncTuneFromGitHub().then((r) => {
+        if (!this.scene.isActive()) return;
+        syncBtn.setText('SYNC TUNE');
+        tuneLabel.setText(r.ok ? `tune: ${tuneSource()} (${r.applied} values)` : `sync failed: ${r.error} (still ${tuneSource()})`);
+      });
+    });
+    addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
     this.msg = this.add
       .text(VIEW.cx, VIEW.cy + 128, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);

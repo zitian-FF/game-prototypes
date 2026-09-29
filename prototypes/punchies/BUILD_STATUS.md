@@ -7,6 +7,20 @@ issues).
 
 ## What was implemented
 
+- Tune: `tune.meta.json` (category, description, range for all values);
+  debug panel grouped by category > section with ranges, "was" values and
+  per-value reset; SYNC TUNE button on the main menu (session-only fetch
+  from GitHub raw, validated per value, falls back to built-in); guest
+  adopts host tune for a match and restores its own after. New tunables:
+  `match.startDistance`, `guard.perfectCooldownFrames`.
+- Perfect Guard anti-mash: PG window only if guard was down >= 20 frames
+  (headless-tested: re-raise after 5f blocks, after 25f perfect-guards).
+- Full-screen "i" reference overlay with tables (frame data, hit table,
+  legend, vulnerable, defense); HITBOXES toggle inside it; touch controls
+  disabled while it's open; game keeps running.
+- Fullscreen button (menu + fights): Fullscreen API on Android/iPad (+
+  landscape lock), Add-to-Home-Screen hint on iPhone; iOS web-app metas.
+
 - Deterministic 60 Hz fight sim (`src/sim/`): punch phases (startup, early
   sour with the fist travelling out, sweet at full extension, late sour,
   recovery + per-punch whiff recovery), full hit table, counters, startup
@@ -63,6 +77,13 @@ issues).
   updated; confirm.
 
 ## Known issues
+
+- SYNC TUNE could not reach GitHub from the build sandbox; its logic was
+  tested in Node with a mocked response (partial, wrong-type, broken
+  JSON). First real sync is untested.
+- Fullscreen and Add to Home Screen untested on real iOS/Android devices.
+- The debug panel is 420px wide and covers half a landscape phone when
+  expanded.
 
 - Real online play (Nostr relays + WebRTC + TURN) could not be tested from
   the build sandbox (outbound relay traffic blocked). Verified instead:

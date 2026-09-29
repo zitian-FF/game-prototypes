@@ -91,7 +91,8 @@
     "staminaDrainPerSec": 6,
     "perfectGuardStaminaGain": 12,
     "perfectGuardAttackerStunFrames": 30,
-    "perfectGuardStunBuild": 25
+    "perfectGuardStunBuild": 25,
+    "perfectCooldownFrames": 20
   },
   "dodge": {
     "frames": 14,
@@ -138,7 +139,8 @@
     "joystickDeadzone": 0.15
   },
   "match": {
-    "durationSec": 99
+    "durationSec": 99,
+    "startDistance": 180
   },
   "training": {
     "dummyInfiniteStamina": true

@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import { PIXEL_RATIO } from '../render/pixelRatio';
+import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { bindKeyboard, IntentLayer } from '../input/intents';
 import { TouchControls } from '../ui/TouchControls';
 import { Hud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
+import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { tune } from '../sim/tune';
@@ -34,6 +35,7 @@ export class FightStage {
     this.hud = new Hud(scene, names);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
+    addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
     this.pollKeyboard = bindKeyboard(scene, this.intents);
     scene.input.on('pointerdown', unlockAudio);
     const clear = () => this.intents.clearAll();
@@ -51,7 +53,8 @@ export class FightStage {
 
   draw(s: SimState, time: number): void {
     this.drawRing();
-    const show = this.info.open || (DEBUG_ENABLED && debugView.showHitboxes);
+    this.controls.enabled = !this.info.open;
+    const show = this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
     this.views[0].draw(s.fighters[0], time, show);
     this.views[1].draw(s.fighters[1], time, show);
     this.hud.draw(s);
