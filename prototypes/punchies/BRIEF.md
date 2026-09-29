@@ -50,6 +50,9 @@ reach.
 - High Guard: blocks, drains stamina while held. Zero damage always.
 - Perfect Guard: hit lands within the first few frames of Guard. Applies
   to sweet and sour hits. Defender recovers stamina; attacker stunned.
+  Anti-mash: a raise only gets a Perfect Guard window if guard was down
+  for at least `guard.perfectCooldownFrames` first (re-raising sooner
+  still blocks normally).
 - Dodge: i-frames, then a brief Vulnerable window.
 - Punch hitboxes extend forward from the facing direction. No directional
   armour.

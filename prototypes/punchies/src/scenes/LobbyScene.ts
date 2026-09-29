@@ -6,7 +6,7 @@ import { makeButton } from './FightStage';
 import { NetSession, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
-import { applyTuneJson, tune, TICK_RATE } from '../sim/tune';
+import { applyTuneJson, snapshotTune, tune, TICK_RATE } from '../sim/tune';
 
 // Host: create a room code, show it big with a QR code + link, wait for a
 // guest, measure ping, pick the input delay, start the match.
@@ -17,6 +17,9 @@ export interface MatchData {
   localIdx: 0 | 1;
   delay: number;
   round: number;
+  // Guest only: its own tune, restored after the match (it plays on the
+  // host's values).
+  restoreTune?: string;
 }
 
 export class LobbyScene extends Phaser.Scene {
@@ -129,8 +132,9 @@ export class LobbyScene extends Phaser.Scene {
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'start') {
+        const restore = snapshotTune();
         applyTuneJson(m.tune);
-        this.startMatch({ session: s, localIdx: 1, delay: m.delay, round: m.round });
+        this.startMatch({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore });
       }
     };
     this.timeout = this.time.delayedCall(tune.net.connectTimeoutMs, () => {

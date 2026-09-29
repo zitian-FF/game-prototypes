@@ -29,14 +29,28 @@ stamina (blue, turns red when exhausted), stun meter (thin bar, yellow while
 stunned). Timer shows `--` in training.
 
 ## Config
-Every tunable lives in `tune.json`: frame data per punch (startup, sourEarly,
-sweet, sour, recovery, whiffRecovery, reach, hitRadius, damage, staminaCost, staminaDamage,
-stunBuild), hit table multipliers, guard, dodge, stamina, stun, stars,
-fatigue, ring bounds (square), punchStartReachFrac, joystick, match length and training options.
+Every tunable lives in `tune.json`; `tune.meta.json` gives each one a
+category, description and allowed range.
 
-Open with `?debug=1` for the Tweakpane panel: edit any value live, toggle
-the hitbox overlay (green = hurtbox, blue = core, yellow/orange = sweet/sour
-punch hitbox), and "Copy JSON" to paste back into `tune.json`.
+- **Built-in first:** the game always starts with the `tune.json` it was
+  built with.
+- **SYNC TUNE** (main menu, bottom right): fetches the latest `tune.json`
+  from GitHub (`main` branch) for this session only, so you can edit it in
+  GitHub's web editor and test without a new build. A broken or partial
+  file is ignored value by value; the label shows what's loaded.
+- **Online:** both players use the host's values for the match; the guest's
+  own values come back afterwards.
+- **`?debug=1`:** Tweakpane panel with every value grouped by category
+  (Attack, Defense, HP & Stun, Stamina, Movement & Arena, Match & Online,
+  Training) and section. Each value has a range-limited slider, a
+  description, the value it started from ("was") and a reset link. "Copy
+  JSON" copies everything to paste into `tune.json`.
+
+## Fullscreen
+The corner button goes fullscreen on Android and iPad. iPhone Safari
+doesn't allow web pages to go fullscreen; the button explains "Share ->
+Add to Home Screen" instead, which launches without browser bars (do it
+from the game-only page, i.e. the QR-code link, not the itch.io page).
 
 ## Known issues
 - Placeholder art (circles) and synthesised placeholder sounds.

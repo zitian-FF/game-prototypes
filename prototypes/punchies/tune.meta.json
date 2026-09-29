@@ -1,0 +1,807 @@
+{
+  "punches.jab.startup": {
+    "cat": "Attack",
+    "desc": "Jab: frames before the fist moves. Lower = faster.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "punches.jab.sourEarly": {
+    "cat": "Attack",
+    "desc": "Jab: early-sour frames while the fist extends (jammed zone).",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.jab.sweet": {
+    "cat": "Attack",
+    "desc": "Jab: sweet frames at full extension.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "punches.jab.sour": {
+    "cat": "Attack",
+    "desc": "Jab: late-sour frames after the sweet spot.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.jab.recovery": {
+    "cat": "Attack",
+    "desc": "Jab: frames to recover after the active frames (Vulnerable).",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "punches.jab.whiffRecovery": {
+    "cat": "Attack",
+    "desc": "Jab: extra recovery frames on a miss (punish window).",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "punches.jab.reach": {
+    "cat": "Attack",
+    "desc": "Jab: distance the fist travels at full extension (px).",
+    "min": 20,
+    "max": 90,
+    "step": 1
+  },
+  "punches.jab.hitRadius": {
+    "cat": "Attack",
+    "desc": "Jab: size of the fist hitbox (px).",
+    "min": 4,
+    "max": 25,
+    "step": 1
+  },
+  "punches.jab.damage": {
+    "cat": "Attack",
+    "desc": "Jab: full damage of a clean hit.",
+    "min": 0,
+    "max": 40,
+    "step": 0.5
+  },
+  "punches.jab.staminaCost": {
+    "cat": "Attack",
+    "desc": "Jab: stamina the attacker spends to throw it.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punches.jab.staminaDamage": {
+    "cat": "Attack",
+    "desc": "Jab: stamina the defender loses when hit/blocking.",
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "punches.jab.stunBuild": {
+    "cat": "Attack",
+    "desc": "Jab: stun meter added to the defender on a direct hit.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punches.jab.startReachFrac": {
+    "cat": "Attack",
+    "desc": "Jab: where the fist starts extending (0-1 of reach). Higher = shorter jammed zone.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punches.cross.startup": {
+    "cat": "Attack",
+    "desc": "Cross: frames before the fist moves. Lower = faster.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "punches.cross.sourEarly": {
+    "cat": "Attack",
+    "desc": "Cross: early-sour frames while the fist extends (jammed zone).",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.cross.sweet": {
+    "cat": "Attack",
+    "desc": "Cross: sweet frames at full extension.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "punches.cross.sour": {
+    "cat": "Attack",
+    "desc": "Cross: late-sour frames after the sweet spot.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.cross.recovery": {
+    "cat": "Attack",
+    "desc": "Cross: frames to recover after the active frames (Vulnerable).",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "punches.cross.whiffRecovery": {
+    "cat": "Attack",
+    "desc": "Cross: extra recovery frames on a miss (punish window).",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "punches.cross.reach": {
+    "cat": "Attack",
+    "desc": "Cross: distance the fist travels at full extension (px).",
+    "min": 20,
+    "max": 90,
+    "step": 1
+  },
+  "punches.cross.hitRadius": {
+    "cat": "Attack",
+    "desc": "Cross: size of the fist hitbox (px).",
+    "min": 4,
+    "max": 25,
+    "step": 1
+  },
+  "punches.cross.damage": {
+    "cat": "Attack",
+    "desc": "Cross: full damage of a clean hit.",
+    "min": 0,
+    "max": 40,
+    "step": 0.5
+  },
+  "punches.cross.staminaCost": {
+    "cat": "Attack",
+    "desc": "Cross: stamina the attacker spends to throw it.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punches.cross.staminaDamage": {
+    "cat": "Attack",
+    "desc": "Cross: stamina the defender loses when hit/blocking.",
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "punches.cross.stunBuild": {
+    "cat": "Attack",
+    "desc": "Cross: stun meter added to the defender on a direct hit.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punches.cross.startReachFrac": {
+    "cat": "Attack",
+    "desc": "Cross: where the fist starts extending (0-1 of reach). Higher = shorter jammed zone.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punches.hook.startup": {
+    "cat": "Attack",
+    "desc": "Hook: frames before the fist moves. Lower = faster.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "punches.hook.sourEarly": {
+    "cat": "Attack",
+    "desc": "Hook: early-sour frames while the fist extends (jammed zone).",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.hook.sweet": {
+    "cat": "Attack",
+    "desc": "Hook: sweet frames at full extension.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "punches.hook.sour": {
+    "cat": "Attack",
+    "desc": "Hook: late-sour frames after the sweet spot.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.hook.recovery": {
+    "cat": "Attack",
+    "desc": "Hook: frames to recover after the active frames (Vulnerable).",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "punches.hook.whiffRecovery": {
+    "cat": "Attack",
+    "desc": "Hook: extra recovery frames on a miss (punish window).",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "punches.hook.reach": {
+    "cat": "Attack",
+    "desc": "Hook: distance the fist travels at full extension (px).",
+    "min": 20,
+    "max": 90,
+    "step": 1
+  },
+  "punches.hook.hitRadius": {
+    "cat": "Attack",
+    "desc": "Hook: size of the fist hitbox (px).",
+    "min": 4,
+    "max": 25,
+    "step": 1
+  },
+  "punches.hook.damage": {
+    "cat": "Attack",
+    "desc": "Hook: full damage of a clean hit.",
+    "min": 0,
+    "max": 40,
+    "step": 0.5
+  },
+  "punches.hook.staminaCost": {
+    "cat": "Attack",
+    "desc": "Hook: stamina the attacker spends to throw it.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punches.hook.staminaDamage": {
+    "cat": "Attack",
+    "desc": "Hook: stamina the defender loses when hit/blocking.",
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "punches.hook.stunBuild": {
+    "cat": "Attack",
+    "desc": "Hook: stun meter added to the defender on a direct hit.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punches.hook.startReachFrac": {
+    "cat": "Attack",
+    "desc": "Hook: where the fist starts extending (0-1 of reach). Higher = shorter jammed zone.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punches.uppercut.startup": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames before the fist moves. Lower = faster.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "punches.uppercut.sourEarly": {
+    "cat": "Attack",
+    "desc": "Uppercut: early-sour frames while the fist extends (jammed zone).",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.uppercut.sweet": {
+    "cat": "Attack",
+    "desc": "Uppercut: sweet frames at full extension.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "punches.uppercut.sour": {
+    "cat": "Attack",
+    "desc": "Uppercut: late-sour frames after the sweet spot.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punches.uppercut.recovery": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames to recover after the active frames (Vulnerable).",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "punches.uppercut.whiffRecovery": {
+    "cat": "Attack",
+    "desc": "Uppercut: extra recovery frames on a miss (punish window).",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "punches.uppercut.reach": {
+    "cat": "Attack",
+    "desc": "Uppercut: distance the fist travels at full extension (px).",
+    "min": 20,
+    "max": 90,
+    "step": 1
+  },
+  "punches.uppercut.hitRadius": {
+    "cat": "Attack",
+    "desc": "Uppercut: size of the fist hitbox (px).",
+    "min": 4,
+    "max": 25,
+    "step": 1
+  },
+  "punches.uppercut.staminaCost": {
+    "cat": "Attack",
+    "desc": "Uppercut: stamina the attacker spends to throw it.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punches.uppercut.staminaDamage": {
+    "cat": "Attack",
+    "desc": "Uppercut: stamina the defender loses when hit/blocking.",
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "punches.uppercut.stunBuild": {
+    "cat": "Attack",
+    "desc": "Uppercut: stun meter added to the defender on a direct hit.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punches.uppercut.startReachFrac": {
+    "cat": "Attack",
+    "desc": "Uppercut: where the fist starts extending (0-1 of reach). Higher = shorter jammed zone.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punches.hook.guardChipMult": {
+    "cat": "Attack",
+    "desc": "Hook: share of its damage that chips through High Guard.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punches.uppercut.crossDamageMult": {
+    "cat": "Attack",
+    "desc": "Uppercut: damage as a multiple of the Cross damage.",
+    "min": 0.5,
+    "max": 5,
+    "step": 0.1
+  },
+  "hit.reducedDamageMult": {
+    "cat": "Attack",
+    "desc": "Reduced damage as a share of full (body hits, sour on face).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "hit.attackerStaminaPenalty": {
+    "cat": "Attack",
+    "desc": "Stamina the attacker loses when blocked / on sour vs Normal.",
+    "min": 0,
+    "max": 30,
+    "step": 1
+  },
+  "hit.counterDamageMult": {
+    "cat": "Attack",
+    "desc": "Damage multiplier for Cross/Hook counters on the opponent's startup.",
+    "min": 1,
+    "max": 3,
+    "step": 0.1
+  },
+  "hit.sourStunMult": {
+    "cat": "Attack",
+    "desc": "Stun build of a sour hit, as a share of a sweet hit.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "stars.max": {
+    "cat": "Attack",
+    "desc": "Stars needed to unlock the Uppercut.",
+    "min": 1,
+    "max": 6,
+    "step": 1
+  },
+  "fatigue.perUse": {
+    "cat": "Attack",
+    "desc": "Fatigue added each time a punch type is thrown.",
+    "min": 0,
+    "max": 3,
+    "step": 0.1
+  },
+  "fatigue.decayPerSec": {
+    "cat": "Attack",
+    "desc": "Fatigue that wears off per second.",
+    "min": 0,
+    "max": 5,
+    "step": 0.1
+  },
+  "fatigue.freeUses": {
+    "cat": "Attack",
+    "desc": "Repeats allowed before fatigue starts to bite.",
+    "min": 0,
+    "max": 6,
+    "step": 1
+  },
+  "fatigue.maxLevel": {
+    "cat": "Attack",
+    "desc": "Maximum fatigue level (pips shown on the button).",
+    "min": 1,
+    "max": 8,
+    "step": 1
+  },
+  "fatigue.speedPerLevel": {
+    "cat": "Attack",
+    "desc": "Startup/recovery slowdown per fatigue level (0.12 = +12%).",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.01
+  },
+  "fatigue.damagePerLevel": {
+    "cat": "Attack",
+    "desc": "Damage lost per fatigue level (0.1 = -10%).",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.01
+  },
+  "fatigue.minDamageMult": {
+    "cat": "Attack",
+    "desc": "Floor on damage from fatigue.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "guard.perfectFrames": {
+    "cat": "Defense",
+    "desc": "Frames after raising guard that count as a Perfect Guard.",
+    "min": 0,
+    "max": 20,
+    "step": 1
+  },
+  "guard.perfectCooldownFrames": {
+    "cat": "Defense",
+    "desc": "Guard must be down this many frames before a raise can Perfect Guard (anti-mash).",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "guard.staminaDrainPerSec": {
+    "cat": "Defense",
+    "desc": "Stamina drained per second while holding High Guard.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "guard.perfectGuardStaminaGain": {
+    "cat": "Defense",
+    "desc": "Stamina the defender gains on a Perfect Guard.",
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "guard.perfectGuardAttackerStunFrames": {
+    "cat": "Defense",
+    "desc": "Frames the attacker is staggered after hitting a Perfect Guard.",
+    "min": 0,
+    "max": 120,
+    "step": 1
+  },
+  "guard.perfectGuardStunBuild": {
+    "cat": "Defense",
+    "desc": "Stun meter added to the attacker on a Perfect Guard.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "dodge.frames": {
+    "cat": "Defense",
+    "desc": "Total dodge duration in frames.",
+    "min": 4,
+    "max": 40,
+    "step": 1
+  },
+  "dodge.iFrames": {
+    "cat": "Defense",
+    "desc": "Invincible frames at the start of a dodge.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "dodge.speed": {
+    "cat": "Defense",
+    "desc": "Dodge travel speed (px/s).",
+    "min": 50,
+    "max": 800,
+    "step": 10
+  },
+  "dodge.vulnerableFrames": {
+    "cat": "Defense",
+    "desc": "Vulnerable frames after a dodge ends.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "dodge.stunnedVulnerableMult": {
+    "cat": "Defense",
+    "desc": "Multiplier on post-dodge Vulnerable while stunned.",
+    "min": 1,
+    "max": 4,
+    "step": 0.1
+  },
+  "dodge.staminaCost": {
+    "cat": "Defense",
+    "desc": "Stamina spent per dodge.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "dodge.neutralDeadzone": {
+    "cat": "Defense",
+    "desc": "Stick tilt below this dodges backwards (backstep).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "body.hurtRadius": {
+    "cat": "Defense",
+    "desc": "Hurtbox radius in Normal stance (px).",
+    "min": 8,
+    "max": 50,
+    "step": 1
+  },
+  "body.coreRadius": {
+    "cat": "Defense",
+    "desc": "Core (face) radius. Hits reaching it use the full-damage row.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "body.vulnerableHurtRadius": {
+    "cat": "Defense",
+    "desc": "Hurtbox radius while Vulnerable (px).",
+    "min": 8,
+    "max": 60,
+    "step": 1
+  },
+  "health.max": {
+    "cat": "HP & Stun",
+    "desc": "Starting health.",
+    "min": 10,
+    "max": 500,
+    "step": 5
+  },
+  "stun.threshold": {
+    "cat": "HP & Stun",
+    "desc": "Stun meter needed to be stunned.",
+    "min": 10,
+    "max": 300,
+    "step": 5
+  },
+  "stun.decayPerSec": {
+    "cat": "HP & Stun",
+    "desc": "Stun meter lost per second when not being hit.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "stun.decayDelayFrames": {
+    "cat": "HP & Stun",
+    "desc": "Frames after a hit before stun starts decaying.",
+    "min": 0,
+    "max": 180,
+    "step": 1
+  },
+  "stun.baseFrames": {
+    "cat": "HP & Stun",
+    "desc": "Base stun duration in frames.",
+    "min": 0,
+    "max": 300,
+    "step": 5
+  },
+  "stun.overflowFramesPerPoint": {
+    "cat": "HP & Stun",
+    "desc": "Extra stun frames per point over the threshold.",
+    "min": 0,
+    "max": 5,
+    "step": 0.1
+  },
+  "stamina.max": {
+    "cat": "Stamina",
+    "desc": "Maximum stamina.",
+    "min": 10,
+    "max": 300,
+    "step": 5
+  },
+  "stamina.regenIdlePerSec": {
+    "cat": "Stamina",
+    "desc": "Regen per second with no input at all.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "stamina.regenActivePerSec": {
+    "cat": "Stamina",
+    "desc": "Regen per second while moving (not attacking).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "stamina.regenDelayFrames": {
+    "cat": "Stamina",
+    "desc": "Frames after spending stamina before regen starts.",
+    "min": 0,
+    "max": 120,
+    "step": 1
+  },
+  "stamina.exhaustRecoverAt": {
+    "cat": "Stamina",
+    "desc": "After hitting 0, Vulnerable until stamina climbs back to this.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "stamina.exhaustedRegenMult": {
+    "cat": "Stamina",
+    "desc": "Regen multiplier while exhausted (0.35 = 35% speed).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "movement.speed": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed (px/s).",
+    "min": 30,
+    "max": 400,
+    "step": 5
+  },
+  "movement.punchMoveMult": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed multiplier while punching.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "movement.guardMoveMult": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed multiplier while guarding.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "movement.stunMoveMult": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed multiplier while stunned.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "movement.minSeparation": {
+    "cat": "Movement & Arena",
+    "desc": "Closest the two boxers can stand (px).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "ring.left": {
+    "cat": "Movement & Arena",
+    "desc": "Ring left edge (px).",
+    "min": 0,
+    "max": 844,
+    "step": 1
+  },
+  "ring.top": {
+    "cat": "Movement & Arena",
+    "desc": "Ring top edge (px).",
+    "min": 0,
+    "max": 844,
+    "step": 1
+  },
+  "ring.right": {
+    "cat": "Movement & Arena",
+    "desc": "Ring right edge (px).",
+    "min": 0,
+    "max": 844,
+    "step": 1
+  },
+  "ring.bottom": {
+    "cat": "Movement & Arena",
+    "desc": "Ring bottom edge (px).",
+    "min": 0,
+    "max": 844,
+    "step": 1
+  },
+  "input.bufferFrames": {
+    "cat": "Movement & Arena",
+    "desc": "Frames a press is remembered while busy (input buffer).",
+    "min": 0,
+    "max": 20,
+    "step": 1
+  },
+  "input.joystickRadius": {
+    "cat": "Movement & Arena",
+    "desc": "Joystick travel radius (px).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "input.joystickDeadzone": {
+    "cat": "Movement & Arena",
+    "desc": "Stick tilt ignored near the centre.",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  },
+  "match.durationSec": {
+    "cat": "Match & Online",
+    "desc": "Round length in seconds. Timeout: higher health % wins.",
+    "min": 10,
+    "max": 600,
+    "step": 1
+  },
+  "match.startDistance": {
+    "cat": "Match & Online",
+    "desc": "Distance between the boxers at the start of a round (px).",
+    "min": 44,
+    "max": 300,
+    "step": 2
+  },
+  "net.minInputDelay": {
+    "cat": "Match & Online",
+    "desc": "Online: minimum input delay (frames).",
+    "min": 1,
+    "max": 15,
+    "step": 1
+  },
+  "net.maxInputDelay": {
+    "cat": "Match & Online",
+    "desc": "Online: maximum input delay (frames).",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "net.extraDelayFrames": {
+    "cat": "Match & Online",
+    "desc": "Online: frames added on top of the measured one-way ping.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "net.pingSamples": {
+    "cat": "Match & Online",
+    "desc": "Online: pings taken to pick the delay.",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "net.connectTimeoutMs": {
+    "cat": "Match & Online",
+    "desc": "Online: give up joining after this long (ms).",
+    "min": 3000,
+    "max": 60000,
+    "step": 1000
+  },
+  "net.turnFetchTimeoutMs": {
+    "cat": "Match & Online",
+    "desc": "Online: max wait for TURN credentials (ms).",
+    "min": 500,
+    "max": 10000,
+    "step": 250
+  },
+  "net.stallIndicatorMs": {
+    "cat": "Match & Online",
+    "desc": "Online: show \"waiting for opponent\" after a stall this long (ms).",
+    "min": 0,
+    "max": 1000,
+    "step": 10
+  },
+  "training.dummyInfiniteStamina": {
+    "cat": "Training",
+    "desc": "Dummy never runs out of stamina (keeps High Guard up).",
+    "min": null,
+    "max": null,
+    "step": null
+  }
+}

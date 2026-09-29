@@ -4,7 +4,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { Lockstep } from '../net/lockstep';
 import type { MatchData } from './LobbyScene';
-import { tune, TICK_RATE } from '../sim/tune';
+import { restoreTune, tune, TICK_RATE } from '../sim/tune';
 
 // Online 1v1 over lockstep. Host is fighter 0 (left), guest fighter 1.
 // The sim only advances when both players' inputs for the next tick have
@@ -174,6 +174,7 @@ export class MatchScene extends Phaser.Scene {
 
   private leave(): void {
     this.match.session.leave();
+    if (this.match.restoreTune) restoreTune(this.match.restoreTune);
     this.scene.start('Menu');
   }
 }

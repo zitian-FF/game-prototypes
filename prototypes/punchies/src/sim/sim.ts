@@ -41,6 +41,8 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     stunFromMeter: false,
     guarding: false,
     guardFrames: 0,
+    guardDownFrames: 9999,
+    perfectEligible: false,
     exhausted: false,
     regenWait: 0,
     buffered: null,
@@ -60,8 +62,9 @@ export function createSimState(opts: {
   const r = tune.ring;
   const cy = (r.top + r.bottom) / 2;
   const cx = (r.left + r.right) / 2;
-  const f0 = createFighter(cx - 90, cy, opts.fighters[0]);
-  const f1 = createFighter(cx + 90, cy, opts.fighters[1]);
+  const half = tune.match.startDistance / 2;
+  const f0 = createFighter(cx - half, cy, opts.fighters[0]);
+  const f1 = createFighter(cx + half, cy, opts.fighters[1]);
   const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, result: null };
   updateFacing(s);
   return s;
@@ -113,7 +116,7 @@ export function isVulnerable(f: Fighter): boolean {
 
 export function stanceOf(f: Fighter): Stance {
   if (f.dodge && f.dodge.frame < tune.dodge.iFrames) return 'dodging';
-  if (f.guarding) return f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
+  if (f.guarding) return f.perfectEligible && f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
   return isVulnerable(f) ? 'vulnerable' : 'normal';
 }
 
@@ -256,12 +259,17 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
     if (!f.guarding) {
       f.guarding = true;
       f.guardFrames = 0;
+      // Anti-mash: a Perfect Guard window only opens if guard was down long
+      // enough before this raise.
+      f.perfectEligible = f.guardDownFrames >= tune.guard.perfectCooldownFrames;
+      f.guardDownFrames = 0;
     } else {
       f.guardFrames++;
     }
   } else {
     f.guarding = false;
     f.guardFrames = 0;
+    f.guardDownFrames++;
   }
 }
 

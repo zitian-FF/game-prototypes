@@ -77,6 +77,10 @@ export interface Fighter {
   stunFromMeter: boolean;
   guarding: boolean;
   guardFrames: number;
+  // Frames since guard was last down, and whether this raise may Perfect
+  // Guard (only if guard was down >= guard.perfectCooldownFrames).
+  guardDownFrames: number;
+  perfectEligible: boolean;
   exhausted: boolean;
   regenWait: number;
   buffered: BufferedAction | null;
