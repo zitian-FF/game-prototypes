@@ -107,7 +107,8 @@
     "regenIdlePerSec": 14,
     "regenActivePerSec": 6,
     "regenDelayFrames": 20,
-    "exhaustRecoverAt": 30
+    "exhaustRecoverAt": 30,
+    "exhaustedRegenMult": 0.35
   },
   "health": {
     "max": 100

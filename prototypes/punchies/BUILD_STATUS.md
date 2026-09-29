@@ -17,6 +17,10 @@ issues).
   hits on the Vulnerable row.
 - Vulnerable windows: punch startup + recovery (incl. whiff), dodge tail +
   post-dodge window, stunned, 0 stamina. Active frames are not vulnerable.
+- Low stamina: hitting 0 makes you Vulnerable until stamina regens to
+  `exhaustRecoverAt` (30), at `exhaustedRegenMult` (0.35x) speed: about
+  6 s idle vs 2 s normally. No crit on Vulnerable; guest view unmirrored
+  (all confirmed by user, BRIEF.md updated).
 - Hook: close-range tool (startReachFrac 0.75, 1 early-sour frame) and
   chips `guardChipMult` (40%) of its hit through High Guard.
 - Training: dummy stance cycle (Normal / High Guard / Vulnerable), no HP
@@ -54,12 +58,6 @@ issues).
 
 ## Open questions
 
-- Vulnerable on "low stamina": currently only at exactly 0 stamina (until
-  it regens to `exhaustRecoverAt`). A threshold was discussed but not
-  decided. BRIEF.md may need updating.
-- Should Vulnerable-stance face hits get a crit bonus? Not decided; all
-  Vulnerable hits are plain full damage.
-- Guest plays on the right side unmirrored; is mirroring wanted?
 - Hook chip vs "absorbed by normal guard": implemented as Hook chips only
   High Guard; vs Normal stance it follows the regular table. BRIEF.md
   updated; confirm.
