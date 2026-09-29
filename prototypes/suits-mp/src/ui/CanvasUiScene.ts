@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import QRCode from 'qrcode';
+import { sfx, soundEnabled, toggleSound } from '../audio/sfx';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { symbolArtFile } from '../rules/godArt';
 import { getSnapshot as lobby, subscribe as subscribeLobby, goToJoinScreen, goToLandingScreen } from '../uiState/lobby/lobbyUiStore';
@@ -27,6 +29,7 @@ export class CanvasUiScene extends Phaser.Scene {
   private logPage = 0;
   private keyboard: { title: string; value: string; save: (value: string) => void } | null = null;
   private toast = '';
+  private qrOpen = false;
 
   constructor() { super({ key: 'CanvasUI' }); }
   create(): void {
@@ -124,7 +127,7 @@ export class CanvasUiScene extends Phaser.Scene {
     else if (art?.startsWith('ui_action_slab_')) this.nine(art, x, y, w, h, [80, 80], [44, 44]);
     else if (art) this.image(art, x, y, w, h); else this.rect(x, y, w, h, enabled ? 0x172229 : 0x12171b, 0.95);
     this.text(label, x, y, size, enabled ? PALE : '#80908e', w - 18);
-    if (enabled) this.track(this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true }).on('pointerup', callback));
+    if (enabled) this.track(this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true }).on('pointerup', () => { if (!art?.startsWith('ui_action_slab_')) sfx.tap(); callback(); }));
   }
   private scrim(): void { this.track(this.add.rectangle(W / 2, H / 2, W, H, 0x020609, 0.88).setInteractive()); }
   private frame(title: string, subtitle = ''): void {
@@ -159,6 +162,8 @@ export class CanvasUiScene extends Phaser.Scene {
     if (m.endGameConfirmOpen) this.drawConfirm();
     if (m.victoryOpen) this.drawVictory();
     if (m.gameEndedOpen) this.drawGameEnded();
+    if (this.qrOpen && l.screen === 'lobby') this.drawQr(l.roomCode);
+    if (l.screen !== 'lobby') this.qrOpen = false;
     if (this.keyboard) this.drawKeyboard();
   }
   private drawLobby(): void {
@@ -189,9 +194,10 @@ export class CanvasUiScene extends Phaser.Scene {
     if (l.screen === 'lobby') {
       this.text('ROOM CODE', 195, 185, 12, TEAL);
       this.text(l.roomCode, 195, 225, 38, GOLD);
-      this.button('Copy Code', 76, 277, 100, 35, () => { void navigator.clipboard?.writeText(l.roomCode); this.showToast('Code copied.'); }, undefined, true, 12);
-      this.button('Copy Link', 195, 277, 100, 35, () => { void navigator.clipboard?.writeText(lobbyInviteUrl(l.roomCode)); this.showToast('Link copied.'); }, undefined, true, 12);
-      this.button('Refresh Code', 314, 277, 100, 35, l.onRefreshCode, undefined, true, 10);
+      this.button('Copy Code', 50, 277, 82, 35, () => { void navigator.clipboard?.writeText(l.roomCode); this.showToast('Code copied.'); }, undefined, true, 11);
+      this.button('Copy Link', 146, 277, 82, 35, () => { void navigator.clipboard?.writeText(lobbyInviteUrl(l.roomCode)); this.showToast('Link copied.'); }, undefined, true, 11);
+      this.button('Show QR', 244, 277, 82, 35, () => { this.qrOpen = true; this.redraw(); }, undefined, true, 11);
+      this.button('Refresh', 340, 277, 82, 35, l.onRefreshCode, undefined, true, 11);
       if (this.toast) this.text(this.toast, 195, 307, 11, TEAL);
       this.text('PLAYER NAME (TAP TO EDIT)', 195, 315, 11, GOLD);
       this.button(l.ownName || 'Player 1', 195, 346, 310, 42, () => this.edit('Player Name', l.ownName, l.onOwnNameChange), 'ui_landing_input');
@@ -311,10 +317,34 @@ export class CanvasUiScene extends Phaser.Scene {
   }
   private drawMenu(): void {
     const m = modal(); this.scrim(); this.frame('Menu');
-    this.button('Rules', 195, 306, 290, 60, m.onMenuRules);
-    this.button('Previous Trick', 195, 390, 290, 60, m.onMenuPreviousTrick);
-    this.button('Return to Menu', 195, 474, 290, 60, m.onMenuReturnToMenu);
+    this.button('Rules', 195, 270, 290, 58, m.onMenuRules);
+    this.button('Previous Trick', 195, 350, 290, 58, m.onMenuPreviousTrick);
+    this.button(`Sound: ${soundEnabled() ? 'On' : 'Off'}`, 195, 430, 290, 58, () => { toggleSound(); this.redraw(); });
+    this.button('Return to Menu', 195, 510, 290, 58, m.onMenuReturnToMenu);
     this.button('Close', 195, 663, 220, 50, () => { m.closeMenu(); closeMenu(); });
+  }
+  private drawQr(code: string): void {
+    this.scrim();
+    this.rect(195, 420, 344, 542, 0x0b1117, 1);
+    this.text('Quick Join', 195, 196, 27, GOLD);
+    this.text(`Room ${code}`, 195, 238, 20, PALE);
+    const qr = QRCode.create(lobbyInviteUrl(code), { errorCorrectionLevel: 'M' });
+    const cells = qr.modules.size;
+    const moduleSize = Math.floor(244 / (cells + 8));
+    const side = (cells + 8) * moduleSize;
+    const left = Math.round(195 - side / 2);
+    const top = Math.round(399 - side / 2);
+    const graphics = this.track(this.add.graphics());
+    graphics.fillStyle(0xffffff).fillRect(left, top, side, side);
+    graphics.fillStyle(0x10171c);
+    for (let row = 0; row < cells; row++) {
+      for (let col = 0; col < cells; col++) {
+        if (qr.modules.get(row, col)) graphics.fillRect(left + (col + 4) * moduleSize, top + (row + 4) * moduleSize, moduleSize, moduleSize);
+      }
+    }
+    this.text('Scan to join this room', 195, 546, 17, TEAL);
+    this.text('Keep this screen open until everyone joins.', 195, 579, 13, PALE, 300);
+    this.button('Close', 195, 646, 220, 52, () => { this.qrOpen = false; this.redraw(); });
   }
   private drawRules(): void {
     const m = modal(), section = SECTIONS[this.rulesPage] ?? SECTIONS[0]; this.scrim(); this.frame('Rules', `${this.rulesPage + 1} / ${SECTIONS.length}`);
