@@ -1,0 +1,135 @@
+name: Deploy Current WIP to itch.io
+
+# The "Current WIP" itch.io slot (the itch project formerly used for suits).
+# Deploys whichever prototype is named in .github/wip-prototype. To point
+# the slot at another prototype, change that file (and the hub link label
+# in index.html).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/wip-prototype'
+      - 'prototypes/**'
+      - 'scripts/generate-versions.js'
+      - 'scripts/bump-version.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-wip-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-wip
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read WIP target
+        id: target
+        run: echo "name=$(tr -d '[:space:]' < .github/wip-prototype)" >> "$GITHUB_OUTPUT"
+
+      # The path filter above has to cover every prototype since the target
+      # is dynamic. Skip the deploy (and the version bump) when a push only
+      # touched some other prototype.
+      - name: Check whether this push affects the WIP target
+        id: relevant
+        env:
+          BEFORE: ${{ github.event.before }}
+          TARGET: ${{ steps.target.outputs.name }}
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qvE '^prototypes/' \
+            || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -q "^prototypes/$TARGET/"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.relevant.outputs.run == 'true'
+        run: npm ci
+
+      - name: Typecheck
+        if: steps.relevant.outputs.run == 'true'
+        run: npm run typecheck
+
+      # Bumps the target's deploy counter (see "Version stamping" in root
+      # CLAUDE.md) without committing yet - committed only after a
+      # successful push to itch.io, so a failed deploy doesn't burn a number.
+      - name: Bump version stamp counter
+        if: steps.relevant.outputs.run == 'true'
+        run: node scripts/bump-version.js "${{ steps.target.outputs.name }}"
+
+      - name: Build (relative base for itch.io)
+        if: steps.relevant.outputs.run == 'true'
+        run: npx vite build --base ./
+
+      # Keep only the target prototype's page plus shared assets/, so the
+      # upload has exactly one HTML file for itch.io to auto-select.
+      - name: Prune build to the WIP target only
+        if: steps.relevant.outputs.run == 'true'
+        env:
+          TARGET: ${{ steps.target.outputs.name }}
+        run: |
+          rm -f dist/index.html
+          for d in dist/prototypes/*/; do
+            [ "$(basename "$d")" = "$TARGET" ] || rm -rf "$d"
+          done
+          ls dist/prototypes
+
+      - name: Set up butler
+        if: steps.relevant.outputs.run == 'true'
+        uses: jdno/setup-butler@v1
+
+      - name: Push to itch.io
+        if: steps.relevant.outputs.run == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push dist zitian-ff/suits:html5
+
+      - name: Commit version stamp bump
+        if: steps.relevant.outputs.run == 'true'
+        env:
+          TARGET: ${{ steps.target.outputs.name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "prototypes/$TARGET/version.json"
+          if git diff --cached --quiet; then
+            echo "No version bump to commit"
+            exit 0
+          fi
+          git commit -m "Bump $TARGET version stamp counter"
+          # Other itch deploys can race this push; retry on non-fast-forward.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to push version stamp bump after retries" >&2
+          exit 1

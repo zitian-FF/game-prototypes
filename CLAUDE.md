@@ -53,6 +53,11 @@ Fixed. Do not add, swap, or upgrade any of these without asking first.
   polling/timeout reliability issue on GitHub Pages. New prototypes
   should default to the itch.io/Butler path; only use GitHub Pages if a
   prototype specifically needs it.
+  The itch.io project formerly used for suits is now the "Current WIP"
+  slot: `.github/workflows/deploy-wip-itch.yml` deploys whichever
+  prototype is named in `.github/wip-prototype`, and the hub links to it
+  as "Current WIP (<Name>)". Retarget it only when the user asks, updating
+  both that file and the hub label.
 - Art storage: Cloudflare R2
 
 React and Tailwind CSS are locked additions, used exclusively for
