@@ -1,7 +1,9 @@
 # Punchies
 
-Top-down boxing prototype. Current build: **training mode only** (you vs a
-static dummy). Online PvP is the next step.
+Top-down boxing prototype. Menu: **Training** (you vs a static dummy),
+**Host Online** (shows a 3-character room code + QR code) and **Join With
+Code**. Opening the game with `?room=ABC` joins that room directly (that's
+what the QR code encodes).
 
 ## Controls
 Touch (landscape):
@@ -11,7 +13,12 @@ Touch (landscape):
   backstep), Upper (lights up gold at 3 stars; the three dots are your
   Star Power).
 - Red pips under JAB / CROSS / HOOK show that punch type's fatigue.
-- Top centre: toggle the dummy between IDLE and GUARD, and RESET.
+- Top centre (training): cycle the dummy's stance (Normal / High Guard /
+  Vulnerable), RESET (the dummy's HP only refills on reset), MENU.
+- "i" (top left): toggles the hitbox overlay and a frame-data / hit-table
+  reference. The game keeps running.
+- Online: a "waiting for opponent..." tag appears whenever the game is
+  briefly held waiting for the other player's input (lockstep).
 
 Keyboard (desktop testing): WASD / arrows move, J jab, K cross, L hook,
 I uppercut, Space dodge, hold Shift to guard.

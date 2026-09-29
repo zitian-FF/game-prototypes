@@ -19,6 +19,7 @@ import { FATIGUED_PUNCHES } from './types';
 export interface FighterOptions {
   anchored?: boolean;
   infiniteStamina?: boolean;
+  forceVulnerable?: boolean;
 }
 
 function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
@@ -47,6 +48,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     nextHookHand: 0,
     anchored: opts.anchored ?? false,
     infiniteStamina: opts.infiniteStamina ?? false,
+    forceVulnerable: opts.forceVulnerable ?? false,
     framesSinceHit: 0,
   };
 }
@@ -86,7 +88,7 @@ function punchTotal(p: PunchState): number {
 // (sour, jammed) or at full extension (sweet).
 export function currentReach(p: PunchState): number {
   const reach = tune.punches[p.type].reach;
-  const start = reach * tune.hit.punchStartReachFrac;
+  const start = reach * tune.punches[p.type].startReachFrac;
   if (p.frame < p.startup) return start;
   // Full reach is only hit on the first sweet frame.
   const into = p.frame - p.startup + 1;
@@ -95,7 +97,13 @@ export function currentReach(p: PunchState): number {
 }
 
 export function isVulnerable(f: Fighter): boolean {
-  if (f.punch) return true;
+  if (f.forceVulnerable) return true;
+  // Committed to a punch: exposed during startup and recovery (including
+  // whiff recovery), but not while the fist is out (active frames).
+  if (f.punch) {
+    const phase = phaseOf(f.punch);
+    if (phase === 'startup' || phase === 'recovery') return true;
+  }
   if (f.postDodgeVulnerable > 0) return true;
   if (f.stunTimer > 0) return true;
   if (f.exhausted) return true;
@@ -421,13 +429,21 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     att.stars = 0;
     // Blocked is contact, not a whiff (the chain already broke above).
     p.connected = true;
-    events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet });
+    // Hooks wrap around a High Guard: chip damage (anti-turtle).
+    let chip = 0;
+    if (p.type === 'hook') {
+      const full = tune.punches.hook.damage * p.damageMult;
+      chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * tune.punches.hook.guardChipMult;
+      def.health = Math.max(0, def.health - chip);
+    }
+    events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet, chip });
     return;
   }
 
-  // Normal stance only protects hits that reach the reduced-damage core;
-  // a hit that only clips the outer hurtbox ring resolves as Vulnerable.
-  const row: 'normal' | 'vulnerable' = stance === 'normal' && c.core ? 'normal' : 'vulnerable';
+  // The core is the face: in Normal stance a hit that reaches it resolves
+  // on the Vulnerable row (full damage on sweet); a hit that only clips the
+  // outer ring (arms/body) resolves on the Normal row.
+  const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core ? 'normal' : 'vulnerable';
   const baseDamage =
     p.type === 'uppercut'
       ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult

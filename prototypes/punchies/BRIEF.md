@@ -17,7 +17,10 @@ decisions made in the planning round (2026-09-29).
   opponent.
 - Right: main button split in two halves (left = Jab, right = Cross; each
   tap fires exactly the half touched), with arc buttons:
-  - Hook: one button, alternates left/right automatically (cosmetic).
+  - Hook: one button, alternates left/right automatically (cosmetic). The
+    close-range tool: short reach but almost no jammed (early sour)
+    window, and it chips damage through High Guard (anti-turtle). A
+    Perfect Guard still negates it.
   - Guard: hold for High Guard.
   - Dodge: direction from joystick; neutral stick = backstep.
   - Uppercut: dedicated button that doubles as the Star Power meter.
@@ -35,10 +38,15 @@ slowest/heaviest/long reach; Hook medium speed, moderate damage, shorter
 reach.
 
 ## Defensive states
-- Normal: idle/moving. Circle hurtbox with a smaller reduced-damage core
-  inside it.
-- Vulnerable: attacking, after a dodge, stunned, empty stamina. Core
-  removed, hurtbox enlarged.
+- Normal: idle/moving. Circle hurtbox with a smaller core inside it. The
+  core is the FACE: a hit that reaches it uses the Vulnerable row (full
+  damage on sweet); a hit that only reaches the outer ring (arms/body) uses
+  the Normal row. (Changed 2026-09-29: the original handoff described the
+  core as a reduced-damage zone.)
+- Vulnerable: punch startup and recovery (including whiff recovery; not
+  the active frames), dodge tail + post-dodge window, stunned, empty
+  stamina. Core removed, hurtbox enlarged; every hit uses the Vulnerable
+  row.
 - High Guard: blocks, drains stamina while held. Zero damage always.
 - Perfect Guard: hit lands within the first few frames of Guard. Applies
   to sweet and sour hits. Defender recovers stamina; attacker stunned.
@@ -81,6 +89,16 @@ reach.
   recovery. Meter resets when stun ends.
 - Fatigue: repeating a punch type builds that type's counter (decays over
   time), reducing speed, recovery speed and damage.
+
+## Training
+- Dummy is static; a button cycles its stance: Normal, High Guard,
+  Vulnerable. Its HP never refills until RESET.
+- "i" button toggles the hitbox overlay plus a hit/hurt box table
+  (frame data, hit table). Does not pause.
+
+## Online
+- 3-character room code; host screen shows the code, a QR code and a
+  `?room=CODE` link that joins directly.
 
 ## Arena
 Square ring (310x310 logical px).

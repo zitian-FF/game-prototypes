@@ -1,105 +1,82 @@
 ## Current milestone
 
-Steps 1-3 of the plan done: deterministic sim core, training mode, and
-in-canvas touch controls + HUD. Playable solo against the dummy, deployed
-to the Current WIP itch.io slot. Online PvP (step 5) not started.
+Training mode and online 1v1 PvP are both playable and deployed to the
+Current WIP itch.io slot. Online was verified end-to-end in-browser over a
+mock transport only; the real Nostr/WebRTC path is untested (see Known
+issues).
 
 ## What was implemented
 
-- `src/sim/`: pure, deterministic 60 Hz fight sim (no Phaser/DOM). Punch
-  phases, full hit-resolution table, core vs outer hurtbox, counters,
-  jab/any-damage startup interrupt, Perfect Guard, High Guard stamina
-  drain, dodge i-frames + vulnerable window, stars / chain breaks,
-  uppercut (unblockable, whiff penalty), stamina regen tiers, exhaustion,
-  stun meter with overflow duration, per-type fatigue, KO, 99 s timer with
-  health-% decision / draw. Input buffer (tune.input.bufferFrames).
-- `src/input/intents.ts`: intent layer; sim reads a quantised FrameInput
-  per tick. Touch and keyboard bind to it.
-- `src/ui/TouchControls.ts`: floating joystick, split Jab/Cross button,
-  Hook/Guard/Dodge/Uppercut arc buttons, star pips on Uppercut, fatigue
-  pips on punch buttons. Multi-touch.
-- `src/ui/Hud.ts`: health (with damage trail), stamina, stun meters, timer.
-- `src/render/`: placeholder boxer view, hit FX (sweet spark, sour puff,
-  counter flash + shake, block/perfect-guard rings, callout labels), DPR
-  handling (capped 2x, camera zoom, Text resolution).
-- `src/audio/sfx.ts`: WebAudio placeholder cues (distinct counter sound).
-- Orientation (`src/orientation/`): no rotate-your-phone overlay. On
-  touch devices it requests a landscape lock on first tap (Android
-  fullscreen); if still portrait, the game container is CSS-rotated 90deg
-  and Phaser's parent bounds, canvas centering and pointer mapping are
-  patched to match.
-- Responsive view: fixed 844x390 world (identical ring for PvP), visible
-  area extended to the device's aspect ratio; HUD, controls and version
-  stamp anchor to view edges.
-- Training scene with dummy IDLE/GUARD toggle and RESET; dummy health
-  refills after a pause; KO resets after 1.5 s.
-- tune.json with every tunable; Tweakpane via ?debug=1 with nested
-  folders, hitbox overlay toggle and Copy JSON. Version stamp.
+- Deterministic 60 Hz fight sim (`src/sim/`): punch phases (startup, early
+  sour with the fist travelling out, sweet at full extension, late sour,
+  recovery + per-punch whiff recovery), full hit table, counters, startup
+  interrupt, Perfect Guard, High Guard, dodge, stars/uppercut, stamina,
+  stun, fatigue, KO, 99 s timer with health-% decision / draw.
+- Core = face: in Normal stance a hit reaching the core uses the
+  Vulnerable row, outer ring uses the Normal row. Vulnerable stance: all
+  hits on the Vulnerable row.
+- Vulnerable windows: punch startup + recovery (incl. whiff), dodge tail +
+  post-dodge window, stunned, 0 stamina. Active frames are not vulnerable.
+- Hook: close-range tool (startReachFrac 0.75, 1 early-sour frame) and
+  chips `guardChipMult` (40%) of its hit through High Guard.
+- Training: dummy stance cycle (Normal / High Guard / Vulnerable), no HP
+  refill until RESET, MENU button.
+- "i" info panel: hitbox overlay + frame data + hit table, no pause.
+- Online (`src/net/`, `MenuScene`, `LobbyScene`, `MatchScene`): Trystero
+  (Nostr, pinned relays) + mp-net's TURN worker; 3-char room codes; host
+  shows code + QR (`?room=CODE` URL); host measures ping and picks input
+  delay; tune synced host -> guest at start; lockstep with redundant input
+  packets; 1 Hz state-hash desync check; "waiting for opponent" indicator;
+  result screen with REMATCH / MENU; disconnect handling; full-room and
+  code-collision handling.
+- Square 310x310 ring, responsive view, auto-rotate to landscape,
+  in-canvas touch controls + HUD, WebAudio placeholder sounds, Tweakpane
+  (?debug=1), version stamp.
 
 ## Key technical decisions
 
-- Sim uses only IEEE-exact math (+ - * / sqrt, no trig) so lockstep peers
-  stay bit-identical. Verified: two runs of 3000 ticks with pseudo-random
-  inputs produce identical state.
-- Punch phases: startup, early sour (fist travels from
-  `punchStartReachFrac` of reach to full), sweet (full extension), late
-  sour, recovery (+ `whiffRecovery` on a miss). Touching the outer
-  hurtbox doesn't resolve the hit; it resolves when the fist touches the
-  core or reaches full extension. Resolving frame = sweet/sour; touching
-  the core = Normal row, outer ring only = Vulnerable row.
-  Consequences (headless-tested, Jab): very close = sour (smothered),
-  ideal range = sweet on core (reduced), max range = sweet on ring (full
-  damage). The sweet-on-core window is narrow (about
-  0.6 x reach / (sourEarly + 1) px) and for Hook it's effectively empty;
-  widen via coreRadius / sourEarly / punchStartReachFrac if needed.
-- Ring is a 310x310 square centred in the world.
-- Tune changes requested by user (2026-09-29): Cross slower (startup 13,
-  recovery 20), heavier stamina damage (hook 12, cross 16, uppercut 24),
-  slower regen (idle 14/s, active 6/s), whiff recovery (jab 4, hook 8,
-  cross 12; uppercut's existing 45 moved to the same key).
-- Any damaging hit interrupts an opponent's punch in Startup (not only
-  jabs); counter bonus applies only to Cross/Hook.
-- Audio unlocks on touchend/click (mobile browsers reject touchstart);
-  hits use a synthesized noise thud + tone.
-- Uppercut consumes all stars on use (hit or whiff); whiff adds
-  `whiffExtraRecovery`. A guarding target takes an uppercut as Normal.
-- Perfect Guard stun on the attacker is a short stagger
-  (`perfectGuardAttackerStunFrames`) plus stun meter build; only a
-  meter-triggered stun resets the meter when it ends.
-- Guard cannot be held while exhausted; punching/dodging needs stamina > 0.
-- Training dummy has infinite stamina by default (tune.training) so GUARD
-  mode doesn't break its own guard within seconds.
-- Fighters render with plain Graphics each frame; no React/Tailwind.
+- Lockstep with fixed input delay (no rollback). Delay = one-way ping in
+  frames + `net.extraDelayFrames`, clamped to `net.min/maxInputDelay`.
+  Each packet carries the last `2*delay+4` local inputs, so a single lost
+  packet never stalls. Local input history is kept that long because the
+  peer can lag up to `delay+1` ticks.
+- Lockstep core (`net/lockstep.ts`) has no Phaser dependency and was
+  tested headless: 30 s with 60-100 ms one-way latency and 10% loss ->
+  identical state hashes, ~4-5% stalled ticks at delay 6, combat included.
+- Host = fighter 0 (left), guest = fighter 1 (right); no screen mirroring.
+- Hit resolution: the fist passes through the outer ring and resolves when
+  it touches the core or reaches full extension; that frame sets
+  sweet/sour, touching the core sets the row.
+- The Nostr room id is `room-<CODE>` under appId `punchies`.
+- Shared stage (`scenes/FightStage.ts`) used by Training and Match.
+- QR code uses the page's own URL. On itch.io that's the itch CDN iframe
+  URL (html-classic.itch.zone/...), which opens the game directly.
 
 ## Open questions
 
-- Normal-stance core: sweet hits on an idle opponent mostly land on the
-  outer ring (full damage) except in a narrow ideal-range band. Is that
-  the intended balance? BRIEF.md now documents the resolution rule.
-- Uppercut on hit: should it consume stars (current) or keep them?
-  BRIEF.md only says whiff consumes them; may need updating.
-- Sour vs Normal (no damage): currently does not count as "getting hit"
-  for the defender's star chain. BRIEF.md may need updating.
-- Does an Uppercut against a guarding opponent use the Normal row (current,
-  reduced damage) or always Vulnerable (full)? BRIEF.md may need updating.
-- Lobby/menus/results screen conventions after the React removal (asked
-  to confirm before step 5).
+- Vulnerable on "low stamina": currently only at exactly 0 stamina (until
+  it regens to `exhaustRecoverAt`). A threshold was discussed but not
+  decided. BRIEF.md may need updating.
+- Should Vulnerable-stance face hits get a crit bonus? Not decided; all
+  Vulnerable hits are plain full damage.
+- Guest plays on the right side unmirrored; is mirroring wanted?
+- Hook chip vs "absorbed by normal guard": implemented as Hook chips only
+  High Guard; vs Normal stance it follows the regular table. BRIEF.md
+  updated; confirm.
 
 ## Known issues
 
-- All tune numbers are first-pass placeholders; none were set by playing.
-- On slow devices the sim runs in slow motion rather than dropping ticks.
-- Not yet verified on a real phone (only Playwright mobile emulation:
-  portrait 390x844 rotated, 915x412, 1024x768). The rotation fallback
-  patches Phaser internals (ScaleManager.getParentBounds/updateCenter,
-  InputManager.transformPointer); recheck on any Phaser upgrade.
-- Deployed via the Current WIP itch.io slot (`deploy-wip-itch.yml`,
-  formerly suits' project); the itch page title/description still say
-  "suits" until renamed on itch.io.
+- Real online play (Nostr relays + WebRTC + TURN) could not be tested from
+  the build sandbox (outbound relay traffic blocked). Verified instead:
+  headless lockstep sim, and two browser tabs over a BroadcastChannel mock
+  of Trystero (lobby, QR, ?room join, ping/delay, match sync). Rematch
+  flow not exercised in any test.
+- Info panel overlaps the left edge of the ring on narrow views.
+- All tune numbers are first-pass; only the ones the user asked for were
+  changed deliberately.
+- Rotation fallback patches Phaser internals; recheck on Phaser upgrades.
 
 ## Next proposed step
 
-Playtest training on a phone and tune. Then step 5: landscape lobby
-(host/join code, reusing mp-core identity + TURN), lockstep layer with
-measured input delay, redundant input packets, desync hash, and the
-"waiting for opponent" indicator.
+Real two-phone online test (host on one phone, scan the QR on the other),
+then tune input delay / feel. Consider rollback if the delay feels heavy.
