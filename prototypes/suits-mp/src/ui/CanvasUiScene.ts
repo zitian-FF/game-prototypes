@@ -54,6 +54,23 @@ export class CanvasUiScene extends Phaser.Scene {
     const scale = Math.min(w / image.frame.width, h / image.frame.height);
     return this.track(image.setScale(scale));
   }
+  private landingButtonArt(key: string, x: number, y: number, w: number, h: number): void {
+    if (!this.textures.exists(key)) return;
+    // The approved masters share a 1536x512 canvas but have different
+    // transparent margins. Crop only that padding, then scale the entire
+    // ornament uniformly so its corners and border retain their shape.
+    const bounds: Record<string, [number, number, number, number]> = {
+      ui_landing_button_primary: [29, 96, 1478, 315],
+      ui_landing_button_secondary: [29, 106, 1478, 270],
+      ui_landing_button_tutorial: [148, 123, 1237, 241],
+    };
+    const box = bounds[key];
+    if (!box) return;
+    const texture = this.textures.get(key);
+    const frame = '__trimmed_landing_button';
+    if (!texture.has(frame)) texture.add(frame, 0, box[0], box[1], box[2], box[3]);
+    this.track(this.add.image(x, y, key, frame).setScale(Math.min(w / box[2], h / box[3])));
+  }
   private nine(key: string, x: number, y: number, w: number, h: number, cuts: [number, number], borders: [number, number]): void {
     if (!this.textures.exists(key)) return;
     const texture = this.textures.get(key);
@@ -103,7 +120,7 @@ export class CanvasUiScene extends Phaser.Scene {
   }
   private button(label: string, x: number, y: number, w: number, h: number, callback: () => void, art?: string, enabled = true, size = 17): void {
     if (art === 'ui_landing_input') this.nine(art, x, y, w, h, [200, 170], [18, 15]);
-    else if (art?.startsWith('ui_landing_button')) this.nine(art, x, y, w, h, [200, 170], art.endsWith('primary') ? [30, 26] : art.endsWith('secondary') ? [20, 17] : [13, 11]);
+    else if (art?.startsWith('ui_landing_button')) this.landingButtonArt(art, x, y, w, h);
     else if (art?.startsWith('ui_action_slab_')) this.nine(art, x, y, w, h, [80, 80], [44, 44]);
     else if (art) this.image(art, x, y, w, h); else this.rect(x, y, w, h, enabled ? 0x172229 : 0x12171b, 0.95);
     this.text(label, x, y, size, enabled ? PALE : '#80908e', w - 18);
@@ -152,8 +169,8 @@ export class CanvasUiScene extends Phaser.Scene {
       this.button('Create Room', 195, 345, 338, 76, () => l.onHost(''), 'ui_landing_button_primary', true, 24);
       this.button('Join Room', 195, 450, 338, 76, goToJoinScreen, 'ui_landing_button_primary', true, 24);
       this.text('Four players are needed to begin.', 195, 525, 13, TEAL);
-      this.button('Single Player', 195, 614, 338, 65, l.onSinglePlayer, 'ui_landing_button_secondary', true, 21);
-      this.button('Tutorial', 195, 696, 338, 65, l.onTutorial, 'ui_landing_button_tutorial', true, 21);
+      this.button('Single Player', 195, 614, 338, 76, l.onSinglePlayer, 'ui_landing_button_primary', true, 24);
+      this.button('Tutorial', 195, 696, 338, 76, l.onTutorial, 'ui_landing_button_primary', true, 24);
       return;
     }
     if (l.screen === 'waiting' && l.hostLeft) this.text('Host Disconnected', 195, 98, 22, GOLD);
