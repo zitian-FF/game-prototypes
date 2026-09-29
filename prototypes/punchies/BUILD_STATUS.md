@@ -1,8 +1,8 @@
 ## Current milestone
 
 Steps 1-3 of the plan done: deterministic sim core, training mode, and
-in-canvas touch controls + HUD. Playable solo against the dummy. Online
-PvP (step 5) not started. Version counter at 0 (no deploy yet).
+in-canvas touch controls + HUD. Playable solo against the dummy, deployed
+to the Current WIP itch.io slot. Online PvP (step 5) not started.
 
 ## What was implemented
 
@@ -68,7 +68,9 @@ PvP (step 5) not started. Version counter at 0 (no deploy yet).
 - All tune numbers are first-pass placeholders; none were set by playing.
 - On slow devices the sim runs in slow motion rather than dropping ticks.
 - Not yet verified on a real phone (only Playwright mobile emulation).
-- No deploy workflow yet, so the version counter won't bump until step 6.
+- Deployed via the Current WIP itch.io slot (`deploy-wip-itch.yml`,
+  formerly suits' project); the itch page title/description still say
+  "suits" until renamed on itch.io.
 
 ## Next proposed step
 

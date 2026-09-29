@@ -3,6 +3,21 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-09-29 — suits itch.io slot becomes the "Current WIP" slot
+
+**What changed:** `deploy-suits-itch.yml` is replaced by
+`deploy-wip-itch.yml`, which deploys the prototype named in
+`.github/wip-prototype` (currently `punchies`) to the same itch.io project
+(`zitian-ff/suits:html5`). The hub link that pointed at suits' Pages build
+is now "Current WIP (Punchies)" and points to that itch.io page.
+
+**Why:** The user needs to playtest new prototypes on a phone without
+setting up a new itch.io project each time.
+
+**Applies to:** suits no longer auto-deploys to itch.io (it still builds
+into the Pages hub output). The WIP target's `version.json` counter bumps
+on each WIP deploy.
+
 ## 2026-09-02 — Fix root package-lock.json drift breaking every deploy workflow
 
 **What changed:** `package-lock.json` is regenerated to match the
