@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
-import { hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
+import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 
 // Placeholder top-down boxer: body circle, two fists, state tints. Reads sim
 // state only; never writes it.
@@ -58,13 +58,14 @@ export class FighterView {
     if (f.punch) {
       const p = f.punch;
       const phase = phaseOf(p);
-      const activeEnd = p.startup + p.sweet + p.sour;
+      const end = activeEnd(p);
+      const reach = tune.punches[p.type].reach;
       let t: number;
       if (phase === 'startup') t = -0.15 * (p.frame / p.startup);
-      else if (phase === 'recovery') t = 1 - (p.frame - activeEnd) / p.recovery;
+      else if (phase === 'recovery') t = 1 - (p.frame - end) / p.recovery;
       else t = 1;
       const from = rest(p.hand);
-      const to = punchPoint(f, p);
+      const to = phase === 'recovery' ? { x: f.x + f.fx * reach, y: f.y + f.fy * reach } : punchPoint(f, p);
       let x = from.x + (to.x - from.x) * t;
       let y = from.y + (to.y - from.y) * t;
       if (p.type === 'hook' || p.type === 'uppercut') {

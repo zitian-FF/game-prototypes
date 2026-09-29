@@ -1,5 +1,10 @@
 {
-  "ring": { "left": 40, "top": 58, "right": 804, "bottom": 372 },
+  "ring": {
+    "left": 267,
+    "top": 64,
+    "right": 577,
+    "bottom": 374
+  },
   "movement": {
     "speed": 150,
     "punchMoveMult": 0.35,
@@ -7,18 +12,75 @@
     "stunMoveMult": 0.6,
     "minSeparation": 44
   },
-  "body": { "hurtRadius": 22, "coreRadius": 11, "vulnerableHurtRadius": 28 },
+  "body": {
+    "hurtRadius": 22,
+    "coreRadius": 11,
+    "vulnerableHurtRadius": 28
+  },
   "punches": {
-    "jab": { "startup": 4, "sweet": 2, "sour": 3, "recovery": 8, "reach": 50, "hitRadius": 10, "damage": 4, "staminaCost": 4, "staminaDamage": 5, "stunBuild": 8 },
-    "cross": { "startup": 10, "sweet": 3, "sour": 3, "recovery": 16, "reach": 52, "hitRadius": 11, "damage": 10, "staminaCost": 9, "staminaDamage": 10, "stunBuild": 18 },
-    "hook": { "startup": 7, "sweet": 3, "sour": 3, "recovery": 12, "reach": 40, "hitRadius": 13, "damage": 7, "staminaCost": 7, "staminaDamage": 8, "stunBuild": 14 },
-    "uppercut": { "startup": 2, "sweet": 3, "sour": 2, "recovery": 14, "reach": 40, "hitRadius": 13, "crossDamageMult": 2, "staminaCost": 10, "staminaDamage": 15, "stunBuild": 30, "whiffExtraRecovery": 45 }
+    "jab": {
+      "startup": 4,
+      "sourEarly": 3,
+      "sweet": 2,
+      "sour": 2,
+      "recovery": 8,
+      "whiffRecovery": 4,
+      "reach": 50,
+      "hitRadius": 10,
+      "damage": 4,
+      "staminaCost": 4,
+      "staminaDamage": 5,
+      "stunBuild": 8
+    },
+    "cross": {
+      "startup": 13,
+      "sourEarly": 3,
+      "sweet": 3,
+      "sour": 3,
+      "recovery": 20,
+      "whiffRecovery": 12,
+      "reach": 52,
+      "hitRadius": 11,
+      "damage": 10,
+      "staminaCost": 9,
+      "staminaDamage": 16,
+      "stunBuild": 18
+    },
+    "hook": {
+      "startup": 7,
+      "sourEarly": 3,
+      "sweet": 3,
+      "sour": 3,
+      "recovery": 12,
+      "whiffRecovery": 8,
+      "reach": 40,
+      "hitRadius": 13,
+      "damage": 7,
+      "staminaCost": 7,
+      "staminaDamage": 12,
+      "stunBuild": 14
+    },
+    "uppercut": {
+      "startup": 2,
+      "sourEarly": 2,
+      "sweet": 3,
+      "sour": 2,
+      "recovery": 14,
+      "whiffRecovery": 45,
+      "reach": 40,
+      "hitRadius": 13,
+      "crossDamageMult": 2,
+      "staminaCost": 10,
+      "staminaDamage": 24,
+      "stunBuild": 30
+    }
   },
   "hit": {
     "reducedDamageMult": 0.5,
     "attackerStaminaPenalty": 6,
     "counterDamageMult": 1.5,
-    "sourStunMult": 0.5
+    "sourStunMult": 0.5,
+    "punchStartReachFrac": 0.4
   },
   "guard": {
     "perfectFrames": 6,
@@ -38,12 +100,14 @@
   },
   "stamina": {
     "max": 100,
-    "regenIdlePerSec": 22,
-    "regenActivePerSec": 10,
+    "regenIdlePerSec": 14,
+    "regenActivePerSec": 6,
     "regenDelayFrames": 20,
     "exhaustRecoverAt": 30
   },
-  "health": { "max": 100 },
+  "health": {
+    "max": 100
+  },
   "stun": {
     "threshold": 100,
     "decayPerSec": 15,
@@ -51,7 +115,9 @@
     "baseFrames": 90,
     "overflowFramesPerPoint": 1.5
   },
-  "stars": { "max": 3 },
+  "stars": {
+    "max": 3
+  },
   "fatigue": {
     "perUse": 1,
     "decayPerSec": 0.8,
@@ -61,7 +127,16 @@
     "damagePerLevel": 0.1,
     "minDamageMult": 0.5
   },
-  "input": { "bufferFrames": 6, "joystickRadius": 50, "joystickDeadzone": 0.15 },
-  "match": { "durationSec": 99 },
-  "training": { "dummyInfiniteStamina": true, "dummyHealthRefillFrames": 120 }
+  "input": {
+    "bufferFrames": 6,
+    "joystickRadius": 50,
+    "joystickDeadzone": 0.15
+  },
+  "match": {
+    "durationSec": 99
+  },
+  "training": {
+    "dummyInfiniteStamina": true,
+    "dummyHealthRefillFrames": 120
+  }
 }
