@@ -14,7 +14,7 @@ export class Effects {
       .setDepth(80);
   }
 
-  handle(events: SimEvent[], s: SimState): void {
+  handle(events: SimEvent[], s: SimState, localIdx: number): void {
     for (const e of events) {
       switch (e.kind) {
         case 'throw':
@@ -30,7 +30,7 @@ export class Effects {
           } else if (e.sweet) {
             this.spark(e.x, e.y, 0xffe03a, 12);
             if (e.damage > 0) this.scene.cameras.main.shake(80, 0.004);
-            this.label(e.x, e.y - 26, e.row === 'normal' ? 'SWEET (core)' : 'SWEET', '#ffe03a', 12);
+            this.label(e.x, e.y - 26, e.row === 'vulnerable' ? 'SWEET!' : 'sweet (body)', '#ffe03a', 12);
             sfx.sweet();
           } else {
             this.puff(e.x, e.y);
@@ -41,7 +41,7 @@ export class Effects {
           break;
         case 'block':
           this.ring(e.x, e.y, 0x3ad0c0, 14);
-          this.label(e.x, e.y - 22, 'BLOCK', '#3ad0c0', 11);
+          this.label(e.x, e.y - 22, e.chip > 0 ? `CHIP -${e.chip.toFixed(1)}` : 'BLOCK', e.chip > 0 ? '#ffb03a' : '#3ad0c0', 11);
           sfx.block();
           break;
         case 'perfectGuard':
@@ -66,7 +66,7 @@ export class Effects {
           break;
         }
         case 'starsReady':
-          if (e.fighter === 0) sfx.starsReady();
+          if (e.fighter === localIdx) sfx.starsReady();
           break;
         case 'ko':
           this.banner('K.O.');

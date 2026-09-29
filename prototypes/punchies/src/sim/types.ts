@@ -85,6 +85,8 @@ export interface Fighter {
   // Training-dummy flags (unused in PvP).
   anchored: boolean;
   infiniteStamina: boolean;
+  // Training only: dummy held in the Vulnerable stance.
+  forceVulnerable: boolean;
   framesSinceHit: number;
 }
 
@@ -102,7 +104,7 @@ export type SimEvent =
       row: 'normal' | 'vulnerable';
       damage: number;
     }
-  | { kind: 'block'; attacker: number; x: number; y: number; sweet: boolean }
+  | { kind: 'block'; attacker: number; x: number; y: number; sweet: boolean; chip: number }
   | { kind: 'perfectGuard'; attacker: number; x: number; y: number }
   | { kind: 'dodged'; attacker: number; x: number; y: number }
   | { kind: 'whiff'; attacker: number; punch: PunchType }

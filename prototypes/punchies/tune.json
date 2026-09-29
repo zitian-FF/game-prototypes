@@ -30,7 +30,8 @@
       "damage": 4,
       "staminaCost": 4,
       "staminaDamage": 5,
-      "stunBuild": 8
+      "stunBuild": 8,
+      "startReachFrac": 0.4
     },
     "cross": {
       "startup": 13,
@@ -44,11 +45,12 @@
       "damage": 10,
       "staminaCost": 9,
       "staminaDamage": 16,
-      "stunBuild": 18
+      "stunBuild": 18,
+      "startReachFrac": 0.4
     },
     "hook": {
       "startup": 7,
-      "sourEarly": 3,
+      "sourEarly": 1,
       "sweet": 3,
       "sour": 3,
       "recovery": 12,
@@ -58,7 +60,9 @@
       "damage": 7,
       "staminaCost": 7,
       "staminaDamage": 12,
-      "stunBuild": 14
+      "stunBuild": 14,
+      "startReachFrac": 0.75,
+      "guardChipMult": 0.4
     },
     "uppercut": {
       "startup": 2,
@@ -72,15 +76,15 @@
       "crossDamageMult": 2,
       "staminaCost": 10,
       "staminaDamage": 24,
-      "stunBuild": 30
+      "stunBuild": 30,
+      "startReachFrac": 0.4
     }
   },
   "hit": {
     "reducedDamageMult": 0.5,
     "attackerStaminaPenalty": 6,
     "counterDamageMult": 1.5,
-    "sourStunMult": 0.5,
-    "punchStartReachFrac": 0.4
+    "sourStunMult": 0.5
   },
   "guard": {
     "perfectFrames": 6,
@@ -136,7 +140,15 @@
     "durationSec": 99
   },
   "training": {
-    "dummyInfiniteStamina": true,
-    "dummyHealthRefillFrames": 120
+    "dummyInfiniteStamina": true
+  },
+  "net": {
+    "minInputDelay": 3,
+    "maxInputDelay": 10,
+    "extraDelayFrames": 2,
+    "pingSamples": 5,
+    "connectTimeoutMs": 20000,
+    "turnFetchTimeoutMs": 4000,
+    "stallIndicatorMs": 120
   }
 }
