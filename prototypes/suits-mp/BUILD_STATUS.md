@@ -1,23 +1,27 @@
 ## Current milestone
 
-The Suits of Madness game page uses its proper browser title.
+The host can display a quick-join QR code, and the game has basic sound cues with a persistent menu mute switch.
 
 ## What was implemented
 
-- Changed the suits-mp page title from "suits-mp Prototype" to "Suits of Madness" for the GitHub Pages build.
+- Added Show QR to the host lobby. The QR encodes the published itch.io game URL with the current three-character room code.
+- Kept the existing invite-link startup path, which reads the room code and enters the joining flow after scanning.
+- Added lightweight synthesized tap, card, action, and victory cues, plus Sound: On/Off in the game menu.
 
 ## Key technical decisions
 
-- Kept the shared repository and GitHub Pages URL intact; this change affects the game's browser tab title.
+- The QR is drawn from the already-installed qrcode package directly into Phaser graphics, with a white quiet zone; no image upload or additional download is required.
+- Sound is generated through WebAudio after interaction and the preference is saved in localStorage. Unavailable audio or storage does not block gameplay.
+- Typecheck and build passed. Host lobby, QR, and mute switch were inspected in the local browser; no browser errors were reported.
 
 ## Open questions
 
-- The brief does not specify whether the GitHub Pages URL should also change; awaiting the user's clarification.
+- None.
 
 ## Known issues
 
-- None.
+- The generated WebAudio cues are prototype sounds, pending final sound design.
 
 ## Next proposed step
 
-- Confirm the published GitHub Pages game tab displays "Suits of Madness".
+- Review QR scanning and sound levels on the merged itch.io phone build.

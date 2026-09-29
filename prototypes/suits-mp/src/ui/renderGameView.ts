@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 import { getOrCreateClientId } from 'mp-core';
 import { ALL_GODS, CARD_DEFS, GOD_ACCENT_HEX, GOD_DISPLAY_NAME, GOD_TEAM, TEAMMATE_GOD, cardById, sortCardIds, sortCardIdsByRank } from '../rules/cards';
 import type { CardId, DeityCardState, God } from '../rules/types';
@@ -1053,6 +1054,7 @@ function renderWithView(
     actionHint: action.hint,
     actionEnabled: action.enabled,
     onAction: () => {
+      sfx.play();
       action.onClick();
     },
     onOpenRedistLog: () => {
@@ -1597,6 +1599,7 @@ function renderRedistributionStack(
     container.add(hit);
     hit.setInteractive({ useHandCursor: true });
     bindTapIntent(hit, () => {
+      sfx.card();
       const cardId = view.selectedCards[0];
       const list = view.redistributeAssignment[pid] ?? [];
       view.redistributeAssignment[pid] = [...list, cardId];
@@ -1876,12 +1879,14 @@ function renderCardFan(
     if (canTapPlay) {
       hitArea.setInteractive({ useHandCursor: true });
       bindTapIntent(hitArea, () => {
+        sfx.card();
         view.selectedCards = nextSelectionAfterTap(view.selectedCards, entry.id, entry.cardState as CardVisualState, legality!);
         rerender();
       });
     } else if (canTapRedistribute) {
       hitArea.setInteractive({ useHandCursor: true });
       bindTapIntent(hitArea, () => {
+        sfx.card();
         view.selectedCards = stagedId === entry.id ? [] : [entry.id];
         rerender();
       });
@@ -2145,6 +2150,7 @@ function startVictorySequence(
   ui: PersistentUIState,
 ): void {
   hideGameOverlay();
+  sfx.victory();
   const ownSuitCardIds = CARD_DEFS.filter((c) => c.god === state.yourGod).map((c) => c.id);
   const isLocalVictory = ownSuitCardIds.every((id) => state.yourHand.includes(id));
 
