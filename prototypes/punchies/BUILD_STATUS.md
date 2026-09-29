@@ -41,13 +41,26 @@ to the Current WIP itch.io slot. Online PvP (step 5) not started.
 - Sim uses only IEEE-exact math (+ - * / sqrt, no trig) so lockstep peers
   stay bit-identical. Verified: two runs of 3000 ticks with pseudo-random
   inputs produce identical state.
-- Contact geometry: punch hitbox is a circle at attacker + facing * reach.
-  In Normal stance, overlapping the core uses the Normal row; only
-  clipping the outer ring uses the Vulnerable row. Because boxers always
-  face each other, this means a max-range "tip" hit deals full damage and
-  a hit at ideal range hits the core (reduced).
+- Punch phases: startup, early sour (fist travels from
+  `punchStartReachFrac` of reach to full), sweet (full extension), late
+  sour, recovery (+ `whiffRecovery` on a miss). Touching the outer
+  hurtbox doesn't resolve the hit; it resolves when the fist touches the
+  core or reaches full extension. Resolving frame = sweet/sour; touching
+  the core = Normal row, outer ring only = Vulnerable row.
+  Consequences (headless-tested, Jab): very close = sour (smothered),
+  ideal range = sweet on core (reduced), max range = sweet on ring (full
+  damage). The sweet-on-core window is narrow (about
+  0.6 x reach / (sourEarly + 1) px) and for Hook it's effectively empty;
+  widen via coreRadius / sourEarly / punchStartReachFrac if needed.
+- Ring is a 310x310 square centred in the world.
+- Tune changes requested by user (2026-09-29): Cross slower (startup 13,
+  recovery 20), heavier stamina damage (hook 12, cross 16, uppercut 24),
+  slower regen (idle 14/s, active 6/s), whiff recovery (jab 4, hook 8,
+  cross 12; uppercut's existing 45 moved to the same key).
 - Any damaging hit interrupts an opponent's punch in Startup (not only
   jabs); counter bonus applies only to Cross/Hook.
+- Audio unlocks on touchend/click (mobile browsers reject touchstart);
+  hits use a synthesized noise thud + tone.
 - Uppercut consumes all stars on use (hit or whiff); whiff adds
   `whiffExtraRecovery`. A guarding target takes an uppercut as Normal.
 - Perfect Guard stun on the attacker is a short stagger
@@ -60,8 +73,9 @@ to the Current WIP itch.io slot. Online PvP (step 5) not started.
 
 ## Open questions
 
-- Normal-stance core geometry (see decisions): is "tip hits deal full
-  damage" intended? BRIEF.md may need updating to pin this down.
+- Normal-stance core: sweet hits on an idle opponent mostly land on the
+  outer ring (full damage) except in a narrow ideal-range band. Is that
+  the intended balance? BRIEF.md now documents the resolution rule.
 - Uppercut on hit: should it consume stars (current) or keep them?
   BRIEF.md only says whiff consumes them; may need updating.
 - Sour vs Normal (no damage): currently does not count as "getting hit"

@@ -23,8 +23,13 @@ decisions made in the planning round (2026-09-29).
   - Uppercut: dedicated button that doubles as the Star Power meter.
 
 ## Punch frames
-Startup -> Sweet (active) -> Sour (active) -> Recovery. Sweet contact =
-sweet hit (spark), Sour contact = sour hit. All frame data, reach, damage
+Startup -> Early Sour (active, fist extending) -> Sweet (active, full
+extension) -> Late Sour (active) -> Recovery. Active frames are continuous
+(no gaps). The fist travels outward during Early Sour; touching the outer
+hurtbox doesn't stop it, and the hit resolves when the fist reaches the
+core or full extension. The resolving frame decides sweet vs sour; whether
+it reached the core decides the Normal vs Vulnerable row. A whiff adds
+per-punch whiff recovery frames (punish window). All frame data, reach, damage
 and stamina cost live in tune.json. Jab fastest/lightest/long reach; Cross
 slowest/heaviest/long reach; Hook medium speed, moderate damage, shorter
 reach.
@@ -76,6 +81,9 @@ reach.
   recovery. Meter resets when stun ends.
 - Fatigue: repeating a punch type builds that type's counter (decays over
   time), reducing speed, recovery speed and damage.
+
+## Arena
+Square ring (310x310 logical px).
 
 ## Match
 Single 99-second round. KO wins; on timeout higher health percentage wins,

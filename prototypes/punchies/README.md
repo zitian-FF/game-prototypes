@@ -22,10 +22,10 @@ stamina (blue, turns red when exhausted), stun meter (thin bar, yellow while
 stunned). Timer shows `--` in training.
 
 ## Config
-Every tunable lives in `tune.json`: frame data per punch (startup, sweet,
-sour, recovery, reach, hitRadius, damage, staminaCost, staminaDamage,
+Every tunable lives in `tune.json`: frame data per punch (startup, sourEarly,
+sweet, sour, recovery, whiffRecovery, reach, hitRadius, damage, staminaCost, staminaDamage,
 stunBuild), hit table multipliers, guard, dodge, stamina, stun, stars,
-fatigue, ring bounds, joystick, match length and training options.
+fatigue, ring bounds (square), punchStartReachFrac, joystick, match length and training options.
 
 Open with `?debug=1` for the Tweakpane panel: edit any value live, toggle
 the hitbox overlay (green = hurtbox, blue = core, yellow/orange = sweet/sour

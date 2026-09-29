@@ -36,7 +36,10 @@ export interface PunchState {
   type: PunchType;
   frame: number;
   startup: number;
+  // Early sour: fist still extending toward full reach (a jammed punch).
+  sourEarly: number;
   sweet: number;
+  // Late sour: fist at full reach, past its sweet moment.
   sour: number;
   recovery: number;
   damageMult: number;

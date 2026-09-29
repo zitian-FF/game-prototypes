@@ -67,13 +67,31 @@ export function createSimState(opts: {
 
 export function phaseOf(p: PunchState): Phase {
   if (p.frame < p.startup) return 'startup';
-  if (p.frame < p.startup + p.sweet) return 'sweet';
-  if (p.frame < p.startup + p.sweet + p.sour) return 'sour';
+  if (p.frame < p.startup + p.sourEarly) return 'sour';
+  if (p.frame < p.startup + p.sourEarly + p.sweet) return 'sweet';
+  if (p.frame < activeEnd(p)) return 'sour';
   return 'recovery';
 }
 
+export function activeEnd(p: PunchState): number {
+  return p.startup + p.sourEarly + p.sweet + p.sour;
+}
+
 function punchTotal(p: PunchState): number {
-  return p.startup + p.sweet + p.sour + p.recovery;
+  return activeEnd(p) + p.recovery;
+}
+
+// The fist travels outward during early-sour frames and sits at full reach
+// from the sweet frames on, so range decides whether contact lands early
+// (sour, jammed) or at full extension (sweet).
+export function currentReach(p: PunchState): number {
+  const reach = tune.punches[p.type].reach;
+  const start = reach * tune.hit.punchStartReachFrac;
+  if (p.frame < p.startup) return start;
+  // Full reach is only hit on the first sweet frame.
+  const into = p.frame - p.startup + 1;
+  if (into > p.sourEarly) return reach;
+  return start + (reach - start) * (into / (p.sourEarly + 1));
 }
 
 export function isVulnerable(f: Fighter): boolean {
@@ -102,9 +120,10 @@ export function fatigueLevel(f: Fighter, type: PunchType): number {
 }
 
 export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } {
-  const reach = tune.punches[p.type].reach;
+  const reach = currentReach(p);
   return { x: f.x + f.fx * reach, y: f.y + f.fy * reach };
 }
+
 
 function canAct(f: Fighter): boolean {
   return f.punch === null && f.dodge === null;
@@ -140,6 +159,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     type,
     frame: 0,
     startup: Math.max(1, Math.round(cfg.startup * slow)),
+    sourEarly: cfg.sourEarly,
     sweet: cfg.sweet,
     sour: cfg.sour,
     recovery: Math.max(1, Math.round(cfg.recovery * slow)),
@@ -350,10 +370,16 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
       events.push({ kind: 'dodged', attacker: i, x: pt.x, y: pt.y });
       continue;
     }
+    // Touching the outer ring doesn't stop the fist: it keeps travelling and
+    // the hit resolves once it reaches the core, or at full extension, or on
+    // the last active frame. The resolving frame decides sweet vs sour.
+    const touchingCore = dist <= tune.body.coreRadius + hitR;
+    const fullReach = p.frame >= p.startup + p.sourEarly;
+    if (!touchingCore && !fullReach) continue;
     contacts.push({
       attacker: i,
       sweet: phase === 'sweet',
-      core: dist <= tune.body.coreRadius + hitR,
+      core: touchingCore,
       x: pt.x,
       y: pt.y,
     });
@@ -455,9 +481,10 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   if (f.punch) {
     const p = f.punch;
     p.frame++;
-    if (p.frame === p.startup + p.sweet + p.sour && !p.connected) {
+    if (p.frame === activeEnd(p) && !p.connected) {
       f.stars = 0;
-      if (p.type === 'uppercut') p.recovery += tune.punches.uppercut.whiffExtraRecovery;
+      // Whiff punish window, on top of normal recovery.
+      p.recovery += tune.punches[p.type].whiffRecovery;
       events.push({ kind: 'whiff', attacker: idx, punch: p.type });
     }
     if (p.frame >= punchTotal(p)) f.punch = null;

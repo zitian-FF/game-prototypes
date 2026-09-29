@@ -13,6 +13,32 @@ export function unlockAudio(): void {
   }
 }
 
+// Mobile browsers only allow audio to start from a completed user gesture
+// (touchend/click), not touchstart. Listen for those globally.
+for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
+  window.addEventListener(ev, unlockAudio, { capture: true, passive: true });
+}
+
+// Short filtered noise burst: the body of a punch impact.
+function thud(gain: number, cutoff: number, dur: number): void {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = cutoff;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(filter).connect(g).connect(ctx.destination);
+  src.start(t);
+}
+
 function tone(freq: number, dur: number, type: OscillatorType, gain: number, slideTo?: number, delay = 0): void {
   if (!ctx) return;
   const t = ctx.currentTime + delay;
@@ -30,17 +56,25 @@ function tone(freq: number, dur: number, type: OscillatorType, gain: number, sli
 
 export const sfx = {
   whoosh: () => tone(500, 0.06, 'triangle', 0.05, 250),
-  sour: () => tone(140, 0.08, 'square', 0.12, 80),
+  sour: () => {
+    thud(0.35, 900, 0.07);
+    tone(120, 0.07, 'sine', 0.2, 70);
+  },
   sweet: () => {
-    tone(180, 0.1, 'square', 0.16, 70);
-    tone(1400, 0.08, 'sine', 0.08, 1800);
+    thud(0.6, 2200, 0.1);
+    tone(150, 0.12, 'sine', 0.35, 50);
+    tone(1400, 0.08, 'sine', 0.06, 1800);
   },
   counter: () => {
+    thud(0.8, 3000, 0.14);
     tone(160, 0.14, 'sawtooth', 0.18, 60);
     tone(880, 0.1, 'square', 0.1);
     tone(1320, 0.14, 'square', 0.1, undefined, 0.07);
   },
-  block: () => tone(220, 0.07, 'triangle', 0.14, 160),
+  block: () => {
+    thud(0.25, 500, 0.06);
+    tone(220, 0.07, 'triangle', 0.14, 160);
+  },
   perfectGuard: () => {
     tone(1046, 0.18, 'sine', 0.12);
     tone(1568, 0.25, 'sine', 0.1, undefined, 0.05);
