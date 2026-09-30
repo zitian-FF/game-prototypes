@@ -89,7 +89,7 @@
     },
     "uppercut": {
       "startup": 2,
-      "sourEarly": 2,
+      "sourEarly": 0,
       "sweet": 3,
       "sour": 2,
       "recovery": 14,
