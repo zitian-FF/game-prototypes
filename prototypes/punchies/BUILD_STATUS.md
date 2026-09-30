@@ -8,6 +8,22 @@ issues).
 
 ## What was implemented
 
+- (Branch only, not merged yet.) KO animation (`render/KoAnim.ts`),
+  render-only. The sim records each fighter's last damaging blow
+  (`lastBlow`) and puts the KO style + direction in `result.ko`
+  (`koStyle()`: Uppercut or sweet Cross/Hook = fly, else drop). Drop:
+  body flattens into an ellipse along the blow, head slides back, fists
+  splay, colour greys, dust ring. Fly: slow-mo flight with spin and ghost
+  trail to the ropes (capped at `ko.flyMaxDistance`), rope flash + bulge +
+  camera shake, then a sitting slump facing centre with stun stars. The
+  winner's punch recovery replays at `ko.slowmo`. The result screen waits
+  for the animation (+`ko.resultDelayMs`). Online starts it only once the
+  KO is confirmed. Training plays it too; the dummy stays down until
+  RESET. New KO tune category (6 values).
+  Verified: headless style rules (jab/sour/chip = drop, sweet
+  cross/hook + uppercut = fly), Playwright captures of both styles in
+  Training and the single-player result screen appearing after the
+  animation; no console errors.
 - Rollback netcode (`net/rollback.ts`, replaces `net/lockstep.ts`):
   fixed local input delay `net.inputDelayFrames` (2); the opponent's
   input is predicted (held stick/guard carry over, taps don't); per-tick

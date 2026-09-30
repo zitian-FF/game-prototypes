@@ -1,4 +1,46 @@
 {
+  "ko.slowmo": {
+    "cat": "KO",
+    "desc": "KO slow-motion speed (1 = normal). Visual only; the match is already over.",
+    "min": 0.05,
+    "max": 1,
+    "step": 0.05
+  },
+  "ko.dropMs": {
+    "cat": "KO",
+    "desc": "Drop KO (jab, chip, any sour hit): real ms for the fall.",
+    "min": 200,
+    "max": 4000,
+    "step": 50
+  },
+  "ko.flyMs": {
+    "cat": "KO",
+    "desc": "Fly KO (sweet Cross/Hook, any Uppercut): real ms of flight to the ropes.",
+    "min": 200,
+    "max": 4000,
+    "step": 50
+  },
+  "ko.sitMs": {
+    "cat": "KO",
+    "desc": "Fly KO: real ms to slump into the sitting pose after reaching the ropes.",
+    "min": 100,
+    "max": 3000,
+    "step": 50
+  },
+  "ko.flyMaxDistance": {
+    "cat": "KO",
+    "desc": "Fly KO: max px travelled (stops earlier at the ropes).",
+    "min": 20,
+    "max": 400,
+    "step": 10
+  },
+  "ko.resultDelayMs": {
+    "cat": "KO",
+    "desc": "Pause after the KO animation before the result screen.",
+    "min": 0,
+    "max": 3000,
+    "step": 50
+  },
   "punches.jab.startup": {
     "cat": "Attack",
     "desc": "Jab: frames before the fist moves. Lower = faster.",

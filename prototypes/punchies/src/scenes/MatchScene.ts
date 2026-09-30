@@ -119,9 +119,9 @@ export class MatchScene extends Phaser.Scene {
       }
       this.waiting.setVisible(this.stalledSince > 0 && time - this.stalledSince > tune.net.stallIndicatorMs);
       if (this.ls.desynced) this.info.setText('DESYNC detected').setColor('#ff5a5a');
-      if (this.ls.confirmedResult()) this.showResult();
+      if (this.ls.confirmedResult() && this.stage.koFinished(this.ls.sim, time)) this.showResult();
     }
-    this.stage.draw(this.ls.sim, time);
+    this.stage.draw(this.ls.sim, time, !!this.ls.confirmedResult());
   }
 
   private showResult(): void {

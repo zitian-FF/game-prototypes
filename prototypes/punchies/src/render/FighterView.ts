@@ -6,8 +6,8 @@ import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } fr
 // Placeholder top-down boxer: body circle, two fists, state tints. Reads sim
 // state only; never writes it.
 
-const BODY_R = 17;
-const FIST_R = 7;
+export const BODY_R = 17;
+export const FIST_R = 7;
 
 export class FighterView {
   private g: Phaser.GameObjects.Graphics;
@@ -25,6 +25,10 @@ export class FighterView {
     private color: number,
   ) {
     this.g = scene.add.graphics().setDepth(10);
+  }
+
+  clear(): void {
+    this.g.clear();
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
