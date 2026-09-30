@@ -1,13 +1,22 @@
 ## Current milestone
 
-Training mode and online 1v1 PvP are both playable and deployed to the
-Current WIP itch.io slot. Online was verified end-to-end in-browser over a
+Training, tutorial, single player, local VS and online 1v1 PvP are all
+playable and deployed to the Current WIP itch.io slot. Online now uses
+rollback netcode instead of lockstep. Online was verified end-to-end in-browser over a
 mock transport only; the real Nostr/WebRTC path is untested (see Known
 issues).
 
 ## What was implemented
 
-- (Branch only, not merged yet at user's request.) Tutorial mode
+- Rollback netcode (`net/rollback.ts`, replaces `net/lockstep.ts`):
+  fixed local input delay `net.inputDelayFrames` (2); the opponent's
+  input is predicted (held stick/guard carry over, taps don't); per-tick
+  snapshots; a late input that contradicts the prediction restores the
+  snapshot and re-simulates to now; effects already shown are not
+  replayed; stall only past `net.maxRollbackFrames` (12); result only
+  shown once confirmed. GGPO-style time sync: the peer that runs ahead
+  of the other skips at most one tick in three until both meet.
+- Tutorial mode
   (`TutorialScene`, TUTORIAL button next to TRAINING): 17 linear steps
   (basics, defense, resources, advanced), one instruction each, device-
   aware button names, controls/HUD revealed step by step, scripted dummy
@@ -41,7 +50,7 @@ issues).
 - READY... GO! intro (`match.introSec`, 2 s) for Single Player and Online:
   in the sim, so both online peers start together; no input until GO,
   round timer starts at GO. Headless-tested (no movement during intro,
-  GO at tick 120, lockstep and AI tests unchanged).
+  GO at tick 120, netcode and AI tests unchanged).
 
 - Single Player vs easy AI (`sim/ai.ts`, `VsAIScene`): reads sim state and
   emits FrameInputs like a player; delayed reactions (`ai.reactionFrames`
@@ -53,7 +62,7 @@ issues).
   ends does `dodge.buffDamageMult` (1.5x); orange glow while armed,
   POWER! label on hit. Headless: jab 4 -> 6 inside the window, 4 after.
 - Optional hit-stop in the sim (`hit.hitstopFrames`, default 0 = off;
-  counters x2). Presses during it stay buffered; lockstep stays in sync
+  counters x2). Presses during it stay buffered; online stays in sync
   (loopback test with 3f hit-stop: no desync).
 - Hit feedback split by local perspective: directional spark cone along
   the strike (bigger for counters/uppercut); landing = white/yellow +
@@ -97,8 +106,7 @@ issues).
 - Online (`src/net/`, `MenuScene`, `LobbyScene`, `MatchScene`): Trystero
   (Nostr, pinned relays) + mp-net's TURN worker; 3-char room codes; host
   shows code + QR (`?room=CODE` URL); host measures ping and picks input
-  delay; tune synced host -> guest at start; lockstep with redundant input
-  packets; 1 Hz state-hash desync check; "waiting for opponent" indicator;
+  delay; tune synced host -> guest at start; redundant input packets; 1 Hz state-hash desync check; "waiting for opponent" indicator;
   result screen with REMATCH / MENU; disconnect handling; full-room and
   code-collision handling.
 - Square 310x310 ring, responsive view, auto-rotate to landscape,
@@ -107,14 +115,16 @@ issues).
 
 ## Key technical decisions
 
-- Lockstep with fixed input delay (no rollback). Delay = one-way ping in
-  frames + `net.extraDelayFrames`, clamped to `net.min/maxInputDelay`.
-  Each packet carries the last `2*delay+4` local inputs, so a single lost
-  packet never stalls. Local input history is kept that long because the
-  peer can lag up to `delay+1` ticks.
-- Lockstep core (`net/lockstep.ts`) has no Phaser dependency and was
-  tested headless: 30 s with 60-100 ms one-way latency and 10% loss ->
-  identical state hashes, ~4-5% stalled ticks at delay 6, combat included.
+- Rollback over lockstep: the user saw freezes on mobile data. Headless
+  network sim (60 s, 2 seeds, guest joins 0.5 s late): Wi-Fi ~0% stalls,
+  avg rollback 1 frame; mobile profile (jitter + 400 ms dropouts) 2-3%
+  stalls vs 8-9% for the old lockstep at delay 8, avg rollback ~3.7
+  frames; 0 hash mismatches. Remaining stalls are dropouts longer than
+  the 12-frame window. Worst-case 11-frame rollback costs ~0.3 ms.
+- Lobby delay = max(`net.inputDelayFrames`, one-way ping in frames -
+  `net.maxRollbackFrames` + 1), so very high ping adds delay instead of
+  stalling constantly.
+- Rollback core has no Phaser dependency and was tested headless.
 - Host = fighter 0 (left), guest = fighter 1 (right); no screen mirroring.
 - Hit resolution: the fist passes through the outer ring and resolves when
   it touches the core or reaches full extension; that frame sets
@@ -148,8 +158,10 @@ issues).
 
 - Real online play (Nostr relays + WebRTC + TURN) could not be tested from
   the build sandbox (outbound relay traffic blocked). Verified instead:
-  headless lockstep sim, and two browser tabs over a BroadcastChannel mock
-  of Trystero (lobby, QR, ?room join, ping/delay, match sync). Rematch
+  headless rollback sim, and two browser tabs over a BroadcastChannel mock
+  of Trystero (lobby, QR, ?room join, ping/delay, match start in sync, no
+  desync). The two headless tabs only reach ~14 fps each in the sandbox,
+  so real-speed play in the browser was not observed. Rematch
   flow not exercised in any test.
 - Info panel overlaps the left edge of the ring on narrow views.
 - All tune numbers are first-pass; only the ones the user asked for were
@@ -158,5 +170,6 @@ issues).
 
 ## Next proposed step
 
-Real two-phone online test (host on one phone, scan the QR on the other),
-then tune input delay / feel. Consider rollback if the delay feels heavy.
+Real two-phone online test on mobile data. If it still freezes, raise
+`net.maxRollbackFrames` (e.g. 20) in ?debug=1; if corrections look too
+jumpy, raise `net.inputDelayFrames` to 3-4.

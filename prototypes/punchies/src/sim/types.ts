@@ -1,6 +1,6 @@
 // Pure simulation types. Nothing in src/sim/ may touch Phaser, the DOM, or
 // wall-clock time: the same state + the same inputs must always produce the
-// same next state, which is what the lockstep netcode (step 5) relies on.
+// same next state, which is what the rollback netcode relies on.
 
 export type PunchType = 'jab' | 'cross' | 'hook' | 'uppercut';
 export type FatiguedPunch = 'jab' | 'cross' | 'hook';

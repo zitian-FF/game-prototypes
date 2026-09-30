@@ -727,27 +727,6 @@
     "max": 300,
     "step": 2
   },
-  "net.minInputDelay": {
-    "cat": "Match & Online",
-    "desc": "Online: minimum input delay (frames).",
-    "min": 1,
-    "max": 15,
-    "step": 1
-  },
-  "net.maxInputDelay": {
-    "cat": "Match & Online",
-    "desc": "Online: maximum input delay (frames).",
-    "min": 1,
-    "max": 20,
-    "step": 1
-  },
-  "net.extraDelayFrames": {
-    "cat": "Match & Online",
-    "desc": "Online: frames added on top of the measured one-way ping.",
-    "min": 0,
-    "max": 10,
-    "step": 1
-  },
   "net.pingSamples": {
     "cat": "Match & Online",
     "desc": "Online: pings taken to pick the delay.",
@@ -771,7 +750,7 @@
   },
   "net.stallIndicatorMs": {
     "cat": "Match & Online",
-    "desc": "Online: show \"waiting for opponent\" after a stall this long (ms).",
+    "desc": "Online: show \"waiting for opponent\" after a stall this long (ms). Stalls only happen past the rollback window.",
     "min": 0,
     "max": 1000,
     "step": 10
@@ -957,5 +936,19 @@
     "min": 0,
     "max": 240,
     "step": 5
+  },
+  "net.inputDelayFrames": {
+    "cat": "Match & Online",
+    "desc": "Online: local input delay in frames (rollback hides the rest). Higher = fewer corrections, more sluggish.",
+    "min": 0,
+    "max": 8,
+    "step": 1
+  },
+  "net.maxRollbackFrames": {
+    "cat": "Match & Online",
+    "desc": "Online: how far behind the opponent may be before the game waits (frames). Higher = fewer freezes, bigger corrections.",
+    "min": 2,
+    "max": 30,
+    "step": 1
   }
 }

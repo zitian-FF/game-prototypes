@@ -1,5 +1,5 @@
 import { joinRoom, type Room } from 'trystero/nostr';
-import type { HashPacket, InputPacket } from './lockstep';
+import type { HashPacket, InputPacket } from './rollback';
 
 // One Trystero room per 3-char code. The host is whoever created the room;
 // it pairs with the first peer that says hello and turns any later peer

@@ -157,13 +157,12 @@
     "dummyInfiniteStamina": true
   },
   "net": {
-    "minInputDelay": 3,
-    "maxInputDelay": 10,
-    "extraDelayFrames": 2,
     "pingSamples": 5,
     "connectTimeoutMs": 20000,
     "turnFetchTimeoutMs": 4000,
-    "stallIndicatorMs": 120
+    "stallIndicatorMs": 120,
+    "inputDelayFrames": 2,
+    "maxRollbackFrames": 12
   },
   "ai": {
     "reactionFrames": 10,
