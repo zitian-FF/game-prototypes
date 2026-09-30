@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
-import { normalizeRoomCode } from '../net/roomCode';
+import { normalizeRoomCode, ROOM_ALPHABET } from '../net/roomCode';
 import { addFullscreenButton } from '../ui/fullscreen';
 import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
@@ -116,14 +116,96 @@ export class MenuScene extends Phaser.Scene {
     refresh();
   }
 
+  // In-canvas code entry with its own keypad (a native prompt() dialog
+  // swallows touch-end on Android and leaves the joystick stuck). Only
+  // characters that can appear in a room code are offered. A physical
+  // keyboard can type too.
   private join(): void {
-    const raw = window.prompt('Room code (3 characters)');
-    if (raw === null) return;
-    const code = normalizeRoomCode(raw);
-    if (!code) {
-      this.msg.setText(`"${raw}" is not a valid room code`);
-      return;
+    const items: Phaser.GameObjects.GameObject[] = [];
+    const D = 300;
+    let code = '';
+    const txt = (x: number, y: number, s: string, size: number, color: string) => {
+      const t = this.add
+        .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, fontStyle: 'bold', color, resolution: PIXEL_RATIO })
+        .setOrigin(0.5)
+        .setDepth(D + 2);
+      items.push(t);
+      return t;
+    };
+    const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x2a3140) => {
+      const bg = this.add.rectangle(x, y, w, h, fill, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(D + 1).setInteractive();
+      bg.on('pointerdown', () => {
+        bg.setFillStyle(0x4a5a78);
+        this.time.delayedCall(90, () => bg.active && bg.setFillStyle(fill));
+        onTap();
+      });
+      items.push(bg);
+      return txt(x, y, label, 13, '#ffffff');
+    };
+
+    items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(D).setInteractive());
+    items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 400, 300, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
+    txt(VIEW.cx, VIEW.cy - 128, 'ENTER ROOM CODE', 14, '#ffd24a');
+
+    const slots: Phaser.GameObjects.Text[] = [];
+    for (let i = 0; i < 3; i++) {
+      const x = VIEW.cx + (i - 1) * 46;
+      items.push(this.add.rectangle(x, VIEW.cy - 92, 38, 44, 0x0c0f15, 1).setStrokeStyle(2, 0x5a6378).setDepth(D + 1));
+      slots.push(txt(x, VIEW.cy - 92, '', 26, '#ffffff'));
     }
-    this.scene.start('Lobby', { role: 'guest', code });
+    const status = txt(VIEW.cx, VIEW.cy - 60, '', 10, '#ff8a7a');
+
+    const close = () => {
+      this.input.keyboard?.off('keydown', onKey);
+      for (const o of items) o.destroy();
+    };
+    const submit = () => {
+      const c = normalizeRoomCode(code);
+      if (!c) {
+        status.setText('enter all 3 characters');
+        return;
+      }
+      close();
+      this.scene.start('Lobby', { role: 'guest', code: c });
+    };
+    const type = (ch: string) => {
+      if (code.length >= 3) return;
+      code += ch;
+      status.setText('');
+      refresh();
+    };
+    const back = () => {
+      code = code.slice(0, -1);
+      refresh();
+    };
+    const refresh = () => {
+      slots.forEach((s, i) => s.setText(code[i] ?? ''));
+    };
+
+    // 31 characters + DEL on an 8 x 4 grid.
+    const cols = 8;
+    const kw = 42;
+    const kh = 30;
+    const keys = [...ROOM_ALPHABET];
+    keys.forEach((ch, i) => {
+      const x = VIEW.cx + ((i % cols) - (cols - 1) / 2) * (kw + 4);
+      const y = VIEW.cy - 24 + Math.floor(i / cols) * (kh + 4);
+      key(x, y, kw, kh, ch, () => type(ch));
+    });
+    const di = keys.length;
+    key(VIEW.cx + ((di % cols) - (cols - 1) / 2) * (kw + 4), VIEW.cy - 24 + Math.floor(di / cols) * (kh + 4), kw, kh, 'DEL', back, 0x3a2a2a);
+    key(VIEW.cx - 70, VIEW.cy + 124, 120, 30, 'CANCEL', close, 0x3a2a2a);
+    key(VIEW.cx + 70, VIEW.cy + 124, 120, 30, 'JOIN', submit, 0x2a4a34);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace') back();
+      else if (e.key === 'Enter') submit();
+      else if (e.key === 'Escape') close();
+      else {
+        const ch = e.key.toUpperCase().replace('O', '0');
+        if (ch.length === 1 && ROOM_ALPHABET.includes(ch)) type(ch);
+      }
+    };
+    this.input.keyboard?.on('keydown', onKey);
   }
 }
