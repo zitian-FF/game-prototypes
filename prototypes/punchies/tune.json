@@ -31,7 +31,10 @@
       "staminaCost": 4,
       "staminaDamage": 5,
       "stunBuild": 8,
-      "startReachFrac": 0.4
+      "startReachFrac": 0.4,
+      "fatigueBars": 4,
+      "fatigueSpeedPerBar": 0.12,
+      "fatigueDamagePerBar": 0.1
     },
     "cross": {
       "startup": 13,
@@ -46,7 +49,10 @@
       "staminaCost": 9,
       "staminaDamage": 16,
       "stunBuild": 18,
-      "startReachFrac": 0.4
+      "startReachFrac": 0.4,
+      "fatigueBars": 2,
+      "fatigueSpeedPerBar": 0.24,
+      "fatigueDamagePerBar": 0.2
     },
     "hook": {
       "startup": 7,
@@ -62,7 +68,10 @@
       "staminaDamage": 12,
       "stunBuild": 14,
       "startReachFrac": 0.75,
-      "guardChipMult": 0.4
+      "guardChipMult": 0.4,
+      "fatigueBars": 3,
+      "fatigueSpeedPerBar": 0.16,
+      "fatigueDamagePerBar": 0.133
     },
     "uppercut": {
       "startup": 2,
@@ -131,10 +140,8 @@
     "perUse": 1,
     "decayPerSec": 0.8,
     "freeUses": 2,
-    "maxLevel": 4,
-    "speedPerLevel": 0.12,
-    "damagePerLevel": 0.1,
-    "minDamageMult": 0.5
+    "minDamageMult": 0.5,
+    "decayDelayFrames": 60
   },
   "input": {
     "bufferFrames": 6,

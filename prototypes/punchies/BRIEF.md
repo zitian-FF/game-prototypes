@@ -109,8 +109,11 @@ reach.
   Guard; decays otherwise. Over threshold = stunned for base + overflow.
   Stunned: forced Vulnerable, cannot attack, can move/dodge with slower
   recovery. Meter resets when stun ends.
-- Fatigue: repeating a punch type builds that type's counter (decays over
-  time), reducing speed, recovery speed and damage.
+- Fatigue: repeating a punch type builds that type's counter, reducing
+  speed, recovery speed and damage. Per type: Jab 4 bars, Hook 3, Cross 2,
+  each with its own per-bar penalty (full bars = same max penalty). Whiffs
+  count. A type's fatigue only decays after ~1 s without throwing it
+  (decay pause). A fatigued throw shows a subtle grey "tired".
 
 ## Training
 - Dummy is static; a button cycles its stance: Normal, High Guard,

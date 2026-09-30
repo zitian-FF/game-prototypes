@@ -34,6 +34,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     stunDecayWait: 0,
     stars: 0,
     fatigue: { jab: 0, cross: 0, hook: 0 },
+    fatigueWait: { jab: 0, cross: 0, hook: 0 },
     punch: null,
     dodge: null,
     postDodgeVulnerable: 0,
@@ -130,7 +131,7 @@ export function hurtRadius(f: Fighter): number {
 export function fatigueLevel(f: Fighter, type: PunchType): number {
   if (type === 'uppercut') return 0;
   const raw = f.fatigue[type] - tune.fatigue.freeUses;
-  return Math.max(0, Math.min(tune.fatigue.maxLevel, raw));
+  return Math.max(0, Math.min(tune.punches[type].fatigueBars, raw));
 }
 
 export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } {
@@ -161,8 +162,10 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   const f = s.fighters[idx];
   const cfg = tune.punches[type];
   const level = fatigueLevel(f, type);
-  const slow = 1 + level * tune.fatigue.speedPerLevel;
-  let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * tune.fatigue.damagePerLevel);
+  // Per-type fatigue: each punch has its own bar count and per-bar penalty.
+  const fcfg = type === 'uppercut' ? null : tune.punches[type];
+  const slow = 1 + level * (fcfg ? fcfg.fatigueSpeedPerBar : 0);
+  let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * (fcfg ? fcfg.fatigueDamagePerBar : 0));
   // Post-dodge power-up: the first punch thrown in the window hits harder.
   const buffed = f.dashBuff > 0;
   if (buffed) {
@@ -195,10 +198,11 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     f.stars = 0;
   } else {
     f.fatigue[type] += tune.fatigue.perUse;
+    f.fatigueWait[type] = tune.fatigue.decayDelayFrames;
   }
   spendStamina(f, cfg.staminaCost);
   f.regenWait = tune.stamina.regenDelayFrames;
-  events.push({ kind: 'throw', attacker: idx, punch: type });
+  events.push({ kind: 'throw', attacker: idx, punch: type, tired: level > 0 });
 }
 
 function startDodge(s: SimState, idx: number, input: FrameInput): void {
@@ -552,8 +556,11 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
 
+  // Decay pause: a type's fatigue only wears off after a spell of not
+  // throwing it, so repeating a punch always builds up.
   for (const t of FATIGUED_PUNCHES) {
-    f.fatigue[t] = Math.max(0, f.fatigue[t] - tune.fatigue.decayPerSec / TICK_RATE);
+    if (f.fatigueWait[t] > 0) f.fatigueWait[t]--;
+    else f.fatigue[t] = Math.max(0, f.fatigue[t] - tune.fatigue.decayPerSec / TICK_RATE);
   }
 
   // Stamina: guard drains; otherwise regen after a short delay since the

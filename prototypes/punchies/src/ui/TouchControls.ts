@@ -180,10 +180,10 @@ export class TouchControls {
     g.lineBetween(MAIN.x, MAIN.y - MAIN.r, MAIN.x, MAIN.y + MAIN.r);
 
     // Fatigue pips under JAB / CROSS / HOOK labels
-    this.drawFatigue(MAIN.x - MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'jab'));
-    this.drawFatigue(MAIN.x + MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'cross'));
+    this.drawFatigue(MAIN.x - MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'jab'), tune.punches.jab.fatigueBars);
+    this.drawFatigue(MAIN.x + MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'cross'), tune.punches.cross.fatigueBars);
     const hook = ARC_BUTTONS[0];
-    this.drawFatigue(hook.x, hook.y + 12, fatigueLevel(f, 'hook'));
+    this.drawFatigue(hook.x, hook.y + 12, fatigueLevel(f, 'hook'), tune.punches.hook.fatigueBars);
 
     for (const b of ARC_BUTTONS) {
       const flashing = (this.flash.get(b.id) ?? 0) > 0 || (b.id === 'guard' && this.isGuardHeld());
@@ -201,8 +201,7 @@ export class TouchControls {
     for (const [k, v] of this.flash) this.flash.set(k, v - 1);
   }
 
-  private drawFatigue(x: number, y: number, level: number): void {
-    const max = tune.fatigue.maxLevel;
+  private drawFatigue(x: number, y: number, level: number, max: number): void {
     const w = 6;
     const gap = 2;
     const total = max * w + (max - 1) * gap;

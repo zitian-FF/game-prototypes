@@ -165,9 +165,15 @@ export class Effects {
   handle(events: SimEvent[], s: SimState, localIdx: number): void {
     for (const e of events) {
       switch (e.kind) {
-        case 'throw':
+        case 'throw': {
           sfx.whoosh();
+          // Subtle cue that this punch type is fatigued (slower, weaker).
+          if (e.tired) {
+            const f = s.fighters[e.attacker];
+            this.subtle(f.x, f.y + 26, 'tired');
+          }
           break;
+        }
         case 'hit':
           this.hit(e, s, localIdx);
           break;
@@ -228,6 +234,15 @@ export class Effects {
     }
     g.setPosition(x, y);
     this.scene.tweens.add({ targets: g, scale: 1.8, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+  }
+
+  private subtle(x: number, y: number, text: string): void {
+    const t = this.scene.add
+      .text(x, y, text, { fontFamily: 'monospace', fontSize: '9px', color: '#9a9aa0', resolution: PIXEL_RATIO })
+      .setOrigin(0.5)
+      .setAlpha(0.8)
+      .setDepth(69);
+    this.scene.tweens.add({ targets: t, y: y + 6, alpha: 0, duration: 600, onComplete: () => t.destroy() });
   }
 
   private puff(x: number, y: number): void {
