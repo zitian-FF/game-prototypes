@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
-import { bindKeyboard, IntentLayer } from '../input/intents';
+import { IntentLayer } from '../input/intents';
+import { devices, mergeInputs, type InputSource } from '../input/devices';
 import { TouchControls } from '../ui/TouchControls';
 import { Hud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
@@ -8,7 +9,7 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { tune } from '../sim/tune';
-import type { SimEvent, SimState } from '../sim/types';
+import type { FrameInput, SimEvent, SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
 import { DEBUG_ENABLED, debugView } from '../debug/debugPanel';
 
@@ -16,7 +17,6 @@ import { DEBUG_ENABLED, debugView } from '../debug/debugPanel';
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
 export class FightStage {
   readonly intents = new IntentLayer();
-  private pollKeyboard: () => void;
   private controls: TouchControls;
   private hud: Hud;
   private info: InfoPanel;
@@ -27,7 +27,10 @@ export class FightStage {
   constructor(
     private scene: Phaser.Scene,
     names: [string, string],
-    private localIdx: 0 | 1,
+    // -1 = local two-player: no "me", so hit feedback stays neutral.
+    private localIdx: 0 | 1 | -1,
+    // Whether the on-screen touch controls are available at all.
+    private touchEnabled = true,
   ) {
     this.ring = scene.add.graphics().setDepth(0);
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
@@ -37,29 +40,42 @@ export class FightStage {
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
     addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
-    this.pollKeyboard = bindKeyboard(scene, this.intents);
     scene.input.on('pointerdown', unlockAudio);
-    const clear = () => this.intents.clearAll();
+    const clear = () => {
+      this.intents.clearAll();
+      devices.clear();
+    };
     scene.game.events.on(Phaser.Core.Events.BLUR, clear);
     scene.events.once('shutdown', () => scene.game.events.off(Phaser.Core.Events.BLUR, clear));
   }
 
   pollDevices(): void {
-    this.pollKeyboard();
+    devices.poll();
   }
 
   handleEvents(events: SimEvent[], s: SimState): void {
     this.fx.handle(events, s, this.localIdx);
   }
 
+  // Solo modes: touch + either keyboard half + any controller all drive the
+  // one local player.
+  sampleLocal(): FrameInput {
+    return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
+  }
+
+  sampleSource(src: InputSource): FrameInput {
+    return src === 'touch' ? this.intents.sample() : devices.sample(src);
+  }
+
   draw(s: SimState, time: number): void {
     this.drawRing();
-    this.controls.enabled = !this.info.open;
+    this.controls.enabled = this.touchEnabled && !this.info.open;
+    this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
     this.views[0].draw(s.fighters[0], time, show);
     this.views[1].draw(s.fighters[1], time, show);
     this.hud.draw(s);
-    this.controls.draw(s.fighters[this.localIdx]);
+    this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
   }
 
   // Small menu-style button (not a gameplay intent).
