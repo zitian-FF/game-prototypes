@@ -95,6 +95,8 @@ reach.
   punch blocked by High Guard. No time decay.
 - At 3 stars Uppercut is active: near-instant startup, hook reach, 2x sweet
   Cross damage, cannot be blocked or Perfect Guarded, can be dodged.
+  Always resolves on the Vulnerable row, even on the outer ring
+  (2026-09-30): sweet 2x Cross, sour 1x Cross.
 - Whiff: stars consumed and a long Vulnerable recovery.
 
 ## Stamina, Health, Stun, Fatigue

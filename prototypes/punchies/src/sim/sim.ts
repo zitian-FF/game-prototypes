@@ -500,7 +500,8 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // The core is the face: in Normal stance a hit that reaches it resolves
   // on the Vulnerable row (full damage on sweet); a hit that only clips the
   // outer ring (arms/body) resolves on the Normal row.
-  const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core ? 'normal' : 'vulnerable';
+  // Uppercut ignores the outer ring as it ignores guard: always the Vulnerable row.
+  const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' ? 'normal' : 'vulnerable';
   const baseDamage =
     p.type === 'uppercut'
       ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult
