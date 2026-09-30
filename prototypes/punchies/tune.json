@@ -42,7 +42,9 @@
       "startReachFrac": 0.4,
       "fatigueBars": 4,
       "fatigueSpeedPerBar": 0.12,
-      "fatigueDamagePerBar": 0.1
+      "fatigueDamagePerBar": 0.1,
+      "pushHit": 2,
+      "pushBlock": 0
     },
     "cross": {
       "startup": 13,
@@ -60,7 +62,9 @@
       "startReachFrac": 0.4,
       "fatigueBars": 2,
       "fatigueSpeedPerBar": 0.24,
-      "fatigueDamagePerBar": 0.2
+      "fatigueDamagePerBar": 0.2,
+      "pushHit": 10,
+      "pushBlock": 5
     },
     "hook": {
       "startup": 7,
@@ -79,7 +83,9 @@
       "guardChipMult": 0.4,
       "fatigueBars": 3,
       "fatigueSpeedPerBar": 0.16,
-      "fatigueDamagePerBar": 0.133
+      "fatigueDamagePerBar": 0.133,
+      "pushHit": 8,
+      "pushBlock": 4
     },
     "uppercut": {
       "startup": 2,
@@ -94,7 +100,9 @@
       "staminaCost": 10,
       "staminaDamage": 24,
       "stunBuild": 30,
-      "startReachFrac": 0.4
+      "startReachFrac": 0.4,
+      "pushHit": 16,
+      "pushBlock": 0
     }
   },
   "hit": {
@@ -102,7 +110,8 @@
     "attackerStaminaPenalty": 6,
     "counterDamageMult": 1.5,
     "sourStunMult": 0.5,
-    "hitstopFrames": 3
+    "hitstopFrames": 3,
+    "pushFrames": 6
   },
   "guard": {
     "perfectFrames": 6,
@@ -115,7 +124,7 @@
   "dodge": {
     "frames": 14,
     "iFrames": 10,
-    "speed": 150,
+    "speed": 225,
     "vulnerableFrames": 12,
     "stunnedVulnerableMult": 2,
     "staminaCost": 12,
@@ -128,7 +137,7 @@
     "regenIdlePerSec": 24,
     "regenActivePerSec": 8,
     "regenDelayFrames": 20,
-    "exhaustRecoverAt": 25,
+    "exhaustRecoverAt": 20,
     "exhaustedRegenMult": 0.5
   },
   "health": {

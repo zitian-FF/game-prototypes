@@ -992,5 +992,68 @@
     "min": 2,
     "max": 30,
     "step": 1
+  },
+  "hit.pushFrames": {
+    "cat": "Attack",
+    "desc": "Pushback: ticks the knockback is spread over (smooth slide, not a teleport).",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "punches.jab.pushHit": {
+    "cat": "Attack",
+    "desc": "Jab: px the defender is pushed back when it lands.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.jab.pushBlock": {
+    "cat": "Attack",
+    "desc": "Jab: px the defender is pushed back when it is blocked.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.cross.pushHit": {
+    "cat": "Attack",
+    "desc": "Cross: px the defender is pushed back when it lands.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.cross.pushBlock": {
+    "cat": "Attack",
+    "desc": "Cross: px the defender is pushed back when it is blocked.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.hook.pushHit": {
+    "cat": "Attack",
+    "desc": "Hook: px the defender is pushed back when it lands.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.hook.pushBlock": {
+    "cat": "Attack",
+    "desc": "Hook: px the defender is pushed back when it is blocked.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.uppercut.pushHit": {
+    "cat": "Attack",
+    "desc": "Uppercut: px the defender is pushed back when it lands.",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "punches.uppercut.pushBlock": {
+    "cat": "Attack",
+    "desc": "Uppercut: px the defender is pushed back when it is blocked. (Uppercut cannot be blocked.)",
+    "min": 0,
+    "max": 60,
+    "step": 1
   }
 }
