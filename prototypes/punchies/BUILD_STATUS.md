@@ -7,6 +7,11 @@ issues).
 
 ## What was implemented
 
+- READY... GO! intro (`match.introSec`, 2 s) for Single Player and Online:
+  in the sim, so both online peers start together; no input until GO,
+  round timer starts at GO. Headless-tested (no movement during intro,
+  GO at tick 120, lockstep and AI tests unchanged).
+
 - Single Player vs easy AI (`sim/ai.ts`, `VsAIScene`): reads sim state and
   emits FrameInputs like a player; delayed reactions (`ai.reactionFrames`
   10), guards/dodges some punch starts, approaches / retreats on low

@@ -120,6 +120,8 @@ export type SimEvent =
   | { kind: 'throw'; attacker: number; punch: PunchType }
   | { kind: 'stunned'; fighter: number }
   | { kind: 'starsReady'; fighter: number }
+  | { kind: 'ready' }
+  | { kind: 'go' }
   | { kind: 'ko'; loser: number }
   | { kind: 'timeUp'; winner: number | null };
 
@@ -134,5 +136,7 @@ export interface SimState {
   timed: boolean;
   // Hit-stop: frames left in which the fight is frozen after a hit.
   hitstop: number;
+  // Tick at which the round actually starts (after READY... GO!).
+  fightStartTick: number;
   result: MatchResult | null;
 }

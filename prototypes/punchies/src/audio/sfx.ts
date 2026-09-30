@@ -81,6 +81,11 @@ export const sfx = {
     tone(80, 0.22, 'sawtooth', 0.2, 35);
     tone(220, 0.18, 'square', 0.08, 110, 0.05);
   },
+  ready: () => tone(440, 0.18, 'square', 0.08),
+  go: () => {
+    tone(880, 0.25, 'square', 0.1);
+    tone(1320, 0.3, 'square', 0.06, undefined, 0.05);
+  },
   block: () => {
     thud(0.25, 500, 0.06);
     tone(220, 0.07, 'triangle', 0.14, 160);
