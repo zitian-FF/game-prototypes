@@ -34,6 +34,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     stunDecayWait: 0,
     stars: 0,
     fatigue: { jab: 0, cross: 0, hook: 0 },
+    fatigueWait: { jab: 0, cross: 0, hook: 0 },
     punch: null,
     dodge: null,
     postDodgeVulnerable: 0,
@@ -197,6 +198,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     f.stars = 0;
   } else {
     f.fatigue[type] += tune.fatigue.perUse;
+    f.fatigueWait[type] = tune.fatigue.decayDelayFrames;
   }
   spendStamina(f, cfg.staminaCost);
   f.regenWait = tune.stamina.regenDelayFrames;
@@ -554,8 +556,11 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
 
+  // Decay pause: a type's fatigue only wears off after a spell of not
+  // throwing it, so repeating a punch always builds up.
   for (const t of FATIGUED_PUNCHES) {
-    f.fatigue[t] = Math.max(0, f.fatigue[t] - tune.fatigue.decayPerSec / TICK_RATE);
+    if (f.fatigueWait[t] > 0) f.fatigueWait[t]--;
+    else f.fatigue[t] = Math.max(0, f.fatigue[t] - tune.fatigue.decayPerSec / TICK_RATE);
   }
 
   // Stamina: guard drains; otherwise regen after a short delay since the

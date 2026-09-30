@@ -7,6 +7,14 @@ issues).
 
 ## What was implemented
 
+- Per-type fatigue: `punches.<type>.fatigueBars` (jab 4, hook 3, cross 2)
+  with per-bar speed/damage penalties sized so full bars all give the
+  same max penalty (x1.48 frames, 60% dmg). Decay pause
+  (`fatigue.decayDelayFrames`, 60): a type only recovers after not being
+  thrown for a while. Fixes Cross (and partly Hook) never fatiguing under
+  flat decay. Grey "tired" text on fatigued throws. Headless: 8 whiffed
+  repeats fill jab 4/4, hook 3/3, cross 2/2; tired from the 4th.
+
 - Keyboard + controller support (`input/devices.ts`): two fixed keyboard
   layouts (WASD / arrows+numpad) and standard-gamepad mapping, polled
   per frame so taps between ticks aren't lost. Solo modes merge touch +

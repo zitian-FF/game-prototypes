@@ -414,7 +414,7 @@
   },
   "fatigue.decayPerSec": {
     "cat": "Attack",
-    "desc": "Fatigue that wears off per second.",
+    "desc": "Fatigue that wears off per second once the decay pause has passed.",
     "min": 0,
     "max": 5,
     "step": 0.1
@@ -950,5 +950,12 @@
     "min": 0,
     "max": 0.5,
     "step": 0.005
+  },
+  "fatigue.decayDelayFrames": {
+    "cat": "Attack",
+    "desc": "Fatigue of a punch type only starts wearing off after this many frames without throwing it (repeating always builds).",
+    "min": 0,
+    "max": 240,
+    "step": 5
   }
 }

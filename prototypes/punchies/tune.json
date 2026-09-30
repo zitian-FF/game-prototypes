@@ -140,7 +140,8 @@
     "perUse": 1,
     "decayPerSec": 0.8,
     "freeUses": 2,
-    "minDamageMult": 0.5
+    "minDamageMult": 0.5,
+    "decayDelayFrames": 60
   },
   "input": {
     "bufferFrames": 6,

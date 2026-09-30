@@ -72,6 +72,8 @@ export interface Fighter {
   stunDecayWait: number;
   stars: number;
   fatigue: Record<FatiguedPunch, number>;
+  // Frames left before each type's fatigue starts decaying (reset on throw).
+  fatigueWait: Record<FatiguedPunch, number>;
   punch: PunchState | null;
   dodge: DodgeState | null;
   postDodgeVulnerable: number;
