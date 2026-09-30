@@ -117,7 +117,7 @@ export type SimEvent =
   | { kind: 'perfectGuard'; attacker: number; x: number; y: number }
   | { kind: 'dodged'; attacker: number; x: number; y: number }
   | { kind: 'whiff'; attacker: number; punch: PunchType }
-  | { kind: 'throw'; attacker: number; punch: PunchType }
+  | { kind: 'throw'; attacker: number; punch: PunchType; tired: boolean }
   | { kind: 'stunned'; fighter: number }
   | { kind: 'starsReady'; fighter: number }
   | { kind: 'ready' }

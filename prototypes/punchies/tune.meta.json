@@ -421,31 +421,10 @@
   },
   "fatigue.freeUses": {
     "cat": "Attack",
-    "desc": "Repeats allowed before fatigue starts to bite.",
+    "desc": "Repeats of a punch type allowed before its fatigue bars start to fill.",
     "min": 0,
     "max": 6,
     "step": 1
-  },
-  "fatigue.maxLevel": {
-    "cat": "Attack",
-    "desc": "Maximum fatigue level (pips shown on the button).",
-    "min": 1,
-    "max": 8,
-    "step": 1
-  },
-  "fatigue.speedPerLevel": {
-    "cat": "Attack",
-    "desc": "Startup/recovery slowdown per fatigue level (0.12 = +12%).",
-    "min": 0,
-    "max": 0.5,
-    "step": 0.01
-  },
-  "fatigue.damagePerLevel": {
-    "cat": "Attack",
-    "desc": "Damage lost per fatigue level (0.1 = -10%).",
-    "min": 0,
-    "max": 0.5,
-    "step": 0.01
   },
   "fatigue.minDamageMult": {
     "cat": "Attack",
@@ -908,5 +887,68 @@
     "min": 0,
     "max": 5,
     "step": 0.25
+  },
+  "punches.jab.fatigueBars": {
+    "cat": "Attack",
+    "desc": "Jab: fatigue bars (max fatigue level) shown on its button.",
+    "min": 1,
+    "max": 8,
+    "step": 1
+  },
+  "punches.jab.fatigueSpeedPerBar": {
+    "cat": "Attack",
+    "desc": "Jab: startup/recovery slowdown per lit fatigue bar (0.12 = +12%).",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  },
+  "punches.jab.fatigueDamagePerBar": {
+    "cat": "Attack",
+    "desc": "Jab: damage lost per lit fatigue bar (0.1 = -10%).",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.005
+  },
+  "punches.hook.fatigueBars": {
+    "cat": "Attack",
+    "desc": "Hook: fatigue bars (max fatigue level) shown on its button.",
+    "min": 1,
+    "max": 8,
+    "step": 1
+  },
+  "punches.hook.fatigueSpeedPerBar": {
+    "cat": "Attack",
+    "desc": "Hook: startup/recovery slowdown per lit fatigue bar (0.12 = +12%).",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  },
+  "punches.hook.fatigueDamagePerBar": {
+    "cat": "Attack",
+    "desc": "Hook: damage lost per lit fatigue bar (0.1 = -10%).",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.005
+  },
+  "punches.cross.fatigueBars": {
+    "cat": "Attack",
+    "desc": "Cross: fatigue bars (max fatigue level) shown on its button.",
+    "min": 1,
+    "max": 8,
+    "step": 1
+  },
+  "punches.cross.fatigueSpeedPerBar": {
+    "cat": "Attack",
+    "desc": "Cross: startup/recovery slowdown per lit fatigue bar (0.12 = +12%).",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  },
+  "punches.cross.fatigueDamagePerBar": {
+    "cat": "Attack",
+    "desc": "Cross: damage lost per lit fatigue bar (0.1 = -10%).",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.005
   }
 }

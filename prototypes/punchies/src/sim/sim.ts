@@ -130,7 +130,7 @@ export function hurtRadius(f: Fighter): number {
 export function fatigueLevel(f: Fighter, type: PunchType): number {
   if (type === 'uppercut') return 0;
   const raw = f.fatigue[type] - tune.fatigue.freeUses;
-  return Math.max(0, Math.min(tune.fatigue.maxLevel, raw));
+  return Math.max(0, Math.min(tune.punches[type].fatigueBars, raw));
 }
 
 export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } {
@@ -161,8 +161,10 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   const f = s.fighters[idx];
   const cfg = tune.punches[type];
   const level = fatigueLevel(f, type);
-  const slow = 1 + level * tune.fatigue.speedPerLevel;
-  let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * tune.fatigue.damagePerLevel);
+  // Per-type fatigue: each punch has its own bar count and per-bar penalty.
+  const fcfg = type === 'uppercut' ? null : tune.punches[type];
+  const slow = 1 + level * (fcfg ? fcfg.fatigueSpeedPerBar : 0);
+  let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * (fcfg ? fcfg.fatigueDamagePerBar : 0));
   // Post-dodge power-up: the first punch thrown in the window hits harder.
   const buffed = f.dashBuff > 0;
   if (buffed) {
@@ -198,7 +200,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   }
   spendStamina(f, cfg.staminaCost);
   f.regenWait = tune.stamina.regenDelayFrames;
-  events.push({ kind: 'throw', attacker: idx, punch: type });
+  events.push({ kind: 'throw', attacker: idx, punch: type, tired: level > 0 });
 }
 
 function startDodge(s: SimState, idx: number, input: FrameInput): void {
