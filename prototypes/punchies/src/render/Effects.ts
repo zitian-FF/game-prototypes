@@ -45,7 +45,8 @@ export class Effects {
     const palette = dealt ? [0xffffff, 0xfff27a, 0xffc83a] : [0xffd0b0, 0xff8a3a, 0xff3a2a];
     this.directionalSpark(e.x, e.y, att.fx, att.fy, size, palette, big ? 16 : e.sweet ? 10 : 6);
     this.onFighterFlash(defIdx, dealt ? 0xffffff : 0xff4a4a);
-    this.damageNumber(e.x, e.y - 10, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
+    const def = s.fighters[defIdx];
+    this.damageNumber(def.x, def.y - 34, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
 
     if (dealt) {
       cam.shake(big ? 150 : 70, big ? 0.009 : 0.003);
@@ -111,20 +112,26 @@ export class Effects {
     }
   }
 
+  // Big and bold: pops in above the defender's head, holds, then floats
+  // off. Consecutive numbers step sideways so rapid hits don't stack.
+  private dmgSlot = 0;
   private damageNumber(x: number, y: number, dmg: number, color: string, big: boolean): void {
+    this.dmgSlot = (this.dmgSlot + 1) % 3;
     const t = this.scene.add
-      .text(x + (Math.random() - 0.5) * 10, y, `-${Math.round(dmg * 10) / 10}`, {
+      .text(x + (this.dmgSlot - 1) * 14, y, `${Math.round(dmg * 10) / 10}`, {
         fontFamily: 'monospace',
-        fontSize: big ? '15px' : '11px',
+        fontSize: big ? '24px' : '17px',
         fontStyle: 'bold',
         color,
         stroke: '#000000',
-        strokeThickness: 3,
+        strokeThickness: 5,
         resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
-      .setDepth(72);
-    this.scene.tweens.add({ targets: t, y: y - 22, alpha: 0, duration: 650, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
+      .setDepth(72)
+      .setScale(1.6);
+    this.scene.tweens.add({ targets: t, scale: 1, duration: 110, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: t, y: y - 26, alpha: 0, delay: 380, duration: 520, ease: 'Cubic.easeIn', onComplete: () => t.destroy() });
   }
 
   // Callout that vibrates as it fades (impact text).

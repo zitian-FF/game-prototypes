@@ -3,16 +3,84 @@ import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 
-// Placeholder top-down boxer: body circle, two fists, state tints. Reads sim
-// state only; never writes it.
+// Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
+// gloves, stepping legs, state tints. Reads sim state only; never writes it.
 
 export const BODY_R = 17;
 export const FIST_R = 7;
+
+type Pt = { x: number; y: number };
+
+// Oval centred on (x, y): semi-axis a along (fx, fy), b across it.
+export function oval(x: number, y: number, fx: number, fy: number, a: number, b: number): Pt[] {
+  const pts: Pt[] = [];
+  for (let i = 0; i < 18; i++) {
+    const t = (i / 18) * Math.PI * 2;
+    const u = Math.cos(t) * a;
+    const v = Math.sin(t) * b;
+    pts.push({ x: x + fx * u + fy * v, y: y + fy * u - fx * v });
+  }
+  return pts;
+}
+
+// Scale an RGB colour's brightness (k < 1 darker, > 1 lighter).
+export function shade(c: number, k: number): number {
+  const ch = (v: number) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return (ch((c >> 16) & 255) << 16) | (ch((c >> 8) & 255) << 8) | ch(c & 255);
+}
+
+// Body parts shared with the KO animation.
+export function drawTorso(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, alpha: number, scale = 1): void {
+  g.fillStyle(0x000000, 0.35 * alpha);
+  g.fillPoints(oval(x, y, fx, fy, BODY_R * 0.8 * scale + 1, BODY_R * scale + 1), true);
+  g.fillStyle(color, alpha);
+  g.fillPoints(oval(x, y, fx, fy, BODY_R * 0.8 * scale, BODY_R * scale), true);
+}
+
+// Sparring helmet from above: padded shell, crown ridge, face opening at the front.
+export function drawHelmet(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, alpha: number, scale = 1): void {
+  g.fillStyle(shade(color, 0.55), alpha);
+  g.fillCircle(x, y, 10.5 * scale);
+  g.fillStyle(shade(color, 1.15), alpha);
+  g.fillCircle(x, y, 9 * scale);
+  g.fillStyle(0xf0c8a0, alpha);
+  g.fillCircle(x + fx * 6 * scale, y + fy * 6 * scale, 4.2 * scale);
+  g.lineStyle(2, shade(color, 0.6), alpha);
+  g.lineBetween(x - fx * 7 * scale, y - fy * 7 * scale, x + fx * 2 * scale, y + fy * 2 * scale);
+}
+
+export function drawArm(g: Phaser.GameObjects.Graphics, sx: number, sy: number, ex: number, ey: number, color: number, alpha: number): void {
+  g.lineStyle(7, 0x000000, 0.35 * alpha);
+  g.lineBetween(sx, sy, ex, ey);
+  g.lineStyle(5, shade(color, 0.7), alpha);
+  g.lineBetween(sx, sy, ex, ey);
+}
+
+// Boxing glove from above: mitt pointing along (fx, fy), thumb on the
+// inside, white cuff at the wrist. side = +1 left hand, -1 right hand.
+export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, side: number, alpha: number): void {
+  const lx = fy * side;
+  const ly = -fx * side;
+  g.fillStyle(0xf4f4f4, alpha);
+  g.fillPoints(oval(x - fx * 5.5, y - fy * 5.5, fx, fy, 2.6, 5.2), true);
+  g.fillStyle(0x000000, 0.45 * alpha);
+  g.fillPoints(oval(x, y, fx, fy, FIST_R + 2.2, FIST_R + 0.2), true);
+  g.fillStyle(color, alpha);
+  g.fillPoints(oval(x, y, fx, fy, FIST_R + 1.2, FIST_R - 0.8), true);
+  g.fillCircle(x - lx * 5 - fx, y - ly * 5 - fy, 2.8);
+  g.fillStyle(0xffffff, 0.35 * alpha);
+  g.fillCircle(x + fx * 3 + lx * 2, y + fy * 3 + ly * 2, 2.2);
+}
 
 export class FighterView {
   private g: Phaser.GameObjects.Graphics;
   private flashColor = 0xffffff;
   private flashUntil = 0;
+  // Walk cycle, driven by how far the body moves between frames.
+  private lastX = NaN;
+  private lastY = NaN;
+  private walk = 0;
+  private stride = 0;
 
   // Brief body flash when hit (white = you landed it, red = you took it).
   flash(color: number, now: number, ms = 110): void {
@@ -39,27 +107,37 @@ export class FighterView {
     const ly = -f.fx;
     const alpha = stance === 'dodging' ? 0.35 : 1;
 
-    // Shadow + vulnerable halo
+    const moved = Number.isNaN(this.lastX) ? 0 : Math.hypot(f.x - this.lastX, f.y - this.lastY);
+    this.lastX = f.x;
+    this.lastY = f.y;
+    const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
+    if (walking) this.walk += moved * 0.35;
+    this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+
+    // Shadow, then legs: two soft dark feet stepping under the body.
     g.fillStyle(0x000000, 0.25);
     g.fillEllipse(f.x + 3, f.y + 5, BODY_R * 2.3, BODY_R * 2);
+    if (this.stride > 0.02) {
+      for (const side of [1, -1]) {
+        const swing = Math.sin(this.walk) * 9 * side * this.stride;
+        const x = f.x + f.fx * swing + lx * 8 * side;
+        const y = f.y + f.fy * swing + ly * 8 * side;
+        g.fillStyle(0x000000, 0.3 * this.stride * alpha);
+        g.fillEllipse(x + 2, y + 3, 11, 11);
+      }
+    }
     if (isVulnerable(f) && stance !== 'dodging') {
       g.lineStyle(2, 0xff4a3a, 0.35 + 0.2 * Math.sin(now / 60));
       g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
     }
 
-    // Body
-    g.fillStyle(this.color, alpha);
-    g.fillCircle(f.x, f.y, BODY_R);
-    g.fillStyle(0xf0c8a0, alpha);
-    g.fillCircle(f.x - f.fx * 3, f.y - f.fy * 3, 9);
-
-    // Fists
+    // Gloves: player colour at rest; phase colours while punching/guarding.
     const rest = (hand: 0 | 1) => {
       const side = hand === 0 ? 1 : -1;
       return { x: f.x + f.fx * 15 + lx * 12 * side, y: f.y + f.fy * 15 + ly * 12 * side };
     };
     let fists = [rest(0), rest(1)];
-    const colors = [0xeeeeee, 0xeeeeee];
+    const colors = [this.color, this.color];
     if (f.guarding) {
       fists = [
         { x: f.x + f.fx * 20 + lx * 6, y: f.y + f.fy * 20 + ly * 6 },
@@ -88,14 +166,17 @@ export class FighterView {
       }
       fists[p.hand] = { x, y };
       colors[p.hand] =
-        phase === 'sweet' ? 0xffe03a : phase === 'sour' ? 0xff8a3a : p.type === 'uppercut' ? 0xffc83a : 0xcccccc;
+        phase === 'sweet' ? 0xffe03a : phase === 'sour' ? 0xff8a3a : p.type === 'uppercut' ? 0xffc83a : this.color;
     }
+
+    // Arms from the shoulders (torso edge) to the glove cuffs.
     for (let i = 0; i < 2; i++) {
-      g.fillStyle(colors[i], alpha);
-      g.fillCircle(fists[i].x, fists[i].y, FIST_R);
-      g.lineStyle(1, 0x000000, 0.5 * alpha);
-      g.strokeCircle(fists[i].x, fists[i].y, FIST_R);
+      const side = i === 0 ? 1 : -1;
+      drawArm(g, f.x + lx * (BODY_R - 3) * side, f.y + ly * (BODY_R - 3) * side, fists[i].x, fists[i].y, this.color, alpha);
     }
+    drawTorso(g, f.x, f.y, f.fx, f.fy, this.color, alpha);
+    drawHelmet(g, f.x - f.fx * 2, f.y - f.fy * 2, f.fx, f.fy, this.color, alpha);
+    for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha);
 
     if (now < this.flashUntil) {
       g.fillStyle(this.flashColor, 0.75);
