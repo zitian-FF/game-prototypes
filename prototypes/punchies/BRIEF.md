@@ -85,14 +85,16 @@ reach.
 
 ## Counters
 - Cross or Hook connecting during the opponent's Startup = counter: 1.5x
-  damage, +1 Star total (not stacked with the sweet-hit star).
+  damage, +2 Stars total (`stars.counterGain`; not stacked with the
+  sweet-hit star). Changed from +1 on 2026-09-30.
 - Jab on Startup = normal hit that interrupts. Uppercut is never a counter.
 - Distinct flash and sound.
 
 ## Star Power / Uppercut
 - Sweet hits grant +1 star (not vs High Guard).
-- Chain breaks (stars reset) when the player gets hit, whiffs, or lands a
-  punch blocked by High Guard. No time decay.
+- Chain breaks (stars reset) when the player takes a sweet hit, whiffs,
+  is Perfect Guarded, or gets stunned. Sour hits taken and punches blocked
+  by High Guard keep the chain (changed 2026-09-30). No time decay.
 - At 3 stars Uppercut is active: near-instant startup, hook reach, 2x sweet
   Cross damage, cannot be blocked or Perfect Guarded, can be dodged.
   Always resolves on the Vulnerable row, even on the outer ring

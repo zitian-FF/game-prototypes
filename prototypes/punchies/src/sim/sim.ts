@@ -481,8 +481,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   if (stance === 'guard') {
     if (c.sweet) spendStamina(def, cfg.staminaDamage);
     spendStamina(att, tune.hit.attackerStaminaPenalty);
-    att.stars = 0;
-    // Blocked is contact, not a whiff (the chain already broke above).
+    // Blocked is contact, not a whiff: the star chain is kept.
     p.connected = true;
     // Hooks wrap around a High Guard: chip damage (anti-turtle).
     let chip = 0;
@@ -527,7 +526,8 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   if (damage > 0) {
     def.health = Math.max(0, def.health - damage);
     def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };
-    def.stars = 0;
+    // Only a sweet hit breaks the defender's star chain; sour keeps it.
+    if (c.sweet) def.stars = 0;
     def.framesSinceHit = 0;
     // Any damaging hit interrupts a punch still in startup (jab included).
     if (def.punch && phaseOf(def.punch) === 'startup') def.punch = null;
@@ -536,9 +536,12 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     const stop = tune.hit.hitstopFrames * (counter ? 2 : 1);
     if (stop > s.hitstop) s.hitstop = stop;
   }
-  // +1 star for a sweet hit or a counter, never stacked. Uppercut consumes
-  // stars rather than building them.
-  if (p.type !== 'uppercut' && (c.sweet || counter)) addStar(s, c.attacker, events);
+  // Stars: a counter gives stars.counterGain, a sweet hit +1 (not stacked).
+  // Uppercut consumes stars rather than building them.
+  if (p.type !== 'uppercut') {
+    const gain = counter ? tune.stars.counterGain : c.sweet ? 1 : 0;
+    for (let i = 0; i < gain; i++) addStar(s, c.attacker, events);
+  }
 
   events.push({
     kind: 'hit',
