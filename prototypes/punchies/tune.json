@@ -143,7 +143,8 @@
   },
   "match": {
     "durationSec": 99,
-    "startDistance": 180
+    "startDistance": 180,
+    "introSec": 2
   },
   "training": {
     "dummyInfiniteStamina": true

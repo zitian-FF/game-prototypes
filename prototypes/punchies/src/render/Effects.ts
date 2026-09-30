@@ -199,6 +199,14 @@ export class Effects {
         case 'starsReady':
           if (e.fighter === localIdx) sfx.starsReady();
           break;
+        case 'ready':
+          this.banner('READY', 1.7, '#ffe03a');
+          sfx.ready();
+          break;
+        case 'go':
+          this.banner('GO!', 0.6, '#7fe08a', true);
+          sfx.go();
+          break;
         case 'ko':
           this.banner('K.O.');
           sfx.ko();
@@ -252,19 +260,24 @@ export class Effects {
     this.scene.tweens.add({ targets: t, y: y - 18, alpha: 0, delay: 250, duration: 450, onComplete: () => t.destroy() });
   }
 
-  private banner(text: string): void {
+  private banner(text: string, holdSec = 1.2, color = '#ffffff', punch = false): void {
     const t = this.scene.add
       .text(VIEW.cx, VIEW.cy - 20, text, {
         fontFamily: 'monospace',
         fontSize: '56px',
         fontStyle: 'bold',
-        color: '#ffffff',
+        color,
         stroke: '#000000',
         strokeThickness: 6,
         resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
       .setDepth(95);
-    this.scene.tweens.add({ targets: t, alpha: 0, delay: 1200, duration: 300, onComplete: () => t.destroy() });
+    if (punch) {
+      t.setScale(1.8);
+      this.scene.tweens.add({ targets: t, scale: 1, duration: 140, ease: 'Back.easeOut' });
+    }
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: holdSec * 1000, duration: 250, onComplete: () => t.destroy() });
   }
+
 }

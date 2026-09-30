@@ -66,7 +66,9 @@ export function createSimState(opts: {
   const half = tune.match.startDistance / 2;
   const f0 = createFighter(cx - half, cy, opts.fighters[0]);
   const f1 = createFighter(cx + half, cy, opts.fighters[1]);
-  const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, hitstop: 0, result: null };
+  // Timed rounds open with a READY... GO! countdown (frozen, no input).
+  const fightStartTick = opts.timed ? Math.round(tune.match.introSec * TICK_RATE) : 0;
+  const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, hitstop: 0, fightStartTick, result: null };
   updateFacing(s);
   return s;
 }
@@ -585,7 +587,7 @@ function checkMatchEnd(s: SimState, events: SimEvent[]): void {
     else events.push({ kind: 'timeUp', winner: null });
     return;
   }
-  if (s.timed && s.tick >= tune.match.durationSec * TICK_RATE) {
+  if (s.timed && s.tick - s.fightStartTick >= tune.match.durationSec * TICK_RATE) {
     // Higher health percentage wins; a tie is a draw.
     const winner = a.health === b.health ? null : a.health > b.health ? 0 : 1;
     s.result = { winner, reason: 'time' };
@@ -594,7 +596,8 @@ function checkMatchEnd(s: SimState, events: SimEvent[]): void {
 }
 
 export function remainingSeconds(s: SimState): number {
-  return Math.max(0, Math.ceil(tune.match.durationSec - s.tick / TICK_RATE));
+  const elapsed = Math.max(0, s.tick - s.fightStartTick) / TICK_RATE;
+  return Math.max(0, Math.ceil(tune.match.durationSec - elapsed));
 }
 
 // Advances the simulation one tick. Mutates `s` in place and returns the
@@ -602,6 +605,15 @@ export function remainingSeconds(s: SimState): number {
 export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] {
   const events: SimEvent[] = [];
   if (s.result) return events;
+
+  // READY... GO! countdown: nothing moves; the tick still advances (lockstep
+  // keys inputs on it) and the round timer starts at GO.
+  if (s.tick < s.fightStartTick) {
+    if (s.tick === 0) events.push({ kind: 'ready' });
+    s.tick++;
+    if (s.tick === s.fightStartTick) events.push({ kind: 'go' });
+    return events;
+  }
 
   // Hit-stop: the fight freezes, but presses are still buffered and the tick
   // (which lockstep keys inputs on) still advances.

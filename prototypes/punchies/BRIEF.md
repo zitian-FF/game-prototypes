@@ -114,7 +114,8 @@ reach.
 Square ring (310x310 logical px).
 
 ## Match
-Single 99-second round. KO wins; on timeout higher health percentage wins,
+Single 99-second round, opened by a READY... GO! countdown
+(`match.introSec`, 2 s; nobody can act until GO, the timer starts at GO). KO wins; on timeout higher health percentage wins,
 tie = draw.
 
 ## Hit feedback
