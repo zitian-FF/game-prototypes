@@ -31,10 +31,22 @@ export function shade(c: number, k: number): number {
 
 // Body parts shared with the KO animation.
 export function drawTorso(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, alpha: number, scale = 1): void {
-  g.fillStyle(0x000000, 0.35 * alpha);
-  g.fillPoints(oval(x, y, fx, fy, BODY_R * 0.8 * scale + 1, BODY_R * scale + 1), true);
-  g.fillStyle(color, alpha);
-  g.fillPoints(oval(x, y, fx, fy, BODY_R * 0.8 * scale, BODY_R * scale), true);
+  const pts = oval(x, y, fx, fy, BODY_R * 0.8 * scale, BODY_R * scale);
+  g.fillStyle(muted(color), alpha);
+  g.fillPoints(pts, true);
+  g.lineStyle(2.5, color, alpha);
+  g.strokePoints(pts, true, true);
+}
+
+// Desaturated, darker take on a player colour (torso fill).
+export function muted(c: number): number {
+  const mix = (a: number, b: number) => Math.round(a * 0.3 + b * 0.7);
+  const base = 0x3c4048;
+  return (
+    (mix((c >> 16) & 255, (base >> 16) & 255) << 16) |
+    (mix((c >> 8) & 255, (base >> 8) & 255) << 8) |
+    mix(c & 255, base & 255)
+  );
 }
 
 // Sparring helmet from above: padded shell, crown ridge, face opening at the front.

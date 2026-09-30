@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { tune, TICK_RATE } from '../sim/tune';
 import { punchTotal } from '../sim/sim';
 import type { Fighter, MatchResult, SimState } from '../sim/types';
-import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso } from './FighterView';
+import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso, muted } from './FighterView';
 
 // KO finish, render-only (the sim has already stopped; nothing here can
 // affect the result or online sync).
@@ -155,10 +155,11 @@ export class KoAnim {
       gloves.push({ x, y });
       drawArm(g, c.x - dy * (BODY_R - 3) * side, c.y + dx * (BODY_R - 3) * side, x, y, body, 1);
     }
-    g.fillStyle(0x000000, 0.35);
-    g.fillPoints(ellipse(c, dx, dy, BODY_R * (1 + 0.45 * t) + 1, BODY_R * (1 - 0.1 * t) * 0.85 + 1), true);
-    g.fillStyle(body, 1);
-    g.fillPoints(ellipse(c, dx, dy, BODY_R * (1 + 0.45 * t), BODY_R * (1 - 0.1 * t) * 0.85), true);
+    const torso = ellipse(c, dx, dy, BODY_R * (1 + 0.45 * t), BODY_R * (1 - 0.1 * t) * 0.85);
+    g.fillStyle(muted(body), 1);
+    g.fillPoints(torso, true);
+    g.lineStyle(2.5, body, 1);
+    g.strokePoints(torso, true, true);
     // Helmet tips back away from the attacker, face turned up.
     const headOff = -2 + BODY_R * 1.1 * t;
     drawHelmet(g, c.x + dx * headOff, c.y + dy * headOff, -dx, -dy, body, 1);
