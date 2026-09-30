@@ -71,6 +71,16 @@ export const sfx = {
     tone(880, 0.1, 'square', 0.1);
     tone(1320, 0.14, 'square', 0.1, undefined, 0.07);
   },
+  // Taking a hit: duller and lower than landing one.
+  hurt: () => {
+    thud(0.55, 600, 0.12);
+    tone(90, 0.14, 'sine', 0.3, 45);
+  },
+  hurtBig: () => {
+    thud(0.8, 800, 0.18);
+    tone(80, 0.22, 'sawtooth', 0.2, 35);
+    tone(220, 0.18, 'square', 0.08, 110, 0.05);
+  },
   block: () => {
     thud(0.25, 500, 0.06);
     tone(220, 0.07, 'triangle', 0.14, 160);

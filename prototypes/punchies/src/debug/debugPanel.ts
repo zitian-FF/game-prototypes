@@ -21,7 +21,7 @@ interface MetaEntry {
   step: number | null;
 }
 
-const CATEGORY_ORDER = ['Attack', 'Defense', 'HP & Stun', 'Stamina', 'Movement & Arena', 'Match & Online', 'Training'];
+const CATEGORY_ORDER = ['Attack', 'Defense', 'HP & Stun', 'Stamina', 'Movement & Arena', 'Match & Online', 'AI', 'Training'];
 
 type Obj = Record<string, unknown>;
 

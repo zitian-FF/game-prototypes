@@ -16,11 +16,12 @@ export class MenuScene extends Phaser.Scene {
   create(data: { message?: string }): void {
     applyCameraPixelRatio(this);
     this.add
-      .text(VIEW.cx, VIEW.cy - 110, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    makeButton(this, VIEW.cx, VIEW.cy - 30, 220, 'TRAINING', () => this.scene.start('Training'), 44, 16);
-    makeButton(this, VIEW.cx, VIEW.cy + 26, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 44, 16);
-    makeButton(this, VIEW.cx, VIEW.cy + 82, 220, 'JOIN WITH CODE', () => this.join(), 44, 16);
+    makeButton(this, VIEW.cx, VIEW.cy - 64, 220, 'SINGLE PLAYER', () => this.scene.start('VsAI'), 40, 16);
+    makeButton(this, VIEW.cx, VIEW.cy - 16, 220, 'TRAINING', () => this.scene.start('Training'), 40, 16);
+    makeButton(this, VIEW.cx, VIEW.cy + 32, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 40, 16);
+    makeButton(this, VIEW.cx, VIEW.cy + 80, 220, 'JOIN WITH CODE', () => this.join(), 40, 16);
     const tuneLabel = this.add
       .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
       .setOrigin(1, 0.5);
@@ -35,7 +36,7 @@ export class MenuScene extends Phaser.Scene {
     });
     addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
     this.msg = this.add
-      .text(VIEW.cx, VIEW.cy + 128, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy + 116, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
   }

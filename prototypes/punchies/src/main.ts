@@ -5,6 +5,7 @@ import { TrainingScene } from './scenes/TrainingScene';
 import { MenuScene } from './scenes/MenuScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { MatchScene } from './scenes/MatchScene';
+import { VsAIScene } from './scenes/VsAIScene';
 import { roomFromUrl } from './net/roomCode';
 import { setupOrientation } from './orientation/orientation';
 
@@ -28,6 +29,7 @@ game.scene.add('Menu', MenuScene, false);
 game.scene.add('Training', TrainingScene, false);
 game.scene.add('Lobby', LobbyScene, false);
 game.scene.add('Match', MatchScene, false);
+game.scene.add('VsAI', VsAIScene, false);
 
 // ?room=ABC (from the host's QR code / link) skips straight to joining.
 const room = roomFromUrl();

@@ -47,6 +47,8 @@ export interface PunchState {
   // contact per punch.
   resolved: boolean;
   connected: boolean;
+  // Powered up by the post-dodge buff.
+  buffed: boolean;
   // 0 = lead (left) hand, 1 = rear (right) hand. Cosmetic only.
   hand: 0 | 1;
 }
@@ -86,6 +88,8 @@ export interface Fighter {
   buffered: BufferedAction | null;
   bufferFrames: number;
   nextHookHand: 0 | 1;
+  // Frames left in which the next punch is powered up (after a dodge).
+  dashBuff: number;
   // Training-dummy flags (unused in PvP).
   anchored: boolean;
   infiniteStamina: boolean;
@@ -107,6 +111,7 @@ export type SimEvent =
       counter: boolean;
       row: 'normal' | 'vulnerable';
       damage: number;
+      buffed: boolean;
     }
   | { kind: 'block'; attacker: number; x: number; y: number; sweet: boolean; chip: number }
   | { kind: 'perfectGuard'; attacker: number; x: number; y: number }
@@ -127,5 +132,7 @@ export interface SimState {
   tick: number;
   fighters: [Fighter, Fighter];
   timed: boolean;
+  // Hit-stop: frames left in which the fight is frozen after a hit.
+  hitstop: number;
   result: MatchResult | null;
 }

@@ -48,6 +48,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     buffered: null,
     bufferFrames: 0,
     nextHookHand: 0,
+    dashBuff: 0,
     anchored: opts.anchored ?? false,
     infiniteStamina: opts.infiniteStamina ?? false,
     forceVulnerable: opts.forceVulnerable ?? false,
@@ -65,7 +66,7 @@ export function createSimState(opts: {
   const half = tune.match.startDistance / 2;
   const f0 = createFighter(cx - half, cy, opts.fighters[0]);
   const f1 = createFighter(cx + half, cy, opts.fighters[1]);
-  const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, result: null };
+  const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, hitstop: 0, result: null };
   updateFacing(s);
   return s;
 }
@@ -159,7 +160,13 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   const cfg = tune.punches[type];
   const level = fatigueLevel(f, type);
   const slow = 1 + level * tune.fatigue.speedPerLevel;
-  const damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * tune.fatigue.damagePerLevel);
+  let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * tune.fatigue.damagePerLevel);
+  // Post-dodge power-up: the first punch thrown in the window hits harder.
+  const buffed = f.dashBuff > 0;
+  if (buffed) {
+    damageMult *= tune.dodge.buffDamageMult;
+    f.dashBuff = 0;
+  }
   let hand: 0 | 1 = 0;
   if (type === 'cross' || type === 'uppercut') hand = 1;
   if (type === 'hook') {
@@ -175,6 +182,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     sour: cfg.sour,
     recovery: Math.max(1, Math.round(cfg.recovery * slow)),
     damageMult,
+    buffed,
     resolved: false,
     connected: false,
     hand,
@@ -481,6 +489,8 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     if (def.punch && phaseOf(def.punch) === 'startup') def.punch = null;
     const stunAmount = cfg.stunBuild * (c.sweet ? 1 : tune.hit.sourStunMult) * (counter ? tune.hit.counterDamageMult : 1);
     addStun(s, defIdx, stunAmount, events);
+    const stop = tune.hit.hitstopFrames * (counter ? 2 : 1);
+    if (stop > s.hitstop) s.hitstop = stop;
   }
   // +1 star for a sweet hit or a counter, never stacked. Uppercut consumes
   // stars rather than building them.
@@ -496,6 +506,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     counter,
     row,
     damage,
+    buffed: p.buffed,
   });
 }
 
@@ -520,6 +531,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
       f.dodge = null;
       const mult = f.stunTimer > 0 ? tune.dodge.stunnedVulnerableMult : 1;
       f.postDodgeVulnerable = Math.round(tune.dodge.vulnerableFrames * mult);
+      f.dashBuff = tune.dodge.buffWindowFrames;
     }
   } else if (f.postDodgeVulnerable > 0) {
     f.postDodgeVulnerable--;
@@ -535,6 +547,8 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   if (f.stunDecayWait > 0) f.stunDecayWait--;
   else if (!f.stunFromMeter) f.stun = Math.max(0, f.stun - tune.stun.decayPerSec / TICK_RATE);
+
+  if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
 
   for (const t of FATIGUED_PUNCHES) {
     f.fatigue[t] = Math.max(0, f.fatigue[t] - tune.fatigue.decayPerSec / TICK_RATE);
@@ -588,6 +602,21 @@ export function remainingSeconds(s: SimState): number {
 export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] {
   const events: SimEvent[] = [];
   if (s.result) return events;
+
+  // Hit-stop: the fight freezes, but presses are still buffered and the tick
+  // (which lockstep keys inputs on) still advances.
+  if (s.hitstop > 0) {
+    s.hitstop--;
+    for (let i = 0; i < 2; i++) {
+      const req = requestedAction(inputs[i]);
+      if (req) {
+        s.fighters[i].buffered = req;
+        s.fighters[i].bufferFrames = tune.input.bufferFrames;
+      }
+    }
+    s.tick++;
+    return events;
+  }
 
   processInput(s, 0, inputs[0], events);
   processInput(s, 1, inputs[1], events);

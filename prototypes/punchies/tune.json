@@ -84,7 +84,8 @@
     "reducedDamageMult": 0.5,
     "attackerStaminaPenalty": 6,
     "counterDamageMult": 1.5,
-    "sourStunMult": 0.5
+    "sourStunMult": 0.5,
+    "hitstopFrames": 0
   },
   "guard": {
     "perfectFrames": 6,
@@ -101,7 +102,9 @@
     "vulnerableFrames": 12,
     "stunnedVulnerableMult": 2,
     "staminaCost": 12,
-    "neutralDeadzone": 0.3
+    "neutralDeadzone": 0.3,
+    "buffWindowFrames": 18,
+    "buffDamageMult": 1.5
   },
   "stamina": {
     "max": 100,
@@ -153,5 +156,18 @@
     "connectTimeoutMs": 20000,
     "turnFetchTimeoutMs": 4000,
     "stallIndicatorMs": 120
+  },
+  "ai": {
+    "reactionFrames": 10,
+    "attackRange": 62,
+    "attackChance": 0.08,
+    "attackCooldownFrames": 35,
+    "jabWeight": 0.55,
+    "crossWeight": 0.3,
+    "hookWeight": 0.15,
+    "guardChance": 0.35,
+    "guardHoldFrames": 30,
+    "dodgeChance": 0.05,
+    "retreatStaminaBelow": 25
   }
 }

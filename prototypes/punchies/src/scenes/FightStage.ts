@@ -32,6 +32,7 @@ export class FightStage {
     this.ring = scene.add.graphics().setDepth(0);
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.fx = new Effects(scene);
+    this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
     this.hud = new Hud(scene, names);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);

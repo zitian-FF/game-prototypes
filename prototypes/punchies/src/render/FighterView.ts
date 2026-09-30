@@ -11,6 +11,14 @@ const FIST_R = 7;
 
 export class FighterView {
   private g: Phaser.GameObjects.Graphics;
+  private flashColor = 0xffffff;
+  private flashUntil = 0;
+
+  // Brief body flash when hit (white = you landed it, red = you took it).
+  flash(color: number, now: number, ms = 110): void {
+    this.flashColor = color;
+    this.flashUntil = now + ms;
+  }
 
   constructor(
     scene: Phaser.Scene,
@@ -83,6 +91,16 @@ export class FighterView {
       g.fillCircle(fists[i].x, fists[i].y, FIST_R);
       g.lineStyle(1, 0x000000, 0.5 * alpha);
       g.strokeCircle(fists[i].x, fists[i].y, FIST_R);
+    }
+
+    if (now < this.flashUntil) {
+      g.fillStyle(this.flashColor, 0.75);
+      g.fillCircle(f.x, f.y, BODY_R + 2);
+    }
+    // Post-dodge power-up glow.
+    if (f.dashBuff > 0) {
+      g.lineStyle(3, 0xff9a3a, 0.5 + 0.4 * Math.sin(now / 40));
+      g.strokeCircle(f.x, f.y, BODY_R + 6);
     }
 
     // Stun: orbiting stars
