@@ -8,6 +8,18 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Pushback on contact: the defender slides
+  back along the punch over `hit.pushFrames` (6) ticks, hooks angled
+  toward the side they came from; per punch `pushHit` / `pushBlock`
+  (jab 2/0, cross 10/5, hook 8/4, uppercut 16/-). Anchored training
+  dummy doesn't move. Headless-verified distances. User-requested tune
+  changes: `dodge.speed` 150 -> 225 (same 14 frames, ~50% further),
+  `stamina.exhaustRecoverAt` 25 -> 20.
+- Boxer graphics: gloves (player colour, phase colours while punching /
+  guarding), arms, muted torso with player-colour outline, sparring
+  helmet, stepping leg shadows. Bigger, pop-in damage numbers above the
+  defender. KO poses match.
+
 - (Branch only, not merged yet.) KO animation (`render/KoAnim.ts`),
   render-only. The sim records each fighter's last damaging blow
   (`lastBlow`) and puts the KO style + direction in `result.ko`
@@ -31,7 +43,9 @@ issues).
   snapshot and re-simulates to now; effects already shown are not
   replayed; stall only past `net.maxRollbackFrames` (12); result only
   shown once confirmed. GGPO-style time sync: the peer that runs ahead
-  of the other skips at most one tick in three until both meet.
+  of the other skips at most one tick in ten until both meet (was one in
+  three, which felt sluggish on phones).
+- KO bell: three "ding" strikes (synthesised bell partials) on KO.
 - Tutorial mode
   (`TutorialScene`, TUTORIAL button next to TRAINING): 17 linear steps
   (basics, defense, resources, advanced), one instruction each, device-

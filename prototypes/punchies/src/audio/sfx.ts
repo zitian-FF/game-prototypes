@@ -100,5 +100,21 @@ export const sfx = {
     tone(784, 0.08, 'square', 0.07);
     tone(1175, 0.12, 'square', 0.07, undefined, 0.08);
   },
-  ko: () => tone(300, 0.9, 'sawtooth', 0.18, 40),
+  ko: () => {
+    tone(300, 0.9, 'sawtooth', 0.18, 40);
+    // Ring bell: ding ding ding.
+    for (let i = 0; i < 3; i++) bell(0.25 + i * 0.38);
+  },
 };
+
+// Boxing-ring bell strike: inharmonic sine partials with a long ring-out.
+function bell(delay: number): void {
+  const base = 1180;
+  const partials: [number, number, number][] = [
+    [1, 0.16, 1.4],
+    [2.76, 0.07, 0.9],
+    [5.4, 0.04, 0.5],
+    [8.93, 0.02, 0.3],
+  ];
+  for (const [ratio, gain, dur] of partials) tone(base * ratio, dur, 'sine', gain, undefined, delay);
+}

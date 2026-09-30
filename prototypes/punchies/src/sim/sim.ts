@@ -57,6 +57,9 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     forceVulnerable: opts.forceVulnerable ?? false,
     framesSinceHit: 0,
     lastBlow: null,
+    pushX: 0,
+    pushY: 0,
+    pushFrames: 0,
   };
 }
 
@@ -293,6 +296,13 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
 function move(s: SimState, idx: number, input: FrameInput): void {
   const f = s.fighters[idx];
   const dt = 1 / TICK_RATE;
+  if (f.pushFrames > 0) {
+    f.pushFrames--;
+    if (!f.anchored) {
+      f.x += f.pushX;
+      f.y += f.pushY;
+    }
+  }
   if (f.dodge) {
     f.x += f.dodge.dx * tune.dodge.speed * dt;
     f.y += f.dodge.dy * tune.dodge.speed * dt;
@@ -420,6 +430,26 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
   return contacts;
 }
 
+// Knock the defender back along the punch (hooks angle off to the side the
+// hook came from), spread over hit.pushFrames ticks.
+function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void {
+  if (dist <= 0) return;
+  let dx = att.fx;
+  let dy = att.fy;
+  if (p.type === 'hook') {
+    const side = p.hand === 0 ? 1 : -1;
+    dx -= att.fy * side * 0.5;
+    dy += att.fx * side * 0.5;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    dx /= len;
+    dy /= len;
+  }
+  const frames = Math.max(1, tune.hit.pushFrames);
+  def.pushX = (dx * dist) / frames;
+  def.pushY = (dy * dist) / frames;
+  def.pushFrames = frames;
+}
+
 function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
@@ -462,6 +492,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
       def.health = Math.max(0, def.health - chip);
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
     }
+    pushBack(att, def, p, cfg.pushBlock);
     events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet, chip });
     return;
   }
@@ -491,6 +522,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   if (counter) damage *= tune.hit.counterDamageMult;
 
   p.connected = true;
+  pushBack(att, def, p, cfg.pushHit);
   if (damage > 0) {
     def.health = Math.max(0, def.health - damage);
     def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };

@@ -98,6 +98,10 @@ export interface Fighter {
   // Training only: dummy held in the Vulnerable stance.
   forceVulnerable: boolean;
   framesSinceHit: number;
+  // Pushback from a landed/blocked punch: per-tick step, ticks left.
+  pushX: number;
+  pushY: number;
+  pushFrames: number;
   // The last blow that took health (a finishing blow decides the KO style).
   lastBlow: LastBlow | null;
 }
