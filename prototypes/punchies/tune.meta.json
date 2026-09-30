@@ -1055,5 +1055,12 @@
     "min": 0,
     "max": 60,
     "step": 1
+  },
+  "stars.counterGain": {
+    "cat": "Attack",
+    "desc": "Stars gained for landing a counter (a sweet non-counter hit gives 1).",
+    "min": 0,
+    "max": 3,
+    "step": 1
   }
 }

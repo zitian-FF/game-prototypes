@@ -151,7 +151,8 @@
     "overflowFramesPerPoint": 1.5
   },
   "stars": {
-    "max": 3
+    "max": 3,
+    "counterGain": 2
   },
   "fatigue": {
     "perUse": 1,
