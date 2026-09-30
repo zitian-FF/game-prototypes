@@ -98,7 +98,21 @@ export interface Fighter {
   // Training only: dummy held in the Vulnerable stance.
   forceVulnerable: boolean;
   framesSinceHit: number;
+  // The last blow that took health (a finishing blow decides the KO style).
+  lastBlow: LastBlow | null;
 }
+
+export interface LastBlow {
+  punch: PunchType;
+  sweet: boolean;
+  chip: boolean;
+  // Attacker's facing when it landed = direction the loser is knocked.
+  dx: number;
+  dy: number;
+}
+
+// drop = slumps where they stand; fly = knocked to the ropes and sits down.
+export type KoStyle = 'drop' | 'fly';
 
 export type Stance = 'dodging' | 'perfectGuard' | 'guard' | 'normal' | 'vulnerable';
 
@@ -130,6 +144,7 @@ export type SimEvent =
 export interface MatchResult {
   winner: number | null;
   reason: 'ko' | 'time';
+  ko?: { loser: number; style: KoStyle; dx: number; dy: number };
 }
 
 export interface SimState {

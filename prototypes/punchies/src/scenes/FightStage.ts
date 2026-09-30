@@ -8,6 +8,7 @@ import { InfoPanel } from '../ui/InfoPanel';
 import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
+import { KoAnim } from '../render/KoAnim';
 import { tune } from '../sim/tune';
 import type { FrameInput, SimEvent, SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
@@ -22,6 +23,7 @@ export class FightStage {
   private info: InfoPanel;
   private views: [FighterView, FighterView];
   private fx: Effects;
+  private ko: KoAnim;
   private ring: Phaser.GameObjects.Graphics;
 
   constructor(
@@ -34,6 +36,7 @@ export class FightStage {
   ) {
     this.ring = scene.add.graphics().setDepth(0);
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
+    this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.fx = new Effects(scene);
     this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
     this.hud = new Hud(scene, names);
@@ -79,13 +82,28 @@ export class FightStage {
     this.info.setButtonVisible(false);
   }
 
-  draw(s: SimState, time: number): void {
+  // True once any KO animation has played out (the result screen waits).
+  koFinished(s: SimState, time: number): boolean {
+    return this.ko.finished(s, time);
+  }
+
+  // koAllowed: online passes false until the KO is confirmed, so a
+  // predicted KO that gets rolled back never starts the animation.
+  draw(s: SimState, time: number, koAllowed = true): void {
     this.drawRing();
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
-    this.views[0].draw(s.fighters[0], time, show);
-    this.views[1].draw(s.fighters[1], time, show);
+    this.ko.sync(s, koAllowed, time);
+    if (this.ko.active) {
+      const loser = this.ko.loser;
+      this.views[loser].clear();
+      this.views[1 - loser].draw(this.ko.winnerView(time) ?? s.fighters[1 - loser], time, false);
+      this.ko.draw(time);
+    } else {
+      this.views[0].draw(s.fighters[0], time, show);
+      this.views[1].draw(s.fighters[1], time, show);
+    }
     this.hud.draw(s);
     this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
   }

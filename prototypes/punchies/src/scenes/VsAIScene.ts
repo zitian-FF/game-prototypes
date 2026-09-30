@@ -43,7 +43,7 @@ export class VsAIScene extends Phaser.Scene {
         const events = step(this.sim, [this.stage.sampleLocal(), this.ai.think(this.sim)]);
         this.stage.handleEvents(events, this.sim);
       }
-      if (this.sim.result) this.showResult();
+      if (this.sim.result && this.stage.koFinished(this.sim, time)) this.showResult();
     }
     this.stage.draw(this.sim, time);
   }

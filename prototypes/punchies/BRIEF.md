@@ -139,6 +139,17 @@ Single 99-second round, opened by a READY... GO! countdown
 (`match.introSec`, 2 s; nobody can act until GO, the timer starts at GO). KO wins; on timeout higher health percentage wins,
 tie = draw.
 
+KO animation (visual only, all modes including Training; decided
+2026-09-30):
+- Drop: finished by a Jab, chip damage, or any sour hit (sour Cross/Hook
+  included). The loser slumps flat where they stand, in slow motion.
+- Fly: finished by a sweet Cross or Hook, or any Uppercut. The loser is
+  knocked along the blow to the ropes in slow motion and sits down
+  against them.
+- Meanwhile the winner's last punch plays out its recovery in slow motion.
+  The result screen waits until the animation ends. Timings in the KO
+  tune category.
+
 ## Hit feedback
 Judged from the local player's side. Landing a hit: bright directional
 Tekken-style spark along the punch direction, white flash on the opponent,

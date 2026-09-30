@@ -3,6 +3,8 @@ import type {
   BufferedAction,
   Fighter,
   FrameInput,
+  KoStyle,
+  LastBlow,
   Phase,
   PunchState,
   PunchType,
@@ -54,6 +56,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     infiniteStamina: opts.infiniteStamina ?? false,
     forceVulnerable: opts.forceVulnerable ?? false,
     framesSinceHit: 0,
+    lastBlow: null,
   };
 }
 
@@ -86,7 +89,7 @@ export function activeEnd(p: PunchState): number {
   return p.startup + p.sourEarly + p.sweet + p.sour;
 }
 
-function punchTotal(p: PunchState): number {
+export function punchTotal(p: PunchState): number {
   return activeEnd(p) + p.recovery;
 }
 
@@ -457,6 +460,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
       const full = tune.punches.hook.damage * p.damageMult;
       chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * tune.punches.hook.guardChipMult;
       def.health = Math.max(0, def.health - chip);
+      if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
     }
     events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet, chip });
     return;
@@ -489,6 +493,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   p.connected = true;
   if (damage > 0) {
     def.health = Math.max(0, def.health - damage);
+    def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };
     def.stars = 0;
     def.framesSinceHit = 0;
     // Any damaging hit interrupts a punch still in startup (jab included).
@@ -584,12 +589,22 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   f.framesSinceHit++;
 }
 
+// Uppercut always sends them flying; a clean (sweet, unblocked) Cross or
+// Hook does too. Jabs, chip damage and sour hits drop them where they stand.
+export function koStyle(b: LastBlow): KoStyle {
+  if (b.punch === 'uppercut') return 'fly';
+  if ((b.punch === 'cross' || b.punch === 'hook') && b.sweet && !b.chip) return 'fly';
+  return 'drop';
+}
+
 function checkMatchEnd(s: SimState, events: SimEvent[]): void {
   if (s.result) return;
   const [a, b] = s.fighters;
   if (a.health <= 0 || b.health <= 0) {
     const loser = a.health <= 0 && b.health <= 0 ? -1 : a.health <= 0 ? 0 : 1;
     s.result = { winner: loser === -1 ? null : 1 - loser, reason: 'ko' };
+    const blow = loser === -1 ? null : s.fighters[loser].lastBlow;
+    if (blow) s.result.ko = { loser, style: koStyle(blow), dx: blow.dx, dy: blow.dy };
     if (loser !== -1) events.push({ kind: 'ko', loser });
     else events.push({ kind: 'timeUp', winner: null });
     return;

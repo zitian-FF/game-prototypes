@@ -1,4 +1,12 @@
 {
+  "ko": {
+    "slowmo": 0.3,
+    "dropMs": 1400,
+    "flyMs": 900,
+    "sitMs": 900,
+    "flyMaxDistance": 200,
+    "resultDelayMs": 500
+  },
   "ring": {
     "left": 267,
     "top": 64,

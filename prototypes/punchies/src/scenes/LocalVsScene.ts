@@ -46,7 +46,7 @@ export class LocalVsScene extends Phaser.Scene {
         const events = step(this.sim, [this.stage.sampleSource(this.inputs.p1), this.stage.sampleSource(this.inputs.p2)]);
         this.stage.handleEvents(events, this.sim);
       }
-      if (this.sim.result) this.showResult();
+      if (this.sim.result && this.stage.koFinished(this.sim, time)) this.showResult();
     }
     this.stage.draw(this.sim, time);
   }
