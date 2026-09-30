@@ -189,6 +189,7 @@ export class InfoPanel {
       `Guard drain: ${tune.guard.staminaDrainPerSec}/s`,
       `Dodge: ${tune.dodge.iFrames}f invincible of ${tune.dodge.frames}f`,
       `  then ${tune.dodge.vulnerableFrames}f Vulnerable`,
+      `Dodge then punch within ${tune.dodge.buffWindowFrames}f: x${tune.dodge.buffDamageMult} dmg`,
       `Counter (Cross/Hook on startup): x${tune.hit.counterDamageMult}`,
       `Round: ${tune.match.durationSec}s · HP ${tune.health.max}`,
     ]) {
