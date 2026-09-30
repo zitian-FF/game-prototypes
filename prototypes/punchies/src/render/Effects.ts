@@ -27,7 +27,8 @@ export class Effects {
   // each phone "you hit" and "you got hit" read differently.
   private hit(e: Extract<SimEvent, { kind: 'hit' }>, s: SimState, localIdx: number): void {
     const att = s.fighters[e.attacker];
-    const dealt = e.attacker === localIdx;
+    // localIdx -1 (local two-player): no "me", every hit uses the landed style.
+    const dealt = localIdx === -1 || e.attacker === localIdx;
     const defIdx = 1 - e.attacker;
     const cam = this.scene.cameras.main;
     const big = e.counter || e.punch === 'uppercut';

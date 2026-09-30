@@ -86,6 +86,12 @@ export class TouchControls {
   // Set false while a full-screen overlay (the "i" panel) is open.
   enabled = true;
 
+  // Hidden when the player is using a keyboard or controller.
+  setVisible(v: boolean): void {
+    this.g.setVisible(v);
+    for (const l of this.labels) l.setVisible(v);
+  }
+
   private onDown(p: Phaser.Input.Pointer): void {
     if (!this.enabled) return;
     const x = p.worldX;

@@ -21,8 +21,19 @@ Touch (landscape):
 - Online: a "waiting for opponent..." tag appears whenever the game is
   briefly held waiting for the other player's input (lockstep).
 
-Keyboard (desktop testing): WASD / arrows move, J jab, K cross, L hook,
-I uppercut, Space dodge, hold Shift to guard.
+Keyboard and controller (any mode; solo modes accept all at once):
+- Keys left: WASD move, J jab, K cross, L hook, I uppercut, Space dodge,
+  hold Shift to guard.
+- Keys right: Arrows move, Numpad 1/2/3 jab/cross/hook, Numpad 5 uppercut,
+  Numpad 0 dodge, hold Numpad Enter to guard.
+- Controller: left stick or D-pad move, X jab, Y cross, B hook, A dodge,
+  hold RB/RT to guard, LB/LT uppercut (PlayStation: square, triangle,
+  circle, cross, R1/R2, L1/L2).
+- Touch controls hide while a keyboard/controller is in use.
+
+**Local VS:** two players on one screen. The INPUT button next to it picks
+each player's device (keys WASD, keys arrows, controller 1/2, or touch for
+P1); the choice is remembered on the device.
 
 ## HUD
 Top bars per fighter: health (green, white trail = damage just taken),

@@ -6,6 +6,8 @@ dummy for solo testing. This file combines the original handoff with the
 decisions made in the planning round (2026-09-29).
 
 ## Scope
+- Local VS: two players on one screen, each on their own input device
+  (added 2026-09-30); an INPUT button next to it picks devices.
 - Online 1v1 PvP, plus Single Player vs an easy AI (added 2026-09-30 at
   the user's request; previously out of scope).
 - Training dummy: static, toggle between idle and holding High Guard.
@@ -25,6 +27,16 @@ decisions made in the planning round (2026-09-29).
   - Guard: hold for High Guard.
   - Dodge: direction from joystick; neutral stick = backstep.
   - Uppercut: dedicated button that doubles as the Star Power meter.
+
+## Keyboard / controller (fixed layouts)
+- Keys (left): WASD move, J jab, K cross, L hook, I uppercut, Space dodge,
+  Shift hold guard.
+- Keys (right): Arrows move, Numpad 1/2/3 jab/cross/hook, 5 uppercut,
+  0 dodge, Numpad Enter hold guard.
+- Controller: left stick / D-pad move, X jab, Y cross, B hook, A dodge,
+  RB/RT hold guard, LB/LT uppercut.
+- On-screen touch controls hide once a key or controller is used and come
+  back on the next screen touch.
 
 ## Punch frames
 Startup -> Early Sour (active, fist extending) -> Sweet (active, full

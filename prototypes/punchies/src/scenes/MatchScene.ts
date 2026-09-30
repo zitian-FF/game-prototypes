@@ -94,7 +94,7 @@ export class MatchScene extends Phaser.Scene {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
       let stalled = false;
       while (this.acc >= STEP_MS) {
-        if (this.ls.canScheduleLocal()) this.ls.scheduleLocal(this.stage.intents.sample());
+        if (this.ls.canScheduleLocal()) this.ls.scheduleLocal(this.stage.sampleLocal());
         if (!this.ls.canStep()) {
           stalled = true;
           this.ls.flushInputs();

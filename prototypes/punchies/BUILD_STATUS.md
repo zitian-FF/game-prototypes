@@ -7,6 +7,17 @@ issues).
 
 ## What was implemented
 
+- Keyboard + controller support (`input/devices.ts`): two fixed keyboard
+  layouts (WASD / arrows+numpad) and standard-gamepad mapping, polled
+  per frame so taps between ticks aren't lost. Solo modes merge touch +
+  all keys + all pads. Touch controls hide after key/pad use and return
+  on the next touch.
+- Local VS mode (`LocalVsScene`) with INPUT popup next to the menu button
+  (per-player device, no sharing, touch P1-only), saved in localStorage
+  `punchies:localInputs:v1`. Neutral hit feedback (no "me").
+  Playwright: popup cycling + save, keyboard single player (touch hidden),
+  local VS with a fake injected gamepad (RB raised P2's guard).
+
 - READY... GO! intro (`match.introSec`, 2 s) for Single Player and Online:
   in the sim, so both online peers start together; no input until GO,
   round timer starts at GO. Headless-tested (no movement during intro,
@@ -100,6 +111,9 @@ issues).
   updated; confirm.
 
 ## Known issues
+
+- Real controllers untested (only a JS-injected fake gamepad). Menus are
+  touch/mouse only; no controller/keyboard menu navigation yet.
 
 - The ~0.2 s spark itself wasn't caught mid-flight in Playwright captures;
   PUNISHED!, red edges, damage numbers and body flashes were.
