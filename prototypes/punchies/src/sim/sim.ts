@@ -14,7 +14,7 @@ import { FATIGUED_PUNCHES } from './types';
 
 // Deterministic fight simulation, stepped at a fixed 60 Hz. Only uses
 // + - * / and Math.sqrt/round/min/max/abs (all exactly specified by IEEE
-// 754 / ECMAScript), never trig, so both lockstep peers stay in sync.
+// 754 / ECMAScript), never trig, so both online peers stay in sync (and rollback replays exactly).
 
 export interface FighterOptions {
   anchored?: boolean;
@@ -613,7 +613,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] 
   const events: SimEvent[] = [];
   if (s.result) return events;
 
-  // READY... GO! countdown: nothing moves; the tick still advances (lockstep
+  // READY... GO! countdown: nothing moves; the tick still advances (the netcode
   // keys inputs on it) and the round timer starts at GO.
   if (s.tick < s.fightStartTick) {
     if (s.tick === 0) events.push({ kind: 'ready' });
@@ -623,7 +623,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] 
   }
 
   // Hit-stop: the fight freezes, but presses are still buffered and the tick
-  // (which lockstep keys inputs on) still advances.
+  // (which the netcode keys inputs on) still advances.
   if (s.hitstop > 0) {
     s.hitstop--;
     for (let i = 0; i < 2; i++) {

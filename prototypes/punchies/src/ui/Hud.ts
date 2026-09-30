@@ -15,6 +15,9 @@ export class Hud {
   private g: Phaser.GameObjects.Graphics;
   private timer: Phaser.GameObjects.Text;
   private shownHealth = [0, 0];
+  // Tutorial: only these parts are drawn ('health', 'stamina', 'stun',
+  // 'timer'). null = everything.
+  shown: Set<string> | null = null;
 
   constructor(scene: Phaser.Scene, names: [string, string]) {
     this.g = scene.add.graphics().setDepth(90);
@@ -38,14 +41,16 @@ export class Hud {
       const y = VIEW.top;
       // Trailing "recent damage" chunk so hits read clearly.
       this.shownHealth[i] = Math.max(f.health, this.shownHealth[i] - 0.4);
-      this.bar(x, y + 8, 14, f.health / tune.health.max, this.shownHealth[i] / tune.health.max, 0x3ad06a, left);
+      const show = (p: string) => this.shown === null || this.shown.has(p);
+      if (show('health')) this.bar(x, y + 8, 14, f.health / tune.health.max, this.shownHealth[i] / tune.health.max, 0x3ad06a, left);
       const staminaColor = f.exhausted ? 0xff5a3a : 0x3ab0e0;
-      this.bar(x, y + 25, 6, f.stamina / tune.stamina.max, 0, staminaColor, left);
+      if (show('stamina')) this.bar(x, y + 25, 6, f.stamina / tune.stamina.max, 0, staminaColor, left);
       const stunFrac = Math.min(1, f.stun / tune.stun.threshold);
       const stunColor = f.stunFromMeter ? 0xffe03a : stunFrac > 0.7 ? 0xffa03a : 0xb07a3a;
-      this.bar(x + BAR_W * 0.35, y + 34, 5, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, BAR_W * 0.65);
+      if (show('stun')) this.bar(x + BAR_W * 0.35, y + 34, 5, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, BAR_W * 0.65);
     }
     this.timer.setText(s.timed ? String(remainingSeconds(s)) : '--');
+    this.timer.setVisible(this.shown === null || this.shown.has('timer'));
   }
 
   private bar(x: number, y: number, h: number, frac: number, trail: number, color: number, fromLeft: boolean, w = BAR_W): void {

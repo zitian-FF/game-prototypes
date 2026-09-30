@@ -97,10 +97,13 @@ export class FighterView {
       g.fillStyle(this.flashColor, 0.75);
       g.fillCircle(f.x, f.y, BODY_R + 2);
     }
-    // Post-dodge power-up glow.
-    if (f.dashBuff > 0) {
-      g.lineStyle(3, 0xff9a3a, 0.5 + 0.4 * Math.sin(now / 40));
-      g.strokeCircle(f.x, f.y, BODY_R + 6);
+    // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
+    if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
+      const pulse = 0.5 + 0.5 * Math.sin(now / (f.dashBuff > 0 ? 45 : 110));
+      g.fillStyle(0xffe03a, 0.1 + 0.18 * pulse);
+      g.fillCircle(f.x, f.y, BODY_R + 1);
+      g.lineStyle(2, 0xffe03a, 0.25 + 0.35 * pulse);
+      g.strokeCircle(f.x, f.y, BODY_R + 4);
     }
 
     // Stun: orbiting stars

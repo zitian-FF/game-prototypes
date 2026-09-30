@@ -2,11 +2,11 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
-import { Lockstep } from '../net/lockstep';
+import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
 
-// Online 1v1 over lockstep. Host is fighter 0 (left), guest fighter 1.
+// Online 1v1 over rollback netcode (see net/rollback.ts). Host is fighter 0 (left), guest fighter 1.
 // The sim only advances when both players' inputs for the next tick have
 // arrived; while it can't, a small "waiting for opponent" indicator shows so
 // a stall doesn't read as a freeze/bug.
@@ -16,7 +16,7 @@ const MAX_STEPS_PER_FRAME = 5;
 
 export class MatchScene extends Phaser.Scene {
   private match!: MatchData;
-  private ls!: Lockstep;
+  private ls!: Rollback;
   private stage!: FightStage;
   private acc = 0;
   private stalledSince = 0;
@@ -42,9 +42,10 @@ export class MatchScene extends Phaser.Scene {
     this.endButtons = [];
 
     const s = data.session;
-    this.ls = new Lockstep(
+    this.ls = new Rollback(
       data.localIdx,
       data.delay,
+      tune.net.maxRollbackFrames,
       data.round,
       (p) => s.sendInputs(p),
       (p) => s.sendHash(p),
@@ -77,7 +78,7 @@ export class MatchScene extends Phaser.Scene {
       .setDepth(140)
       .setVisible(false);
     this.info = this.add
-      .text(VIEW.cx - 40, VIEW.top + 46, `room ${s.code}  delay ${data.delay}f`, {
+      .text(VIEW.cx - 40, VIEW.top + 46, `room ${s.code}  delay ${data.delay}f · rollback`, {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: '#888888',
@@ -91,6 +92,9 @@ export class MatchScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     this.stage.pollDevices();
     if (!this.over) {
+      // Late remote inputs that contradict a prediction are corrected here,
+      // even while stalled.
+      this.stage.handleEvents(this.ls.resolve(), this.ls.sim);
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
       let stalled = false;
       while (this.acc >= STEP_MS) {
@@ -101,6 +105,7 @@ export class MatchScene extends Phaser.Scene {
           break;
         }
         this.acc -= STEP_MS;
+        if (this.ls.shouldWaitForSync()) continue;
         const events = this.ls.step();
         this.stage.handleEvents(events, this.ls.sim);
       }
@@ -114,7 +119,7 @@ export class MatchScene extends Phaser.Scene {
       }
       this.waiting.setVisible(this.stalledSince > 0 && time - this.stalledSince > tune.net.stallIndicatorMs);
       if (this.ls.desynced) this.info.setText('DESYNC detected').setColor('#ff5a5a');
-      if (this.ls.sim.result) this.showResult();
+      if (this.ls.confirmedResult()) this.showResult();
     }
     this.stage.draw(this.ls.sim, time);
   }
@@ -122,7 +127,7 @@ export class MatchScene extends Phaser.Scene {
   private showResult(): void {
     this.over = true;
     this.waiting.setVisible(false);
-    const r = this.ls.sim.result!;
+    const r = this.ls.confirmedResult()!;
     const text = r.winner === null ? 'DRAW' : r.winner === this.match.localIdx ? 'YOU WIN' : 'YOU LOSE';
     const sub = r.reason === 'ko' ? 'by K.O.' : 'on points (health)';
     this.endButtons.push(

@@ -18,17 +18,24 @@ export class InfoPanel {
   // Hitbox overlay on the fighters; stays on after the panel closes.
   hitboxes = false;
   private layer: Phaser.GameObjects.Container;
+  private button: Phaser.GameObjects.GameObject[] = [];
 
   constructor(private scene: Phaser.Scene) {
     const bx = VIEW.left + 22;
     const by = VIEW.top + 64;
     const btn = scene.add.circle(bx, by, 13, 0x222222, 0.9).setStrokeStyle(2, 0xaaaaaa).setDepth(210);
-    scene.add
+    const label = scene.add
       .text(bx, by, 'i', { fontFamily: FONT, fontSize: '15px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(211);
     btn.setInteractive().on('pointerdown', () => this.toggle());
+    this.button = [btn, label];
     this.layer = scene.add.container(0, 0).setDepth(200).setVisible(false);
+  }
+
+  // Tutorial hides the "i" button.
+  setButtonVisible(v: boolean): void {
+    for (const o of this.button) (o as Phaser.GameObjects.Shape).setVisible(v);
   }
 
   toggle(): void {

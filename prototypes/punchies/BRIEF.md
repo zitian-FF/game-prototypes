@@ -1,7 +1,7 @@
 # Punchies - BRIEF
 
 Top-down 2D boxing game for mobile landscape with touch controls. Online
-1v1 PvP (lockstep over the repo's Trystero networking) plus a training
+1v1 PvP (rollback netcode over the repo's Trystero networking) plus a training
 dummy for solo testing. This file combines the original handoff with the
 decisions made in the planning round (2026-09-29).
 
@@ -115,6 +115,12 @@ reach.
   count. A type's fatigue only decays after ~1 s without throwing it
   (decay pause). A fatigued throw shows a subtle grey "tired".
 
+## Tutorial
+17 guided steps (move, jab, cross, sweet/sour range, hook, guard, perfect
+guard, dodge, dodge power-up, stamina, face vs body, punish, counter,
+stars & uppercut, stun, fatigue, final KO), UI revealed only as needed,
+progress remembered, linear with SKIP.
+
 ## Training
 - Dummy is static; a button cycles its stance: Normal, High Guard,
   Vulnerable. Its HP never refills until RESET.
@@ -149,6 +155,9 @@ or Tailwind. Lobby, menus and results follow current pipeline conventions
 (confirm with the user before building them).
 
 ## Networking
-Lockstep with input delay for v1 (rollback is a follow-up). Show a small
-"waiting for opponent" indicator during stalls. The lockstep layer lives
-inside this prototype, not a shared package.
+Rollback netcode (replaced the v1 lockstep on 2026-09-30 after lag on
+mobile data): small fixed input delay, the opponent's input is predicted
+and corrected by re-simulation when it arrives. The game only stalls when
+the opponent is further behind than the rollback window; show a small
+"waiting for opponent" indicator during stalls. The netcode lives inside
+this prototype, not a shared package.

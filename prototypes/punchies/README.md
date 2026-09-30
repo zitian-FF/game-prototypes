@@ -19,7 +19,8 @@ Touch (landscape):
 - "i" (top left): toggles the hitbox overlay and a frame-data / hit-table
   reference. The game keeps running.
 - Online: a "waiting for opponent..." tag appears whenever the game is
-  briefly held waiting for the other player's input (lockstep).
+  briefly held waiting for the other player's input (only when their
+  connection falls further behind than the rollback window).
 
 Keyboard and controller (any mode; solo modes accept all at once):
 - Keys left: WASD move, J jab, K cross, L hook, I uppercut, Space dodge,

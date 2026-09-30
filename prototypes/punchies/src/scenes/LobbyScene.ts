@@ -112,7 +112,9 @@ export class LobbyScene extends Phaser.Scene {
     rtts.sort((a, b) => a - b);
     const rtt = rtts.length ? rtts[Math.floor(rtts.length / 2)] : 200;
     const oneWayFrames = Math.ceil(rtt / 2 / (1000 / TICK_RATE));
-    const delay = Math.max(tune.net.minInputDelay, Math.min(tune.net.maxInputDelay, oneWayFrames + tune.net.extraDelayFrames));
+    // Rollback covers up to maxRollbackFrames of lateness; only add input
+    // delay beyond the base when the one-way ping exceeds that window.
+    const delay = Math.max(tune.net.inputDelayFrames, oneWayFrames - tune.net.maxRollbackFrames + 1);
     s.send({ k: 'start', round: 1, delay, tune: JSON.stringify(tune) });
     this.startMatch({ session: s, localIdx: 0, delay, round: 1 });
   }
