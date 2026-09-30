@@ -1,6 +1,7 @@
 # Punchies
 
-Top-down boxing prototype. Menu: **Training** (you vs a static dummy),
+Top-down boxing prototype. Menu: **Single Player** (vs an easy AI),
+**Training** (you vs a static dummy),
 **Host Online** (shows a 3-character room code + QR code) and **Join With
 Code**. Opening the game with `?room=ABC` joins that room directly (that's
 what the QR code encodes).

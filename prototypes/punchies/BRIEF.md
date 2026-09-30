@@ -6,11 +6,12 @@ dummy for solo testing. This file combines the original handoff with the
 decisions made in the planning round (2026-09-29).
 
 ## Scope
-- Online 1v1 PvP. No AI opponent.
+- Online 1v1 PvP, plus Single Player vs an easy AI (added 2026-09-30 at
+  the user's request; previously out of scope).
 - Training dummy: static, toggle between idle and holding High Guard.
 - One default character (orthodox stance).
 - Out of scope: progression, cosmetics, extra characters, southpaw, AI
-  difficulties.
+  difficulties. (Easy AI only.)
 
 ## Controls (landscape, MOBA-style)
 - Left: floating virtual joystick for movement. Boxer always faces the
@@ -53,7 +54,9 @@ reach.
   Anti-mash: a raise only gets a Perfect Guard window if guard was down
   for at least `guard.perfectCooldownFrames` first (re-raising sooner
   still blocks normally).
-- Dodge: i-frames, then a brief Vulnerable window.
+- Dodge: i-frames, then a brief Vulnerable window. A punch thrown within
+  `dodge.buffWindowFrames` after a dodge ends is powered up
+  (`dodge.buffDamageMult`, 1.5x).
 - Punch hitboxes extend forward from the facing direction. No directional
   armour.
 
@@ -113,6 +116,15 @@ Square ring (310x310 logical px).
 ## Match
 Single 99-second round. KO wins; on timeout higher health percentage wins,
 tie = draw.
+
+## Hit feedback
+Judged from the local player's side. Landing a hit: bright directional
+Tekken-style spark along the punch direction, white flash on the opponent,
+damage number, light shake. Taking a hit: orange/red spark, red screen
+edges, stronger shake, vibration (Android), duller sound. Counters get a
+bigger spark: "COUNTER!" when you land one, "PUNISHED!" when you take one;
+the text shakes as it fades. Optional hit-stop (`hit.hitstopFrames`, off
+by default) freezes the fight logic briefly, in sync online.
 
 ## UI
 All in-match elements (touch controls, health/stamina/stun meters, star

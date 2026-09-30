@@ -7,6 +7,24 @@ issues).
 
 ## What was implemented
 
+- Single Player vs easy AI (`sim/ai.ts`, `VsAIScene`): reads sim state and
+  emits FrameInputs like a player; delayed reactions (`ai.reactionFrames`
+  10), guards/dodges some punch starts, approaches / retreats on low
+  stamina, picks jab/cross/hook by weights, uppercuts at 3 stars. Knobs in
+  the new AI tune category. Headless: KOs an idle player in ~25 s; AI vs
+  AI ends by KO in ~22 s with some perfect guards.
+- Dash buff: a punch within `dodge.buffWindowFrames` (18) after a dodge
+  ends does `dodge.buffDamageMult` (1.5x); orange glow while armed,
+  POWER! label on hit. Headless: jab 4 -> 6 inside the window, 4 after.
+- Optional hit-stop in the sim (`hit.hitstopFrames`, default 0 = off;
+  counters x2). Presses during it stay buffered; lockstep stays in sync
+  (loopback test with 3f hit-stop: no desync).
+- Hit feedback split by local perspective: directional spark cone along
+  the strike (bigger for counters/uppercut); landing = white/yellow +
+  opponent white flash + light shake; taking = orange/red + red screen
+  edges + strong shake + vibrate + low hurt sound; COUNTER! / PUNISHED!
+  callouts that shake as they fade; damage numbers.
+
 - Tune: `tune.meta.json` (category, description, range for all values);
   debug panel grouped by category > section with ranges, "was" values and
   per-value reset; SYNC TUNE button on the main menu (session-only fetch
@@ -77,6 +95,10 @@ issues).
   updated; confirm.
 
 ## Known issues
+
+- The ~0.2 s spark itself wasn't caught mid-flight in Playwright captures;
+  PUNISHED!, red edges, damage numbers and body flashes were.
+- Vibration is Android-only (iOS Safari has no web vibration).
 
 - SYNC TUNE could not reach GitHub from the build sandbox; its logic was
   tested in Node with a mocked response (partial, wrong-type, broken
