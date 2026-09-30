@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { tune, TICK_RATE } from '../sim/tune';
 import { punchTotal } from '../sim/sim';
 import type { Fighter, MatchResult, SimState } from '../sim/types';
-import { BODY_R, FIST_R } from './FighterView';
+import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso, muted } from './FighterView';
 
 // KO finish, render-only (the sim has already stopped; nothing here can
 // affect the result or online sync).
@@ -145,22 +145,25 @@ export class KoAnim {
 
     g.fillStyle(0x000000, 0.25 * (1 - t) + 0.15);
     g.fillPoints(ellipse({ x: c.x + 3, y: c.y + 5 }, dx, dy, BODY_R * (1.15 + 0.5 * t), BODY_R), true);
-    g.fillStyle(body, 1);
-    g.fillPoints(ellipse(c, dx, dy, BODY_R * (1 + 0.45 * t), BODY_R * (1 - 0.1 * t)), true);
-    const headOff = -3 + BODY_R * 1.1 * t;
-    g.fillStyle(0xf0c8a0, 1);
-    g.fillCircle(c.x + dx * headOff, c.y + dy * headOff, 9);
-    // Fists: from guard in front to limp at the sides.
+    // Gloves: from guard in front to limp at the sides, arms trailing.
+    const gloves: Pt[] = [];
     for (const side of [1, -1]) {
       const fwd = 15 * (1 - t) - 2 * t;
       const out = 12 + 12 * t;
       const x = c.x - dx * fwd + -dy * out * side;
       const y = c.y - dy * fwd + dx * out * side;
-      g.fillStyle(lerpColor(0xeeeeee, 0xaaaaaa, t), 1);
-      g.fillCircle(x, y, FIST_R);
-      g.lineStyle(1, 0x000000, 0.5);
-      g.strokeCircle(x, y, FIST_R);
+      gloves.push({ x, y });
+      drawArm(g, c.x - dy * (BODY_R - 3) * side, c.y + dx * (BODY_R - 3) * side, x, y, body, 1);
     }
+    const torso = ellipse(c, dx, dy, BODY_R * (1 + 0.45 * t), BODY_R * (1 - 0.1 * t) * 0.85);
+    g.fillStyle(muted(body), 1);
+    g.fillPoints(torso, true);
+    g.lineStyle(2.5, body, 1);
+    g.strokePoints(torso, true, true);
+    // Helmet tips back away from the attacker, face turned up.
+    const headOff = -2 + BODY_R * 1.1 * t;
+    drawHelmet(g, c.x + dx * headOff, c.y + dy * headOff, -dx, -dy, body, 1);
+    gloves.forEach((q, i) => drawGlove(g, q.x, q.y, -dx, -dy, body, i === 0 ? 1 : -1, 1));
     // Dust puff as they land.
     const d = clamp01((el - tune.ko.dropMs * 0.6) / (tune.ko.dropMs * 0.4));
     if (d > 0 && d < 1) {
@@ -221,21 +224,19 @@ export class KoAnim {
   }
 
   // Body, head and fists facing (fx, fy). headFwd > 0 droops the head forward.
-  private boxer(p: Pt, fx: number, fy: number, color: number, scale: number, fistFwd: number, fistOut: number, headFwd = -3): void {
+  private boxer(p: Pt, fx: number, fy: number, color: number, scale: number, fistFwd: number, fistOut: number, headFwd = -2): void {
     const g = this.g;
     g.fillStyle(0x000000, 0.25);
     g.fillEllipse(p.x + 3, p.y + 5, BODY_R * 2.3 * scale, BODY_R * 2 * scale);
-    g.fillStyle(color, 1);
-    g.fillCircle(p.x, p.y, BODY_R * scale);
-    g.fillStyle(0xf0c8a0, 1);
-    g.fillCircle(p.x + fx * headFwd, p.y + fy * headFwd, 9 * scale);
+    const gloves: Pt[] = [];
     for (const side of [1, -1]) {
       const x = p.x + fx * fistFwd * scale + fy * fistOut * side * scale;
       const y = p.y + fy * fistFwd * scale - fx * fistOut * side * scale;
-      g.fillStyle(0xeeeeee, 1);
-      g.fillCircle(x, y, FIST_R);
-      g.lineStyle(1, 0x000000, 0.5);
-      g.strokeCircle(x, y, FIST_R);
+      gloves.push({ x, y });
+      drawArm(g, p.x + fy * (BODY_R - 3) * side * scale, p.y - fx * (BODY_R - 3) * side * scale, x, y, color, 1);
     }
+    drawTorso(g, p.x, p.y, fx, fy, color, 1, scale);
+    drawHelmet(g, p.x + fx * headFwd, p.y + fy * headFwd, fx, fy, color, 1, scale);
+    gloves.forEach((q, i) => drawGlove(g, q.x, q.y, fx, fy, color, i === 0 ? 1 : -1, 1));
   }
 }
