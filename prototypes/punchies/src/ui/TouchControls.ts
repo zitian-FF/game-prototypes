@@ -42,6 +42,15 @@ export class TouchControls {
   private owners = new Map<number, Owner>();
   private stick = { active: false, ox: 0, oy: 0, x: 0, y: 0 };
   private flash = new Map<string, number>();
+  private labelIds: string[] = ['jab', 'cross', 'hook', 'guard', 'dodge', 'uppercut'];
+  private visible = true;
+  // Tutorial: only these parts are shown/usable ('stick', 'jab', 'cross',
+  // 'hook', 'guard', 'dodge', 'uppercut', 'fatigue'). null = everything.
+  shown: Set<string> | null = null;
+
+  private isShown(id: string): boolean {
+    return this.shown === null || this.shown.has(id);
+  }
 
   constructor(
     private scene: Phaser.Scene,
@@ -75,10 +84,11 @@ export class TouchControls {
 
   private hitTest(x: number, y: number): TapIntent | 'guard' | null {
     for (const b of ARC_BUTTONS) {
-      if (Phaser.Math.Distance.Between(x, y, b.x, b.y) <= b.r + TOUCH_SLOP) return b.id;
+      if (this.isShown(b.id) && Phaser.Math.Distance.Between(x, y, b.x, b.y) <= b.r + TOUCH_SLOP) return b.id;
     }
     if (Phaser.Math.Distance.Between(x, y, MAIN.x, MAIN.y) <= MAIN.r + TOUCH_SLOP) {
-      return x < MAIN.x ? 'jab' : 'cross';
+      const half = x < MAIN.x ? 'jab' : 'cross';
+      return this.isShown(half) ? half : null;
     }
     return null;
   }
@@ -88,8 +98,9 @@ export class TouchControls {
 
   // Hidden when the player is using a keyboard or controller.
   setVisible(v: boolean): void {
+    this.visible = v;
     this.g.setVisible(v);
-    for (const l of this.labels) l.setVisible(v);
+    this.labels.forEach((l, i) => l.setVisible(v && this.isShown(this.labelIds[i])));
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
@@ -108,7 +119,7 @@ export class TouchControls {
       this.flash.set(hit, 8);
       return;
     }
-    if (x < JOYSTICK_ZONE_RIGHT && y > JOYSTICK_ZONE_TOP && !this.stick.active) {
+    if (this.isShown('stick') && x < JOYSTICK_ZONE_RIGHT && y > JOYSTICK_ZONE_TOP && !this.stick.active) {
       this.owners.set(p.id, { kind: 'joystick', ox: x, oy: y });
       this.stick = { active: true, ox: x, oy: y, x, y };
       this.intents.setTouchMove(0, 0);
@@ -157,35 +168,47 @@ export class TouchControls {
   draw(f: Fighter): void {
     const g = this.g;
     g.clear();
+    this.setVisible(this.visible);
 
     // Joystick
     const r = tune.input.joystickRadius;
     const base = this.stick.active ? this.stick : { ox: JOYSTICK_HINT.x, oy: JOYSTICK_HINT.y, x: JOYSTICK_HINT.x, y: JOYSTICK_HINT.y };
-    g.lineStyle(2, 0xffffff, this.stick.active ? 0.5 : 0.18);
-    g.strokeCircle(base.ox, base.oy, r);
-    g.fillStyle(0xffffff, this.stick.active ? 0.45 : 0.15);
-    g.fillCircle(base.x, base.y, 22);
+    if (this.isShown('stick')) {
+      g.lineStyle(2, 0xffffff, this.stick.active ? 0.5 : 0.18);
+      g.strokeCircle(base.ox, base.oy, r);
+      g.fillStyle(0xffffff, this.stick.active ? 0.45 : 0.15);
+      g.fillCircle(base.x, base.y, 22);
+    }
 
     // Main split button
     const jabFlash = (this.flash.get('jab') ?? 0) > 0;
     const crossFlash = (this.flash.get('cross') ?? 0) > 0;
-    g.fillStyle(jabFlash ? 0x9fd3ff : 0x3a78c2, jabFlash ? 0.8 : 0.45);
-    g.slice(MAIN.x, MAIN.y, MAIN.r, Math.PI / 2, (3 * Math.PI) / 2, false);
-    g.fillPath();
-    g.fillStyle(crossFlash ? 0xffb39f : 0xc2503a, crossFlash ? 0.8 : 0.45);
-    g.slice(MAIN.x, MAIN.y, MAIN.r, -Math.PI / 2, Math.PI / 2, false);
-    g.fillPath();
-    g.lineStyle(2, 0xffffff, 0.5);
-    g.strokeCircle(MAIN.x, MAIN.y, MAIN.r);
-    g.lineBetween(MAIN.x, MAIN.y - MAIN.r, MAIN.x, MAIN.y + MAIN.r);
+    if (this.isShown('jab')) {
+      g.fillStyle(jabFlash ? 0x9fd3ff : 0x3a78c2, jabFlash ? 0.8 : 0.45);
+      g.slice(MAIN.x, MAIN.y, MAIN.r, Math.PI / 2, (3 * Math.PI) / 2, false);
+      g.fillPath();
+    }
+    if (this.isShown('cross')) {
+      g.fillStyle(crossFlash ? 0xffb39f : 0xc2503a, crossFlash ? 0.8 : 0.45);
+      g.slice(MAIN.x, MAIN.y, MAIN.r, -Math.PI / 2, Math.PI / 2, false);
+      g.fillPath();
+    }
+    if (this.isShown('jab') || this.isShown('cross')) {
+      g.lineStyle(2, 0xffffff, 0.5);
+      g.strokeCircle(MAIN.x, MAIN.y, MAIN.r);
+      g.lineBetween(MAIN.x, MAIN.y - MAIN.r, MAIN.x, MAIN.y + MAIN.r);
+    }
 
     // Fatigue pips under JAB / CROSS / HOOK labels
+    if (this.isShown('fatigue')) {
     this.drawFatigue(MAIN.x - MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'jab'), tune.punches.jab.fatigueBars);
     this.drawFatigue(MAIN.x + MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'cross'), tune.punches.cross.fatigueBars);
     const hook = ARC_BUTTONS[0];
     this.drawFatigue(hook.x, hook.y + 12, fatigueLevel(f, 'hook'), tune.punches.hook.fatigueBars);
+    }
 
     for (const b of ARC_BUTTONS) {
+      if (!this.isShown(b.id)) continue;
       const flashing = (this.flash.get(b.id) ?? 0) > 0 || (b.id === 'guard' && this.isGuardHeld());
       if (b.id === 'uppercut') {
         this.drawUppercut(b, f.stars, flashing);

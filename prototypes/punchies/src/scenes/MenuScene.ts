@@ -23,7 +23,8 @@ export class MenuScene extends Phaser.Scene {
     makeButton(this, VIEW.cx, VIEW.cy - 80, 220, 'SINGLE PLAYER', () => this.scene.start('VsAI'), 36, 15);
     makeButton(this, VIEW.cx - 32, VIEW.cy - 38, 156, 'LOCAL VS', () => this.scene.start('LocalVs', loadLocalInputs()), 36, 15);
     makeButton(this, VIEW.cx + 80, VIEW.cy - 38, 60, 'INPUT', () => this.openInputPopup(), 36, 12);
-    makeButton(this, VIEW.cx, VIEW.cy + 4, 220, 'TRAINING', () => this.scene.start('Training'), 36, 15);
+    makeButton(this, VIEW.cx - 40, VIEW.cy + 4, 140, 'TRAINING', () => this.scene.start('Training'), 36, 15);
+    makeButton(this, VIEW.cx + 72, VIEW.cy + 4, 76, 'TUTORIAL', () => this.scene.start('Tutorial'), 36, 11);
     makeButton(this, VIEW.cx, VIEW.cy + 46, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 36, 15);
     makeButton(this, VIEW.cx, VIEW.cy + 88, 220, 'JOIN WITH CODE', () => this.join(), 36, 15);
     const tuneLabel = this.add

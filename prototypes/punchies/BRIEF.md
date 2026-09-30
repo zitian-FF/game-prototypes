@@ -115,6 +115,12 @@ reach.
   count. A type's fatigue only decays after ~1 s without throwing it
   (decay pause). A fatigued throw shows a subtle grey "tired".
 
+## Tutorial
+17 guided steps (move, jab, cross, sweet/sour range, hook, guard, perfect
+guard, dodge, dodge power-up, stamina, face vs body, punish, counter,
+stars & uppercut, stun, fatigue, final KO), UI revealed only as needed,
+progress remembered, linear with SKIP.
+
 ## Training
 - Dummy is static; a button cycles its stance: Normal, High Guard,
   Vulnerable. Its HP never refills until RESET.

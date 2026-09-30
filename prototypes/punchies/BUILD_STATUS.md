@@ -7,6 +7,18 @@ issues).
 
 ## What was implemented
 
+- (Branch only, not merged yet at user's request.) Tutorial mode
+  (`TutorialScene`, TUTORIAL button next to TRAINING): 17 linear steps
+  (basics, defense, resources, advanced), one instruction each, device-
+  aware button names, controls/HUD revealed step by step, scripted dummy
+  per step (idle / jabber / crossBait / whiffer), completes on the actual
+  action, SKIP/EXIT, progress saved in `punchies:tutorial:v1`, end screen.
+  Playwright: step 1 reveal + completion by walking, step 14 reveal, end
+  screen clears progress.
+- Subtle yellow pulse on a boxer while the dash buff is armed or the
+  Uppercut is charged (replaces the orange ring). Not visually confirmed
+  in headless captures.
+
 - Per-type fatigue: `punches.<type>.fatigueBars` (jab 4, hook 3, cross 2)
   with per-bar speed/damage penalties sized so full bars all give the
   same max penalty (x1.48 frames, 60% dmg). Decay pause

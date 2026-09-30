@@ -67,11 +67,23 @@ export class FightStage {
     return src === 'touch' ? this.intents.sample() : devices.sample(src);
   }
 
+  // Tutorial: reveal only the listed controls/HUD parts (null = all), and
+  // optionally force the hitbox overlay on.
+  forceHitboxes = false;
+  reveal(parts: Set<string> | null): void {
+    this.controls.shown = parts;
+    this.hud.shown = parts;
+  }
+
+  hideInfoButton(): void {
+    this.info.setButtonVisible(false);
+  }
+
   draw(s: SimState, time: number): void {
     this.drawRing();
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
-    const show = this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
+    const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
     this.views[0].draw(s.fighters[0], time, show);
     this.views[1].draw(s.fighters[1], time, show);
     this.hud.draw(s);
