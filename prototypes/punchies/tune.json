@@ -6,7 +6,7 @@
     "bottom": 374
   },
   "movement": {
-    "speed": 150,
+    "speed": 130,
     "punchMoveMult": 0.35,
     "guardMoveMult": 0.5,
     "stunMoveMult": 0.6,
@@ -25,7 +25,7 @@
       "sour": 2,
       "recovery": 8,
       "whiffRecovery": 4,
-      "reach": 50,
+      "reach": 45,
       "hitRadius": 10,
       "damage": 4,
       "staminaCost": 4,
@@ -61,7 +61,7 @@
       "sour": 3,
       "recovery": 12,
       "whiffRecovery": 8,
-      "reach": 40,
+      "reach": 35,
       "hitRadius": 13,
       "damage": 7,
       "staminaCost": 7,
@@ -94,20 +94,20 @@
     "attackerStaminaPenalty": 6,
     "counterDamageMult": 1.5,
     "sourStunMult": 0.5,
-    "hitstopFrames": 0
+    "hitstopFrames": 3
   },
   "guard": {
     "perfectFrames": 6,
     "staminaDrainPerSec": 6,
     "perfectGuardStaminaGain": 12,
-    "perfectGuardAttackerStunFrames": 30,
+    "perfectGuardAttackerStunFrames": 45,
     "perfectGuardStunBuild": 25,
     "perfectCooldownFrames": 20
   },
   "dodge": {
     "frames": 14,
     "iFrames": 10,
-    "speed": 320,
+    "speed": 150,
     "vulnerableFrames": 12,
     "stunnedVulnerableMult": 2,
     "staminaCost": 12,
@@ -117,18 +117,18 @@
   },
   "stamina": {
     "max": 100,
-    "regenIdlePerSec": 14,
-    "regenActivePerSec": 6,
+    "regenIdlePerSec": 24,
+    "regenActivePerSec": 8,
     "regenDelayFrames": 20,
-    "exhaustRecoverAt": 30,
-    "exhaustedRegenMult": 0.35
+    "exhaustRecoverAt": 25,
+    "exhaustedRegenMult": 0.5
   },
   "health": {
     "max": 100
   },
   "stun": {
     "threshold": 100,
-    "decayPerSec": 15,
+    "decayPerSec": 8,
     "decayDelayFrames": 60,
     "baseFrames": 90,
     "overflowFramesPerPoint": 1.5
