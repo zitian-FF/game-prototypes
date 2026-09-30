@@ -33,7 +33,7 @@ export interface HashPacket {
 const HASH_EVERY = 60;
 const GUARD_BIT = 32;
 // At most one skipped tick per this many ticks, so sync is smooth.
-const SYNC_WAIT_EVERY = 3;
+const SYNC_WAIT_EVERY = 10;
 
 export function packInput(i: FrameInput): PackedInput {
   const bits =

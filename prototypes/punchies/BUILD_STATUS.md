@@ -43,7 +43,9 @@ issues).
   snapshot and re-simulates to now; effects already shown are not
   replayed; stall only past `net.maxRollbackFrames` (12); result only
   shown once confirmed. GGPO-style time sync: the peer that runs ahead
-  of the other skips at most one tick in three until both meet.
+  of the other skips at most one tick in ten until both meet (was one in
+  three, which felt sluggish on phones).
+- KO bell: three "ding" strikes (synthesised bell partials) on KO.
 - Tutorial mode
   (`TutorialScene`, TUTORIAL button next to TRAINING): 17 linear steps
   (basics, defense, resources, advanced), one instruction each, device-
