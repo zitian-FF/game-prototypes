@@ -106,8 +106,10 @@ All visuals start as coloured rectangles and text (placeholder-first).
 - Each player chooses which of their squads defend the HQ by checking or
   unchecking them (as in Last War). Only checked squads that are at the
   HQ fight. Marching squads and unchecked squads do not defend.
-- HQ HP recovery, and what the winning attacker does afterward, are
-  Open questions.
+- HQ HP does not regenerate. It returns to full only when the HQ is
+  defeated and forced back to its safe zone.
+- After attacking an HQ, the attacker returns to its own HQ, whether it
+  won or lost.
 
 ## Commands
 
@@ -116,6 +118,12 @@ All actions are coordinates, timers and unit references:
 - **March:** select a squad, select a target node, issue the march. The
   squad leaves its current position and travels to the node. Travel time
   is `distance / speed` (speed modified by node bonuses).
+- **Scout:** each HQ owns 3 scouts. A scout is a fast, non-combat unit
+  sent to a node or HQ. On arrival it reveals that target's defender
+  info. A scout must return to its HQ before it can be sent again.
+  Scouts cannot capture, cannot be attacked, and do not trigger control
+  changes. (Speed and exact reveal fields are tunable, see Open
+  questions.)
 - **Cancel:** a marching squad can be issued a cancel. It turns around and
   returns to its HQ.
 - **Base teleport:** a player's HQ can teleport to a free base slot at a
@@ -139,9 +147,16 @@ When an attacking squad arrives at a node held by the enemy:
    remaining troops between fights.
 3. If the attacker clears the whole defender stack, it **takes control of
    the node immediately** and garrisons it.
-4. If the attacker is destroyed, it is gone. If it clears 10 defenders and
-   defenders remain, it **returns to its HQ** with whatever troops it has.
-5. An attacker arriving at a node with no defenders captures it immediately.
+4. A squad reduced to 0 troops is **defeated**, not deleted. A defeated
+   squad returns to its own HQ at **50% march speed** and can refill there
+   from its player's reserve pool. This applies to defeated attackers and
+   defeated defenders.
+5. If the attacker clears 10 defenders and defenders remain, it **returns
+   to its HQ** with whatever troops it has.
+6. An attacker arriving at a node with no defenders captures it immediately.
+7. An ungarrisoned node still belongs to the team that last captured it,
+   and its effects keep applying. Control switches the moment an enemy
+   squad touches (arrives at) it.
 
 ### Combat formula
 
@@ -195,8 +210,13 @@ not affect marching squads and are not otherwise a combat participant.
   Phaser.
 - Inside vision a player sees enemy marches and enemy node status (owner),
   but cannot open them to see commander info, squad power or squad type.
-  Details are revealed only the way Last War reveals them (see Open
-  questions).
+  Enemy marching units are shown as masked units by default.
+- Details are revealed in two ways:
+  - **Scouting** a node or HQ reveals its defender info.
+  - **Combat logs** after a fight reveal both sides' info and the outcome.
+- Once a unit's info is revealed, the world map shows that unit's type on
+  it while it is visible. Under fog of war it is a masked enemy unit
+  again.
 
 ## Netcode (time and distance)
 
@@ -226,6 +246,13 @@ pool range, power band edges, squad count probabilities, march speed,
 teleport cooldown, all node effect percentages and point rates, vision
 radii, turret settings, and all `combat.*` values above.
 
+## Bots
+
+Bots can fill empty slots in real matches (the host chooses). A bot
+should try to capture as many nodes as possible, and defend and attack
+intelligently. Bots use the same commands as players, run on the server
+through the same sim, and (default) obey the same fog and reveal rules.
+
 ## Testing and verification
 
 - Headless sim tests in Node: combat acceptance targets above, rank/power
@@ -252,7 +279,6 @@ client.
 - Persistence of any kind between matches, accounts, rankings.
 - Matchmaking beyond a room code.
 - Phone and touch support, tablets.
-- Scouting, unless answered under Open questions.
 - Spectator mode, replays, in-match chat, emotes.
 - Anti-cheat beyond server-side validation and fog filtering.
 - Art beyond placeholders until the loop is confirmed working.
@@ -269,6 +295,15 @@ client.
 - HQs are attackable like nodes, 4 HP, defenders chosen by check/uncheck.
 - Host starts the match manually with a 3 second cancel, with or without
   bots.
+- Defeated squads return to HQ at 50% speed, they are not deleted.
+- HQ HP only restores when the HQ is defeated and teleported to the safe
+  zone. After an HQ attack, the attacker returns to its HQ.
+- Scouts: 3 per HQ, fast, non-combat, must return before reuse.
+- Information reveal: scouting and combat logs. Revealed units show their
+  type on the map while visible, masked under fog.
+- An ungarrisoned node keeps its owner until an enemy touches it.
+- Bots attempt to capture as many nodes as possible and play defense and
+  offense.
 
 ## Defaults in force (not yet confirmed, change on request)
 
@@ -283,16 +318,17 @@ client.
 
 ## Open questions
 
-1. How do HQs recover HP, if at all? Does an attacker that defeats an
-   HQ stay at its original position, return to its own HQ, or something
-   else?
-2. "Reference Last War for how information is revealed": does this
-   mean a scout action on a target, battle reports after a fight, or
-   both? What exactly does each reveal?
-3. How smart should fill-in bots be in real matches (random marches,
-   simple capture-the-nearest-node, or something more)?
-4. How are the 8 base slots around a node arranged and numbered, and do
-   enemy HQs share a node's slots with the owning team's?
-5. What happens to a garrison when its node is captured while the
-   squads have been teleported away? (Answer implied: nothing is there.
-   Confirm.)
+1. Defeated squad, please confirm: a squad that hits 0 troops is not
+   destroyed. It returns to HQ at 50% speed and refills there from the
+   reserve pool. Earlier I had written that a defeated attacker is gone,
+   which conflicts, so I changed it to this.
+2. Return-to-HQ rule: you said the attacker returns to its HQ after
+   winning or losing. Does that apply to HQ attacks only? I assumed a
+   winning attacker at a **node** garrisons it (per earlier answer).
+3. Scout details: what does a scout reveal (owner, squad type, power,
+   current troops)? How long does revealed info last on a unit, and does
+   it follow the squad when it moves? Scout speed relative to squads?
+4. Base slot layout around a node (deferred, we'll discuss in detail
+   next).
+5. Do bots obey fog and reveal rules like players (my default), or may
+   they see everything?
