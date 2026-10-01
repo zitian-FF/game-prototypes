@@ -70,8 +70,16 @@ All visuals start as coloured rectangles and text (placeholder-first).
 ## Map, nodes and ownership
 
 - A map of many capturable nodes, each with a fixed coordinate.
-- Ownership is per team. Every node starts neutral unless the brief
-  entry in Open questions says otherwise.
+- Ownership is per team. Every node starts neutral with no garrison
+  (default, see Open questions).
+- **No lanes.** Any squad can march from where it is to any other node
+  or HQ in a straight line.
+- **Base slots:** each node occupies the space of 1 base and has 8 base
+  slots surrounding it. HQs sit in these slots. A teleport is only
+  possible into a free slot at a node the player's team controls.
+- **Safe zones:** each team has an invulnerable area where its HQs
+  start and where they return to when defeated. Nothing in a safe zone
+  can be attacked.
 - **Node types and effects:**
   - Ally attack boost (% bonus to the owning team's squad power).
   - Ally defense boost (% reduction in damage taken by the owning team).
@@ -85,7 +93,21 @@ All visuals start as coloured rectangles and text (placeholder-first).
 - Nodes generate **points** for the owning team at a per-node rate while
   held. Points accrue on the server.
 - Squads can garrison a node. The garrison (the defender stack) is
-  whatever squads are stationed there.
+  whatever squads are stationed there, in arrival order.
+
+## HQ as a target
+
+- An enemy HQ outside a safe zone can be selected as an attack target and
+  behaves like a node: the attacker fights its defenders.
+- Each HQ has **4 HP**. Every time an attacker defeats all of the HQ's
+  defenders, the HQ loses 1 HP. At 0 HP the HQ is defeated: it and all
+  its squads return to the owner's safe zone.
+- A HQ with no defenders loses 1 HP to each attacker that arrives.
+- Each player chooses which of their squads defend the HQ by checking or
+  unchecking them (as in Last War). Only checked squads that are at the
+  HQ fight. Marching squads and unchecked squads do not defend.
+- HQ HP recovery, and what the winning attacker does afterward, are
+  Open questions.
 
 ## Commands
 
@@ -96,8 +118,10 @@ All actions are coordinates, timers and unit references:
   is `distance / speed` (speed modified by node bonuses).
 - **Cancel:** a marching squad can be issued a cancel. It turns around and
   returns to its HQ.
-- **Base teleport:** a player's HQ can teleport to a node their team
-  currently controls. Cooldown is 2 minutes, reduced by owned
+- **Base teleport:** a player's HQ can teleport to a free base slot at a
+  node their team currently controls. It is instant. All of the player's
+  squads, wherever they are (garrisoned or marching), return to the HQ
+  and teleport with it. Cooldown is 2 minutes, reduced by owned
   teleport-cooldown nodes. Teleport is only allowed to controlled
   nodes.
 - Squads marching in the field cannot fight. All combat resolves at nodes.
@@ -106,8 +130,10 @@ All actions are coordinates, timers and unit references:
 
 When an attacking squad arrives at a node held by the enemy:
 
-1. The attacker fights the node's defender stack one squad at a time, in
-   stack order, for up to **10 defender squads** per attack.
+1. The attacker fights the defender stack one squad at a time, for up to
+   **10 defender squads** per attack. Order is last in, first fought
+   (first in, last fought), as in Last War: the squad that garrisoned
+   most recently is fought first, the earliest is fought last.
 2. Each fight is auto-resolved in rounds until one squad reaches 0
    troops. Both sides take damage each round. The attacker keeps its
    remaining troops between fights.
@@ -167,6 +193,10 @@ not affect marching squads and are not otherwise a combat participant.
   server filters state per team, so hidden information is never sent.
 - The map outside vision is shown as unexplored or last-seen, rendered in
   Phaser.
+- Inside vision a player sees enemy marches and enemy node status (owner),
+  but cannot open them to see commander info, squad power or squad type.
+  Details are revealed only the way Last War reveals them (see Open
+  questions).
 
 ## Netcode (time and distance)
 
@@ -179,8 +209,10 @@ not affect marching squads and are not otherwise a combat participant.
   server events (Durable Object alarms).
 - Clients send commands only (march, cancel, teleport). The server
   validates and rejects invalid ones.
-- Match flow: lobby by 5-character room code, all 40 players ready or the
-  host starts, 30 minute match, final scoreboard.
+- Match flow: lobby by 5-character room code. The host presses Start,
+  which opens a 3 second cancel window (the host can abort during it).
+  The host chooses either to start with only the players present or to
+  fill all remaining slots with bots. 30 minute match, final scoreboard.
 
 ## Win condition
 
@@ -220,33 +252,47 @@ client.
 - Persistence of any kind between matches, accounts, rankings.
 - Matchmaking beyond a room code.
 - Phone and touch support, tablets.
+- Scouting, unless answered under Open questions.
 - Spectator mode, replays, in-match chat, emotes.
 - Anti-cheat beyond server-side validation and fog filtering.
 - Art beyond placeholders until the loop is confirmed working.
 - Combat while marching.
 - Teleporting to nodes the team does not control.
 
-## Open questions (need an answer before the relevant work starts)
+## Decisions recorded from the design chat
 
-1. Map: how many nodes, what layout, and is travel a straight line
-   between coordinates or along fixed lanes between nodes?
-2. Do nodes start neutral, with an NPC garrison, or pre-assigned to
-   teams? Where do the 40 HQs start?
-3. Power bands: are the 20 ranks equal slices of 50m-80m (1.5m each)?
-   (proposed default)
-4. Squad troop variance around 3000: how large? (proposed default 10%)
-5. Is refill at HQ instant, or does it take time?
-6. Defender stack order: arrival order, or something else?
-7. Base teleport: instant on use, and what happens to squads that are
-   stationed at the old HQ position or still marching home?
-8. Do marching enemy squads show up inside our vision? Do nodes outside
-   vision show last-known owner?
-9. Node effect stacking: if a team owns two attack-boost nodes, do they
-   stack, take the max, or is only one allowed?
-10. Tie-break if both teams have equal points at 30 minutes?
-11. Reconnect mid-match: is identity-matched reconnect in scope?
-12. What happens when a player's connection drops for good: do their
-    squads stay and defend?
-13. Does the host need to press start, or does the match start when 40
-    players have joined? Are bots allowed to fill empty slots in real
-    matches or only in tests?
+- Map is lane-free, straight-line travel, 8 base slots around each node.
+- Each team has an invulnerable safe zone for HQ start and return.
+- Defender stack: last in, first fought.
+- Teleport is instant and all squads go with the HQ.
+- Only enemy marches and node status are visible, with no inspect.
+- HQs are attackable like nodes, 4 HP, defenders chosen by check/uncheck.
+- Host starts the match manually with a 3 second cancel, with or without
+  bots.
+
+## Defaults in force (not yet confirmed, change on request)
+
+- About 60 nodes, all neutral and ungarrisoned at start.
+- 20 ranks are equal slices of 50m-80m.
+- Squad troop variance around 3000 is +/-10%.
+- HQ refill is instant on arrival and partial if the pool is short.
+- Node effect stacking is additive.
+- Tie at 30 minutes goes to the team that first reached the tied score.
+- Mid-match reconnect is in scope (stored client ID).
+- A permanently disconnected player's squads stay and defend.
+
+## Open questions
+
+1. How do HQs recover HP, if at all? Does an attacker that defeats an
+   HQ stay at its original position, return to its own HQ, or something
+   else?
+2. "Reference Last War for how information is revealed": does this
+   mean a scout action on a target, battle reports after a fight, or
+   both? What exactly does each reveal?
+3. How smart should fill-in bots be in real matches (random marches,
+   simple capture-the-nearest-node, or something more)?
+4. How are the 8 base slots around a node arranged and numbered, and do
+   enemy HQs share a node's slots with the owning team's?
+5. What happens to a garrison when its node is captured while the
+   squads have been teleported away? (Answer implied: nothing is there.
+   Confirm.)
