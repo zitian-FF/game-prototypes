@@ -121,8 +121,8 @@ All actions are coordinates, timers and unit references:
 - **Scout:** each HQ owns 3 scouts. A scout is a fast, non-combat unit
   sent to a node or HQ. It travels at **3x squad march speed**. On
   arrival it reveals that target's defender info: for each defender,
-  the **squad type** and its **power adjusted by troops remaining**
-  (`power * troops / maxTroops`). It does not reveal the commander. The
+  the **squad type**, its **power adjusted by troops remaining**
+  (`power * troops / maxTroops`), and its **commander**. The
   revealed info lasts **60 seconds**. A scout must return to its HQ before it can be sent again.
   Scouts cannot capture, cannot be attacked, and do not trigger control
   changes. (Speed and exact reveal fields are tunable, see Open
@@ -217,6 +217,13 @@ not affect marching squads and are not otherwise a combat participant.
 - Details are revealed in two ways:
   - **Scouting** a node or HQ reveals its defender info.
   - **Combat logs** after a fight reveal both sides' info and the outcome.
+- **UI, scout review:** a button next to the combat logs opens a list of
+  recent active scouting reports, each with its remaining-time countdown.
+  The server sends each report with an expiry timestamp and the client
+  runs the countdown locally, so there is no per-second server traffic.
+- **UI, combat logs:** a list of combat logs, most recent first. A log
+  shows full info for both sides (including commanders) and the outcome.
+  The combat logs button sits next to the scout review button.
 - Revealed info expires after 60 seconds. Once a unit's info is revealed,
   the world map shows that unit's type on it while it is visible and the
   info has not expired. Under fog of war it is a masked enemy unit
@@ -329,8 +336,3 @@ client.
 ## Open questions
 
 1. Base slot layout around a node (deferred, discuss next).
-2. Does the 60 second reveal follow a squad when it moves, or only
-   apply to the target at the time of scouting? (Default: the info is
-   attached to the squad for 60 seconds, wherever it goes.)
-3. Does the combat log reveal the commander, or only type and power?
-   (Default: full info, including the commander.)
