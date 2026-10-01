@@ -75,8 +75,12 @@ All visuals start as coloured rectangles and text (placeholder-first).
 - **No lanes.** Any squad can march from where it is to any other node
   or HQ in a straight line.
 - **Base slots:** each node occupies the space of 1 base and has 8 base
-  slots surrounding it. HQs sit in these slots. A teleport is only
-  possible into a free slot at a node the player's team controls.
+  slots surrounding it. HQs sit in these slots. Slot access is tied to
+  node control: a player can only teleport into a free slot at a node
+  their team currently controls. Slots are occupied by whichever HQs are
+  there, so after a node flips, the previous owner's HQs stay in their
+  slots as stranded HQs while the new owner's team can teleport into the
+  remaining free slots beside them.
 - **Safe zones:** each team has an invulnerable area where its HQs
   start and where they return to when defeated. Nothing in a safe zone
   can be attacked.
@@ -127,6 +131,9 @@ All actions are coordinates, timers and unit references:
   Scouts cannot capture, cannot be attacked, and do not trigger control
   changes. (Speed and exact reveal fields are tunable, see Open
   questions.)
+- **Dodge:** a player may teleport their HQ away while enemy marches are
+  inbound, as long as their teleport is off cooldown. The inbound
+  attackers then arrive at an empty slot. There is no inbound lock.
 - **Cancel:** a marching squad can be issued a cancel. It turns around and
   returns to its HQ.
 - **Base teleport:** a player's HQ can teleport to a free base slot at a
@@ -136,6 +143,23 @@ All actions are coordinates, timers and unit references:
   teleport-cooldown nodes. Teleport is only allowed to controlled
   nodes.
 - Squads marching in the field cannot fight. All combat resolves at nodes.
+
+## Node flip and stranded HQs
+
+When a node changes control, HQs in its slots owned by the previous
+controller are **stranded**: they stay in place and remain valid attack
+targets. A stranded HQ can still teleport away to a node its team
+controls, if its teleport is off cooldown, and is otherwise trapped.
+Capturing a node therefore exposes the ring of HQs beside it, and the
+capturing team can teleport into free slots there to strike them.
+
+## Map scale
+
+The map is sized so that a march across the whole map takes about **3
+minutes** at base squad speed. March speed is derived from map size to
+hit that target and both are tunable (`map.crossMapMarchSeconds`
+default 180). This is meant to sit near the 2 minute teleport cooldown so
+that dodging, baiting and forward-node strikes all matter.
 
 ## Combat (auto-resolved at a node)
 
@@ -313,6 +337,12 @@ client.
   Reveal type and troop-adjusted power for 60 seconds.
 - A defeated squad is not deleted: it returns to its HQ at 50% speed and
   refills from the reserve pool.
+- Node flip: the previous controller's HQs in its slots become stranded
+  (stay, targetable, can teleport away if off cooldown). Slot access is
+  tied to node control, and the new controller's team can teleport into
+  free slots beside stranded HQs.
+- Dodge teleport is allowed whenever the teleport is off cooldown.
+- Map scale target: about 3 minutes to march across the whole map.
 - A winning attacker at a node stays and garrisons. The return-to-HQ
   rule is for HQ attacks.
 - Bots obey fog and the same reveal rules as players.
@@ -335,4 +365,8 @@ client.
 
 ## Open questions
 
-1. Base slot layout around a node (deferred, discuss next).
+1. If all 8 slots around a node are filled by stranded HQs, can the
+   capturing team still teleport in? (Default: no, until a stranded HQ
+   leaves or is defeated, since occupied slots are unavailable.)
+2. The slot arrangement itself (ring order, numbering) is cosmetic and
+   needs no decision for the sim.
