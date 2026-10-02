@@ -6,7 +6,10 @@ import type { Command, MapDef, MarchTarget, TeamId, Tune } from 'arena-sim';
 import type { ClientEvent } from './events';
 import type { ViewPatch, WireView } from './wire';
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
+
+/** Match lengths a host can choose in the lobby. */
+export const MATCH_MINUTES = [10, 15, 20, 30] as const;
 
 export type RoomPhase = 'empty' | 'lobby' | 'countdown' | 'playing' | 'ended';
 
@@ -22,7 +25,7 @@ export type CommandBody =
 
 export type ClientMsg =
   | { t: 'hello'; v: number; clientId: string; name: string; create?: boolean }
-  | { t: 'start'; fillBots: boolean }
+  | { t: 'start'; fillBots: boolean; minutes: number }
   | { t: 'cancelStart' }
   | { t: 'endRoom' }
   | { t: 'cmd'; id: number; cmd: CommandBody }
@@ -75,6 +78,8 @@ export type ServerMsg =
       /** Server wall ms when the start countdown ends, while phase is countdown. */
       countdownEndsAtMs?: number;
       fillBots: boolean;
+      /** Chosen match length. */
+      minutes: number;
     }
   | { t: 'error'; code: ErrorCode; message: string }
   | { t: 'matchStart'; info: MatchStartInfo }
@@ -162,8 +167,13 @@ export function parseClientMsg(raw: string): ParseResult {
       if (!name) return { ok: false, message: 'empty name' };
       return { ok: true, msg: { t: 'hello', v: v.v, clientId: v.clientId, name, create: v.create === true } };
     }
-    case 'start':
-      return typeof v.fillBots === 'boolean' ? { ok: true, msg: { t: 'start', fillBots: v.fillBots } } : { ok: false, message: 'bad start' };
+    case 'start': {
+      const minutes = v.minutes;
+      if (typeof v.fillBots !== 'boolean' || typeof minutes !== 'number' || !(MATCH_MINUTES as readonly number[]).includes(minutes)) {
+        return { ok: false, message: 'bad start' };
+      }
+      return { ok: true, msg: { t: 'start', fillBots: v.fillBots, minutes } };
+    }
     case 'cancelStart':
       return { ok: true, msg: { t: 'cancelStart' } };
     case 'endRoom':

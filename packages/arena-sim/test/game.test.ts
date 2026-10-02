@@ -30,13 +30,13 @@ test('nodes: a squad marching to a neutral node captures it and earns points', (
   assert.equal(g.points()[1], 0);
 });
 
-test('nodes: march time is distance over base speed (3 min across the map)', () => {
+test('nodes: march time is distance over base speed (tuned cross-map time)', () => {
   const g = makeGame({ nodes: [N0], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
   const from = g.squadPos(g.squads.get('s0')!);
   must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n0' } });
   const expected = (dist(from, { x: 300, y: 300 }) / g.marchSpeed) * 1000;
   assert.ok(Math.abs(arrival(g, 's0') - expected) < 1e-6);
-  assert.ok(Math.abs(Math.hypot(1000, 600) / g.marchSpeed - 180) < 1e-9);
+  assert.ok(Math.abs(Math.hypot(1000, 600) / g.marchSpeed - g.tune.march.crossMapSeconds) < 1e-9);
 });
 
 test('nodes: an ungarrisoned node keeps its owner until an enemy touches it', () => {
@@ -45,7 +45,7 @@ test('nodes: an ungarrisoned node keeps its owner until an enemy touches it', ()
     players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n0');
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n1' } });
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' }); // leaves the node empty
   const node = g.nodes.get('n0')!;
   assert.equal(node.garrison.length, 0);
   assert.equal(node.owner, 0, 'still a-team property while empty');
@@ -485,50 +485,112 @@ test('scout: scouting an HQ that already teleported away finds nothing', () => {
 
 // ---------------------------------------------------------------- turrets
 
-test('turret: pulses a fixed % off enemy garrisons nearby, ignores far ones', () => {
-  const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300 };
-  const near: NodeDef = { id: 'near', kind: 'points', x: 600, y: 300 };
-  const far: NodeDef = { id: 'far', kind: 'points', x: 900, y: 100 };
+test('turret: fires at every enemy-held tier 3+ node, a hit takes a flat % of max troops from each garrison', () => {
+  const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300, tier: 2 };
+  const t3: NodeDef = { id: 't3', kind: 'points', x: 900, y: 100, tier: 3 };
+  const t4: NodeDef = { id: 't4', kind: 'points', x: 100, y: 500, tier: 4 };
+  const low: NodeDef = { id: 'low', kind: 'points', x: 700, y: 500, tier: 1 };
   const g = makeGame({
-    nodes: [T, near, far],
-    players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
+    nodes: [T, t3, t4, low],
+    players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }, { power: 60 }, { power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'T');
-  marchAndArrive(g, 'b', 's1', 'near');
-  marchAndArrive(g, 'b', 's2', 'far');
-  // Pulses already fired while the later squads were still marching, so
-  // measure from the state right before the next one.
-  const s1 = g.squads.get('s1')!;
-  const before = s1.troops;
-  const events: GameEvent[] = [];
-  const nextPulse = (Math.floor(g.now / 30_000) + 1) * 30_000;
-  events.push(...g.advanceTo(nextPulse));
-  const pulse = ofType(events, 'turretPulse')[0];
-  assert.equal(pulse.nodeId, 'T');
-  const damage = Math.ceil(before * 0.05);
-  assert.deepEqual(pulse.hits, [{ squadId: 's1', damage }]);
-  assert.equal(s1.troops, before - damage);
-  assert.equal(g.squads.get('s2')!.troops, 3000, 'out of range');
+  marchAndArrive(g, 'b', 's1', 't3');
+  marchAndArrive(g, 'b', 's2', 't4');
+  marchAndArrive(g, 'b', 's3', 'low');
+  const launches: GameEvent[] = [];
+  const hits: GameEvent[] = [];
+  const next = (Math.floor(g.now / 5_000) + 1) * 5_000;
+  const ev = g.advanceTo(next + 200_000);
+  launches.push(...ofType(ev, 'missileLaunched'));
+  hits.push(...ofType(ev, 'turretPulse'));
+  const targets = new Set(ofType(ev, 'missileLaunched').map((m) => m.nodeId));
+  assert.deepEqual([...targets].sort(), ['t3', 't4'], 'only tier 3 and 4 enemy nodes are targeted');
+  const first = ofType(ev, 'missileLaunched')[0];
+  assert.equal(first.team, 0);
+  assert.ok(Math.abs((first.arriveMs - first.startMs) - (dist(first.from, first.to) / (g.marchSpeed * 5)) * 1000) < 1e-6, 'five times unit speed');
+  assert.ok(hits.length >= 2);
+  assert.equal(g.squads.get('s3')!.troops, 3000, 'a tier 1 node is not targeted');
   assert.equal(g.squads.get('s0')!.troops, 3000, 'own team untouched');
-  g.advanceTo(nextPulse + 30_000);
-  assert.equal(s1.troops, before - damage - Math.ceil((before - damage) * 0.05), 'percent of current troops');
+  const s1 = g.squads.get('s1')!;
+  assert.ok(s1.troops < 3000 && s1.troops >= 1, 'damaged but never killed');
+  assert.deepEqual(g.checkInvariants(), []);
 });
 
-test('turret: a garrison worn to 0 is defeated and walks home', () => {
-  const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300 };
-  const near: NodeDef = { id: 'near', kind: 'points', x: 600, y: 300 };
+test('turret: one hit is a flat 5% of max troops, and a squad is never taken below the floor', () => {
+  const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300, tier: 2 };
+  const t3: NodeDef = { id: 't3', kind: 'points', x: 900, y: 100, tier: 3 };
   const g = makeGame({
-    nodes: [T, near],
-    tune: scenarioTune({ turret: { damageFraction: 1 } }),
+    nodes: [T, t3],
     players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'T');
-  marchAndArrive(g, 'b', 's1', 'near');
-  g.advanceTo(Math.ceil(g.now / 30_000) * 30_000);
+  const events = marchAndArrive(g, 'b', 's1', 't3');
+  void events;
   const sq = g.squads.get('s1')!;
-  assert.equal(sq.troops, 0);
-  assert.ok(sq.state.kind === 'march' && Math.abs(sq.state.march.speed - g.marchSpeed * 0.5) < 1e-9);
-  assert.equal(g.nodes.get('near')!.garrison.length, 0);
+  const before = sq.troops;
+  const ev = g.advanceTo(g.now + 80_000);
+  const hit = ofType(ev, 'turretPulse')[0];
+  assert.deepEqual(hit.hits[0], { squadId: 's1', damage: 150 }, '5% of 3000');
+  assert.ok(sq.troops < before);
+  g.advanceTo(g.now + 5_000_000 > 1_800_000 ? 1_799_000 : g.now + 5_000_000);
+  assert.ok(sq.troops >= 1, `never below the floor, got ${sq.troops}`);
+  assert.equal(sq.state.kind, 'garrison', 'stays garrisoned');
+});
+
+test('turret: a missile whose target was already retaken by the firing team does nothing', () => {
+  const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300, tier: 2 };
+  const t3: NodeDef = { id: 't3', kind: 'points', x: 900, y: 100, tier: 3 };
+  const g = makeGame({
+    nodes: [T, t3],
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
+  });
+  marchAndArrive(g, 'a', 's0', 'T');
+  marchAndArrive(g, 'b', 's2', 't3');
+  // Fire, then change hands while the missile is still in the air.
+  const launch = ofType(g.advanceTo((Math.floor(g.now / 5_000) + 1) * 5_000 + 1), 'missileLaunched')[0];
+  assert.ok(launch);
+  g.nodes.get('t3')!.owner = 0; // the node was taken by the firing team
+  const ev = g.advanceTo(launch.arriveMs + 1);
+  assert.equal(ofType(ev, 'turretPulse').filter((h) => h.nodeId === 't3').length, 0);
+});
+
+// ------------------------------------------------------------- orders
+
+test('orders: a squad in the field can only be told to come home', () => {
+  const g = makeGame({ nodes: [N0, N1], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n0' } });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n1' } }), 'alreadyMarching');
+  g.advanceTo(arrival(g, 's0'));
+  assert.equal(g.squads.get('s0')!.state.kind, 'garrison');
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n1' } }), 'notAtHq');
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' }); // recall from the garrison
+  assert.equal(g.nodes.get('n0')!.garrison.length, 0);
+  assert.equal(err(g, { type: 'cancel', playerId: 'a', squadId: 's0' }), 'alreadyReturning');
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n1' } }), 'alreadyMarching');
+  g.advanceTo(arrival(g, 's0'));
+  assert.equal(g.squads.get('s0')!.state.kind, 'hq');
+  assert.equal(err(g, { type: 'cancel', playerId: 'a', squadId: 's0' }), 'alreadyHome');
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n1' } });
+});
+
+// ------------------------------------------------------------ hospital
+
+test('hospital: refills every ally pool by 100 a second times tier while held, never past the start', () => {
+  const H: NodeDef = { id: 'H', kind: 'hospital', x: 300, y: 300, tier: 1 };
+  const g = makeGame({
+    nodes: [H],
+    players: [player('a', 0, [{ power: 60 }], 1000), player('c', 0, [{ power: 60 }], 1000), player('b', 1, [{ power: 60 }], 1000)],
+  });
+  for (const id of ['a', 'c', 'b']) g.players.get(id)!.pool = 100;
+  marchAndArrive(g, 'a', 's0', 'H');
+  const t0 = g.now;
+  g.advanceTo(t0 + 3_000);
+  assert.ok(Math.abs(g.players.get('a')!.pool - 400) < 1e-6, `a pool ${g.players.get('a')!.pool}`);
+  assert.ok(Math.abs(g.players.get('c')!.pool - 400) < 1e-6, 'every ally, not just the holder');
+  assert.equal(g.players.get('b')!.pool, 100, 'the enemy gets nothing');
+  g.advanceTo(t0 + 60_000);
+  assert.equal(g.players.get('a')!.pool, 1000, 'capped at the starting pool');
 });
 
 // ---------------------------------------------------------------- boosts

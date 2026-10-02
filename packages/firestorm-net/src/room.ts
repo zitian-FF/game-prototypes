@@ -80,6 +80,7 @@ export interface RoomMeta {
   hostId: string | null;
   humans: { clientId: string; name: string }[];
   fillBots: boolean;
+  minutes?: number;
   countdownEndsAtMs?: number;
   hostGoneAtMs?: number;
   match?: MatchMeta;
@@ -123,6 +124,7 @@ export class ArenaRoom {
   private phase: RoomPhase | 'closed' = 'empty';
   private hostId: string | null = null;
   private fillBots = false;
+  private minutes = 30;
   private countdownEndsAtMs: number | undefined;
   private hostGoneAtMs: number | undefined;
   private noHumansSinceMs: number | undefined;
@@ -169,6 +171,7 @@ export class ArenaRoom {
     room.phase = meta.phase;
     room.hostId = meta.hostId;
     room.fillBots = meta.fillBots;
+    room.minutes = meta.minutes ?? room.minutes;
     room.countdownEndsAtMs = meta.countdownEndsAtMs;
     room.hostGoneAtMs = meta.hostGoneAtMs;
     room.cmdCount = log.length;
@@ -209,6 +212,7 @@ export class ArenaRoom {
       hostId: this.hostId,
       humans: [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name })),
       fillBots: this.fillBots,
+      minutes: this.minutes,
       countdownEndsAtMs: this.countdownEndsAtMs,
       hostGoneAtMs: this.hostGoneAtMs,
       match: this.match,
@@ -321,7 +325,7 @@ export class ArenaRoom {
       case 'ping':
         return this.send(connId, { t: 'pong', c: msg.c, s: now });
       case 'start':
-        return this.onStart(connId, clientId, msg.fillBots);
+        return this.onStart(connId, clientId, msg.fillBots, msg.minutes);
       case 'cancelStart':
         return this.onCancelStart(connId, clientId);
       case 'endRoom':
@@ -390,11 +394,12 @@ export class ArenaRoom {
     }
   }
 
-  private onStart(connId: string, clientId: string, fillBots: boolean): void {
+  private onStart(connId: string, clientId: string, fillBots: boolean, minutes: number): void {
     if (clientId !== this.hostId) return this.error(connId, 'notHost', 'only the host can start');
     if (this.phase !== 'lobby') return this.error(connId, 'badPhase', 'not in the lobby');
     this.phase = 'countdown';
     this.fillBots = fillBots;
+    this.minutes = minutes;
     this.countdownEndsAtMs = this.env.now() + this.tune.match.startCancelSeconds * 1000;
     this.saveMeta();
     this.sendLobby();
@@ -455,7 +460,7 @@ export class ArenaRoom {
     if (!g || !m || this.phase !== 'playing') return;
     // A sliver of slack stops floating point from leaving an event due at exactly this instant unprocessed.
     const wallSim = (this.env.now() - m.startedAtMs) * m.timeScale + 1e-6;
-    const simNow = Math.min(this.tune.match.durationSeconds * 1000, Math.max(g.now, wallSim));
+    const simNow = Math.min((this.match?.tune ?? this.tune).match.durationSeconds * 1000, Math.max(g.now, wallSim));
     this.pending.push(...g.advanceTo(simNow));
     if (!g.result && simNow >= this.nextBotSimMs) {
       this.nextBotSimMs = simNow + this.opt.botThinkSimMs;
@@ -523,7 +528,7 @@ export class ArenaRoom {
     // Alternate teams down the list: humans first, so they are split evenly, then bots fill.
     roster.forEach((p, i) => (p.team = (i % 2) as TeamId));
 
-    this.match = { seed, startedAtMs: this.env.now(), timeScale: this.opt.timeScale, tune: this.tune, players: roster };
+    this.match = { seed, startedAtMs: this.env.now(), timeScale: this.opt.timeScale, tune: { ...this.tune, match: { ...this.tune.match, durationSeconds: this.minutes * 60 } }, players: roster };
     this.indexPlayers(this.match);
     this.game = ArenaRoom.buildGame(this.match);
     this.initBots(this.match);
@@ -556,7 +561,7 @@ export class ArenaRoom {
     for (const [playerId, brain] of this.bots) {
       const team = this.teamOfPlayer.get(playerId)!;
       const view = (views[team] ??= viewFor(g, team));
-      const commands = brain.think({ playerId, team, view, tune: this.tune, speed: g.marchSpeed, nowMs: g.now, claims: claims[team] });
+      const commands = brain.think({ playerId, team, view, tune: m.tune, speed: g.marchSpeed, nowMs: g.now, claims: claims[team] });
       for (const body of commands) {
         const r = this.applyCommand(toSimCommand(body, playerId));
         if (r.ok) this.pending.push(...r.events);
@@ -615,6 +620,7 @@ export class ArenaRoom {
       maxPlayers: this.opt.maxHumans,
       countdownEndsAtMs: this.phase === 'countdown' ? this.countdownEndsAtMs : undefined,
       fillBots: this.fillBots,
+      minutes: this.minutes,
     };
   }
 

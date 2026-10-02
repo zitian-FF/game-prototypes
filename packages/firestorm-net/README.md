@@ -1,6 +1,6 @@
 # firestorm-net
 
-Version: **0.1.0**
+Version: **0.2.0**
 
 Everything a firestorm-arena match server needs except the Cloudflare glue:
 the wire protocol, the match room (lobby, start countdown, the running match),
@@ -47,18 +47,15 @@ alarm set, and rebuilds the room from storage after an eviction.
 
 ## Bots
 
-A bot grabs free points and spreads out (a node holds one squad per commander,
-and a teammate already heading for a node makes it worth only the garrison
-bonus); keeps its strongest squad back as a striker that scouts first; attacks
-what a fresh scout report says it can beat with room to spare, and contests
-enemy-held or fogged enemy-side nodes even without a report, betting on its squad
-power (at most two blind attackers per node; the striker waits 20s for a report
-first); covers its own
-nodes when an enemy march is heading for them; and teleports forward, to refill,
-or to dodge. It sees only what a player on its team would see.
+A bot is a small state machine. Every 8 to 20 sim seconds (random per bot) it picks
+one of attack, teleport or scout at random, picks a random target for it, and runs it
+if it is legal (a squad at the HQ with troops, a teleport ready and a free slot at a
+node it holds, a scout at home). Otherwise it waits for the next cycle. It sees only
+what a player on its team would see, so it attacks and scouts fogged nodes blind.
+Squads in a garrison come home through teleport, as for a person.
 
-Known limits: bots rarely attack HQs (enemy HQs are seldom in sight), do not model
-node boosts in their fight estimates, and never move a garrisoned squad.
+Cost note: random bots issue about 2,700 commands per full match, so a match is about
+4,500 row writes, roughly 21 matches a day on the Workers Free plan.
 
 ## Tests
 

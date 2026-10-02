@@ -19,6 +19,8 @@ export type ClientEvent =
   /** An HQ teleport (extract at `from`, landing at `to`). `own` is true for your team's HQs. */
   | { type: 'teleportFx'; timeMs: number; hqId: string; from: Vec; to: Vec; own: boolean; forced: boolean }
   | { type: 'turretPulse'; timeMs: number; nodeId: NodeId; hits: { squadId: SquadId; damage: number }[] }
+  /** A turret missile in flight: draw it from `from` to `to` between startMs and arriveMs. */
+  | { type: 'missileLaunched'; timeMs: number; id: string; own: boolean; from: Vec; to: Vec; startMs: number; arriveMs: number }
   | { type: 'refilled'; timeMs: number; squadId: SquadId; added: number }
   | { type: 'scoutLaunched'; timeMs: number; owner: string; scoutIndex: number }
   | { type: 'matchEnded'; timeMs: number; result: MatchResult };
@@ -76,6 +78,11 @@ export function projectEvents(game: ArenaGame, team: TeamId, events: GameEvent[]
       case 'turretPulse':
         if (sees(nodePos(e.nodeId)) || game.nodes.get(e.nodeId)?.owner === team) {
           out.push({ type: 'turretPulse', timeMs: e.timeMs, nodeId: e.nodeId, hits: e.hits.filter((h) => squadTeam(h.squadId) === team) });
+        }
+        break;
+      case 'missileLaunched':
+        if (e.team === team || sees(e.from) || sees(e.to)) {
+          out.push({ type: 'missileLaunched', timeMs: e.timeMs, id: e.id, own: e.team === team, from: e.from, to: e.to, startMs: e.startMs, arriveMs: e.arriveMs });
         }
         break;
       case 'scoutLaunched':

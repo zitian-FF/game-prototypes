@@ -80,7 +80,7 @@ test('scoring: an empty node still pays its tier score but no garrison bonus', (
   });
   marchAndArrive(g, 'a', 's0', 'n1');
   assert.ok(Math.abs(rate(g) - 40) < 1e-6);
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n2' } });
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' });
   assert.ok(Math.abs(rate(g) - 30) < 1e-6, 'left n1: its 30 stays, the garrison 10 is gone');
 });
 
@@ -169,7 +169,7 @@ test('view: your own garrison count is exact, an enemy one needs a scout and goe
   assert.equal(nodeFor(1).garrisonCount, 2);
   assert.equal(nodeFor(1).garrisonCountAsOfMs, g.now);
   // A squad leaves, but the scouted number is a snapshot.
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'm' } });
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' });
   assert.equal(nodeFor(0).garrisonCount, 1);
   assert.equal(nodeFor(1).garrisonCount, 2, 'the scouted count does not update');
   g.advanceTo(g.now + 11_000);
@@ -207,7 +207,6 @@ test('view: a defeated squad is marked burning on the way home, for its team and
     nodes: [node('n', 300, 1), node('v', 450, 1, 'largeVision')],
     players: [player('a', 0, [{ power: 80 }]), player('b', 1, [{ power: 45 }, { power: 60 }])],
   });
-  marchAndArrive(g, 'a', 's0', 'n');
   marchAndArrive(g, 'a', 's0', 'v');
   marchAndArrive(g, 'b', 's2', 'n');
   must(g, { type: 'march', playerId: 'b', squadId: 's1', target: { kind: 'node', nodeId: 'v' } });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { viewFor } from '../src/fog';
 import { test } from './harness';
-import { arrival, makeGame, marchAndArrive, must, player, scenarioTune } from './helpers';
+import { arrival, makeGame, marchAndArrive, must, player, recallHome, scenarioTune } from './helpers';
 import type { NodeDef } from './helpers';
 
 test('fog: enemy marches are masked, scout reveals show type for 10s (tuned) then mask again', () => {
@@ -24,7 +24,8 @@ test('fog: enemy marches are masked, scout reveals show type for 10s (tuned) the
   assert.equal(viewFor(g, 1).scoutReports.length, 1);
   assert.equal(viewFor(g, 0).scoutReports.length, 0, 'the other team does not see our scouting');
 
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'x' } });
+  // The scouted squad leaves its node: only an order home is possible from the field.
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' });
   const t0 = g.now;
   g.advanceTo(t0 + 5_000);
   let seen = viewFor(g, 1).enemyMarches;
@@ -83,9 +84,8 @@ test('fog: nodes outside vision keep their last known owner, unseen ones are une
   marchAndArrive(g, 'b', 's1', 'F');
   assert.ok(f().visible && f().owner === 1, 'a sees b take F');
 
-  // a leaves L empty and goes to X, b then touches L: a loses the big vision.
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'X' } });
-  g.advanceTo(arrival(g, 's0'));
+  // a leaves L empty (heads home), b then touches L: a loses the big vision.
+  recallHome(g, 'a', 's0');
   marchAndArrive(g, 'b', 's2', 'L');
   assert.equal(g.nodes.get('L')!.owner, 1);
   assert.equal(f().visible, false);
