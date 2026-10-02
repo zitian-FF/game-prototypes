@@ -11,8 +11,8 @@ npx vite             # then open /game-prototypes/prototypes/firestorm-arena/ind
 ```
 
 The client connects to `ws://127.0.0.1:8787` by default. Override with
-`?server=wss://host` or `VITE_SERVER_URL` at build time. A deployed build has no
-default server yet: set `VITE_SERVER_URL` once the Worker URL is known.
+`?server=wss://host` or `VITE_SERVER_URL` at build time. The itch workflow builds with
+`VITE_SERVER_URL=wss://firestorm-arena-server.tianz-88.workers.dev` (the deployed Worker).
 
 `?debug=1` shows the Tweakpane panel for `client.tune.json` (with a copy-JSON
 button) and exposes `window.__game` and `window.__session`. `?debug=1&autoplay=1`
