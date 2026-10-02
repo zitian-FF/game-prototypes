@@ -172,6 +172,9 @@ export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1):
         g.strokeCircle(x, y, 2.4 * s);
       });
       break;
+    case 'hospital':
+      drawCross(g, x, y, s);
+      break;
     case 'turret': // cannon
       stroke(() => {
         g.strokeCircle(x - 2 * s, y + 2 * s, 5 * s);
@@ -206,4 +209,107 @@ export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, 
   g.lineTo(cx, cy - 24);
   g.strokePath();
   g.fillStyle(color, alpha).fillTriangle(cx, cy - 24, cx + 9, cy - 21, cx, cy - 18);
+}
+
+/** Hospital icon: a white cross. */
+export function drawCross(g: G, x: number, y: number, s = 1): void {
+  for (const [w, c] of [[6, 0x000000], [3.4, 0xffffff]] as const) {
+    g.lineStyle(w * s, c, 1);
+    g.beginPath();
+    g.moveTo(x - 7 * s, y);
+    g.lineTo(x + 7 * s, y);
+    g.moveTo(x, y - 7 * s);
+    g.lineTo(x, y + 7 * s);
+    g.strokePath();
+  }
+  g.fillStyle(0xff4a4a, 1).fillRect(x - 1.7 * s, y - 5 * s, 3.4 * s, 10 * s).fillRect(x - 5 * s, y - 1.7 * s, 10 * s, 3.4 * s);
+}
+
+/** Small crossed-sword mark for Power values. */
+export function drawPowerSword(g: G, x: number, y: number, color = 0xffd54a): void {
+  g.lineStyle(2, color, 1);
+  g.beginPath();
+  g.moveTo(x - 4, y + 5);
+  g.lineTo(x + 5, y - 5);
+  g.moveTo(x - 4, y + 1);
+  g.lineTo(x - 1, y + 4);
+  g.strokePath();
+}
+
+/** Nuclear silo: a round concrete cylinder with a hatch and four anti-aircraft towers on the corners. */
+export function drawSilo(g: G, cx: number, cy: number, color: number, hw: number, alpha = 1): void {
+  const hh = hw / 2;
+  // Base pad
+  diamond(g, cx, cy, hw * 1.15, hh * 1.15, shade(color, 0.3), 0.9 * alpha, color, 2);
+  // Four AA towers on the corners: thin stalks with a twin-barrel head
+  const corners = [
+    [-hw * 0.82, 0],
+    [hw * 0.82, 0],
+    [0, -hh * 0.82],
+    [0, hh * 0.82],
+  ];
+  const towers = (front: boolean) => {
+    for (const [dx, dy] of corners) {
+      if ((dy > 0 || (dy === 0 && false)) !== front) continue;
+      const tx = cx + dx;
+      const ty = cy + dy;
+      g.lineStyle(3, shade(color, 0.7), alpha);
+      g.beginPath();
+      g.moveTo(tx, ty);
+      g.lineTo(tx, ty - 16);
+      g.strokePath();
+      g.fillStyle(shade(color, 1.1), alpha).fillCircle(tx, ty - 17, 3.4);
+      g.lineStyle(2, 0xffffff, alpha);
+      g.beginPath();
+      g.moveTo(tx, ty - 18);
+      g.lineTo(tx + 7, ty - 26);
+      g.moveTo(tx + 2, ty - 17);
+      g.lineTo(tx + 9, ty - 24);
+      g.strokePath();
+    }
+  };
+  towers(false);
+  // Cylinder body: two ellipses joined by straight sides
+  const r = hw * 0.62;
+  const h = 26;
+  g.fillStyle(shade(color, 0.55), alpha);
+  g.fillRect(cx - r, cy - h, r * 2, h);
+  g.fillEllipse(cx, cy, r * 2, r);
+  g.lineStyle(1, 0x000000, alpha);
+  g.strokeEllipse(cx, cy, r * 2, r);
+  g.fillStyle(shade(color, 1.05), alpha);
+  g.fillEllipse(cx, cy - h, r * 2, r);
+  g.lineStyle(1.5, 0x000000, alpha);
+  g.strokeEllipse(cx, cy - h, r * 2, r);
+  // Split hatch and warning stripe
+  g.fillStyle(0x1a1f26, alpha).fillEllipse(cx, cy - h, r * 1.45, r * 0.72);
+  g.lineStyle(2, 0xffd54a, alpha);
+  g.beginPath();
+  g.moveTo(cx, cy - h - r * 0.36);
+  g.lineTo(cx, cy - h + r * 0.36);
+  g.strokePath();
+  g.fillStyle(0xffd54a, alpha).fillRect(cx - r, cy - 9, r * 2, 3);
+  towers(true);
+}
+
+/** Oil refinery: two storage tanks and a flare stack on a pad. */
+export function drawRefinery(g: G, cx: number, cy: number, color: number, hw: number, t: number, alpha = 1): void {
+  const hh = hw / 2;
+  diamond(g, cx, cy, hw * 1.05, hh * 1.05, shade(color, 0.3), 0.9 * alpha, color, 2);
+  const tank = (x: number, y: number, r: number, h: number) => {
+    g.fillStyle(shade(color, 0.6), alpha).fillRect(x - r, y - h, r * 2, h).fillEllipse(x, y, r * 2, r);
+    g.fillStyle(shade(color, 1.1), alpha).fillEllipse(x, y - h, r * 2, r);
+    g.lineStyle(1, 0x000000, alpha).strokeEllipse(x, y - h, r * 2, r);
+  };
+  tank(cx - hw * 0.38, cy - 2, hw * 0.3, 18);
+  tank(cx + hw * 0.1, cy + hh * 0.35, hw * 0.34, 22);
+  // Flare stack with a flickering flame
+  g.lineStyle(3, shade(color, 0.8), alpha);
+  g.beginPath();
+  g.moveTo(cx + hw * 0.52, cy - 2);
+  g.lineTo(cx + hw * 0.52, cy - 38);
+  g.strokePath();
+  const f = 5 + Math.sin(t * 11) * 1.5;
+  g.fillStyle(0xff7a22, 0.95).fillTriangle(cx + hw * 0.52 - 3.5, cy - 38, cx + hw * 0.52 + 3.5, cy - 38, cx + hw * 0.52, cy - 38 - 9 - f);
+  g.fillStyle(0xffe08a, 0.95).fillTriangle(cx + hw * 0.52 - 2, cy - 38, cx + hw * 0.52 + 2, cy - 38, cx + hw * 0.52, cy - 38 - 5 - f * 0.5);
 }

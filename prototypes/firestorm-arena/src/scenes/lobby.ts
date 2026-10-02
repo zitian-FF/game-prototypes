@@ -8,6 +8,7 @@ const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') =
 
 export class LobbyScene extends BaseScene {
   private fillBots = true;
+  private minutes = 30;
   private autoSent = false;
 
   constructor() {
@@ -54,7 +55,7 @@ export class LobbyScene extends BaseScene {
       const pw = Math.min(620, w - 40);
       const px = cx - pw / 2;
       const py = top + 118;
-      const ph = Math.min(300, h - py - 150);
+      const ph = Math.min(280, h - py - 190);
       ui.panel(px, py, pw, ph);
       ui.text(`Players ${lobby.players.length} / ${lobby.maxPlayers}`, px + 14, py + 10, { size: 13, bold: true });
       const colW = (pw - 28) / 2;
@@ -71,26 +72,30 @@ export class LobbyScene extends BaseScene {
         ui.text(p.name + you + host, x + 16, y, { size: 13, color: p.clientId === lobby.hostId ? '#ffd54a' : COLORS.text });
       });
 
-      const by = py + ph + 16;
+      const by = py + ph + 52;
       const counting = lobby.phase === 'countdown';
       if (counting) {
         const left = Math.max(0, Math.ceil(((lobby.countdownEndsAtMs ?? 0) - session.serverNow()) / 1000));
-        ui.text(`Match starts in ${left}`, cx, by, { size: 22, align: 'center', bold: true, color: COLORS.warn });
+        ui.text(`${lobby.minutes} minute match starts in ${left}`, cx, by, { size: 22, align: 'center', bold: true, color: COLORS.warn });
         if (session.isHost) ui.button(cx - 90, by + 38, 180, 40, 'Cancel start', { onClick: () => session.send({ t: 'cancelStart' }), accent: COLORS.enemy });
       } else if (session.isHost) {
+        ui.text('Match length', cx - 250, by - 34, { size: 12, color: COLORS.dim });
+        [10, 15, 20, 30].forEach((m, i) =>
+          ui.button(cx - 164 + i * 84, by - 38, 76, 26, `${m} min`, { onClick: () => (this.minutes = m), active: this.minutes === m, size: 12 }),
+        );
         ui.button(cx - 250, by, 250, 40, this.fillBots ? 'Bots fill empty slots: ON' : 'Bots fill empty slots: OFF', {
           onClick: () => (this.fillBots = !this.fillBots),
           active: this.fillBots,
         });
-        ui.button(cx + 10, by, 240, 40, 'Start match', { onClick: () => session.send({ t: 'start', fillBots: this.fillBots }), active: true, size: 16 });
+        ui.button(cx + 10, by, 240, 40, 'Start match', { onClick: () => session.send({ t: 'start', fillBots: this.fillBots, minutes: this.minutes }), active: true, size: 16 });
         ui.text('Starting opens a 3 second window you can cancel in.', cx, by + 52, { size: 12, align: 'center', color: COLORS.dim });
       } else {
-        ui.text('Waiting for the host to start...', cx, by + 6, { size: 15, align: 'center', color: COLORS.dim });
+        ui.text(`Waiting for the host to start (${lobby.minutes} minute match)...`, cx, by + 6, { size: 15, align: 'center', color: COLORS.dim });
       }
       ui.button(24, h - 56, session.isHost ? 120 : 100, 34, session.isHost ? 'End room' : 'Leave', { onClick: () => this.leave() });
       if (AUTOPLAY && session.isHost && !this.autoSent && lobby.phase === 'lobby') {
         this.autoSent = true;
-        session.send({ t: 'start', fillBots: true });
+        session.send({ t: 'start', fillBots: true, minutes: this.minutes });
       }
     } else {
       ui.text('Joining...', cx, top + 140, { size: 15, align: 'center', color: COLORS.warn });

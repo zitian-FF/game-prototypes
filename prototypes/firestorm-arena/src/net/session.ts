@@ -61,6 +61,7 @@ export interface LobbyState {
   maxPlayers: number;
   countdownEndsAtMs?: number;
   fillBots: boolean;
+  minutes: number;
 }
 
 export type Toast = { text: string; kind: 'info' | 'good' | 'bad'; until: number };
@@ -163,6 +164,18 @@ export class Session {
     this.status = 'idle';
   }
 
+  /** Forget the saved name, identity and room (this browser only). */
+  resetSaved(): void {
+    this.leave();
+    this.error = '';
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch {
+      /* nothing stored */
+    }
+    this.save = loadSave();
+  }
+
   /** Host: end the room for everyone (frees the code). Anyone else: just leave. */
   finish(): void {
     if (this.isHost) this.send({ t: 'endRoom' });
@@ -216,6 +229,7 @@ export class Session {
           maxPlayers: msg.maxPlayers,
           countdownEndsAtMs: msg.countdownEndsAtMs,
           fillBots: msg.fillBots,
+          minutes: msg.minutes,
         };
         this.isHost = msg.hostId === this.save.clientId;
         break;
@@ -298,6 +312,8 @@ const ERRORS: Record<string, string> = {
   safeZone: 'An HQ in a safe zone cannot be attacked.',
   notMarching: 'That squad is not marching.',
   alreadyReturning: 'That squad is already heading home.',
+  notAtHq: 'Squads in the field can only be told to return to HQ.',
+  alreadyHome: 'That squad is already at the HQ.',
   notControlled: 'You can only teleport to a node your team holds.',
   onCooldown: 'Teleport is still recharging.',
   noFreeSlot: 'No free base slot at that node.',

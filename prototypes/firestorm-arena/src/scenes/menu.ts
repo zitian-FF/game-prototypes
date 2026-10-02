@@ -101,6 +101,15 @@ export class MenuScene extends BaseScene {
     y += 60;
     if (this.connecting()) ui.text('Connecting...', cx, y, { size: 14, align: 'center', color: COLORS.warn });
     else if (session.error) ui.text(session.error, cx, y, { size: 14, align: 'center', color: COLORS.bad });
+    ui.button(cx - 80, h - 60, 160, 26, 'Reset saved session', {
+      onClick: () => {
+        session.resetSaved();
+        this.nameField.value = '';
+        this.codeField.value = '';
+        this.focus = 'name';
+      },
+      size: 11,
+    });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, h - 22, { size: 10, align: 'center', color: COLORS.dim });
     this.drawVersion();
     ui.end();

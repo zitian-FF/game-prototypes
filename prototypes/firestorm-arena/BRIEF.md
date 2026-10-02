@@ -104,36 +104,38 @@ Mechanics are built and proven before polish effects.
 
 ### Node kinds and tiers
 
-- Every node has a **tier from 1 to 4**, drawn as that many stacked cubes
-  in stepped tiers. Tier sets the node's score per second (see Scoring).
-- **Kinds:** `points` (pure score) and six power nodes. A power node's
-  effect is its base value times its tier, so a tier 2 node is twice a
-  tier 1 node.
-  - Attack boost: % bonus to the owning team's squad power.
-  - Defense boost: % reduction in damage taken by the owning team.
-  - Speed boost: % faster march speed for the owning team.
-  - Teleport cooldown: seconds off the owning team's teleport cooldown.
-  - Large vision: a much larger vision radius.
-  - Turret: see Turrets.
-- Power nodes exist at tier 1 (weak) and tier 2 (strong) only. Tiers 3
-  and 4 are pure points nodes.
+- Every node has a **tier from 1 to 4**. Tier sets the node's score per
+  second (see Scoring). A building's effect is its base value times its tier.
+- **Buildings** (name, tier):
+  - **Nuclear Silo** (T4): pure score, drawn as a round silo with four
+    anti-aircraft towers, still one cell.
+  - **Oil Refinery** (T3): pure score.
+  - **Missile Turret** (T2): see Turrets.
+  - **Radar Tower** (T2): a much larger vision radius.
+  - **Arsenal** (T1): % bonus to the owning team's squad power.
+  - **Armory** (T1): % reduction in damage taken by the owning team.
+  - **Accelerator** (T1): % faster march speed for the owning team.
+  - **Tech Centre** (T1): seconds off the owning team's teleport cooldown.
+  - **Hospital** (T1): while held, every ally regains 100 troops a second
+    (times tier) into their reserve pool, never above what the pool
+    started at.
 - Node effects apply to the whole owning team while the node is held, and
   stop when it is lost. Effects of the same kind stack additively.
 
 ### Rings and layout
 
 The map is point-symmetric (both teams get an identical layout) and laid
-out in concentric rings, outside in. The default is **35 nodes**:
+out in concentric rings. The default is **17 nodes**:
 
-| Ring | Tier | Nodes |
-|---|---|---|
-| Outer | 1 | 8 points, 2 attack, 2 defense, 2 speed, 2 large vision |
-| Second | 2 | 4 points, 2 attack, 2 defense, 2 teleport cooldown, 2 turret |
-| Third | 3 | 6 points |
-| Centre | 4 | 1 points node on the exact centre cell |
+| Ring | Contents |
+|---|---|
+| Centre | 1 Nuclear Silo (T4) on the exact centre cell |
+| Inner | 2 Oil Refineries (T3), 2 Missile Turrets (T2), one of each per side |
+| Mid | 2 Radar Towers (T2), one per side, placed where each sees the most other nodes |
+| Outer | one each per side of Arsenal, Armory, Accelerator, Tech Centre and Hospital (all T1) |
 
-Ring edges, counts and kinds are in `tune.json` (`map.rings`). With 76
-squads for 35 nodes, most nodes are contested.
+Ring edges, counts, kinds and per-kind tiers are in `tune.json`
+(`map.rings`, `kindTiers`, `strategic`).
 
 ## Scoring
 
@@ -147,7 +149,7 @@ squads for 35 nodes, most nodes are contested.
 - Teleporting returns every squad to the HQ, so it also stops the
   garrison bonus until squads are redeployed.
 - Points accrue on the server. Rates are in `tune.json` (`scoring.*`).
-- Scale check: all 35 nodes together pay about 900 per second. A team
+- Scale check: all 17 nodes together pay far less than the old 35 (see Scoring tiers). A team
   holding half earns about 450, and the garrison bonus is at most about 380
   (all 38 squads garrisoned).
 ## HQ as a target
@@ -187,8 +189,10 @@ All actions are coordinates, timers and unit references:
 - **Dodge:** a player may teleport their HQ away while enemy marches are
   inbound, as long as their teleport is off cooldown. The inbound
   attackers then arrive at an empty slot. There is no inbound lock.
-- **Cancel:** a marching squad can be issued a cancel. It turns around and
-  returns to its HQ.
+- **Orders go out from the HQ only.** A squad that is out in the field (marching
+  or garrisoned) cannot be sent anywhere else. The only order it takes is
+  **Return to HQ**, after which it can be ordered again. Teleport also brings
+  every squad home at once.
 - **Command lines:** when a command is issued, an animated dotted line
   shows its route (see Art direction).
 - **Base teleport:** a player's HQ can teleport to a free base slot at a
@@ -277,10 +281,13 @@ Acceptance targets (variance disabled, no counter):
 
 ## Turrets
 
-A turret node periodically damages enemy squads garrisoned in nearby
-nodes by a fixed percentage of their current troops. Pulse interval, the
-percentage, and the "nearby" radius are tunable (`turret.*`). Turrets do
-not affect marching squads and are not otherwise a combat participant.
+Every 5 seconds each held Missile Turret fires a missile at **every
+enemy-held tier 3 and tier 4 node** (Oil Refineries and the Nuclear Silo),
+from anywhere on the map. A missile is a non-combat shot that travels at 5x
+unit speed. On impact every garrisoned squad at that node loses 5% of its max
+troops, flat, never below 1 (a hit cannot defeat a squad). If the node changed
+hands while the missile was flying, nothing happens. Interval, speed, damage
+and minimum target tier are tunable (`turret.*`).
 
 ## Fog of war
 
@@ -417,14 +424,12 @@ intelligently. Bots use the same commands as players, run on the server
 through the same sim, and obey the same fog and reveal rules: a bot is a
 function of its team's filtered view and nothing else.
 
-As built: bots spread out (a node holds one squad per commander, and a
-teammate already heading for a node makes it worth only the garrison bonus),
-keep their strongest squad back as a striker that scouts first, attack only
-what a fresh scout report says they can beat with room to spare, cover
-their own nodes when an enemy march is heading for them, and teleport
-forward, to refill, or to dodge. Known limits: they rarely attack HQs
-(enemy HQs are seldom in sight), do not model node boosts in their fight
-estimates, and never move a garrisoned squad.
+As built: a bot is a small state machine. Every 8 to 20 seconds (random per
+bot) it picks one of attack, teleport or scout at random, picks a random target
+for it, and runs it if legal (a squad at the HQ with troops, a teleport ready and a
+free slot at a node it holds, a scout at home); otherwise it waits for the next
+cycle. They attack and scout fogged nodes blind. Squads garrisoned in the field
+come home through teleport.
 
 ## Testing and verification
 
@@ -495,7 +500,7 @@ client.
 - The world is a grid. Nodes, HQs and squads fill one cell each, units move
   centre to centre in a straight line, slots are the 8 surrounding cells.
 - Four tiers of node (stacked cubes), laid out in rings with tier 4 alone in
-  the centre, 35 nodes, point-symmetric.
+  the centre, point-symmetric.
 - Scoring: 10/30/50/80 per second by tier, plus 10 per second per unique
   commander garrisoned per node.
 - A node holds at most 20 squads and one per commander. An attacker only
@@ -526,3 +531,17 @@ client.
    10 and 30 per second)?
 3. Does the 3 minute cross-map target still feel right now that the map is
    75 x 51 cells and there are only 35 nodes?
+
+## Revision after the first playtest (2026-10-02)
+
+- Match length is chosen by the host in the lobby: 10, 15, 20 or 30 minutes.
+- All units move 30% slower (`march.crossMapSeconds` 180 to 257).
+- Orders only from the HQ; the only order for a unit in the field is Return to HQ.
+- Hospital added; Missile Turret reworked; nodes renamed; map rebuilt to 17 nodes
+  (see Node kinds and Rings above).
+- Bots reduced to a random state machine (see Bots).
+- Terminology: MLRS is Missile, Helicopter is Aircraft, power is shown as "Power"
+  with a sword mark and an M suffix (63.2M).
+- HUD: total troops above the squad panel; the inspected node is bottom centre
+  with its orders to the right; Scouts and Logs are square buttons at the left edge.
+- Where this section conflicts with older text above, this section wins.

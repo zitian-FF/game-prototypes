@@ -38,6 +38,13 @@ export class FxSystem {
     this.list.push({ kind: 'landing', x: b.x, y: b.y, start: now + clientTune.fx.teleportSeconds * 0.55, color });
   }
 
+  /** A missile hit: a flash, a fireball and a shock ring. */
+  impact(wx: number, wy: number, now: number): void {
+    const p = this.iso.p(wx, wy);
+    this.list.push({ kind: 'combat', x: p.x, y: p.y, start: now, seed: this.seed++ });
+    this.list.push({ kind: 'ring', x: p.x, y: p.y, start: now, color: 0xffb04a, dur: 0.8, big: 1.6 });
+  }
+
   /** Occasional eruptions: a fireball falls from the sky and leaves a patch of fire. */
   ambient(now: number): void {
     if (now < this.nextEruption) return;

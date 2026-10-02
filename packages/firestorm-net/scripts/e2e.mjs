@@ -203,7 +203,7 @@ try {
   await ivo.waitFor((m) => m.t === 'state' && m.full, 5000, 'first full state');
   const hInfo = hana.last('matchStart').info;
   const iInfo = ivo.last('matchStart').info;
-  check(hInfo.map.nodes.length === 35, 'matchStart carries the 35 node map');
+  check(hInfo.map.nodes.length === 17, 'matchStart carries the 17 node map');
   check(hInfo.team !== iInfo.team, 'the two humans are on opposite teams');
   check(hana.view.hqs.length === 20, 'the host sees all 20 HQs of their team');
 
