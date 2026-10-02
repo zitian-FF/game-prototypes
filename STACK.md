@@ -108,6 +108,17 @@ whether or not anyone notices. Real per-consumer version isolation
 (so a stale pin fails loudly instead of resolving to the wrong thing)
 remains unbuilt infrastructure work.
 
+## Game rules engine: arena-sim
+
+`packages/arena-sim` (0.1.0) is the pure TypeScript rules engine for
+firestorm-arena: squads, combat, nodes, HQs, teleport, scouts, fog-of-war
+views and an event queue, with no Phaser, DOM or Cloudflare code in it. It is
+built to run inside a Cloudflare Durable Object (authoritative server), in
+Node for bot tests, and in the client. It is the first shared package that is
+not networking, and the first built on a server-authoritative model instead of
+Trystero. Only firestorm-arena uses it so far. See its README for the API and
+`prototypes/firestorm-arena/BRIEF.md` for the rules.
+
 ## Art asset pipeline: automatic downscale/recompress
 
 `scripts/pack-assets.js` (the second half of every prototype's
