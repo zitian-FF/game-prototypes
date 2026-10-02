@@ -92,8 +92,15 @@ Mechanics are built and proven before polish effects.
 - **Safe zones:** each team has an invulnerable block of cells (5 x 4,
   mirrored left and right) where its HQs start and where they return to
   when defeated. Nothing in a safe zone can be attacked.
-- **Garrison:** a node can hold unlimited squads. An attacker can only
-  fight through 10 of them per attack (see Combat).
+- **Garrison limits:** a node holds at most **20 squads**, and only **one
+  squad per commander** (so at most one from each of a team's 20
+  commanders). Both numbers are in `tune.json` (`garrison.*`). A squad that
+  arrives at your team's node when it is full, or when its commander
+  already has a squad there, turns back and goes home at normal speed (it
+  is not defeated). The march order is refused up front in those cases,
+  including when the commander already has another squad on the way to
+  that node. An attacker can only fight through 10 defenders per attack
+  (see Combat), so a full garrison of 20 always has at least 10 left.
 
 ### Node kinds and tiers
 
@@ -133,16 +140,16 @@ squads for 35 nodes, most nodes are contested.
 - **Node score:** a controlled node earns its team score per second by tier:
   tier 1 = 10, tier 2 = 30, tier 3 = 50, tier 4 = 80. This applies to
   power nodes too, and continues while the node has no garrison.
-- **Garrison bonus:** each commander with at least one squad garrisoned in
-  a node earns the node's owner **+10 per second**, once per commander per
-  node. Three squads of the same commander in one node still give +10; the
-  same commander in two nodes gives +10 at each.
+- **Garrison bonus:** each commander garrisoned in a node earns the node's
+  owner **+10 per second**. A node holds one squad per commander, so this is
+  simply 10 per garrisoned squad (at most 20 x 10 = 200 per second on one
+  node). The same commander in two different nodes earns +10 at each.
 - Teleporting returns every squad to the HQ, so it also stops the
   garrison bonus until squads are redeployed.
 - Points accrue on the server. Rates are in `tune.json` (`scoring.*`).
 - Scale check: all 35 nodes together pay about 900 per second. A team
   holding half earns about 450, and the garrison bonus is at most about 380
-  (all 38 squads garrisoned on separate nodes).
+  (all 38 squads garrisoned).
 ## HQ as a target
 
 - An enemy HQ outside a safe zone can be selected as an attack target and
@@ -165,7 +172,9 @@ All actions are coordinates, timers and unit references:
 
 - **March:** select a squad, select a target node, issue the march. The
   squad leaves its current position and travels to the node. Travel time
-  is `distance / speed` (speed modified by node bonuses).
+  is `distance / speed` (speed modified by node bonuses). Marching to a
+  node your team holds is refused if it is full or your commander already
+  has a squad there or on the way.
 - **Scout:** each HQ owns 3 scouts. A scout is a fast, non-combat unit
   sent to a node or HQ. It travels at **3x squad march speed**. On
   arrival it reveals that target's defender info: for each defender,
@@ -451,7 +460,8 @@ client.
   the centre, 35 nodes, point-symmetric.
 - Scoring: 10/30/50/80 per second by tier, plus 10 per second per unique
   commander garrisoned per node.
-- Garrison size is unlimited, an attacker only fights through 10.
+- A node holds at most 20 squads and one per commander. An attacker only
+  fights through 10 per attack.
 - Defender counts: own team exact, others only via a scout.
 - HQs never regenerate and burn while damaged.
 - Command lines are shown for self (green), allies (muted) and enemies (red).

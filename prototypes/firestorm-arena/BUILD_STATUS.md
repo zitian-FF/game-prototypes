@@ -15,13 +15,18 @@ the GitHub Actions secrets, and scaffolded the Worker and both workflows.
   tiers 3, 2, 1 outward; power nodes only at tiers 1 and 2 (effect = base x
   tier). Counts and ring edges are in `tune.json` (`map.rings`).
 - Scoring: node score per second by tier 10/30/50/80, plus 10 per second per
-  unique commander garrisoned per node (once per commander per node, owner's
-  team). Teleport sends every squad home so it stops the garrison bonus.
+  commander garrisoned per node. Teleport sends every squad home so it stops
+  the garrison bonus.
+- Garrison limits (user correction): a node holds at most 20 squads and one
+  per commander (`garrison.*` in `tune.json`). The march order is refused
+  (`nodeFull`, `commanderAlreadyThere`, also counting squads already marching
+  there). A squad that arrives at a full node turns back at normal speed
+  with a `garrisonRejected` event. Attackers still fight through at most 10.
 - View additions for the client: `garrisonCount` (own exact, others only via a
   live scout report, snapshot at scout time), `burning` on defeated squads
   and damaged HQs (exact HP hidden from enemies), own `hqs` and `scouts`
   lists, `teleported` events carry `from` and `to`.
-- 81 headless tests, all passing (map rings/symmetry/grid/spacing, scoring
+- 89 headless tests, all passing (map rings/symmetry/grid/spacing, scoring
   rules, tier scaling, view rules, plus everything from milestone 1 and the
   full 40 player fuzz match). Repo typecheck and build pass; `npm ci` accepts
   the lockfile.

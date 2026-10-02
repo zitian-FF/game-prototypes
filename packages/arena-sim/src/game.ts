@@ -413,6 +413,11 @@ export class ArenaGame {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
       if (sq.state.kind === 'garrison' && sq.state.nodeId === node.id) return 'alreadyThere';
+      // Reinforcing a node your team already holds must fit in its garrison.
+      if (node.owner === player.team) {
+        const block = this.garrisonBlock(sq, node, true);
+        if (block) return block;
+      }
       to = node.pos;
     } else {
       const hq = this.hqById(target.hqId);
@@ -554,6 +559,29 @@ export class ArenaGame {
     this.emit({ type: 'refilled', timeMs: this.nowMs, squadId: sq.id, added: add });
   }
 
+  /**
+   * Why a squad cannot join a node's garrison, or null if it can. A node holds
+   * `garrison.maxSquads` squads and at most `garrison.maxPerCommander` of them
+   * from one commander. Squads of the same commander already marching to this
+   * node count too, so a commander cannot queue a second one behind the first.
+   */
+  private garrisonBlock(sq: Squad, node: NodeState, countIncoming: boolean): 'nodeFull' | 'commanderAlreadyThere' | null {
+    const g = this.tune.garrison;
+    let total = node.garrison.length;
+    let mine = 0;
+    for (const id of node.garrison) if (this.squads.get(id)!.owner === sq.owner) mine++;
+    if (countIncoming) {
+      for (const other of this.squads.values()) {
+        if (other === sq || other.owner !== sq.owner || other.state.kind !== 'march') continue;
+        const m = other.state.march;
+        if (m.purpose === 'node' && m.nodeId === node.id) mine++;
+      }
+    }
+    if (total >= g.maxSquads) return 'nodeFull';
+    if (mine >= g.maxPerCommander) return 'commanderAlreadyThere';
+    return null;
+  }
+
   private garrison(sq: Squad, node: NodeState): void {
     sq.state = { kind: 'garrison', nodeId: node.id };
     sq.seq = ++this.stationSeq;
@@ -656,6 +684,13 @@ export class ArenaGame {
 
   private arriveAtNode(sq: Squad, node: NodeState): void {
     if (node.owner === sq.team) {
+      const block = this.garrisonBlock(sq, node, false);
+      if (block) {
+        // Full, or this commander is already here: turn back, not defeated.
+        this.emit({ type: 'garrisonRejected', timeMs: this.nowMs, nodeId: node.id, squadId: sq.id, reason: block });
+        this.sendHome(sq, node.pos, false);
+        return;
+      }
       this.garrison(sq, node);
       return;
     }
@@ -890,6 +925,15 @@ export class ArenaGame {
       }
     }
     for (const node of this.nodes.values()) {
+      if (node.garrison.length > this.tune.garrison.maxSquads) errs.push(`${node.id} garrison over capacity`);
+      const perCommander = new Map<string, number>();
+      for (const id of node.garrison) {
+        const o = this.squads.get(id)!.owner;
+        perCommander.set(o, (perCommander.get(o) ?? 0) + 1);
+      }
+      for (const [o, n] of perCommander) {
+        if (n > this.tune.garrison.maxPerCommander) errs.push(`${node.id} holds ${n} squads of ${o}`);
+      }
       for (const id of node.garrison) {
         const sq = this.squads.get(id);
         if (!sq || sq.state.kind !== 'garrison' || sq.state.nodeId !== node.id) {

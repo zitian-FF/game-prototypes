@@ -102,6 +102,8 @@ export interface Tune {
     slotsPerNode: number;
   };
   scout: { perHq: number; speedFactor: number; revealSeconds: number };
+  /** How many squads one node can hold, and how many of those may be one commander's. */
+  garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
   turret: { pulseSeconds: number; damageFraction: number; radiusCells: number };
@@ -317,6 +319,13 @@ export type GameEvent =
   | { type: 'marchCancelled'; timeMs: number; squadId: SquadId }
   | { type: 'nodeCaptured'; timeMs: number; nodeId: NodeId; team: TeamId; previous: TeamId | null }
   | { type: 'garrisoned'; timeMs: number; nodeId: NodeId; squadId: SquadId }
+  | {
+      type: 'garrisonRejected';
+      timeMs: number;
+      nodeId: NodeId;
+      squadId: SquadId;
+      reason: 'nodeFull' | 'commanderAlreadyThere';
+    }
   | { type: 'combat'; timeMs: number; log: CombatLog }
   | { type: 'hqDamaged'; timeMs: number; hqId: HqId; hp: number }
   | { type: 'hqDefeated'; timeMs: number; hqId: HqId }

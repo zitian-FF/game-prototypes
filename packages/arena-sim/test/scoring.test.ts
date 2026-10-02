@@ -39,19 +39,28 @@ test('scoring: power nodes score by their tier like any other node', () => {
   assert.ok(Math.abs(rate(g) - (10 + 10 + 30 + 10)) < 1e-6);
 });
 
-test('scoring: the garrison bonus counts once per commander per node, not per squad', () => {
+test('scoring: the garrison bonus is +10 for each commander garrisoned in the node', () => {
   const g = makeGame({
     nodes: [node('n', 300, 1)],
-    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('c', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])],
+    players: [player('a', 0, [{ power: 60 }]), player('c', 0, [{ power: 60 }]), player('d', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n');
   assert.ok(Math.abs(rate(g) - 20) < 1e-6, '1 commander: 10 + 10');
-  marchAndArrive(g, 'a', 's1', 'n');
-  marchAndArrive(g, 'a', 's2', 'n');
-  assert.deepEqual(g.nodes.get('n')!.garrison.length, 3);
-  assert.ok(Math.abs(rate(g) - 20) < 1e-6, 'three squads, same commander: still +10');
-  marchAndArrive(g, 'c', 's3', 'n');
+  marchAndArrive(g, 'c', 's1', 'n');
   assert.ok(Math.abs(rate(g) - 30) < 1e-6, 'a second commander adds another +10');
+  marchAndArrive(g, 'd', 's2', 'n');
+  assert.ok(Math.abs(rate(g) - 40) < 1e-6);
+});
+
+test('scoring: if the per-commander limit is raised, extra squads of one commander still count once', () => {
+  const g = makeGame({
+    nodes: [node('n', 300, 1)],
+    tune: scenarioTune({ garrison: { maxPerCommander: 3 } }),
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
+  });
+  for (const id of ['s0', 's1', 's2']) marchAndArrive(g, 'a', id, 'n');
+  assert.equal(g.nodes.get('n')!.garrison.length, 3);
+  assert.ok(Math.abs(rate(g) - 20) < 1e-6, 'three squads, one commander: +10 once');
 });
 
 test('scoring: a commander earns the bonus again on every different node', () => {
@@ -146,10 +155,10 @@ test('view: your own garrison count is exact, an enemy one needs a scout and goe
   const g = makeGame({
     nodes: [node('n', 300, 1), node('m', 450, 1)],
     tune: scenarioTune({ scout: { revealSeconds: 10 } }),
-    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
+    players: [player('a', 0, [{ power: 60 }]), player('c', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n');
-  marchAndArrive(g, 'a', 's1', 'n');
+  marchAndArrive(g, 'c', 's1', 'n');
   const nodeFor = (team: 0 | 1) => viewFor(g, team).nodes.find((n) => n.id === 'n')!;
   assert.equal(nodeFor(0).garrisonCount, 2);
   assert.equal(nodeFor(1).garrisonCount, undefined, 'enemy sees no count without a scout');

@@ -53,10 +53,15 @@ viewFor(game, team); // the only thing that team may be told (fog of war)
 - **Tiers.** Every node has a tier 1-4. Tier sets score per second
   (`scoring.tierPointsPerSecond`), and a power node's effect is its base value
   times its tier. Tiers 3 and 4 are pure points in the default layout.
+- **Garrison limits.** A node holds `garrison.maxSquads` squads (20) and at
+  most `garrison.maxPerCommander` (1) from one commander. The `march` order is
+  refused with `nodeFull` or `commanderAlreadyThere`, counting squads of that
+  commander already marching there; a squad that still arrives at a full node
+  turns back and a `garrisonRejected` event is emitted.
 - **Scoring.** A controlled node earns its tier score even with no garrison,
   plus `scoring.garrisonPointsPerSecond` for each *commander* garrisoned there
-  (once per commander per node). Teleport sends every squad home, so it stops
-  the garrison bonus.
+  (counted once per commander per node, which with the limit above is one per
+  squad). Teleport sends every squad home, so it stops the garrison bonus.
 - **Views.** `viewFor` gives a team its own nodes' exact `garrisonCount`; for
   anyone else's it is present only while a scout report on the node is live
   and is the count at scout time. Defeated squads and damaged HQs carry

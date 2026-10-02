@@ -51,8 +51,17 @@
     "revealSeconds": 60
   },
   "scoring": {
-    "tierPointsPerSecond": [10, 30, 50, 80],
+    "tierPointsPerSecond": [
+      10,
+      30,
+      50,
+      80
+    ],
     "garrisonPointsPerSecond": 10
+  },
+  "garrison": {
+    "maxSquads": 20,
+    "maxPerCommander": 1
   },
   "turret": {
     "pulseSeconds": 30,
@@ -63,34 +72,83 @@
     "cellSize": 40,
     "widthCells": 75,
     "heightCells": 51,
-    "safeZone": { "cols": 5, "rows": 4, "insetCells": 3 },
+    "safeZone": {
+      "cols": 5,
+      "rows": 4,
+      "insetCells": 3
+    },
     "nodeMinSpacingCells": 4,
     "nodeMinDistFromSafeZoneCells": 7,
     "edgeMarginCells": 2,
     "rings": [
-      { "tier": 4, "center": true, "minR": 0, "maxR": 0, "nodes": { "points": 1 } },
-      { "tier": 3, "minR": 0.1, "maxR": 0.3, "nodes": { "points": 6 } },
+      {
+        "tier": 4,
+        "center": true,
+        "minR": 0,
+        "maxR": 0,
+        "nodes": {
+          "points": 1
+        }
+      },
+      {
+        "tier": 3,
+        "minR": 0.1,
+        "maxR": 0.3,
+        "nodes": {
+          "points": 6
+        }
+      },
       {
         "tier": 2,
         "minR": 0.3,
         "maxR": 0.55,
-        "nodes": { "points": 4, "attackBoost": 2, "defenseBoost": 2, "teleportCooldown": 2, "turret": 2 }
+        "nodes": {
+          "points": 4,
+          "attackBoost": 2,
+          "defenseBoost": 2,
+          "teleportCooldown": 2,
+          "turret": 2
+        }
       },
       {
         "tier": 1,
         "minR": 0.55,
         "maxR": 0.95,
-        "nodes": { "points": 8, "attackBoost": 2, "defenseBoost": 2, "speedBoost": 2, "largeVision": 2 }
+        "nodes": {
+          "points": 8,
+          "attackBoost": 2,
+          "defenseBoost": 2,
+          "speedBoost": 2,
+          "largeVision": 2
+        }
       }
     ]
   },
   "nodes": {
-    "points": { "visionRadiusCells": 6 },
-    "attackBoost": { "visionRadiusCells": 6, "attackPct": 0.05 },
-    "defenseBoost": { "visionRadiusCells": 6, "defensePct": 0.05 },
-    "speedBoost": { "visionRadiusCells": 6, "speedPct": 0.1 },
-    "teleportCooldown": { "visionRadiusCells": 6, "teleportCooldownReductionSeconds": 15 },
-    "largeVision": { "visionRadiusCells": 15 },
-    "turret": { "visionRadiusCells": 6 }
+    "points": {
+      "visionRadiusCells": 6
+    },
+    "attackBoost": {
+      "visionRadiusCells": 6,
+      "attackPct": 0.05
+    },
+    "defenseBoost": {
+      "visionRadiusCells": 6,
+      "defensePct": 0.05
+    },
+    "speedBoost": {
+      "visionRadiusCells": 6,
+      "speedPct": 0.1
+    },
+    "teleportCooldown": {
+      "visionRadiusCells": 6,
+      "teleportCooldownReductionSeconds": 15
+    },
+    "largeVision": {
+      "visionRadiusCells": 15
+    },
+    "turret": {
+      "visionRadiusCells": 6
+    }
   }
 }

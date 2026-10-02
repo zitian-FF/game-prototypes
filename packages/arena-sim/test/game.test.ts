@@ -62,9 +62,12 @@ test('nodes: an ungarrisoned node keeps its owner until an enemy touches it', ()
 });
 
 test('nodes: reinforcing an owned node garrisons instead of fighting', () => {
-  const g = makeGame({ nodes: [N0], players: [player('a', 0, [{ power: 60 }, { power: 55 }]), player('b', 1, [{ power: 60 }])] });
+  const g = makeGame({
+    nodes: [N0],
+    players: [player('a', 0, [{ power: 60 }]), player('c', 0, [{ power: 55 }]), player('b', 1, [{ power: 60 }])],
+  });
   marchAndArrive(g, 'a', 's0', 'n0');
-  const events = marchAndArrive(g, 'a', 's1', 'n0');
+  const events = marchAndArrive(g, 'c', 's1', 'n0');
   assert.equal(ofType(events, 'combat').length, 0);
   assert.deepEqual(g.nodes.get('n0')!.garrison, ['s0', 's1']);
 });
@@ -74,10 +77,10 @@ test('nodes: reinforcing an owned node garrisons instead of fighting', () => {
 test('combat: defenders are fought last in, first out', () => {
   const g = makeGame({
     nodes: [N0],
-    players: [player('a', 0, [{ power: 55 }, { power: 56 }]), player('b', 1, [{ power: 80 }])],
+    players: [player('a', 0, [{ power: 55 }]), player('a2', 0, [{ power: 56 }]), player('b', 1, [{ power: 80 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n0');
-  marchAndArrive(g, 'a', 's1', 'n0');
+  marchAndArrive(g, 'a2', 's1', 'n0');
   must(g, { type: 'march', playerId: 'b', squadId: 's2', target: { kind: 'node', nodeId: 'n0' } });
   const events = g.advanceTo(arrival(g, 's2'));
   const log = ofType(events, 'combat')[0].log;
@@ -140,9 +143,10 @@ test('combat: refill draws from a finite pool and can be partial', () => {
 });
 
 test('combat: an attacker clears at most 10 defenders, then goes home alive', () => {
-  const squads = Array.from({ length: 11 }, () => ({ power: 50 }));
-  const g = makeGame({ nodes: [N0], players: [player('a', 0, squads), player('b', 1, [{ power: 80 }])] });
-  for (let i = 0; i < 11; i++) marchAndArrive(g, 'a', SQUAD_ID(i), 'n0');
+  // 11 commanders, one weak squad each (a node holds one squad per commander).
+  const defenders = Array.from({ length: 11 }, (_, i) => player(`d${i}`, 0, [{ power: 50 }]));
+  const g = makeGame({ nodes: [N0], players: [...defenders, player('b', 1, [{ power: 80 }])] });
+  for (let i = 0; i < 11; i++) marchAndArrive(g, `d${i}`, SQUAD_ID(i), 'n0');
   assert.equal(g.nodes.get('n0')!.garrison.length, 11);
   must(g, { type: 'march', playerId: 'b', squadId: 's11', target: { kind: 'node', nodeId: 'n0' } });
   const events = g.advanceTo(arrival(g, 's11'));
@@ -305,12 +309,12 @@ test('teleport: only to controlled nodes, instant, 2 minute cooldown', () => {
 
 test('teleport: every squad goes home with the HQ and held nodes are left empty', () => {
   const g = makeGame({
-    nodes: [N0, N1],
+    nodes: [N0, N1, N2],
     players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n0');
   marchAndArrive(g, 'a', 's1', 'n1');
-  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'n1' } });
+  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'n2' } });
   must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
   for (const id of ['s0', 's1', 's2']) assert.equal(g.squads.get(id)!.state.kind, 'hq', id);
   assert.equal(g.nodes.get('n0')!.garrison.length, 0);
@@ -404,10 +408,14 @@ test('cancel: a marching squad turns round from where it is and heads home', () 
 test('scout: flies at 3x squad speed, reveals defenders, expires after 60s', () => {
   const g = makeGame({
     nodes: [N0],
-    players: [player('a', 0, [{ power: 60, type: 'tank' }, { power: 55, type: 'missile' }]), player('b', 1, [{ power: 60 }])],
+    players: [
+      player('a', 0, [{ power: 60, type: 'tank' }]),
+      player('c', 0, [{ power: 55, type: 'missile' }]),
+      player('b', 1, [{ power: 60 }]),
+    ],
   });
   marchAndArrive(g, 'a', 's0', 'n0');
-  marchAndArrive(g, 'a', 's1', 'n0');
+  marchAndArrive(g, 'c', 's1', 'n0');
   const start = g.now;
   must(g, { type: 'scout', playerId: 'b', scoutIndex: 0, target: { kind: 'node', nodeId: 'n0' } });
   const scout = g.players.get('b')!.scouts[0];
@@ -420,7 +428,7 @@ test('scout: flies at 3x squad speed, reveals defenders, expires after 60s', () 
   const report = ofType(events, 'scoutReport')[0].report;
   assert.deepEqual(report.defenders.map((d) => d.squadId), ['s1', 's0'], 'last in first listed');
   assert.deepEqual(report.defenders.map((d) => d.type), ['missile', 'tank']);
-  assert.equal(report.defenders[0].commander, 'a');
+  assert.deepEqual(report.defenders.map((d) => d.commander), ['c', 'a']);
   assert.equal(report.defenders[0].effectivePower, 55);
   assert.ok(Math.abs(report.expiresAtMs - report.takenAtMs - 60_000) < 1e-6);
   assert.equal(g.players.get('b')!.scouts[0].kind, 'back');
