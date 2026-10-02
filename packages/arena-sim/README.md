@@ -1,6 +1,6 @@
 # arena-sim
 
-Version: **0.2.0**
+Version: **0.3.0**
 
 The pure rules engine for firestorm-arena (20 vs 20 node-capture arena). No
 Phaser, no DOM, no Cloudflare APIs (`"types": []` in the build tsconfig
@@ -104,3 +104,15 @@ Opt-in, pinned by version. Same rule as mp-core (see STACK.md): ship changes
 additively, and when this package's version moves, bump every consumer's
 declared `arena-sim` pin in the same change, otherwise npm may stop linking the
 workspace folder.
+
+## 0.3.0
+
+Breaking, firestorm-arena only. Orders only go out from the HQ (`march` from a
+garrison or the field is `notAtHq`); `cancel` now also recalls a garrisoned squad.
+New `hospital` node kind (refills every ally's reserve pool by `poolRegenPerSecond`
+x tier, capped at the starting pool). The turret now fires a missile every
+`pulseSeconds` at every enemy-held node of `minTargetTier` or higher, travelling at
+`missileSpeedFactor` x unit speed, taking `damageFraction` of max troops from each
+garrison on a hit (never below `minTroops`). Map rings gained `kindTiers` and
+`strategic` (vision towers placed where they see the most nodes). `OwnHqView` carries
+`pool` and `poolMax`. New events: `missileLaunched`.

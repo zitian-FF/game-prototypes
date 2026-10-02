@@ -1,76 +1,66 @@
 ## Current milestone
 
-Milestone 3 done and merged to main (#172, #173): the Phaser 3 client, playable end
-to end against the local match server. The Worker is deployed at
-https://firestorm-arena-server.tianz-88.workers.dev (deploy run succeeded; not yet
-smoke-tested from a browser or the sandbox, whose network blocks workers.dev). The
-itch client build is wired to that URL; it only deploys once BUTLER_API_KEY exists.
+Post-playtest revision 1, built on the branch and verified locally, not yet merged or
+deployed. The live Worker and itch/Pages clients are still the previous build
+(protocol 1); merging deploys protocol 2 of both together.
 
 ## What was implemented
 
-- Client (`prototypes/firestorm-arena/index.html`, `src/`): menu (name, create or
-  join by 3 character code), lobby (roster, host Start with bot-fill toggle, 3 second
-  countdown with Cancel), and the game scene. All UI is canvas; no React or DOM
-  overlay (only the debug Tweakpane).
-- World: isometric 75 x 51 grid with a volcanic floor, animated lava patches,
-  occasional falling fireballs leaving fire patches, tinted safe zones, fog of war
-  (soft elliptical holes around owned nodes), node cube stacks by tier with a
-  kind icon, defender counts under nodes (exact for own, scouted for others),
-  HQs with HP pips and flames when damaged, team-colour outline units (tank,
-  helicopter, MLRS, scout plane), masked `?` enemy marches, animated dotted command
-  lines (self green, allies muted, enemies red), combat sprays and explosions,
-  burning defeated squads, teleport extract and landing effects, capture rings.
-- HUD: scoreboard and clock, squad panel (troop bars, Defend toggle, Recall), HQ
-  and teleport status, node and HQ inspector with Attack, Garrison, Send scout and
-  Teleport actions, scout reports with live countdowns, combat logs, toasts,
-  minimap with view window and click to jump, end of match overlay.
-- Plumbing: intent layer (only place reading keys or pointer), device pixel ratio
-  handled by buffer size times DPR with camera zoom, version stamp top left,
-  `?debug=1` Tweakpane for `client.tune.json` with a copy-JSON button, reconnect
-  with the same client id, server clock synced by ping.
-- Ending a session: the host can end the room at any time (lobby, match, or the end screen), which closes every socket and frees the 3 character code for a fresh room. Others can just leave. The in-game button asks for confirmation. Stranger join after Start stays refused (decided).
-- Bots: enemy-held or unseen enemy-side nodes are attacked blind with an odds
-  estimate from squad power (max two blind attackers per node, striker waits 20s
-  for a report). In bot-only matches that gives 35 to 61 node flips per match
-  (was about 10), about a quarter of attacks won, scores within 2x.
+- Bug fixes: the game scene built its world twice because a method named `init`
+  collided with Phaser's own `Scene.init` (stale second map when zoomed out, and a
+  second match could hang on start before the first state arrived). Renamed. Zoom-out
+  now stops where the whole map fits the screen.
+- Lobby: host picks 10, 15, 20 or 30 minutes (protocol 2, stored in the room meta).
+- Rules: orders only go out from the HQ, the only order for a unit in the field is
+  Return to HQ (also from a garrison); all units 30% slower (cross-map 257s); new
+  Hospital (+100 reserve troops/s per tier to every ally while held, capped at the
+  starting pool); Missile Turret now fires every 5s at every enemy-held T3 and T4 node
+  (missile at 5x unit speed, hit takes 5% of max troops flat from each garrisoned squad,
+  never below 1, no effect if the node changed hands in flight).
+- Map: 17 nodes. Silo (T4) centre, 2 Oil Refineries + 2 Missile Turrets inner, 2 Radar
+  Towers mid (placed to see the most nodes), outer one each per side of Arsenal, Armory,
+  Accelerator, Tech Centre, Hospital.
+- Bots: state machine every 8 to 20s: weighted attack 75 / teleport 15 / scout 10, nearby and
+  own-node-leaning targets, teleport only when useful, spare garrison pulled back when nothing
+  is at HQ, and a bot with less than one full squad of troops left stops acting. Both teams now
+  hold 7 to 10 of 17 nodes at the end of bot-only matches.
+- Client: renamed buildings, Aircraft/Missile names, Power with a sword mark and an M
+  suffix, total troops and reserve above the squad panel, inspected node bottom centre
+  with orders to its right, square Scouts and Logs buttons at the left edge, nuclear silo
+  and oil refinery drawn as their own shapes, hospital cross icon, missile flight and
+  impact effects, "Reset saved session" on the menu (this browser only).
+- Packages: arena-sim 0.3.0, firestorm-net 0.2.0.
 
 ## Key technical decisions
 
-- Ground and fog are baked into Canvas2D textures (ground at 1x, fog at half
-  resolution) instead of thousands of retained Graphics polygons.
-- Immediate-mode canvas UI: every frame redraws from state, hit areas are recorded
-  as drawn, topmost wins. No widget state to keep in sync.
-- Client-only values are in `client.tune.json`, separate from `tune.json`, so a
-  look and feel tweak does not trigger a Worker redeploy.
-- Texture keys are unique per match start. Reusing and removing keys crashed the
-  first frame (a Phaser frame left pointing at a destroyed source).
-- Scene switches go through one guarded `go()`, since `update` keeps running
-  until the switch completes.
+- No global "clear server" button: the stuck second match was the client bug above, not
+  stale server data, and a global wipe would let any visitor end everyone's matches.
+  Hosts have End room, and the menu can reset this browser's saved identity.
+- Per-building tiers (`kindTiers`) and strategic placement (`strategic`) are map-ring
+  options in tune.json, so the layout stays data.
+- Match length is applied as a tune override stored in the match meta, so a rebuilt room
+  replays with the right duration.
+- Cancel now means Return to HQ from either a march or a garrison; march needs the squad
+  at the HQ (`notAtHq`).
 
 ## Open questions
 
-- Decided with the user: power nodes at tiers 1 and 2 only, enemy lines red, no
-  stranger join after Start. Placeholder tune numbers and the 3 minute march are
-  kept as is until a playtest.
-- CLAUDE.md and STACK.md still describe the React + Tailwind overlay and phone play.
+- Cost: bots issue about 1,150 commands per match (about 3,000 row writes), roughly 33
+  matches a day on the Workers Free plan.
+- With 17 nodes and 20 players per team, garrisons will be crowded; worth a playtest.
+- Missile damage floor is 1 troop (a hit cannot defeat a squad). Say if hits should be
+  able to kill.
+- Placeholder numbers (reserve pool, score rates) still unplayed; BRIEF.md has a revision
+  section at the end that wins over older text.
 
 ## Known issues
 
-- Verified with headless Chromium (software GL) only: no real GPU or high-DPI
-  screen check beyond a 2x device scale screenshot. Frame rate is unmeasured.
-- Orders show up after the next 1 second server pulse; there is no optimistic
-  marker.
-- Clicking a stack of HQs in a safe zone picks the nearest, which is fiddly;
-  names show only when zoomed in.
-- Effects are first versions; lava and eruptions are simple.
-- The Cloudflare token is account-wide Workers Admin with a 30 day expiry: narrow it.
-- The live Worker has not been exercised end to end yet (create, start, play).
-- Bots rarely attack HQs and never move a garrisoned squad.
+- Verified in headless Chromium and the local runtime only; the live Worker has not been
+  exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.
+- Effects are first versions (missile arc, silo and refinery are simple vector shapes).
 
 ## Next proposed step
 
-1. Smoke-test the live Worker from a real browser, confirm BUTLER_API_KEY, and let
-   the itch workflow do its first deploy.
-2. A human playtest with a few real players for feel (march time, bot strength).
-3. Polish pass: HQ selection in crowded safe zones, order feedback, effect tuning,
-   audio if wanted.
+1. Merge to deploy protocol 2 (Worker and clients together), then Codex smoke-tests it.
+2. Playtest with real players for feel: march time at 257s, 17 nodes, bot activity.
+3. Narrow the Cloudflare token (Codex).

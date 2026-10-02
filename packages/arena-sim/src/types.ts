@@ -24,7 +24,8 @@ export type NodeKind =
   | 'speedBoost'
   | 'teleportCooldown'
   | 'largeVision'
-  | 'turret';
+  | 'turret'
+  | 'hospital';
 
 export const NODE_KINDS: readonly NodeKind[] = [
   'points',
@@ -34,6 +35,7 @@ export const NODE_KINDS: readonly NodeKind[] = [
   'teleportCooldown',
   'largeVision',
   'turret',
+  'hospital',
 ];
 
 export interface Vec {
@@ -51,6 +53,10 @@ export interface RingTune {
   maxR: number;
   /** Node counts by kind. Must be even unless `center` is set. */
   nodes: Partial<Record<NodeKind, number>>;
+  /** Kinds in this ring that sit at a different tier than the ring's own. */
+  kindTiers?: Partial<Record<NodeKind, number>>;
+  /** Kinds placed last, at the spot that sees the most other nodes (vision towers). */
+  strategic?: NodeKind[];
 }
 
 export interface NodeKindTune {
@@ -60,6 +66,8 @@ export interface NodeKindTune {
   defensePct?: number;
   speedPct?: number;
   teleportCooldownReductionSeconds?: number;
+  /** Hospital: troops per second added to each ally's reserve pool, times tier. */
+  poolRegenPerSecond?: number;
 }
 
 /** Mirrors prototypes/firestorm-arena/tune.json. */
@@ -106,7 +114,12 @@ export interface Tune {
   garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
-  turret: { pulseSeconds: number; damageFraction: number; radiusCells: number };
+  /**
+   * Every pulse each held turret fires a missile at every enemy-held node of
+   * minTargetTier or higher. A hit takes damageFraction of max troops from every
+   * garrisoned squad (never below minTroops).
+   */
+  turret: { pulseSeconds: number; damageFraction: number; missileSpeedFactor: number; minTroops: number; minTargetTier: number };
   map: {
     cellSize: number;
     widthCells: number;
@@ -242,6 +255,8 @@ export interface Player {
   index: number;
   team: TeamId;
   pool: number;
+  /** The pool at the start: hospitals refill it up to this. */
+  poolMax: number;
   hq: Hq;
   squadIds: SquadId[];
   scouts: ScoutState[];
@@ -333,6 +348,7 @@ export type GameEvent =
   | { type: 'scoutLaunched'; timeMs: number; owner: string; scoutIndex: number }
   | { type: 'scoutReport'; timeMs: number; report: ScoutReport }
   | { type: 'turretPulse'; timeMs: number; nodeId: NodeId; hits: { squadId: SquadId; damage: number }[] }
+  | { type: 'missileLaunched'; timeMs: number; id: string; team: TeamId; turretId: NodeId; nodeId: NodeId; from: Vec; to: Vec; startMs: number; arriveMs: number }
   | { type: 'refilled'; timeMs: number; squadId: SquadId; added: number }
   | { type: 'matchEnded'; timeMs: number; result: MatchResult };
 

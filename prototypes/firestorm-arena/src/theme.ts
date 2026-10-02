@@ -19,17 +19,29 @@ export const COLORS = {
 
 export const FONT = 'system-ui, "Segoe UI", Roboto, sans-serif';
 
-export const SQUAD_LABEL: Record<SquadType, string> = { tank: 'Tank', aircraft: 'Helicopter', missile: 'MLRS' };
+export const SQUAD_LABEL: Record<SquadType, string> = { tank: 'Tank', aircraft: 'Aircraft', missile: 'Missile' };
 
-export const KIND_LABEL: Record<NodeKind, string> = {
+const KIND_NAMES: Record<NodeKind, string> = {
   points: 'Score node',
-  attackBoost: 'Attack boost',
-  defenseBoost: 'Defense boost',
-  speedBoost: 'Speed boost',
-  teleportCooldown: 'Teleport relay',
-  largeVision: 'Watchtower',
-  turret: 'Turret',
+  attackBoost: 'Arsenal',
+  defenseBoost: 'Armory',
+  speedBoost: 'Accelerator',
+  teleportCooldown: 'Tech Centre',
+  largeVision: 'Radar Tower',
+  turret: 'Missile Turret',
+  hospital: 'Hospital',
 };
+
+/** What a building is called: score nodes are named by tier. */
+export function nodeName(kind: NodeKind, tier: number): string {
+  if (kind === 'points') return tier >= 4 ? 'Nuclear Silo' : tier === 3 ? 'Oil Refinery' : KIND_NAMES.points;
+  return KIND_NAMES[kind];
+}
+
+/** Power is shown in millions: 63.2M. */
+export function fmtPower(power: number): string {
+  return `${power.toFixed(1)}M`;
+}
 
 export function teamColor(team: TeamId | null, mine: TeamId): number {
   if (team === null) return COLORS.neutral;

@@ -5,11 +5,11 @@ import { test } from './harness';
 const ok = (v: unknown) => parseClientMsg(JSON.stringify(v));
 
 test('protocol: valid messages parse', () => {
-  assert.deepEqual(ok({ t: 'hello', v: 1, clientId: 'abcdefgh1234', name: '  Sam  ', create: true }), {
+  assert.deepEqual(ok({ t: 'hello', v: 2, clientId: 'abcdefgh1234', name: '  Sam  ', create: true }), {
     ok: true,
-    msg: { t: 'hello', v: 1, clientId: 'abcdefgh1234', name: 'Sam', create: true },
+    msg: { t: 'hello', v: 2, clientId: 'abcdefgh1234', name: 'Sam', create: true },
   });
-  assert.ok(ok({ t: 'start', fillBots: true }).ok);
+  assert.ok(ok({ t: 'start', fillBots: true, minutes: 30 }).ok);
   assert.ok(ok({ t: 'cancelStart' }).ok);
   assert.ok(ok({ t: 'endRoom' }).ok);
   assert.ok(ok({ t: 'ping', c: 5 }).ok);
@@ -29,11 +29,13 @@ test('protocol: junk and hostile input is rejected, never thrown', () => {
     'null',
     '123',
     { t: 'nope' },
-    { t: 'hello', v: 1, clientId: 'short', name: 'x' },
-    { t: 'hello', v: 1, clientId: 'abcdefgh1234', name: '   ' },
-    { t: 'hello', v: 1, clientId: 'bad id with spaces', name: 'x' },
+    { t: 'hello', v: 2, clientId: 'short', name: 'x' },
+    { t: 'hello', v: 2, clientId: 'abcdefgh1234', name: '   ' },
+    { t: 'hello', v: 2, clientId: 'bad id with spaces', name: 'x' },
     { t: 'start' },
-    { t: 'start', fillBots: 'yes' },
+    { t: 'start', fillBots: 'yes', minutes: 30 },
+    { t: 'start', fillBots: true, minutes: 12 },
+    { t: 'start', fillBots: true },
     { t: 'ping', c: 'x' },
     { t: 'cmd', id: 1.5, cmd: { type: 'cancel', squadId: 's1' } },
     { t: 'cmd', id: 1, cmd: { type: 'march', squadId: 's1' } },

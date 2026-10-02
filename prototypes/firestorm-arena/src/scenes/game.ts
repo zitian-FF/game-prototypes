@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { CombatLog, NodeKind, SquadType, TeamId, Tune, Vec } from 'arena-sim';
+import type { CombatLog, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
 import { BaseScene, DPR, logicalSize } from './base';
 import { Ui } from '../ui/ui';
@@ -8,9 +8,9 @@ import { session } from '../net/session';
 import { Iso, diamond } from '../render/iso';
 import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawUnit } from '../render/icons';
+import { drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit } from '../render/icons';
 import { clientTune } from '../clientTune';
-import { COLORS, FONT, KIND_LABEL, SQUAD_LABEL, cssColor, shade, teamColor } from '../theme';
+import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
 type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean };
 type Panel = 'none' | 'logs' | 'scouts';
@@ -57,6 +57,7 @@ export class GameScene extends BaseScene {
   private panel: Panel = 'none';
   private lastFrame = 0;
   private confirmEnd = false;
+  private missiles: { from: Vec; to: Vec; startMs: number; arriveMs: number; own: boolean }[] = [];
   private mapRect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
@@ -71,13 +72,15 @@ export class GameScene extends BaseScene {
     this.selectedSquad = null;
     this.panel = 'none';
     this.confirmEnd = false;
+    this.missiles = [];
     this.fogKey = null;
     this.lastFrame = this.time.now;
   }
 
   // ------------------------------------------------------------------ setup
 
-  private init(): void {
+  /** Not called `init`: Phaser calls Scene.init itself, before the first state has arrived. */
+  private buildWorld(): void {
     const info = session.info!;
     this.tune = info.tune;
     this.mine = info.team;
@@ -124,7 +127,7 @@ export class GameScene extends BaseScene {
       for (const e of events) if (e.type === 'primary') this.ui.click(e.x, e.y);
       return;
     }
-    if (!this.ready) this.init();
+    if (!this.ready) this.buildWorld();
 
     const simMs = session.simNow();
     const now = time / 1000;
@@ -142,8 +145,15 @@ export class GameScene extends BaseScene {
     return { x: (x - this.world.x) / this.zoom, y: (y - this.world.y) / this.zoom };
   }
 
+  /** Zoomed out as far as the whole map fitting the screen, never past it. */
+  private minZoom(): number {
+    const { w, h } = logicalSize();
+    return Math.max(clientTune.camera.zoomMin, Math.min(w / this.iso.pxW, h / this.iso.pxH));
+  }
+
   private applyCam(): void {
     const { w, h } = logicalSize();
+    this.zoom = Phaser.Math.Clamp(this.zoom, this.minZoom(), clientTune.camera.zoomMax);
     this.camX = Phaser.Math.Clamp(this.camX, 0, this.iso.pxW);
     this.camY = Phaser.Math.Clamp(this.camY, 0, this.iso.pxH);
     this.world.setPosition(w / 2 - this.camX * this.zoom, h / 2 - this.camY * this.zoom);
@@ -155,7 +165,7 @@ export class GameScene extends BaseScene {
     const x = px < 0 ? w / 2 : px;
     const y = py < 0 ? h / 2 : py;
     const before = this.screenToMap(x, y);
-    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), clientTune.camera.zoomMin, clientTune.camera.zoomMax);
+    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), this.minZoom(), clientTune.camera.zoomMax);
     this.camX = before.x - (x - w / 2) / this.zoom;
     this.camY = before.y - (y - h / 2) / this.zoom;
   }
@@ -182,7 +192,9 @@ export class GameScene extends BaseScene {
         case 'secondary': {
           if (this.ui.covers(e.x, e.y)) break;
           const t = this.pick(e.x, e.y, view);
-          if (t && this.selectedSquad) this.sendSquad(this.selectedSquad, t);
+          const sel = view.squads.find((q) => q.id === this.selectedSquad);
+          if (t && sel && sel.state !== 'hq') session.toast('Squads in the field can only return to HQ', 'bad');
+          else if (t && sel) this.sendSquad(sel.id, t);
           else if (t) this.target = t;
           break;
         }
@@ -233,7 +245,7 @@ export class GameScene extends BaseScene {
 
   private nodeLabel(view: WireView, id: string): string {
     const n = view.nodes.find((x) => x.id === id);
-    return n ? `${KIND_LABEL[n.kind]} T${n.tier}` : 'a node';
+    return n ? nodeName(n.kind, n.tier) : 'a node';
   }
 
   private subjectPos(view: WireView, log: CombatLog): Vec | null {
@@ -284,11 +296,9 @@ export class GameScene extends BaseScene {
         case 'teleportFx':
           this.fx.teleport(e.from, e.to, now, e.own ? COLORS.mine : COLORS.enemy);
           break;
-        case 'turretPulse': {
-          const n = view.nodes.find((x) => x.id === e.nodeId);
-          if (n) this.fx.ring(n.pos.x, n.pos.y, now, 0xffd54a, 1.2, 2.4);
+        case 'missileLaunched':
+          this.missiles.push({ from: e.from, to: e.to, startMs: e.startMs, arriveMs: e.arriveMs, own: e.own });
           break;
-        }
         case 'garrisonRejected':
           session.toast(`Could not garrison: ${e.reason}`, 'bad');
           break;
@@ -389,8 +399,15 @@ export class GameScene extends BaseScene {
           const pulse = 0.5 + 0.5 * Math.sin(now * 6);
           diamond(g, p.x, p.y, iso.tw / 2 + 4, iso.th / 2 + 2, undefined, 1, 0xffffff, 2 + pulse);
         }
-        const lift = drawNodeStack(g, p.x, p.y, n.tier, n.explored ? col : COLORS.neutral, hw, alpha);
-        drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
+        const base = n.explored ? col : COLORS.neutral;
+        if (n.kind === 'points' && n.tier >= 4) {
+          drawSilo(g, p.x, p.y, base, hw * 1.1, alpha);
+        } else if (n.kind === 'points' && n.tier === 3) {
+          drawRefinery(g, p.x, p.y, base, hw * 1.1, now, alpha);
+        } else {
+          const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw, alpha);
+          drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
+        }
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
@@ -413,7 +430,7 @@ export class GameScene extends BaseScene {
           const bob = Math.sin(now * 4) * 2;
           g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 52 + bob, p.x + 6, p.y - 52 + bob, p.x, p.y - 44 + bob);
         }
-        if (isMe || this.zoom > 1.4) this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
+        if (isMe || this.zoom > 2.0) this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
       });
     }
     for (const h of view.enemyHqs) {
@@ -453,7 +470,7 @@ export class GameScene extends BaseScene {
         const f = to.x >= p.x ? 1 : -1;
         if (m.revealed) {
           drawUnit(g, m.revealed.type, p.x, p.y - 8, f, COLORS.enemy, now);
-          this.label(`${m.revealed.commander} ${m.revealed.effectivePower.toFixed(0)}`, p.x, p.y + 2, '#ffb08a', 10);
+          this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
           g.lineStyle(2, COLORS.enemy, 1);
           g.fillStyle(0x0c1016, 0.9);
@@ -477,9 +494,42 @@ export class GameScene extends BaseScene {
 
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.draw();
+    this.drawMissiles(simMs, now);
     this.fx.draw(this.fxG, now);
     for (let i = this.labelUsed; i < this.labels.length; i++) this.labels[i].setVisible(false);
     void ch;
+  }
+
+  /** Turret missiles: fast arcing shots from a turret to a node, with a smoke trail. */
+  private drawMissiles(simMs: number, now: number): void {
+    const g = this.fxG;
+    this.missiles = this.missiles.filter((m) => {
+      const t = (simMs - m.startMs) / Math.max(1, m.arriveMs - m.startMs);
+      if (t >= 1) {
+        this.fx.impact(m.to.x, m.to.y, now);
+        return false;
+      }
+      if (t < 0) return true;
+      const a = this.iso.p(m.from.x, m.from.y);
+      const b = this.iso.p(m.to.x, m.to.y);
+      const pos = (k: number) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k - Math.sin(Math.PI * k) * 90 - 18 });
+      const head = pos(t);
+      const tail = pos(Math.max(0, t - 0.04));
+      const col = m.own ? COLORS.mine : COLORS.enemy;
+      g.lineStyle(5, 0xffffff, 0.15);
+      g.beginPath();
+      g.moveTo(pos(Math.max(0, t - 0.12)).x, pos(Math.max(0, t - 0.12)).y);
+      g.lineTo(tail.x, tail.y);
+      g.strokePath();
+      g.lineStyle(3, col, 0.9);
+      g.beginPath();
+      g.moveTo(tail.x, tail.y);
+      g.lineTo(head.x, head.y);
+      g.strokePath();
+      g.fillStyle(0xffe08a, 1).fillCircle(head.x, head.y, 3);
+      g.fillStyle(0xff7a22, 0.8).fillCircle(tail.x, tail.y, 2);
+      return true;
+    });
   }
 
   // --------------------------------------------------------------------- HUD
@@ -494,18 +544,22 @@ export class GameScene extends BaseScene {
     lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
     const k = tune.nodes[n.kind];
     const effects: string[] = [];
-    if (k.attackPct) effects.push(`+${Math.round(k.attackPct * n.tier * 100)}% attack`);
-    if (k.defensePct) effects.push(`+${Math.round(k.defensePct * n.tier * 100)}% defense`);
-    if (k.speedPct) effects.push(`+${Math.round(k.speedPct * n.tier * 100)}% speed`);
+    if (k.attackPct) effects.push(`+${Math.round(k.attackPct * n.tier * 100)}% attack for your team`);
+    if (k.defensePct) effects.push(`+${Math.round(k.defensePct * n.tier * 100)}% defense for your team`);
+    if (k.speedPct) effects.push(`+${Math.round(k.speedPct * n.tier * 100)}% march speed for your team`);
     if (k.teleportCooldownReductionSeconds) effects.push(`-${k.teleportCooldownReductionSeconds * n.tier}s teleport cooldown`);
-    if (n.kind === 'largeVision') effects.push(`${k.visionRadiusCells} cell vision`);
-    if (n.kind === 'turret') effects.push(`${Math.round(tune.turret.damageFraction * 100)}% damage every ${tune.turret.pulseSeconds}s`);
-    if (effects.length) lines.push([`Team bonus: ${effects.join(', ')}`, COLORS.warn]);
+    if (k.poolRegenPerSecond) effects.push(`every ally regains ${k.poolRegenPerSecond * n.tier} reserve troops a second`);
+    if (n.kind === 'largeVision') effects.push(`reveals ${k.visionRadiusCells} cells around it`);
+    if (n.kind === 'turret') {
+      const t = tune.turret;
+      effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Oil Refinery and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
+    }
+    if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
       lines.push([own ? `Garrison ${n.garrisonCount} / ${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
     } else lines.push(['Garrison unknown: send a scout', COLORS.dim]);
-    return { title: `${KIND_LABEL[n.kind as NodeKind]}  Tier ${n.tier}`, lines };
+    return { title: `${nodeName(n.kind, n.tier)}  T${n.tier}`, lines };
   }
 
   private drawHud(view: WireView, simMs: number): void {
@@ -540,9 +594,17 @@ export class GameScene extends BaseScene {
       });
       ui.button(262, 5, 44, 24, 'No', { onClick: () => (this.confirmEnd = false), size: 11 });
     }
+    // Square buttons on the left edge, middle of the screen.
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
-    ui.button(w - 190, 4, 90, 26, `Scouts ${activeReports}`, { onClick: () => (this.panel = this.panel === 'scouts' ? 'none' : 'scouts'), active: this.panel === 'scouts', size: 12 });
-    ui.button(w - 94, 4, 84, 26, `Logs ${view.combatLogs.length}`, { onClick: () => (this.panel = this.panel === 'logs' ? 'none' : 'logs'), active: this.panel === 'logs', size: 12 });
+    const sq = (y: number, label: string, count: number, which: Panel) => {
+      const on = this.panel === which;
+      ui.rect(8, y, 56, 56, on ? COLORS.mine : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 6);
+      ui.text(label, 36, y + 9, { size: 12, bold: true, align: 'center', color: on ? '#08111a' : COLORS.text });
+      ui.text(String(count), 36, y + 27, { size: 18, bold: true, align: 'center', color: on ? '#08111a' : count > 0 ? COLORS.warn : COLORS.dim });
+      ui.region(8, y, 56, 56, () => (this.panel = on ? 'none' : which));
+    };
+    sq(h / 2 - 62, 'Scouts', activeReports, 'scouts');
+    sq(h / 2 + 6, 'Logs', view.combatLogs.length, 'logs');
 
     // ---- toasts
     const nowWall = Date.now();
@@ -559,7 +621,7 @@ export class GameScene extends BaseScene {
     this.drawMinimap(view, w, h);
     if (this.panel === 'logs') this.drawLogs(view, simMs, h);
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
-    this.drawTargetPanel(view, simMs, w);
+    this.drawTargetPanel(view, simMs, w, h);
 
     ui.text('Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
@@ -604,6 +666,13 @@ export class GameScene extends BaseScene {
     const ph = 62 + squads.length * rowH;
     const px = 12;
     const py = h - ph - 34;
+
+    // Total troops above the panel: in the squads, and what is left in reserve.
+    const inSquads = squads.reduce((a, q) => a + q.troops, 0);
+    ui.panel(px, py - 30, pw, 26, 0.92);
+    ui.text(`Troops ${fmtInt(inSquads)}`, px + 10, py - 25, { size: 13, bold: true });
+    if (hq) ui.text(`Reserve ${fmtInt(hq.pool)} / ${fmtInt(hq.poolMax)}`, px + pw - 10, py - 25, { size: 13, align: 'right', color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
+
     ui.panel(px, py, pw, ph);
     if (hq) {
       const ready = hq.nextTeleportAtMs <= simMs;
@@ -613,14 +682,16 @@ export class GameScene extends BaseScene {
       const totalScouts = view.scouts.filter((s) => s.owner === info.playerId).length;
       ui.text(`Scouts ${homeScouts}/${totalScouts}`, px + pw - 10, py + 8, { size: 13, align: 'right', color: homeScouts > 0 ? COLORS.text : COLORS.dim });
     }
-    ui.text(`Pool ${'  '}`, px + 10, py + 30, { size: 1, color: '#000000', alpha: 0 });
     squads.forEach((s, i) => {
-      const y = py + 52 + i * rowH;
+      const y = py + 36 + i * rowH;
       const sel = this.selectedSquad === s.id;
       ui.rect(px + 6, y - 4, pw - 12, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
       ui.region(px + 6, y - 4, pw - 12, rowH - 4, () => (this.selectedSquad = sel ? null : s.id));
       drawUnit(ui.gfx(), s.type, px + 32, y + 30, 1, COLORS.mine, this.time.now / 1000);
-      ui.text(`${SQUAD_LABEL[s.type]}  P${s.power.toFixed(1)}  #${s.rank}`, px + 62, y, { size: 13, bold: true });
+      // "Tank  Power [sword] 62.5M  #12"
+      const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, px + 62, y, { size: 13, bold: true });
+      drawPowerSword(ui.gfx(), px + 62 + w1 + 8, y + 8);
+      ui.text(fmtPower(s.power), px + 62 + w1 + 16, y, { size: 13, bold: true, color: '#ffd54a' });
       ui.bar(px + 62, y + 20, 100, 8, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
       ui.text(`${Math.round(s.troops)}/${s.maxTroops}`, px + 168, y + 15, { size: 11, color: COLORS.dim });
       ui.text(this.squadStatus(s, view), px + 62, y + 32, { size: 11, color: COLORS.dim });
@@ -630,96 +701,152 @@ export class GameScene extends BaseScene {
           active: s.defend,
           size: 11,
         });
-      } else if (s.state === 'march' && s.march && s.march.purpose !== 'home') {
-        ui.button(px + pw - 94, y + 2, 82, 22, 'Recall', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
+      } else if (s.state === 'garrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
+        ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
       }
     });
   }
 
-  private drawTargetPanel(view: WireView, simMs: number, w: number): void {
+  /** Everything the inspector and the order panel need about the selected target. */
+  private targetData(view: WireView, simMs: number) {
     const t = this.target;
-    if (!t) return;
-    const ui = this.ui;
+    if (!t) return null;
     const info = session.info!;
-    const pw = 310;
-    const px = w - pw - 12;
-    const py = 44;
-
     let title = '';
     let body: [string, string][] = [];
     let attackable = true;
-    let report = undefined as undefined | (typeof view.scoutReports)[number];
+    let report: (typeof view.scoutReports)[number] | undefined;
     if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);
-      if (!d) return;
+      if (!d) return null;
       title = d.title;
       body = d.lines;
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'node' && r.target.nodeId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
     } else if (t.own) {
       const hq = view.hqs.find((x) => x.id === t.id);
-      if (!hq) return;
+      if (!hq) return null;
       title = hq.id === info.hqId ? 'Your HQ' : `HQ of ${hq.owner} (ally)`;
       body = [[`HP ${hq.hp} / ${hq.maxHp}${hq.burning ? ' (burning)' : ''}`, hq.burning ? COLORS.warn : COLORS.text]];
       attackable = false;
     } else {
       const hq = view.enemyHqs.find((x) => x.id === t.id);
-      if (!hq) return;
+      if (!hq) return null;
       title = 'Enemy HQ';
       body = [[hq.burning ? 'Burning: below full HP' : 'Intact', hq.burning ? COLORS.warn : COLORS.dim], ['Hit it when it is out in the field. HQs in a safe zone cannot be attacked.', COLORS.dim]];
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'hq' && r.target.hqId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
     }
-
-    const squads = view.squads.filter((s) => s.owner === info.playerId && s.state !== 'march' && s.troops > 0 && !(t.kind === 'node' && s.nodeId === t.id));
-    const scoutHome = view.scouts.find((s) => s.owner === info.playerId && s.state === 'home');
-    const hq = view.hqs.find((x) => x.id === info.hqId);
+    const mine = view.squads.filter((s) => s.owner === info.playerId);
     const node = t.kind === 'node' ? view.nodes.find((n) => n.id === t.id) : undefined;
-    const canTeleport = !!(node && node.owner === this.mine && node.visible && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id));
+    const hq = view.hqs.find((x) => x.id === info.hqId);
+    return {
+      t,
+      title,
+      body,
+      attackable,
+      report,
+      node,
+      atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
+      here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : [],
+      scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
+      canTeleport: !!(node && node.owner === this.mine && node.visible && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
+    };
+  }
 
-    const defenders = report && !report.empty ? report.defenders : [];
-    const shown = defenders.slice(0, 8);
-    const bodyH = body.length * 18;
-    const reportH = report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
-    const actionRows = (attackable ? squads.length : 0) + (attackable ? 1 : 0) + (canTeleport ? 1 : 0);
-    const ph = 44 + bodyH + reportH + actionRows * 32 + 8;
+  /** Greedy word wrap by character count. */
+  private wrap(text: string, maxChars: number): string[] {
+    const out: string[] = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      if ((line + ' ' + word).trim().length > maxChars && line) {
+        out.push(line);
+        line = word;
+      } else line = (line + ' ' + word).trim();
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
+  /** Bottom centre: what is selected. Its orders sit to the right (drawOrderPanel). */
+  private drawTargetPanel(view: WireView, simMs: number, w: number, h: number): void {
+    const d = this.targetData(view, simMs);
+    if (!d) return;
+    const ui = this.ui;
+    const pw = 340;
+    const gap = 8;
+    const ow = 290;
+    const total = d.attackable ? pw + gap + ow : pw;
+    const px = Math.round((w - total) / 2);
+    const bottom = h - 34;
+
+    const lines: { text: string; color: string }[] = [];
+    for (const [text, color] of d.body) for (const l of this.wrap(text, 50)) lines.push({ text: l, color });
+    const defenders = d.report && !d.report.empty ? d.report.defenders : [];
+    const shown = defenders.slice(0, 6);
+    const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
+    const ph = 40 + lines.length * 16 + reportH + 8;
+    const py = bottom - ph;
+
     ui.panel(px, py, pw, ph);
-    ui.text(title, px + 12, py + 10, { size: 15, bold: true });
+    ui.text(d.title, px + 12, py + 10, { size: 15, bold: true });
     ui.button(px + pw - 30, py + 6, 22, 22, 'x', { onClick: () => (this.target = null), size: 12 });
-    let y = py + 36;
-    for (const [line, col] of body) {
-      this.wrapText(line, px + 12, y, pw - 24, col);
-      y += 18;
+    let y = py + 34;
+    for (const l of lines) {
+      ui.text(l.text, px + 12, y, { size: 12, color: l.color });
+      y += 16;
     }
-    if (report) {
-      ui.text(`Scouted ${Math.round((simMs - report.takenAtMs) / 1000)}s ago, expires ${fmtTime(report.expiresAtMs - simMs)}`, px + 12, y + 2, { size: 11, color: COLORS.warn });
+    if (d.report) {
+      ui.text(`Scouted ${Math.round((simMs - d.report.takenAtMs) / 1000)}s ago, expires ${fmtTime(d.report.expiresAtMs - simMs)}`, px + 12, y + 2, { size: 11, color: COLORS.warn });
       y += 22;
-      for (const d of shown) {
-        ui.text(`${SQUAD_LABEL[d.type]}  ${d.effectivePower.toFixed(1)}  ${d.commander}`, px + 20, y, { size: 11 });
+      for (const q of shown) {
+        ui.text(`${SQUAD_LABEL[q.type]}  Power ${fmtPower(q.effectivePower)}  ${q.commander}`, px + 20, y, { size: 11 });
         y += 15;
       }
-      if (defenders.length > shown.length) {
-        ui.text(`+${defenders.length - shown.length} more`, px + 20, y, { size: 11, color: COLORS.dim });
-        y += 15;
-      }
+      if (defenders.length > shown.length) ui.text(`+${defenders.length - shown.length} more`, px + 20, y, { size: 11, color: COLORS.dim });
     }
-    y += 4;
-    if (attackable) {
-      for (const s of squads) {
-        const sel = this.selectedSquad === s.id;
-        ui.button(px + 10, y, pw - 20, 28, `${t.kind === 'node' && node?.owner === this.mine ? 'Garrison' : 'Attack'} with ${SQUAD_LABEL[s.type]} P${s.power.toFixed(0)} (${Math.round(s.troops)})`, {
-          onClick: () => {
-            this.selectedSquad = s.id;
-            this.sendSquad(s.id, t);
-          },
-          active: sel,
-          size: 12,
-        });
-        y += 32;
-      }
-      ui.button(px + 10, y, pw - 20, 28, scoutHome ? 'Send scout' : 'No scout at home', { onClick: () => scoutHome && session.sendCommand({ type: 'scout', scoutIndex: scoutHome.index, target: this.targetBody(t) }), enabled: !!scoutHome, size: 12, accent: 0xbfe9ff });
+
+    if (d.attackable) this.drawOrderPanel(d, px + pw + gap, ow, bottom);
+  }
+
+  private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number): void {
+    const ui = this.ui;
+    const t = d.t;
+    const ownNode = d.node?.owner === this.mine;
+    const rows = d.atHq.length + d.here.length + 1 + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
+    const oh = 40 + rows * 32 + 6;
+    const oy = bottom - oh;
+    ui.panel(ox, oy, ow, oh);
+    ui.text('Orders', ox + 12, oy + 10, { size: 14, bold: true });
+    let y = oy + 34;
+    for (const s of d.atHq) {
+      ui.button(ox + 10, y, ow - 20, 28, `${ownNode ? 'Garrison' : 'Attack'}: ${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, {
+        onClick: () => {
+          this.selectedSquad = s.id;
+          this.sendSquad(s.id, t);
+        },
+        active: this.selectedSquad === s.id,
+        size: 12,
+      });
       y += 32;
     }
-    if (canTeleport && node) {
-      ui.button(px + 10, y, pw - 20, 28, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: node.id }), size: 12, accent: COLORS.gold });
+    if (d.atHq.length === 0) {
+      ui.text('No squad at HQ. Return one first.', ox + 12, y + 6, { size: 12, color: COLORS.dim });
+      y += 32;
+    }
+    for (const s of d.here) {
+      ui.button(ox + 10, y, ow - 20, 28, `Return to HQ: ${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 12, accent: COLORS.enemy });
+      y += 32;
+    }
+    const sc = d.scoutHome;
+    ui.button(ox + 10, y, ow - 20, 28, sc ? 'Send scout' : 'No scout at home', {
+      onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
+      enabled: !!sc,
+      size: 12,
+      accent: 0xbfe9ff,
+    });
+    y += 32;
+    if (d.canTeleport && d.node) {
+      const nid = d.node.id;
+      ui.button(ox + 10, y, ow - 20, 28, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), size: 12, accent: COLORS.gold });
     }
   }
 
@@ -732,7 +859,7 @@ export class GameScene extends BaseScene {
   private drawScouts(view: WireView, simMs: number, h: number): void {
     const ui = this.ui;
     const info = session.info!;
-    const px = 12;
+    const px = 76;
     const py = 44;
     const pw = 400;
     const ph = Math.min(430, h - 44 - 270);
@@ -770,7 +897,7 @@ export class GameScene extends BaseScene {
       let ly = y + 20;
       if (r.empty) ui.text('HQ already gone', px + 20, ly, { size: 11, color: COLORS.dim });
       r.defenders.slice(0, 6).forEach((d) => {
-        ui.text(`${SQUAD_LABEL[d.type]}  ${d.effectivePower.toFixed(1)}  ${d.commander}`, px + 20, ly, { size: 11 });
+        ui.text(`${SQUAD_LABEL[d.type]}  Power ${fmtPower(d.effectivePower)}  ${d.commander}`, px + 20, ly, { size: 11 });
         ly += 14;
       });
       y += need;
@@ -779,12 +906,12 @@ export class GameScene extends BaseScene {
 
   private drawLogs(view: WireView, simMs: number, h: number): void {
     const ui = this.ui;
-    const px = 12;
+    const px = 76;
     const py = 44;
     const pw = 460;
     const ph = Math.min(460, h - 44 - 270);
     ui.panel(px, py, pw, ph);
-    ui.text('Combat logs', px + 12, py + 10, { size: 15, bold: true });
+    ui.text('Logs', px + 12, py + 10, { size: 15, bold: true });
     ui.button(px + pw - 30, py + 6, 22, 22, 'x', { onClick: () => (this.panel = 'none'), size: 12 });
     let y = py + 36;
     if (view.combatLogs.length === 0) ui.text('No fights yet.', px + 12, y, { size: 12, color: COLORS.dim });
@@ -807,11 +934,11 @@ export class GameScene extends BaseScene {
       ui.text(`${fmtTime(log.timeMs)}  ${where}`, px + 14, y + 3, { size: 12, bold: true });
       ui.text(OUTCOME[log.outcome], px + pw - 14, y + 3, { size: 12, align: 'right', bold: true, color: good ? COLORS.good : COLORS.bad });
       const a = log.attacker;
-      ui.text(`${a.commander} ${typeName(a.type)} P${a.power.toFixed(0)}  ${Math.round(a.troopsBefore)} > ${Math.round(a.troopsAfter)}`, px + 14, y + 19, { size: 11, color: cssColor(teamColor(a.team, this.mine)) });
+      ui.text(`${a.commander} ${typeName(a.type)} Power ${fmtPower(a.power)}  ${Math.round(a.troopsBefore)} > ${Math.round(a.troopsAfter)}`, px + 14, y + 19, { size: 11, color: cssColor(teamColor(a.team, this.mine)) });
       let ly = y + 33;
       for (const f of fights) {
         const d = f.defender;
-        ui.text(`vs ${d.commander} ${typeName(d.type)} P${d.power.toFixed(0)}  ${Math.round(d.troopsBefore)} > ${Math.round(d.troopsAfter)}`, px + 22, ly, { size: 11, color: cssColor(teamColor(d.team, this.mine)) });
+        ui.text(`vs ${d.commander} ${typeName(d.type)} Power ${fmtPower(d.power)}  ${Math.round(d.troopsBefore)} > ${Math.round(d.troopsAfter)}`, px + 22, ly, { size: 11, color: cssColor(teamColor(d.team, this.mine)) });
         ly += 14;
       }
       if (log.fights.length > fights.length) ui.text(`+${log.fights.length - fights.length} more fights`, px + 22, ly, { size: 11, color: COLORS.dim });

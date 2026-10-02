@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 1, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 2, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -187,7 +187,7 @@ try {
   check(stranger.last('error').code === 'roomExists', 'creating a taken code is refused');
 
   // --- start with a countdown, cancel once, then really start -------------------------------
-  hana.send({ t: 'start', fillBots: true });
+  hana.send({ t: 'start', fillBots: true, minutes: 30 });
   await hana.waitFor((m) => m.t === 'lobby' && m.phase === 'countdown', 5000, 'countdown');
   hana.send({ t: 'cancelStart' });
   await hana.waitFor((m) => m.t === 'lobby' && m.phase === 'lobby', 5000, 'back to the lobby');
@@ -195,7 +195,7 @@ try {
   hana.msgs.length = 0;
   ivo.msgs.length = 0;
   const t0 = Date.now();
-  hana.send({ t: 'start', fillBots: true });
+  hana.send({ t: 'start', fillBots: true, minutes: 30 });
   await hana.waitFor((m) => m.t === 'matchStart', 8000, 'matchStart');
   await ivo.waitFor((m) => m.t === 'matchStart', 8000, 'matchStart');
   check(Date.now() - t0 >= 2800, `the match waited out the 3 second countdown (${Date.now() - t0}ms)`);
@@ -203,7 +203,7 @@ try {
   await ivo.waitFor((m) => m.t === 'state' && m.full, 5000, 'first full state');
   const hInfo = hana.last('matchStart').info;
   const iInfo = ivo.last('matchStart').info;
-  check(hInfo.map.nodes.length === 35, 'matchStart carries the 35 node map');
+  check(hInfo.map.nodes.length === 17, 'matchStart carries the 17 node map');
   check(hInfo.team !== iInfo.team, 'the two humans are on opposite teams');
   check(hana.view.hqs.length === 20, 'the host sees all 20 HQs of their team');
 

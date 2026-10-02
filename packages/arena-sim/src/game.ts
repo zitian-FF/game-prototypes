@@ -35,7 +35,7 @@ export interface GameOptions {
   players: PlayerSpec[];
 }
 
-type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'end';
+type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'end';
 
 interface Queued {
   t: number;
@@ -137,6 +137,7 @@ export class ArenaGame {
         index,
         team: spec.team,
         pool: spec.pool,
+        poolMax: spec.pool,
         hq,
         squadIds: [],
         scouts: Array.from({ length: opts.tune.scout.perHq }, () => ({ kind: 'home' as const })),
@@ -312,8 +313,24 @@ export class ArenaGame {
     const r = this.pointRates();
     this.pointTotals[0] += r[0] * dt;
     this.pointTotals[1] += r[1] * dt;
+    this.regenPools(dt);
     this.lastAccrueMs = toMs;
     this.history.push({ t: toMs, p: [this.pointTotals[0], this.pointTotals[1]] });
+  }
+
+  /** Hospitals refill every ally's reserve pool, up to what it started at. */
+  private regenPools(dt: number): void {
+    const rate: [number, number] = [0, 0];
+    for (const n of this.nodes.values()) {
+      if (n.owner === null) continue;
+      const per = this.tune.nodes[n.kind].poolRegenPerSecond;
+      if (per) rate[n.owner] += per * n.tier;
+    }
+    if (rate[0] === 0 && rate[1] === 0) return;
+    for (const p of this.players.values()) {
+      const r = rate[p.team];
+      if (r > 0 && p.pool < p.poolMax) p.pool = Math.min(p.poolMax, p.pool + r * dt);
+    }
   }
 
   /** First time a team's running total reached `value`, by linear interpolation. */
@@ -406,13 +423,14 @@ export class ArenaGame {
   private cmdMarch(player: Player, squadId: SquadId, target: MarchTarget): string | null {
     const sq = this.ownSquad(player, squadId);
     if (!sq) return 'unknownSquad';
+    // Orders only go out from the HQ. A squad in the field can only be told to come home.
     if (sq.state.kind === 'march') return 'alreadyMarching';
+    if (sq.state.kind !== 'hq') return 'notAtHq';
     if (sq.troops <= 0) return 'noTroops';
     let to: Vec;
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
-      if (sq.state.kind === 'garrison' && sq.state.nodeId === node.id) return 'alreadyThere';
       // Reinforcing a node your team already holds must fit in its garrison.
       if (node.owner === player.team) {
         const block = this.garrisonBlock(sq, node, true);
@@ -441,8 +459,8 @@ export class ArenaGame {
   private cmdCancel(player: Player, squadId: SquadId): string | null {
     const sq = this.ownSquad(player, squadId);
     if (!sq) return 'unknownSquad';
-    if (sq.state.kind !== 'march') return 'notMarching';
-    if (sq.state.march.purpose === 'home') return 'alreadyReturning';
+    if (sq.state.kind === 'hq') return 'alreadyHome';
+    if (sq.state.kind === 'march' && sq.state.march.purpose === 'home') return 'alreadyReturning';
     const from = this.squadPos(sq);
     this.emit({ type: 'marchCancelled', timeMs: this.nowMs, squadId: sq.id });
     this.sendHome(sq, from, false);
@@ -606,6 +624,8 @@ export class ArenaGame {
         return this.onScoutHome(ev);
       case 'turretPulse':
         return this.onTurretPulse();
+      case 'missileHit':
+        return this.onMissileHit(ev.ref);
       case 'end':
         return this.finish();
     }
@@ -889,25 +909,54 @@ export class ArenaGame {
 
   // -------------------------------------------------------------- turrets
 
+  private missiles = new Map<string, { team: TeamId; nodeId: NodeId; turretId: NodeId }>();
+  private missileSeq = 0;
+
+  /** Every held turret fires at every enemy-held node of the target tiers. */
   private onTurretPulse(): void {
     const t = this.tune.turret;
+    const speed = this.speed * t.missileSpeedFactor;
     for (const turret of this.nodes.values()) {
       if (turret.kind !== 'turret' || turret.owner === null) continue;
-      const hits: { squadId: SquadId; damage: number }[] = [];
       for (const node of this.nodes.values()) {
-        if (node.owner === null || node.owner === turret.owner) continue;
-        if (dist(node.pos, turret.pos) > t.radiusCells * this.tune.map.cellSize) continue;
-        for (const id of node.garrison.slice()) {
-          const sq = this.squads.get(id)!;
-          const damage = Math.min(sq.troops, Math.ceil(sq.troops * t.damageFraction));
-          sq.troops -= damage;
-          hits.push({ squadId: sq.id, damage });
-          if (sq.troops <= 0) this.sendHome(sq, node.pos, true);
-        }
+        if (node.owner === null || node.owner === turret.owner || node.tier < t.minTargetTier) continue;
+        const id = `m${this.missileSeq++}`;
+        const arriveMs = this.nowMs + (dist(turret.pos, node.pos) / speed) * 1000;
+        this.missiles.set(id, { team: turret.owner, nodeId: node.id, turretId: turret.id });
+        this.schedule(arriveMs, 'missileHit', id, 0);
+        this.emit({
+          type: 'missileLaunched',
+          timeMs: this.nowMs,
+          id,
+          team: turret.owner,
+          turretId: turret.id,
+          nodeId: node.id,
+          from: turret.pos,
+          to: node.pos,
+          startMs: this.nowMs,
+          arriveMs,
+        });
       }
-      if (hits.length) this.emit({ type: 'turretPulse', timeMs: this.nowMs, nodeId: turret.id, hits });
     }
     this.schedule(this.nowMs + t.pulseSeconds * 1000, 'turretPulse', '', 0);
+  }
+
+  private onMissileHit(id: string): void {
+    const m = this.missiles.get(id);
+    this.missiles.delete(id);
+    if (!m) return;
+    const node = this.nodes.get(m.nodeId)!;
+    // The node may have changed hands while the missile flew: a friendly node is not hit.
+    if (node.owner === null || node.owner === m.team) return;
+    const t = this.tune.turret;
+    const hits: { squadId: SquadId; damage: number }[] = [];
+    for (const sid of node.garrison) {
+      const sq = this.squads.get(sid)!;
+      const damage = Math.max(0, Math.min(sq.troops - t.minTroops, sq.maxTroops * t.damageFraction));
+      sq.troops -= damage;
+      hits.push({ squadId: sq.id, damage });
+    }
+    this.emit({ type: 'turretPulse', timeMs: this.nowMs, nodeId: node.id, hits });
   }
 
   // ----------------------------------------------------------- invariants

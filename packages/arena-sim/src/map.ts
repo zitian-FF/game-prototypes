@@ -113,6 +113,9 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
     nodes.push({ id: `n${id++}`, kind, tier, cell, pos: cellCenter(cell, tune) });
   };
 
+  // Vision towers are placed after everything else, where they see the most nodes.
+  const deferred: { kind: NodeKind; tier: number }[] = [];
+
   for (const ring of m.rings) {
     if (ring.center) {
       for (const [kind, count] of Object.entries(ring.nodes) as [NodeKind, number][]) {
@@ -123,6 +126,11 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
     }
     for (const [kind, count] of Object.entries(ring.nodes) as [NodeKind, number][]) {
       if (count % 2 !== 0) throw new Error(`ring tier ${ring.tier}: ${kind} count must be even for a symmetric map`);
+      const tier = ring.kindTiers?.[kind] ?? ring.tier;
+      if (ring.strategic?.includes(kind)) {
+        for (let n = 0; n < count / 2; n++) deferred.push({ kind, tier });
+        continue;
+      }
       for (let n = 0; n < count / 2; n++) {
         let ok = false;
         for (let attempt = 0; attempt < 8000 && !ok; attempt++) {
@@ -139,13 +147,38 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
           const ok2 = clear(twin);
           placed.pop();
           if (!ok2) continue;
-          add(kind, ring.tier, cell);
-          add(kind, ring.tier, twin);
+          add(kind, tier, cell);
+          add(kind, tier, twin);
           ok = true;
         }
         if (!ok) throw new Error(`map generation: could not place ${kind} in ring tier ${ring.tier}, loosen the rings or spacing`);
       }
     }
+  }
+  for (const d of deferred) {
+    const ring = m.rings.find((r) => r.strategic?.includes(d.kind))!;
+    const reach = (tune.nodes[d.kind].visionRadiusCells * m.cellSize) / m.cellSize; // in cells
+    let best: { score: number; cell: Cell; twin: Cell } | null = null;
+    for (let attempt = 0; attempt < 6000; attempt++) {
+      const cell: Cell = {
+        cx: rng.int(m.edgeMarginCells, centerCell.cx - 1),
+        cy: rng.int(m.edgeMarginCells, m.heightCells - 1 - m.edgeMarginCells),
+      };
+      const r = ringRadius(cell, tune);
+      if (r < ring.minR || r > ring.maxR) continue;
+      const twin = mirror(cell);
+      if (cheb(cell, twin) < m.nodeMinSpacingCells || !clear(cell)) continue;
+      placed.push(cell);
+      const twinOk = clear(twin);
+      placed.pop();
+      if (!twinOk) continue;
+      // Score: how many other nodes this tower would reveal (the twin sees the mirror image).
+      const seen = placed.filter((o) => Math.hypot(o.cx - cell.cx, o.cy - cell.cy) <= reach).length;
+      if (!best || seen > best.score) best = { score: seen, cell, twin };
+    }
+    if (!best) throw new Error(`map generation: could not place ${d.kind}, loosen the rings or spacing`);
+    add(d.kind, d.tier, best.cell);
+    add(d.kind, d.tier, best.twin);
   }
   return { width: m.widthCells * m.cellSize, height: m.heightCells * m.cellSize, nodes, safeZones: zones };
 }

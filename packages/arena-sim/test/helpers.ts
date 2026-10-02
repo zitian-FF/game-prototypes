@@ -115,3 +115,9 @@ export function marchAndArrive(g: ArenaGame, playerId: string, squadId: string, 
 }
 
 export const SQUAD_ID = (n: number) => `s${n}`;
+
+/** Send a squad home (from the field or a garrison) and advance until it is back at the HQ. */
+export function recallHome(g: ArenaGame, playerId: string, squadId: string): GameEvent[] {
+  must(g, { type: 'cancel', playerId, squadId });
+  return g.advanceTo(arrival(g, squadId));
+}

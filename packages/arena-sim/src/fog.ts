@@ -77,6 +77,9 @@ export interface OwnHqView {
   pos: Vec;
   hp: number;
   maxHp: number;
+  /** Reserve troops left, and what hospitals can refill it to. */
+  pool: number;
+  poolMax: number;
   /** Below full HP: draw it on fire until it is defeated and resets. */
   burning: boolean;
   location: HqLocation;
@@ -195,6 +198,8 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         pos: p.hq.pos,
         hp: p.hq.hp,
         maxHp,
+        pool: p.pool,
+        poolMax: p.poolMax,
         burning: p.hq.hp < maxHp,
         location: p.hq.location,
         nextTeleportAtMs: p.nextTeleportAtMs,

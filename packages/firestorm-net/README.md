@@ -1,6 +1,6 @@
 # firestorm-net
 
-Version: **0.1.0**
+Version: **0.2.0**
 
 Everything a firestorm-arena match server needs except the Cloudflare glue:
 the wire protocol, the match room (lobby, start countdown, the running match),
@@ -47,18 +47,23 @@ alarm set, and rebuilds the room from storage after an eviction.
 
 ## Bots
 
-A bot grabs free points and spreads out (a node holds one squad per commander,
-and a teammate already heading for a node makes it worth only the garrison
-bonus); keeps its strongest squad back as a striker that scouts first; attacks
-what a fresh scout report says it can beat with room to spare, and contests
-enemy-held or fogged enemy-side nodes even without a report, betting on its squad
-power (at most two blind attackers per node; the striker waits 20s for a report
-first); covers its own
-nodes when an enemy march is heading for them; and teleports forward, to refill,
-or to dodge. It sees only what a player on its team would see.
+A bot is a small state machine. Every 8 to 20 sim seconds (random per bot) it picks an
+action by weight (attack 75%, teleport 15%, scout 10%), picks a target, and runs it if it
+is legal. Otherwise it waits for the next cycle. It sees only what a player on its team
+would see, so it attacks and scouts fogged nodes blind.
 
-Known limits: bots rarely attack HQs (enemy HQs are seldom in sight), do not model
-node boosts in their fight estimates, and never move a garrisoned squad.
+- Attack: a squad at the HQ goes to a node or visible enemy HQ, leaning toward nearby
+  targets, and toward reinforcing its own nodes while it holds fewer than 3 garrisons. With
+  nothing at the HQ and two or more garrisons out, it pulls one back so it can go again.
+- Teleport (brings every squad home, emptying garrisons): only legal when its HQ is about
+  to be hit, it has no healthy squad at the HQ and two or more wounded ones, or it has
+  nothing deployed while sitting in the safe zone.
+- Out of troops: when all its squads plus its reserve are less than one full squad, it stops
+  acting for good (squads already garrisoned keep defending).
+
+In bot-only matches both teams hold 7 to 10 of the 17 nodes at the end and nodes change
+hands 35 to 53 times. A match is about 1,150 commands and 3,000 row writes, roughly 33
+matches a day on the Workers Free plan.
 
 ## Tests
 

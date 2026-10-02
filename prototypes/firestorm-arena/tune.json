@@ -35,7 +35,7 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 180,
+    "crossMapSeconds": 257,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {
@@ -64,9 +64,11 @@
     "maxPerCommander": 1
   },
   "turret": {
-    "pulseSeconds": 30,
+    "pulseSeconds": 5,
     "damageFraction": 0.05,
-    "radiusCells": 6.5
+    "missileSpeedFactor": 5,
+    "minTroops": 1,
+    "minTargetTier": 3
   },
   "map": {
     "cellSize": 40,
@@ -95,7 +97,11 @@
         "minR": 0.1,
         "maxR": 0.3,
         "nodes": {
-          "points": 6
+          "points": 2,
+          "turret": 2
+        },
+        "kindTiers": {
+          "turret": 2
         }
       },
       {
@@ -103,23 +109,22 @@
         "minR": 0.3,
         "maxR": 0.55,
         "nodes": {
-          "points": 4,
-          "attackBoost": 2,
-          "defenseBoost": 2,
-          "teleportCooldown": 2,
-          "turret": 2
-        }
+          "largeVision": 2
+        },
+        "strategic": [
+          "largeVision"
+        ]
       },
       {
         "tier": 1,
         "minR": 0.55,
         "maxR": 0.95,
         "nodes": {
-          "points": 8,
           "attackBoost": 2,
           "defenseBoost": 2,
           "speedBoost": 2,
-          "largeVision": 2
+          "teleportCooldown": 2,
+          "hospital": 2
         }
       }
     ]
@@ -149,6 +154,10 @@
     },
     "turret": {
       "visionRadiusCells": 6
+    },
+    "hospital": {
+      "visionRadiusCells": 6,
+      "poolRegenPerSecond": 100
     }
   }
 }

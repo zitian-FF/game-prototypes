@@ -52,7 +52,7 @@ test('lobby: the room fills up', () => {
 test('lobby: messages before hello are refused, wrong protocol version is fatal', () => {
   const w = makeWorld();
   const c = w.client('A');
-  c.send({ t: 'start', fillBots: false });
+  c.send({ t: 'start', fillBots: false, minutes: 30 });
   assert.deepEqual(errorsOf(c), ['noHello']);
   c.send({ t: 'hello', v: 99, clientId: c.clientId, name: 'A', create: true });
   assert.ok(errorsOf(c).includes('badVersion'));
@@ -75,11 +75,11 @@ test('lobby: only the host can start, and only from the lobby', () => {
   const j = w.client('Jo');
   host.hello(true);
   j.hello(false);
-  j.send({ t: 'start', fillBots: false });
+  j.send({ t: 'start', fillBots: false, minutes: 30 });
   assert.deepEqual(errorsOf(j), ['notHost']);
-  host.send({ t: 'start', fillBots: false });
+  host.send({ t: 'start', fillBots: false, minutes: 30 });
   assert.equal(w.room.currentPhase, 'countdown');
-  host.send({ t: 'start', fillBots: false });
+  host.send({ t: 'start', fillBots: false, minutes: 30 });
   assert.ok(errorsOf(host).includes('badPhase'));
 });
 
@@ -87,7 +87,7 @@ test('lobby: start gives a 3 second countdown the host can cancel', () => {
   const w = makeWorld();
   const host = w.client('Hana');
   host.hello(true);
-  host.send({ t: 'start', fillBots: true });
+  host.send({ t: 'start', fillBots: true, minutes: 30 });
   const lobby = host.last('lobby')!;
   assert.equal(lobby.phase, 'countdown');
   assert.equal(lobby.countdownEndsAtMs, w.env.wall + 3000);
@@ -105,7 +105,7 @@ test('lobby: the match begins when the countdown ends', () => {
   const w = makeWorld();
   const host = w.client('Hana');
   host.hello(true);
-  host.send({ t: 'start', fillBots: false });
+  host.send({ t: 'start', fillBots: false, minutes: 30 });
   w.advance(2999);
   assert.equal(w.room.currentPhase, 'countdown');
   w.advance(2);
@@ -163,7 +163,7 @@ function startMatch(names: string[], fillBots: boolean, opts = {}) {
   const w = makeWorld(opts);
   const clients = names.map((n, i) => w.client(n, `client-${i}-${n.replace(/\W/g, '')}`.padEnd(12, '_')));
   clients.forEach((c, i) => c.hello(i === 0));
-  clients[0].send({ t: 'start', fillBots });
+  clients[0].send({ t: 'start', fillBots, minutes: 30 });
   w.advance(3100);
   clients.forEach((c) => c.pull());
   return { w, clients };
@@ -178,7 +178,7 @@ test('match: every human gets matchStart before any state, with their own detail
     const info = c.last('matchStart')!.info;
     assert.equal(info.playerId, c.name);
     assert.equal(info.tune.scoring.garrisonPointsPerSecond, 10, 'server sends its own tune');
-    assert.equal(info.map.nodes.length, 35);
+    assert.equal(info.map.nodes.length, 17);
     assert.ok(info.hqId.startsWith('h'));
   }
 });
@@ -253,7 +253,7 @@ test('commands: rejected orders say why, and orders before the match are refused
   const early = c.cmd({ type: 'cancel', squadId: 's0' });
   assert.deepEqual(c.of('cmdResult').find((r) => r.id === early), { t: 'cmdResult', id: early, ok: false, error: 'notPlaying' });
 
-  c.send({ t: 'start', fillBots: false });
+  c.send({ t: 'start', fillBots: false, minutes: 30 });
   w.advance(3100);
   const bad = c.cmd({ type: 'march', squadId: 'nope', target: { kind: 'node', nodeId: 'n0' } });
   assert.deepEqual(c.of('cmdResult').find((r) => r.id === bad), { t: 'cmdResult', id: bad, ok: false, error: 'unknownSquad' });
@@ -293,7 +293,7 @@ test('time: the alarm loop always makes progress, at awkward time scales too', (
     const w = makeWorld({ timeScale });
     const host = w.client('Hana');
     host.hello(true);
-    host.send({ t: 'start', fillBots: true });
+    host.send({ t: 'start', fillBots: true, minutes: 30 });
     w.advance(3100);
     const room = w.room;
     let alarms = 0;

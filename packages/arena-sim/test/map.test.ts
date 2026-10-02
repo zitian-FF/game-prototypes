@@ -14,8 +14,16 @@ test('map: node counts per ring and kind match tune, tiers match their rings', (
   const tune = loadTune();
   for (const seed of [1, 2, 3]) {
     const map = generateMap(new Rng(seed), tune);
+    // Expected per tier: a ring's kinds sit at the ring's tier unless kindTiers says otherwise.
+    const want: Record<number, Record<string, number>> = {};
     for (const ring of tune.map.rings) {
-      assert.deepEqual(kindsIn(map.nodes, ring.tier), ring.nodes, `seed ${seed} tier ${ring.tier}`);
+      for (const [kind, count] of Object.entries(ring.nodes)) {
+        const tier = ring.kindTiers?.[kind as keyof typeof ring.kindTiers] ?? ring.tier;
+        (want[tier] ??= {})[kind] = ((want[tier] ??= {})[kind] ?? 0) + (count ?? 0);
+      }
+    }
+    for (const [tier, kinds] of Object.entries(want)) {
+      assert.deepEqual(kindsIn(map.nodes, Number(tier)), kinds, `seed ${seed} tier ${tier}`);
     }
     assert.equal(new Set(map.nodes.map((n) => n.id)).size, map.nodes.length);
   }
@@ -47,8 +55,8 @@ test('map: rings run outside in, tier 4 in the middle, tier 1 on the outside', (
     const ns = map.nodes.filter((n) => n.tier === tier);
     return ns.reduce((a, n) => a + dist(n.pos, c), 0) / ns.length;
   };
-  assert.ok(meanR(4) < meanR(3) && meanR(3) < meanR(2) && meanR(2) < meanR(1));
-  // Power nodes only live in tiers 1 and 2, and tiers 3 and 4 are pure points.
+  assert.ok(meanR(4) < meanR(3) && meanR(3) < meanR(1) && meanR(2) < meanR(1));
+  // Power buildings live in tiers 1 and 2, and tiers 3 and 4 are pure points.
   for (const n of map.nodes) if (n.tier >= 3) assert.equal(n.kind, 'points');
 });
 
@@ -91,10 +99,10 @@ test('map: same seed gives the same map', () => {
   assert.deepEqual(generateMap(new Rng(9), tune), generateMap(new Rng(9), tune));
 });
 
-test('map: crossing the whole map takes about 3 minutes at base speed', () => {
+test('map: crossing the whole map takes the tuned cross-map time at base speed', () => {
   const tune = loadTune();
   const map = generateMap(new Rng(1), tune);
-  assert.ok(Math.abs(Math.hypot(map.width, map.height) / baseSpeed(map, tune) - 180) < 1e-9);
+  assert.ok(Math.abs(Math.hypot(map.width, map.height) / baseSpeed(map, tune) - tune.march.crossMapSeconds) < 1e-9);
 });
 
 test('map: the 8 HQ slots are exactly the 8 cells around the node', () => {
@@ -127,5 +135,38 @@ test('map: 20 HQs fit in a safe zone block, one per cell, none overlapping', () 
       assert.ok(p.y >= z.origin.cy * tune.map.cellSize && p.y <= (z.origin.cy + z.rows) * tune.map.cellSize);
     }
     assert.equal(seen.size, tune.match.playersPerTeam);
+  }
+});
+
+test('map: the real layout has the silo, 2 refineries, 2 turrets, 2 radars, 8 boosts and 2 hospitals', () => {
+  const tune = loadTune();
+  for (const seed of [1, 2, 3, 4]) {
+    const map = generateMap(new Rng(seed), tune);
+    const count = (kind: string, tier?: number) => map.nodes.filter((n) => n.kind === kind && (tier === undefined || n.tier === tier)).length;
+    assert.equal(map.nodes.length, 17, `seed ${seed}`);
+    assert.equal(count('points', 4), 1, 'nuclear silo');
+    assert.equal(count('points', 3), 2, 'oil refineries');
+    assert.equal(count('turret', 2), 2, 'missile turrets are tier 2');
+    assert.equal(count('largeVision', 2), 2, 'radar towers');
+    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown']) assert.equal(count(kind, 1), 2, kind);
+    assert.equal(count('hospital', 1), 2);
+    // One of each outer building per side of the map.
+    const mid = map.width / 2;
+    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown', 'hospital', 'largeVision', 'turret']) {
+      const left = map.nodes.filter((n) => n.kind === kind && n.pos.x < mid).length;
+      assert.equal(left, 1, `${kind} one per half`);
+    }
+  }
+});
+
+test('map: radar towers are placed to see many nodes, better than a typical spot', () => {
+  const tune = loadTune();
+  const reach = tune.nodes.largeVision.visionRadiusCells * tune.map.cellSize;
+  for (const seed of [1, 2, 3]) {
+    const map = generateMap(new Rng(seed), tune);
+    for (const radar of map.nodes.filter((n) => n.kind === 'largeVision')) {
+      const seen = map.nodes.filter((o) => o !== radar && dist(o.pos, radar.pos) <= reach).length;
+      assert.ok(seen >= 7, `seed ${seed}: radar ${radar.id} sees only ${seen}`);
+    }
   }
 });
