@@ -110,7 +110,7 @@ remains unbuilt infrastructure work.
 
 ## Game rules engine: arena-sim
 
-`packages/arena-sim` (0.1.0) is the pure TypeScript rules engine for
+`packages/arena-sim` (0.2.0) is the pure TypeScript rules engine for
 firestorm-arena: squads, combat, nodes, HQs, teleport, scouts, fog-of-war
 views and an event queue, with no Phaser, DOM or Cloudflare code in it. It is
 built to run inside a Cloudflare Durable Object (authoritative server), in

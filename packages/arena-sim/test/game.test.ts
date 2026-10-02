@@ -5,9 +5,9 @@ import { test } from './harness';
 import { SQUAD_ID, arrival, err, makeGame, marchAndArrive, must, player, scenarioTune, withTune } from './helpers';
 import type { NodeDef } from './helpers';
 
-const N0: NodeDef = { id: 'n0', kind: 'pointMedium', x: 300, y: 300 };
-const N1: NodeDef = { id: 'n1', kind: 'pointLarge', x: 500, y: 300 };
-const N2: NodeDef = { id: 'n2', kind: 'pointMedium', x: 700, y: 300 };
+const N0: NodeDef = { id: 'n0', kind: 'points', x: 300, y: 300 };
+const N1: NodeDef = { id: 'n1', kind: 'points', tier: 2, x: 500, y: 300 };
+const N2: NodeDef = { id: 'n2', kind: 'points', x: 700, y: 300 };
 
 const ofType = <T extends GameEvent['type']>(events: GameEvent[], type: T) =>
   events.filter((e): e is Extract<GameEvent, { type: T }> => e.type === type);
@@ -25,7 +25,8 @@ test('nodes: a squad marching to a neutral node captures it and earns points', (
   assert.equal(cap.previous, null);
   const t0 = g.now;
   g.advanceTo(t0 + 10_000);
-  assert.ok(Math.abs(g.points()[0] - 10) < 1e-6, `points ${g.points()[0]}`);
+  // Tier 1 node (10/s) plus 10/s for the one commander garrisoned there.
+  assert.ok(Math.abs(g.points()[0] - 200) < 1e-6, `points ${g.points()[0]}`);
   assert.equal(g.points()[1], 0);
 });
 
@@ -260,7 +261,7 @@ test('hq: a defender fights for the HQ and is wounded', () => {
 });
 
 test('hq: dodging, the HQ teleports away and the attacker arrives at an empty slot', () => {
-  const n1: NodeDef = { id: 'n1', kind: 'pointMedium', x: 300, y: 150 };
+  const n1: NodeDef = { id: 'n1', kind: 'points', x: 300, y: 150 };
   const g = hqScene([n1], { hq: { teleportCooldownSeconds: 30 } });
   marchAndArrive(g, 'a', 's1', 'n1'); // a also owns n1 now
   must(g, { type: 'march', playerId: 'b', squadId: 's2', target: { kind: 'hq', hqId: 'h0' } });
@@ -364,7 +365,7 @@ test('teleport: a full ring of stranded HQs blocks the new owner', () => {
 });
 
 test('teleport: a stranded HQ can still jump away once off cooldown', () => {
-  const n1: NodeDef = { id: 'n1', kind: 'pointMedium', x: 300, y: 150 };
+  const n1: NodeDef = { id: 'n1', kind: 'points', x: 300, y: 150 };
   const g = makeGame({
     nodes: [N0, n1],
     tune: scenarioTune({ hq: { teleportCooldownSeconds: 20 } }),
@@ -421,7 +422,7 @@ test('scout: flies at 3x squad speed, reveals defenders, expires after 60s', () 
   assert.deepEqual(report.defenders.map((d) => d.type), ['missile', 'tank']);
   assert.equal(report.defenders[0].commander, 'a');
   assert.equal(report.defenders[0].effectivePower, 55);
-  assert.equal(report.expiresAtMs - report.takenAtMs, 60_000);
+  assert.ok(Math.abs(report.expiresAtMs - report.takenAtMs - 60_000) < 1e-6);
   assert.equal(g.players.get('b')!.scouts[0].kind, 'back');
 });
 
@@ -463,7 +464,7 @@ test('scout: must come home before reuse, three per HQ, safe-zone HQs are off li
 });
 
 test('scout: scouting an HQ that already teleported away finds nothing', () => {
-  const g = hqScene([{ id: 'n1', kind: 'pointMedium', x: 300, y: 150 }], { hq: { teleportCooldownSeconds: 30 } });
+  const g = hqScene([{ id: 'n1', kind: 'points', x: 300, y: 150 }], { hq: { teleportCooldownSeconds: 30 } });
   marchAndArrive(g, 'a', 's1', 'n1');
   must(g, { type: 'scout', playerId: 'b', scoutIndex: 0, target: { kind: 'hq', hqId: 'h0' } });
   const scout = g.players.get('b')!.scouts[0];
@@ -478,8 +479,8 @@ test('scout: scouting an HQ that already teleported away finds nothing', () => {
 
 test('turret: pulses a fixed % off enemy garrisons nearby, ignores far ones', () => {
   const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300 };
-  const near: NodeDef = { id: 'near', kind: 'pointMedium', x: 600, y: 300 };
-  const far: NodeDef = { id: 'far', kind: 'pointMedium', x: 900, y: 100 };
+  const near: NodeDef = { id: 'near', kind: 'points', x: 600, y: 300 };
+  const far: NodeDef = { id: 'far', kind: 'points', x: 900, y: 100 };
   const g = makeGame({
     nodes: [T, near, far],
     players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
@@ -507,7 +508,7 @@ test('turret: pulses a fixed % off enemy garrisons nearby, ignores far ones', ()
 
 test('turret: a garrison worn to 0 is defeated and walks home', () => {
   const T: NodeDef = { id: 'T', kind: 'turret', x: 500, y: 300 };
-  const near: NodeDef = { id: 'near', kind: 'pointMedium', x: 600, y: 300 };
+  const near: NodeDef = { id: 'near', kind: 'points', x: 600, y: 300 };
   const g = makeGame({
     nodes: [T, near],
     tune: scenarioTune({ turret: { damageFraction: 1 } }),

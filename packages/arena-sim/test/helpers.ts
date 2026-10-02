@@ -36,18 +36,30 @@ export interface NodeDef {
   kind: NodeKind;
   x: number;
   y: number;
+  /** 1-4, default 1. */
+  tier?: number;
 }
 
-/** Small hand-built map: team 0 safe zone on the left, team 1 on the right. */
+/** Small hand-built map (25 x 15 cells): team 0 safe zone on the left, team 1 on the right. */
 export function testMap(nodes: NodeDef[]): MapDef {
+  const cell = 40;
+  const zone = (cx: number, cy: number): MapDef['safeZones'][0] => ({
+    origin: { cx, cy },
+    cols: 5,
+    rows: 4,
+    center: { x: (cx + 2 + 0.5) * cell, y: (cy + 1.5 + 0.5) * cell },
+  });
   return {
     width: 1000,
     height: 600,
-    nodes: nodes.map((n) => ({ id: n.id, kind: n.kind, pos: { x: n.x, y: n.y } })),
-    safeZones: [
-      { center: { x: 120, y: 300 }, radius: 80 },
-      { center: { x: 880, y: 300 }, radius: 80 },
-    ],
+    nodes: nodes.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      tier: n.tier ?? 1,
+      cell: { cx: Math.floor(n.x / cell), cy: Math.floor(n.y / cell) },
+      pos: { x: n.x, y: n.y },
+    })),
+    safeZones: [zone(1, 5), zone(19, 6)],
   };
 }
 

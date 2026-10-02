@@ -7,7 +7,8 @@ Combat is a simplified auto-resolved rock-paper-scissors between squads.
 Game feel and UI references are Last War: Survival (squad marches,
 node selection, HQ refill), but only the parts listed here are in scope.
 
-All visuals start as coloured rectangles and text (placeholder-first).
+Everything on screen is drawn by code as vectors (see "Art direction").
+Mechanics are built and proven before polish effects.
 
 ## Platform and stack
 
@@ -35,6 +36,9 @@ All visuals start as coloured rectangles and text (placeholder-first).
 - Networking does **not** use Trystero or mp-core. Reusable ideas carried
   over from mp-net: stable per-browser client ID, 5-character room code
   alphabet (no 0/O/1/I/L), identity-matched reconnect.
+- Art: **Claude draws everything as vectors** in the Phaser canvas
+  (procedural graphics, no image files, nothing in R2). The user has
+  overridden the "user produces all artwork" rule for this prototype.
 - Debug: Tweakpane via `?debug=1` with a copy-values-as-JSON button, all
   tunables in `tune.json`.
 - Hosting: client static build via itch.io Butler (slot decided by Codex).
@@ -69,38 +73,76 @@ All visuals start as coloured rectangles and text (placeholder-first).
 - Squads and pools are rolled fresh each match. Nothing persists between
   matches.
 
-## Map, nodes and ownership
+## Map, grid and nodes
 
-- A map of many capturable nodes, each with a fixed coordinate.
-- Ownership is per team. Every node starts neutral with no garrison
-  (default, see Open questions).
-- **No lanes.** Any squad can march from where it is to any other node
-  or HQ in a straight line.
-- **Base slots:** each node occupies the space of 1 base and has 8 base
-  slots surrounding it. HQs sit in these slots. Slot access is tied to
-  node control: a player can only teleport into a free slot at a node
-  their team currently controls. Slots are occupied by whichever HQs are
-  there, so after a node flips, the previous owner's HQs stay in their
-  slots as stranded HQs while the new owner's team can teleport into the
-  remaining free slots beside them.
-- **Safe zones:** each team has an invulnerable area where its HQs
-  start and where they return to when defeated. Nothing in a safe zone
-  can be attacked.
-- **Node types and effects:**
-  - Ally attack boost (% bonus to the owning team's squad power).
-  - Ally defense boost (% reduction in damage taken by the owning team).
-  - Ally speed boost (% faster march speed).
-  - Teleport cooldown reduction for the owning team.
-  - Large vision node (large vision radius).
-  - Medium point node and large point node (different point rates).
-  - Turret node (see Turrets).
+- **The world is a grid** (`map.widthCells` x `map.heightCells`, default
+  75 x 51 cells of `map.cellSize` 40 units). A node, an HQ and a squad each
+  fill one cell. Units travel from the centre of their cell to the centre
+  of the commanded cell in a straight line at any angle. There are no
+  lanes, and no cell-by-cell stepping.
+- Ownership is per team. Every node starts neutral with no garrison.
+- **Base slots:** each node has 8 base slots, the 8 cells around its cell
+  (its 3x3 block), taken in the order E, SE, S, SW, W, NW, N, NE. HQs sit in
+  these slots. Slot access is tied to node control: a player can only
+  teleport into a free slot at a node their team currently controls.
+  Slots are occupied by whichever HQs are there, so after a node flips,
+  the previous owner's HQs stay in their slots as stranded HQs while the
+  new owner's team can teleport into the remaining free slots beside them.
+  Nodes are spaced so no two slot blocks overlap.
+- **Safe zones:** each team has an invulnerable block of cells (5 x 4,
+  mirrored left and right) where its HQs start and where they return to
+  when defeated. Nothing in a safe zone can be attacked.
+- **Garrison:** a node can hold unlimited squads. An attacker can only
+  fight through 10 of them per attack (see Combat).
+
+### Node kinds and tiers
+
+- Every node has a **tier from 1 to 4**, drawn as that many stacked cubes
+  in stepped tiers. Tier sets the node's score per second (see Scoring).
+- **Kinds:** `points` (pure score) and six power nodes. A power node's
+  effect is its base value times its tier, so a tier 2 node is twice a
+  tier 1 node.
+  - Attack boost: % bonus to the owning team's squad power.
+  - Defense boost: % reduction in damage taken by the owning team.
+  - Speed boost: % faster march speed for the owning team.
+  - Teleport cooldown: seconds off the owning team's teleport cooldown.
+  - Large vision: a much larger vision radius.
+  - Turret: see Turrets.
+- Power nodes exist at tier 1 (weak) and tier 2 (strong) only. Tiers 3
+  and 4 are pure points nodes.
 - Node effects apply to the whole owning team while the node is held, and
-  stop when it is lost. Stacking rules are tunable (see Open questions).
-- Nodes generate **points** for the owning team at a per-node rate while
-  held. Points accrue on the server.
-- Squads can garrison a node. The garrison (the defender stack) is
-  whatever squads are stationed there, in arrival order.
+  stop when it is lost. Effects of the same kind stack additively.
 
+### Rings and layout
+
+The map is point-symmetric (both teams get an identical layout) and laid
+out in concentric rings, outside in. The default is **35 nodes**:
+
+| Ring | Tier | Nodes |
+|---|---|---|
+| Outer | 1 | 8 points, 2 attack, 2 defense, 2 speed, 2 large vision |
+| Second | 2 | 4 points, 2 attack, 2 defense, 2 teleport cooldown, 2 turret |
+| Third | 3 | 6 points |
+| Centre | 4 | 1 points node on the exact centre cell |
+
+Ring edges, counts and kinds are in `tune.json` (`map.rings`). With 76
+squads for 35 nodes, most nodes are contested.
+
+## Scoring
+
+- **Node score:** a controlled node earns its team score per second by tier:
+  tier 1 = 10, tier 2 = 30, tier 3 = 50, tier 4 = 80. This applies to
+  power nodes too, and continues while the node has no garrison.
+- **Garrison bonus:** each commander with at least one squad garrisoned in
+  a node earns the node's owner **+10 per second**, once per commander per
+  node. Three squads of the same commander in one node still give +10; the
+  same commander in two nodes gives +10 at each.
+- Teleporting returns every squad to the HQ, so it also stops the
+  garrison bonus until squads are redeployed.
+- Points accrue on the server. Rates are in `tune.json` (`scoring.*`).
+- Scale check: all 35 nodes together pay about 900 per second. A team
+  holding half earns about 450, and the garrison bonus is at most about 380
+  (all 38 squads garrisoned on separate nodes).
 ## HQ as a target
 
 - An enemy HQ outside a safe zone can be selected as an attack target and
@@ -138,6 +180,8 @@ All actions are coordinates, timers and unit references:
   attackers then arrive at an empty slot. There is no inbound lock.
 - **Cancel:** a marching squad can be issued a cancel. It turns around and
   returns to its HQ.
+- **Command lines:** when a command is issued, an animated dotted line
+  shows its route (see Art direction).
 - **Base teleport:** a player's HQ can teleport to a free base slot at a
   node their team currently controls. It is instant. All of the player's
   squads, wherever they are (garrisoned or marching), return to the HQ
@@ -159,7 +203,7 @@ capturing team can teleport into free slots there to strike them.
 
 The map is sized so that a march across the whole map takes about **3
 minutes** at base squad speed. March speed is derived from map size to
-hit that target and both are tunable (`map.crossMapMarchSeconds`
+hit that target and both are tunable (`march.crossMapSeconds`
 default 180). This is meant to sit near the 2 minute teleport cooldown so
 that dodging, baiting and forward-node strikes all matter.
 
@@ -231,8 +275,15 @@ not affect marching squads and are not otherwise a combat participant.
 
 ## Fog of war
 
-- Vision is team-shared and comes from controlled nodes. Each node type
-  has a vision radius, with the large vision node having the largest.
+- Vision is team-shared and comes from controlled nodes. Each node kind
+  has a vision radius in cells, with the large vision node having the
+  largest.
+- **Garrison count:** a defender count is shown below a node. Your own
+  team sees the exact count on its nodes. Anyone else sees a count on an
+  enemy node only while a scout report on it is live, and it is the count at
+  the time of the scout. The scout review lists these with countdowns.
+- **Fire is visible:** a defeated squad walking home burns, and an HQ
+  below full HP burns, for anyone who can see them. Exact HP is not shown.
 - A team only receives information inside its combined vision. The
   server filters state per team, so hidden information is never sent.
 - The map outside vision is shown as unexplored or last-seen, rendered in
@@ -255,6 +306,44 @@ not affect marching squads and are not otherwise a combat participant.
   info has not expired. Under fog of war it is a masked enemy unit
   again.
 
+## Art direction
+
+Look and feel follow Last War: Survival where possible. All of it is drawn
+as vectors in the Phaser canvas.
+
+**View and world**
+- Isometric view of the grid.
+- Volcanic ground with patches of animated lava. Now and then a small
+  eruption throws fire from the sky, and burning patches land and fade on
+  the ground. These are cosmetic and use client randomness, never the
+  sim's seeded RNG, so they differ per client and need no sync.
+
+**Units** (each is an outline plus the team colour, one cell in size)
+- Tank squad reads as a 2D tank, aircraft squad as a helicopter, missile
+  squad as an MLRS truck, scout as a fixed-wing plane.
+- Neutral things are grey. Team colours: blue and orange.
+
+**Nodes**
+- A cube carrying an icon for what it does (eye for vision, sword for
+  attack, and so on). Higher tiers are stacked cubes in stepped tiers.
+- Below a node: the defender count (see Fog of war).
+
+**Command lines**
+- Only drawn when a command is issued, as an animated dotted line that
+  simulates the movement of the command.
+- Your own lines are green. Allies' lines are muted in their team colour.
+  Enemy lines (visible inside your vision) are drawn clearly in red.
+
+**Effects** (polish, after the core loop works)
+- Combat: random bullet sprays and explosions at the node for 2 to 3
+  seconds. The sim resolves a fight instantly, so the client plays the
+  animation and shows the ownership flip when it ends.
+- Defeated squads burn as they return to their HQ.
+- An HQ below full HP burns permanently until it is defeated and resets
+  (HP never regenerates).
+- Teleport: an extract effect at the old position and a landing effect at
+  the new one (the teleport event carries both).
+
 ## Netcode (time and distance)
 
 - Authoritative server owns all state, rolls all random numbers (seeded),
@@ -264,8 +353,8 @@ not affect marching squads and are not otherwise a combat participant.
   clock, so no per-frame position streaming is needed.
 - Arrivals, captures, cooldown expiry and turret pulses are scheduled
   server events (Durable Object alarms).
-- Clients send commands only (march, cancel, teleport). The server
-  validates and rejects invalid ones.
+- Clients send commands only (march, cancel, teleport, scout, setDefend).
+  The server validates and rejects invalid ones.
 - Match flow: lobby by 5-character room code. The host presses Start,
   which opens a 3 second cancel window (the host can abort during it).
   The host chooses either to start with only the players present or to
@@ -280,8 +369,10 @@ The team with the most accumulated points after 30 minutes wins.
 Everything affecting game feel or balance lives in `tune.json` and the
 Tweakpane panel: match length, squad troop count and variance, reserve
 pool range, power band edges, squad count probabilities, march speed,
-teleport cooldown, all node effect percentages and point rates, vision
-radii, turret settings, and all `combat.*` values above.
+teleport cooldown, grid and ring layout, all node effect values, tier and
+garrison scores, vision radii, turret settings, and all `combat.*` values
+above. All node numbers are placeholders chosen by Claude except the
+scores per tier and the garrison bonus, which came from the user.
 
 ## Bots
 
@@ -319,7 +410,7 @@ client.
 - Spectator mode, replays, in-match chat, emotes.
 - Anti-cheat beyond server-side validation and fog filtering.
 - React, Tailwind or any DOM UI layer.
-- Art beyond placeholders until the loop is confirmed working.
+- Image or sprite files (everything is drawn as vectors in code).
 - Combat while marching.
 - Teleporting to nodes the team does not control.
 
@@ -354,22 +445,36 @@ client.
 - An ungarrisoned node keeps its owner until an enemy touches it.
 - Bots attempt to capture as many nodes as possible and play defense and
   offense.
+- The world is a grid. Nodes, HQs and squads fill one cell each, units move
+  centre to centre in a straight line, slots are the 8 surrounding cells.
+- Four tiers of node (stacked cubes), laid out in rings with tier 4 alone in
+  the centre, 35 nodes, point-symmetric.
+- Scoring: 10/30/50/80 per second by tier, plus 10 per second per unique
+  commander garrisoned per node.
+- Garrison size is unlimited, an attacker only fights through 10.
+- Defender counts: own team exact, others only via a scout.
+- HQs never regenerate and burn while damaged.
+- Command lines are shown for self (green), allies (muted) and enemies (red).
+- All art is vector, drawn by Claude, isometric volcanic setting.
 
 ## Defaults in force (not yet confirmed, change on request)
 
-- About 60 nodes, all neutral and ungarrisoned at start.
 - 20 ranks are equal slices of 50m-80m.
 - Squad troop variance around 3000 is +/-10%.
 - HQ refill is instant on arrival and partial if the pool is short.
-- Node effect stacking is additive.
 - Tie at 30 minutes goes to the team that first reached the tied score.
 - Mid-match reconnect is in scope (stored client ID).
 - A permanently disconnected player's squads stay and defend.
+- Power nodes only exist at tiers 1 and 2 and score at those tiers' rates
+  (my reading of "powered nodes give tier 1 and 2").
+- Enemy command lines are red (the user said only "colour coded").
 
 ## Open questions
 
 1. If all 8 slots around a node are filled by stranded HQs, can the
    capturing team still teleport in? (Default: no, until a stranded HQ
    leaves or is defeated, since occupied slots are unavailable.)
-2. The slot arrangement itself (ring order, numbering) is cosmetic and
-   needs no decision for the sim.
+2. Is the reading of power node tiers right (tiers 1 and 2 only, scoring
+   10 and 30 per second)?
+3. Does the 3 minute cross-map target still feel right now that the map is
+   75 x 51 cells and there are only 35 nodes?

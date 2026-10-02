@@ -12,19 +12,22 @@ export const COUNTERS: Record<SquadType, SquadType> = {
 
 export const SQUAD_TYPES: readonly SquadType[] = ['missile', 'aircraft', 'tank'];
 
+/**
+ * 'points' is a pure score node. The rest carry a power. Every node has a
+ * tier 1-4 (shown as stacked cubes): its tier sets its score per second, and
+ * a power node's effect is its base value times its tier.
+ */
 export type NodeKind =
+  | 'points'
   | 'attackBoost'
   | 'defenseBoost'
   | 'speedBoost'
   | 'teleportCooldown'
   | 'largeVision'
-  | 'pointMedium'
-  | 'pointLarge'
   | 'turret';
 
 export const NODE_KINDS: readonly NodeKind[] = [
-  'pointMedium',
-  'pointLarge',
+  'points',
   'attackBoost',
   'defenseBoost',
   'speedBoost',
@@ -40,9 +43,19 @@ export interface Vec {
 
 // ---------------------------------------------------------------- tuning
 
+export interface RingTune {
+  tier: number;
+  /** One node on the exact centre cell instead of mirrored pairs. */
+  center?: boolean;
+  minR: number;
+  maxR: number;
+  /** Node counts by kind. Must be even unless `center` is set. */
+  nodes: Partial<Record<NodeKind, number>>;
+}
+
 export interface NodeKindTune {
-  visionRadius: number;
-  pointsPerSecond: number;
+  visionRadiusCells: number;
+  /** Effect values are per tier: the node applies value * tier. */
   attackPct?: number;
   defensePct?: number;
   speedPct?: number;
@@ -85,21 +98,23 @@ export interface Tune {
     teleportCooldownSeconds: number;
     teleportCooldownMinSeconds: number;
     refillSeconds: number;
+    /** Slots are the 8 cells around a node, taken in a fixed order. */
     slotsPerNode: number;
-    slotRingRadius: number;
   };
   scout: { perHq: number; speedFactor: number; revealSeconds: number };
-  turret: { pulseSeconds: number; damageFraction: number; radius: number };
+  /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
+  scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
+  turret: { pulseSeconds: number; damageFraction: number; radiusCells: number };
   map: {
-    width: number;
-    height: number;
-    safeZoneInset: number;
-    safeZoneRadius: number;
-    safeZoneSlotSpacing: number;
-    nodeMinSpacing: number;
-    nodeMinDistFromSafeZone: number;
-    edgeMargin: number;
-    nodeCounts: Record<NodeKind, number>;
+    cellSize: number;
+    widthCells: number;
+    heightCells: number;
+    safeZone: { cols: number; rows: number; insetCells: number };
+    nodeMinSpacingCells: number;
+    nodeMinDistFromSafeZoneCells: number;
+    edgeMarginCells: number;
+    /** Concentric zones, outside in. r is 0 at the map centre and 1 at the edge. */
+    rings: RingTune[];
   };
   nodes: Record<NodeKind, NodeKindTune>;
 }
@@ -120,14 +135,25 @@ export interface PlayerSpec {
   squads: SquadSpec[];
 }
 
+export interface Cell {
+  cx: number;
+  cy: number;
+}
+
+/** A block of cells where a team's HQs start and return when defeated. */
 export interface SafeZone {
+  origin: Cell;
+  cols: number;
+  rows: number;
   center: Vec;
-  radius: number;
 }
 
 export interface MapNode {
   id: string;
   kind: NodeKind;
+  /** 1-4. Sets score per second, and a power node's strength. */
+  tier: number;
+  cell: Cell;
   pos: Vec;
 }
 
@@ -223,6 +249,7 @@ export interface Player {
 export interface NodeState {
   id: NodeId;
   kind: NodeKind;
+  tier: number;
   pos: Vec;
   owner: TeamId | null;
   /** Garrisoned squad ids in arrival order (last entry fought first). */
@@ -293,7 +320,7 @@ export type GameEvent =
   | { type: 'combat'; timeMs: number; log: CombatLog }
   | { type: 'hqDamaged'; timeMs: number; hqId: HqId; hp: number }
   | { type: 'hqDefeated'; timeMs: number; hqId: HqId }
-  | { type: 'teleported'; timeMs: number; hqId: HqId; location: HqLocation; forced: boolean }
+  | { type: 'teleported'; timeMs: number; hqId: HqId; location: HqLocation; from: Vec; to: Vec; forced: boolean }
   | { type: 'scoutLaunched'; timeMs: number; owner: string; scoutIndex: number }
   | { type: 'scoutReport'; timeMs: number; report: ScoutReport }
   | { type: 'turretPulse'; timeMs: number; nodeId: NodeId; hits: { squadId: SquadId; damage: number }[] }

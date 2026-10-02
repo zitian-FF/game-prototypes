@@ -6,9 +6,9 @@ import type { NodeDef } from './helpers';
 
 test('fog: enemy marches are masked, scout reveals show type for 10s (tuned) then mask again', () => {
   const nodes: NodeDef[] = [
-    { id: 'n0', kind: 'pointMedium', x: 300, y: 300 },
+    { id: 'n0', kind: 'points', x: 300, y: 300 },
     { id: 'v', kind: 'largeVision', x: 600, y: 300 },
-    { id: 'x', kind: 'pointMedium', x: 300, y: 100 },
+    { id: 'x', kind: 'points', x: 300, y: 100 },
   ];
   const g = makeGame({
     nodes,
@@ -44,8 +44,8 @@ test('fog: enemy marches are masked, scout reveals show type for 10s (tuned) the
 
 test('fog: you only see enemy marches inside your own nodes vision', () => {
   const nodes: NodeDef[] = [
-    { id: 'n0', kind: 'pointMedium', x: 300, y: 300 },
-    { id: 'n2', kind: 'pointMedium', x: 700, y: 300 },
+    { id: 'n0', kind: 'points', x: 300, y: 300 },
+    { id: 'n2', kind: 'points', x: 700, y: 300 },
   ];
   const g = makeGame({
     nodes,
@@ -67,8 +67,8 @@ test('fog: you only see enemy marches inside your own nodes vision', () => {
 test('fog: nodes outside vision keep their last known owner, unseen ones are unexplored', () => {
   const nodes: NodeDef[] = [
     { id: 'L', kind: 'largeVision', x: 300, y: 300 },
-    { id: 'F', kind: 'pointMedium', x: 700, y: 300 },
-    { id: 'X', kind: 'pointMedium', x: 300, y: 100 },
+    { id: 'F', kind: 'points', x: 700, y: 300 },
+    { id: 'X', kind: 'points', x: 300, y: 100 },
   ];
   const g = makeGame({
     nodes,
@@ -95,9 +95,9 @@ test('fog: nodes outside vision keep their last known owner, unseen ones are une
 
 test('fog: enemy HQs show only inside vision, never in a safe zone', () => {
   const nodes: NodeDef[] = [
-    { id: 'n0', kind: 'pointMedium', x: 300, y: 300 },
-    { id: 'n1', kind: 'pointMedium', x: 300, y: 150 },
-    { id: 'far', kind: 'pointMedium', x: 900, y: 500 },
+    { id: 'n0', kind: 'points', x: 300, y: 300 },
+    { id: 'n1', kind: 'points', x: 300, y: 150 },
+    { id: 'far', kind: 'points', x: 900, y: 500 },
   ];
   const g = makeGame({
     nodes,
@@ -110,12 +110,13 @@ test('fog: enemy HQs show only inside vision, never in a safe zone', () => {
   marchAndArrive(g, 'b', 's1', 'n1'); // 150 from n0, inside the 220 radius
   const hqs = viewFor(g, 1).enemyHqs;
   assert.equal(hqs.length, 1);
-  assert.deepEqual(Object.keys(hqs[0]).sort(), ['id', 'pos'], 'no owner or details leaked');
+  assert.deepEqual(Object.keys(hqs[0]).sort(), ['burning', 'id', 'pos'], 'no owner or exact HP leaked');
+  assert.equal(hqs[0].burning, false, 'undamaged');
 });
 
 test('fog: combat logs reach both sides with full info, newest first', () => {
   const g = makeGame({
-    nodes: [{ id: 'n0', kind: 'pointMedium', x: 300, y: 300 }],
+    nodes: [{ id: 'n0', kind: 'points', x: 300, y: 300 }],
     players: [player('a', 0, [{ power: 70 }, { power: 70 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
   });
   marchAndArrive(g, 'a', 's0', 'n0');

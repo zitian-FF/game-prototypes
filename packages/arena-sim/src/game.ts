@@ -111,6 +111,7 @@ export class ArenaGame {
       this.nodes.set(n.id, {
         id: n.id,
         kind: n.kind,
+        tier: n.tier,
         pos: { ...n.pos },
         owner: null,
         garrison: [],
@@ -221,11 +222,12 @@ export class ArenaGame {
     const out: TeamBonus = { attack: 0, defense: 0, speed: 0, teleportReductionSeconds: 0 };
     for (const n of this.nodes.values()) {
       if (n.owner !== team) continue;
+      // A power node's strength is its base value times its tier.
       const k = this.tune.nodes[n.kind];
-      out.attack += k.attackPct ?? 0;
-      out.defense += k.defensePct ?? 0;
-      out.speed += k.speedPct ?? 0;
-      out.teleportReductionSeconds += k.teleportCooldownReductionSeconds ?? 0;
+      out.attack += (k.attackPct ?? 0) * n.tier;
+      out.defense += (k.defensePct ?? 0) * n.tier;
+      out.speed += (k.speedPct ?? 0) * n.tier;
+      out.teleportReductionSeconds += (k.teleportCooldownReductionSeconds ?? 0) * n.tier;
     }
     return out;
   }
@@ -234,9 +236,24 @@ export class ArenaGame {
   isVisibleTo(team: TeamId, pos: Vec): boolean {
     for (const n of this.nodes.values()) {
       if (n.owner !== team) continue;
-      if (dist(n.pos, pos) <= this.tune.nodes[n.kind].visionRadius) return true;
+      if (dist(n.pos, pos) <= this.visionRadius(n)) return true;
     }
     return false;
+  }
+
+  /** Vision radius of a node in map units. */
+  visionRadius(n: NodeState): number {
+    return this.tune.nodes[n.kind].visionRadiusCells * this.tune.map.cellSize;
+  }
+
+  /** Score per second a controlled node earns for its team right now. */
+  nodeRate(n: NodeState): number {
+    if (n.owner === null) return 0;
+    const sc = this.tune.scoring;
+    const commanders = new Set<string>();
+    for (const id of n.garrison) commanders.add(this.squads.get(id)!.owner);
+    // Tier score, plus a bonus once per commander with a squad garrisoned here.
+    return sc.tierPointsPerSecond[n.tier - 1] + commanders.size * sc.garrisonPointsPerSecond;
   }
 
   // ---------------------------------------------------------------- time
@@ -284,7 +301,7 @@ export class ArenaGame {
   private pointRates(): [number, number] {
     const r: [number, number] = [0, 0];
     for (const n of this.nodes.values()) {
-      if (n.owner !== null) r[n.owner] += this.tune.nodes[n.kind].pointsPerSecond;
+      if (n.owner !== null) r[n.owner] += this.nodeRate(n);
     }
     return r;
   }
@@ -731,8 +748,17 @@ export class ArenaGame {
   }
 
   private moveHq(player: Player, location: HqLocation, forced: boolean): void {
+    const from = player.hq.pos;
     this.setHqLocation(player, location);
-    this.emit({ type: 'teleported', timeMs: this.nowMs, hqId: player.hq.id, location, forced });
+    this.emit({
+      type: 'teleported',
+      timeMs: this.nowMs,
+      hqId: player.hq.id,
+      location,
+      from,
+      to: player.hq.pos,
+      forced,
+    });
     this.bringAllHome(player);
   }
 
@@ -835,7 +861,7 @@ export class ArenaGame {
       const hits: { squadId: SquadId; damage: number }[] = [];
       for (const node of this.nodes.values()) {
         if (node.owner === null || node.owner === turret.owner) continue;
-        if (dist(node.pos, turret.pos) > t.radius) continue;
+        if (dist(node.pos, turret.pos) > t.radiusCells * this.tune.map.cellSize) continue;
         for (const id of node.garrison.slice()) {
           const sq = this.squads.get(id)!;
           const damage = Math.min(sq.troops, Math.ceil(sq.troops * t.damageFraction));

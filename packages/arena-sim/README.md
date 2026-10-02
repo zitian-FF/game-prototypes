@@ -1,6 +1,6 @@
 # arena-sim
 
-Version: **0.1.0**
+Version: **0.2.0**
 
 The pure rules engine for firestorm-arena (20 vs 20 node-capture arena). No
 Phaser, no DOM, no Cloudflare APIs (`"types": []` in the build tsconfig
@@ -41,12 +41,27 @@ viewFor(game, team); // the only thing that team may be told (fog of war)
 |---|---|
 | `combat.ts` | `resolveFight`: auto-resolved rounds, counter as a power multiplier, node boosts |
 | `roster.ts` | Power bands per rank, squad/pool rolls, balanced teams |
-| `map.ts` | Point-symmetric map generator, base slot ring and safe zone layout, march speed |
+| `map.ts` | Grid map: point-symmetric ring layout (tiers 1-4), the 8-cell HQ slot block, safe zone blocks, march speed |
 | `game.ts` | `ArenaGame`: state, commands, event queue, points, invariants |
 | `fog.ts` | `viewFor(game, team)`: shared-vision filtered view, masked enemy marches |
 
 ## Behaviours worth knowing
 
+- **The world is a grid.** Nodes and HQs sit on cell centres, and HQ slots are
+  the 8 cells around a node (E, SE, S, SW, W, NW, N, NE). Marches are still
+  straight lines between positions, not cell-by-cell.
+- **Tiers.** Every node has a tier 1-4. Tier sets score per second
+  (`scoring.tierPointsPerSecond`), and a power node's effect is its base value
+  times its tier. Tiers 3 and 4 are pure points in the default layout.
+- **Scoring.** A controlled node earns its tier score even with no garrison,
+  plus `scoring.garrisonPointsPerSecond` for each *commander* garrisoned there
+  (once per commander per node). Teleport sends every squad home, so it stops
+  the garrison bonus.
+- **Views.** `viewFor` gives a team its own nodes' exact `garrisonCount`; for
+  anyone else's it is present only while a scout report on the node is live
+  and is the count at scout time. Defeated squads and damaged HQs carry
+  `burning` flags for the client's fire effects. `teleported` events carry
+  `from` and `to`.
 - A squad at 0 troops is **defeated**, not deleted: it walks home at 50% speed
   and refills from its player's finite pool.
 - Refill is instant on reaching an HQ (`hq.refillSeconds` = 0). Teleporting
@@ -75,6 +90,10 @@ Tests are loaded through Vite's SSR loader (same trick as
 `scripts/run-simulate.mjs`), so there is no test framework dependency.
 
 ## Versioning
+
+0.2.0 changed node kinds (`pointMedium`/`pointLarge` became `points` plus a
+tier) and replaced the circular map with a grid, so it is not compatible with
+0.1.0. The only consumer is firestorm-arena, which had not adopted it yet.
 
 Opt-in, pinned by version. Same rule as mp-core (see STACK.md): ship changes
 additively, and when this package's version moves, bump every consumer's
