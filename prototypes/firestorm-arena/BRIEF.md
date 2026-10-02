@@ -424,12 +424,14 @@ intelligently. Bots use the same commands as players, run on the server
 through the same sim, and obey the same fog and reveal rules: a bot is a
 function of its team's filtered view and nothing else.
 
-As built: a bot is a small state machine. Every 8 to 20 seconds (random per
-bot) it picks one of attack, teleport or scout at random, picks a random target
-for it, and runs it if legal (a squad at the HQ with troops, a teleport ready and a
-free slot at a node it holds, a scout at home); otherwise it waits for the next
-cycle. They attack and scout fogged nodes blind. Squads garrisoned in the field
-come home through teleport.
+As built: a bot is a small state machine. Every 8 to 20 seconds (random per bot) it
+picks attack (75%), teleport (15%) or scout (10%), picks a target, and runs it if legal;
+otherwise it waits for the next cycle. They attack and scout fogged nodes blind. Attacks
+lean toward nearby targets and toward reinforcing their own nodes while they hold fewer than
+3 garrisons; with nothing at the HQ and 2+ garrisons out they pull one squad back. Teleport
+(which empties all garrisons) is only legal when the HQ is about to be hit, when wounded
+squads need a refill, or when nothing is deployed. A bot whose total troops (squads plus
+reserve) fall below one full squad stops acting for the rest of the match.
 
 ## Testing and verification
 

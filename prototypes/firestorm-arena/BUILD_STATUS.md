@@ -20,8 +20,10 @@ deployed. The live Worker and itch/Pages clients are still the previous build
 - Map: 17 nodes. Silo (T4) centre, 2 Oil Refineries + 2 Missile Turrets inner, 2 Radar
   Towers mid (placed to see the most nodes), outer one each per side of Arsenal, Armory,
   Accelerator, Tech Centre, Hospital.
-- Bots: random state machine every 8 to 20s: attack, teleport or scout, random target,
-  run if legal.
+- Bots: state machine every 8 to 20s: weighted attack 75 / teleport 15 / scout 10, nearby and
+  own-node-leaning targets, teleport only when useful, spare garrison pulled back when nothing
+  is at HQ, and a bot with less than one full squad of troops left stops acting. Both teams now
+  hold 7 to 10 of 17 nodes at the end of bot-only matches.
 - Client: renamed buildings, Aircraft/Missile names, Power with a sword mark and an M
   suffix, total troops and reserve above the squad panel, inspected node bottom centre
   with orders to its right, square Scouts and Logs buttons at the left edge, nuclear silo
@@ -43,8 +45,8 @@ deployed. The live Worker and itch/Pages clients are still the previous build
 
 ## Open questions
 
-- Cost: random bots issue about 2,700 commands per match (about 4,500 row writes), roughly
-  21 matches a day on the Workers Free plan, down from about 40.
+- Cost: bots issue about 1,150 commands per match (about 3,000 row writes), roughly 33
+  matches a day on the Workers Free plan.
 - With 17 nodes and 20 players per team, garrisons will be crowded; worth a playtest.
 - Missile damage floor is 1 troop (a hit cannot defeat a squad). Say if hits should be
   able to kill.
@@ -55,7 +57,6 @@ deployed. The live Worker and itch/Pages clients are still the previous build
 
 - Verified in headless Chromium and the local runtime only; the live Worker has not been
   exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.
-- Random bots hold ground unevenly (one team can end with far more nodes in a match).
 - Effects are first versions (missile arc, silo and refinery are simple vector shapes).
 
 ## Next proposed step

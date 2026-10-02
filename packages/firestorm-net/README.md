@@ -47,15 +47,23 @@ alarm set, and rebuilds the room from storage after an eviction.
 
 ## Bots
 
-A bot is a small state machine. Every 8 to 20 sim seconds (random per bot) it picks
-one of attack, teleport or scout at random, picks a random target for it, and runs it
-if it is legal (a squad at the HQ with troops, a teleport ready and a free slot at a
-node it holds, a scout at home). Otherwise it waits for the next cycle. It sees only
-what a player on its team would see, so it attacks and scouts fogged nodes blind.
-Squads in a garrison come home through teleport, as for a person.
+A bot is a small state machine. Every 8 to 20 sim seconds (random per bot) it picks an
+action by weight (attack 75%, teleport 15%, scout 10%), picks a target, and runs it if it
+is legal. Otherwise it waits for the next cycle. It sees only what a player on its team
+would see, so it attacks and scouts fogged nodes blind.
 
-Cost note: random bots issue about 2,700 commands per full match, so a match is about
-4,500 row writes, roughly 21 matches a day on the Workers Free plan.
+- Attack: a squad at the HQ goes to a node or visible enemy HQ, leaning toward nearby
+  targets, and toward reinforcing its own nodes while it holds fewer than 3 garrisons. With
+  nothing at the HQ and two or more garrisons out, it pulls one back so it can go again.
+- Teleport (brings every squad home, emptying garrisons): only legal when its HQ is about
+  to be hit, it has no healthy squad at the HQ and two or more wounded ones, or it has
+  nothing deployed while sitting in the safe zone.
+- Out of troops: when all its squads plus its reserve are less than one full squad, it stops
+  acting for good (squads already garrisoned keep defending).
+
+In bot-only matches both teams hold 7 to 10 of the 17 nodes at the end and nodes change
+hands 35 to 53 times. A match is about 1,150 commands and 3,000 row writes, roughly 33
+matches a day on the Workers Free plan.
 
 ## Tests
 

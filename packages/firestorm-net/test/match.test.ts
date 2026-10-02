@@ -69,9 +69,9 @@ test('bots: a 40 bot match plays to the end by the rules and stays competitive',
     assert.ok(seen.bad / (seen.ok + seen.bad) < 0.05, `seed ${seed}: too many rejected orders (${seen.bad})`);
     const owned = [0, 0];
     for (const n of g.nodes.values()) if (n.owner !== null) owned[n.owner]++;
-    assert.ok(owned[0] >= 2 && owned[1] >= 2, `seed ${seed}: both teams hold ground ${owned}`);
+    assert.ok(owned[0] >= 5 && owned[1] >= 5, `seed ${seed}: both teams hold ground ${owned}`);
     const [a, b] = g.result!.points;
-    assert.ok(Math.max(a, b) / Math.min(a, b) < 3, `seed ${seed}: lopsided ${a} vs ${b}`);
+    assert.ok(Math.max(a, b) / Math.min(a, b) < 2, `seed ${seed}: lopsided ${a} vs ${b}`);
     assert.ok(seen.combats >= 50, `seed ${seed}: only ${seen.combats} fights`);
     assert.ok(seen.won >= 2, `seed ${seed}: bots never win an attack (${seen.won}/${seen.combats})`);
     assert.ok(seen.flips >= 10, `seed ${seed}: nodes never change hands`);
@@ -304,4 +304,33 @@ test('lobby: the host picks the match length, it shows in the lobby and the matc
   w.advance(10_000);
   assert.equal(w.room.currentPhase, 'ended');
   assert.equal(w.room.meta().minutes, 10, 'persisted for a rebuilt room');
+});
+
+test('bots: a bot with less than one full squad of troops left stops acting, a funded one keeps going', () => {
+  const tune = loadTune();
+  const seed = 11;
+  const map = generateMap(new Rng(seed), tune);
+  const ids = Array.from({ length: 40 }, (_, i) => `Bot ${i}`);
+  const specs = rollPlayers(new Rng(seed + 1), tune, ids).map((p, i) => ({ ...p, team: (i % 2) as TeamId }));
+  const g = new ArenaGame({ seed, tune, map, players: specs });
+  g.advanceTo(10_000);
+  const me = g.players.get('Bot 0')!;
+  const team = me.team;
+  const commandsOver = (brain: BotBrain, fromMs: number) => {
+    let n = 0;
+    for (let t = fromMs; t < fromMs + 400_000; t += 4000) {
+      n += brain.think({ playerId: me.id, team, view: viewFor(g, team), tune, speed: g.marchSpeed, nowMs: t }).length;
+    }
+    return n;
+  };
+  assert.ok(commandsOver(new BotBrain(me.id, new Rng(5)), 10_000) > 0, 'a funded bot acts');
+
+  // Drain it: every squad nearly empty and an empty reserve pool.
+  me.pool = 0;
+  for (const id of me.squadIds) g.squads.get(id)!.troops = 100;
+  assert.equal(commandsOver(new BotBrain(me.id, new Rng(5)), 10_000), 0, 'an out-of-troops bot does nothing');
+
+  // A refill (pool back up) wakes it again.
+  me.pool = 5000;
+  assert.ok(commandsOver(new BotBrain(me.id, new Rng(5)), 10_000) > 0);
 });
