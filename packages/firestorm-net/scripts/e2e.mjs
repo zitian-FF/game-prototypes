@@ -153,7 +153,7 @@ class Client {
 }
 
 const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const code = Array.from({ length: 5 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
+const code = Array.from({ length: 3 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
 
 try {
   console.log(`room ${code}; starting the local Cloudflare runtime...`);
@@ -161,7 +161,7 @@ try {
   check(true, 'worker is up and /health answers');
 
   // --- routing and refusals ------------------------------------------------------------------
-  const wrongRoom = new Client('Nobody', 'ZZZZ9', 'client-nobody-0001');
+  const wrongRoom = new Client('Nobody', 'ZZ9', 'client-nobody-0001');
   await wrongRoom.connect(false);
   await wrongRoom.waitFor((m) => m.t === 'error', 5000, 'an error');
   check(wrongRoom.last('error').code === 'roomNotFound', 'joining a room that does not exist is refused');

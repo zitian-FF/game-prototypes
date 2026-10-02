@@ -2,7 +2,7 @@
 
 This folder contains the Worker entry point and Wrangler configuration. It
 routes `/ws/{ROOM_CODE}` to one SQLite-backed Durable Object per room using
-`idFromName`. Room codes follow the brief's five-character alphabet, which
+`idFromName`. Room codes follow the brief's three-character alphabet, which
 omits ambiguous characters. `/health` is available for a basic deployment
 check.
 

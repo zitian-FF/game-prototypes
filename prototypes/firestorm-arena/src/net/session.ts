@@ -32,13 +32,13 @@ function randomId(): string {
 }
 
 export function randomRoomCode(): string {
-  const a = new Uint8Array(5);
+  const a = new Uint8Array(3);
   crypto.getRandomValues(a);
   return Array.from(a, (b) => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join('');
 }
 
 export function normalizeRoomCode(raw: string): string {
-  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
 }
 
 export function serverBase(): string {

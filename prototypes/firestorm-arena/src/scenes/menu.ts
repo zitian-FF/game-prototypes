@@ -9,7 +9,7 @@ const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') =
 
 export class MenuScene extends BaseScene {
   private nameField = new TextField('', 20, (s) => s.replace(/[<>]/g, ''));
-  private codeField = new TextField('', 5, normalizeRoomCode);
+  private codeField = new TextField('', 3, normalizeRoomCode);
   private focus: 'name' | 'code' = 'name';
   private started = false;
 
@@ -50,8 +50,8 @@ export class MenuScene extends BaseScene {
       session.error = 'Enter a name first.';
       return;
     }
-    if (this.codeField.value.length !== 5) {
-      session.error = 'Room codes are 5 letters or digits.';
+    if (this.codeField.value.length !== 3) {
+      session.error = 'Room codes are 3 letters or digits.';
       return;
     }
     session.setName(name);
@@ -64,7 +64,7 @@ export class MenuScene extends BaseScene {
     for (const e of intents.drain()) {
       if (e.type === 'text' && !this.connecting()) field.type(e.char);
       else if (e.type === 'backspace') field.backspace();
-      else if (e.type === 'submit' && !this.connecting()) (this.focus === 'code' && this.codeField.value.length === 5 ? this.joinRoom() : this.createRoom());
+      else if (e.type === 'submit' && !this.connecting()) (this.focus === 'code' && this.codeField.value.length === 3 ? this.joinRoom() : this.createRoom());
       else if (e.type === 'primary') this.ui.click(e.x, e.y);
     }
 
@@ -97,7 +97,7 @@ export class MenuScene extends BaseScene {
     ui.text('or join with a code', cx, y, { size: 12, align: 'center', color: COLORS.dim });
     y += 22;
     drawField(ui, this.codeField, px, y, pw - 110, 40, this.focus === 'code', 'ROOM', () => (this.focus = 'code'));
-    ui.button(px + pw - 100, y, 100, 40, 'Join', { onClick: () => this.joinRoom(), enabled: !this.connecting() && this.codeField.value.length === 5 });
+    ui.button(px + pw - 100, y, 100, 40, 'Join', { onClick: () => this.joinRoom(), enabled: !this.connecting() && this.codeField.value.length === 3 });
     y += 60;
     if (this.connecting()) ui.text('Connecting...', cx, y, { size: 14, align: 'center', color: COLORS.warn });
     else if (session.error) ui.text(session.error, cx, y, { size: 14, align: 'center', color: COLORS.bad });

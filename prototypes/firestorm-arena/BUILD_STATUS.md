@@ -7,7 +7,7 @@ report. Nothing is deployed.
 ## What was implemented
 
 - Client (`prototypes/firestorm-arena/index.html`, `src/`): menu (name, create or
-  join by 5 character code), lobby (roster, host Start with bot-fill toggle, 3 second
+  join by 3 character code), lobby (roster, host Start with bot-fill toggle, 3 second
   countdown with Cancel), and the game scene. All UI is canvas; no React or DOM
   overlay (only the debug Tweakpane).
 - World: isometric 75 x 51 grid with a volcanic floor, animated lava patches,

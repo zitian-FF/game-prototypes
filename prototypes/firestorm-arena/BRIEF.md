@@ -34,7 +34,7 @@ Mechanics are built and proven before polish effects.
   `packages/` (name proposed: `arena-sim`), versioned, opt-in, per
   CLAUDE.md Purpose.
 - Networking does **not** use Trystero or mp-core. Reusable ideas carried
-  over from mp-net: stable per-browser client ID, 5-character room code
+  over from mp-net: stable per-browser client ID, 3-character room code
   alphabet (no 0/O/1/I/L), identity-matched reconnect.
 - Art: **Claude draws everything as vectors** in the Phaser canvas
   (procedural graphics, no image files, nothing in R2). The user has
@@ -378,7 +378,7 @@ as vectors in the Phaser canvas.
 - The server sends its own `tune` to each client at match start.
 - Clients send commands only (march, cancel, teleport, scout, setDefend).
   The server validates and rejects invalid ones.
-- Match flow: lobby by 5-character room code. The first player to connect
+- Match flow: lobby by 3-character room code. The first player to connect
   creates the room and is host; joining a room that does not exist is
   refused, and so is creating a code that is taken. The host presses Start,
   which opens a 3 second cancel window (the host can abort during it).
