@@ -12,24 +12,20 @@ fixed and not optional. See CLAUDE.md's Stack section for the
 full locked list (atlas packing, debug UI, verification, hosting,
 art storage).
 
-## UI chrome: optional React + Tailwind DOM overlay
+## UI chrome
 
-A prototype may opt into a React + Tailwind DOM layer over the Phaser
-canvas for UI chrome (HUD, menus, lobby/join screens, hand/card displays,
-logs, overlays). Mockups are built in Claude Design and wired in directly,
-with no translation step. Game-world rendering (anything needing WebGL
-effects, particles, shaders, Post FX) stays in Phaser. This is an optional
-pattern, not a repo-wide requirement. Full rule: CLAUDE.md
-"UI implementation split" section.
+Phaser canvas is the default for game UI. The React + Tailwind DOM-overlay
+approach is retired for new prototype work unless the user explicitly
+chooses it again; existing code is not force-migrated. The repository may
+still contain legacy tooling, but new prototypes should not depend on it.
+See CLAUDE.md's "UI implementation" section.
 
-**Firestorm Arena exception:** the entire interface is drawn in Phaser
-canvas. Do not add React, Tailwind, @vitejs/plugin-react, or a DOM UI
-overlay to Firestorm. Phone play is not required for this prototype.
-Its browser client deploys to itch.io via Butler; its multiplayer server
-deploys separately to Cloudflare Workers.
-
-Status: tooling (@vitejs/plugin-react, Tailwind) is installed at
-the repo root. Prototypes opt into it individually.
+**Firestorm Arena:** the entire interface is drawn in Phaser canvas. Do
+not add React, Tailwind, @vitejs/plugin-react, or a DOM UI overlay to
+Firestorm, including through workflows, scaffolds, lint rules, review
+comments, or generated files. Phone play is not required. Its browser
+client deploys to itch.io via Butler; its multiplayer server deploys
+separately to Cloudflare Workers.
 
 ## Multiplayer networking
 
@@ -202,9 +198,9 @@ adds shared packages only as needed:
   packages/mp-core directly).
 - Need internet multiplayer? Depend on mp-net (or packages/mp-core
   directly).
-- Need a separate DOM UI layer? A prototype can opt into React +
-  Tailwind. Phaser-only prototypes can draw all UI in-canvas; Firestorm
-  Arena is the explicit canvas-only exception.
+- Need UI? Build it in the Phaser canvas by default. Do not add the
+  retired React + Tailwind DOM-overlay approach without an explicit new
+  user decision.
 - Need none of the above? Build with just Phaser/TS/Vite, same as
   digger does today.
 
