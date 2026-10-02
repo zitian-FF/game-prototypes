@@ -70,6 +70,9 @@ jobs:
 
       - name: Build (relative base for itch.io)
         if: steps.ready.outputs.run == 'true'
+        env:
+          # Public Worker URL (not a secret): where the browser client finds its match server.
+          VITE_SERVER_URL: wss://firestorm-arena-server.tianz-88.workers.dev
         run: npx vite build --base ./
 
       - name: Prune build to Firestorm Arena only
