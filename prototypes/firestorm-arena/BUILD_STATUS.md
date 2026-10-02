@@ -1,111 +1,73 @@
 ## Current milestone
 
-Milestone 2 done: the match server. `packages/firestorm-net` 0.1.0 holds the
-wire protocol, the lobby and match room, fog-filtered per-team updates and the
-bots; the Durable Object in `prototypes/firestorm-arena/server/src/index.ts` is
-now a real thin adapter instead of Codex's 501 stub. Verified end to end against
-Cloudflare's local runtime with real WebSocket clients. There is still no
-client, and nothing has been deployed to real Cloudflare.
+Milestone 3 done: the Phaser 3 client, playable end to end against the local
+match server. Bots now also contest enemy and fogged nodes without a scout
+report. Nothing is deployed.
 
 ## What was implemented
 
-- `firestorm-net` (new package, no Cloudflare or DOM code, runs in Node too):
-  - Protocol: hello/start/cancelStart/cmd/ping in, welcome/lobby/matchStart/
-    state/cmdResult/pong/error out. Every client message is size-limited,
-    schema-checked and rate-limited, and the sender can never choose who a
-    command is from.
-  - Room: first connector with `create` is host; join-nonexistent, code-taken,
-    room-full and match-in-progress are refused; host Start opens a 3 second
-    cancellable countdown, with or without bot fill to 20 v 20; humans are split
-    across teams; reconnect by client id with a full view; lobby host grace 60s;
-    abandonment after 10 minutes with nobody connected; room closes 15 minutes
-    after the end.
-  - Updates: one patch per team per pulse (1 second) plus the events that team
-    may see (fights it only watches arrive as bare `combatFx`). Marching units
-    carry no position, clients derive it. The server sends its own `tune` at
-    match start.
-  - Persistence: a replay log (seed, roster, accepted commands with sim times).
-    An evicted Durable Object rebuilds the match exactly. Bot orders are logged.
-  - Bots: act only on their team's filtered view. They spread out, scout before
-    attacking, attack scouted targets they can clearly beat, cover threatened
-    nodes, teleport forward, to refill, or to dodge. In bot-only matches they win
-    roughly half the attacks they start, hold 12 to 15 of 35 nodes per side, and
-    finish within 2x of each other on score.
-- Durable Object adapter: hibernatable sockets, replay log flushed to storage,
-  one alarm kept set, room rebuilt from storage, sockets re-bound after a restart.
-  `cloudflare.d.ts` declares the few runtime types so no new dependency was added.
-- Worker deploy workflow also triggers on `packages/firestorm-net/**` and
-  `tune.json`. Worker bundle is 88 KiB (22.75 gzipped).
-- 42 server tests (protocol hostile input, wire patches, lobby, commands, rate
-  limiting, full 40 player matches through the room, fog leak check over a whole
-  match, reconnect consistency, replay rebuild equality, abandonment, cost) plus
-  `npm run e2e -w firestorm-net`, which starts `wrangler dev`, plays a whole match
-  at 60x with two humans and 38 bots over real sockets, kills the runtime in the
-  middle and restarts it with the same storage. All pass. Repo typecheck and
-  build pass; `arena-sim` still passes its 89 tests.
+- Client (`prototypes/firestorm-arena/index.html`, `src/`): menu (name, create or
+  join by 5 character code), lobby (roster, host Start with bot-fill toggle, 3 second
+  countdown with Cancel), and the game scene. All UI is canvas; no React or DOM
+  overlay (only the debug Tweakpane).
+- World: isometric 75 x 51 grid with a volcanic floor, animated lava patches,
+  occasional falling fireballs leaving fire patches, tinted safe zones, fog of war
+  (soft elliptical holes around owned nodes), node cube stacks by tier with a
+  kind icon, defender counts under nodes (exact for own, scouted for others),
+  HQs with HP pips and flames when damaged, team-colour outline units (tank,
+  helicopter, MLRS, scout plane), masked `?` enemy marches, animated dotted command
+  lines (self green, allies muted, enemies red), combat sprays and explosions,
+  burning defeated squads, teleport extract and landing effects, capture rings.
+- HUD: scoreboard and clock, squad panel (troop bars, Defend toggle, Recall), HQ
+  and teleport status, node and HQ inspector with Attack, Garrison, Send scout and
+  Teleport actions, scout reports with live countdowns, combat logs, toasts,
+  minimap with view window and click to jump, end of match overlay.
+- Plumbing: intent layer (only place reading keys or pointer), device pixel ratio
+  handled by buffer size times DPR with camera zoom, version stamp top left,
+  `?debug=1` Tweakpane for `client.tune.json` with a copy-JSON button, reconnect
+  with the same client id, server clock synced by ping.
+- Bots: enemy-held or unseen enemy-side nodes are attacked blind with an odds
+  estimate from squad power (max two blind attackers per node, striker waits 20s
+  for a report). In bot-only matches that gives 35 to 61 node flips per match
+  (was about 10), about a quarter of attacks won, scores within 2x.
 
 ## Key technical decisions
 
-- Persistence is a replay log, not a state snapshot: the sim is deterministic,
-  so seed + roster + accepted commands rebuild it exactly (a 30 minute match
-  replays in well under a second).
-- The room wakes once per broadcast pulse (1 second), not at every sim event.
-  Events carry their own timestamps so a late batch gives the identical match;
-  it only delays when players hear of it, by at most a pulse. This cut a match
-  from about 3,700 alarms to 1,800.
-- Cost of a full 40 player match: about 1,800 alarms and 2,500 storage row
-  writes, so roughly 40 matches a day on the Workers Free plan (limits verified by
-  Codex: 100,000 requests/day, 100,000 row writes/day, each setAlarm is a write).
-  A test fails if a match gets more expensive than that.
-- A bug found and fixed by the tests: wake times computed as `start + t/scale`
-  could round to just before an event was due, so the sim never processed it and
-  the same wake repeated forever (an alarm loop). Wake times are now rounded up
-  to whole milliseconds and wall-to-sim conversion has a sliver of slack. A
-  regression test runs at awkward time scales.
-- Bots use claims shared within a decision round so teammates do not all pick
-  the same node or teleport target.
-- Codex's scaffold stayed as the base: same Worker routes, same wrangler config.
+- Ground and fog are baked into Canvas2D textures (ground at 1x, fog at half
+  resolution) instead of thousands of retained Graphics polygons.
+- Immediate-mode canvas UI: every frame redraws from state, hit areas are recorded
+  as drawn, topmost wins. No widget state to keep in sync.
+- Client-only values are in `client.tune.json`, separate from `tune.json`, so a
+  look and feel tweak does not trigger a Worker redeploy.
+- Texture keys are unique per match start. Reusing and removing keys crashed the
+  first frame (a Phaser frame left pointing at a destroyed source).
+- Scene switches go through one guarded `go()`, since `update` keeps running
+  until the switch completes.
 
 ## Open questions
 
-- Bot strength and style are a first pass. Whether they feel right needs a human
-  playtest, and whether fills should have difficulty levels is unasked.
-- A stranger cannot join once a match has started (default, unconfirmed).
-- Power nodes at tiers 1 and 2 only, enemy command lines red, and all the
-  placeholder numbers in `tune.json` are still unconfirmed (see earlier notes).
-- Does a 3 minute cross-map march still feel right on 75 x 51 cells with 35 nodes?
-- CLAUDE.md and STACK.md still describe the React + Tailwind overlay.
+- Server URL for a deployed build is unknown (the workers.dev name); the client
+  needs `VITE_SERVER_URL` at build time, and the itch workflow does not set it.
+- Power nodes at tiers 1 and 2 only, enemy lines red, placeholder tune numbers,
+  the 3 minute cross-map feel, and the stranger-join policy are still unconfirmed.
+- CLAUDE.md and STACK.md still describe the React + Tailwind overlay and phone play.
 
 ## Known issues
 
-- Nothing is deployed. The Worker workflow runs on push to main when server,
-  arena-sim, firestorm-net or tune.json change, so merging this branch to main
-  will deploy the Worker to the real Cloudflare account (secrets exist). That
-  needs the user's go-ahead first. The token is account-wide Workers Admin with a
-  30 day expiry: narrow it after the first deploy.
-- Bots rarely attack HQs, do not model node boosts in fight estimates, and never
-  move a garrisoned squad.
-- Teleport is still a free full heal (instant refill, all squads home); the lost
-  garrison bonus is its only cost.
-- `viewFor` is a snapshot per pulse, so an enemy march crossing into vision shows
-  up within one pulse, not exactly when it crosses.
-- Showing enemy command lines reveals an enemy march's origin and destination
-  while it is visible (the view carries the route).
-- If a player's socket drops, their squads stay and defend but they cannot give
-  orders until they return; there is no AI takeover.
-- No client yet, so the Playwright screenshot and console checks do not apply.
-- Codex could not create a local `.env` (no checkout on the user's PC), so keys
-  exist only as GitHub secrets. Local `wrangler dev` needs none.
+- Verified with headless Chromium (software GL) only: no real GPU or high-DPI
+  screen check beyond a 2x device scale screenshot. Frame rate is unmeasured.
+- Orders show up after the next 1 second server pulse; there is no optimistic
+  marker.
+- Clicking a stack of HQs in a safe zone picks the nearest, which is fiddly;
+  names show only when zoomed in.
+- Effects are first versions; lava and eruptions are simple.
+- Nothing is deployed. Merging this branch to main deploys the Worker (and the
+  itch workflow once its prerequisites exist), so that needs a go-ahead.
+- Bots rarely attack HQs and never move a garrisoned squad.
 
 ## Next proposed step
 
-1. User decides when to merge and deploy the Worker (Codex can then run a manual
-   dispatch), and answers the open questions above.
-2. Milestone 3: the Phaser isometric client at `prototypes/firestorm-arena/
-   index.html` with source under `src/`: connect and lobby (code entry, roster,
-   host Start/Cancel, bot fill), grid map and node cubes, units drawn as vector
-   outlines, fog, command UI, dotted command lines (self green, allies muted,
-   enemies red), scout review and combat log buttons, defender counts, version
-   stamp, `?debug=1` Tweakpane. All UI in canvas.
-3. Milestone 4: polish effects (lava, eruptions, combat sprays and explosions,
-   fire, teleport extract and landing).
+1. Decide the deploy: merge, Worker dispatch, and the server URL for the client.
+2. A human playtest with a few real players for feel (march time, bot strength).
+3. Polish pass: HQ selection in crowded safe zones, order feedback, effect tuning,
+   audio if wanted.

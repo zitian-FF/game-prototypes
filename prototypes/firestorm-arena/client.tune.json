@@ -1,0 +1,45 @@
+{
+  "iso": {
+    "tileWidth": 64,
+    "cubeHeight": 14,
+    "cubeFootprint": 0.78
+  },
+  "camera": {
+    "panSpeed": 900,
+    "zoomMin": 0.3,
+    "zoomMax": 2.4,
+    "zoomStep": 1.12,
+    "startZoom": 0.85
+  },
+  "dpr": {
+    "max": 2
+  },
+  "fog": {
+    "alpha": 0.58,
+    "hiddenNodeAlpha": 0.6
+  },
+  "lines": {
+    "dashLength": 10,
+    "gapLength": 8,
+    "flowSpeed": 40,
+    "width": 2
+  },
+  "fx": {
+    "combatSeconds": 2.5,
+    "sprayCount": 14,
+    "eruptionEverySeconds": 3.5,
+    "fireSeconds": 6,
+    "teleportSeconds": 1.6,
+    "lavaPulseSpeed": 1.2,
+    "lavaPatches": 60
+  },
+  "hud": {
+    "toastSeconds": 4.5,
+    "logsMax": 30,
+    "minimapWidth": 210
+  },
+  "net": {
+    "pingEverySeconds": 5,
+    "reconnectDelayMs": 1500
+  }
+}

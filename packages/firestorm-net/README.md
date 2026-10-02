@@ -49,8 +49,11 @@ alarm set, and rebuilds the room from storage after an eviction.
 
 A bot grabs free points and spreads out (a node holds one squad per commander,
 and a teammate already heading for a node makes it worth only the garrison
-bonus); keeps its strongest squad back as a striker that scouts first; attacks only
-what a fresh scout report says it can beat with room to spare; covers its own
+bonus); keeps its strongest squad back as a striker that scouts first; attacks
+what a fresh scout report says it can beat with room to spare, and contests
+enemy-held or fogged enemy-side nodes even without a report, betting on its squad
+power (at most two blind attackers per node; the striker waits 20s for a report
+first); covers its own
 nodes when an enemy march is heading for them; and teleports forward, to refill,
 or to dodge. It sees only what a player on its team would see.
 

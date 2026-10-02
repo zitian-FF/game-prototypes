@@ -128,7 +128,8 @@ and the bots. It is the repo's first server-authoritative networking, an
 alternative to the Trystero peer-to-peer foundations above: players talk to one
 Durable Object over WebSockets, and nothing hidden is ever sent to a client. It
 depends on `arena-sim`, runs in a Durable Object and in plain Node, and only
-firestorm-arena uses it so far. See its README.
+firestorm-arena uses it so far. See its README. The Phaser client that talks to it
+lives in `prototypes/firestorm-arena/src` (all UI drawn in the canvas, no DOM overlay).
 
 ## Art asset pipeline: automatic downscale/recompress
 
