@@ -63,13 +63,12 @@ Fixed. Do not add, swap, or upgrade any of these without asking first.
   both that file and the hub label.
 - Art storage: Cloudflare R2
 
-React and Tailwind CSS are an optional path for prototypes that choose
-DOM UI chrome layered over the Phaser canvas (see UI implementation
-split below); they are not a repo-wide requirement. Firestorm Arena is
-canvas-only: all UI chrome is drawn in Phaser, with no React/Tailwind DOM
-overlay or @vitejs/plugin-react requirement. Do not add those dependencies
-or assumptions to Firestorm scaffolds, workflows, lint rules, reviews, or
-generated files. Phaser owns its entire play surface.
+The React + Tailwind DOM-overlay approach is retired for new prototype
+work; do not add it to a stack, scaffold, workflow, lint rule, review, or
+generated file without a new explicit user decision. Existing code is not
+force-migrated. Phaser canvas is the default for game UI. Firestorm Arena
+is strictly canvas-only: no React, Tailwind, @vitejs/plugin-react, or DOM
+UI overlay. Phaser owns its entire play surface.
 
 Do not add dependencies to solve problems the stack already solves.
 If a new dependency seems necessary, ask before installing it.
@@ -178,31 +177,19 @@ Build all mechanics with coloured rectangles first. Do not wait on
 artwork, and do not treat missing art as a blocker. Art is swapped in
 only after the loop is confirmed working.
 
-## UI implementation split
+## UI implementation
 
-Gameplay/render logic and UI chrome are built separately.
+Gameplay, rendering, and UI chrome are implemented in the Phaser canvas
+by default. Design mockups can guide the canvas implementation, but the
+React + Tailwind DOM-overlay approach is retired for new work unless the
+user explicitly chooses it again. Existing code is not force-migrated.
 
-- For prototypes that opt into a DOM UI layer, UI chrome (HUD,
-  menus, lobby/join screens, hand/card displays, logs, overlays) is
-  designed visually in Claude Design (React + Tailwind) and handed off
-  as a mockup.
-- Claude Code wires that mockup's components directly to game
-  state (e.g. suits-mp's masked publicState payload) as a DOM
-  layer over the Phaser canvas. No translation to vanilla
-  HTML/CSS; React ships in the repo for those prototypes.
-- Game-world elements requiring WebGL effects (particles,
-  shaders, Post FX, anything that's part of the play surface
-  itself) stay in-canvas via Phaser and are NOT candidates for
-  the React UI layer.
-- This DOM-overlay pattern is opt-in for prototypes that choose it.
-  Existing UI code in any prototype is not force-migrated; a prototype
-  adopts this pattern the next time it does UI work.
-- **Firestorm Arena exception:** its full UI is canvas-only via Phaser.
-  Do not use React, Tailwind, @vitejs/plugin-react, or any DOM UI overlay
-  in this prototype, and do not reintroduce them through workflows,
-  scaffolds, lint rules, review comments, or generated files. Phone play
-  is not required. Hosting is split between its itch.io/Butler client and
-  Cloudflare Worker server.
+**Firestorm Arena:** all interface elements are drawn in the Phaser canvas.
+Do not use React, Tailwind, @vitejs/plugin-react, or any DOM UI overlay in
+this prototype, or reintroduce them through workflows, scaffolds, lint
+rules, review comments, or generated files. Phone play is not required.
+Hosting is split between its itch.io/Butler client and Cloudflare Worker
+server.
 
 ## Tuning
 
