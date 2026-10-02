@@ -50,6 +50,9 @@ const REPORT_TRUST_MS = 45_000;
 const SCOUT_EVERY_MS = 30_000;
 const SCOUT_EVERY_HUNTING_MS = 12_000;
 /** A striker with nothing to hit for this long settles for a garrison. */
+const STRIKER_BLIND_AFTER_MS = 20_000;
+const BLIND_MAX_ATTACKERS = 2;
+const BLIND_DENIAL = 20;
 const STRIKER_PATIENCE_MS = 240_000;
 
 export class BotBrain {
@@ -162,13 +165,21 @@ export class BotBrain {
           const staleBy = nowMs - report.takenAtMs + seconds * 1000;
           const p = staleBy > REPORT_TRUST_MS ? 0 : report.defenders.length === 0 ? 1 : this.winChance(squad, report.defenders, tune);
           if (p >= MIN_WIN) go((tier(n.owner === null ? 1 : 1.5) + garr) * p);
-        } else if (striker) {
-          // Without a report the striker does not gamble.
         } else if (n.visible && n.owner === null) {
+          if (striker) continue; // free points are for the others
           go(tier(1) + garr); // plainly neutral: free points
-        } else if (!n.visible && this.onOurSide(n, team, tune) && n.owner !== (team === 0 ? 1 : 0)) {
-          // Out of sight on our half of the map: probably still free, so a modest gamble.
-          go((tier(1) + garr) * 0.7);
+        } else if (this.isContested(n, team, tune)) {
+          // Enemy-held, or unseen on the enemy's half: fog does not stop us. Contest it blind,
+          // betting on our squad power. The striker waits a little in case a report arrives.
+          if (striker && nowMs - (this.strikerIdleSince ?? nowMs) < STRIKER_BLIND_AFTER_MS) continue;
+          if ((claims.get(n.id) ?? 0) >= BLIND_MAX_ATTACKERS) continue;
+          const powerFrac = Math.min(1, Math.max(0, (squad.power - tune.power.min) / (tune.power.max - tune.power.min)));
+          const odds = (0.35 + 0.45 * powerFrac) * (striker ? 1.3 : 1) * Math.min(1, squad.troops / squad.maxTroops + 0.2);
+          const denial = n.owner === (team === 0 ? 1 : 0) ? BLIND_DENIAL : 0;
+          go((rate(n) * 1.5 + garr + denial) * Math.min(1, odds));
+        } else if (!n.visible && n.owner !== (team === 0 ? 1 : 0)) {
+          if (striker) continue;
+          go((tier(1) + garr) * 0.7); // out of sight on our half: probably still free
         }
         // Everything else is not attacked blind: a scout goes first.
       }
@@ -247,6 +258,12 @@ export class BotBrain {
       if (dist(hq.pos, centre) - dist(f.pos, centre) > cell * 6) return f.id;
     }
     return null;
+  }
+
+  /** Enemy-held, or out of sight on the enemy's half of the map. */
+  private isContested(n: NodeView, team: TeamId, tune: Tune): boolean {
+    const enemy: TeamId = team === 0 ? 1 : 0;
+    return n.owner === enemy || (!n.visible && n.owner === null && !this.onOurSide(n, team, tune));
   }
 
   /** The half of the map nearer this team's safe zone. */

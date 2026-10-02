@@ -72,9 +72,9 @@ test('bots: a 40 bot match plays to the end by the rules and stays competitive',
     assert.ok(owned[0] >= 6 && owned[1] >= 6, `seed ${seed}: both teams hold ground ${owned}`);
     const [a, b] = g.result!.points;
     assert.ok(Math.max(a, b) / Math.min(a, b) < 2, `seed ${seed}: lopsided ${a} vs ${b}`);
-    assert.ok(seen.combats >= 10, `seed ${seed}: only ${seen.combats} fights`);
+    assert.ok(seen.combats >= 50, `seed ${seed}: only ${seen.combats} fights`);
     assert.ok(seen.won >= 2, `seed ${seed}: bots never win an attack (${seen.won}/${seen.combats})`);
-    assert.ok(seen.flips >= 2, `seed ${seed}: nodes never change hands`);
+    assert.ok(seen.flips >= 10, `seed ${seed}: nodes never change hands`);
     assert.ok(seen.teleports >= 10, `seed ${seed}: bots never teleport`);
     assert.ok(seen.scouts >= 20, `seed ${seed}: bots never scout`);
   }
