@@ -10,7 +10,7 @@ only DOM is the `?debug=1` Tweakpane panel. Art is vector shapes drawn in code.
 npx vite             # then open /game-prototypes/prototypes/firestorm-arena/index.html
 ```
 
-The client connects to `ws://127.0.0.1:8787` by default. Override with
+The client connects to `ws://127.0.0.1:8787` on localhost and to the deployed Worker anywhere else. Override with
 `?server=wss://host` or `VITE_SERVER_URL` at build time. The itch workflow builds with
 `VITE_SERVER_URL=wss://firestorm-arena-server.tianz-88.workers.dev` (the deployed Worker).
 

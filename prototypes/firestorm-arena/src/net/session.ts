@@ -41,13 +41,17 @@ export function normalizeRoomCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
 }
 
+const DEPLOYED_SERVER = 'wss://firestorm-arena-server.tianz-88.workers.dev';
+
 export function serverBase(): string {
   const params = new URLSearchParams(location.search);
   const fromQuery = params.get('server');
   if (fromQuery) return fromQuery.replace(/\/$/, '');
   const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
   if (env?.VITE_SERVER_URL) return env.VITE_SERVER_URL.replace(/\/$/, '');
-  return 'ws://127.0.0.1:8787';
+  // Local play talks to a local `wrangler dev`; anywhere else (GitHub Pages, itch) to the deployed Worker.
+  const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  return local ? 'ws://127.0.0.1:8787' : DEPLOYED_SERVER;
 }
 
 export interface LobbyState {
