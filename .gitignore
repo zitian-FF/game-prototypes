@@ -8,3 +8,11 @@ public/
 prototypes/*/assets-src/
 prototypes/*/src/version.generated.ts
 scripts/simulate-output/
+
+# Local secrets and Cloudflare dev state, never commit
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/

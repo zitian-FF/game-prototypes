@@ -12,19 +12,20 @@ fixed and not optional. See CLAUDE.md's Stack section for the
 full locked list (atlas packing, debug UI, verification, hosting,
 art storage).
 
-## UI chrome: React + Tailwind DOM overlay
+## UI chrome
 
-For UI chrome (HUD, menus, lobby/join screens, hand/card displays,
-logs, overlays), the repo uses a React + Tailwind DOM layer over
-the Phaser canvas. Mockups are built in Claude Design and wired
-in directly, no translation step. Game-world rendering (anything
-needing WebGL effects, particles, shaders, Post FX) stays in
-Phaser and is not a candidate for this layer. Full rule: CLAUDE.md
-"UI implementation split" section.
+Phaser canvas is the default for game UI. The React + Tailwind DOM-overlay
+approach is retired for new prototype work unless the user explicitly
+chooses it again; existing code is not force-migrated. The repository may
+still contain legacy tooling, but new prototypes should not depend on it.
+See CLAUDE.md's "UI implementation" section.
 
-Status: tooling (@vitejs/plugin-react, Tailwind) is installed at
-the repo root. No prototype has adopted it yet. First expected
-use: suits-mp's Stage 3 UI port.
+**Firestorm Arena:** the entire interface is drawn in Phaser canvas. Do
+not add React, Tailwind, @vitejs/plugin-react, or a DOM UI overlay to
+Firestorm, including through workflows, scaffolds, lint rules, review
+comments, or generated files. Phone play is not required. Its browser
+client deploys to itch.io via Butler; its multiplayer server deploys
+separately to Cloudflare Workers.
 
 ## Multiplayer networking
 
@@ -108,6 +109,29 @@ whether or not anyone notices. Real per-consumer version isolation
 (so a stale pin fails loudly instead of resolving to the wrong thing)
 remains unbuilt infrastructure work.
 
+## Game rules engine: arena-sim
+
+`packages/arena-sim` (0.2.0) is the pure TypeScript rules engine for
+firestorm-arena: squads, combat, nodes, HQs, teleport, scouts, fog-of-war
+views and an event queue, with no Phaser, DOM or Cloudflare code in it. It is
+built to run inside a Cloudflare Durable Object (authoritative server), in
+Node for bot tests, and in the client. It is the first shared package that is
+not networking, and the first built on a server-authoritative model instead of
+Trystero. Only firestorm-arena uses it so far. See its README for the API and
+`prototypes/firestorm-arena/BRIEF.md` for the rules.
+
+## Match server: firestorm-net
+
+`packages/firestorm-net` (0.1.0) is the server side of firestorm-arena that is
+not Cloudflare glue: wire protocol with validation, the match room (lobby,
+countdown, running match, per-team fog-filtered patches), replay-log persistence
+and the bots. It is the repo's first server-authoritative networking, an
+alternative to the Trystero peer-to-peer foundations above: players talk to one
+Durable Object over WebSockets, and nothing hidden is ever sent to a client. It
+depends on `arena-sim`, runs in a Durable Object and in plain Node, and only
+firestorm-arena uses it so far. See its README. The Phaser client that talks to it
+lives in `prototypes/firestorm-arena/src` (all UI drawn in the canvas, no DOM overlay).
+
 ## Art asset pipeline: automatic downscale/recompress
 
 `scripts/pack-assets.js` (the second half of every prototype's
@@ -174,7 +198,9 @@ adds shared packages only as needed:
   packages/mp-core directly).
 - Need internet multiplayer? Depend on mp-net (or packages/mp-core
   directly).
-- Need UI chrome? Use the React + Tailwind DOM overlay pattern.
+- Need UI? Build it in the Phaser canvas by default. Do not add the
+  retired React + Tailwind DOM-overlay approach without an explicit new
+  user decision.
 - Need none of the above? Build with just Phaser/TS/Vite, same as
   digger does today.
 
