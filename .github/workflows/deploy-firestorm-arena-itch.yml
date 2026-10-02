@@ -1,0 +1,116 @@
+name: Deploy Firestorm Arena to itch.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/firestorm-arena/index.html'
+      - 'prototypes/firestorm-arena/src/**'
+      - 'prototypes/firestorm-arena/tune.json'
+      - 'packages/**'
+      - 'scripts/generate-versions.js'
+      - 'scripts/bump-version.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-firestorm-arena-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-firestorm-arena
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check deployment prerequisites
+        id: ready
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ ! -f prototypes/firestorm-arena/index.html ]; then
+            echo "Firestorm's Phaser browser entry is not present yet; skipping deployment."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$BUTLER_API_KEY" ]; then
+            echo "BUTLER_API_KEY is not configured; skipping deployment."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.ready.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.ready.outputs.run == 'true'
+        run: npm ci
+
+      - name: Typecheck
+        if: steps.ready.outputs.run == 'true'
+        run: npm run typecheck
+
+      # The counter advances only for a real deploy, not a skipped or failed upload.
+      - name: Bump version stamp counter
+        if: steps.ready.outputs.run == 'true'
+        run: node scripts/bump-version.js firestorm-arena
+
+      - name: Build (relative base for itch.io)
+        if: steps.ready.outputs.run == 'true'
+        run: npx vite build --base ./
+
+      - name: Prune build to Firestorm Arena only
+        if: steps.ready.outputs.run == 'true'
+        run: |
+          rm -f dist/index.html
+          for d in dist/prototypes/*/; do
+            [ "$(basename "$d")" = "firestorm-arena" ] || rm -rf "$d"
+          done
+          test -f dist/prototypes/firestorm-arena/index.html
+
+      - name: Set up butler
+        if: steps.ready.outputs.run == 'true'
+        uses: jdno/setup-butler@v1
+
+      - name: Push to itch.io
+        if: steps.ready.outputs.run == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push dist zitian-ff/firestorm-arena:html5
+
+      - name: Commit version stamp bump
+        if: steps.ready.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add prototypes/firestorm-arena/version.json
+          if git diff --cached --quiet; then
+            echo "No version bump to commit"
+            exit 0
+          fi
+          git commit -m "Bump Firestorm Arena version stamp counter"
+          # Other itch deploys can race this push; retry on non-fast-forward.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to push version stamp bump after retries" >&2
+          exit 1
