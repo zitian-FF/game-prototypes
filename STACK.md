@@ -119,6 +119,17 @@ not networking, and the first built on a server-authoritative model instead of
 Trystero. Only firestorm-arena uses it so far. See its README for the API and
 `prototypes/firestorm-arena/BRIEF.md` for the rules.
 
+## Match server: firestorm-net
+
+`packages/firestorm-net` (0.1.0) is the server side of firestorm-arena that is
+not Cloudflare glue: wire protocol with validation, the match room (lobby,
+countdown, running match, per-team fog-filtered patches), replay-log persistence
+and the bots. It is the repo's first server-authoritative networking, an
+alternative to the Trystero peer-to-peer foundations above: players talk to one
+Durable Object over WebSockets, and nothing hidden is ever sent to a client. It
+depends on `arena-sim`, runs in a Durable Object and in plain Node, and only
+firestorm-arena uses it so far. See its README.
+
 ## Art asset pipeline: automatic downscale/recompress
 
 `scripts/pack-assets.js` (the second half of every prototype's

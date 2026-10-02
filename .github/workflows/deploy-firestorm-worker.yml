@@ -6,6 +6,8 @@ on:
     paths:
       - "prototypes/firestorm-arena/server/**"
       - "packages/arena-sim/**"
+      - "packages/firestorm-net/**"
+      - "prototypes/firestorm-arena/tune.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/deploy-firestorm-worker.yml"

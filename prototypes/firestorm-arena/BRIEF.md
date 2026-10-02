@@ -356,18 +356,44 @@ as vectors in the Phaser canvas.
 ## Netcode (time and distance)
 
 - Authoritative server owns all state, rolls all random numbers (seeded),
-  and resolves all fights.
+  and resolves all fights. The game logic is the pure `arena-sim` package;
+  the lobby, wire protocol, updates and bots are `firestorm-net`; the
+  Durable Object only connects them to Cloudflare.
 - A march is a record `{squad, from, to, startTime, speed}`. Clients derive
   the squad position at any time from the record and a synced server
   clock, so no per-frame position streaming is needed.
-- Arrivals, captures, cooldown expiry and turret pulses are scheduled
-  server events (Durable Object alarms).
+- Arrivals, captures, cooldown expiry and turret pulses are scheduled sim
+  events. The server wakes once per broadcast pulse (1 second) rather than at
+  every event: each event carries its own timestamp, so processing a batch
+  late gives exactly the same match and only delays when players hear of it,
+  by at most one pulse. This halves Durable Object requests and writes.
+- Each team gets one patch per pulse (changed nodes, squads, HQs, scouts,
+  enemy marches, reports and logs) plus the events it may see: its own, and
+  fights or captures it can watch (which arrive without unit details). A
+  new or returning player gets the full view first. Marching units carry no
+  position; clients derive it from the march and the synced clock.
+- The match is stored as a replay log (seed, roster, accepted commands with
+  sim times), so an evicted Durable Object rebuilds the match exactly.
+  Bot orders are logged too.
+- The server sends its own `tune` to each client at match start.
 - Clients send commands only (march, cancel, teleport, scout, setDefend).
   The server validates and rejects invalid ones.
-- Match flow: lobby by 5-character room code. The host presses Start,
+- Match flow: lobby by 5-character room code. The first player to connect
+  creates the room and is host; joining a room that does not exist is
+  refused, and so is creating a code that is taken. The host presses Start,
   which opens a 3 second cancel window (the host can abort during it).
   The host chooses either to start with only the players present or to
-  fill all remaining slots with bots. 30 minute match, final scoreboard.
+  fill all remaining slots with bots. Humans are split across the two teams,
+  bots fill the rest to 20 v 20. 30 minute match, final scoreboard.
+- Reconnect: a player who drops can come back with the same client id and
+  gets the full view. Strangers are refused once a match has started. A
+  lobby host who disconnects has 60 seconds to return, a running match
+  with nobody connected is abandoned after 10 minutes (and the sim does not
+  tick meanwhile, it catches up when someone returns), and a finished room
+  closes after 15 minutes.
+- A message from a client is untrusted: it is size-limited, schema-checked,
+  rate-limited per socket, and the sender can never choose who a command
+  is from.
 
 ## Win condition
 
@@ -388,14 +414,26 @@ scores per tier and the garrison bonus, which came from the user.
 Bots can fill empty slots in real matches (the host chooses). A bot
 should try to capture as many nodes as possible, and defend and attack
 intelligently. Bots use the same commands as players, run on the server
-through the same sim, and (default) obey the same fog and reveal rules.
+through the same sim, and obey the same fog and reveal rules: a bot is a
+function of its team's filtered view and nothing else.
+
+As built: bots spread out (a node holds one squad per commander, and a
+teammate already heading for a node makes it worth only the garrison bonus),
+keep their strongest squad back as a striker that scouts first, attack only
+what a fresh scout report says they can beat with room to spare, cover
+their own nodes when an enemy march is heading for them, and teleport
+forward, to refill, or to dodge. Known limits: they rarely attack HQs
+(enemy HQs are seldom in sight), do not model node boosts in their fight
+estimates, and never move a garrisoned squad.
 
 ## Testing and verification
 
 - Headless sim tests in Node: combat acceptance targets above, rank/power
   rolls, reserve refill, stack-order fights with the 10-defender cap,
   cancel/return, teleport rules, fog filtering.
-- Headless bot clients (same WebSocket protocol) to fill a 40 player match.
+- Full 40 player matches through the room in Node (bots, fog leak checks,
+  reconnects, replay rebuild, abandonment, cost budget) and an end-to-end
+  run against the local Cloudflare runtime (`npm run e2e -w firestorm-net`).
 - Standard CLAUDE.md verification: typecheck, build, Playwright
   screenshot inspected, no console errors on boot.
 
