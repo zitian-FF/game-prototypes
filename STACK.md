@@ -12,19 +12,24 @@ fixed and not optional. See CLAUDE.md's Stack section for the
 full locked list (atlas packing, debug UI, verification, hosting,
 art storage).
 
-## UI chrome: React + Tailwind DOM overlay
+## UI chrome: optional React + Tailwind DOM overlay
 
-For UI chrome (HUD, menus, lobby/join screens, hand/card displays,
-logs, overlays), the repo uses a React + Tailwind DOM layer over
-the Phaser canvas. Mockups are built in Claude Design and wired
-in directly, no translation step. Game-world rendering (anything
-needing WebGL effects, particles, shaders, Post FX) stays in
-Phaser and is not a candidate for this layer. Full rule: CLAUDE.md
+A prototype may opt into a React + Tailwind DOM layer over the Phaser
+canvas for UI chrome (HUD, menus, lobby/join screens, hand/card displays,
+logs, overlays). Mockups are built in Claude Design and wired in directly,
+with no translation step. Game-world rendering (anything needing WebGL
+effects, particles, shaders, Post FX) stays in Phaser. This is an optional
+pattern, not a repo-wide requirement. Full rule: CLAUDE.md
 "UI implementation split" section.
 
+**Firestorm Arena exception:** the entire interface is drawn in Phaser
+canvas. Do not add React, Tailwind, @vitejs/plugin-react, or a DOM UI
+overlay to Firestorm. Phone play is not required for this prototype.
+Its browser client deploys to itch.io via Butler; its multiplayer server
+deploys separately to Cloudflare Workers.
+
 Status: tooling (@vitejs/plugin-react, Tailwind) is installed at
-the repo root. No prototype has adopted it yet. First expected
-use: suits-mp's Stage 3 UI port.
+the repo root. Prototypes opt into it individually.
 
 ## Multiplayer networking
 
@@ -197,7 +202,9 @@ adds shared packages only as needed:
   packages/mp-core directly).
 - Need internet multiplayer? Depend on mp-net (or packages/mp-core
   directly).
-- Need UI chrome? Use the React + Tailwind DOM overlay pattern.
+- Need a separate DOM UI layer? A prototype can opt into React +
+  Tailwind. Phaser-only prototypes can draw all UI in-canvas; Firestorm
+  Arena is the explicit canvas-only exception.
 - Need none of the above? Build with just Phaser/TS/Vite, same as
   digger does today.
 
