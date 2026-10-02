@@ -77,7 +77,8 @@ export class GameScene extends BaseScene {
 
   // ------------------------------------------------------------------ setup
 
-  private init(): void {
+  /** Not called `init`: Phaser calls Scene.init itself, before the first state has arrived. */
+  private buildWorld(): void {
     const info = session.info!;
     this.tune = info.tune;
     this.mine = info.team;
@@ -124,7 +125,7 @@ export class GameScene extends BaseScene {
       for (const e of events) if (e.type === 'primary') this.ui.click(e.x, e.y);
       return;
     }
-    if (!this.ready) this.init();
+    if (!this.ready) this.buildWorld();
 
     const simMs = session.simNow();
     const now = time / 1000;
@@ -142,8 +143,15 @@ export class GameScene extends BaseScene {
     return { x: (x - this.world.x) / this.zoom, y: (y - this.world.y) / this.zoom };
   }
 
+  /** Zoomed out as far as the whole map fitting the screen, never past it. */
+  private minZoom(): number {
+    const { w, h } = logicalSize();
+    return Math.max(clientTune.camera.zoomMin, Math.min(w / this.iso.pxW, h / this.iso.pxH));
+  }
+
   private applyCam(): void {
     const { w, h } = logicalSize();
+    this.zoom = Phaser.Math.Clamp(this.zoom, this.minZoom(), clientTune.camera.zoomMax);
     this.camX = Phaser.Math.Clamp(this.camX, 0, this.iso.pxW);
     this.camY = Phaser.Math.Clamp(this.camY, 0, this.iso.pxH);
     this.world.setPosition(w / 2 - this.camX * this.zoom, h / 2 - this.camY * this.zoom);
@@ -155,7 +163,7 @@ export class GameScene extends BaseScene {
     const x = px < 0 ? w / 2 : px;
     const y = py < 0 ? h / 2 : py;
     const before = this.screenToMap(x, y);
-    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), clientTune.camera.zoomMin, clientTune.camera.zoomMax);
+    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), this.minZoom(), clientTune.camera.zoomMax);
     this.camX = before.x - (x - w / 2) / this.zoom;
     this.camY = before.y - (y - h / 2) / this.zoom;
   }
