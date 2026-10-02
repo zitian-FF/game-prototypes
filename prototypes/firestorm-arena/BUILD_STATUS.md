@@ -2,9 +2,9 @@
 
 Milestone 1 of the build: the pure rules engine, `packages/arena-sim` 0.1.0,
 with headless tests. No server, client, bots or UI exist yet. BRIEF.md is
-current with every decision made in the design chat. Codex has replied on
-infrastructure (verified Cloudflare limits, separate itch.io project
-recommended) but has not created anything yet and is waiting on BRIEF.md.
+current with every decision made in the design chat. Codex has scaffolded the Worker/Durable Object and
+the two deploy workflows; no deployment has run yet (secrets and the itch.io
+project are not set up).
 
 ## What was implemented
 
@@ -56,10 +56,9 @@ recommended) but has not created anything yet and is waiting on BRIEF.md.
 
 ## Open questions
 
-- UI approach for the client: BRIEF.md says React + Tailwind overlay per
-  CLAUDE.md, but Codex reports recent Phaser work moved UI into the canvas and
-  that CLAUDE.md/STACK.md are stale. Which should firestorm-arena follow?
-  BRIEF.md may need updating once decided.
+- UI approach is decided: in-canvas Phaser UI, no React/Tailwind/DOM overlay.
+  BRIEF.md has been updated. CLAUDE.md and STACK.md still describe the
+  React + Tailwind overlay and need a separate cleanup.
 - All node numbers in tune.json are placeholders I chose (point rates, boost
   percentages, vision radii, turret pulse/percent/radius, 62 nodes, third
   squad chance 10%, troop variance 10%, power variance 3.5%). None are
@@ -90,14 +89,13 @@ recommended) but has not created anything yet and is waiting on BRIEF.md.
 
 ## Next proposed step
 
-1. Answer the UI approach question above.
-2. Send Codex the go-ahead on Cloudflare: Worker + Durable Object scaffold,
-   wrangler config, deploy workflow, itch.io project. Manual steps only the
-   user can do: create the itch.io project and add `BUTLER_API_KEY` and the
-   Cloudflare token/account ID as repo secrets.
+1. Codex scaffolded the Worker, Durable Object stub and both deploy
+   workflows, all verified (typecheck, build, wrangler dry run). Codex has
+   been asked to do the manual setup (itch.io project, secrets) with keys kept
+   in gitignored local env files only.
 3. Milestone 2: wire arena-sim into the Durable Object (WebSocket protocol,
    lobby with host Start and 3 second cancel, bot fill, per-team filtered
    broadcasts, alarms from `nextEventAt`) plus intelligent bots that capture,
    defend and attack through the same commands.
-4. Milestone 3: Phaser client with a plain lobby, map, node and march
+4. Milestone 3: Phaser client, all UI in canvas: lobby, map, node and march
    rendering, fog, command UI, scout review and combat log buttons.

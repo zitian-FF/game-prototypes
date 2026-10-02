@@ -15,10 +15,12 @@ All visuals start as coloured rectangles and text (placeholder-first).
   required for this prototype (the user has waived the repo-wide rule in
   CLAUDE.md for this brief; CLAUDE.md is known to be out of date on
   this point).
-- Client: Phaser 3 + TypeScript (strict) + Vite. UI chrome (HUD, squad
-  list, command panel, lobby, logs) is a React + Tailwind DOM overlay
-  per CLAUDE.md "UI implementation split". The map, nodes, marching
-  squads and fog are rendered in Phaser.
+- Client: Phaser 3 + TypeScript (strict) + Vite. **All UI is drawn in the
+  Phaser canvas**: HUD, squad list, command panel, lobby, scout review,
+  combat logs, map, nodes, marching squads and fog. There is no React,
+  no Tailwind and no DOM overlay (the user is phasing that approach out
+  completely; CLAUDE.md's "UI implementation split" section is out of date
+  and does not apply to this prototype).
 - Server: Cloudflare Worker + one SQLite-backed Durable Object per match,
   WebSockets, Workers Free plan only. Authoritative for all game state.
   Event-driven (alarms for arrivals, captures, cooldowns, turret pulses),
@@ -316,6 +318,7 @@ client.
 - Phone and touch support, tablets.
 - Spectator mode, replays, in-match chat, emotes.
 - Anti-cheat beyond server-side validation and fog filtering.
+- React, Tailwind or any DOM UI layer.
 - Art beyond placeholders until the loop is confirmed working.
 - Combat while marching.
 - Teleporting to nodes the team does not control.
