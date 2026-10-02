@@ -24,6 +24,7 @@ export type ClientMsg =
   | { t: 'hello'; v: number; clientId: string; name: string; create?: boolean }
   | { t: 'start'; fillBots: boolean }
   | { t: 'cancelStart' }
+  | { t: 'endRoom' }
   | { t: 'cmd'; id: number; cmd: CommandBody }
   | { t: 'ping'; c: number };
 
@@ -165,6 +166,8 @@ export function parseClientMsg(raw: string): ParseResult {
       return typeof v.fillBots === 'boolean' ? { ok: true, msg: { t: 'start', fillBots: v.fillBots } } : { ok: false, message: 'bad start' };
     case 'cancelStart':
       return { ok: true, msg: { t: 'cancelStart' } };
+    case 'endRoom':
+      return { ok: true, msg: { t: 'endRoom' } };
     case 'cmd': {
       const cmd = parseCommand(v.cmd);
       if (!cmd || typeof v.id !== 'number' || !Number.isInteger(v.id)) return { ok: false, message: 'bad command' };

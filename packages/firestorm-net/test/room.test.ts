@@ -307,3 +307,18 @@ test('time: the alarm loop always makes progress, at awkward time scales too', (
     assert.ok(alarms < 20_000);
   }
 });
+
+test('lobby: only the host can end the room, and ending it closes every socket', () => {
+  const w = makeWorld();
+  const host = w.client('Hana');
+  const guest = w.client('Ben');
+  host.hello(true);
+  guest.hello(false);
+  guest.send({ t: 'endRoom' });
+  assert.equal(guest.last('error')!.code, 'notHost');
+  assert.notEqual(w.room.currentPhase, 'closed');
+  host.send({ t: 'endRoom' });
+  assert.equal(w.room.currentPhase, 'closed');
+  assert.equal(guest.last('error')!.code, 'roomClosed');
+  assert.ok(w.room.shouldDestroy());
+});

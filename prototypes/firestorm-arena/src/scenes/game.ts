@@ -56,6 +56,7 @@ export class GameScene extends BaseScene {
   private target: Target | null = null;
   private panel: Panel = 'none';
   private lastFrame = 0;
+  private confirmEnd = false;
   private mapRect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
@@ -69,6 +70,7 @@ export class GameScene extends BaseScene {
     this.target = null;
     this.selectedSquad = null;
     this.panel = 'none';
+    this.confirmEnd = false;
     this.fogKey = null;
     this.lastFrame = this.time.now;
   }
@@ -127,6 +129,7 @@ export class GameScene extends BaseScene {
     const simMs = session.simNow();
     const now = time / 1000;
     this.handleIntents(events, dt, view);
+    if (!session.info || !session.view) return; // an order above may have left the match
     this.handleEvents(view, now);
     this.fx.ambient(now);
     this.drawWorld(view, simMs, now);
@@ -521,6 +524,22 @@ export class GameScene extends BaseScene {
     ui.text(fmtTime(remain), w / 2, 7, { size: 17, bold: true, align: 'center' });
     ui.text(`${fmtInt(theirP)}  ENEMY`, w / 2 + 90, 7, { size: 17, bold: true, color: cssColor(COLORS.enemy) });
     this.drawVersion();
+    // Leave (anyone) or end the room (host), with a confirm step.
+    const endLabel = session.isHost ? 'End room' : 'Leave';
+    if (!this.confirmEnd) {
+      ui.button(84, 5, 74, 24, endLabel, { onClick: () => (this.confirmEnd = true), size: 11 });
+    } else {
+      ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', 84, 10, { size: 12, color: COLORS.warn });
+      ui.button(214, 5, 44, 24, 'Yes', {
+        onClick: () => {
+          session.finish();
+          this.go('Menu');
+        },
+        size: 11,
+        accent: COLORS.enemy,
+      });
+      ui.button(262, 5, 44, 24, 'No', { onClick: () => (this.confirmEnd = false), size: 11 });
+    }
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
     ui.button(w - 190, 4, 90, 26, `Scouts ${activeReports}`, { onClick: () => (this.panel = this.panel === 'scouts' ? 'none' : 'scouts'), active: this.panel === 'scouts', size: 12 });
     ui.button(w - 94, 4, 84, 26, `Logs ${view.combatLogs.length}`, { onClick: () => (this.panel = this.panel === 'logs' ? 'none' : 'logs'), active: this.panel === 'logs', size: 12 });
@@ -556,7 +575,7 @@ export class GameScene extends BaseScene {
       ui.text(`${fmtInt(r.points[mine])}  -  ${fmtInt(r.points[mine === 0 ? 1 : 0])}`, w / 2, h / 2 - 16, { size: 28, align: 'center', bold: true });
       ui.button(w / 2 - 100, h / 2 + 40, 200, 44, 'Back to menu', {
         onClick: () => {
-          session.leave();
+          session.finish();
           this.go('Menu');
         },
         active: true,

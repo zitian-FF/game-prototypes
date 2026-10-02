@@ -22,7 +22,7 @@ export class LobbyScene extends BaseScene {
   }
 
   private leave(): void {
-    session.leave();
+    session.finish();
     this.go('Menu');
   }
 
@@ -87,7 +87,7 @@ export class LobbyScene extends BaseScene {
       } else {
         ui.text('Waiting for the host to start...', cx, by + 6, { size: 15, align: 'center', color: COLORS.dim });
       }
-      ui.button(24, h - 56, 100, 34, 'Leave', { onClick: () => this.leave() });
+      ui.button(24, h - 56, session.isHost ? 120 : 100, 34, session.isHost ? 'End room' : 'Leave', { onClick: () => this.leave() });
       if (AUTOPLAY && session.isHost && !this.autoSent && lobby.phase === 'lobby') {
         this.autoSent = true;
         session.send({ t: 'start', fillBots: true });

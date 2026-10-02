@@ -26,6 +26,7 @@ report. Nothing is deployed.
   handled by buffer size times DPR with camera zoom, version stamp top left,
   `?debug=1` Tweakpane for `client.tune.json` with a copy-JSON button, reconnect
   with the same client id, server clock synced by ping.
+- Ending a session: the host can end the room at any time (lobby, match, or the end screen), which closes every socket and frees the 3 character code for a fresh room. Others can just leave. The in-game button asks for confirmation. Stranger join after Start stays refused (decided).
 - Bots: enemy-held or unseen enemy-side nodes are attacked blind with an odds
   estimate from squad power (max two blind attackers per node, striker waits 20s
   for a report). In bot-only matches that gives 35 to 61 node flips per match
@@ -48,8 +49,9 @@ report. Nothing is deployed.
 
 - Server URL for a deployed build is unknown (the workers.dev name); the client
   needs `VITE_SERVER_URL` at build time, and the itch workflow does not set it.
-- Power nodes at tiers 1 and 2 only, enemy lines red, placeholder tune numbers,
-  the 3 minute cross-map feel, and the stranger-join policy are still unconfirmed.
+- Decided with the user: power nodes at tiers 1 and 2 only, enemy lines red, no
+  stranger join after Start. Placeholder tune numbers and the 3 minute march are
+  kept as is until a playtest.
 - CLAUDE.md and STACK.md still describe the React + Tailwind overlay and phone play.
 
 ## Known issues

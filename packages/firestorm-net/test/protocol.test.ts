@@ -11,6 +11,7 @@ test('protocol: valid messages parse', () => {
   });
   assert.ok(ok({ t: 'start', fillBots: true }).ok);
   assert.ok(ok({ t: 'cancelStart' }).ok);
+  assert.ok(ok({ t: 'endRoom' }).ok);
   assert.ok(ok({ t: 'ping', c: 5 }).ok);
   assert.ok(ok({ t: 'cmd', id: 1, cmd: { type: 'march', squadId: 's3', target: { kind: 'node', nodeId: 'n7' } } }).ok);
   assert.ok(ok({ t: 'cmd', id: 2, cmd: { type: 'march', squadId: 's3', target: { kind: 'hq', hqId: 'h2' } } }).ok);

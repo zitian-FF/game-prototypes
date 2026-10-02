@@ -159,6 +159,12 @@ export class Session {
     this.status = 'idle';
   }
 
+  /** Host: end the room for everyone (frees the code). Anyone else: just leave. */
+  finish(): void {
+    if (this.isHost) this.send({ t: 'endRoom' });
+    this.leave();
+  }
+
   leave(): void {
     this.wantOpen = false;
     window.clearTimeout(this.reconnectTimer);
@@ -212,7 +218,11 @@ export class Session {
       case 'error':
         if (msg.code === 'replaced') this.error = 'This game was opened in another tab.';
         else this.error = msg.message;
-        if (msg.code !== 'rateLimited' && msg.code !== 'badPhase' && msg.code !== 'notHost') this.fail(this.error);
+        if (msg.code !== 'rateLimited' && msg.code !== 'badPhase' && msg.code !== 'notHost') {
+          const message = this.error;
+          this.leave(); // drops match state too, so screens fall back to the menu
+          this.error = message;
+        }
         else this.toast(msg.message, 'bad');
         break;
       case 'matchStart':

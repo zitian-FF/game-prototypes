@@ -324,6 +324,10 @@ export class ArenaRoom {
         return this.onStart(connId, clientId, msg.fillBots);
       case 'cancelStart':
         return this.onCancelStart(connId, clientId);
+      case 'endRoom':
+        // The host can end the room at any time, so the code is free for a fresh one.
+        if (clientId !== this.hostId) return this.error(connId, 'notHost', 'only the host can end the room');
+        return this.close('roomClosed', 'the host ended the room');
       case 'cmd':
         return this.onCommand(connId, clientId, msg.id, msg.cmd);
     }
