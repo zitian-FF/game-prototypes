@@ -8,6 +8,20 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Characters + character select (BRIEF
+  "Characters"): `sim/character.ts` (per-fighter stat lookups, punch
+  config with reach / frame / fatigue overrides), `tune.characters` with
+  debug-panel entries under a new Characters category, `CharSelectScene`
+  (touch, keyboard, controller; vsai / localvs / online flows),
+  `sim/charPrefs.ts`, Training character toggle, character names in the
+  fight HUD. Punch reach is stored on the punch when thrown. Online:
+  'pick' control message, 'start' carries [host, guest] character ids;
+  rollback creates the sim with them; rematch keeps them.
+  Verified: headless stat table matches the spec; Mia vs Bruno rollback
+  3000 frames, 0 hash mismatches; Playwright select screen (touch +
+  keyboard into VsAI), and two-tab mock online pick -> match with both
+  sides showing MIA vs MARCO.
+
 - (Branch, not merged yet.) Uppercut can now be Perfect Guarded (High
   Guard still can't block it); BRIEF + info panel updated. Pushback now
   locks the defender's own walking for its duration (dodge still works),
@@ -196,6 +210,9 @@ issues).
   URL (html-classic.itch.zone/...), which opens the game directly.
 
 ## Open questions
+
+- BRIEF.md had "extra characters" out of scope; the user moved it into
+  scope (2026-10-03). BRIEF updated with the character spec.
 
 - Hook chip vs "absorbed by normal guard": implemented as Hook chips only
   High Guard; vs Normal stance it follows the regular table. BRIEF.md

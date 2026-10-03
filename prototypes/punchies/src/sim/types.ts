@@ -42,6 +42,9 @@ export interface PunchState {
   // Late sour: fist at full reach, past its sweet moment.
   sour: number;
   recovery: number;
+  // Full reach and the reach it starts from (character-adjusted).
+  reach: number;
+  startReach: number;
   damageMult: number;
   // Resolved = this punch already hit, was blocked, or was dodged. One
   // contact per punch.
@@ -98,6 +101,8 @@ export interface Fighter {
   // Training only: dummy held in the Vulnerable stance.
   forceVulnerable: boolean;
   framesSinceHit: number;
+  // Character id (see sim/character.ts).
+  char: string;
   // Pushback from a landed/blocked punch: per-tick step, ticks left.
   pushX: number;
   pushY: number;

@@ -13,6 +13,7 @@ import type {
   Stance,
 } from './types';
 import { FATIGUED_PUNCHES } from './types';
+import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold } from './character';
 
 // Deterministic fight simulation, stepped at a fixed 60 Hz. Only uses
 // + - * / and Math.sqrt/round/min/max/abs (all exactly specified by IEEE
@@ -22,10 +23,11 @@ export interface FighterOptions {
   anchored?: boolean;
   infiniteStamina?: boolean;
   forceVulnerable?: boolean;
+  char?: string;
 }
 
 function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
-  return {
+  const f: Fighter = {
     x,
     y,
     fx: 1,
@@ -60,7 +62,11 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     pushX: 0,
     pushY: 0,
     pushFrames: 0,
+    char: opts.char ?? 'marco',
   };
+  f.health = maxHealth(f);
+  f.stamina = maxStamina(f);
+  return f;
 }
 
 export function createSimState(opts: {
@@ -100,8 +106,8 @@ export function punchTotal(p: PunchState): number {
 // from the sweet frames on, so range decides whether contact lands early
 // (sour, jammed) or at full extension (sweet).
 export function currentReach(p: PunchState): number {
-  const reach = tune.punches[p.type].reach;
-  const start = reach * tune.punches[p.type].startReachFrac;
+  const reach = p.reach;
+  const start = p.startReach;
   if (p.frame < p.startup) return start;
   // Full reach is only hit on the first sweet frame.
   const into = p.frame - p.startup + 1;
@@ -137,7 +143,7 @@ export function hurtRadius(f: Fighter): number {
 export function fatigueLevel(f: Fighter, type: PunchType): number {
   if (type === 'uppercut') return 0;
   const raw = f.fatigue[type] - tune.fatigue.freeUses;
-  return Math.max(0, Math.min(tune.punches[type].fatigueBars, raw));
+  return Math.max(0, Math.min(punchCfg(f, type).fatigueBars, raw));
 }
 
 export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } {
@@ -160,16 +166,16 @@ function spendStamina(f: Fighter, amount: number): void {
 }
 
 function gainStamina(f: Fighter, amount: number): void {
-  f.stamina = Math.min(tune.stamina.max, f.stamina + amount);
+  f.stamina = Math.min(maxStamina(f), f.stamina + amount);
   if (f.exhausted && f.stamina >= tune.stamina.exhaustRecoverAt) f.exhausted = false;
 }
 
 function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  const cfg = tune.punches[type];
+  const cfg = punchCfg(f, type);
   const level = fatigueLevel(f, type);
   // Per-type fatigue: each punch has its own bar count and per-bar penalty.
-  const fcfg = type === 'uppercut' ? null : tune.punches[type];
+  const fcfg = type === 'uppercut' ? null : cfg;
   const slow = 1 + level * (fcfg ? fcfg.fatigueSpeedPerBar : 0);
   let damageMult = Math.max(tune.fatigue.minDamageMult, 1 - level * (fcfg ? fcfg.fatigueDamagePerBar : 0));
   // Post-dodge power-up: the first punch thrown in the window hits harder.
@@ -192,6 +198,8 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     sweet: cfg.sweet,
     sour: cfg.sour,
     recovery: Math.max(1, Math.round(cfg.recovery * slow)),
+    reach: cfg.reach,
+    startReach: cfg.reach * cfg.startReachFrac,
     damageMult,
     buffed,
     resolved: false,
@@ -320,7 +328,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     mx /= mag;
     my /= mag;
   }
-  let speed = tune.movement.speed;
+  let speed = moveSpeed(f);
   if (f.punch) speed *= tune.movement.punchMoveMult;
   else if (f.guarding) speed *= tune.movement.guardMoveMult;
   if (f.stunTimer > 0) speed *= tune.movement.stunMoveMult;
@@ -368,8 +376,8 @@ function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): 
   const f = s.fighters[idx];
   f.stun += amount;
   f.stunDecayWait = tune.stun.decayDelayFrames;
-  if (f.stun > tune.stun.threshold && !f.stunFromMeter) {
-    const overflow = f.stun - tune.stun.threshold;
+  if (f.stun > stunThreshold(f) && !f.stunFromMeter) {
+    const overflow = f.stun - stunThreshold(f);
     f.stunTimer = tune.stun.baseFrames + Math.round(overflow * tune.stun.overflowFramesPerPoint);
     f.stunFromMeter = true;
     f.punch = null;
@@ -461,7 +469,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const p = att.punch;
   if (!p) return;
   p.resolved = true;
-  const cfg = tune.punches[p.type];
+  const cfg = punchCfg(att, p.type);
 
   let stance = stances[defIdx];
   // Uppercut ignores a normal High Guard (taken as a normal hit) but a
@@ -490,7 +498,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     // Hooks wrap around a High Guard: chip damage (anti-turtle).
     let chip = 0;
     if (p.type === 'hook') {
-      const full = tune.punches.hook.damage * p.damageMult;
+      const full = punchCfg(att, 'hook').damage * p.damageMult;
       chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * tune.punches.hook.guardChipMult;
       def.health = Math.max(0, def.health - chip);
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
@@ -507,8 +515,8 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' ? 'normal' : 'vulnerable';
   const baseDamage =
     p.type === 'uppercut'
-      ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult
-      : tune.punches[p.type].damage;
+      ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * cfg.damage
+      : cfg.damage;
   const full = baseDamage * p.damageMult;
   const reduced = full * tune.hit.reducedDamageMult;
 
@@ -611,7 +619,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   // Stamina: guard drains; otherwise regen after a short delay since the
   // last spend, fastest with no input at all.
   if (f.infiniteStamina) {
-    f.stamina = tune.stamina.max;
+    f.stamina = maxStamina(f);
     f.exhausted = false;
   } else if (f.guarding) {
     spendStamina(f, tune.guard.staminaDrainPerSec / TICK_RATE);
@@ -622,6 +630,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
       input.mx === 0 && input.my === 0 && !input.jab && !input.cross && !input.hook && !input.uppercut && !input.dodge && !input.guard;
     let rate = noInput ? tune.stamina.regenIdlePerSec : tune.stamina.regenActivePerSec;
     // Exhausted (hit 0, Vulnerable): much slower climb back to exhaustRecoverAt.
+    rate *= regenMult(f);
     if (f.exhausted) rate *= tune.stamina.exhaustedRegenMult;
     gainStamina(f, rate / TICK_RATE);
   }

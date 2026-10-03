@@ -191,7 +191,7 @@ export class FighterView {
       const p = f.punch;
       const phase = phaseOf(p);
       const end = activeEnd(p);
-      const reach = tune.punches[p.type].reach;
+      const reach = p.reach;
       let t: number;
       if (phase === 'startup') t = -0.15 * (p.frame / p.startup);
       else if (phase === 'recovery') t = 1 - (p.frame - end) / p.recovery;

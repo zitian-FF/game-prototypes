@@ -11,9 +11,38 @@ decisions made in the planning round (2026-09-29).
 - Online 1v1 PvP, plus Single Player vs an easy AI (added 2026-09-30 at
   the user's request; previously out of scope).
 - Training dummy: static, toggle between idle and holding High Guard.
-- One default character (orthodox stance).
-- Out of scope: progression, cosmetics, extra characters, southpaw, AI
-  difficulties. (Easy AI only.)
+- Three characters (orthodox stance), added 2026-10-03 at the user's
+  request (see Characters).
+- Out of scope: progression, cosmetics, signature moves (planned next as
+  "option C"), southpaw, AI difficulties. (Easy AI only.)
+
+## Characters
+Stat archetypes on top of the shared tune (`tune.characters.<id>`):
+multipliers for max HP, max stamina, stamina regen, stun threshold, walk
+speed, and per punch (J/C/H/U) damage, stamina cost, stun build, pushback
+and reach; frame deltas (max +-2) for startup and recovery; extra fatigue
+bars (penalty per bar shrinks so the maximum penalty stays the same).
+Global for everyone (no learning curve): sweet/sour windows, hit table,
+core/outer ring, hurtbox, Perfect / High Guard, dodge, stars, counters,
+fatigue rules, hit-stop, timer, ring.
+- Marco Reyes "The Metronome": steady all-rounder. Stamina 1.1, regen
+  1.1, stun 1.05, Cross damage +10%.
+- Mia Tanaka "Flicker": fast hands and feet, shorter reach. HP 0.85,
+  stamina 1.1, regen 1.15, stun 0.9, speed 1.15; Jab startup -1 recovery
+  -2, Cross damage -10% startup -1, Hook stamina cost -15% startup -1
+  recovery -2; all reach 0.9.
+- Bruno Kowalski "Brick": tough and heavy-handed, slow. HP 1.2, stamina
+  0.95, regen 0.9, stun 1.25, speed 0.88; Cross / Hook damage +15%,
+  startup +1, recovery +2; Cross / Uppercut push 1.25; +1 fatigue bar on
+  Jab / Cross / Hook.
+Character select: two panels (preview, name, nickname, style line, six
+stat bars with base tune at 80%: HP, Stamina, Stun resist, Speed, Power
+= mean J/C/H damage, Hand speed = J/C/H startup+recovery frames) and
+three cards in the middle. Single Player: the player picks theirs and the
+AI's. Local VS: each side on its own device. Online: each phone picks its
+own; the opponent shows "picking..." / READY; the host starts. Training
+has a YOU: <name> toggle; the tutorial uses Marco. Picks remembered in
+localStorage `punchies:chars:v1`.
 
 ## Controls (landscape, MOBA-style)
 - Left: floating virtual joystick for movement. Boxer always faces the

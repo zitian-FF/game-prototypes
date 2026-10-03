@@ -194,5 +194,148 @@
     "guardHoldFrames": 30,
     "dodgeChance": 0.05,
     "retreatStaminaBelow": 25
+  },
+  "characters": {
+    "marco": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "mia": {
+      "hp": 0.85,
+      "stamina": 1.1,
+      "regen": 1.15,
+      "stun": 0.9,
+      "speed": 1.15,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": -1,
+        "recovery": -2,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 0.9,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": -1,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 0.85,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": -1,
+        "recovery": -2,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "bruno": {
+      "hp": 1.2,
+      "stamina": 0.95,
+      "regen": 0.9,
+      "stun": 1.25,
+      "speed": 0.88,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 1
+      },
+      "cross": {
+        "damage": 1.15,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1.25,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 1
+      },
+      "hook": {
+        "damage": 1.15,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 1
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1.25,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    }
   }
 }

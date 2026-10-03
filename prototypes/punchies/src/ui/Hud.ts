@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
+import { maxHealth, maxStamina, punchCfg, stunThreshold } from '../sim/character';
 import type { Fighter, SimState } from '../sim/types';
 import { fatigueLevel, remainingSeconds } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -42,7 +43,7 @@ export class Hud {
       .text(VIEW.cx, VIEW.top + 6, '', { fontFamily: 'monospace', fontSize: '22px', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5, 0)
       .setDepth(91);
-    this.shownHealth = [tune.health.max, tune.health.max];
+    this.shownHealth = [-1, -1];
   }
 
   draw(s: SimState): void {
@@ -54,12 +55,12 @@ export class Hud {
       const x = left ? VIEW.left + MARGIN : VIEW.right - MARGIN - BAR_W;
       const y = VIEW.top;
       // Trailing "recent damage" chunk so hits read clearly.
-      this.shownHealth[i] = Math.max(f.health, this.shownHealth[i] - 0.4);
+      this.shownHealth[i] = this.shownHealth[i] < 0 ? f.health : Math.max(f.health, this.shownHealth[i] - 0.4);
       const show = (p: string) => this.shown === null || this.shown.has(p);
-      if (show('health')) this.bar(x, y + 8, 14, f.health / tune.health.max, this.shownHealth[i] / tune.health.max, 0x3ad06a, left);
+      if (show('health')) this.bar(x, y + 8, 14, f.health / maxHealth(f), this.shownHealth[i] / maxHealth(f), 0x3ad06a, left);
       const staminaColor = f.exhausted ? 0xff5a3a : 0x3ab0e0;
-      if (show('stamina')) this.bar(x, y + 25, 6, f.stamina / tune.stamina.max, 0, staminaColor, left);
-      const stunFrac = Math.min(1, f.stun / tune.stun.threshold);
+      if (show('stamina')) this.bar(x, y + 25, 6, f.stamina / maxStamina(f), 0, staminaColor, left);
+      const stunFrac = Math.min(1, f.stun / stunThreshold(f));
       const stunColor = f.stunFromMeter ? 0xffe03a : stunFrac > 0.7 ? 0xffa03a : 0xb07a3a;
       if (show('stun')) this.bar(x + BAR_W * 0.35, y + 34, 5, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, BAR_W * 0.65);
     }
@@ -84,7 +85,7 @@ export class Hud {
     }
     FATIGUE_TYPES.forEach((type, k) => {
       const gx = x0 + 40 + k * 44;
-      const bars = tune.punches[type].fatigueBars;
+      const bars = punchCfg(f, type).fatigueBars;
       const level = fatigueLevel(f, type);
       for (let i = 0; i < bars; i++) {
         const on = i < level;

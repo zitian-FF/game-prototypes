@@ -4,6 +4,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { createSimState, fatigueLevel, phaseOf, step } from '../sim/sim';
 import { tune, TICK_RATE } from '../sim/tune';
+import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { devices } from '../input/devices';
 import { getNav, navRegister } from '../ui/menuNav';
@@ -129,7 +130,7 @@ const STEPS: Step[] = [
     adds: ['stamina'],
     dummy: 'idle',
     goal: 1,
-    track: (c) => (c.sim.fighters[0].stamina < tune.stamina.max * 0.5 ? 1 : 0),
+    track: (c) => (c.sim.fighters[0].stamina < maxStamina(c.sim.fighters[0]) * 0.5 ? 1 : 0),
   },
   {
     title: 'HEALTH: FACE vs BODY',
@@ -182,7 +183,7 @@ const STEPS: Step[] = [
     dummy: 'idle',
     goal: 1,
     setup: (s) => {
-      s.fighters[1].stun = tune.stun.threshold * 0.75;
+      s.fighters[1].stun = stunThreshold(s.fighters[1]) * 0.75;
     },
     track: (c) => c.events.filter((e) => e.kind === 'stunned' && e.fighter === 1).length,
   },
@@ -204,7 +205,7 @@ const STEPS: Step[] = [
     dummy: 'jabber',
     goal: 1,
     setup: (s) => {
-      s.fighters[1].health = tune.health.max * 0.35;
+      s.fighters[1].health = maxHealth(s.fighters[1]) * 0.35;
     },
     track: (c) => c.events.filter((e) => e.kind === 'ko' && e.loser === 1).length,
   },
@@ -309,10 +310,10 @@ export class TutorialScene extends Phaser.Scene {
     saveStep(i);
     const st = STEPS[i];
     const [me, dummy] = this.sim.fighters;
-    me.health = tune.health.max;
-    me.stamina = tune.stamina.max;
+    me.health = maxHealth(me);
+    me.stamina = maxStamina(me);
     me.exhausted = false;
-    dummy.health = tune.health.max;
+    dummy.health = maxHealth(dummy);
     dummy.stun = 0;
     dummy.stars = 0;
     dummy.anchored = st.dummy === 'idle';
@@ -404,9 +405,9 @@ export class TutorialScene extends Phaser.Scene {
         // The tutorial never lets the player lose, and only the final step
         // lets the dummy go down.
         const me = this.sim.fighters[0];
-        if (me.health < tune.health.max * 0.5) me.health = tune.health.max;
+        if (me.health < maxHealth(me) * 0.5) me.health = maxHealth(me);
         if (this.sim.result && this.idx !== STEPS.length - 1) this.sim.result = null;
-        if (d.health <= 0 && this.idx !== STEPS.length - 1) d.health = tune.health.max;
+        if (d.health <= 0 && this.idx !== STEPS.length - 1) d.health = maxHealth(d);
         if (!this.doneAt) {
           this.progress = Math.min(st.goal, this.progress + st.track({ events, sim: this.sim, dummyWasRecovering, flags: this.flags }));
           if (this.progress >= st.goal) {

@@ -5,6 +5,7 @@ import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
+import { charName } from '../sim/character';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
 
 // Online 1v1 over rollback netcode (see net/rollback.ts). Host is fighter 0 (left), guest fighter 1.
@@ -50,6 +51,7 @@ export class MatchScene extends Phaser.Scene {
       data.round,
       (p) => s.sendInputs(p),
       (p) => s.sendHash(p),
+      data.chars,
     );
     s.onInputs = (p) => this.ls.receiveInputs(p);
     s.onHash = (p) => this.ls.receiveHash(p);
@@ -62,7 +64,9 @@ export class MatchScene extends Phaser.Scene {
     };
     s.onPeerLeft = () => this.opponentLeft();
 
-    const names: [string, string] = data.localIdx === 0 ? ['YOU (host)', 'OPPONENT'] : ['OPPONENT', 'YOU'];
+    const nm = (i: 0 | 1) => charName(data.chars[i]);
+    const names: [string, string] =
+      data.localIdx === 0 ? [`YOU (host) · ${nm(0)}`, `OPPONENT · ${nm(1)}`] : [`OPPONENT · ${nm(0)}`, `YOU · ${nm(1)}`];
     this.stage = new FightStage(this, names, data.localIdx);
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'LEAVE', () => this.leave());
 

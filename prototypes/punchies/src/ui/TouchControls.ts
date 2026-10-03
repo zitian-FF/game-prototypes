@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { IntentLayer, TapIntent } from '../input/intents';
 import { tune } from '../sim/tune';
+import { punchCfg } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { fatigueLevel } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -201,10 +202,10 @@ export class TouchControls {
 
     // Fatigue pips under JAB / CROSS / HOOK labels
     if (this.isShown('fatigue')) {
-    this.drawFatigue(MAIN.x - MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'jab'), tune.punches.jab.fatigueBars);
-    this.drawFatigue(MAIN.x + MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'cross'), tune.punches.cross.fatigueBars);
+    this.drawFatigue(MAIN.x - MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'jab'), punchCfg(f, 'jab').fatigueBars);
+    this.drawFatigue(MAIN.x + MAIN.r / 2, MAIN.y + 12, fatigueLevel(f, 'cross'), punchCfg(f, 'cross').fatigueBars);
     const hook = ARC_BUTTONS[0];
-    this.drawFatigue(hook.x, hook.y + 12, fatigueLevel(f, 'hook'), tune.punches.hook.fatigueBars);
+    this.drawFatigue(hook.x, hook.y + 12, fatigueLevel(f, 'hook'), punchCfg(f, 'hook').fatigueBars);
     }
 
     for (const b of ARC_BUTTONS) {

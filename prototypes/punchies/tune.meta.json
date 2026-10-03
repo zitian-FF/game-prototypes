@@ -1062,5 +1062,782 @@
     "min": 0,
     "max": 3,
     "step": 1
+  },
+  "characters.marco.hp": {
+    "cat": "Characters",
+    "desc": "Marco: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.marco.stamina": {
+    "cat": "Characters",
+    "desc": "Marco: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.marco.regen": {
+    "cat": "Characters",
+    "desc": "Marco: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.marco.stun": {
+    "cat": "Characters",
+    "desc": "Marco: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.marco.speed": {
+    "cat": "Characters",
+    "desc": "Marco: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.marco.jab.damage": {
+    "cat": "Characters",
+    "desc": "Marco jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.jab.push": {
+    "cat": "Characters",
+    "desc": "Marco jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.marco.jab.reach": {
+    "cat": "Characters",
+    "desc": "Marco jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.marco.jab.startup": {
+    "cat": "Characters",
+    "desc": "Marco jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Marco jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.cross.damage": {
+    "cat": "Characters",
+    "desc": "Marco cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.cross.push": {
+    "cat": "Characters",
+    "desc": "Marco cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.marco.cross.reach": {
+    "cat": "Characters",
+    "desc": "Marco cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.marco.cross.startup": {
+    "cat": "Characters",
+    "desc": "Marco cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Marco cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.hook.damage": {
+    "cat": "Characters",
+    "desc": "Marco hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.hook.push": {
+    "cat": "Characters",
+    "desc": "Marco hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.marco.hook.reach": {
+    "cat": "Characters",
+    "desc": "Marco hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.marco.hook.startup": {
+    "cat": "Characters",
+    "desc": "Marco hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Marco hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.marco.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.marco.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.marco.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.marco.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.hp": {
+    "cat": "Characters",
+    "desc": "Mia: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.mia.stamina": {
+    "cat": "Characters",
+    "desc": "Mia: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.mia.regen": {
+    "cat": "Characters",
+    "desc": "Mia: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.mia.stun": {
+    "cat": "Characters",
+    "desc": "Mia: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.mia.speed": {
+    "cat": "Characters",
+    "desc": "Mia: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.mia.jab.damage": {
+    "cat": "Characters",
+    "desc": "Mia jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Mia jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Mia jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.jab.push": {
+    "cat": "Characters",
+    "desc": "Mia jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.mia.jab.reach": {
+    "cat": "Characters",
+    "desc": "Mia jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.mia.jab.startup": {
+    "cat": "Characters",
+    "desc": "Mia jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Mia jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Mia jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.cross.damage": {
+    "cat": "Characters",
+    "desc": "Mia cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Mia cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Mia cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.cross.push": {
+    "cat": "Characters",
+    "desc": "Mia cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.mia.cross.reach": {
+    "cat": "Characters",
+    "desc": "Mia cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.mia.cross.startup": {
+    "cat": "Characters",
+    "desc": "Mia cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Mia cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Mia cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.hook.damage": {
+    "cat": "Characters",
+    "desc": "Mia hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Mia hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Mia hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.hook.push": {
+    "cat": "Characters",
+    "desc": "Mia hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.mia.hook.reach": {
+    "cat": "Characters",
+    "desc": "Mia hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.mia.hook.startup": {
+    "cat": "Characters",
+    "desc": "Mia hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Mia hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Mia hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.mia.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.mia.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.mia.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.mia.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Mia uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.hp": {
+    "cat": "Characters",
+    "desc": "Bruno: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.bruno.stamina": {
+    "cat": "Characters",
+    "desc": "Bruno: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.bruno.regen": {
+    "cat": "Characters",
+    "desc": "Bruno: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.bruno.stun": {
+    "cat": "Characters",
+    "desc": "Bruno: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.bruno.speed": {
+    "cat": "Characters",
+    "desc": "Bruno: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.bruno.jab.damage": {
+    "cat": "Characters",
+    "desc": "Bruno jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Bruno jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Bruno jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.jab.push": {
+    "cat": "Characters",
+    "desc": "Bruno jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.bruno.jab.reach": {
+    "cat": "Characters",
+    "desc": "Bruno jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.bruno.jab.startup": {
+    "cat": "Characters",
+    "desc": "Bruno jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Bruno jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Bruno jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.cross.damage": {
+    "cat": "Characters",
+    "desc": "Bruno cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Bruno cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Bruno cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.cross.push": {
+    "cat": "Characters",
+    "desc": "Bruno cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.bruno.cross.reach": {
+    "cat": "Characters",
+    "desc": "Bruno cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.bruno.cross.startup": {
+    "cat": "Characters",
+    "desc": "Bruno cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Bruno cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Bruno cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.hook.damage": {
+    "cat": "Characters",
+    "desc": "Bruno hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Bruno hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Bruno hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.hook.push": {
+    "cat": "Characters",
+    "desc": "Bruno hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.bruno.hook.reach": {
+    "cat": "Characters",
+    "desc": "Bruno hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.bruno.hook.startup": {
+    "cat": "Characters",
+    "desc": "Bruno hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Bruno hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Bruno hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.bruno.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.bruno.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.bruno.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.bruno.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Bruno uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
   }
 }
