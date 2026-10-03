@@ -55,9 +55,9 @@ test('map: rings run outside in, tier 4 in the middle, tier 1 on the outside', (
     const ns = map.nodes.filter((n) => n.tier === tier);
     return ns.reduce((a, n) => a + dist(n.pos, c), 0) / ns.length;
   };
-  assert.ok(meanR(4) < meanR(3) && meanR(3) < meanR(1) && meanR(2) < meanR(1));
-  // Power buildings live in tiers 1 and 2, and tiers 3 and 4 are pure points.
-  for (const n of map.nodes) if (n.tier >= 3) assert.equal(n.kind, 'points');
+  assert.ok(meanR(4) < meanR(3) && meanR(3) < meanR(1));
+  // Tier 3 is the missile turrets, tier 4 the silo; refineries are tier 2.
+  for (const n of map.nodes) if (n.tier >= 3) assert.ok(n.kind === 'points' || n.kind === 'turret');
 });
 
 test('map: layout is point-symmetric so both teams are even', () => {
@@ -138,15 +138,15 @@ test('map: 20 HQs fit in a safe zone block, one per cell, none overlapping', () 
   }
 });
 
-test('map: the real layout has the silo, 2 refineries, 2 turrets, 2 radars, 8 boosts and 2 hospitals', () => {
+test('map: the real layout has the silo, 2 refineries (tier 2), 2 turrets (tier 3), 2 radars, 8 boosts and 2 hospitals', () => {
   const tune = loadTune();
   for (const seed of [1, 2, 3, 4]) {
     const map = generateMap(new Rng(seed), tune);
     const count = (kind: string, tier?: number) => map.nodes.filter((n) => n.kind === kind && (tier === undefined || n.tier === tier)).length;
     assert.equal(map.nodes.length, 17, `seed ${seed}`);
     assert.equal(count('points', 4), 1, 'nuclear silo');
-    assert.equal(count('points', 3), 2, 'oil refineries');
-    assert.equal(count('turret', 2), 2, 'missile turrets are tier 2');
+    assert.equal(count('points', 2), 2, 'oil refineries are tier 2');
+    assert.equal(count('turret', 3), 2, 'missile turrets are tier 3');
     assert.equal(count('largeVision', 2), 2, 'radar towers');
     for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown']) assert.equal(count(kind, 1), 2, kind);
     assert.equal(count('hospital', 1), 2);
@@ -159,14 +159,28 @@ test('map: the real layout has the silo, 2 refineries, 2 turrets, 2 radars, 8 bo
   }
 });
 
-test('map: radar towers are placed to see many nodes, better than a typical spot', () => {
+test('map: radar towers are placed to see the tier 3 and 4 nodes first', () => {
   const tune = loadTune();
   const reach = tune.nodes.largeVision.visionRadiusCells * tune.map.cellSize;
-  for (const seed of [1, 2, 3]) {
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
     const map = generateMap(new Rng(seed), tune);
+    const high = map.nodes.filter((n) => n.tier >= 3);
     for (const radar of map.nodes.filter((n) => n.kind === 'largeVision')) {
-      const seen = map.nodes.filter((o) => o !== radar && dist(o.pos, radar.pos) <= reach).length;
-      assert.ok(seen >= 7, `seed ${seed}: radar ${radar.id} sees only ${seen}`);
+      const seenHigh = high.filter((o) => dist(o.pos, radar.pos) <= reach).length;
+      assert.ok(seenHigh >= 2, `seed ${seed}: radar ${radar.id} sees only ${seenHigh} of the ${high.length} high tier nodes`);
+    }
+  }
+});
+
+test('map: tier 1 and 2 nodes sit toward their own spawn side so there is early action', () => {
+  const tune = loadTune();
+  const hi = (tune.map.widthCells - 1) / 2;
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const map = generateMap(new Rng(seed), tune);
+    for (const n of map.nodes.filter((x) => x.tier <= 2 && x.kind !== 'largeVision')) {
+      const own = Math.min(n.cell.cx, tune.map.widthCells - 1 - n.cell.cx); // columns from its nearest edge
+      const ring = tune.map.rings.find((r) => (r.kindTiers?.[n.kind] ?? r.tier) === n.tier && r.nodes[n.kind])!;
+      assert.ok(own <= Math.round((hi - 1) * (ring.spawnBand?.[1] ?? 1)) + 1, `seed ${seed}: ${n.kind} at column ${own}`);
     }
   }
 });

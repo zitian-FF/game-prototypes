@@ -425,7 +425,7 @@ export class GameScene extends BaseScene {
           if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: collect its caches with scouts`, 'info');
           break;
         case 'nodesUnlocked':
-          session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Oil Refineries unlocked: they can be captured now', 'good');
+          session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Missile Turrets unlocked: they can be captured now', 'good');
           break;
         case 'matchEnded':
           break;
@@ -523,7 +523,7 @@ export class GameScene extends BaseScene {
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.55) : dim);
         if (n.kind === 'points' && n.tier >= 4) {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
-        } else if (n.kind === 'points' && n.tier === 3) {
+        } else if (n.kind === 'points' && n.tier >= 2) {
           drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
         } else if (n.kind === 'turret') {
           drawTurret(g, p.x, p.y, base, hw * 1.05);
@@ -697,7 +697,7 @@ export class GameScene extends BaseScene {
     if (n.kind === 'largeVision') effects.push(`reveals ${k.visionRadiusCells} cells around it`);
     if (n.kind === 'turret') {
       const t = tune.turret;
-      effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Oil Refinery and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
+      effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Missile Turret and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
     }
     if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
     if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder, lost with the node. Scouts can bank it by collecting its caches.`, COLORS.warn]);

@@ -8,7 +8,24 @@
     "ranks": 20,
     "fourSquadShare": 0.2,
     "threeSquadShare": 0.3,
-    "bands": [[1, 12], [7, 16], [13, 20], [16, 20]]
+    "bands": [
+      [
+        1,
+        12
+      ],
+      [
+        7,
+        16
+      ],
+      [
+        13,
+        20
+      ],
+      [
+        16,
+        20
+      ]
+    ]
   },
   "power": {
     "min": 50,
@@ -110,18 +127,19 @@
         "minR": 0.1,
         "maxR": 0.3,
         "nodes": {
-          "points": 2,
-          "turret": 2
-        },
-        "kindTiers": {
           "turret": 2
         }
       },
       {
         "tier": 2,
         "minR": 0.3,
-        "maxR": 0.55,
+        "maxR": 0.65,
+        "spawnBand": [
+          0.3,
+          0.85
+        ],
         "nodes": {
+          "points": 2,
           "largeVision": 2
         },
         "strategic": [
@@ -130,8 +148,12 @@
       },
       {
         "tier": 1,
-        "minR": 0.55,
-        "maxR": 0.95,
+        "minR": 0.25,
+        "maxR": 0.98,
+        "spawnBand": [
+          0.1,
+          0.7
+        ],
         "nodes": {
           "attackBoost": 2,
           "defenseBoost": 2,

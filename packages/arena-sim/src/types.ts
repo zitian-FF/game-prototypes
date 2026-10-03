@@ -55,8 +55,16 @@ export interface RingTune {
   nodes: Partial<Record<NodeKind, number>>;
   /** Kinds in this ring that sit at a different tier than the ring's own. */
   kindTiers?: Partial<Record<NodeKind, number>>;
-  /** Kinds placed last, at the spot that sees the most other nodes (vision towers). */
+  /**
+   * Kinds placed last, at the spot that sees the most tier 3 and 4 nodes (vision towers), then the most other
+   * nodes. Placing them last means the high tier nodes already exist when they pick.
+   */
   strategic?: NodeKind[];
+  /**
+   * Keep this ring's nodes toward the team's own spawn: the column of a node in its team's half, as a fraction
+   * of the way from the map edge (0) to the centre column (1). Both teams mirror it, so it stays fair.
+   */
+  spawnBand?: [number, number];
 }
 
 export interface NodeKindTune {
@@ -125,7 +133,10 @@ export interface Tune {
     settleSeconds: number;
     minCaches: number;
     maxCaches: number;
-    /** One more cache each time the pool has earned this many points in total. */
+    /**
+     * Every time the pool has earned this many points a cache appears (four the first time, then one at a
+     * time up to maxCaches). Its value is the pool total then divided by the caches there are, and stays fixed.
+     */
     cachePointsStep: number;
     scatterMinCells: number;
     scatterMaxCells: number;
@@ -263,6 +274,8 @@ export interface Cache {
   id: string;
   nodeId: NodeId;
   pos: Vec;
+  /** Fixed when it spawns (the pool then divided by the number of caches): what a scout banks by touching it. */
+  value: number;
 }
 
 export type ScoutTarget = MarchTarget | { kind: 'cache'; cacheId: string };
@@ -326,10 +339,12 @@ export interface NodeState {
   poolOpen: boolean;
   /** Temporary score: counted for the holder, lost with the node. */
   pool: number;
-  /** Everything the pool has earned this cycle, including what was collected; sets how many caches exist. */
+  /** Everything the pool has earned this cycle, including what was collected. */
   poolEarned: number;
-  /** The cache count the earned total has unlocked so far. */
-  cacheTier: number;
+  /** Cache steps passed so far: every cachePointsStep earned spawns more caches. */
+  batches: number;
+  /** Caches spawned this cycle, for ids and positions that do not depend on when time advanced. */
+  cacheSpawned: number;
   caches: Cache[];
 }
 
