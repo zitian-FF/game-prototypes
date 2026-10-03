@@ -3,6 +3,14 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.8.0, firestorm-net 0.8.0
+
+**What changed:** arena-sim team views list enemy scouts inside vision (`enemyScouts`); firestorm-net moves to
+protocol 6, and its bots have individual cache-stealing appetites and cap scouts per cache. Only firestorm-arena
+uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.7.0, firestorm-net 0.7.0
 
 **What changed:** arena-sim's map generator gains per-ring spawn bands and scores radar towers on tier 3 and 4

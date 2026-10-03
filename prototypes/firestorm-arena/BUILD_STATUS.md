@@ -69,7 +69,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - Daily capacity estimate on the landing page (meter Durable Object `QuotaMeter`, `/api/quota`, `?create=1` gate); the first deploy adds migration v2 for the new class.
 - Score pools and caches (see BRIEF revision): sim, wire (`caches`), events, bot scouting, client drawing, cache orders.
 - Layout revision (branch): refinery T2 in the mid ring, turret T3, T1/T2 nodes banded toward each spawn, radars placed for T3/T4 vision; cache values fixed at spawn; bots steal the closest enemy cache.
-- Packages: arena-sim 0.7.0, firestorm-net 0.7.0, protocol 5.
+- Enemy scouts are visible inside vision (`enemyScouts`); bots have individual steal appetites and a two-scouts-per-cache cap.
+- Packages: arena-sim 0.8.0, firestorm-net 0.8.0, protocol 6.
 
 ## Key technical decisions
 

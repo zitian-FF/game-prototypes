@@ -41,5 +41,36 @@ test('bots: with enemy caches in view they send a scout to the closest one and l
       }
     }
   }
-  assert.ok(stole >= 20, `most decisions go for the cache (${stole} of 40)`);
+  // Bots differ in appetite: some go for caches nearly every time, others rarely.
+  assert.ok(stole >= 8 && stole <= 36, `bots differ, they do not all go for the cache (${stole} of 40)`);
+  const perBot: number[] = [];
+  for (let seed = 1; seed <= 12; seed++) {
+    let n = 0;
+    const brain = new BotBrain('bot', new Rng(seed));
+    const input = { playerId: 'bot', team: 0 as const, view: view(), tune: { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 } } } as unknown as Tune, speed: 1, nowMs: 0 };
+    brain.think(input);
+    for (let i = 1; i <= 60; i++) {
+      for (const c of brain.think({ ...input, nowMs: i * 30_000 })) if (c.type === 'scout' && c.target.kind === 'cache') n++;
+    }
+    perBot.push(n);
+  }
+  assert.ok(Math.max(...perBot) - Math.min(...perBot) >= 8, `appetites differ between bots: ${perBot.join(',')}`);
+});
+
+test('bots: at most two scouts of a team head for the same cache', () => {
+  const v = view();
+  const near = v.caches.find((c) => c.id === 'near')!;
+  (v as unknown as { scouts: unknown[] }).scouts = [
+    { owner: 'bot', index: 0, state: 'home' },
+    { owner: 'mate1', index: 0, state: 'out', to: near.pos },
+    { owner: 'mate2', index: 0, state: 'out', to: near.pos },
+  ];
+  for (let seed = 1; seed <= 40; seed++) {
+    const brain = new BotBrain('bot', new Rng(seed));
+    const input = { playerId: 'bot', team: 0 as const, view: v, tune: { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 } } } as unknown as Tune, speed: 1, nowMs: 0 };
+    brain.think(input);
+    for (const c of brain.think({ ...input, nowMs: 60_000 })) {
+      if (c.type === 'scout' && c.target.kind === 'cache') assert.equal(c.target.cacheId, 'far', 'the crowded cache is skipped');
+    }
+  }
 });

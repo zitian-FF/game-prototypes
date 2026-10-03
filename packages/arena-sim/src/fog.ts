@@ -128,6 +128,18 @@ export interface OwnScoutView {
   arriveMs?: number;
 }
 
+/** A scout of the other team, only listed while it is inside your vision. Position is derived from the flight. */
+export interface EnemyScoutView {
+  /** Commander name: public inside vision. */
+  owner: string;
+  index: number;
+  state: 'out' | 'back';
+  from: Vec;
+  to: Vec;
+  startMs: number;
+  arriveMs: number;
+}
+
 export interface TeamView {
   timeMs: number;
   points: [number, number];
@@ -136,6 +148,8 @@ export interface TeamView {
   squads: OwnSquadView[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
+  /** Enemy scouts inside vision. */
+  enemyScouts: EnemyScoutView[];
   /** Every enemy march (positions and types are public; power needs a scout). */
   enemyMarches: EnemyMarchView[];
   /** Enemy HQs inside vision (including stranded ones), masked. */
@@ -234,6 +248,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
   const enemyHqs: EnemyHqView[] = [];
   const hqs: OwnHqView[] = [];
   const scouts: OwnScoutView[] = [];
+  const enemyScouts: EnemyScoutView[] = [];
   const maxHp = game.tune.hq.hp;
   for (const p of game.players.values()) {
     if (p.team === team) {
@@ -262,6 +277,14 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       });
       continue;
     }
+    p.scouts.forEach((sc, index) => {
+      if (sc.kind === 'home') return;
+      const k = sc.arriveMs <= sc.startMs ? 1 : Math.min(1, Math.max(0, (now - sc.startMs) / (sc.arriveMs - sc.startMs)));
+      const pos = { x: sc.from.x + (sc.to.x - sc.from.x) * k, y: sc.from.y + (sc.to.y - sc.from.y) * k };
+      if (game.isVisibleTo(team, pos)) {
+        enemyScouts.push({ owner: p.id, index, state: sc.kind, from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs });
+      }
+    });
     if (p.hq.location.kind === 'safe') continue;
     if (game.isVisibleTo(team, p.hq.pos)) {
       enemyHqs.push({ id: p.hq.id, owner: p.id, pos: p.hq.pos, burning: p.hq.hp < maxHp });
@@ -287,6 +310,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
     squads,
     hqs,
     scouts,
+    enemyScouts,
     enemyMarches,
     enemyHqs,
     scoutReports: reports,

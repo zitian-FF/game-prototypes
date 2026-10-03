@@ -614,4 +614,9 @@ client.
   next 500 earned brings four again. This supersedes the "equal share of the pool" wording above.
 - Bots: with enemy score caches in view, a bot with a scout at home sends it to the closest one (70% of decisions)
   and never collects a cache of a node its own team holds.
+- Enemy scouts: scouts of the other team are drawn (with the commander's name) while they are inside your vision,
+  so you can see them fly to a node, an HQ or a cache. Their position is only sent while it is inside your vision.
+- Bot variance: each bot has its own appetite for stealing caches, drawn once between 10% and 85% of decisions, and
+  at most two scouts of a team head for the same cache (counting the ones already flying and those sent in the same
+  decision round).
 - Where this section conflicts with older text above, this section wins.

@@ -634,6 +634,17 @@ export class GameScene extends BaseScene {
       add(pos, () => drawUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now, 1, { scale: US }));
     }
 
+    // Enemy scouts inside our vision, with the commander's name.
+    for (const sc of view.enemyScouts) {
+      const pos = marchPos({ from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs }, simMs);
+      const p = iso.p(pos.x, pos.y);
+      const to = iso.p(sc.to.x, sc.to.y);
+      add(pos, () => {
+        drawUnit(g, 'scout', p.x, p.y, this.face(`escout:${sc.owner}#${sc.index}`, p.x, to.x), COLORS.enemy, now, 1, { scale: US });
+        this.label(sc.owner, p.x, p.y - unitHeight('scout') * US - 18, '#ffb08a', 11);
+      });
+    }
+
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.draw();
     this.drawMissiles(simMs, now);

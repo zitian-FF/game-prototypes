@@ -8,6 +8,7 @@ import type {
   CombatLog,
   EnemyHqView,
   EnemyMarchView,
+  EnemyScoutView,
   NodeView,
   OwnHqView,
   OwnScoutView,
@@ -26,6 +27,7 @@ export interface WireView {
   squads: WireSquad[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
+  enemyScouts: EnemyScoutView[];
   enemyMarches: WireEnemyMarch[];
   enemyHqs: EnemyHqView[];
   scoutReports: ScoutReport[];
@@ -39,6 +41,7 @@ type Collections = {
   squads: WireSquad;
   hqs: OwnHqView;
   scouts: OwnScoutView;
+  enemyScouts: EnemyScoutView;
   enemyMarches: WireEnemyMarch;
   enemyHqs: EnemyHqView;
   scoutReports: ScoutReport;
@@ -52,6 +55,7 @@ const KEYS: { [K in CollectionName]: (item: Collections[K]) => string } = {
   squads: (s) => s.id,
   hqs: (h) => h.id,
   scouts: (s) => `${s.owner}#${s.index}`,
+  enemyScouts: (s) => `${s.owner}#${s.index}`,
   enemyMarches: (m) => m.id,
   enemyHqs: (h) => h.id,
   scoutReports: (r) => String(r.id),
@@ -81,6 +85,7 @@ export function toWire(view: TeamView): WireView {
     }),
     hqs: view.hqs,
     scouts: view.scouts,
+    enemyScouts: view.enemyScouts,
     enemyMarches: view.enemyMarches.map((m) => {
       const { pos: _pos, ...rest } = m;
       return rest;

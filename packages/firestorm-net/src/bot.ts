@@ -44,16 +44,23 @@ const THREAT_MS = 30_000;
 /** With fewer own garrisons than this, a bot leans toward reinforcing its own nodes. */
 const WANT_GARRISONS = 3;
 
-/** Chance, each decision, that a bot goes for a visible enemy cache before anything else. */
-const STEAL_CHANCE = 0.7;
+/** Each bot has its own appetite for stealing caches, drawn once: from rarely to most of the time. */
+const STEAL_MIN = 0.1;
+const STEAL_MAX = 0.85;
+/** At most this many scouts of one team head for the same cache. */
+const MAX_PER_CACHE = 2;
 
 export class BotBrain {
   private nextActMs: number | undefined;
+  /** This bot's chance, each decision, of going for a visible enemy cache first. */
+  private readonly stealChance: number;
 
   constructor(
     readonly playerId: string,
     private readonly rng: Rng,
-  ) {}
+  ) {
+    this.stealChance = STEAL_MIN + rng.next() * (STEAL_MAX - STEAL_MIN);
+  }
 
   think(input: BotInput): CommandBody[] {
     const { nowMs } = input;
@@ -66,7 +73,7 @@ export class BotBrain {
     this.nextActMs = nowMs + this.wait();
 
     // Opportunistic: an enemy score cache inside our vision is worth a scout trip right now.
-    if (this.rng.next() < STEAL_CHANCE) {
+    if (this.rng.next() < this.stealChance) {
       const steal = this.stealCache(input);
       if (steal) return [steal];
     }
@@ -150,18 +157,29 @@ export class BotBrain {
    * Send a scout to the closest cache that belongs to an enemy-held node, among those in view. Caches of a node
    * our own team holds are left alone: collecting those only secures what we already have.
    */
-  private stealCache({ view, playerId, team }: BotInput): CommandBody | null {
+  private stealCache({ view, playerId, team, claims }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const hq = view.hqs.find((h) => h.owner === playerId);
     if (!scout || !hq) return null;
     const enemyNode = new Set(view.nodes.filter((n) => n.owner !== null && n.owner !== team).map((n) => n.id));
+    // Scouts of our team already on their way, so the whole team does not pile onto one cache.
+    const heading = new Map<string, number>();
+    for (const s of view.scouts) {
+      if (s.state !== 'out' || !s.to) continue;
+      const to = s.to;
+      const hit = view.caches.find((c) => Math.hypot(c.pos.x - to.x, c.pos.y - to.y) < 1);
+      if (hit) heading.set(hit.id, (heading.get(hit.id) ?? 0) + 1);
+    }
     let best: { id: string; d: number } | null = null;
     for (const c of view.caches) {
       if (!enemyNode.has(c.nodeId)) continue;
+      if ((heading.get(c.id) ?? 0) + (claims?.get(c.id) ?? 0) >= MAX_PER_CACHE) continue;
       const d = Math.hypot(c.pos.x - hq.pos.x, c.pos.y - hq.pos.y);
       if (!best || d < best.d) best = { id: c.id, d };
     }
-    return best ? { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } } : null;
+    if (!best) return null;
+    claims?.set(best.id, (claims.get(best.id) ?? 0) + 1);
+    return { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } };
   }
 
   private scout({ view, playerId, team, nowMs }: BotInput): CommandBody | null {
