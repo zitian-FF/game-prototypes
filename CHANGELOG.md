@@ -3,6 +3,18 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-03 — firestorm shared packages: arena-sim 0.4.0, firestorm-net 0.3.0
+
+**What changed:** arena-sim adds HQ garrisons, individual (vanity) scoring with a
+leaderboard in the match result, 2 to 4 squads per commander with overlapping rank
+bands, global node ownership and public enemy marches. firestorm-net moves to
+protocol 3. Only firestorm-arena uses either package.
+
+**Why:** firestorm-arena playtest revisions.
+
+**Applies to:** firestorm-arena only. Prototypes that never opted into these
+packages are unaffected.
+
 ## 2026-09-29 — suits itch.io slot becomes the "Current WIP" slot
 
 **What changed:** `deploy-suits-itch.yml` is replaced by

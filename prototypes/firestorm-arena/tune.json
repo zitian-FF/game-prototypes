@@ -6,14 +6,9 @@
   },
   "roster": {
     "ranks": 20,
-    "squad1RankMin": 1,
-    "squad1RankMax": 20,
-    "squad2Chance": 0.8,
-    "squad2RankMin": 10,
-    "squad2RankMax": 20,
-    "squad3Chance": 0.1,
-    "squad3RankMin": 15,
-    "squad3RankMax": 20
+    "fourSquadShare": 0.2,
+    "threeSquadShare": 0.3,
+    "bands": [[1, 12], [7, 16], [13, 20], [16, 20]]
   },
   "power": {
     "min": 50,
@@ -58,6 +53,12 @@
       80
     ],
     "garrisonPointsPerSecond": 10
+  },
+  "personalScoring": {
+    "perTroopDefeated": 1,
+    "perNodeCaptured": 1000,
+    "perGarrisonSecond": 10,
+    "perHqDowned": 500
   },
   "garrison": {
     "maxSquads": 20,
@@ -157,7 +158,7 @@
     },
     "hospital": {
       "visionRadiusCells": 6,
-      "poolRegenPerSecond": 100
+      "poolRegenPerSecond": 20
     }
   }
 }

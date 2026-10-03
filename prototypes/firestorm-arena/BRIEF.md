@@ -558,4 +558,18 @@ client.
   march is also public with its unit type and position; the client draws the unit sprite while the march
   is inside your own vision and a 3D question mark while it is in fog. Power and commander still need a scout.
 - Allied march lines are drawn at half their previous strength.
+- Squads per commander: every commander has 2 to 4 squads, dealt per team: 20% get 4, 30% get 3, the
+  rest 2. Rank bands (1 is strongest) overlap with the next one and are in tune.json `roster.bands`:
+  squad 1 ranks 1 to 12, squad 2 ranks 7 to 16, squad 3 ranks 13 to 20, squad 4 ranks 16 to 20. Squads
+  1 and 2 never reach the weakest ranks; squads 3 and 4 are much weaker and mostly for strategic moves.
+- HQ garrison: a commander can send a squad from their HQ to a friendly (ally) HQ that is out on a node,
+  and it garrisons there exactly like at a node (same capacity, one squad per commander, last in fights
+  first, Return to HQ recalls it). Garrisoned squads add defenders to that HQ. If the HQ teleports or is
+  sent home, its guests walk home from where it was. HQs in a safe zone cannot be garrisoned.
+- Hospital: +20 reserve troops per second per tier (was 100).
+- Combat result text: after a fight your team was in, the victor shows one combined number of troops
+  defeated (like -23123) that rises and fades; each defeated commander shows "Defeated" (up to 3).
+- Individual scoring (vanity only, never affects the match): +1 per troop defeated, +1000 per node
+  captured, +10 per second garrisoning a node, +500 per HQ taken to 0 HP. Values are in tune.json
+  `personalScoring`. The victory screen shows the top 10 commanders and your own row.
 - Where this section conflicts with older text above, this section wins.

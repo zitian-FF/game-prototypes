@@ -45,8 +45,10 @@ export interface OwnSquadView {
   maxTroops: number;
   defend: boolean;
   pos: Vec;
-  state: 'hq' | 'garrison' | 'march';
+  state: 'hq' | 'garrison' | 'hqGarrison' | 'march';
   nodeId?: NodeId;
+  /** The friendly HQ this squad is garrisoned at. */
+  hqId?: HqId;
   march?: March;
   /** Defeated and walking home: draw it on fire. */
   burning: boolean;
@@ -89,6 +91,8 @@ export interface OwnHqView {
   burning: boolean;
   location: HqLocation;
   nextTeleportAtMs: number;
+  /** Allied squads garrisoned here. */
+  garrisonCount: number;
 }
 
 export interface OwnScoutView {
@@ -172,6 +176,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         burning: sq.troops <= 0 && sq.state.kind === 'march',
       };
       if (sq.state.kind === 'garrison') v.nodeId = sq.state.nodeId;
+      if (sq.state.kind === 'hqGarrison') v.hqId = sq.state.hqId;
       if (sq.state.kind === 'march') v.march = sq.state.march;
       squads.push(v);
     } else if (sq.state.kind === 'march') {
@@ -207,6 +212,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         burning: p.hq.hp < maxHp,
         location: p.hq.location,
         nextTeleportAtMs: p.nextTeleportAtMs,
+        garrisonCount: p.hq.garrison.length,
       });
       p.scouts.forEach((sc, index) => {
         const v: OwnScoutView = { owner: p.id, index, state: sc.kind };

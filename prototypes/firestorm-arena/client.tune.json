@@ -26,6 +26,8 @@
   },
   "fx": {
     "combatSeconds": 2.5,
+    "floatSeconds": 2.6,
+    "floatRise": 48,
     "sprayCount": 14,
     "eruptionEverySeconds": 3.5,
     "fireSeconds": 6,

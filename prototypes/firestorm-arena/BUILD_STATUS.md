@@ -52,7 +52,11 @@ Everything below the first two bullets of the merged work is on the branch, not 
   turret, hospital (tent) and the turret missile redrawn from the new references. Fix: the second match
   hung on "Building the map" because the pooled text labels of the first match were destroyed; the pool
   is now reset when the scene starts.
-- Packages: arena-sim 0.3.0, firestorm-net 0.2.0 (view semantics changed, shape only gained `type`).
+- Round three (on the branch, unmerged): 2 to 4 squads per commander (20% x4, 30% x3, rest x2, dealt per team)
+  from overlapping rank bands (1-12, 7-16, 13-20, 16-20); HQ garrison at friendly HQs; hospital 20/s;
+  combat result floaters (victor combined -N, "Defeated"); individual vanity scoring with a leaderboard on the
+  victory screen.
+- Packages: arena-sim 0.4.0, firestorm-net 0.3.0, protocol 3.
 
 ## Key technical decisions
 
@@ -71,12 +75,17 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - Cost: bots issue about 1,150 commands per match (about 3,000 row writes), roughly 33
   matches a day on the Workers Free plan.
 - With 17 nodes and 20 players per team, garrisons will be crowded; worth a playtest.
+- Old rooms stored on the live Worker under protocol 2 will not replay under the new roster; start fresh rooms.
 - Missile damage floor is 1 troop (a hit cannot defeat a squad). Say if hits should be
   able to kill.
 - Placeholder numbers (reserve pool, score rates) still unplayed; BRIEF.md has a revision
   section at the end that wins over older text.
 
 ## Known issues
+
+- HQ garrison and the squad-panel rows for 4 squads were checked by tests and typecheck only, not by eye
+  in a browser (the floaters and leaderboard were).
+- Bots never garrison friendly HQs.
 
 - Verified in headless Chromium and the local runtime only; the live Worker has not been
   exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.
@@ -87,7 +96,7 @@ Everything below the first two bullets of the merged work is on the branch, not 
 
 ## Next proposed step
 
-0. Decide on the units-per-commander redistribution (maths sent in chat), then build it.
+0. Playtest squads 3 and 4, HQ garrisons and the leaderboard numbers.
 1. Merge to deploy protocol 2 (Worker and clients together), then Codex smoke-tests it.
 2. Playtest with real players for feel: march time at 257s, 17 nodes, bot activity.
 3. Narrow the Cloudflare token (Codex).

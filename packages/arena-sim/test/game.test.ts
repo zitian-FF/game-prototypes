@@ -576,7 +576,7 @@ test('orders: a squad in the field can only be told to come home', () => {
 
 // ------------------------------------------------------------ hospital
 
-test('hospital: refills every ally pool by 100 a second times tier while held, never past the start', () => {
+test('hospital: refills every ally pool by 20 a second times tier while held, never past the start', () => {
   const H: NodeDef = { id: 'H', kind: 'hospital', x: 300, y: 300, tier: 1 };
   const g = makeGame({
     nodes: [H],
@@ -586,8 +586,8 @@ test('hospital: refills every ally pool by 100 a second times tier while held, n
   marchAndArrive(g, 'a', 's0', 'H');
   const t0 = g.now;
   g.advanceTo(t0 + 3_000);
-  assert.ok(Math.abs(g.players.get('a')!.pool - 400) < 1e-6, `a pool ${g.players.get('a')!.pool}`);
-  assert.ok(Math.abs(g.players.get('c')!.pool - 400) < 1e-6, 'every ally, not just the holder');
+  assert.ok(Math.abs(g.players.get('a')!.pool - 160) < 1e-6, `a pool ${g.players.get('a')!.pool}`);
+  assert.ok(Math.abs(g.players.get('c')!.pool - 160) < 1e-6, 'every ally, not just the holder');
   assert.equal(g.players.get('b')!.pool, 100, 'the enemy gets nothing');
   g.advanceTo(t0 + 60_000);
   assert.equal(g.players.get('a')!.pool, 1000, 'capped at the starting pool');
@@ -635,7 +635,7 @@ test('match: nobody capturing anything is a draw', () => {
     players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
   g.advanceTo(60_000);
-  assert.deepEqual(g.result, { winner: 'draw', points: [0, 0], reason: 'draw' });
+  assert.deepEqual({ ...g.result!, leaderboard: [] }, { winner: 'draw', points: [0, 0], reason: 'draw', leaderboard: [] });
 });
 
 test('match: equal points go to the team that reached the total first', () => {
@@ -659,10 +659,121 @@ test('match: equal points go to the team that reached the total first', () => {
   internals.pointTotals = [5, 5];
   internals.lastAccrueMs = 20_000;
   g.advanceTo(20_000);
-  assert.deepEqual(g.result, { winner: 0, points: [5, 5], reason: 'tieBreak' });
+  assert.deepEqual({ ...g.result!, leaderboard: [] }, { winner: 0, points: [5, 5], reason: 'tieBreak', leaderboard: [] });
 });
 
 test('match: withTune helper really overrides nested values', () => {
   assert.equal(withTune({ hq: { hp: 9 } }).hq.hp, 9);
   assert.equal(withTune({ hq: { hp: 9 } }).hq.slotsPerNode, 8);
+});
+
+// ------------------------------------------------- HQ garrison + vanity score
+
+function allyHqScene() {
+  const g = makeGame({
+    nodes: [N0],
+    tune: scenarioTune(),
+    players: [
+      player('a', 0, [{ power: 60 }, { power: 60 }]),
+      player('c', 0, [{ power: 60 }, { power: 60 }]),
+      player('b', 1, [{ power: 75 }, { power: 75 }]),
+    ],
+  });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
+  return g;
+}
+
+test('hq garrison: an ally can garrison a friendly HQ with the same limits as a node', () => {
+  const g = allyHqScene();
+  must(g, { type: 'march', playerId: 'c', squadId: 's2', target: { kind: 'hq', hqId: 'h0' } });
+  // The same commander cannot queue a second squad behind the first.
+  assert.equal(err(g, { type: 'march', playerId: 'c', squadId: 's3', target: { kind: 'hq', hqId: 'h0' } }), 'commanderAlreadyThere');
+  const events = g.advanceTo(arrival(g, 's2'));
+  assert.equal(events.filter((e) => e.type === 'hqGarrisoned').length, 1);
+  const sq = g.squads.get('s2')!;
+  assert.equal(sq.state.kind, 'hqGarrison');
+  assert.deepEqual(g.players.get('a')!.hq.garrison, ['s2']);
+  assert.equal(err(g, { type: 'march', playerId: 'c', squadId: 's3', target: { kind: 'hq', hqId: 'h0' } }), 'commanderAlreadyThere');
+  assert.equal(err(g, { type: 'march', playerId: 'c', squadId: 's2', target: { kind: 'node', nodeId: 'n0' } }), 'notAtHq');
+  assert.deepEqual(g.checkInvariants(), []);
+  // Return to HQ works from an HQ garrison like from a node garrison.
+  must(g, { type: 'cancel', playerId: 'c', squadId: 's2' });
+  assert.equal(g.players.get('a')!.hq.garrison.length, 0);
+  assert.equal(g.squads.get('s2')!.state.kind, 'march');
+  assert.deepEqual(g.checkInvariants(), []);
+});
+
+test('hq garrison: guests defend the HQ, fight first when last in, and walk home defeated', () => {
+  const g = allyHqScene();
+  must(g, { type: 'march', playerId: 'c', squadId: 's2', target: { kind: 'hq', hqId: 'h0' } });
+  g.advanceTo(arrival(g, 's2'));
+  must(g, { type: 'march', playerId: 'b', squadId: 's4', target: { kind: 'hq', hqId: 'h0' } });
+  const events = g.advanceTo(arrival(g, 's4'));
+  const combat = events.filter((e) => e.type === 'combat') as Extract<GameEvent, { type: 'combat' }>[];
+  assert.equal(combat.length, 1);
+  assert.equal(combat[0].log.fights[0].defender.squadId, 's2', 'the guest fought first (last in)');
+  const guest = g.squads.get('s2')!;
+  if (guest.troops <= 0) {
+    assert.ok(guest.state.kind === 'march' && guest.state.march.purpose === 'home', 'a defeated guest walks home');
+    assert.equal(g.players.get('a')!.hq.garrison.length, 0);
+  }
+  assert.deepEqual(g.checkInvariants(), []);
+});
+
+test('hq garrison: when the HQ teleports, guests walk home from where it was', () => {
+  const g = makeGame({
+    nodes: [N0, N1],
+    tune: scenarioTune(),
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('c', 0, [{ power: 60 }]), player('b', 1, [{ power: 75 }])],
+  });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
+  must(g, { type: 'march', playerId: 'c', squadId: 's2', target: { kind: 'hq', hqId: 'h0' } });
+  g.advanceTo(arrival(g, 's2'));
+  assert.equal(g.squads.get('s2')!.state.kind, 'hqGarrison');
+  const old = { ...g.players.get('a')!.hq.pos };
+  marchAndArrive(g, 'a', 's1', 'n1');
+  g.advanceTo(g.now + 200_000); // wait out the teleport cooldown
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'n1' });
+  const guest = g.squads.get('s2')!;
+  assert.ok(guest.state.kind === 'march' && guest.state.march.purpose === 'home', 'the guest was sent home');
+  assert.deepEqual(guest.state.kind === 'march' ? guest.state.march.from : null, old, 'from the old HQ spot');
+  assert.equal(g.players.get('a')!.hq.garrison.length, 0);
+  assert.deepEqual(g.checkInvariants(), []);
+});
+
+test('vanity score: troops defeated, nodes captured, garrison seconds and HQs downed', () => {
+  const g = makeGame({
+    nodes: [N0],
+    tune: scenarioTune(),
+    players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 75 }])],
+  });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  const t0 = g.now;
+  assert.equal(g.players.get('a')!.stats.nodesCaptured, 1);
+  g.advanceTo(t0 + 10_000);
+  assert.ok(Math.abs(g.players.get('a')!.stats.garrisonSeconds - 10) < 1e-6, 'garrison seconds accrue');
+  marchAndArrive(g, 'b', 's1', 'n0');
+  const a = g.players.get('a')!.stats;
+  const b = g.players.get('b')!.stats;
+  assert.ok(b.troopsDefeated > 0 && a.troopsDefeated > 0, 'both sides are credited with the troops they defeated');
+  assert.equal(b.nodesCaptured, 1);
+  const lb = g.leaderboard();
+  assert.equal(lb.length, 2);
+  const row = lb.find((r) => r.id === 'b')!;
+  assert.equal(row.score, Math.round(b.troopsDefeated * 1 + 1000 + b.garrisonSeconds * 10));
+  assert.ok(lb[0].score >= lb[1].score, 'best first');
+});
+
+test('vanity score: bringing an HQ to 0 HP pays 500 and the result carries the leaderboard', () => {
+  const g = hqScene();
+  for (let i = 0; i < 4; i++) {
+    must(g, { type: 'march', playerId: 'b', squadId: 's2', target: { kind: 'hq', hqId: 'h0' } });
+    g.advanceTo(arrival(g, 's2'));
+    g.advanceTo(arrival(g, 's2'));
+  }
+  assert.equal(g.players.get('b')!.stats.hqsDowned, 1);
+  g.advanceTo(g.tune.match.durationSeconds * 1000 + 1);
+  assert.ok(g.result && g.result.leaderboard.length === 2);
 });

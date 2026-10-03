@@ -15,6 +15,7 @@ import type {
   MarchPurpose,
   MarchTarget,
   MatchResult,
+  PlayerScore,
   NodeId,
   NodeState,
   Player,
@@ -131,6 +132,7 @@ export class ArenaGame {
         location: { kind: 'safe', index: sIndex },
         pos: safeZoneSlotPos(opts.map, spec.team, sIndex, opts.tune),
         epoch: 0,
+        garrison: [],
       };
       const player: Player = {
         id: spec.id,
@@ -142,6 +144,7 @@ export class ArenaGame {
         squadIds: [],
         scouts: Array.from({ length: opts.tune.scout.perHq }, () => ({ kind: 'home' as const })),
         nextTeleportAtMs: 0,
+        stats: { troopsDefeated: 0, nodesCaptured: 0, garrisonSeconds: 0, hqsDowned: 0 },
       };
       this.players.set(spec.id, player);
       this.hqOwner.set(hq.id, spec.id);
@@ -210,6 +213,8 @@ export class ArenaGame {
         return this.players.get(sq.owner)!.hq.pos;
       case 'garrison':
         return this.nodes.get(sq.state.nodeId)!.pos;
+      case 'hqGarrison':
+        return this.hqById(sq.state.hqId)!.pos;
       case 'march': {
         const m = sq.state.march;
         const span = m.arriveMs - m.startMs;
@@ -314,6 +319,9 @@ export class ArenaGame {
     this.pointTotals[0] += r[0] * dt;
     this.pointTotals[1] += r[1] * dt;
     this.regenPools(dt);
+    for (const sq of this.squads.values()) {
+      if (sq.state.kind === 'garrison') this.players.get(sq.owner)!.stats.garrisonSeconds += dt;
+    }
     this.lastAccrueMs = toMs;
     this.history.push({ t: toMs, p: [this.pointTotals[0], this.pointTotals[1]] });
   }
@@ -347,19 +355,36 @@ export class ArenaGame {
     return 0;
   }
 
+  /** Individual leaderboard: vanity only, never read by the rules. */
+  leaderboard(): PlayerScore[] {
+    const k = this.tune.personalScoring;
+    const rows: PlayerScore[] = [];
+    for (const p of this.players.values()) {
+      const s = p.stats;
+      rows.push({
+        id: p.id,
+        team: p.team,
+        ...s,
+        score: Math.round(s.troopsDefeated * k.perTroopDefeated + s.nodesCaptured * k.perNodeCaptured + s.garrisonSeconds * k.perGarrisonSecond + s.hqsDowned * k.perHqDowned),
+      });
+    }
+    return rows.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  }
+
   private finish(): void {
     this.accrue(this.tune.match.durationSeconds * 1000);
     const p = this.pointTotals;
     const eps = 1e-6;
     let result: MatchResult;
     if (Math.abs(p[0] - p[1]) > eps) {
-      result = { winner: p[0] > p[1] ? 0 : 1, points: [p[0], p[1]], reason: 'points' };
+      result = { winner: p[0] > p[1] ? 0 : 1, points: [p[0], p[1]], reason: 'points', leaderboard: [] };
     } else {
       const t0 = this.reachTime(0, p[0]);
       const t1 = this.reachTime(1, p[1]);
-      if (Math.abs(t0 - t1) < eps) result = { winner: 'draw', points: [p[0], p[1]], reason: 'draw' };
-      else result = { winner: t0 < t1 ? 0 : 1, points: [p[0], p[1]], reason: 'tieBreak' };
+      if (Math.abs(t0 - t1) < eps) result = { winner: 'draw', points: [p[0], p[1]], reason: 'draw', leaderboard: [] };
+      else result = { winner: t0 < t1 ? 0 : 1, points: [p[0], p[1]], reason: 'tieBreak', leaderboard: [] };
     }
+    result.leaderboard = this.leaderboard();
     this.matchResult = result;
     this.queue = [];
     this.emit({ type: 'matchEnded', timeMs: this.nowMs, result });
@@ -441,8 +466,12 @@ export class ArenaGame {
       const hq = this.hqById(target.hqId);
       if (!hq) return 'unknownHq';
       if (this.hqOwner.get(hq.id) === player.id) return 'ownHq';
-      if (this.players.get(hq.owner)!.team === player.team) return 'allyHq';
       if (hq.location.kind === 'safe') return 'safeZone';
+      // A friendly HQ takes garrisons like a node does.
+      if (this.players.get(hq.owner)!.team === player.team) {
+        const block = this.hqGarrisonBlock(sq, hq, true);
+        if (block) return block;
+      }
       to = hq.pos;
     }
     const from = this.squadPos(sq);
@@ -517,6 +546,9 @@ export class ArenaGame {
     if (sq.state.kind === 'garrison') {
       const node = this.nodes.get(sq.state.nodeId)!;
       node.garrison = node.garrison.filter((id) => id !== sq.id);
+    } else if (sq.state.kind === 'hqGarrison') {
+      const hq = this.hqById(sq.state.hqId)!;
+      hq.garrison = hq.garrison.filter((id) => id !== sq.id);
     }
   }
 
@@ -600,6 +632,37 @@ export class ArenaGame {
     return null;
   }
 
+  /** Why a squad cannot garrison a friendly HQ: same limits as a node (full, or this commander is already there). */
+  private hqGarrisonBlock(sq: Squad, hq: Hq, countIncoming: boolean): 'nodeFull' | 'commanderAlreadyThere' | null {
+    const g = this.tune.garrison;
+    let mine = 0;
+    for (const id of hq.garrison) if (this.squads.get(id)!.owner === sq.owner) mine++;
+    if (countIncoming) {
+      for (const other of this.squads.values()) {
+        if (other === sq || other.owner !== sq.owner || other.state.kind !== 'march') continue;
+        const m = other.state.march;
+        if (m.purpose === 'hq' && m.hqId === hq.id) mine++;
+      }
+    }
+    if (hq.garrison.length >= g.maxSquads) return 'nodeFull';
+    if (mine >= g.maxPerCommander) return 'commanderAlreadyThere';
+    return null;
+  }
+
+  private garrisonHq(sq: Squad, hq: Hq): void {
+    sq.state = { kind: 'hqGarrison', hqId: hq.id };
+    sq.seq = ++this.stationSeq;
+    hq.garrison.push(sq.id);
+    this.emit({ type: 'hqGarrisoned', timeMs: this.nowMs, hqId: hq.id, squadId: sq.id });
+  }
+
+  /** Defenders of an HQ: its owner's squads at home that are set to defend, plus allied garrisons. Last in fights first. */
+  private hqDefenders(target: Player): Squad[] {
+    const own = target.squadIds.map((id) => this.squads.get(id)!).filter((s) => s.state.kind === 'hq' && s.defend && s.troops > 0);
+    const guests = target.hq.garrison.map((id) => this.squads.get(id)!).filter((s) => s.troops > 0);
+    return [...own, ...guests].sort((a, b) => b.seq - a.seq);
+  }
+
   private garrison(sq: Squad, node: NodeState): void {
     sq.state = { kind: 'garrison', nodeId: node.id };
     sq.seq = ++this.stationSeq;
@@ -673,8 +736,12 @@ export class ArenaGame {
         this.tune,
         this.rng,
       );
+      const aBefore = attacker.troops;
       attacker.troops = res.aTroops;
       d.troops = res.bTroops;
+      // Vanity score: each side is credited with the troops it defeated in this fight.
+      this.players.get(attacker.owner)!.stats.troopsDefeated += dBefore - d.troops;
+      this.players.get(d.owner)!.stats.troopsDefeated += aBefore - attacker.troops;
       fights.push({ defender: this.info(d, dBefore, d.troops), rounds: res.rounds });
       fought++;
       if (d.troops <= 0) defeatedDefenders.push(d);
@@ -728,6 +795,7 @@ export class ArenaGame {
       const previous = node.owner;
       this.pushLog({ kind: 'node', nodeId: node.id }, sq, attackerBefore, out, outcome);
       node.owner = sq.team;
+      this.players.get(sq.owner)!.stats.nodesCaptured++;
       this.emit({ type: 'nodeCaptured', timeMs: this.nowMs, nodeId: node.id, team: sq.team, previous });
       this.garrison(sq, node);
       return;
@@ -752,20 +820,31 @@ export class ArenaGame {
       this.sendHome(sq, from, false);
       return;
     }
+    if (target.team === sq.team) {
+      const block = this.hqGarrisonBlock(sq, hq, false);
+      if (block) {
+        this.emit({ type: 'hqGarrisonRejected', timeMs: this.nowMs, hqId, squadId: sq.id, reason: block });
+        this.sendHome(sq, from, false);
+        return;
+      }
+      this.garrisonHq(sq, hq);
+      return;
+    }
     const attackerBefore = sq.troops;
-    const defenders = target.squadIds
-      .map((id) => this.squads.get(id)!)
-      .filter((s) => s.state.kind === 'hq' && s.defend && s.troops > 0)
-      .sort((a, b) => b.seq - a.seq);
+    const defenders = this.hqDefenders(target);
     const out = this.runStack(sq, defenders);
 
-    // Defeated HQ defenders are already home, so they just refill.
-    for (const d of out.defeatedDefenders) this.queueRefill(d);
+    // Defeated defenders at home just refill; defeated visiting garrisons walk home defeated.
+    for (const d of out.defeatedDefenders) {
+      if (d.state.kind === 'hqGarrison') this.sendHome(d, hq.pos, true);
+      else this.queueRefill(d);
+    }
 
     // Clearing every defender (or finding none) costs the HQ 1 HP.
     let outcome: CombatLog['outcome'];
     if (out.cleared) {
       hq.hp -= 1;
+      if (hq.hp <= 0) this.players.get(sq.owner)!.stats.hqsDowned++;
       outcome = hq.hp <= 0 ? 'hqDefeated' : 'hqDamaged';
     } else {
       outcome = sq.troops <= 0 ? 'attackerDefeated' : 'capReached';
@@ -804,6 +883,8 @@ export class ArenaGame {
 
   private moveHq(player: Player, location: HqLocation, forced: boolean): void {
     const from = player.hq.pos;
+    // Visiting garrisons walk home from the spot the HQ just left.
+    for (const id of [...player.hq.garrison]) this.sendHome(this.squads.get(id)!, from, false);
     this.setHqLocation(player, location);
     this.emit({
       type: 'teleported',
@@ -866,10 +947,7 @@ export class ArenaGame {
       if (owner.hq.epoch !== scout.target.hqEpoch || owner.hq.location.kind === 'safe') {
         empty = true;
       } else {
-        defenders = owner.squadIds
-          .map((id) => this.squads.get(id)!)
-          .filter((s) => s.state.kind === 'hq' && s.defend && s.troops > 0)
-          .sort((a, b) => b.seq - a.seq);
+        defenders = this.hqDefenders(owner);
       }
     }
 
@@ -972,6 +1050,14 @@ export class ArenaGame {
         if (!node || !node.garrison.includes(sq.id)) errs.push(`${sq.id} garrison link broken`);
         if (node && node.owner !== sq.team) errs.push(`${sq.id} garrisons a node its team does not own`);
       }
+    }
+    for (const p of this.players.values()) {
+      for (const id of p.hq.garrison) {
+        const sq = this.squads.get(id);
+        if (!sq || sq.state.kind !== 'hqGarrison' || sq.state.hqId !== p.hq.id) errs.push(`${p.hq.id} lists ${id} but it is not stationed there`);
+        if (sq && sq.team !== p.team) errs.push(`${id} garrisons an enemy HQ`);
+      }
+      if (p.hq.garrison.length > this.tune.garrison.maxSquads) errs.push(`${p.hq.id} garrison over capacity`);
     }
     for (const node of this.nodes.values()) {
       if (node.garrison.length > this.tune.garrison.maxSquads) errs.push(`${node.id} garrison over capacity`);

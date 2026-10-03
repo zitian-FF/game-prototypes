@@ -75,14 +75,11 @@ export interface Tune {
   match: { durationSeconds: number; playersPerTeam: number; startCancelSeconds: number };
   roster: {
     ranks: number;
-    squad1RankMin: number;
-    squad1RankMax: number;
-    squad2Chance: number;
-    squad2RankMin: number;
-    squad2RankMax: number;
-    squad3Chance: number;
-    squad3RankMin: number;
-    squad3RankMax: number;
+    /** Share of commanders per team dealt 4 squads and 3 squads; the rest get 2. */
+    fourSquadShare: number;
+    threeSquadShare: number;
+    /** Rank band per squad slot (1 = strongest). Bands overlap with the next one. */
+    bands: [number, number][];
   };
   power: { min: number; max: number };
   squad: {
@@ -114,6 +111,8 @@ export interface Tune {
   garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
+  /** Individual (vanity) score values. */
+  personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number };
   /**
    * Every pulse each held turret fires a missile at every enemy-held node of
    * minTargetTier or higher. A hit takes damageFraction of max troops from every
@@ -204,6 +203,8 @@ export interface March {
 export type SquadState =
   | { kind: 'hq' }
   | { kind: 'garrison'; nodeId: NodeId }
+  /** Garrisoned at a friendly HQ, defending it like a node garrison. */
+  | { kind: 'hqGarrison'; hqId: HqId }
   | { kind: 'march'; march: March };
 
 export interface Squad {
@@ -235,6 +236,8 @@ export interface Hq {
   pos: Vec;
   /** Bumped on every move so marches that targeted the old spot whiff. */
   epoch: number;
+  /** Allied squads garrisoned here (arrival order, last fought first). Own squads at home are not listed. */
+  garrison: SquadId[];
 }
 
 export type ScoutState =
@@ -261,6 +264,22 @@ export interface Player {
   squadIds: SquadId[];
   scouts: ScoutState[];
   nextTeleportAtMs: number;
+  /** Vanity score ingredients. They never touch the team score or the outcome. */
+  stats: PlayerStats;
+}
+
+export interface PlayerStats {
+  troopsDefeated: number;
+  nodesCaptured: number;
+  /** Seconds spent garrisoning a node, summed over squads. */
+  garrisonSeconds: number;
+  hqsDowned: number;
+}
+
+export interface PlayerScore extends PlayerStats {
+  id: string;
+  team: TeamId;
+  score: number;
 }
 
 export interface NodeState {
@@ -341,6 +360,8 @@ export type GameEvent =
       squadId: SquadId;
       reason: 'nodeFull' | 'commanderAlreadyThere';
     }
+  | { type: 'hqGarrisoned'; timeMs: number; hqId: HqId; squadId: SquadId }
+  | { type: 'hqGarrisonRejected'; timeMs: number; hqId: HqId; squadId: SquadId; reason: 'nodeFull' | 'commanderAlreadyThere' }
   | { type: 'combat'; timeMs: number; log: CombatLog }
   | { type: 'hqDamaged'; timeMs: number; hqId: HqId; hp: number }
   | { type: 'hqDefeated'; timeMs: number; hqId: HqId }
@@ -356,4 +377,6 @@ export interface MatchResult {
   winner: TeamId | 'draw';
   points: [number, number];
   reason: 'points' | 'tieBreak' | 'draw';
+  /** Individual vanity leaderboard, best first. */
+  leaderboard: PlayerScore[];
 }
