@@ -43,7 +43,7 @@
       "fatigueBars": 4,
       "fatigueSpeedPerBar": 0.12,
       "fatigueDamagePerBar": 0.1,
-      "pushHit": 3.0,
+      "pushHit": 3.9,
       "pushBlock": 0.0
     },
     "cross": {
@@ -63,8 +63,8 @@
       "fatigueBars": 2,
       "fatigueSpeedPerBar": 0.24,
       "fatigueDamagePerBar": 0.2,
-      "pushHit": 15.0,
-      "pushBlock": 7.5
+      "pushHit": 19.5,
+      "pushBlock": 9.75
     },
     "hook": {
       "startup": 7,
@@ -84,8 +84,8 @@
       "fatigueBars": 3,
       "fatigueSpeedPerBar": 0.16,
       "fatigueDamagePerBar": 0.133,
-      "pushHit": 12.0,
-      "pushBlock": 6.0
+      "pushHit": 15.6,
+      "pushBlock": 7.8
     },
     "uppercut": {
       "startup": 2,
@@ -101,7 +101,7 @@
       "staminaDamage": 24,
       "stunBuild": 37.5,
       "startReachFrac": 0.4,
-      "pushHit": 24.0,
+      "pushHit": 31.2,
       "pushBlock": 0.0
     }
   },
@@ -111,7 +111,8 @@
     "counterDamageMult": 1.5,
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
-    "pushFrames": 6
+    "pushFrames": 6,
+    "pushLockFrames": 8
   },
   "guard": {
     "perfectFrames": 6,
@@ -119,7 +120,7 @@
     "perfectGuardStaminaGain": 12,
     "perfectGuardAttackerStunFrames": 56,
     "perfectGuardStunBuild": 31.25,
-    "perfectCooldownFrames": 20
+    "perfectCooldownFrames": 40
   },
   "dodge": {
     "frames": 14,

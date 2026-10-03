@@ -73,6 +73,8 @@ export class CharSelectScene extends Phaser.Scene {
   private texts: { name: Phaser.GameObjects.Text; style: Phaser.GameObjects.Text; status: Phaser.GameObjects.Text; stats: Phaser.GameObjects.Text[] }[] = [];
   private fightBtn!: { bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text };
   private remotePick: CharId | null = null;
+  // Online: the opponent has reached this screen (heard from them here).
+  private peerHere = false;
   private handedOff = false;
   private prevPad: boolean[] = [];
   private stickAt = [0, 0];
@@ -86,6 +88,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.data0 = data;
     this.handedOff = false;
     this.remotePick = null;
+    this.peerHere = false;
     this.active = 0;
     this.cardViews = [];
     this.views = [];
@@ -179,7 +182,7 @@ export class CharSelectScene extends Phaser.Scene {
       return { bg, label: t };
     };
     mk(VIEW.cx - 62, 'BACK', 0x3a2a2a, () => this.back(-1, true));
-    this.fightBtn = mk(VIEW.cx + 62, 'FIGHT!', 0x2a4a34, () => this.fight());
+    this.fightBtn = mk(VIEW.cx + 62, this.data0.mode === 'online' ? 'READY' : 'FIGHT!', 0x2a4a34, () => this.fightButton());
     this.add
       .text(VIEW.cx, VIEW.cy + 126, this.hint(), { fontFamily: 'monospace', fontSize: '9px', color: '#8a90a0', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
@@ -187,6 +190,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   private hint(): string {
     if (this.data0.mode === 'localvs') return 'Keys: move left/right, punch or Enter to lock\nEsc / B / Numpad0 to change';
+    if (this.data0.mode === 'online') return 'Pick a boxer, then READY · starts when both are ready';
     return 'Tap a boxer · or arrows + Enter / D-pad + A\nEsc / B to change';
   }
 
@@ -312,6 +316,11 @@ export class CharSelectScene extends Phaser.Scene {
     const side = this.sides[s];
     if (side.locked) side.locked = false;
     side.sel = i;
+    // Online: tapping only selects (and un-readies); READY locks it in.
+    if (this.data0.mode === 'online') {
+      this.sendPick();
+      return;
+    }
     this.confirm(s);
   }
 
@@ -337,6 +346,14 @@ export class CharSelectScene extends Phaser.Scene {
     this.scene.start('Menu');
   }
 
+  // Online: the button is READY / UNREADY for your own pick.
+  private fightButton(): void {
+    if (this.data0.mode !== 'online') return this.fight();
+    const me = this.data0.localIdx ?? 0;
+    if (this.sides[me].locked) this.back(me);
+    else this.confirm(me);
+  }
+
   private fight(): void {
     if (!this.bothLocked()) return;
     const [a, b] = this.picks();
@@ -358,6 +375,7 @@ export class CharSelectScene extends Phaser.Scene {
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pick') {
+        this.peerHere = true;
         this.remotePick = isCharId(m.char) ? m.char : null;
         const other = 1 - (this.data0.localIdx ?? 0);
         this.sides[other].locked = this.remotePick !== null;
@@ -371,6 +389,10 @@ export class CharSelectScene extends Phaser.Scene {
       }
     };
     s.onPeerLeft = () => this.scene.start('Menu', { message: 'Opponent left' });
+    // Heartbeat: keep re-sending our status, so a message sent while the
+    // other phone was still in the lobby (measuring ping) is never lost.
+    this.time.addEvent({ delay: 500, loop: true, callback: () => this.sendPick() });
+    this.sendPick();
   }
 
   private sendPick(): void {
@@ -378,6 +400,7 @@ export class CharSelectScene extends Phaser.Scene {
     const side = this.sides[me];
     this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null });
     if (side.locked) saveCharPrefs({ p1: CHARACTER_IDS[side.sel] });
+    if (!this.peerHere) return;
     if (me === 0 && this.bothLocked()) this.hostStart();
   }
 
@@ -444,7 +467,7 @@ export class CharSelectScene extends Phaser.Scene {
         t.name.setText('');
         t.style.setText('');
         t.stats.forEach((l) => l.setText(''));
-        t.status.setText(side.locked ? 'READY' : 'picking...');
+        t.status.setText(!this.peerHere ? 'waiting for opponent...' : side.locked ? 'READY' : 'picking...');
         continue;
       }
       // Active-side glow (vsai).
@@ -473,10 +496,16 @@ export class CharSelectScene extends Phaser.Scene {
         g.lineBetween(bx + w * 0.8, by - 6, bx + w * 0.8, by + 6);
       });
     }
-    const ready = this.bothLocked() && (this.data0.mode !== 'online' || this.data0.localIdx === 0);
-    this.fightBtn.bg.setAlpha(ready ? 1 : 0.35);
-    this.fightBtn.label.setAlpha(ready ? 1 : 0.35);
-    if (this.data0.mode === 'online' && this.data0.localIdx === 1 && this.bothLocked()) this.fightBtn.label.setText('WAIT...');
+    if (this.data0.mode === 'online') {
+      const me = this.sides[this.data0.localIdx ?? 0];
+      this.fightBtn.label.setText(me.locked ? 'UNREADY' : 'READY');
+      this.fightBtn.bg.setAlpha(1);
+      this.fightBtn.label.setAlpha(1);
+    } else {
+      const ready = this.bothLocked();
+      this.fightBtn.bg.setAlpha(ready ? 1 : 0.35);
+      this.fightBtn.label.setAlpha(ready ? 1 : 0.35);
+    }
   }
 
   // Idle preview: the in-game boxer, gently bobbing, facing the centre.

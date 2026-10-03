@@ -1846,5 +1846,12 @@
     "min": 0,
     "max": 30,
     "step": 0.5
+  },
+  "hit.pushLockFrames": {
+    "cat": "Attack",
+    "desc": "Pushback: ticks the defender can't walk after a push lands (dodge still works). Can be longer than the slide.",
+    "min": 0,
+    "max": 40,
+    "step": 1
   }
 }

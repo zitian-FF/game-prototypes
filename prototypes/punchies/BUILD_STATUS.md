@@ -8,6 +8,20 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Online character select: tapping a card only
+  selects; a READY / UNREADY button locks it; the match starts only when
+  both phones are READY. Opponent panel shows "waiting for opponent..." /
+  "picking..." / READY. Picks are re-sent every 0.5 s, fixing a race where
+  a guest locking in while the host was still measuring ping got lost.
+  Verified with the two-tab mock (guest readies early, host picks without
+  starting, starts on host READY, both show BRUNO vs MIA).
+- Tune (user-requested): pushHit / pushBlock x1.3,
+  guard.perfectCooldownFrames 20 -> 40. New `hit.pushLockFrames` (8 =
+  slide 6 x 1.3): the defender's walking stays locked that long after a
+  push lands, separate from the 6-frame slide (user clarified "hit stun"
+  meant this lock, not the dizzy timer; stun.baseFrames stays 90).
+  Headless: hit-stop 3, slide 6 (19.5 px), locked 2 more, then walks.
+
 - Foldable / fullscreen fix: the view was measured once at load, so
   unfolding, folding or entering fullscreen letterboxed the game. Now the
   canvas is resized on resize / orientationchange / fullscreenchange.
