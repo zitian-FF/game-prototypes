@@ -142,7 +142,9 @@ export class BotBrain {
     const targets: Target[] = [];
     for (const n of view.nodes) if (!(n.owner === team && n.visible) && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
     for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
-    const target = this.pick(targets);
+    // Score caches in view are worth a trip: banking one is worth more than another report.
+    const caches = view.caches.map((c): { kind: 'cache'; cacheId: string } => ({ kind: 'cache', cacheId: c.id }));
+    const target = caches.length > 0 && this.rng.next() < 0.6 ? this.pick(caches) : this.pick(targets);
     if (!scout || !target) return null;
     return { type: 'scout', scoutIndex: scout.index, target };
   }

@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 4, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 5, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));

@@ -58,6 +58,14 @@
     "tier3UnlockRemaining": 0.75,
     "tier4UnlockRemaining": 0.5
   },
+  "pool": {
+    "settleSeconds": 60,
+    "minCaches": 4,
+    "maxCaches": 8,
+    "cachePointsStep": 500,
+    "scatterMinCells": 1.8,
+    "scatterMaxCells": 4.6
+  },
   "personalScoring": {
     "perTroopDefeated": 1,
     "perNodeCaptured": 1000,

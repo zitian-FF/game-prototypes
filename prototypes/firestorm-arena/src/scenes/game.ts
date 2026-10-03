@@ -8,11 +8,11 @@ import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
-type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean };
+type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean } | { kind: 'cache'; id: string };
 type Panel = 'none' | 'logs' | 'scouts';
 
 const fmtTime = (ms: number): string => {
@@ -277,6 +277,10 @@ export class GameScene extends BaseScene {
     const consider = (d: number, r: number, t: Target) => {
       if (d < r && (!best || d / r < best.d)) best = { d: d / r, t };
     };
+    for (const c of view.caches) {
+      const p = this.iso.p(c.pos.x, c.pos.y);
+      consider(Math.hypot(m.x - p.x, m.y - (p.y - 8)), 22, { kind: 'cache', id: c.id });
+    }
     for (const n of view.nodes) {
       const p = this.iso.p(n.pos.x, n.pos.y);
       consider(Math.hypot(m.x - p.x, m.y - (p.y - n.tier * clientTune.iso.cubeHeight * 0.6)), 34, { kind: 'node', id: n.id });
@@ -295,11 +299,16 @@ export class GameScene extends BaseScene {
   // ---------------------------------------------------------------- commands
 
   private targetBody(t: Target) {
+    if (t.kind === 'cache') return { kind: 'cache', cacheId: t.id } as const;
     return t.kind === 'node' ? ({ kind: 'node', nodeId: t.id } as const) : ({ kind: 'hq', hqId: t.id } as const);
   }
 
   private sendSquad(squadId: string, t: Target): void {
-    session.sendCommand({ type: 'march', squadId, target: this.targetBody(t) });
+    if (t.kind === 'cache') {
+      session.toast('Only a scout can collect a cache', 'bad');
+      return;
+    }
+    session.sendCommand({ type: 'march', squadId, target: t.kind === 'node' ? { kind: 'node', nodeId: t.id } : { kind: 'hq', hqId: t.id } });
   }
 
   // ------------------------------------------------------------------ events
@@ -397,6 +406,23 @@ export class GameScene extends BaseScene {
           // Teammates' rejected squads reach you too; only tell the commander it happened to.
           if (view.squads.find((q) => q.id === e.squadId)?.owner !== session.info?.playerId) break;
           session.toast(`Could not garrison: ${e.reason === 'nodeFull' ? 'it is full' : 'you already have a squad there'}`, 'bad');
+          break;
+        case 'cacheCollected': {
+          const p = this.iso.p(e.at.x, e.at.y);
+          this.fx.ring(e.at.x, e.at.y, now, e.team === mine ? 0xffd54a : COLORS.enemy, 0.8, 0.8);
+          this.floaters.push({ text: `+${fmtInt(Math.round(e.amount))}`, color: e.team === mine ? '#ffe08a' : '#ff9a7a', size: 16, x: p.x, y: p.y - 30, start: now });
+          const where = this.nodeLabel(view, e.nodeId);
+          const holder = view.nodes.find((n) => n.id === e.nodeId)?.owner;
+          if (e.team === mine && holder === mine) session.toast(`Banked ${fmtInt(Math.round(e.amount))} points at ${where}`, 'good');
+          else if (e.team === mine) session.toast(`Your scout stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'good');
+          else if (holder === mine) session.toast(`${e.commander} stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'bad');
+          break;
+        }
+        case 'poolLost':
+          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)} and its ${fmtInt(Math.round(e.amount))} point pool`, 'bad');
+          break;
+        case 'poolOpened':
+          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: collect its caches with scouts`, 'info');
           break;
         case 'nodesUnlocked':
           session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Oil Refineries unlocked: they can be captured now', 'good');
@@ -511,12 +537,24 @@ export class GameScene extends BaseScene {
           drawLock(g, p.x, p.y - 34, 1);
           this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
         }
+        if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + iso.tile / 2 + 16, '#ffe08a', 11);
+        else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + iso.tile / 2 + 16, '#9fd0ff', 10);
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
           const stale = !own && n.garrisonCountAsOfMs !== undefined ? ` (${Math.round((simMs - n.garrisonCountAsOfMs) / 1000)}s)` : '';
           this.label(txt + stale, p.x, p.y + iso.tile / 2 + 2, own ? '#cfe9ff' : '#ffd08a', 11);
         }
+      });
+    }
+
+    // Score caches inside our vision.
+    for (const c of view.caches) {
+      const p = iso.p(c.pos.x, c.pos.y);
+      add(c.pos, () => {
+        if (this.target?.kind === 'cache' && this.target.id === c.id) square(g, p.x, p.y, 20, undefined, 1, 0xffffff, OUTLINE);
+        drawCache(g, p.x, p.y, now);
+        this.label(fmtInt(c.value), p.x, p.y + 10, '#ffe08a', 10);
       });
     }
 
@@ -662,6 +700,8 @@ export class GameScene extends BaseScene {
       effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Oil Refinery and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
     }
     if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
+    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder, lost with the node. Scouts can bank it by collecting its caches.`, COLORS.warn]);
+    else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}: until then its points are permanent.`, COLORS.dim]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
       lines.push([own ? `Garrison ${n.garrisonCount} / ${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
@@ -873,7 +913,16 @@ export class GameScene extends BaseScene {
     let attackable = true;
     let allyHq = false;
     let report: (typeof view.scoutReports)[number] | undefined;
-    if (t.kind === 'node') {
+    if (t.kind === 'cache') {
+      const c = view.caches.find((x) => x.id === t.id);
+      if (!c) return null;
+      title = 'Score cache';
+      body = [
+        [`Worth ${fmtInt(c.value)} points right now`, '#ffe08a'],
+        [`Part of the pool of ${this.nodeLabel(view, c.nodeId)}. Any scout can collect it, yours or an enemy's.`, COLORS.dim],
+        ['The points are banked the moment the scout touches it. If it is the holder\'s own, that secures it; if it is an enemy\'s, it steals it.', COLORS.dim],
+      ];
+    } else if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);
       if (!d) return null;
       title = d.title;
@@ -911,6 +960,7 @@ export class GameScene extends BaseScene {
       body,
       attackable,
       allyHq,
+      cache: t.kind === 'cache',
       report,
       node,
       atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
@@ -979,6 +1029,19 @@ export class GameScene extends BaseScene {
     const ui = this.ui;
     const t = d.t;
     const ownNode = d.node?.owner === this.mine || d.allyHq;
+    if (d.cache) {
+      const sc = d.scoutHome;
+      const oh = 40 + 32 + 6;
+      ui.panel(ox, bottom - oh, ow, oh);
+      ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, sc ? 'Send scout to collect' : 'No scout at home', {
+        onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
+        enabled: !!sc,
+        size: 12,
+        accent: 0xffd54a,
+      });
+      return;
+    }
     const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
     const oh = 40 + rows * 32 + 6;
     const oy = bottom - oh;

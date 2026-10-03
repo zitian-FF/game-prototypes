@@ -655,3 +655,20 @@ export function drawLock(g: G, x: number, y: number, s = 1): void {
   art.quad(x - 0.9 * s, y - 14 * s, x + 0.9 * s, y - 9 * s, 0x2f3640, true);
   art.draw();
 }
+
+/** A score cache: a small stack of gold coins on a pad, with a glint. */
+export function drawCache(g: G, x: number, y: number, t: number, s = 1): void {
+  const art = new Art(g, 0xb8860b);
+  art.ell(x, y + 1 * s, 22 * s, 9 * s, 0x6e7580);
+  art.ell(x, y - 2 * s, 17 * s, 7 * s, 0xd9a521);
+  art.ell(x, y - 5 * s, 17 * s, 7 * s, 0xf2c230);
+  art.ell(x, y - 8 * s, 17 * s, 7 * s, 0xd9a521);
+  art.ell(x, y - 11 * s, 17 * s, 7 * s, 0xffd54a);
+  art.ell(x, y - 11 * s, 9 * s, 3.5 * s, 0xffe9a0, true);
+  art.draw();
+  if (Math.sin(t * 4) > 0.55) {
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(x + 5 * s, y - 17 * s, 2 * s, 6 * s);
+    g.fillRect(x + 3 * s, y - 15 * s, 6 * s, 2 * s);
+  }
+}

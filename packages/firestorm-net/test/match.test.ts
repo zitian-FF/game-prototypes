@@ -155,6 +155,8 @@ test('room: nothing about the other team leaks into a client, over a whole match
         if (e.type === 'combatFx') assert.ok(!('log' in e), 'a watched fight carries no details');
       }
       clone.events = clone.events.filter((e) => e.type !== 'combat');
+      // The scout that touches a cache you can see is a visible unit, so its commander's name is public.
+      for (const e of clone.events) if (e.type === 'cacheCollected') delete (e as { commander?: string }).commander;
       const views = [clone.view, clone.patch ? clone.patch.upsert : undefined];
       for (const v of views) {
         const bag = v as { combatLogs?: unknown; scoutReports?: unknown; enemyMarches?: { revealed?: unknown; owner?: unknown }[]; enemyHqs?: { owner?: unknown }[] } | undefined;

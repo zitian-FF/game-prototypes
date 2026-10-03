@@ -1,6 +1,7 @@
 import { dist } from './map';
 import type { ArenaGame } from './game';
 import type {
+  Cache,
   CombatLog,
   HqId,
   HqLocation,
@@ -35,6 +36,22 @@ export interface NodeView {
   garrisonCountAsOfMs?: number;
   /** Present while the node is still locked: the sim time it opens for capture. Public. */
   unlocksAtMs?: number;
+  /**
+   * Score pool state, only while the node is inside your vision. Before the pool opens, settlesAtMs says when;
+   * once it is open, pool is its temporary score.
+   */
+  settlesAtMs?: number;
+  pool?: number;
+  poolOpen?: boolean;
+}
+
+/** A score cache inside your vision. Anyone's scout can collect it. */
+export interface CacheView {
+  id: string;
+  nodeId: NodeId;
+  pos: Vec;
+  /** What touching it banks right now. */
+  value: number;
 }
 
 export interface OwnSquadView {
@@ -124,6 +141,8 @@ export interface TeamView {
   /** Enemy HQs inside vision (including stranded ones), masked. */
   enemyHqs: EnemyHqView[];
   scoutReports: ScoutReport[];
+  /** Score caches inside your vision. */
+  caches: CacheView[];
   /** Most recent first. */
   combatLogs: CombatLog[];
 }
@@ -148,6 +167,14 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       explored: true,
       visible,
     };
+    if (visible && n.owner !== null) {
+      if (n.poolOpen) {
+        view.poolOpen = true;
+        view.pool = Math.round(n.pool);
+      } else if (n.settlesAtMs !== null) {
+        view.settlesAtMs = n.settlesAtMs;
+      }
+    }
     const opensAt = game.unlockAtMsForTier(n.tier);
     if (now < opensAt) view.unlocksAtMs = opensAt;
     if (n.owner === team) {
@@ -245,6 +272,15 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
     .filter((l) => l.attacker.team === team || l.fights.some((f) => f.defender.team === team))
     .reverse();
 
+  const caches: CacheView[] = [];
+  for (const n of game.nodes.values()) {
+    if (!n.poolOpen || n.owner === null) continue;
+    const value = Math.round(game.cacheValue(n));
+    for (const c of n.caches) {
+      if (game.isVisibleTo(team, c.pos)) caches.push({ id: c.id, nodeId: c.nodeId, pos: c.pos, value });
+    }
+  }
+
   return {
     timeMs: now,
     points: game.points(),
@@ -255,6 +291,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
     enemyMarches,
     enemyHqs,
     scoutReports: reports,
+    caches,
     combatLogs: logs,
   };
 }

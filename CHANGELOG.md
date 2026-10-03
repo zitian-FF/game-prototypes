@@ -3,6 +3,14 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.6.0, firestorm-net 0.6.0
+
+**What changed:** arena-sim adds score pools and score caches (a node's tier points go into a
+temporary pool after it has been held for a minute; scouts collect caches to bank or steal it).
+firestorm-net moves to protocol 5. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.5.0, firestorm-net 0.5.0
 
 **What changed:** arena-sim adds escalation (tier 3 and tier 4 nodes are locked until the

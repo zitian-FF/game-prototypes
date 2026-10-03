@@ -67,7 +67,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - Round four (branch): compact 57x39 map, units at half speed (crossMapSeconds 392), T3 unlocks at 75% of the clock left and
   T4 at 50% left (locked nodes show a padlock and countdown), lava removed, crisp fog edge, public commander names.
 - Daily capacity estimate on the landing page (meter Durable Object `QuotaMeter`, `/api/quota`, `?create=1` gate); the first deploy adds migration v2 for the new class.
-- Packages: arena-sim 0.5.0, firestorm-net 0.5.0, protocol 4.
+- Score pools and caches (see BRIEF revision): sim, wire (`caches`), events, bot scouting, client drawing, cache orders.
+- Packages: arena-sim 0.6.0, firestorm-net 0.6.0, protocol 5.
 
 ## Key technical decisions
 
@@ -82,6 +83,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
   at the HQ (`notAtHq`).
 
 ## Open questions
+
+- Score pools are a large new lever on the result: cache sizes, the 60 s settle time and the +1 cache per 500 are first numbers, unplayed.
 
 - Cost: bots issue about 1,150 commands per match (about 3,000 row writes), roughly 33
   matches a day on the Workers Free plan.
