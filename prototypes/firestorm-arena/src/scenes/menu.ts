@@ -4,6 +4,7 @@ import { intents } from '../input/intents';
 import { session, normalizeRoomCode, randomRoomCode, serverBase } from '../net/session';
 import { COLORS } from '../theme';
 import { GAME_VERSION, VERSION_LOG } from '../versionLog';
+import { QuotaWatcher } from '../net/quota';
 import { VERSION_STAMP } from '../version.generated';
 import { cleanName } from 'firestorm-net';
 
@@ -11,6 +12,7 @@ const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') =
 
 export class MenuScene extends BaseScene {
   private nameField = new TextField('', 20, (s) => s.replace(/[<>]/g, ''));
+  private quota = new QuotaWatcher();
   private codeField = new TextField('', 3, normalizeRoomCode);
   private focus: 'name' | 'code' = 'name';
   private started = false;
@@ -25,6 +27,8 @@ export class MenuScene extends BaseScene {
     this.focus = session.name ? 'code' : 'name';
     this.started = false;
     intents.textMode = true;
+    this.quota.start();
+    this.events.once('shutdown', () => this.quota.stop());
     if (AUTOPLAY && !this.started) {
       this.nameField.value = 'Tester';
       this.createRoom();
@@ -39,6 +43,10 @@ export class MenuScene extends BaseScene {
     const name = cleanName(this.nameField.value);
     if (!name) {
       session.error = 'Enter a name first.';
+      return;
+    }
+    if (this.quota.status && !this.quota.status.canStart) {
+      session.error = 'The server has used up its daily limit. New games open again at 00:00 UTC.';
       return;
     }
     session.setName(name);
@@ -94,7 +102,8 @@ export class MenuScene extends BaseScene {
     ui.text('Your name', px, y, { size: 12, color: COLORS.dim });
     drawField(ui, this.nameField, px, y + 18, pw, 40, this.focus === 'name', 'Commander name', () => (this.focus = 'name'));
     y += 78;
-    ui.button(px, y, pw, 44, 'Create a room', { onClick: () => this.createRoom(), enabled: !this.connecting(), active: true, size: 16 });
+    const q = this.quota.status;
+    ui.button(px, y, pw, 44, 'Create a room', { onClick: () => this.createRoom(), enabled: !this.connecting() && !(q && !q.canStart), active: true, size: 16 });
     y += 70;
     ui.text('or join with a code', cx, y, { size: 12, align: 'center', color: COLORS.dim });
     y += 22;
@@ -112,6 +121,17 @@ export class MenuScene extends BaseScene {
       },
       size: 11,
     });
+    // Daily server capacity: an estimate of how many more games today's free limits allow.
+    if (q) {
+      const left = q.matchesLeft;
+      const reset = Math.max(0, q.resetsAtMs - Date.now());
+      const hh = Math.floor(reset / 3_600_000);
+      const mm = Math.floor((reset % 3_600_000) / 60_000);
+      const text = q.canStart ? `Server capacity today: about ${left} ${left === 1 ? 'game' : 'games'} left` : `Server daily limit reached, new games open in ${hh}h ${mm}m`;
+      ui.text(text, cx, h - 124, { size: 12, align: 'center', bold: true, color: !q.canStart ? COLORS.bad : left <= 3 ? COLORS.warn : COLORS.dim });
+    } else if (this.quota.failed) {
+      ui.text('Server capacity: unknown (server not reachable)', cx, h - 124, { size: 12, align: 'center', color: COLORS.dim });
+    }
     ui.text(`Version ${GAME_VERSION} (${VERSION_STAMP})`, cx, h - 96, { size: 11, align: 'center', color: COLORS.dim, bold: true });
     ui.text(VERSION_LOG, cx, h - 80, { size: 11, align: 'center', color: COLORS.dim });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, h - 22, { size: 10, align: 'center', color: COLORS.dim });

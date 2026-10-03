@@ -122,7 +122,7 @@ Trystero. Only firestorm-arena uses it so far. See its README for the API and
 
 ## Match server: firestorm-net
 
-`packages/firestorm-net` (0.4.0) is the server side of firestorm-arena that is
+`packages/firestorm-net` (0.5.0) is the server side of firestorm-arena that is
 not Cloudflare glue: wire protocol with validation, the match room (lobby,
 countdown, running match, per-team fog-filtered patches), replay-log persistence
 and the bots. It is the repo's first server-authoritative networking, an

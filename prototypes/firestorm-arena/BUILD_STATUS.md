@@ -66,7 +66,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
   (`dpr.groundMaxPx`) are gone. Minimap is a rectangle. Sim, protocol and tests are unchanged.
 - Round four (branch): compact 57x39 map, units at half speed (crossMapSeconds 392), T3 unlocks at 75% of the clock left and
   T4 at 50% left (locked nodes show a padlock and countdown), lava removed, crisp fog edge, public commander names.
-- Packages: arena-sim 0.5.0, firestorm-net 0.4.0, protocol 4.
+- Daily capacity estimate on the landing page (meter Durable Object `QuotaMeter`, `/api/quota`, `?create=1` gate); the first deploy adds migration v2 for the new class.
+- Packages: arena-sim 0.5.0, firestorm-net 0.5.0, protocol 4.
 
 ## Key technical decisions
 
@@ -92,6 +93,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
   section at the end that wins over older text.
 
 ## Known issues
+
+- The quota meter is an estimate of this game's own traffic only (not the account), persists once a minute, and a bypassing client can skip the create gate. Match cost constants come from the earlier 30 minute bot match measurement, not from the live Worker.
 
 - Bot-only test matches now hold fewer nodes on one side (13 vs 4 on one seed); the test floor was lowered from 5 to 3.
 - Match feel on the compact map at half speed is unplayed.

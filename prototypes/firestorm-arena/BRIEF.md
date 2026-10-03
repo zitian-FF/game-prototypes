@@ -586,4 +586,9 @@ client.
 - Commander names are public: shown above enemy and allied units and on HQs whenever the unit is inside your
   vision. Power still needs a scout.
 - Fog edges are crisp (no soft gradient).
+- Daily capacity: the Worker keeps an estimate of this game's use of the Workers Free plan's daily limits
+  (row writes and requests, 90% of the plan, reset at 00:00 UTC; one match is costed at 4,000 writes and 2,500
+  requests). The landing page shows "about N games left today", and when less than one match is left the Create
+  button is disabled and the Worker refuses new rooms (joining and reconnecting stay allowed). The estimate only
+  sees this game's own traffic. It is not tied to R2, which holds no gameplay data.
 - Where this section conflicts with older text above, this section wins.
