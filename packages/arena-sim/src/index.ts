@@ -14,6 +14,7 @@ export type {
   OwnSquadView,
   OwnHqView,
   OwnScoutView,
+  EnemyScoutView,
   EnemyMarchView,
   EnemyHqView,
 } from './fog';

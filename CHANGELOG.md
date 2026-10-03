@@ -3,6 +3,23 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.9.0, firestorm-net 0.9.0
+
+**What changed:** arena-sim's map generator places each ring's nodes with best-candidate spacing so they end
+up evenly spread; the real map now has 19 nodes (four hospitals). firestorm-net's bots assault enemy HQs when
+confident, rush to garrison an ally HQ under attack, and move their HQ onto a node as soon as they hold one.
+Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-04 — firestorm shared packages: arena-sim 0.8.0, firestorm-net 0.8.0
+
+**What changed:** arena-sim team views list enemy scouts inside vision (`enemyScouts`); firestorm-net moves to
+protocol 6, and its bots have individual cache-stealing appetites and cap scouts per cache. Only firestorm-arena
+uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.7.0, firestorm-net 0.7.0
 
 **What changed:** arena-sim's map generator gains per-ring spawn bands and scores radar towers on tier 3 and 4

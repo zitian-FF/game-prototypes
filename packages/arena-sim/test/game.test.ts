@@ -941,3 +941,18 @@ test('pool: caches are only known inside your vision, and a gone cache is unknow
   const own = viewFor(g, 0).nodes.find((n) => n.id === 'n0')!;
   assert.ok(own.poolOpen && (own.pool ?? 0) > 0);
 });
+
+test('fog: an enemy scout is listed only while it is inside your vision, with its commander name', () => {
+  const g = poolScene();
+  must(g, { type: 'scout', playerId: 'b', scoutIndex: 0, target: { kind: 'node', nodeId: 'n0' } });
+  const sc = g.players.get('b')!.scouts[0];
+  assert.ok(sc.kind === 'out');
+  const { startMs, arriveMs } = sc.kind === 'out' ? sc : { startMs: 0, arriveMs: 0 };
+  g.advanceTo(startMs + 1_000);
+  assert.equal(viewFor(g, 0).enemyScouts.length, 0, 'still far outside a vision radius');
+  g.advanceTo(arriveMs - 500);
+  const seen = viewFor(g, 0).enemyScouts;
+  assert.equal(seen.length, 1, 'inside the holder vision just before it lands');
+  assert.equal(seen[0].owner, 'b');
+  assert.equal(viewFor(g, 1).enemyScouts.length, 0, 'b sees its own scout in scouts, not as an enemy');
+});

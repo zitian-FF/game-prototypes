@@ -69,7 +69,9 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - Daily capacity estimate on the landing page (meter Durable Object `QuotaMeter`, `/api/quota`, `?create=1` gate); the first deploy adds migration v2 for the new class.
 - Score pools and caches (see BRIEF revision): sim, wire (`caches`), events, bot scouting, client drawing, cache orders.
 - Layout revision (branch): refinery T2 in the mid ring, turret T3, T1/T2 nodes banded toward each spawn, radars placed for T3/T4 vision; cache values fixed at spawn; bots steal the closest enemy cache.
-- Packages: arena-sim 0.7.0, firestorm-net 0.7.0, protocol 5.
+- Enemy scouts are visible inside vision (`enemyScouts`); bots have individual steal appetites and a two-scouts-per-cache cap.
+- Even node spacing (best-candidate placement), 4 hospitals, 19 nodes; bots assault HQs when confident, defend ally HQs and move their HQ out early (bot-only matches now see 50 to 80 HQ fights and 12 to 20 HQs downed).
+- Packages: arena-sim 0.9.0, firestorm-net 0.9.0, protocol 6.
 
 ## Key technical decisions
 
@@ -97,6 +99,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
   section at the end that wins over older text.
 
 ## Known issues
+
+- Bot HQ aggression is a big swing in bot matches (many HQs downed, nodes 12/7 style splits); numbers are first guesses.
 
 - The quota meter is an estimate of this game's own traffic only (not the account), persists once a minute, and a bypassing client can skip the create gate. Match cost constants come from the earlier 30 minute bot match measurement, not from the live Worker.
 

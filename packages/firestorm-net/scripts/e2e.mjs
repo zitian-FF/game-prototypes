@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 5, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 6, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -203,7 +203,7 @@ try {
   await ivo.waitFor((m) => m.t === 'state' && m.full, 5000, 'first full state');
   const hInfo = hana.last('matchStart').info;
   const iInfo = ivo.last('matchStart').info;
-  check(hInfo.map.nodes.length === 17, 'matchStart carries the 17 node map');
+  check(hInfo.map.nodes.length === 19, 'matchStart carries the 19 node map');
   check(hInfo.team !== iInfo.team, 'the two humans are on opposite teams');
   check(hana.view.hqs.length === 20, 'the host sees all 20 HQs of their team');
 

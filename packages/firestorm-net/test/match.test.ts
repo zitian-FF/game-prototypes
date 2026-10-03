@@ -159,7 +159,7 @@ test('room: nothing about the other team leaks into a client, over a whole match
       for (const e of clone.events) if (e.type === 'cacheCollected') delete (e as { commander?: string }).commander;
       const views = [clone.view, clone.patch ? clone.patch.upsert : undefined];
       for (const v of views) {
-        const bag = v as { combatLogs?: unknown; scoutReports?: unknown; enemyMarches?: { revealed?: unknown; owner?: unknown }[]; enemyHqs?: { owner?: unknown }[] } | undefined;
+        const bag = v as { combatLogs?: unknown; scoutReports?: unknown; enemyMarches?: { revealed?: unknown; owner?: unknown }[]; enemyHqs?: { owner?: unknown }[]; enemyScouts?: { owner?: unknown }[] } | undefined;
         if (!bag) continue;
         delete bag.combatLogs;
         delete bag.scoutReports;
@@ -169,6 +169,7 @@ test('room: nothing about the other team leaks into a client, over a whole match
           delete em.owner;
         }
         for (const eh of bag.enemyHqs ?? []) delete eh.owner;
+        for (const es of bag.enemyScouts ?? []) delete es.owner;
       }
       const text = JSON.stringify({ view: clone.view, patch: clone.patch, events: clone.events });
       for (const e of enemies) assert.ok(!text.includes(`"${e}"`), `${c.name} was told about enemy ${e}`);

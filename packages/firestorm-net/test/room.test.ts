@@ -178,7 +178,7 @@ test('match: every human gets matchStart before any state, with their own detail
     const info = c.last('matchStart')!.info;
     assert.equal(info.playerId, c.name);
     assert.equal(info.tune.scoring.garrisonPointsPerSecond, 10, 'server sends its own tune');
-    assert.equal(info.map.nodes.length, 17);
+    assert.equal(info.map.nodes.length, 19);
     assert.ok(info.hqId.startsWith('h'));
   }
 });

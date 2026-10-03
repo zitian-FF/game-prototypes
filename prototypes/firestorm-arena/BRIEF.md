@@ -614,4 +614,19 @@ client.
   next 500 earned brings four again. This supersedes the "equal share of the pool" wording above.
 - Bots: with enemy score caches in view, a bot with a scout at home sends it to the closest one (70% of decisions)
   and never collects a cache of a node its own team holds.
+- Enemy scouts: scouts of the other team are drawn (with the commander's name) while they are inside your vision,
+  so you can see them fly to a node, an HQ or a cache. Their position is only sent while it is inside your vision.
+- Bot variance: each bot has its own appetite for stealing caches, drawn once between 10% and 85% of decisions, and
+  at most two scouts of a team head for the same cache (counting the ones already flying and those sent in the same
+  decision round).
+- Even node spacing and four hospitals: Tier 1 and Tier 2 nodes are placed one at a time at the legal spot furthest
+  from everything already placed (and from its own mirror), inside the spawn-side band, so they end up evenly
+  spread and players get real choices of where to advance. There are now two hospitals on each side (4 in total) and
+  19 nodes in all. Nodes are at least 5 cells apart (nodeMinSpacingCells).
+- Bots and HQs: a bot still in the safe zone moves its HQ onto a node its team holds as soon as it can; it assaults
+  an enemy HQ that is out in the field only when confident (with a live scout report, its best squad must beat the
+  strongest known defender by 10%; with no report, only a squad of effective power 66 or more, a bit less against a
+  damaged HQ) and scouts unreported HQs first; and it sends a fit squad to garrison an ally's HQ that an enemy march
+  it can see is about to hit, when the squad can get there first. Each bot draws its own aggression and loyalty, as it
+  does its cache appetite. Bots no longer throw squads at enemy HQs blindly.
 - Where this section conflicts with older text above, this section wins.
