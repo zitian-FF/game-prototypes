@@ -577,4 +577,13 @@ client.
   Safe zones are tinted team blocks, the 8 tiles around each node (HQ slots) are lightly marked, and fog and
   vision are circles. In-world units are drawn at `iso.unitScale` (0.75) of their size, so they read smaller
   than buildings; UI icons are unchanged. This supersedes "Isometric view of the grid" above.
+- Compact map and slower units: the map is 57 x 39 cells (was 75 x 51), the safe-zone distance is 5 cells, and
+  units move at half their previous speed in cells per second (cross-map 392 s on the diagonal).
+- Escalation: Tier 3 nodes (oil refineries) are locked until the clock has 75% of the match left, and the Tier 4
+  node (nuclear silo) until 50% is left. Locked nodes cannot be marched on or scouted, show a padlock and a
+  countdown, and a toast announces each unlock. Values are in tune.json `phases`.
+- The lava patches are removed from the floor.
+- Commander names are public: shown above enemy and allied units and on HQs whenever the unit is inside your
+  vision. Power still needs a scout.
+- Fog edges are crisp (no soft gradient).
 - Where this section conflicts with older text above, this section wins.

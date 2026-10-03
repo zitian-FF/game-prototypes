@@ -33,6 +33,8 @@ export interface NodeView {
    */
   garrisonCount?: number;
   garrisonCountAsOfMs?: number;
+  /** Present while the node is still locked: the sim time it opens for capture. Public. */
+  unlocksAtMs?: number;
 }
 
 export interface OwnSquadView {
@@ -62,6 +64,8 @@ export interface EnemyMarchView {
    * sprite while the march is inside your vision, a question mark while it is in fog.
    */
   type: SquadType;
+  /** Commander name: public, like the type. Power still needs a scout. */
+  owner: string;
   pos: Vec;
   march: Pick<March, 'from' | 'to' | 'startMs' | 'arriveMs' | 'speed'>;
   /** Present only while a scout reveal on this squad is unexpired. */
@@ -72,6 +76,8 @@ export interface EnemyMarchView {
 
 export interface EnemyHqView {
   id: HqId;
+  /** Commander name: public. */
+  owner: string;
   pos: Vec;
   /** True while the HQ is below full HP. Exact HP is not revealed. */
   burning: boolean;
@@ -142,6 +148,8 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       explored: true,
       visible,
     };
+    const opensAt = game.unlockAtMsForTier(n.tier);
+    if (now < opensAt) view.unlocksAtMs = opensAt;
     if (n.owner === team) {
       view.garrisonCount = n.garrison.length;
       view.garrisonCountAsOfMs = now;
@@ -185,6 +193,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       const view: EnemyMarchView = {
         id: sq.id,
         type: sq.type,
+        owner: sq.owner,
         pos,
         march: { from: m.from, to: m.to, startMs: m.startMs, arriveMs: m.arriveMs, speed: m.speed },
         burning: sq.troops <= 0,
@@ -228,7 +237,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
     }
     if (p.hq.location.kind === 'safe') continue;
     if (game.isVisibleTo(team, p.hq.pos)) {
-      enemyHqs.push({ id: p.hq.id, pos: p.hq.pos, burning: p.hq.hp < maxHp });
+      enemyHqs.push({ id: p.hq.id, owner: p.id, pos: p.hq.pos, burning: p.hq.hp < maxHp });
     }
   }
 

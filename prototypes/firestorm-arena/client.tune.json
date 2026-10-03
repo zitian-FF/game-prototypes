@@ -32,9 +32,7 @@
     "sprayCount": 14,
     "eruptionEverySeconds": 3.5,
     "fireSeconds": 6,
-    "teleportSeconds": 1.6,
-    "lavaPulseSpeed": 1.2,
-    "lavaPatches": 60
+    "teleportSeconds": 1.6
   },
   "hud": {
     "toastSeconds": 4.5,

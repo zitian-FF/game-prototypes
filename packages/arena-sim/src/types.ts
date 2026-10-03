@@ -111,6 +111,11 @@ export interface Tune {
   garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
+  /**
+   * Escalation: tier 3 nodes are locked until the clock has this fraction of the match left, tier 4 likewise.
+   * 0.75 means they open after a quarter of the match.
+   */
+  phases: { tier3UnlockRemaining: number; tier4UnlockRemaining: number };
   /** Individual (vanity) score values. */
   personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number };
   /**
@@ -360,6 +365,7 @@ export type GameEvent =
       squadId: SquadId;
       reason: 'nodeFull' | 'commanderAlreadyThere';
     }
+  | { type: 'nodesUnlocked'; timeMs: number; tier: number }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: HqId; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: HqId; squadId: SquadId; reason: 'nodeFull' | 'commanderAlreadyThere' }
   | { type: 'combat'; timeMs: number; log: CombatLog }

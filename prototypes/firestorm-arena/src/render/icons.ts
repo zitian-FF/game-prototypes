@@ -644,3 +644,14 @@ export function drawRefinery(g: G, cx: number, cy: number, color: number, hw: nu
   art.quad(cx + 21 * s, cy + 7 * s, cx + 27 * s, cy + 9 * s, glowColor, true);
   art.draw();
 }
+
+/** A padlock standing on (x, y): grey body, keyhole and a shackle. Marks a node that is not open for capture yet. */
+export function drawLock(g: G, x: number, y: number, s = 1): void {
+  const art = new Art(g, 0x3a4350);
+  art.poly([[x - 6 * s, y - 20 * s], [x - 6 * s, y - 28 * s], [x - 3.5 * s, y - 32 * s], [x + 3.5 * s, y - 32 * s], [x + 6 * s, y - 28 * s], [x + 6 * s, y - 20 * s], [x + 3 * s, y - 20 * s], [x + 3 * s, y - 27 * s], [x + 2 * s, y - 29 * s], [x - 2 * s, y - 29 * s], [x - 3 * s, y - 27 * s], [x - 3 * s, y - 20 * s]], 0xb8c0cc);
+  art.quad(x - 9 * s, y - 20 * s, x + 9 * s, y - 6 * s, 0xf2c230);
+  art.quad(x - 9 * s, y - 20 * s, x + 9 * s, y - 18 * s, 0xffe08a, true);
+  art.circ(x, y - 14 * s, 2.2 * s, 0x2f3640, true);
+  art.quad(x - 0.9 * s, y - 14 * s, x + 0.9 * s, y - 9 * s, 0x2f3640, true);
+  art.draw();
+}

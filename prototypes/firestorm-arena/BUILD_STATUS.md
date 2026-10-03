@@ -64,7 +64,9 @@ Everything below the first two bullets of the merged work is on the branch, not 
   vector overlays (safe zones, HQ slot tiles, map edge, lava squares); fog is circular; nodes sit on square tiles;
   art stays isometric. Units draw at `iso.unitScale` (0.75). The big baked floor texture and its bake-size tuning
   (`dpr.groundMaxPx`) are gone. Minimap is a rectangle. Sim, protocol and tests are unchanged.
-- Packages: arena-sim 0.4.0, firestorm-net 0.3.0, protocol 3.
+- Round four (branch): compact 57x39 map, units at half speed (crossMapSeconds 392), T3 unlocks at 75% of the clock left and
+  T4 at 50% left (locked nodes show a padlock and countdown), lava removed, crisp fog edge, public commander names.
+- Packages: arena-sim 0.5.0, firestorm-net 0.4.0, protocol 4.
 
 ## Key technical decisions
 
@@ -91,10 +93,12 @@ Everything below the first two bullets of the merged work is on the branch, not 
 
 ## Known issues
 
+- Bot-only test matches now hold fewer nodes on one side (13 vs 4 on one seed); the test floor was lowered from 5 to 3.
+- Match feel on the compact map at half speed is unplayed.
+
 - HQ garrison and the squad-panel rows for 4 squads were checked by tests and typecheck only, not by eye
   in a browser (the floaters and leaderboard were).
 - Bots never garrison friendly HQs.
-- The lava squares are bold and blocky on the new grid; tint and size are placeholders.
 - Node art is small inside the larger 72 px tiles (art size was kept as asked).
 
 - Verified in headless Chromium and the local runtime only; the live Worker has not been

@@ -3,6 +3,14 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.5.0, firestorm-net 0.4.0
+
+**What changed:** arena-sim adds escalation (tier 3 and tier 4 nodes are locked until the
+clock reaches a set fraction), public commander names on enemy marches and HQs, and a
+more compact map. firestorm-net moves to protocol 4. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-03 — firestorm shared packages: arena-sim 0.4.0, firestorm-net 0.3.0
 
 **What changed:** arena-sim adds HQ garrisons, individual (vanity) scoring with a

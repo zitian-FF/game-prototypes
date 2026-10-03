@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { dist } from '../src/map';
 import type { GameEvent } from '../src/types';
+import { viewFor } from '../src/fog';
 import { test } from './harness';
 import { SQUAD_ID, arrival, err, makeGame, marchAndArrive, must, player, scenarioTune, withTune } from './helpers';
 import type { NodeDef } from './helpers';
@@ -776,4 +777,34 @@ test('vanity score: bringing an HQ to 0 HP pays 500 and the result carries the l
   assert.equal(g.players.get('b')!.stats.hqsDowned, 1);
   g.advanceTo(g.tune.match.durationSeconds * 1000 + 1);
   assert.ok(g.result && g.result.leaderboard.length === 2);
+});
+
+// ------------------------------------------------------------ escalation
+
+test('phases: tier 3 opens with 75% of the clock left and tier 4 with 50% left', () => {
+  const T3: NodeDef = { id: 'T3', kind: 'points', x: 300, y: 300, tier: 3 };
+  const T4: NodeDef = { id: 'T4', kind: 'points', x: 500, y: 300, tier: 4 };
+  const g = makeGame({
+    nodes: [N0, T3, T4],
+    tune: withTune({ combat: { variance: 0 }, match: { durationSeconds: 1000 } }),
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }])],
+  });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'T3' } }), 'nodeLocked');
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'T4' } }), 'nodeLocked');
+  assert.equal(err(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'node', nodeId: 'T3' } }), 'nodeLocked');
+  const locked = viewFor(g, 0).nodes;
+  assert.equal(locked.find((n) => n.id === 'T3')!.unlocksAtMs, 250_000);
+  assert.equal(locked.find((n) => n.id === 'T4')!.unlocksAtMs, 500_000);
+  assert.equal(locked.find((n) => n.id === 'n0')!.unlocksAtMs, undefined, 'tier 1 is open from the start');
+  marchAndArrive(g, 'a', 's0', 'n0');
+
+  const events = g.advanceTo(250_000);
+  assert.ok(events.some((e) => e.type === 'nodesUnlocked' && e.tier === 3));
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'T3' } });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'T4' } }), 'nodeLocked');
+  assert.equal(viewFor(g, 0).nodes.find((n) => n.id === 'T3')!.unlocksAtMs, undefined);
+
+  const later = g.advanceTo(500_000);
+  assert.ok(later.some((e) => e.type === 'nodesUnlocked' && e.tier === 4));
+  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'T4' } });
 });

@@ -9,6 +9,7 @@ export type ClientEvent =
   | { type: 'marchCancelled'; timeMs: number; squadId: SquadId }
   | { type: 'garrisoned'; timeMs: number; nodeId: NodeId; squadId: SquadId }
   | { type: 'garrisonRejected'; timeMs: number; nodeId: NodeId; squadId: SquadId; reason: string }
+  | { type: 'nodesUnlocked'; timeMs: number; tier: number }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: string; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: string; squadId: SquadId; reason: string }
   | { type: 'nodeCaptured'; timeMs: number; nodeId: NodeId; team: TeamId; previous: TeamId | null }
@@ -44,6 +45,9 @@ export function projectEvents(game: ArenaGame, team: TeamId, events: GameEvent[]
         break;
       case 'garrisoned':
         if (squadTeam(e.squadId) === team || sees(nodePos(e.nodeId))) out.push(e);
+        break;
+      case 'nodesUnlocked':
+        out.push(e); // the clock is public
         break;
       case 'hqGarrisoned':
       case 'hqGarrisonRejected':

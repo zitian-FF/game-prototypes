@@ -36,7 +36,7 @@ export interface GameOptions {
   players: PlayerSpec[];
 }
 
-type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'end';
+type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'unlock' | 'end';
 
 interface Queued {
   t: number;
@@ -170,6 +170,10 @@ export class ArenaGame {
 
     this.schedule(opts.tune.match.durationSeconds * 1000, 'end', '', 0);
     this.schedule(opts.tune.turret.pulseSeconds * 1000, 'turretPulse', '', 0);
+    for (const tier of [3, 4]) {
+      const at = this.unlockAtMsForTier(tier);
+      if (at > 0) this.schedule(at, 'unlock', String(tier), 0);
+    }
   }
 
   // ------------------------------------------------------------- reading
@@ -236,6 +240,18 @@ export class ArenaGame {
       out.teleportReductionSeconds += (k.teleportCooldownReductionSeconds ?? 0) * n.tier;
     }
     return out;
+  }
+
+  /** When nodes of this tier open for capture (0 = from the start). Tier 3 and 4 open as the clock runs down. */
+  unlockAtMsForTier(tier: number): number {
+    const p = this.tune.phases;
+    const remaining = tier >= 4 ? p.tier4UnlockRemaining : tier === 3 ? p.tier3UnlockRemaining : 1;
+    return Math.max(0, Math.round(this.tune.match.durationSeconds * 1000 * (1 - remaining)));
+  }
+
+  /** A locked node cannot be marched on, scouted or captured yet. */
+  isLocked(node: NodeState): boolean {
+    return this.nowMs < this.unlockAtMsForTier(node.tier);
   }
 
   /** True if the point is inside the shared vision of the team's controlled nodes. */
@@ -456,6 +472,7 @@ export class ArenaGame {
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (this.isLocked(node)) return 'nodeLocked';
       // Reinforcing a node your team already holds must fit in its garrison.
       if (node.owner === player.team) {
         const block = this.garrisonBlock(sq, node, true);
@@ -520,6 +537,7 @@ export class ArenaGame {
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (this.isLocked(node)) return 'nodeLocked';
       to = node.pos;
       dest = { kind: 'node', nodeId: node.id };
     } else {
@@ -687,6 +705,9 @@ export class ArenaGame {
         return this.onScoutHome(ev);
       case 'turretPulse':
         return this.onTurretPulse();
+      case 'unlock':
+        this.emit({ type: 'nodesUnlocked', timeMs: this.nowMs, tier: Number(ev.ref) });
+        return;
       case 'missileHit':
         return this.onMissileHit(ev.ref);
       case 'end':

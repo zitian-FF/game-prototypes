@@ -6,9 +6,9 @@ import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
-import { bakeGround, drawDecor, paintFog, type Ground, type LavaTile } from '../render/ground';
+import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawFlames, drawHospital, drawHq, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -38,12 +38,10 @@ export class GameScene extends BaseScene {
 
   private world!: Phaser.GameObjects.Container;
   private ground!: Ground;
-  private lavaG!: Phaser.GameObjects.Graphics;
   private linesG!: Phaser.GameObjects.Graphics;
   private entG!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
   private fx!: FxSystem;
-  private lava: LavaTile[] = [];
   private labels: Phaser.GameObjects.Text[] = [];
   private labelUsed = 0;
   /** Combat result text that rises and fades over a fight (map position, start in seconds). */
@@ -97,8 +95,7 @@ export class GameScene extends BaseScene {
     this.tune = info.tune;
     this.mine = info.team;
     this.iso = new Iso(this.tune);
-    this.ground = bakeGround(this, this.iso, info.map, this.tune);
-    this.lava = this.ground.lava;
+    this.ground = bakeGround(this, this.iso);
 
     this.world = this.add.container(0, 0);
     // The floor is one small block of tiles repeated across the map, with vector overlays on top.
@@ -108,8 +105,6 @@ export class GameScene extends BaseScene {
     const decor = this.add.graphics();
     drawDecor(decor, this.iso, info.map, this.mine);
     this.world.add(decor);
-    this.lavaG = this.add.graphics();
-    this.world.add(this.lavaG);
     this.world.add(this.add.image(0, 0, this.ground.fogKey).setOrigin(0, 0).setScale(1 / this.ground.fogScale));
     this.linesG = this.add.graphics();
     this.entG = this.add.graphics();
@@ -403,6 +398,9 @@ export class GameScene extends BaseScene {
           if (view.squads.find((q) => q.id === e.squadId)?.owner !== session.info?.playerId) break;
           session.toast(`Could not garrison: ${e.reason === 'nodeFull' ? 'it is full' : 'you already have a squad there'}`, 'bad');
           break;
+        case 'nodesUnlocked':
+          session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Oil Refineries unlocked: they can be captured now', 'good');
+          break;
         case 'matchEnded':
           break;
         default:
@@ -468,17 +466,6 @@ export class GameScene extends BaseScene {
       paintFog(this.ground, iso, circles);
     }
 
-    // Lava breathes.
-    const lg = this.lavaG;
-    lg.clear();
-    const pulse = clientTune.fx.lavaPulseSpeed;
-    for (const t of this.lava) {
-      const k = 0.5 + 0.5 * Math.sin(now * pulse + t.phase);
-      const p = iso.p((t.cx + 0.5) * iso.cell, (t.cy + 0.5) * iso.cell);
-      square(lg, p.x, p.y, iso.tile / 2 - 2, Phaser.Display.Color.GetColor(200 + k * 55, 50 + k * 60, 10), 0.85);
-      square(lg, p.x, p.y, iso.tile / 4, Phaser.Display.Color.GetColor(255, 170 + k * 70, 60), 0.35 + k * 0.3);
-    }
-
     this.labelUsed = 0;
     const lines = this.linesG;
     const g = this.entG;
@@ -506,7 +493,8 @@ export class GameScene extends BaseScene {
         if (selNode === n.id) {
           square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         }
-        const base = shade(n.explored ? col : COLORS.neutral, dim);
+        const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
+        const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.55) : dim);
         if (n.kind === 'points' && n.tier >= 4) {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier === 3) {
@@ -518,6 +506,10 @@ export class GameScene extends BaseScene {
         } else {
           const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
           drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
+        }
+        if (locked) {
+          drawLock(g, p.x, p.y - 34, 1);
+          this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
         }
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
@@ -541,7 +533,7 @@ export class GameScene extends BaseScene {
           const bob = Math.sin(now * 4) * 2;
           g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 54 + bob, p.x + 6, p.y - 54 + bob, p.x, p.y - 46 + bob);
         }
-        if (isMe || this.zoom > 2.0) this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
+        this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
       });
     }
     for (const h of view.enemyHqs) {
@@ -549,6 +541,7 @@ export class GameScene extends BaseScene {
       add(h.pos, () => {
         if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
         drawHq(g, p.x, p.y, COLORS.enemy, 17, 1, now);
+        this.label(h.owner, p.x, p.y + 8, '#ff9a7a', 10);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 5);
       });
     }
@@ -567,6 +560,7 @@ export class GameScene extends BaseScene {
         const hgt = unitHeight(s.type) * US;
         if (this.selectedSquad === s.id) g.lineStyle(OUTLINE, COLORS.self, 1).strokeEllipse(p.x, p.y, 40, 22);
         drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now, 1, { scale: US });
+        if (!mineSquad) this.label(s.owner, p.x, p.y - hgt - 18, '#9fd0ff', 11);
         if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
         if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);
       });
@@ -582,7 +576,9 @@ export class GameScene extends BaseScene {
       add(pos, () => {
         if (inSight(pos)) {
           drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now, 1, { scale: US });
-          if (m.revealed) this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
+          // The commander's name is public while we can see the unit; power needs a scout.
+          this.label(m.owner, p.x, p.y - unitHeight(m.type) * US - 18, '#ffb08a', 11);
+          if (m.revealed) this.label(`Power ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
           drawQuestion(g, p.x, p.y, COLORS.enemy, 1);
         }
@@ -882,6 +878,11 @@ export class GameScene extends BaseScene {
       if (!d) return null;
       title = d.title;
       body = d.lines;
+      const nv = view.nodes.find((x) => x.id === t.id);
+      if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) {
+        body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)} (${nv.tier === 4 ? 'at 50%' : 'at 75%'} of the clock left)`, COLORS.warn], ...body];
+        attackable = false;
+      }
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'node' && r.target.nodeId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
     } else if (t.own) {
       const hq = view.hqs.find((x) => x.id === t.id);

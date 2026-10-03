@@ -6,7 +6,7 @@ import type { Command, MapDef, MarchTarget, TeamId, Tune } from 'arena-sim';
 import type { ClientEvent } from './events';
 import type { ViewPatch, WireView } from './wire';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** Match lengths a host can choose in the lobby. */
 export const MATCH_MINUTES = [10, 15, 20, 30] as const;
