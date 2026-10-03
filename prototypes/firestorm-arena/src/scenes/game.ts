@@ -8,7 +8,7 @@ import { session } from '../net/session';
 import { Iso, diamond } from '../render/iso';
 import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -277,11 +277,11 @@ export class GameScene extends BaseScene {
     }
     for (const h of view.hqs) {
       const p = this.iso.p(h.pos.x, h.pos.y);
-      consider(Math.hypot(m.x - p.x, m.y - (p.y - 10)), 28, { kind: 'hq', id: h.id, own: true });
+      consider(Math.hypot(m.x - p.x, m.y - (p.y - 10)), 22, { kind: 'hq', id: h.id, own: true });
     }
     for (const h of view.enemyHqs) {
       const p = this.iso.p(h.pos.x, h.pos.y);
-      consider(Math.hypot(m.x - p.x, m.y - (p.y - 10)), 28, { kind: 'hq', id: h.id, own: false });
+      consider(Math.hypot(m.x - p.x, m.y - (p.y - 10)), 22, { kind: 'hq', id: h.id, own: false });
     }
     return best ? (best as { d: number; t: Target }).t : null;
   }
@@ -453,8 +453,7 @@ export class GameScene extends BaseScene {
         const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
         diamond(g, p.x, p.y, iso.tw / 2 - 3, iso.th / 2 - 1.5, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
-          const pulse = 0.5 + 0.5 * Math.sin(now * 6);
-          diamond(g, p.x, p.y, iso.tw / 2 + 4, iso.th / 2 + 2, undefined, 1, 0xffffff, 2 + pulse);
+          diamond(g, p.x, p.y, iso.tw / 2 + 4, iso.th / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         }
         const base = shade(n.explored ? col : COLORS.neutral, dim);
         if (n.kind === 'points' && n.tier >= 4) {
@@ -479,13 +478,13 @@ export class GameScene extends BaseScene {
       const p = iso.p(h.pos.x, h.pos.y);
       const isMe = h.id === info.hqId;
       add(h.pos, () => {
-        if (selHq === h.id) diamond(g, p.x, p.y, 30, 15, undefined, 1, 0xffffff, 2);
-        drawHq(g, p.x, p.y, COLORS.mine, 26, 1, now);
-        for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 62, 6, 4);
-        if (h.burning) drawFlames(g, p.x, p.y - 14, now, 2.2, 3);
+        if (selHq === h.id) diamond(g, p.x, p.y, 24, 12, undefined, 1, 0xffffff, OUTLINE);
+        drawHq(g, p.x, p.y, COLORS.mine, 17, 1, now);
+        for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 40, 6, 4);
+        if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 3);
         if (isMe) {
           const bob = Math.sin(now * 4) * 2;
-          g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 78 + bob, p.x + 6, p.y - 78 + bob, p.x, p.y - 70 + bob);
+          g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 54 + bob, p.x + 6, p.y - 54 + bob, p.x, p.y - 46 + bob);
         }
         if (isMe || this.zoom > 2.0) this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
       });
@@ -493,9 +492,9 @@ export class GameScene extends BaseScene {
     for (const h of view.enemyHqs) {
       const p = iso.p(h.pos.x, h.pos.y);
       add(h.pos, () => {
-        if (selHq === h.id) diamond(g, p.x, p.y, 30, 15, undefined, 1, 0xffffff, 2);
-        drawHq(g, p.x, p.y, COLORS.enemy, 26, 1, now);
-        if (h.burning) drawFlames(g, p.x, p.y - 14, now, 2.2, 5);
+        if (selHq === h.id) diamond(g, p.x, p.y, 24, 12, undefined, 1, 0xffffff, OUTLINE);
+        drawHq(g, p.x, p.y, COLORS.enemy, 17, 1, now);
+        if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 5);
       });
     }
 
@@ -511,7 +510,7 @@ export class GameScene extends BaseScene {
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
         const hgt = unitHeight(s.type);
-        if (this.selectedSquad === s.id) diamond(g, p.x, p.y, 22, 11, undefined, 1, COLORS.self, 2);
+        if (this.selectedSquad === s.id) diamond(g, p.x, p.y, 22, 11, undefined, 1, COLORS.self, OUTLINE);
         drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now);
         if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
         if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);

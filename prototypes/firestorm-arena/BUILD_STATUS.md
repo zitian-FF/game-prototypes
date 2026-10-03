@@ -33,6 +33,11 @@ refinery art pass is on the branch, verified locally, not yet merged.
   Lobby shows two team columns with Join buttons.
 - Loading screen: shown while the map builds, then for 2.5s with your team, match length and the
   squads you were dealt.
+- Art rules: exactly two stroke widths everywhere (OUTLINE 2.5 around a whole silhouette, DETAIL 1 between
+  parts), drawn by one helper in two passes; solid colours only. Tank and missile truck follow the new
+  references (armoured skirts and faceted turret with light slashes; six-wheel truck with three tan rockets
+  with red tips). The player HQ is smaller and plainer than any node (pad, tower, side block, small cannon,
+  flag).
 - Art pass: units redrawn with shading and ground shadows, mirrored left or right from their travel
   direction (and they keep the last facing when they stop). Helicopter follows the reference (four
   brown blades with orange tips, chin gun, engine pods with orange exhausts, tail rotor). HQ follows the
