@@ -5,8 +5,8 @@ import { BaseScene, DPR, logicalSize } from './base';
 import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
-import { Iso, diamond } from '../render/iso';
-import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
+import { Iso, square } from '../render/iso';
+import { bakeGround, drawDecor, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
 import { OUTLINE, drawFlames, drawHospital, drawHq, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
@@ -97,11 +97,17 @@ export class GameScene extends BaseScene {
     this.tune = info.tune;
     this.mine = info.team;
     this.iso = new Iso(this.tune);
-    this.ground = bakeGround(this, this.iso, info.map, this.tune, this.mine);
+    this.ground = bakeGround(this, this.iso, info.map, this.tune);
     this.lava = this.ground.lava;
 
     this.world = this.add.container(0, 0);
-    this.world.add(this.add.image(0, 0, this.ground.groundKey).setOrigin(0, 0).setScale(1 / this.ground.groundScale));
+    // The floor is one small block of tiles repeated across the map, with vector overlays on top.
+    const floor = this.add.tileSprite(0, 0, this.iso.pxW, this.iso.pxH, this.ground.tileKey).setOrigin(0, 0);
+    floor.setTileScale(1 / this.ground.tileScale);
+    this.world.add(floor);
+    const decor = this.add.graphics();
+    drawDecor(decor, this.iso, info.map, this.mine);
+    this.world.add(decor);
     this.lavaG = this.add.graphics();
     this.world.add(this.lavaG);
     this.world.add(this.add.image(0, 0, this.ground.fogKey).setOrigin(0, 0).setScale(1 / this.ground.fogScale));
@@ -393,6 +399,8 @@ export class GameScene extends BaseScene {
           break;
         case 'garrisonRejected':
         case 'hqGarrisonRejected':
+          // Teammates' rejected squads reach you too; only tell the commander it happened to.
+          if (view.squads.find((q) => q.id === e.squadId)?.owner !== session.info?.playerId) break;
           session.toast(`Could not garrison: ${e.reason === 'nodeFull' ? 'it is full' : 'you already have a squad there'}`, 'bad');
           break;
         case 'matchEnded':
@@ -467,8 +475,8 @@ export class GameScene extends BaseScene {
     for (const t of this.lava) {
       const k = 0.5 + 0.5 * Math.sin(now * pulse + t.phase);
       const p = iso.p((t.cx + 0.5) * iso.cell, (t.cy + 0.5) * iso.cell);
-      diamond(lg, p.x, p.y, iso.tw / 2 - 2, iso.th / 2 - 1, Phaser.Display.Color.GetColor(200 + k * 55, 50 + k * 60, 10), 0.85);
-      diamond(lg, p.x, p.y, iso.tw / 4, iso.th / 4, Phaser.Display.Color.GetColor(255, 170 + k * 70, 60), 0.35 + k * 0.3);
+      square(lg, p.x, p.y, iso.tile / 2 - 2, Phaser.Display.Color.GetColor(200 + k * 55, 50 + k * 60, 10), 0.85);
+      square(lg, p.x, p.y, iso.tile / 4, Phaser.Display.Color.GetColor(255, 170 + k * 70, 60), 0.35 + k * 0.3);
     }
 
     this.labelUsed = 0;
@@ -484,7 +492,8 @@ export class GameScene extends BaseScene {
 
     const selNode = this.target?.kind === 'node' ? this.target.id : null;
     const selHq = this.target?.kind === 'hq' ? this.target.id : null;
-    const hw = (iso.tw / 2) * clientTune.iso.cubeFootprint;
+    const hw = clientTune.iso.artHalfWidth;
+    const US = clientTune.iso.unitScale;
 
     // Nodes
     for (const n of view.nodes) {
@@ -493,9 +502,9 @@ export class GameScene extends BaseScene {
         const col = n.owner === null ? COLORS.neutral : teamColor(n.owner, mine);
         // Out of sight nodes are darkened, never faded: solid colours only.
         const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
-        diamond(g, p.x, p.y, iso.tw / 2 - 3, iso.th / 2 - 1.5, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
+        square(g, p.x, p.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
-          diamond(g, p.x, p.y, iso.tw / 2 + 4, iso.th / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
+          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         }
         const base = shade(n.explored ? col : COLORS.neutral, dim);
         if (n.kind === 'points' && n.tier >= 4) {
@@ -514,7 +523,7 @@ export class GameScene extends BaseScene {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
           const stale = !own && n.garrisonCountAsOfMs !== undefined ? ` (${Math.round((simMs - n.garrisonCountAsOfMs) / 1000)}s)` : '';
-          this.label(txt + stale, p.x, p.y + iso.th / 2 + 2, own ? '#cfe9ff' : '#ffd08a', 11);
+          this.label(txt + stale, p.x, p.y + iso.tile / 2 + 2, own ? '#cfe9ff' : '#ffd08a', 11);
         }
       });
     }
@@ -524,7 +533,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(h.pos.x, h.pos.y);
       const isMe = h.id === info.hqId;
       add(h.pos, () => {
-        if (selHq === h.id) diamond(g, p.x, p.y, 24, 12, undefined, 1, 0xffffff, OUTLINE);
+        if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
         drawHq(g, p.x, p.y, COLORS.mine, 17, 1, now);
         for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 40, 6, 4);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 3);
@@ -538,7 +547,7 @@ export class GameScene extends BaseScene {
     for (const h of view.enemyHqs) {
       const p = iso.p(h.pos.x, h.pos.y);
       add(h.pos, () => {
-        if (selHq === h.id) diamond(g, p.x, p.y, 24, 12, undefined, 1, 0xffffff, OUTLINE);
+        if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
         drawHq(g, p.x, p.y, COLORS.enemy, 17, 1, now);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 5);
       });
@@ -555,9 +564,9 @@ export class GameScene extends BaseScene {
       if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.3);
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
-        const hgt = unitHeight(s.type);
-        if (this.selectedSquad === s.id) diamond(g, p.x, p.y, 22, 11, undefined, 1, COLORS.self, OUTLINE);
-        drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now);
+        const hgt = unitHeight(s.type) * US;
+        if (this.selectedSquad === s.id) g.lineStyle(OUTLINE, COLORS.self, 1).strokeEllipse(p.x, p.y, 40, 22);
+        drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now, 1, { scale: US });
         if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
         if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);
       });
@@ -572,7 +581,7 @@ export class GameScene extends BaseScene {
       if (!m.burning) this.dashed(lines, p, to, COLORS.enemyLine, now, 0.85);
       add(pos, () => {
         if (inSight(pos)) {
-          drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
+          drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now, 1, { scale: US });
           if (m.revealed) this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
           drawQuestion(g, p.x, p.y, COLORS.enemy, 1);
@@ -588,7 +597,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(sc.to.x, sc.to.y);
       if (sc.owner === info.playerId && sc.state === 'out') this.dashed(lines, p, to, 0xbfe9ff, now, 0.6, 1.5);
-      add(pos, () => drawUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now));
+      add(pos, () => drawUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now, 1, { scale: US }));
     }
 
     items.sort((a, b) => a.d - b.d);

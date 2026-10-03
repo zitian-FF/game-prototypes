@@ -1,19 +1,19 @@
 {
   "iso": {
-    "tileWidth": 64,
+    "tileSize": 72,
     "cubeHeight": 14,
-    "cubeFootprint": 0.78
+    "artHalfWidth": 25,
+    "unitScale": 0.75
   },
   "camera": {
     "panSpeed": 900,
-    "zoomMin": 0.3,
+    "zoomMin": 0.15,
     "zoomMax": 2.4,
     "zoomStep": 1.12,
     "startZoom": 0.85
   },
   "dpr": {
-    "max": 2,
-    "groundMaxPx": 6144
+    "max": 2
   },
   "fog": {
     "alpha": 0.58,

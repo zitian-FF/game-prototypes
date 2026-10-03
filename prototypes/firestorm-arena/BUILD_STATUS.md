@@ -60,6 +60,10 @@ Everything below the first two bullets of the merged work is on the branch, not 
   monitor change), so the buffer, camera and text resolution follow it. The baked floor is drawn at up to 1.5x
   (`dpr.groundMaxPx` in client.tune.json) so it no longer looks soft on dense screens. Scouts and Logs buttons
   now move up out of the way of a 4-row squad panel.
+- Square grid (branch, unmerged): the floor is now an upright square grid with a small repeating tile block plus
+  vector overlays (safe zones, HQ slot tiles, map edge, lava squares); fog is circular; nodes sit on square tiles;
+  art stays isometric. Units draw at `iso.unitScale` (0.75). The big baked floor texture and its bake-size tuning
+  (`dpr.groundMaxPx`) are gone. Minimap is a rectangle. Sim, protocol and tests are unchanged.
 - Packages: arena-sim 0.4.0, firestorm-net 0.3.0, protocol 3.
 
 ## Key technical decisions
@@ -90,6 +94,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - HQ garrison and the squad-panel rows for 4 squads were checked by tests and typecheck only, not by eye
   in a browser (the floaters and leaderboard were).
 - Bots never garrison friendly HQs.
+- The lava squares are bold and blocky on the new grid; tint and size are placeholders.
+- Node art is small inside the larger 72 px tiles (art size was kept as asked).
 
 - Verified in headless Chromium and the local runtime only; the live Worker has not been
   exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.

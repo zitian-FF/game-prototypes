@@ -572,4 +572,9 @@ client.
 - Individual scoring (vanity only, never affects the match): +1 per troop defeated, +1000 per node
   captured, +10 per second garrisoning a node, +500 per HQ taken to 0 HP. Values are in tune.json
   `personalScoring`. The victory screen shows the top 10 commanders and your own row.
+- Map view: the floor is an upright square grid (x right, y down, 72 px tiles) instead of an isometric
+  diamond grid. Buildings, HQs and units are still isometric sprites standing on a tile and reaching upward.
+  Safe zones are tinted team blocks, the 8 tiles around each node (HQ slots) are lightly marked, and fog and
+  vision are circles. In-world units are drawn at `iso.unitScale` (0.75) of their size, so they read smaller
+  than buildings; UI icons are unchanged. This supersedes "Isometric view of the grid" above.
 - Where this section conflicts with older text above, this section wins.

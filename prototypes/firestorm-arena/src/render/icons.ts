@@ -13,6 +13,9 @@ type Pt = number[];
 export const OUTLINE = 2.5;
 export const DETAIL = 1;
 
+/** Line-width compensation while a scaled transform is active, so scaled art keeps the same two stroke widths. */
+let lineK = 1;
+
 interface Part {
   fill: number;
   poly?: Pt[];
@@ -68,12 +71,12 @@ class Art {
     for (const p of this.parts) {
       if (p.inner) continue;
       g.fillStyle(this.outline, 1);
-      g.lineStyle(OUTLINE * 2, this.outline, 1);
+      g.lineStyle(OUTLINE * 2 * lineK, this.outline, 1);
       this.path(p, true);
     }
     for (const p of this.parts) {
       g.fillStyle(p.fill, 1);
-      g.lineStyle(DETAIL, shade(p.fill, 0.5), 1);
+      g.lineStyle(DETAIL * lineK, shade(p.fill, 0.5), 1);
       this.path(p, false);
       this.path(p, true);
     }
@@ -105,6 +108,8 @@ export interface UnitOpts {
   shadow?: boolean;
   /** Dust behind ground units, rotor and prop spin. */
   moving?: boolean;
+  /** Draw the unit at this fraction of its size (world units are smaller than buildings). */
+  scale?: number;
 }
 
 /** Pixels from the ground point to the top of the drawn unit, for placing bars and flames. */
@@ -126,6 +131,19 @@ export function unitHeight(type: SquadType | 'scout'): number {
  * Tank and missile truck follow the reference models; the helicopter follows its own reference.
  */
 export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, f: number, color: number, t: number, _alpha = 1, o: UnitOpts = {}): void {
+  if (o.scale !== undefined && o.scale !== 1) {
+    // Draw at the origin under a scale transform, with line widths compensated so the strokes stay the same.
+    const k = o.scale;
+    g.save();
+    g.translateCanvas(x, y);
+    g.scaleCanvas(k, k);
+    const prev = lineK;
+    lineK = 1 / k;
+    drawUnit(g, type, 0, 0, f, color, t, _alpha, { ...o, scale: 1 });
+    lineK = prev;
+    g.restore();
+    return;
+  }
   const moving = o.moving !== false;
   const X = (dx: number) => x + dx * f;
   const P = (dx: number, dy: number): Pt => [X(dx), dy];

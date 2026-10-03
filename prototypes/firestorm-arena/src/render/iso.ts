@@ -5,45 +5,44 @@ import { shade } from '../theme';
 
 type G = Phaser.GameObjects.Graphics;
 
-/** World units (sim coordinates) <-> isometric map pixels. */
+/**
+ * World units (sim coordinates) <-> map pixels. The floor is an upright square grid: x goes right and y goes
+ * down, one cell is `tile` pixels. Buildings and units are still drawn as isometric sprites standing on a
+ * tile, which is why the old diamond helpers below remain for the art.
+ */
 export class Iso {
-  readonly tw: number;
-  readonly th: number;
+  /** Tile edge in pixels. */
+  readonly tile: number;
   readonly cell: number;
-  readonly ox: number;
   readonly pxW: number;
   readonly pxH: number;
   readonly cols: number;
   readonly rows: number;
 
   constructor(tune: Tune) {
-    this.tw = clientTune.iso.tileWidth;
-    this.th = this.tw / 2;
+    this.tile = clientTune.iso.tileSize;
     this.cell = tune.map.cellSize;
     this.cols = tune.map.widthCells;
     this.rows = tune.map.heightCells;
-    this.ox = this.rows * (this.tw / 2);
-    this.pxW = (this.cols + this.rows) * (this.tw / 2);
-    this.pxH = (this.cols + this.rows) * (this.th / 2);
+    this.pxW = this.cols * this.tile;
+    this.pxH = this.rows * this.tile;
   }
 
   /** World position to map pixels. */
   p(x: number, y: number): Vec {
-    const u = x / this.cell;
-    const v = y / this.cell;
-    return { x: (u - v) * (this.tw / 2) + this.ox, y: (u + v) * (this.th / 2) };
+    const k = this.tile / this.cell;
+    return { x: x * k, y: y * k };
   }
 
   /** Map pixels back to world position. */
   unproject(sx: number, sy: number): Vec {
-    const a = ((sx - this.ox) * 2) / this.tw; // u - v
-    const b = (sy * 2) / this.th; // u + v
-    return { x: ((a + b) / 2) * this.cell, y: ((b - a) / 2) * this.cell };
+    const k = this.cell / this.tile;
+    return { x: sx * k, y: sy * k };
   }
 
-  /** Painter's order: further from the viewer (smaller u + v) first. */
+  /** Painter's order: things lower on the screen are drawn later. */
   depth(x: number, y: number): number {
-    return (x + y) / this.cell;
+    return (y + x * 0.001) / this.cell;
   }
 }
 
@@ -60,6 +59,11 @@ export function poly(g: G, pts: number[][], fill?: number, alpha = 1, stroke?: n
     g.lineStyle(lw, stroke, 1);
     g.strokePath();
   }
+}
+
+/** A square tile centred at (cx, cy) with half-size `half`. */
+export function square(g: G, cx: number, cy: number, half: number, fill?: number, alpha = 1, stroke?: number, lw = 1): void {
+  poly(g, [[cx - half, cy - half], [cx + half, cy - half], [cx + half, cy + half], [cx - half, cy + half]], fill, alpha, stroke, lw);
 }
 
 export function diamond(g: G, cx: number, cy: number, hw: number, hh: number, fill?: number, alpha = 1, stroke?: number, lw = 1): void {
