@@ -1,7 +1,7 @@
 ## Current milestone
 
-Post-playtest revision 1 is merged and deployed (protocol 2). Team selection in the lobby and
-the loading screen are built on the branch and verified locally, not yet merged.
+Post-playtest revision 1, team selection and the loading screen are merged. The unit, HQ and
+refinery art pass is on the branch, verified locally, not yet merged.
 
 ## What was implemented
 
@@ -33,6 +33,17 @@ the loading screen are built on the branch and verified locally, not yet merged.
   Lobby shows two team columns with Join buttons.
 - Loading screen: shown while the map builds, then for 2.5s with your team, match length and the
   squads you were dealt.
+- Art rules: exactly two stroke widths everywhere (OUTLINE 2.5 around a whole silhouette, DETAIL 1 between
+  parts), drawn by one helper in two passes; solid colours only. Tank and missile truck follow the new
+  references (armoured skirts and faceted turret with light slashes; six-wheel truck with three tan rockets
+  with red tips). The player HQ is smaller and plainer than any node (pad, tower, side block, small cannon,
+  flag).
+- Art pass: units redrawn with shading and ground shadows, mirrored left or right from their travel
+  direction (and they keep the last facing when they stop). Helicopter follows the reference (four
+  brown blades with orange tips, chin gun, engine pods with orange exhausts, tail rotor). HQ follows the
+  reference (stepped beige building, team-colour roofs, rooftop cannon, antenna, flag, hazard-striped
+  pad); oil refinery follows the second reference (two domed tanks with pulsing green tops, team
+  clamps). All of it is solid colour, no transparency; out-of-sight nodes are darkened, not faded.
 - Packages: arena-sim 0.3.0, firestorm-net 0.2.0.
 
 ## Key technical decisions

@@ -86,3 +86,19 @@ export function hash2(a: number, b: number, seed = 0): number {
   h = h ^ (h >>> 16);
   return ((h >>> 0) % 100000) / 100000;
 }
+
+/**
+ * A box on the diamond centred at (cx, cy) with half-width hw, `h` pixels tall and lifted by `lift`,
+ * with its own wall and roof colours (walls shaded left and right, roof lit with a thin rim).
+ */
+export function box(g: G, cx: number, cy: number, hw: number, h: number, lift: number, wall: number, roof: number, alpha = 1, edge = 0x000000): void {
+  const hh = hw / 2;
+  const by = cy - lift;
+  const ty = by - h;
+  poly(g, [[cx - hw, by], [cx, by + hh], [cx, ty + hh], [cx - hw, ty]], shade(wall, 0.82), alpha, edge, 1);
+  poly(g, [[cx + hw, by], [cx, by + hh], [cx, ty + hh], [cx + hw, ty]], shade(wall, 0.58), alpha, edge, 1);
+  poly(g, [[cx, ty - hh], [cx + hw, ty], [cx, ty + hh], [cx - hw, ty]], roof, alpha, edge, 1);
+  // roof rim: a slightly darker inset gives the slab thickness seen in the reference art
+  const r = 0.72;
+  poly(g, [[cx, ty - hh * r], [cx + hw * r, ty], [cx, ty + hh * r], [cx - hw * r, ty]], shade(roof, 1.12), alpha);
+}

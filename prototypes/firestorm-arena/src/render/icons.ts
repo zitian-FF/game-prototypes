@@ -1,104 +1,298 @@
 import type Phaser from 'phaser';
 import type { NodeKind, SquadType } from 'arena-sim';
-import { cube, diamond, poly } from './iso';
 import { clientTune } from '../clientTune';
 import { shade } from '../theme';
 
 type G = Phaser.GameObjects.Graphics;
+type Pt = number[];
 
-const DARK = 0x0c1016;
+/**
+ * Every piece of art uses exactly two stroke widths: a thick OUTLINE around the whole silhouette and a thin
+ * DETAIL line between the parts inside it. Solid colours only, no transparency.
+ */
+export const OUTLINE = 2.5;
+export const DETAIL = 1;
 
-/** Team-colour outline over a dark fill, facing `f` (1 right, -1 left). */
-export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, f: number, color: number, t: number, alpha = 1): void {
-  g.lineStyle(2, color, alpha);
-  g.fillStyle(DARK, 0.9 * alpha);
-  const X = (dx: number) => x + dx * f;
-  switch (type) {
-    case 'tank': {
-      // tracks, hull, turret, barrel
-      g.fillRoundedRect(x - 14, y - 4, 28, 9, 3);
-      g.strokeRoundedRect(x - 14, y - 4, 28, 9, 3);
-      g.fillRect(x - 9, y - 11, 18, 8);
-      g.strokeRect(x - 9, y - 11, 18, 8);
-      g.beginPath();
-      g.moveTo(X(7), y - 7);
-      g.lineTo(X(20), y - 8);
-      g.strokePath();
-      for (let i = -2; i <= 2; i++) g.fillStyle(color, 0.8 * alpha).fillCircle(x + i * 5.5, y + 1, 1.4);
-      break;
+interface Part {
+  fill: number;
+  poly?: Pt[];
+  ell?: [number, number, number, number];
+  /** Inside another part: it adds detail but never changes the silhouette. */
+  inner: boolean;
+}
+
+/**
+ * Collects parts back to front, then draws them in two passes: all parts as a team-colour underlay stroked
+ * at twice OUTLINE (so only the outer half survives as the silhouette), then every fill with a thin DETAIL
+ * edge in a darker shade of its own colour.
+ */
+class Art {
+  private parts: Part[] = [];
+
+  constructor(
+    private g: G,
+    private outline: number,
+  ) {}
+
+  poly(pts: Pt[], fill: number, inner = false): this {
+    this.parts.push({ fill, poly: pts, inner });
+    return this;
+  }
+
+  quad(x0: number, y0: number, x1: number, y1: number, fill: number, inner = false): this {
+    return this.poly([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], fill, inner);
+  }
+
+  ell(cx: number, cy: number, w: number, h: number, fill: number, inner = false): this {
+    this.parts.push({ fill, ell: [cx, cy, w, h], inner });
+    return this;
+  }
+
+  circ(cx: number, cy: number, r: number, fill: number, inner = false): this {
+    return this.ell(cx, cy, r * 2, r * 2, fill, inner);
+  }
+
+  /** An isometric box on the diamond at (cx, cy): walls shaded left and right, lit roof. */
+  box(cx: number, cy: number, hw: number, h: number, lift: number, wall: number, roof: number): this {
+    const hh = hw / 2;
+    const by = cy - lift;
+    const ty = by - h;
+    this.poly([[cx - hw, by], [cx, by + hh], [cx, ty + hh], [cx - hw, ty]], shade(wall, 0.82));
+    this.poly([[cx + hw, by], [cx, by + hh], [cx, ty + hh], [cx + hw, ty]], shade(wall, 0.58));
+    this.poly([[cx, ty - hh], [cx + hw, ty], [cx, ty + hh], [cx - hw, ty]], roof);
+    return this;
+  }
+
+  draw(): void {
+    const g = this.g;
+    for (const p of this.parts) {
+      if (p.inner) continue;
+      g.fillStyle(this.outline, 1);
+      g.lineStyle(OUTLINE * 2, this.outline, 1);
+      this.path(p, true);
     }
-    case 'aircraft': {
-      // helicopter: body, tail boom, rotor, skid
-      g.fillEllipse(x, y - 8, 20, 12);
-      g.strokeEllipse(x, y - 8, 20, 12);
-      g.beginPath();
-      g.moveTo(X(9), y - 9);
-      g.lineTo(X(24), y - 12);
-      g.moveTo(X(24), y - 17);
-      g.lineTo(X(24), y - 7);
-      g.moveTo(X(-9), y - 1);
-      g.lineTo(X(9), y - 1);
-      g.moveTo(X(-5), y - 1);
-      g.lineTo(X(-5), y - 3);
-      g.moveTo(X(5), y - 1);
-      g.lineTo(X(5), y - 3);
-      g.strokePath();
-      const spin = Math.cos(t * 28);
-      g.lineStyle(2, color, 0.8 * alpha);
-      g.beginPath();
-      g.moveTo(x - 20 * spin, y - 16);
-      g.lineTo(x + 20 * spin, y - 16);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(x, y - 14);
-      g.lineTo(x, y - 16);
-      g.strokePath();
-      break;
+    for (const p of this.parts) {
+      g.fillStyle(p.fill, 1);
+      g.lineStyle(DETAIL, shade(p.fill, 0.5), 1);
+      this.path(p, false);
+      this.path(p, true);
     }
-    case 'missile': {
-      // MLRS: chassis, cab, angled rocket pod, wheels
-      g.fillRect(x - 15, y - 5, 30, 6);
-      g.strokeRect(x - 15, y - 5, 30, 6);
-      g.fillRect(X(9) - (f < 0 ? 7 : 0), y - 11, 7, 6);
-      g.strokeRect(X(9) - (f < 0 ? 7 : 0), y - 11, 7, 6);
-      poly(g, [[X(-13), y - 5], [X(5), y - 5], [X(5), y - 10], [X(-9), y - 17]], DARK, 0.9 * alpha, color, 2);
-      for (const wx of [-9, 0, 9]) g.fillStyle(color, alpha).fillCircle(X(wx), y + 3, 2.4);
-      break;
+  }
+
+  private path(p: Part, fill: boolean): void {
+    const g = this.g;
+    if (p.ell) {
+      const [x, y, w, h] = p.ell;
+      if (fill) g.fillEllipse(x, y, w, h);
+      else g.strokeEllipse(x, y, w, h);
+      return;
     }
-    case 'scout': {
-      // fixed wing: fuselage, swept wings, tailplane
-      g.beginPath();
-      g.moveTo(X(-14), y);
-      g.lineTo(X(14), y - 2);
-      g.strokePath();
-      poly(g, [[X(-2), y - 1], [X(-8), y - 9], [X(-4), y - 9], [X(5), y - 1]], DARK, 0.9 * alpha, color, 2);
-      poly(g, [[X(-2), y - 1], [X(-8), y + 7], [X(-4), y + 7], [X(5), y - 1]], DARK, 0.9 * alpha, color, 2);
-      poly(g, [[X(-13), y], [X(-16), y - 4], [X(-13), y - 4]], DARK, 0.9 * alpha, color, 2);
-      break;
-    }
+    const pts = p.poly!;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+    if (fill) g.fillPath();
+    else g.strokePath();
   }
 }
 
-/** Flickering flames rising from (x, y). `size` ~ 1 for a unit, 2 for an HQ. */
+const DARK = 0x0c1016;
+void DARK;
+
+export interface UnitOpts {
+  /** Ground shadow under the unit (off for UI icons). */
+  shadow?: boolean;
+  /** Dust behind ground units, rotor and prop spin. */
+  moving?: boolean;
+}
+
+/** Pixels from the ground point to the top of the drawn unit, for placing bars and flames. */
+export function unitHeight(type: SquadType | 'scout'): number {
+  switch (type) {
+    case 'tank':
+      return 30;
+    case 'missile':
+      return 34;
+    case 'aircraft':
+      return 40;
+    case 'scout':
+      return 46;
+  }
+}
+
+/**
+ * A unit as an upright billboard standing on (x, y), facing right when f is 1 and left when f is -1.
+ * Tank and missile truck follow the reference models; the helicopter follows its own reference.
+ */
+export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, f: number, color: number, t: number, _alpha = 1, o: UnitOpts = {}): void {
+  const moving = o.moving !== false;
+  const X = (dx: number) => x + dx * f;
+  const P = (dx: number, dy: number): Pt => [X(dx), dy];
+  const body = shade(color, 0.6);
+  const light = shade(color, 0.9);
+  const dark = shade(color, 0.34);
+  const steel = 0x8a93a0;
+  const gun = 0x3a3f47;
+  const glass = 0x1b2a38;
+  const brown = 0x5a4034;
+  const orange = 0xf0a63a;
+  const lift = type === 'aircraft' ? 16 : type === 'scout' ? 36 : 0;
+  const art = new Art(g, color);
+
+  if (o.shadow !== false) {
+    const sw = type === 'scout' ? 26 : type === 'aircraft' ? 32 : 40;
+    g.fillStyle(0x120f0d, 1).fillEllipse(x, y + 1, sw, lift ? 6 : 9);
+  }
+  const yy = y - lift;
+
+  const dust = (back: number) => {
+    if (!moving) return;
+    for (let k = 0; k < 3; k++) {
+      const wob = Math.sin(t * 9 + k * 2) * 1.5;
+      g.fillStyle([0x6b5f54, 0x574d44, 0x443c35][k], 1).fillCircle(X(back - k * 6), yy - 2 - k * 1.5 + wob, 2.4 + k * 0.6);
+    }
+  };
+
+  switch (type) {
+    case 'tank': {
+      dust(-22);
+      // Back module with two antennas.
+      art.quad(X(-11.8), yy - 27, X(-10.2), yy - 19, shade(color, 0.45));
+      art.quad(X(-3.8), yy - 26, X(-2.2), yy - 19, shade(color, 0.45));
+      art.ell(X(-8), yy - 20, 15, 9, light);
+      art.ell(X(-14.5), yy - 20, 4, 8, dark);
+      // Tracks and wheels.
+      art.poly([P(-18, yy), P(18, yy), P(18, yy - 6), P(-18, yy - 6)], gun);
+      for (const wx of [-12, -4, 4, 12]) art.circ(X(wx), yy - 3.2, 3.2, 0x232830).circ(X(wx), yy - 3.2, 1.2, steel, true);
+      // Hull with heavy side skirts, rear box and top deck.
+      art.poly([P(-19, yy - 5), P(19, yy - 5), P(21, yy - 12), P(-17, yy - 13)], body);
+      art.poly([P(-16, yy - 5.5), P(17, yy - 5.5), P(18, yy - 11), P(-15, yy - 11.5)], light, true);
+      art.quad(X(0.4), yy - 11, X(1.4), yy - 6, dark, true);
+      art.quad(X(-8.4), yy - 11, X(-7.4), yy - 6, dark, true);
+      art.poly([P(-20, yy - 6), P(-13, yy - 6), P(-13, yy - 14), P(-20, yy - 14)], body);
+      art.poly([P(-15, yy - 12), P(17, yy - 12), P(14, yy - 17), P(-13, yy - 18)], light);
+      // Turret: faceted block, lit front plate with three light slashes, red sensor.
+      art.poly([P(-9, yy - 16), P(9, yy - 16), P(11, yy - 22), P(6, yy - 27), P(-6, yy - 27), P(-10, yy - 22)], body);
+      art.poly([P(2, yy - 16), P(11, yy - 17), P(12, yy - 23), P(4, yy - 25)], light);
+      for (let k = 0; k < 3; k++) art.poly([P(4.2 + k * 2.3, yy - 18.4 - k * 0.2), P(5.2 + k * 2.3, yy - 18.4 - k * 0.2), P(5.2 + k * 2.3, yy - 21.4 - k * 0.2), P(4.2 + k * 2.3, yy - 21.4 - k * 0.2)], 0xe8edf2, true);
+      art.quad(X(-2.5), yy - 29, X(2.5), yy - 27, 0xd64545);
+      // Mantlet, thick barrel and muzzle brake.
+      art.poly([P(7, yy - 24), P(12, yy - 24), P(12, yy - 16), P(7, yy - 17)], steel);
+      art.poly([P(11, yy - 21.5), P(26, yy - 20.5), P(26, yy - 16.5), P(11, yy - 17.5)], gun);
+      art.poly([P(25, yy - 22.2), P(31, yy - 22.2), P(31, yy - 15.8), P(25, yy - 15.8)], shade(gun, 0.8));
+      break;
+    }
+    case 'missile': {
+      dust(-23);
+      // Chassis, then three big wheels on the side.
+      art.poly([P(-22, yy - 6), P(22, yy - 6), P(22, yy - 12), P(-22, yy - 12)], shade(steel, 0.8));
+      // Cab with a wide dark windscreen, hood and amber headlight.
+      art.poly([P(8, yy - 12), P(22, yy - 12), P(22, yy - 18), P(17, yy - 25), P(8, yy - 25)], body);
+      art.poly([P(11, yy - 18.5), P(21, yy - 18.5), P(18, yy - 24), P(11.5, yy - 24)], glass, true);
+      art.poly([P(18, yy - 12), P(25, yy - 12), P(25, yy - 17), P(21, yy - 17)], light);
+      art.circ(X(25), yy - 14.4, 1.8, 0xf6b36b, true);
+      // Launcher cradle.
+      art.poly([P(-20, yy - 12), P(6, yy - 12), P(6, yy - 17), P(-20, yy - 17)], light);
+      art.poly([P(-15, yy - 17), P(-3, yy - 17), P(-5, yy - 21), P(-13, yy - 21)], shade(steel, 0.9));
+      for (const wx of [-15, -3, 12]) art.circ(X(wx), yy - 5.2, 5.2, 0x232830).circ(X(wx), yy - 5.2, 2.2, steel, true);
+      // Three tan rockets with red nose cones and fins, fanned up toward the front (back one first).
+      const c = Math.cos(-0.46);
+      const s = Math.sin(-0.46);
+      for (let k = 2; k >= 0; k--) {
+        const ox = -17 + k * 3.2;
+        const oy = yy - 19 - k * 3.6;
+        const at = (ux: number, vy: number): Pt => [X(ox + ux * c + vy * s), oy + ux * s - vy * c];
+        art.poly([at(-1, -2.6), at(21, -2.6), at(21, 2.6), at(-1, 2.6)], 0xc9a35f);
+        art.poly([at(21, -2.6), at(29, 0), at(21, 2.6)], 0xc73c3c);
+        art.poly([at(-1, 2.6), at(-1, 6), at(4, 2.6)], 0xc73c3c);
+        art.poly([at(-1, -2.6), at(-1, -6), at(4, -2.6)], 0xc73c3c);
+      }
+      break;
+    }
+    case 'aircraft': {
+      // Attack helicopter after the reference: round engine pods with orange exhausts, dark canopy, chin gun,
+      // four-blade brown rotor with orange tips, small tail rotor.
+      const cy = yy - 6;
+      const hubY = cy - 13;
+      const bladeLen = 25;
+      const spin = moving ? t * 14 : 0.6;
+      const blade = (k: number, front: boolean) => {
+        const th = spin + (k * Math.PI) / 2;
+        const sinT = Math.sin(th);
+        if (sinT >= 0 !== front) return;
+        const bx = Math.cos(th) * bladeLen;
+        const by = sinT * bladeLen * 0.3;
+        const w = 3.2;
+        const nx0 = -Math.sin(th) * 0.3 * w;
+        const ny0 = Math.cos(th) * w * 0.5;
+        art.poly([[x + nx0, hubY + ny0], [x + bx + nx0, hubY + by + ny0], [x + bx - nx0, hubY + by - ny0], [x - nx0, hubY - ny0]], brown);
+        const tx = x + bx * 0.82;
+        const ty = hubY + by * 0.82;
+        art.poly([[tx + nx0, ty + ny0], [x + bx + nx0, hubY + by + ny0], [x + bx - nx0, hubY + by - ny0], [tx - nx0, ty - ny0]], orange);
+      };
+      for (let k = 0; k < 4; k++) blade(k, false);
+      art.poly([P(-9, cy - 3), P(-28, cy - 7), P(-28, cy - 3), P(-9, cy + 3)], body);
+      art.poly([P(-24, cy - 6), P(-28, cy - 16), P(-32, cy - 15), P(-29, cy - 4)], light);
+      const ta = t * 22;
+      for (let k = 0; k < 2; k++) {
+        const ang = ta + k * Math.PI;
+        const ty = cy - 11 + Math.sin(ang) * 5;
+        art.poly([P(-31.6, cy - 11), P(-30.4, cy - 11), P(-30.4 + Math.cos(ang) * 1.5, ty), P(-31.6 + Math.cos(ang) * 1.5, ty)], brown);
+        art.circ(X(-31 + Math.cos(ang) * 1.5), ty, 1.3, orange);
+      }
+      for (const [px, py] of [[-10, cy + 3], [-3, cy + 5]] as const) {
+        art.ell(X(px), py, 11, 9, body);
+        art.ell(X(px - 4.5), py, 4, 7.6, orange, true);
+        art.ell(X(px - 4.8), py, 1.8, 4.2, 0xfff3d0, true);
+      }
+      art.poly([P(-12, cy - 4), P(8, cy - 8), P(18, cy - 1), P(14, cy + 7), P(-8, cy + 8)], body);
+      art.poly([P(-8, cy + 8), P(14, cy + 7), P(12, cy + 4), P(-8, cy + 4)], dark, true);
+      art.poly([P(-12, cy - 4), P(8, cy - 8), P(10, cy - 6), P(-10, cy - 2)], light, true);
+      art.poly([P(5, cy - 6), P(13, cy - 1), P(9, cy + 2), P(3, cy - 2)], glass, true);
+      art.circ(X(17), cy + 3, 3, gun);
+      art.poly([P(17, cy + 4), P(25, cy + 7.6), P(25, cy + 10.4), P(17, cy + 6.6)], gun);
+      art.quad(X(24), cy + 7, X(26.4), cy + 11, orange);
+      art.poly([P(-3, cy + 3), P(6, cy + 2), P(8, cy + 7), P(-2, cy + 8)], light);
+      art.ell(X(3), cy + 9.5, 9, 5, body);
+      art.ell(X(-1), cy + 9.5, 2.8, 4.4, orange, true);
+      art.ell(x, hubY, 12, 6, 0x3a2b24);
+      for (let k = 0; k < 4; k++) blade(k, true);
+      art.ell(x, hubY - 1.5, 8, 3.6, 0x3a2b24).ell(x, hubY - 2.2, 5, 2, 0x6a5040, true);
+      break;
+    }
+    case 'scout': {
+      art.poly([P(-1, yy - 1), P(-8, yy - 9), P(-3, yy - 9), P(5, yy - 1)], dark);
+      art.poly([P(-12, yy), P(-17, yy - 8), P(-12, yy - 8), P(-8, yy)], body);
+      art.poly([P(-15, yy), P(11, yy - 2.4), P(18, yy), P(11, yy + 2.4), P(-13, yy + 1.6)], body);
+      art.ell(X(7), yy - 1.4, 7, 3.6, glass, true);
+      art.poly([P(-1, yy + 0.5), P(-9, yy + 10), P(-3, yy + 11), P(7, yy + 1.4)], light);
+      art.poly([P(-2, yy + 3), P(-6, yy + 8.4), P(-3, yy + 9), P(2, yy + 3.4)], body, true);
+      const pr = moving ? Math.cos(t * 50) : 1;
+      art.poly([P(18.6, yy - 5 * pr), P(19.8, yy - 5 * pr), P(19.8, yy + 5 * pr), P(18.6, yy + 5 * pr)], 0xcfd6df);
+      break;
+    }
+  }
+  art.draw();
+}
+
+/** Flickering flames rising from (x, y). `size` ~ 1 for a unit, 2 for an HQ. Solid colours. */
 export function drawFlames(g: G, x: number, y: number, t: number, size = 1, seed = 0): void {
   for (let i = 0; i < 4; i++) {
     const ph = t * 9 + i * 1.7 + seed;
     const fx = x + (i - 1.5) * 5 * size + Math.sin(ph) * 1.5;
     const h = (9 + Math.sin(ph * 1.3) * 3.5 + i * 0.6) * size;
-    g.fillStyle(0xff4a1c, 0.85);
+    g.fillStyle(0xff4a1c, 1);
     g.fillTriangle(fx - 3.5 * size, y, fx + 3.5 * size, y, fx + Math.sin(ph) * 2, y - h);
-    g.fillStyle(0xffc233, 0.9);
+    g.fillStyle(0xffc233, 1);
     g.fillTriangle(fx - 2 * size, y, fx + 2 * size, y, fx + Math.sin(ph) * 1.2, y - h * 0.62);
   }
 }
 
-/** Icon floating above a node's cube stack, in white with a dark outline. */
+/** White line glyphs for node kinds, floating above the node. All strokes are OUTLINE wide. */
 export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1): void {
-  const line = (w: number, c: number) => g.lineStyle(w * s, c, 1);
   const stroke = (draw: () => void) => {
-    line(4, 0x000000);
-    draw();
-    line(2, 0xffffff);
+    g.lineStyle(OUTLINE, 0xffffff, 1);
     draw();
   };
   switch (kind) {
@@ -169,8 +363,8 @@ export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1):
         g.lineTo(x - 4 * s, y + 5 * s);
         g.closePath();
         g.strokePath();
-        g.strokeCircle(x, y, 2.4 * s);
       });
+      g.fillStyle(0xffffff, 1).fillCircle(x, y, 2.4 * s);
       break;
     case 'hospital':
       drawCross(g, x, y, s);
@@ -187,47 +381,56 @@ export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1):
   }
 }
 
-/** A node: a stack of `tier` cubes, each a step smaller than the last. */
-export function drawNodeStack(g: G, cx: number, cy: number, tier: number, color: number, hw: number, alpha = 1): number {
+/** A node: a stack of `tier` cubes, each a step smaller than the last, with one thick outline around it all. */
+export function drawNodeStack(g: G, cx: number, cy: number, tier: number, color: number, hw: number, _alpha = 1): number {
   const ch = clientTune.iso.cubeHeight;
+  const art = new Art(g, shade(color, 1.35));
   let lift = 0;
   for (let i = 0; i < tier; i++) {
     const w = hw * (1 - i * 0.16);
-    cube(g, cx, cy, w, ch, lift, i % 2 === 0 ? color : shade(color, 1.18), alpha);
+    const c = i % 2 === 0 ? color : shade(color, 1.18);
+    art.box(cx, cy, w, ch, lift, shade(c, 0.78), c);
     lift += ch;
   }
+  art.draw();
   return lift;
 }
 
-/** An HQ: a flat team-colour pad with a small building and an antenna. */
-export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, alpha = 1): void {
-  diamond(g, cx, cy, hw, hw / 2, shade(color, 0.35), 0.9 * alpha, color, 2);
-  cube(g, cx, cy, hw * 0.55, 10, 0, shade(color, 0.85), alpha);
-  g.lineStyle(2, color, alpha);
-  g.beginPath();
-  g.moveTo(cx, cy - 12);
-  g.lineTo(cx, cy - 24);
-  g.strokePath();
-  g.fillStyle(color, alpha).fillTriangle(cx, cy - 24, cx + 9, cy - 21, cx, cy - 18);
+/**
+ * The player HQ: deliberately smaller and plainer than a node. A concrete pad, one tower with a team-colour
+ * roof and a small cannon, a lower side block and a flag. `hw` is the pad half-width.
+ */
+export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1, t = 0): void {
+  const s = hw / 26;
+  const wall = 0xd9c9a3;
+  const concrete = 0x8c8a86;
+  const art = new Art(g, color);
+  art.box(cx, cy, 28 * s, 4 * s, 0, concrete, shade(concrete, 1.15));
+  art.box(cx + 3 * s, cy - 2 * s, 13 * s, 20 * s, 4 * s, wall, color);
+  art.box(cx - 14 * s, cy + 4 * s, 9 * s, 10 * s, 4 * s, wall, color);
+  // Roof cannon: a small slab and a barrel.
+  const roofY = cy - 2 * s - 24 * s;
+  art.box(cx + 3 * s, roofY + 2 * s, 4 * s, 5 * s, 0, shade(color, 0.9), shade(color, 1.1));
+  art.poly([[cx + 1 * s, roofY - 2 * s], [cx - 8 * s, roofY + 1 * s], [cx - 8 * s, roofY + 3 * s], [cx + 1 * s, roofY + 0.5 * s]], 0x5d6672);
+  // Flag.
+  const fx = cx - 27 * s;
+  const fy = cy + 5 * s;
+  art.quad(fx - 0.8 * s, fy - 24 * s, fx + 0.8 * s, fy, 0xc9c2b0);
+  const w = Math.sin(t * 4) * 1.2 * s;
+  art.poly([[fx, fy - 24 * s], [fx + 10 * s, fy - 23 * s + w], [fx + 10 * s, fy - 17 * s + w], [fx, fy - 18 * s]], color);
+  art.draw();
 }
 
-/** Hospital icon: a white cross. */
+/** Hospital icon: a red cross on white. */
 export function drawCross(g: G, x: number, y: number, s = 1): void {
-  for (const [w, c] of [[6, 0x000000], [3.4, 0xffffff]] as const) {
-    g.lineStyle(w * s, c, 1);
-    g.beginPath();
-    g.moveTo(x - 7 * s, y);
-    g.lineTo(x + 7 * s, y);
-    g.moveTo(x, y - 7 * s);
-    g.lineTo(x, y + 7 * s);
-    g.strokePath();
-  }
-  g.fillStyle(0xff4a4a, 1).fillRect(x - 1.7 * s, y - 5 * s, 3.4 * s, 10 * s).fillRect(x - 5 * s, y - 1.7 * s, 10 * s, 3.4 * s);
+  g.fillStyle(0xffffff, 1).fillRect(x - 8 * s, y - 8 * s, 16 * s, 16 * s);
+  g.lineStyle(OUTLINE, 0xffffff, 1).strokeRect(x - 8 * s, y - 8 * s, 16 * s, 16 * s);
+  g.fillStyle(0xe03b3b, 1).fillRect(x - 2 * s, y - 6 * s, 4 * s, 12 * s).fillRect(x - 6 * s, y - 2 * s, 12 * s, 4 * s);
 }
 
-/** Small crossed-sword mark for Power values. */
+/** Small sword mark for Power values. */
 export function drawPowerSword(g: G, x: number, y: number, color = 0xffd54a): void {
-  g.lineStyle(2, color, 1);
+  g.lineStyle(OUTLINE, color, 1);
   g.beginPath();
   g.moveTo(x - 4, y + 5);
   g.lineTo(x + 5, y - 5);
@@ -236,80 +439,67 @@ export function drawPowerSword(g: G, x: number, y: number, color = 0xffd54a): vo
   g.strokePath();
 }
 
-/** Nuclear silo: a round concrete cylinder with a hatch and four anti-aircraft towers on the corners. */
-export function drawSilo(g: G, cx: number, cy: number, color: number, hw: number, alpha = 1): void {
+/** Nuclear silo: a round concrete cylinder with a split hatch and four anti-aircraft towers on the corners. */
+export function drawSilo(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1): void {
   const hh = hw / 2;
-  // Base pad
-  diamond(g, cx, cy, hw * 1.15, hh * 1.15, shade(color, 0.3), 0.9 * alpha, color, 2);
-  // Four AA towers on the corners: thin stalks with a twin-barrel head
-  const corners = [
-    [-hw * 0.82, 0],
-    [hw * 0.82, 0],
-    [0, -hh * 0.82],
-    [0, hh * 0.82],
-  ];
-  const towers = (front: boolean) => {
-    for (const [dx, dy] of corners) {
-      if ((dy > 0 || (dy === 0 && false)) !== front) continue;
-      const tx = cx + dx;
-      const ty = cy + dy;
-      g.lineStyle(3, shade(color, 0.7), alpha);
-      g.beginPath();
-      g.moveTo(tx, ty);
-      g.lineTo(tx, ty - 16);
-      g.strokePath();
-      g.fillStyle(shade(color, 1.1), alpha).fillCircle(tx, ty - 17, 3.4);
-      g.lineStyle(2, 0xffffff, alpha);
-      g.beginPath();
-      g.moveTo(tx, ty - 18);
-      g.lineTo(tx + 7, ty - 26);
-      g.moveTo(tx + 2, ty - 17);
-      g.lineTo(tx + 9, ty - 24);
-      g.strokePath();
-    }
+  const art = new Art(g, color);
+  art.poly([[cx, cy - hh * 1.15], [cx + hw * 1.15, cy], [cx, cy + hh * 1.15], [cx - hw * 1.15, cy]], shade(color, 0.3));
+  const tower = (dx: number, dy: number) => {
+    const tx = cx + dx;
+    const ty = cy + dy;
+    art.quad(tx - 1.5, ty - 17, tx + 1.5, ty, shade(color, 0.7));
+    art.circ(tx, ty - 18, 3.4, shade(color, 1.1));
+    art.poly([[tx, ty - 19.5], [tx + 8, ty - 27], [tx + 9.4, ty - 25.4], [tx + 1.4, ty - 17.6]], 0xe8edf2);
   };
-  towers(false);
-  // Cylinder body: two ellipses joined by straight sides
+  tower(-hw * 0.82, 0);
+  tower(0, -hh * 0.82);
   const r = hw * 0.62;
   const h = 26;
-  g.fillStyle(shade(color, 0.55), alpha);
-  g.fillRect(cx - r, cy - h, r * 2, h);
-  g.fillEllipse(cx, cy, r * 2, r);
-  g.lineStyle(1, 0x000000, alpha);
-  g.strokeEllipse(cx, cy, r * 2, r);
-  g.fillStyle(shade(color, 1.05), alpha);
-  g.fillEllipse(cx, cy - h, r * 2, r);
-  g.lineStyle(1.5, 0x000000, alpha);
-  g.strokeEllipse(cx, cy - h, r * 2, r);
-  // Split hatch and warning stripe
-  g.fillStyle(0x1a1f26, alpha).fillEllipse(cx, cy - h, r * 1.45, r * 0.72);
-  g.lineStyle(2, 0xffd54a, alpha);
-  g.beginPath();
-  g.moveTo(cx, cy - h - r * 0.36);
-  g.lineTo(cx, cy - h + r * 0.36);
-  g.strokePath();
-  g.fillStyle(0xffd54a, alpha).fillRect(cx - r, cy - 9, r * 2, 3);
-  towers(true);
+  art.quad(cx - r, cy - h, cx + r, cy, shade(color, 0.55));
+  art.ell(cx, cy, r * 2, r, shade(color, 0.55));
+  art.ell(cx, cy - h, r * 2, r, shade(color, 1.05));
+  art.ell(cx, cy - h, r * 1.45, r * 0.72, 0x1a1f26, true);
+  art.quad(cx - 1, cy - h - r * 0.36, cx + 1, cy - h + r * 0.36, 0xffd54a, true);
+  art.quad(cx - r, cy - 9, cx + r, cy - 6, 0xffd54a, true);
+  tower(hw * 0.82, 0);
+  tower(0, hh * 0.82);
+  art.draw();
 }
 
-/** Oil refinery: two storage tanks and a flare stack on a pad. */
-export function drawRefinery(g: G, cx: number, cy: number, color: number, hw: number, t: number, alpha = 1): void {
-  const hh = hw / 2;
-  diamond(g, cx, cy, hw * 1.05, hh * 1.05, shade(color, 0.3), 0.9 * alpha, color, 2);
+/**
+ * Oil refinery after the reference art: two big domed storage tanks with glowing green tops and team-colour
+ * clamps on a machinery base, a small side tank and glowing vents. The glow pulses by colour, not alpha.
+ */
+export function drawRefinery(g: G, cx: number, cy: number, color: number, hw: number, t: number, _alpha = 1): void {
+  const s = hw / 27;
+  const art = new Art(g, color);
+  const glow = 0.55 + 0.45 * Math.sin(t * 2.2);
+  const glowColor = glow > 0.8 ? 0x9dff7a : glow > 0.55 ? 0x7dff6a : 0x4fcf44;
+  const coreColor = glow > 0.7 ? 0xf0ffe6 : 0xc8f5b8;
+  const pad = 0x464b54;
+  art.box(cx, cy, 29 * s, 4 * s, 0, pad, shade(pad, 1.25));
+  // Small side tank.
+  art.quad(cx - 29.5 * s, cy - 10 * s, cx - 18.5 * s, cy - 2 * s, 0x6d6a74);
+  art.ell(cx - 24 * s, cy - 2 * s, 11 * s, 5.5 * s, 0x6d6a74);
+  art.ell(cx - 24 * s, cy - 10 * s, 11 * s, 5.5 * s, 0x8b8794);
   const tank = (x: number, y: number, r: number, h: number) => {
-    g.fillStyle(shade(color, 0.6), alpha).fillRect(x - r, y - h, r * 2, h).fillEllipse(x, y, r * 2, r);
-    g.fillStyle(shade(color, 1.1), alpha).fillEllipse(x, y - h, r * 2, r);
-    g.lineStyle(1, 0x000000, alpha).strokeEllipse(x, y - h, r * 2, r);
+    art.ell(x, y, r * 2, r, 0xbcc3cd);
+    art.quad(x - r, y - h, x + r, y, 0xbcc3cd);
+    art.quad(x - r, y - h, x - r * 0.3, y, 0xd7dce3, true);
+    art.quad(x + r * 0.6, y - h, x + r, y, 0x949ca8, true);
+    art.ell(x, y, r * 2, r, 0xbcc3cd);
+    art.quad(x - r, y - 1, x + r, y, 0xbcc3cd, true);
+    art.ell(x, y - h, r * 2, r, 0x6b727d);
+    art.ell(x, y - h, r * 1.45, r * 0.72, 0x23382a, true);
+    art.ell(x, y - h, r * 0.95, r * 0.46, glowColor, true);
+    art.ell(x, y - h, r * 0.4, r * 0.2, coreColor, true);
+    art.quad(x - r - 0.8 * s, y - h + 3 * s, x - r + 2.2 * s, y - 2 * s, color);
+    art.quad(x + r - 2 * s, y - h + 3 * s, x + r + 1 * s, y - 2 * s, shade(color, 0.6));
   };
-  tank(cx - hw * 0.38, cy - 2, hw * 0.3, 18);
-  tank(cx + hw * 0.1, cy + hh * 0.35, hw * 0.34, 22);
-  // Flare stack with a flickering flame
-  g.lineStyle(3, shade(color, 0.8), alpha);
-  g.beginPath();
-  g.moveTo(cx + hw * 0.52, cy - 2);
-  g.lineTo(cx + hw * 0.52, cy - 38);
-  g.strokePath();
-  const f = 5 + Math.sin(t * 11) * 1.5;
-  g.fillStyle(0xff7a22, 0.95).fillTriangle(cx + hw * 0.52 - 3.5, cy - 38, cx + hw * 0.52 + 3.5, cy - 38, cx + hw * 0.52, cy - 38 - 9 - f);
-  g.fillStyle(0xffe08a, 0.95).fillTriangle(cx + hw * 0.52 - 2, cy - 38, cx + hw * 0.52 + 2, cy - 38, cx + hw * 0.52, cy - 38 - 5 - f * 0.5);
+  tank(cx - 8 * s, cy - 3 * s, 11 * s, 34 * s);
+  tank(cx + 11 * s, cy + 5 * s, 12 * s, 28 * s);
+  art.box(cx - 14 * s, cy + 12 * s, 9 * s, 8 * s, 4 * s, 0x6a717c, color);
+  art.quad(cx + 21 * s, cy + 3 * s, cx + 27 * s, cy + 5 * s, glowColor, true);
+  art.quad(cx + 21 * s, cy + 7 * s, cx + 27 * s, cy + 9 * s, glowColor, true);
+  art.draw();
 }
