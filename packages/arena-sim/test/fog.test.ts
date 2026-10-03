@@ -65,7 +65,7 @@ test('fog: you only see enemy marches inside your own nodes vision', () => {
   assert.equal(viewFor(g, 0).squads.length, 1, 'own squads always visible');
 });
 
-test('fog: nodes outside vision keep their last known owner, unseen ones are unexplored', () => {
+test('fog: node ownership is global, garrison detail is not', () => {
   const nodes: NodeDef[] = [
     { id: 'L', kind: 'largeVision', x: 300, y: 300 },
     { id: 'F', kind: 'points', x: 700, y: 300 },
@@ -76,7 +76,8 @@ test('fog: nodes outside vision keep their last known owner, unseen ones are une
     players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
   });
   const f = () => viewFor(g, 0).nodes.find((n) => n.id === 'F')!;
-  assert.equal(f().explored, false, 'never seen anything yet');
+  assert.equal(f().visible, false, 'not in vision yet');
+  assert.equal(f().owner, null);
 
   marchAndArrive(g, 'a', 's0', 'L'); // L has vision radius 600, covers F
   assert.ok(f().visible && f().explored && f().owner === null);
@@ -90,7 +91,8 @@ test('fog: nodes outside vision keep their last known owner, unseen ones are une
   assert.equal(g.nodes.get('L')!.owner, 1);
   assert.equal(f().visible, false);
   assert.equal(f().explored, true);
-  assert.equal(f().owner, 1, 'remembered');
+  assert.equal(f().owner, 1, 'ownership stays public');
+  assert.equal(f().garrisonCount, undefined, 'garrison detail stays private');
 });
 
 test('fog: enemy HQs show only inside vision, never in a safe zone', () => {

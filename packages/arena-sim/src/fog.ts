@@ -21,9 +21,9 @@ export interface NodeView {
   /** 1-4: number of stacked cubes to draw. */
   tier: number;
   pos: Vec;
-  /** Owner as the team knows it. Stale when the node is outside vision. */
+  /** Which team holds the node. Public to everyone, with or without vision. */
   owner: TeamId | null;
-  /** False if the team has never seen this node, so owner is unknown. */
+  /** Always true: node ownership is global. Kept for wire compatibility. */
   explored: boolean;
   visible: boolean;
   /**
@@ -124,14 +124,13 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
   const nodes: NodeView[] = [];
   for (const n of game.nodes.values()) {
     const visible = n.owner === team || game.isVisibleTo(team, n.pos);
-    const known = game.lastKnownOwner[team];
     const view: NodeView = {
       id: n.id,
       kind: n.kind,
       tier: n.tier,
       pos: n.pos,
-      owner: visible ? n.owner : (known.get(n.id) ?? null),
-      explored: visible || known.has(n.id),
+      owner: n.owner,
+      explored: true,
       visible,
     };
     if (n.owner === team) {

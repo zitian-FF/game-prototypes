@@ -47,7 +47,7 @@ export function projectEvents(game: ArenaGame, team: TeamId, events: GameEvent[]
         if (squadTeam(e.squadId) === team) out.push({ ...e });
         break;
       case 'nodeCaptured':
-        if (e.team === team || e.previous === team || sees(nodePos(e.nodeId))) out.push(e);
+        out.push(e); // who holds a node is public
         break;
       case 'combat': {
         const log = e.log;

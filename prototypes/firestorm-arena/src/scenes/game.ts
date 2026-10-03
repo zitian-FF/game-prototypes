@@ -602,8 +602,8 @@ export class GameScene extends BaseScene {
     if (!n) return null;
     const tune = this.tune;
     const lines: [string, string][] = [];
-    const owner = !n.explored ? 'Never seen' : n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
-    lines.push([n.visible ? owner : `${owner} (last known)`, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
+    const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
+    lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
     lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
     const k = tune.nodes[n.kind];
     const effects: string[] = [];
