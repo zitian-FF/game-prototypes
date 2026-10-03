@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
+import { getNav } from '../ui/menuNav';
 import { createSimState, step } from '../sim/sim';
 import { EasyAI } from '../sim/ai';
 import { TICK_RATE } from '../sim/tune';
@@ -50,6 +51,7 @@ export class VsAIScene extends Phaser.Scene {
 
   private showResult(): void {
     this.over = true;
+    getNav(this).engage();
     const r = this.sim.result!;
     const text = r.winner === null ? 'DRAW' : r.winner === 0 ? 'YOU WIN' : 'YOU LOSE';
     const sub = r.reason === 'ko' ? 'by K.O.' : 'on points (health)';

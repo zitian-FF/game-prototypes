@@ -61,27 +61,57 @@ export function drawHelmet(g: Phaser.GameObjects.Graphics, x: number, y: number,
   g.lineBetween(x - fx * 7 * scale, y - fy * 7 * scale, x + fx * 2 * scale, y + fy * 2 * scale);
 }
 
-export function drawArm(g: Phaser.GameObjects.Graphics, sx: number, sy: number, ex: number, ey: number, color: number, alpha: number): void {
+// Bare arms in skin tone (player colour lives on gloves, helmet, outline),
+// so the silhouette reads as a boxer rather than a pincer.
+const SKIN = 0xe2a984;
+export function drawArm(g: Phaser.GameObjects.Graphics, sx: number, sy: number, ex: number, ey: number, _color: number, alpha: number): void {
   g.lineStyle(7, 0x000000, 0.35 * alpha);
   g.lineBetween(sx, sy, ex, ey);
-  g.lineStyle(5, shade(color, 0.7), alpha);
+  g.lineStyle(5, SKIN, alpha);
   g.lineBetween(sx, sy, ex, ey);
 }
 
-// Boxing glove from above: mitt pointing along (fx, fy), thumb on the
-// inside, white cuff at the wrist. side = +1 left hand, -1 right hand.
+// Glove size relative to the old placeholder (render only; hitboxes are
+// unchanged).
+const GLOVE = 1.15;
+
+// Boxing glove from above, styled after the 🥊 emoji: a fat round mitt
+// pointing along (fx, fy), a thumb lobe hugging the inner side, a shine
+// on the knuckles and a wide white cuff with a lace stripe.
+// side = +1 left hand, -1 right hand.
 export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, side: number, alpha: number): void {
-  const lx = fy * side;
-  const ly = -fx * side;
+  const s = GLOVE;
+  // Hand 0 sits on the +(fy, -fx) side, so its thumb points the other way,
+  // toward the body's centre line.
+  const lx = -fy * side;
+  const ly = fx * side;
+  const dark = shade(color, 0.6);
+  // Cuff
+  const cx = x - fx * 7 * s;
+  const cy = y - fy * 7 * s;
+  g.fillStyle(0x000000, 0.4 * alpha);
+  g.fillPoints(oval(cx, cy, fx, fy, 3.6 * s, 6.4 * s), true);
   g.fillStyle(0xf4f4f4, alpha);
-  g.fillPoints(oval(x - fx * 5.5, y - fy * 5.5, fx, fy, 2.6, 5.2), true);
-  g.fillStyle(0x000000, 0.45 * alpha);
-  g.fillPoints(oval(x, y, fx, fy, FIST_R + 2.2, FIST_R + 0.2), true);
+  g.fillPoints(oval(cx, cy, fx, fy, 2.8 * s, 5.6 * s), true);
+  g.lineStyle(1, 0xb8b8b8, alpha);
+  g.lineBetween(cx - lx * 4 * s, cy - ly * 4 * s, cx + lx * 4 * s, cy + ly * 4 * s);
+  // Mitt: outline then fill, a little fatter than long.
+  g.fillStyle(dark, alpha);
+  g.fillPoints(oval(x, y, fx, fy, 8.4 * s, 8.6 * s), true);
   g.fillStyle(color, alpha);
-  g.fillPoints(oval(x, y, fx, fy, FIST_R + 1.2, FIST_R - 0.8), true);
-  g.fillCircle(x - lx * 5 - fx, y - ly * 5 - fy, 2.8);
-  g.fillStyle(0xffffff, 0.35 * alpha);
-  g.fillCircle(x + fx * 3 + lx * 2, y + fy * 3 + ly * 2, 2.2);
+  g.fillPoints(oval(x, y, fx, fy, 7.4 * s, 7.6 * s), true);
+  // Thumb lobe on the inner side, with its crease.
+  const tx = x + lx * 6.2 * s - fx * 1.5 * s;
+  const ty = y + ly * 6.2 * s - fy * 1.5 * s;
+  g.fillStyle(dark, alpha);
+  g.fillPoints(oval(tx, ty, fx, fy, 4.6 * s, 3.4 * s), true);
+  g.fillStyle(color, alpha);
+  g.fillPoints(oval(tx, ty, fx, fy, 3.8 * s, 2.6 * s), true);
+  g.lineStyle(1, dark, 0.8 * alpha);
+  g.lineBetween(tx - fx * 3 * s, ty - fy * 3 * s, tx + fx * 2 * s, ty + fy * 2 * s);
+  // Knuckle shine.
+  g.fillStyle(0xffffff, 0.45 * alpha);
+  g.fillPoints(oval(x + fx * 3.2 * s - lx * 2 * s, y + fy * 3.2 * s - ly * 2 * s, fx, fy, 1.6 * s, 3 * s), true);
 }
 
 export class FighterView {
@@ -146,14 +176,14 @@ export class FighterView {
     // Gloves: player colour at rest; phase colours while punching/guarding.
     const rest = (hand: 0 | 1) => {
       const side = hand === 0 ? 1 : -1;
-      return { x: f.x + f.fx * 15 + lx * 12 * side, y: f.y + f.fy * 15 + ly * 12 * side };
+      return { x: f.x + f.fx * 15 + lx * 15 * side, y: f.y + f.fy * 15 + ly * 15 * side };
     };
     let fists = [rest(0), rest(1)];
     const colors = [this.color, this.color];
     if (f.guarding) {
       fists = [
-        { x: f.x + f.fx * 20 + lx * 6, y: f.y + f.fy * 20 + ly * 6 },
-        { x: f.x + f.fx * 20 - lx * 6, y: f.y + f.fy * 20 - ly * 6 },
+        { x: f.x + f.fx * 20 + lx * 9, y: f.y + f.fy * 20 + ly * 9 },
+        { x: f.x + f.fx * 20 - lx * 9, y: f.y + f.fy * 20 - ly * 9 },
       ];
       colors[0] = colors[1] = stance === 'perfectGuard' ? 0xffffff : 0x3ad0c0;
     }

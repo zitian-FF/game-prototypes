@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
+import { getNav } from '../ui/menuNav';
 import { createSimState, step } from '../sim/sim';
 import { TICK_RATE } from '../sim/tune';
 import type { SimState } from '../sim/types';
@@ -33,6 +34,7 @@ export class LocalVsScene extends Phaser.Scene {
     this.sim = createSimState({ timed: true, fighters: [{}, {}] });
     const names: [string, string] = [`P1 · ${SOURCE_LABEL[data.p1]}`, `P2 · ${SOURCE_LABEL[data.p2]}`];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
+    this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
     addVersionStamp(this);
   }
@@ -53,6 +55,7 @@ export class LocalVsScene extends Phaser.Scene {
 
   private showResult(): void {
     this.over = true;
+    getNav(this).engage();
     const r = this.sim.result!;
     const text = r.winner === null ? 'DRAW' : `P${r.winner + 1} WINS`;
     const sub = r.reason === 'ko' ? 'by K.O.' : 'on points (health)';

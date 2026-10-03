@@ -6,6 +6,7 @@ import { createSimState, fatigueLevel, phaseOf, step } from '../sim/sim';
 import { tune, TICK_RATE } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { devices } from '../input/devices';
+import { getNav, navRegister } from '../ui/menuNav';
 
 // Step-by-step tutorial vs a scripted dummy. Each step reveals only the
 // controls/HUD it needs, shows one instruction, and completes when the
@@ -330,6 +331,7 @@ export class TutorialScene extends Phaser.Scene {
     this.finished = true;
     saveStep(null);
     this.stage.reveal(null);
+    getNav(this).engage();
     this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(290).setInteractive();
     this.add
       .text(VIEW.cx, VIEW.cy - 60, 'TUTORIAL COMPLETE', { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
@@ -338,6 +340,7 @@ export class TutorialScene extends Phaser.Scene {
     const btn = (x: number, label: string, key: string) => {
       const bg = this.add.rectangle(x, VIEW.cy + 10, 150, 38, 0x2a3140, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(291).setInteractive();
       bg.on('pointerdown', () => this.scene.start(key));
+      navRegister(this, bg, () => this.scene.start(key));
       this.add.text(x, VIEW.cy + 10, label, { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(292);
     };
     btn(VIEW.cx - 165, 'TRAINING', 'Training');
