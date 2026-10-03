@@ -12,7 +12,8 @@
     "startZoom": 0.85
   },
   "dpr": {
-    "max": 2
+    "max": 2,
+    "groundMaxPx": 6144
   },
   "fog": {
     "alpha": 0.58,

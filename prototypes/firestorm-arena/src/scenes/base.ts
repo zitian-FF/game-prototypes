@@ -6,7 +6,15 @@ import { VERSION_STAMP } from '../version.generated';
 export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
 /** Backing-store scale: the game buffer is logical size times this, undone by camera zoom. */
-export const DPR = Math.min(window.devicePixelRatio || 1, clientTune.dpr.max);
+export let DPR = Math.min(window.devicePixelRatio || 1, clientTune.dpr.max);
+
+/** Re-read devicePixelRatio (browser zoom, fullscreen, another monitor). Returns true if it changed. */
+export function refreshDpr(): boolean {
+  const next = Math.min(window.devicePixelRatio || 1, clientTune.dpr.max);
+  if (Math.abs(next - DPR) < 1e-6) return false;
+  DPR = next;
+  return true;
+}
 
 export function logicalSize(): { w: number; h: number } {
   return { w: window.innerWidth, h: window.innerHeight };
@@ -31,8 +39,21 @@ export abstract class BaseScene extends Phaser.Scene {
     this.applyCamera();
     const onResize = () => this.applyCamera();
     this.scale.on('resize', onResize);
-    this.events.once('shutdown', () => this.scale.off('resize', onResize));
+    // The pixel ratio can change under a running game (fullscreen, browser zoom, another monitor).
+    const onDpr = () => {
+      this.ui.setDpr(DPR);
+      this.onDprChanged();
+      this.applyCamera();
+    };
+    this.game.events.on('dpr', onDpr);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', onResize);
+      this.game.events.off('dpr', onDpr);
+    });
   }
+
+  /** Scenes with their own text objects re-resolve them here. */
+  protected onDprChanged(): void {}
 
   /** Layout and game code work in logical pixels; zoom maps them onto the bigger buffer. */
   protected applyCamera(): void {

@@ -19,6 +19,8 @@ export interface Ground {
   lava: LavaTile[];
   fogTex: Phaser.Textures.CanvasTexture;
   fogScale: number;
+  /** Baked pixels per map pixel: above 1 so the floor stays sharp on dense screens and when zoomed in. */
+  groundScale: number;
 }
 
 const FOG_SCALE = 0.5;
@@ -34,8 +36,10 @@ function diamondPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, hw: 
 
 export function bakeGround(scene: Phaser.Scene, iso: Iso, map: MapDef, tune: Tune, mine: TeamId): Ground {
   const key = `ground${++bakes}`;
-  const tex = scene.textures.createCanvas(key, Math.ceil(iso.pxW), Math.ceil(iso.pxH))!;
+  const gs = Math.min(clientTune.dpr.max, clientTune.dpr.groundMaxPx / iso.pxW);
+  const tex = scene.textures.createCanvas(key, Math.ceil(iso.pxW * gs), Math.ceil(iso.pxH * gs))!;
   const ctx = tex.getContext();
+  ctx.scale(gs, gs);
   const hw = iso.tw / 2;
   const hh = iso.th / 2;
 
@@ -105,7 +109,7 @@ export function bakeGround(scene: Phaser.Scene, iso: Iso, map: MapDef, tune: Tun
   const fw = Math.ceil(iso.pxW * FOG_SCALE);
   const fh = Math.ceil(iso.pxH * FOG_SCALE);
   const fogTex = scene.textures.createCanvas(`fog${bakes}`, fw, fh)!;
-  return { lava, groundKey: key, fogKey: `fog${bakes}`, fogTex, fogScale: FOG_SCALE };
+  return { lava, groundKey: key, fogKey: `fog${bakes}`, fogTex, fogScale: FOG_SCALE, groundScale: gs };
 }
 
 /** Lava patches away from nodes, safe zones and the map edge. */

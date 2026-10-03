@@ -43,6 +43,12 @@ export class Ui {
     private baseDepth = 1000,
   ) {}
 
+  /** The buffer's pixel ratio changed: re-render every text at the new resolution. */
+  setDpr(dpr: number): void {
+    this.dpr = dpr;
+    for (const l of this.layers) if (l) for (const t of l.texts) t.setResolution(dpr);
+  }
+
   private layer(): Layer {
     let l = this.layers[this.cur];
     if (!l) {
