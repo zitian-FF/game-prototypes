@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { dist } from '../src/map';
 import type { GameEvent } from '../src/types';
+import { viewFor } from '../src/fog';
 import { test } from './harness';
 import { SQUAD_ID, arrival, err, makeGame, marchAndArrive, must, player, scenarioTune, withTune } from './helpers';
 import type { NodeDef } from './helpers';
@@ -776,4 +777,156 @@ test('vanity score: bringing an HQ to 0 HP pays 500 and the result carries the l
   assert.equal(g.players.get('b')!.stats.hqsDowned, 1);
   g.advanceTo(g.tune.match.durationSeconds * 1000 + 1);
   assert.ok(g.result && g.result.leaderboard.length === 2);
+});
+
+// ------------------------------------------------------------ escalation
+
+test('phases: tier 3 opens with 75% of the clock left and tier 4 with 50% left', () => {
+  const T3: NodeDef = { id: 'T3', kind: 'points', x: 300, y: 300, tier: 3 };
+  const T4: NodeDef = { id: 'T4', kind: 'points', x: 500, y: 300, tier: 4 };
+  const g = makeGame({
+    nodes: [N0, T3, T4],
+    tune: withTune({ combat: { variance: 0 }, match: { durationSeconds: 1000 } }),
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }])],
+  });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'T3' } }), 'nodeLocked');
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'T4' } }), 'nodeLocked');
+  assert.equal(err(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'node', nodeId: 'T3' } }), 'nodeLocked');
+  const locked = viewFor(g, 0).nodes;
+  assert.equal(locked.find((n) => n.id === 'T3')!.unlocksAtMs, 250_000);
+  assert.equal(locked.find((n) => n.id === 'T4')!.unlocksAtMs, 500_000);
+  assert.equal(locked.find((n) => n.id === 'n0')!.unlocksAtMs, undefined, 'tier 1 is open from the start');
+  marchAndArrive(g, 'a', 's0', 'n0');
+
+  const events = g.advanceTo(250_000);
+  assert.ok(events.some((e) => e.type === 'nodesUnlocked' && e.tier === 3));
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'T3' } });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'T4' } }), 'nodeLocked');
+  assert.equal(viewFor(g, 0).nodes.find((n) => n.id === 'T3')!.unlocksAtMs, undefined);
+
+  const later = g.advanceTo(500_000);
+  assert.ok(later.some((e) => e.type === 'nodesUnlocked' && e.tier === 4));
+  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'T4' } });
+});
+
+// ------------------------------------------------------------ score pools
+
+const PN0: NodeDef = { id: 'n0', kind: 'points', x: 300, y: 300 };
+const PN1: NodeDef = { id: 'n1', kind: 'points', x: 400, y: 300 };
+
+function poolScene() {
+  const g = makeGame({
+    nodes: [PN0, PN1],
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
+  });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  return g;
+}
+
+test('pool: points earned in the first minute are permanent, the pool opens after settleSeconds', () => {
+  const g = poolScene();
+  const n0 = g.nodes.get('n0')!;
+  const t0 = g.now;
+  assert.equal(n0.poolOpen, false);
+  g.advanceTo(t0 + 59_000);
+  assert.equal(n0.poolOpen, false);
+  assert.equal(n0.pool, 0);
+  const events = g.advanceTo(t0 + 60_000);
+  assert.ok(events.some((e) => e.type === 'poolOpened'));
+  assert.equal(n0.poolOpen, true);
+  assert.equal(n0.caches.length, 4, 'a minimum of four caches');
+  g.advanceTo(t0 + 70_000);
+  // Tier 1 earns 10 a second; only that part feeds the pool, not the garrison bonus.
+  assert.ok(Math.abs(n0.pool - 100) < 1e-6, `pool ${n0.pool}`);
+  for (const c of n0.caches) {
+    const d = dist(c.pos, n0.pos);
+    assert.ok(d >= 1.8 * 40 - 1e-6 && d <= 4.6 * 40 + 1e-6, `cache ${d} units away`);
+  }
+});
+
+test('pool: caches grow by one per 500 earned, up to eight, and split the pool equally', () => {
+  const T4: NodeDef = { id: 'T4', kind: 'points', x: 300, y: 300, tier: 4 };
+  const g = makeGame({ nodes: [T4], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  marchAndArrive(g, 'a', 's0', 'T4');
+  const node = g.nodes.get('T4')!;
+  g.advanceTo(g.now + 60_000);
+  assert.equal(node.caches.length, 4);
+  g.advanceTo(g.now + 7_000); // 560 earned at 80 a second
+  assert.equal(node.caches.length, 5);
+  g.advanceTo(g.now + 60_000);
+  assert.equal(node.caches.length, 8, 'never more than eight');
+  assert.ok(Math.abs(g.cacheValue(node) * 8 - node.pool) < 1e-6, 'equal shares of the pool');
+});
+
+test('pool: losing the node takes the pool away from the holder and starts a fresh minute for the new owner', () => {
+  const g = poolScene();
+  const n0 = g.nodes.get('n0')!;
+  g.advanceTo(g.now + 90_000);
+  g.squads.get('s0')!.troops = 100; // a weak garrison
+  must(g, { type: 'march', playerId: 'b', squadId: 's2', target: { kind: 'node', nodeId: 'n0' } });
+  const hit = arrival(g, 's2');
+  g.advanceTo(hit - 1);
+  const before = g.points()[0];
+  const pool = n0.pool;
+  assert.ok(pool > 200);
+  g.advanceTo(hit);
+  assert.equal(n0.owner, 1);
+  assert.ok(Math.abs(before - g.points()[0] - pool) < 1, `holder lost exactly the pool (${before} to ${g.points()[0]}, pool ${pool})`);
+  assert.equal(n0.pool, 0);
+  assert.equal(n0.caches.length, 0);
+  assert.equal(n0.poolOpen, false);
+  g.advanceTo(hit + 59_000);
+  assert.equal(n0.poolOpen, false, 'the new owner waits a full minute');
+  g.advanceTo(hit + 60_000);
+  assert.equal(n0.poolOpen, true);
+});
+
+test('pool: an enemy scout steals a cache, the holder own scout only secures it', () => {
+  const g = poolScene();
+  marchAndArrive(g, 'b', 's2', 'n1'); // b holds n1 next door, and sees the caches around n0
+  g.advanceTo(g.now + 90_000);
+  const n0 = g.nodes.get('n0')!;
+
+  // The holder's own scout: the share leaves the pool, the holder total is unchanged by it.
+  const mine = n0.caches[0];
+  must(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'cache', cacheId: mine.id } });
+  const sa = g.players.get('a')!.scouts[0];
+  const aArrive = sa.kind === 'out' ? sa.arriveMs : g.now;
+  g.advanceTo(aArrive - 1);
+  const poolA = n0.pool;
+  const valueA = g.cacheValue(n0);
+  const totalA = g.points()[0];
+  g.advanceTo(aArrive);
+  assert.equal(n0.caches.find((c) => c.id === mine.id), undefined, 'collected');
+  assert.ok(Math.abs(poolA - n0.pool - valueA) < 1, 'the share left the pool');
+  assert.ok(Math.abs(g.points()[0] - totalA) < 1, 'securing your own cache does not change your total');
+
+  // An enemy scout: the share leaves the holder and lands with the thief.
+  const visible = viewFor(g, 1).caches;
+  assert.ok(visible.length > 0, 'the neighbour sees them');
+  must(g, { type: 'scout', playerId: 'b', scoutIndex: 0, target: { kind: 'cache', cacheId: visible[0].id } });
+  const sb = g.players.get('b')!.scouts[0];
+  const bArrive = sb.kind === 'out' ? sb.arriveMs : g.now;
+  g.advanceTo(bArrive - 1);
+  const value = g.cacheValue(n0);
+  const [a0, b0] = g.points();
+  const events = g.advanceTo(bArrive);
+  const got = events.find((e) => e.type === 'cacheCollected');
+  assert.ok(got && got.type === 'cacheCollected' && got.team === 1 && Math.abs(got.amount - value) < 1);
+  const [a1, b1] = g.points();
+  assert.ok(Math.abs(b1 - b0 - value) < 1, 'the thief banked it');
+  assert.ok(Math.abs(a0 - a1 - value) < 1, 'the holder lost it');
+  assert.deepEqual(g.checkInvariants(), []);
+});
+
+test('pool: caches are only known inside your vision, and a gone cache is unknown', () => {
+  const g = poolScene();
+  g.advanceTo(g.now + 90_000);
+  const n0 = g.nodes.get('n0')!;
+  assert.equal(viewFor(g, 1).caches.length, 0, 'b has no vision there');
+  assert.equal(err(g, { type: 'scout', playerId: 'b', scoutIndex: 0, target: { kind: 'cache', cacheId: n0.caches[0].id } }), 'notVisible');
+  assert.equal(err(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'cache', cacheId: 'nope' } }), 'unknownCache');
+  assert.ok(viewFor(g, 0).caches.length >= 1, 'the holder sees its own caches');
+  const own = viewFor(g, 0).nodes.find((n) => n.id === 'n0')!;
+  assert.ok(own.poolOpen && (own.pool ?? 0) > 0);
 });

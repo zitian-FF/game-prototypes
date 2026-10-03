@@ -4,6 +4,7 @@
 // every patch differ.
 
 import type {
+  CacheView,
   CombatLog,
   EnemyHqView,
   EnemyMarchView,
@@ -28,6 +29,7 @@ export interface WireView {
   enemyMarches: WireEnemyMarch[];
   enemyHqs: EnemyHqView[];
   scoutReports: ScoutReport[];
+  caches: CacheView[];
   /** Most recent first, capped. */
   combatLogs: CombatLog[];
 }
@@ -40,6 +42,7 @@ type Collections = {
   enemyMarches: WireEnemyMarch;
   enemyHqs: EnemyHqView;
   scoutReports: ScoutReport;
+  caches: CacheView;
   combatLogs: CombatLog;
 };
 type CollectionName = keyof Collections;
@@ -52,6 +55,7 @@ const KEYS: { [K in CollectionName]: (item: Collections[K]) => string } = {
   enemyMarches: (m) => m.id,
   enemyHqs: (h) => h.id,
   scoutReports: (r) => String(r.id),
+  caches: (c) => c.id,
   combatLogs: (l) => String(l.id),
 };
 const NAMES = Object.keys(KEYS) as CollectionName[];
@@ -83,6 +87,7 @@ export function toWire(view: TeamView): WireView {
     }),
     enemyHqs: view.enemyHqs,
     scoutReports: view.scoutReports,
+    caches: view.caches,
     combatLogs: view.combatLogs.slice(0, MAX_WIRE_LOGS),
   };
 }

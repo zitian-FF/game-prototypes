@@ -98,7 +98,7 @@ export class BotBrain {
   }
 
   /** Enemy-held or unknown nodes and enemy HQs, plus our own nodes that can take this bot's reinforcement. */
-  private attack({ view, playerId, team, tune }: BotInput): CommandBody | null {
+  private attack({ view, playerId, team, tune, nowMs }: BotInput): CommandBody | null {
     // Orders only go out from the HQ, with troops to fight.
     const mine = view.squads.filter((s: OwnSquadView) => s.owner === playerId);
     const squad = this.pick(mine.filter((s) => s.state === 'hq' && s.troops > 0));
@@ -123,6 +123,7 @@ export class BotBrain {
 
     const options: { item: Target; weight: number }[] = [];
     for (const n of view.nodes) {
+      if (n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs) continue; // locked: cannot be marched on yet
       if (n.owner === team && n.visible) {
         // Reinforce: a free slot, and this commander not already there or on the way.
         if (busy.has(n.id) || (n.garrisonCount ?? 0) >= tune.garrison.maxSquads) continue;
@@ -136,12 +137,14 @@ export class BotBrain {
     return target ? { type: 'march', squadId: squad.id, target } : null;
   }
 
-  private scout({ view, playerId, team }: BotInput): CommandBody | null {
+  private scout({ view, playerId, team, nowMs }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const targets: Target[] = [];
-    for (const n of view.nodes) if (!(n.owner === team && n.visible)) targets.push({ kind: 'node', nodeId: n.id });
+    for (const n of view.nodes) if (!(n.owner === team && n.visible) && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
     for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
-    const target = this.pick(targets);
+    // Score caches in view are worth a trip: banking one is worth more than another report.
+    const caches = view.caches.map((c): { kind: 'cache'; cacheId: string } => ({ kind: 'cache', cacheId: c.id }));
+    const target = caches.length > 0 && this.rng.next() < 0.6 ? this.pick(caches) : this.pick(targets);
     if (!scout || !target) return null;
     return { type: 'scout', scoutIndex: scout.index, target };
   }

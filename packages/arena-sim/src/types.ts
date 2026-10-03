@@ -111,6 +111,25 @@ export interface Tune {
   garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
+  /**
+   * Escalation: tier 3 nodes are locked until the clock has this fraction of the match left, tier 4 likewise.
+   * 0.75 means they open after a quarter of the match.
+   */
+  phases: { tier3UnlockRemaining: number; tier4UnlockRemaining: number };
+  /**
+   * Score pools. After a node has been held for settleSeconds, the points its tier generates (not the
+   * commander bonus) go into a temporary pool that counts for the holder but is lost with the node. The
+   * pool is spread over score caches around the node that any scout can collect to bank their share.
+   */
+  pool: {
+    settleSeconds: number;
+    minCaches: number;
+    maxCaches: number;
+    /** One more cache each time the pool has earned this many points in total. */
+    cachePointsStep: number;
+    scatterMinCells: number;
+    scatterMaxCells: number;
+  };
   /** Individual (vanity) score values. */
   personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number };
   /**
@@ -240,11 +259,19 @@ export interface Hq {
   garrison: SquadId[];
 }
 
+export interface Cache {
+  id: string;
+  nodeId: NodeId;
+  pos: Vec;
+}
+
+export type ScoutTarget = MarchTarget | { kind: 'cache'; cacheId: string };
+
 export type ScoutState =
   | { kind: 'home' }
   | {
       kind: 'out';
-      target: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number };
+      target: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number } | { kind: 'cache'; cacheId: string };
       from: Vec;
       to: Vec;
       startMs: number;
@@ -292,6 +319,18 @@ export interface NodeState {
   garrison: SquadId[];
   /** HQ occupying each base slot around the node. */
   slots: (HqId | null)[];
+  /** Bumped on every change of owner, so a pending pool opening for an old owner is ignored. */
+  captureSeq: number;
+  /** When the held-for-a-while timer ends and the pool opens (null while nobody holds it). */
+  settlesAtMs: number | null;
+  poolOpen: boolean;
+  /** Temporary score: counted for the holder, lost with the node. */
+  pool: number;
+  /** Everything the pool has earned this cycle, including what was collected; sets how many caches exist. */
+  poolEarned: number;
+  /** The cache count the earned total has unlocked so far. */
+  cacheTier: number;
+  caches: Cache[];
 }
 
 // ----------------------------------------------------------- scout/combat
@@ -343,7 +382,7 @@ export type Command =
   | { type: 'march'; playerId: string; squadId: SquadId; target: MarchTarget }
   | { type: 'cancel'; playerId: string; squadId: SquadId }
   | { type: 'teleport'; playerId: string; nodeId: NodeId }
-  | { type: 'scout'; playerId: string; scoutIndex: number; target: MarchTarget }
+  | { type: 'scout'; playerId: string; scoutIndex: number; target: ScoutTarget }
   | { type: 'setDefend'; playerId: string; squadId: SquadId; defend: boolean };
 
 export type CommandResult = { ok: true; events: GameEvent[] } | { ok: false; error: string };
@@ -360,6 +399,11 @@ export type GameEvent =
       squadId: SquadId;
       reason: 'nodeFull' | 'commanderAlreadyThere';
     }
+  | { type: 'nodesUnlocked'; timeMs: number; tier: number }
+  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId; caches: number }
+  /** The holder lost a node and with it its temporary pool. */
+  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number }
+  | { type: 'cacheCollected'; timeMs: number; nodeId: NodeId; cacheId: string; team: TeamId; commander: string; amount: number; at: Vec }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: HqId; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: HqId; squadId: SquadId; reason: 'nodeFull' | 'commanderAlreadyThere' }
   | { type: 'combat'; timeMs: number; log: CombatLog }

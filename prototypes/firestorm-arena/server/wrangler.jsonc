@@ -8,6 +8,10 @@
       {
         "name": "MATCH_ROOMS",
         "class_name": "ArenaMatch"
+      },
+      {
+        "name": "QUOTA",
+        "class_name": "QuotaMeter"
       }
     ]
   },
@@ -15,6 +19,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ArenaMatch"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["QuotaMeter"]
     }
   ]
 }

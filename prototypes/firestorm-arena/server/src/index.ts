@@ -1,10 +1,15 @@
-import { ArenaRoom, cmdKey } from 'firestorm-net';
-import type { LoggedCommand, PersistOp, RoomEnv, RoomMeta, RoomOptions } from 'firestorm-net';
+import { ArenaRoom, DEFAULT_QUOTA, addUsage, cmdKey, quotaStatus } from 'firestorm-net';
+import type { LoggedCommand, PersistOp, QuotaConfig, QuotaUsage, RoomEnv, RoomMeta, RoomOptions } from 'firestorm-net';
 import type { Tune } from 'arena-sim';
 import tuneJson from '../../tune.json';
 
 interface Env {
   MATCH_ROOMS: DurableObjectNamespace;
+  /** One shared meter that estimates this game's daily use of the plan limits. */
+  QUOTA: DurableObjectNamespace;
+  /** Override the plan limits the meter assumes (testing). */
+  QUOTA_WRITES_LIMIT?: string;
+  QUOTA_REQUESTS_LIMIT?: string;
   /** Sim speed-up, for testing only (a `--var` on `wrangler dev`). Unset in production. */
   TIME_SCALE?: string;
   /** Minimum ms between state broadcasts while playing. */
@@ -13,6 +18,20 @@ interface Env {
 
 const ROOM_CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{3}$/;
 const TUNE = tuneJson as unknown as Tune;
+
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, OPTIONS',
+  'cache-control': 'no-store',
+};
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...CORS } });
+}
+
+function meter(env: Env) {
+  return env.QUOTA.get(env.QUOTA.idFromName('meter'));
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -24,6 +43,11 @@ export default {
       });
     }
 
+    if (url.pathname === '/api/quota') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+      return json(await (await meter(env).fetch(new Request('https://meter/status'))).json());
+    }
+
     const room = url.pathname.match(/^\/ws\/([ABCDEFGHJKMNPQRSTUVWXYZ23456789]{3})$/)?.[1];
     if (!room || !ROOM_CODE.test(room)) {
       return new Response('Not found', { status: 404 });
@@ -31,6 +55,13 @@ export default {
 
     if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
       return new Response('Expected a WebSocket upgrade', { status: 426 });
+    }
+
+    // Creating a room costs a whole match of the daily limits: refuse it when there is not enough left.
+    // Joining or reconnecting to an existing room is always allowed.
+    if (url.searchParams.get('create') === '1') {
+      const status = (await (await meter(env).fetch(new Request('https://meter/status'))).json()) as { canStart: boolean };
+      if (!status.canStart) return json({ error: 'quotaLow', ...status }, 503);
     }
 
     const id = env.MATCH_ROOMS.idFromName(room);
@@ -55,6 +86,10 @@ export class ArenaMatch {
   private readonly sockets = new Map<string, CfWebSocket>();
   private alarmAt: number | null = null;
   private readonly ready: Promise<void>;
+  /** Usage not yet reported to the meter. WebSocket messages count 1 in 20 as requests. */
+  private pendingWrites = 0;
+  private pendingRequests = 0;
+  private lastReportAt = Date.now();
 
   constructor(
     private readonly state: DurableObjectState,
@@ -130,6 +165,7 @@ export class ArenaMatch {
     const connId = crypto.randomUUID();
     server.serializeAttachment({ connId } satisfies Attachment);
     this.sockets.set(connId, server);
+    this.pendingRequests += 1;
     this.room.onConnect(connId);
     await this.settle();
     return new Response(null, { status: 101, webSocket: client } as ResponseInit);
@@ -139,6 +175,7 @@ export class ArenaMatch {
     await this.ready;
     const att = (ws as CfWebSocket).deserializeAttachment() as Attachment | null;
     if (!att || !this.room || typeof message !== 'string') return;
+    this.pendingRequests += 0.05;
     this.room.onMessage(att.connId, message);
     await this.settle();
   }
@@ -163,6 +200,7 @@ export class ArenaMatch {
   async alarm(): Promise<void> {
     await this.ready;
     this.alarmAt = null;
+    this.pendingRequests += 1;
     this.room?.onAlarm();
     await this.settle();
   }
@@ -172,6 +210,7 @@ export class ArenaMatch {
     const room = this.room;
     if (!room) return;
     await this.flush(room.drainPersist());
+    await this.reportUsage(room.shouldDestroy());
 
     if (room.shouldDestroy()) {
       this.room = null;
@@ -192,6 +231,24 @@ export class ArenaMatch {
     }
   }
 
+  /** Tell the shared meter what this room used, at most every 20 seconds (and once when the room ends). */
+  private async reportUsage(force: boolean): Promise<void> {
+    const now = Date.now();
+    if (this.pendingWrites === 0 && this.pendingRequests === 0) return;
+    if (!force && now - this.lastReportAt < 20_000) return;
+    const body = JSON.stringify({ writes: this.pendingWrites, requests: this.pendingRequests });
+    this.pendingWrites = 0;
+    this.pendingRequests = 0;
+    this.lastReportAt = now;
+    // Awaited, because a request nobody waits for can be cancelled when the handler returns. A failed report
+    // only makes the estimate a little low.
+    try {
+      await this.env.QUOTA.get(this.env.QUOTA.idFromName('meter')).fetch(new Request('https://meter/add', { method: 'POST', body }));
+    } catch {
+      // ignore
+    }
+  }
+
   private async flush(ops: PersistOp[]): Promise<void> {
     if (ops.length === 0) return;
     // Later writes to a key win, so collapse first (the lobby rewrites 'meta' often).
@@ -204,12 +261,70 @@ export class ArenaMatch {
       else puts[key] = value;
     }
     const keys = Object.keys(puts);
+    this.pendingWrites += keys.length + deletes.length;
     for (let i = 0; i < keys.length; i += 128) {
       const chunk: Record<string, unknown> = {};
       for (const k of keys.slice(i, i + 128)) chunk[k] = puts[k];
       await this.state.storage.put(chunk);
     }
     if (deletes.length) await this.state.storage.delete(deletes);
+  }
+}
+
+/**
+ * One shared counter for the whole game: rooms report what they used, the Worker asks for the status.
+ * It persists at most once a minute (one row write), so a restart can lose up to a minute of counts.
+ */
+export class QuotaMeter {
+  private usage: QuotaUsage = { day: '', writes: 0, requests: 0 };
+  private lastPersistAt = 0;
+  private readonly ready: Promise<void>;
+
+  constructor(
+    private readonly state: DurableObjectState,
+    private readonly env: Env,
+  ) {
+    this.ready = state.blockConcurrencyWhile(async () => {
+      const saved = await state.storage.get<QuotaUsage>('usage');
+      if (saved) this.usage = saved;
+    });
+  }
+
+  private config(): QuotaConfig {
+    const w = Number(this.env.QUOTA_WRITES_LIMIT);
+    const r = Number(this.env.QUOTA_REQUESTS_LIMIT);
+    return {
+      ...DEFAULT_QUOTA,
+      ...(Number.isFinite(w) && w > 0 ? { writesLimit: w } : {}),
+      ...(Number.isFinite(r) && r > 0 ? { requestsLimit: r } : {}),
+    };
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    await this.ready;
+    const now = Date.now();
+    const path = new URL(request.url).pathname;
+    // The call itself is a request; persisting costs one row write.
+    let writes = 0;
+    let requests = 1;
+    if (request.method === 'POST' && path === '/add') {
+      try {
+        const body = (await request.json()) as { writes?: number; requests?: number };
+        writes += Number(body.writes) || 0;
+        requests += Number(body.requests) || 0;
+      } catch {
+        // A malformed report only counts as the call itself.
+      }
+    }
+    this.usage = addUsage(this.usage, now, writes, requests);
+    if (now - this.lastPersistAt >= 60_000) {
+      this.lastPersistAt = now;
+      this.usage = addUsage(this.usage, now, 1, 0);
+      await this.state.storage.put({ usage: this.usage });
+    }
+    return new Response(JSON.stringify(quotaStatus(this.usage, now, this.config())), {
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
   }
 }
 

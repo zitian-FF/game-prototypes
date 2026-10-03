@@ -236,7 +236,7 @@ test('commands: a human order goes through the sim and is acknowledged', () => {
   const { w, clients } = startMatch(['Ann'], false);
   const ann = clients[0];
   const squad = ann.view!.squads[0];
-  const node = ann.view!.nodes.find((n) => n.owner === null)!;
+  const node = ann.view!.nodes.find((n) => n.owner === null && n.unlocksAtMs === undefined)!;
   const id = ann.cmd({ type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } });
   const res = ann.of('cmdResult').find((r) => r.id === id)!;
   assert.equal(res.ok, true);

@@ -577,4 +577,28 @@ client.
   Safe zones are tinted team blocks, the 8 tiles around each node (HQ slots) are lightly marked, and fog and
   vision are circles. In-world units are drawn at `iso.unitScale` (0.75) of their size, so they read smaller
   than buildings; UI icons are unchanged. This supersedes "Isometric view of the grid" above.
+- Compact map and slower units: the map is 57 x 39 cells (was 75 x 51), the safe-zone distance is 5 cells, and
+  units move at half their previous speed in cells per second (cross-map 392 s on the diagonal).
+- Escalation: Tier 3 nodes (oil refineries) are locked until the clock has 75% of the match left, and the Tier 4
+  node (nuclear silo) until 50% is left. Locked nodes cannot be marched on or scouted, show a padlock and a
+  countdown, and a toast announces each unlock. Values are in tune.json `phases`.
+- The lava patches are removed from the floor.
+- Commander names are public: shown above enemy and allied units and on HQs whenever the unit is inside your
+  vision. Power still needs a scout.
+- Fog edges are crisp (no soft gradient).
+- Daily capacity: the Worker keeps an estimate of this game's use of the Workers Free plan's daily limits
+  (row writes and requests, 90% of the plan, reset at 00:00 UTC; one match is costed at 4,000 writes and 2,500
+  requests). The landing page shows "about N games left today", and when less than one match is left the Create
+  button is disabled and the Worker refuses new rooms (joining and reconnecting stay allowed). The estimate only
+  sees this game's own traffic. It is not tied to R2, which holds no gameplay data.
+- Score pools and caches: when a node changes hands, a 60 second settling timer starts and its points are
+  permanent. After it ends, the points the node's tier generates (10/30/50/80 a second, not the garrison bonus)
+  also pile up in a temporary pool under the node, which counts toward the holder's total. The pool is split into
+  equal score caches scattered 1.8 to 4.6 cells around the node: 4 at first, one more for every 500 points the pool
+  has earned, up to 8. Any scout, friend or enemy, can fly to a visible cache; the moment it touches, that cache's
+  share leaves the pool and is banked permanently for the scout's team (the holder's own scout secures it, an enemy
+  scout steals it from the holder's total). Each collected share is pool / caches left; when none are left a fresh
+  batch of 4 appears. When the node changes hands the old holder loses whatever is left in the pool, the caches
+  vanish, and the new holder starts a fresh 60 seconds. Pool numbers and caches are only visible inside your vision.
+  Bots scout visible caches. Values are in tune.json `pool`.
 - Where this section conflicts with older text above, this section wins.

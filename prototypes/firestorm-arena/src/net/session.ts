@@ -125,7 +125,8 @@ export class Session {
   }
 
   private open(): void {
-    const url = `${serverBase()}/ws/${this.room}`;
+    // Only creating a room is checked against the daily limits; joining or reconnecting never is.
+    const url = `${serverBase()}/ws/${this.room}${this.creating ? '?create=1' : ''}`;
     let ws: WebSocket;
     try {
       ws = new WebSocket(url);

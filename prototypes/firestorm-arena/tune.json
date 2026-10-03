@@ -30,7 +30,7 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 257,
+    "crossMapSeconds": 392,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {
@@ -54,6 +54,18 @@
     ],
     "garrisonPointsPerSecond": 10
   },
+  "phases": {
+    "tier3UnlockRemaining": 0.75,
+    "tier4UnlockRemaining": 0.5
+  },
+  "pool": {
+    "settleSeconds": 60,
+    "minCaches": 4,
+    "maxCaches": 8,
+    "cachePointsStep": 500,
+    "scatterMinCells": 1.8,
+    "scatterMaxCells": 4.6
+  },
   "personalScoring": {
     "perTroopDefeated": 1,
     "perNodeCaptured": 1000,
@@ -73,15 +85,15 @@
   },
   "map": {
     "cellSize": 40,
-    "widthCells": 75,
-    "heightCells": 51,
+    "widthCells": 57,
+    "heightCells": 39,
     "safeZone": {
       "cols": 5,
       "rows": 4,
       "insetCells": 3
     },
     "nodeMinSpacingCells": 4,
-    "nodeMinDistFromSafeZoneCells": 7,
+    "nodeMinDistFromSafeZoneCells": 5,
     "edgeMarginCells": 2,
     "rings": [
       {

@@ -111,7 +111,7 @@ remains unbuilt infrastructure work.
 
 ## Game rules engine: arena-sim
 
-`packages/arena-sim` (0.4.0) is the pure TypeScript rules engine for
+`packages/arena-sim` (0.6.0) is the pure TypeScript rules engine for
 firestorm-arena: squads, combat, nodes, HQs, teleport, scouts, fog-of-war
 views and an event queue, with no Phaser, DOM or Cloudflare code in it. It is
 built to run inside a Cloudflare Durable Object (authoritative server), in
@@ -122,7 +122,7 @@ Trystero. Only firestorm-arena uses it so far. See its README for the API and
 
 ## Match server: firestorm-net
 
-`packages/firestorm-net` (0.3.0) is the server side of firestorm-arena that is
+`packages/firestorm-net` (0.6.0) is the server side of firestorm-arena that is
 not Cloudflare glue: wire protocol with validation, the match room (lobby,
 countdown, running match, per-team fog-filtered patches), replay-log persistence
 and the bots. It is the repo's first server-authoritative networking, an

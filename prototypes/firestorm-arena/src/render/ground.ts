@@ -1,14 +1,8 @@
 import Phaser from 'phaser';
-import type { MapDef, TeamId, Tune } from 'arena-sim';
+import type { MapDef, TeamId } from 'arena-sim';
 import { Iso, hash2 } from './iso';
 import { clientTune } from '../clientTune';
 import { teamColor } from '../theme';
-
-export interface LavaTile {
-  cx: number;
-  cy: number;
-  phase: number;
-}
 
 let bakes = 0;
 
@@ -17,8 +11,6 @@ export interface Ground {
   tileKey: string;
   /** Texture pixels per map pixel for the tile block (1 / this is the tile sprite's tile scale). */
   tileScale: number;
-  /** Lava tiles to animate. */
-  lava: LavaTile[];
   fogKey: string;
   fogTex: Phaser.Textures.CanvasTexture;
   fogScale: number;
@@ -29,7 +21,7 @@ const FOG_SCALE = 0.5;
 const BLOCK_TILES = 12;
 
 /** Bake one repeating block of basalt tiles with faint grid lines and the odd hairline crack. */
-export function bakeGround(scene: Phaser.Scene, iso: Iso, map: MapDef, tune: Tune): Ground {
+export function bakeGround(scene: Phaser.Scene, iso: Iso): Ground {
   const n = ++bakes;
   const T = iso.tile;
   const ts = clientTune.dpr.max;
@@ -64,7 +56,7 @@ export function bakeGround(scene: Phaser.Scene, iso: Iso, map: MapDef, tune: Tun
   const fw = Math.ceil(iso.pxW * FOG_SCALE);
   const fh = Math.ceil(iso.pxH * FOG_SCALE);
   const fogTex = scene.textures.createCanvas(`fog${n}`, fw, fh)!;
-  return { tileKey: key, tileScale: ts, lava: scatterLava(iso, map, tune), fogKey: `fog${n}`, fogTex, fogScale: FOG_SCALE };
+  return { tileKey: key, tileScale: ts, fogKey: `fog${n}`, fogTex, fogScale: FOG_SCALE };
 }
 
 /**
@@ -97,48 +89,13 @@ export function drawDecor(g: Phaser.GameObjects.Graphics, iso: Iso, map: MapDef,
   g.lineStyle(4, 0xff7832, 0.5).strokeRect(0, 0, iso.pxW, iso.pxH);
 }
 
-/** Lava patches away from nodes, safe zones and the map edge. */
-function scatterLava(iso: Iso, map: MapDef, tune: Tune): LavaTile[] {
-  const taken = new Set<string>();
-  const blocked = (cx: number, cy: number): boolean => {
-    if (cx < 1 || cy < 1 || cx >= iso.cols - 1 || cy >= iso.rows - 1) return true;
-    for (const z of map.safeZones) {
-      if (cx >= z.origin.cx - 1 && cx <= z.origin.cx + z.cols && cy >= z.origin.cy - 1 && cy <= z.origin.cy + z.rows) return true;
-    }
-    for (const n of map.nodes) if (Math.abs(n.cell.cx - cx) <= 2 && Math.abs(n.cell.cy - cy) <= 2) return true;
-    return false;
-  };
-  const out: LavaTile[] = [];
-  const patches = clientTune.fx.lavaPatches;
-  for (let i = 0; i < patches; i++) {
-    let cx = Math.floor(hash2(i, 1, 21) * iso.cols);
-    let cy = Math.floor(hash2(i, 2, 21) * iso.rows);
-    const size = 3 + Math.floor(hash2(i, 3, 21) * 6);
-    const phase = hash2(i, 4, 21) * Math.PI * 2;
-    for (let k = 0; k < size; k++) {
-      const id = `${cx},${cy}`;
-      if (!blocked(cx, cy) && !taken.has(id)) {
-        taken.add(id);
-        out.push({ cx, cy, phase: phase + k * 0.4 });
-      }
-      const r = hash2(i * 31 + k, cx + cy, 5);
-      if (r < 0.25) cx++;
-      else if (r < 0.5) cx--;
-      else if (r < 0.75) cy++;
-      else cy--;
-    }
-  }
-  void tune;
-  return out;
-}
-
 export interface VisionCircle {
   x: number;
   y: number;
   r: number;
 }
 
-/** Repaint the fog: dark everywhere except soft circular holes around vision sources. */
+/** Repaint the fog: dark everywhere except crisp circular holes around vision sources. */
 export function paintFog(g: Ground, iso: Iso, circles: VisionCircle[]): void {
   const ctx = g.fogTex.getContext();
   const s = g.fogScale;
@@ -152,11 +109,8 @@ export function paintFog(g: Ground, iso: Iso, circles: VisionCircle[]): void {
     const a = (c.r / iso.cell) * iso.tile * s; // radius in fog pixels
     ctx.save();
     ctx.translate(p.x * s, p.y * s);
-    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, a);
-    grad.addColorStop(0, 'rgba(0,0,0,1)');
-    grad.addColorStop(0.8, 'rgba(0,0,0,1)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grad;
+    // A crisp edge: fully clear inside, the fog starts right at the vision radius.
+    ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.arc(0, 0, a, 0, Math.PI * 2);
     ctx.fill();

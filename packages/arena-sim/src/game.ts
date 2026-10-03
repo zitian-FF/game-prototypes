@@ -2,6 +2,7 @@ import { resolveFight } from './combat';
 import { baseSpeed, dist, lerp, ringSlotPos, safeZoneSlotPos } from './map';
 import { Rng } from './rng';
 import type {
+  Cache,
   CombatLog,
   CombatantInfo,
   Command,
@@ -22,6 +23,7 @@ import type {
   PlayerSpec,
   RevealedSquad,
   ScoutReport,
+  ScoutTarget,
   Squad,
   SquadId,
   TeamId,
@@ -36,7 +38,7 @@ export interface GameOptions {
   players: PlayerSpec[];
 }
 
-type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'end';
+type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'unlock' | 'poolOpen' | 'end';
 
 interface Queued {
   t: number;
@@ -117,6 +119,13 @@ export class ArenaGame {
         owner: null,
         garrison: [],
         slots: new Array<HqId | null>(opts.tune.hq.slotsPerNode).fill(null),
+        captureSeq: 0,
+        settlesAtMs: null,
+        poolOpen: false,
+        pool: 0,
+        poolEarned: 0,
+        cacheTier: 0,
+        caches: [],
       });
     }
 
@@ -170,6 +179,10 @@ export class ArenaGame {
 
     this.schedule(opts.tune.match.durationSeconds * 1000, 'end', '', 0);
     this.schedule(opts.tune.turret.pulseSeconds * 1000, 'turretPulse', '', 0);
+    for (const tier of [3, 4]) {
+      const at = this.unlockAtMsForTier(tier);
+      if (at > 0) this.schedule(at, 'unlock', String(tier), 0);
+    }
   }
 
   // ------------------------------------------------------------- reading
@@ -238,6 +251,18 @@ export class ArenaGame {
     return out;
   }
 
+  /** When nodes of this tier open for capture (0 = from the start). Tier 3 and 4 open as the clock runs down. */
+  unlockAtMsForTier(tier: number): number {
+    const p = this.tune.phases;
+    const remaining = tier >= 4 ? p.tier4UnlockRemaining : tier === 3 ? p.tier3UnlockRemaining : 1;
+    return Math.max(0, Math.round(this.tune.match.durationSeconds * 1000 * (1 - remaining)));
+  }
+
+  /** A locked node cannot be marched on, scouted or captured yet. */
+  isLocked(node: NodeState): boolean {
+    return this.nowMs < this.unlockAtMsForTier(node.tier);
+  }
+
   /** True if the point is inside the shared vision of the team's controlled nodes. */
   isVisibleTo(team: TeamId, pos: Vec): boolean {
     for (const n of this.nodes.values()) {
@@ -250,6 +275,11 @@ export class ArenaGame {
   /** Vision radius of a node in map units. */
   visionRadius(n: NodeState): number {
     return this.tune.nodes[n.kind].visionRadiusCells * this.tune.map.cellSize;
+  }
+
+  /** The tier part of a node's score per second (what feeds its pool once it has opened). */
+  baseRate(n: NodeState): number {
+    return n.owner === null ? 0 : this.tune.scoring.tierPointsPerSecond[n.tier - 1];
   }
 
   /** Score per second a controlled node earns for its team right now. */
@@ -318,6 +348,14 @@ export class ArenaGame {
     const r = this.pointRates();
     this.pointTotals[0] += r[0] * dt;
     this.pointTotals[1] += r[1] * dt;
+    // Once a pool is open the node's tier points also pile up in it (they are already in the holder's total).
+    for (const n of this.nodes.values()) {
+      if (n.owner === null || !n.poolOpen) continue;
+      const add = this.baseRate(n) * dt;
+      n.pool += add;
+      n.poolEarned += add;
+      this.growCaches(n);
+    }
     this.regenPools(dt);
     for (const sq of this.squads.values()) {
       if (sq.state.kind === 'garrison') this.players.get(sq.owner)!.stats.garrisonSeconds += dt;
@@ -456,6 +494,7 @@ export class ArenaGame {
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (this.isLocked(node)) return 'nodeLocked';
       // Reinforcing a node your team already holds must fit in its garrison.
       if (node.owner === player.team) {
         const block = this.garrisonBlock(sq, node, true);
@@ -511,15 +550,23 @@ export class ArenaGame {
     return null;
   }
 
-  private cmdScout(player: Player, index: number, target: MarchTarget): string | null {
+  private cmdScout(player: Player, index: number, target: ScoutTarget): string | null {
     const scout = player.scouts[index];
     if (!scout) return 'unknownScout';
     if (scout.kind !== 'home') return 'scoutBusy';
     let to: Vec;
-    let dest: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number };
-    if (target.kind === 'node') {
+    let dest: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number } | { kind: 'cache'; cacheId: string };
+    if (target.kind === 'cache') {
+      const cache = this.findCache(target.cacheId);
+      if (!cache) return 'unknownCache';
+      // Caches are only known to someone who can see them.
+      if (!this.isVisibleTo(player.team, cache.pos)) return 'notVisible';
+      to = cache.pos;
+      dest = { kind: 'cache', cacheId: cache.id };
+    } else if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (this.isLocked(node)) return 'nodeLocked';
       to = node.pos;
       dest = { kind: 'node', nodeId: node.id };
     } else {
@@ -538,6 +585,97 @@ export class ArenaGame {
     this.schedule(arriveMs, 'scoutArrive', `${player.id}#${index}`, version);
     this.emit({ type: 'scoutLaunched', timeMs: this.nowMs, owner: player.id, scoutIndex: index });
     return null;
+  }
+
+  // ---------------------------------------------------------- score pools
+
+  findCache(id: string): Cache | null {
+    for (const n of this.nodes.values()) {
+      const c = n.caches.find((x) => x.id === id);
+      if (c) return c;
+    }
+    return null;
+  }
+
+  /** What one cache is worth right now: the pool split equally over the caches left. */
+  cacheValue(n: NodeState): number {
+    return n.caches.length === 0 ? 0 : n.pool / n.caches.length;
+  }
+
+  /** A node changed hands: the old holder loses its pool, and the new holder starts a fresh settling timer. */
+  private ownerChanged(node: NodeState, previous: TeamId | null): void {
+    if (previous !== null && (node.poolOpen || node.pool > 0)) {
+      const lost = node.pool;
+      this.pointTotals[previous] = Math.max(0, this.pointTotals[previous] - lost);
+      this.emit({ type: 'poolLost', timeMs: this.nowMs, nodeId: node.id, team: previous, amount: lost });
+    }
+    node.pool = 0;
+    node.poolEarned = 0;
+    node.cacheTier = 0;
+    node.caches = [];
+    node.poolOpen = false;
+    node.captureSeq++;
+    node.settlesAtMs = this.nowMs + this.tune.pool.settleSeconds * 1000;
+    this.schedule(node.settlesAtMs, 'poolOpen', node.id, node.captureSeq);
+  }
+
+  private openPool(nodeId: string, version: number): void {
+    const node = this.nodes.get(nodeId);
+    if (!node || node.owner === null || node.captureSeq !== version) return;
+    node.poolOpen = true;
+    node.settlesAtMs = null;
+    node.cacheTier = this.tune.pool.minCaches;
+    for (let i = 0; i < this.tune.pool.minCaches; i++) this.spawnCache(node);
+    this.emit({ type: 'poolOpened', timeMs: this.nowMs, nodeId: node.id, caches: node.caches.length });
+  }
+
+  /** One more cache for every cachePointsStep earned, up to the maximum. */
+  private growCaches(node: NodeState): void {
+    const p = this.tune.pool;
+    const target = Math.min(p.maxCaches, p.minCaches + Math.floor(node.poolEarned / p.cachePointsStep));
+    while (node.cacheTier < target) {
+      node.cacheTier++;
+      this.spawnCache(node);
+    }
+  }
+
+  private cacheSeq = 0;
+
+  /** Scatter a cache around the node. The spot comes from a hash, so it never touches the combat random stream. */
+  private spawnCache(node: NodeState): void {
+    const p = this.tune.pool;
+    const n = ++this.cacheSeq;
+    const h = (k: number) => {
+      let x = Math.imul(n * 2654435761 + k * 40503 + node.captureSeq * 9973, 2246822519) >>> 0;
+      x = Math.imul(x ^ (x >>> 15), 3266489917) >>> 0;
+      return ((x ^ (x >>> 13)) >>> 0) / 4294967296;
+    };
+    const cell = this.tune.map.cellSize;
+    const angle = h(1) * Math.PI * 2;
+    const radius = (p.scatterMinCells + h(2) * (p.scatterMaxCells - p.scatterMinCells)) * cell;
+    const x = Math.min(this.map.width - cell / 2, Math.max(cell / 2, node.pos.x + Math.cos(angle) * radius));
+    const y = Math.min(this.map.height - cell / 2, Math.max(cell / 2, node.pos.y + Math.sin(angle) * radius));
+    node.caches.push({ id: `k${n}`, nodeId: node.id, pos: { x, y } });
+  }
+
+  /**
+   * A scout touched a cache: its share moves out of the pool and into the scout team's permanent score.
+   * The holder's own scout just secures it (their total does not change); an enemy scout steals it.
+   */
+  private collectCache(cache: Cache, player: Player): void {
+    const node = this.nodes.get(cache.nodeId)!;
+    const amount = this.cacheValue(node);
+    node.pool = Math.max(0, node.pool - amount);
+    node.caches = node.caches.filter((c) => c.id !== cache.id);
+    if (node.owner !== null && node.owner !== player.team) {
+      this.pointTotals[node.owner] = Math.max(0, this.pointTotals[node.owner] - amount);
+      this.pointTotals[player.team] += amount;
+    }
+    this.emit({ type: 'cacheCollected', timeMs: this.nowMs, nodeId: node.id, cacheId: cache.id, team: player.team, commander: player.id, amount, at: cache.pos });
+    // Nothing left to chase: a fresh batch appears for whatever the pool earns next.
+    if (node.caches.length === 0 && node.poolOpen) {
+      for (let i = 0; i < this.tune.pool.minCaches; i++) this.spawnCache(node);
+    }
   }
 
   // ------------------------------------------------------------- marches
@@ -687,6 +825,11 @@ export class ArenaGame {
         return this.onScoutHome(ev);
       case 'turretPulse':
         return this.onTurretPulse();
+      case 'poolOpen':
+        return this.openPool(ev.ref, ev.version);
+      case 'unlock':
+        this.emit({ type: 'nodesUnlocked', timeMs: this.nowMs, tier: Number(ev.ref) });
+        return;
       case 'missileHit':
         return this.onMissileHit(ev.ref);
       case 'end':
@@ -795,6 +938,7 @@ export class ArenaGame {
       const previous = node.owner;
       this.pushLog({ kind: 'node', nodeId: node.id }, sq, attackerBefore, out, outcome);
       node.owner = sq.team;
+      this.ownerChanged(node, previous);
       this.players.get(sq.owner)!.stats.nodesCaptured++;
       this.emit({ type: 'nodeCaptured', timeMs: this.nowMs, nodeId: node.id, team: sq.team, previous });
       this.garrison(sq, node);
@@ -931,6 +1075,20 @@ export class ArenaGame {
     const index = Number(ev.ref.slice(i + 1));
     const scout = player?.scouts[index];
     if (!player || !scout || scout.kind !== 'out' || scout.version !== ev.version) return;
+
+    if (scout.target.kind === 'cache') {
+      // Touching a cache banks its share for this scout's team, whoever held the node; then fly home.
+      const cache = this.findCache(scout.target.cacheId);
+      if (cache) this.collectCache(cache, player);
+      const from = scout.to;
+      const to = player.hq.pos;
+      const speed = this.speed * this.tune.scout.speedFactor;
+      const arriveMs = this.nowMs + (dist(from, to) / speed) * 1000;
+      const version = ++this.versionSeq;
+      player.scouts[index] = { kind: 'back', from, to, startMs: this.nowMs, arriveMs, version };
+      this.schedule(arriveMs, 'scoutHome', ev.ref, version);
+      return;
+    }
 
     let defenders: Squad[] = [];
     let empty = false;

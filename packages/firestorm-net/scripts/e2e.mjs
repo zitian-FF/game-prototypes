@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 3, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 5, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -210,7 +210,7 @@ try {
   // --- play: send a real order -----------------------------------------------------------------
   await hana.waitFor((m) => m.t === 'state', 5000, 'a state');
   const squad = hana.view.squads.find((s) => s.owner === 'Hana');
-  const node = hana.view.nodes.find((n) => n.owner === null);
+  const node = hana.view.nodes.find((n) => n.owner === null && n.unlocksAtMs === undefined);
   hana.send({ t: 'cmd', id: 1, cmd: { type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } } });
   const res = await hana.waitFor((m) => m.t === 'cmdResult' && m.id === 1, 5000, 'cmdResult');
   check(res.ok === true, `a human march order is accepted${res.ok ? '' : ` (${res.error})`}`);
