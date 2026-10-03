@@ -124,7 +124,8 @@ export class ArenaGame {
         poolOpen: false,
         pool: 0,
         poolEarned: 0,
-        cacheTier: 0,
+        batches: 0,
+        cacheSpawned: 0,
         caches: [],
       });
     }
@@ -354,7 +355,7 @@ export class ArenaGame {
       const add = this.baseRate(n) * dt;
       n.pool += add;
       n.poolEarned += add;
-      this.growCaches(n);
+      this.landBatches(n);
     }
     this.regenPools(dt);
     for (const sq of this.squads.values()) {
@@ -597,11 +598,6 @@ export class ArenaGame {
     return null;
   }
 
-  /** What one cache is worth right now: the pool split equally over the caches left. */
-  cacheValue(n: NodeState): number {
-    return n.caches.length === 0 ? 0 : n.pool / n.caches.length;
-  }
-
   /** A node changed hands: the old holder loses its pool, and the new holder starts a fresh settling timer. */
   private ownerChanged(node: NodeState, previous: TeamId | null): void {
     if (previous !== null && (node.poolOpen || node.pool > 0)) {
@@ -611,7 +607,8 @@ export class ArenaGame {
     }
     node.pool = 0;
     node.poolEarned = 0;
-    node.cacheTier = 0;
+    node.batches = 0;
+    node.cacheSpawned = 0;
     node.caches = [];
     node.poolOpen = false;
     node.captureSeq++;
@@ -624,29 +621,40 @@ export class ArenaGame {
     if (!node || node.owner === null || node.captureSeq !== version) return;
     node.poolOpen = true;
     node.settlesAtMs = null;
-    node.cacheTier = this.tune.pool.minCaches;
-    for (let i = 0; i < this.tune.pool.minCaches; i++) this.spawnCache(node);
-    this.emit({ type: 'poolOpened', timeMs: this.nowMs, nodeId: node.id, caches: node.caches.length });
+    this.emit({ type: 'poolOpened', timeMs: this.nowMs, nodeId: node.id, caches: 0 });
   }
 
-  /** One more cache for every cachePointsStep earned, up to the maximum. */
-  private growCaches(node: NodeState): void {
+  /**
+   * Every cachePointsStep earned, caches appear: four the first time (or when none are left), then one more
+   * each time, up to the maximum. A new cache is worth the pool total at that moment divided by the number of
+   * caches there are after it appears, and that value never changes afterwards, so the bigger the pool, the
+   * bigger the share. The pool at the crossing is the pool now minus the overshoot, so the outcome does not
+   * depend on how time was advanced.
+   */
+  private landBatches(node: NodeState): void {
     const p = this.tune.pool;
-    const target = Math.min(p.maxCaches, p.minCaches + Math.floor(node.poolEarned / p.cachePointsStep));
-    while (node.cacheTier < target) {
-      node.cacheTier++;
-      this.spawnCache(node);
+    while (node.poolEarned >= (node.batches + 1) * p.cachePointsStep) {
+      node.batches++;
+      const poolThen = node.pool - (node.poolEarned - node.batches * p.cachePointsStep);
+      const fresh = node.caches.length === 0 ? p.minCaches : node.caches.length < p.maxCaches ? 1 : 0;
+      if (fresh === 0) continue;
+      const share = poolThen / (node.caches.length + fresh);
+      for (let i = 0; i < fresh; i++) {
+        this.spawnCache(node);
+        node.caches[node.caches.length - 1].value = share;
+      }
     }
   }
-
-  private cacheSeq = 0;
 
   /** Scatter a cache around the node. The spot comes from a hash, so it never touches the combat random stream. */
   private spawnCache(node: NodeState): void {
     const p = this.tune.pool;
-    const n = ++this.cacheSeq;
+    // Id and spot depend only on this node's own history, so a replay that advanced time in different steps
+    // (accrual points differ) still ends up with identical caches.
+    const n = ++node.cacheSpawned;
+    const salt = Math.round(node.pos.x * 7 + node.pos.y * 13);
     const h = (k: number) => {
-      let x = Math.imul(n * 2654435761 + k * 40503 + node.captureSeq * 9973, 2246822519) >>> 0;
+      let x = Math.imul(n * 2654435761 + k * 40503 + node.captureSeq * 9973 + salt * 31, 2246822519) >>> 0;
       x = Math.imul(x ^ (x >>> 15), 3266489917) >>> 0;
       return ((x ^ (x >>> 13)) >>> 0) / 4294967296;
     };
@@ -655,7 +663,7 @@ export class ArenaGame {
     const radius = (p.scatterMinCells + h(2) * (p.scatterMaxCells - p.scatterMinCells)) * cell;
     const x = Math.min(this.map.width - cell / 2, Math.max(cell / 2, node.pos.x + Math.cos(angle) * radius));
     const y = Math.min(this.map.height - cell / 2, Math.max(cell / 2, node.pos.y + Math.sin(angle) * radius));
-    node.caches.push({ id: `k${n}`, nodeId: node.id, pos: { x, y } });
+    node.caches.push({ id: `${node.id}-${node.captureSeq}-${n}`, nodeId: node.id, pos: { x, y }, value: 0 });
   }
 
   /**
@@ -664,7 +672,7 @@ export class ArenaGame {
    */
   private collectCache(cache: Cache, player: Player): void {
     const node = this.nodes.get(cache.nodeId)!;
-    const amount = this.cacheValue(node);
+    const amount = cache.value;
     node.pool = Math.max(0, node.pool - amount);
     node.caches = node.caches.filter((c) => c.id !== cache.id);
     if (node.owner !== null && node.owner !== player.team) {
@@ -672,10 +680,6 @@ export class ArenaGame {
       this.pointTotals[player.team] += amount;
     }
     this.emit({ type: 'cacheCollected', timeMs: this.nowMs, nodeId: node.id, cacheId: cache.id, team: player.team, commander: player.id, amount, at: cache.pos });
-    // Nothing left to chase: a fresh batch appears for whatever the pool earns next.
-    if (node.caches.length === 0 && node.poolOpen) {
-      for (let i = 0; i < this.tune.pool.minCaches; i++) this.spawnCache(node);
-    }
   }
 
   // ------------------------------------------------------------- marches

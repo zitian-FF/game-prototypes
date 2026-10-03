@@ -102,6 +102,15 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
   const nodes: MapNode[] = [];
   let id = 0;
 
+  /** Column range allowed by a ring's spawnBand, in the left (spawn) half. */
+  const bandCols = (ring: { spawnBand?: [number, number] }): [number, number] => {
+    const lo = m.edgeMarginCells;
+    const hi = centerCell.cx - 1;
+    if (!ring.spawnBand) return [lo, hi];
+    const [a, b] = ring.spawnBand;
+    return [Math.max(lo, Math.round(hi * a)), Math.min(hi, Math.round(hi * b))];
+  };
+
   const cheb = (a: Cell, b: Cell) => Math.max(Math.abs(a.cx - b.cx), Math.abs(a.cy - b.cy));
   const clear = (c: Cell) =>
     placed.every((o) => cheb(c, o) >= m.nodeMinSpacingCells) &&
@@ -134,8 +143,9 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
       for (let n = 0; n < count / 2; n++) {
         let ok = false;
         for (let attempt = 0; attempt < 8000 && !ok; attempt++) {
+          const [c0, c1] = bandCols(ring);
           const cell: Cell = {
-            cx: rng.int(m.edgeMarginCells, centerCell.cx - 1),
+            cx: rng.int(c0, c1),
             cy: rng.int(m.edgeMarginCells, m.heightCells - 1 - m.edgeMarginCells),
           };
           const r = ringRadius(cell, tune);
@@ -160,8 +170,9 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
     const reach = (tune.nodes[d.kind].visionRadiusCells * m.cellSize) / m.cellSize; // in cells
     let best: { score: number; cell: Cell; twin: Cell } | null = null;
     for (let attempt = 0; attempt < 6000; attempt++) {
+      const [c0, c1] = bandCols(ring);
       const cell: Cell = {
-        cx: rng.int(m.edgeMarginCells, centerCell.cx - 1),
+        cx: rng.int(c0, c1),
         cy: rng.int(m.edgeMarginCells, m.heightCells - 1 - m.edgeMarginCells),
       };
       const r = ringRadius(cell, tune);
@@ -172,9 +183,13 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
       const twinOk = clear(twin);
       placed.pop();
       if (!twinOk) continue;
-      // Score: how many other nodes this tower would reveal (the twin sees the mirror image).
-      const seen = placed.filter((o) => Math.hypot(o.cx - cell.cx, o.cy - cell.cy) <= reach).length;
-      if (!best || seen > best.score) best = { score: seen, cell, twin };
+      // Score: the high tier (3 and 4) nodes this tower reveals count most, then every other node it reveals
+      // (the twin sees the mirror image).
+      const within = (o: Cell) => Math.hypot(o.cx - cell.cx, o.cy - cell.cy) <= reach;
+      const seenHigh = nodes.filter((o) => o.tier >= 3 && within(o.cell)).length;
+      const seenAll = placed.filter(within).length;
+      const score = seenHigh * 100 + seenAll;
+      if (!best || score > best.score) best = { score, cell, twin };
     }
     if (!best) throw new Error(`map generation: could not place ${d.kind}, loosen the rings or spacing`);
     add(d.kind, d.tier, best.cell);

@@ -44,6 +44,9 @@ const THREAT_MS = 30_000;
 /** With fewer own garrisons than this, a bot leans toward reinforcing its own nodes. */
 const WANT_GARRISONS = 3;
 
+/** Chance, each decision, that a bot goes for a visible enemy cache before anything else. */
+const STEAL_CHANCE = 0.7;
+
 export class BotBrain {
   private nextActMs: number | undefined;
 
@@ -61,6 +64,12 @@ export class BotBrain {
     this.nextActMs ??= nowMs + this.wait();
     if (nowMs < this.nextActMs) return [];
     this.nextActMs = nowMs + this.wait();
+
+    // Opportunistic: an enemy score cache inside our vision is worth a scout trip right now.
+    if (this.rng.next() < STEAL_CHANCE) {
+      const steal = this.stealCache(input);
+      if (steal) return [steal];
+    }
 
     const action = this.pickWeighted(ACTION_WEIGHTS.map(([a, w]) => ({ item: a, weight: w })));
     if (!action) return [];
@@ -137,14 +146,30 @@ export class BotBrain {
     return target ? { type: 'march', squadId: squad.id, target } : null;
   }
 
+  /**
+   * Send a scout to the closest cache that belongs to an enemy-held node, among those in view. Caches of a node
+   * our own team holds are left alone: collecting those only secures what we already have.
+   */
+  private stealCache({ view, playerId, team }: BotInput): CommandBody | null {
+    const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
+    const hq = view.hqs.find((h) => h.owner === playerId);
+    if (!scout || !hq) return null;
+    const enemyNode = new Set(view.nodes.filter((n) => n.owner !== null && n.owner !== team).map((n) => n.id));
+    let best: { id: string; d: number } | null = null;
+    for (const c of view.caches) {
+      if (!enemyNode.has(c.nodeId)) continue;
+      const d = Math.hypot(c.pos.x - hq.pos.x, c.pos.y - hq.pos.y);
+      if (!best || d < best.d) best = { id: c.id, d };
+    }
+    return best ? { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } } : null;
+  }
+
   private scout({ view, playerId, team, nowMs }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const targets: Target[] = [];
     for (const n of view.nodes) if (!(n.owner === team && n.visible) && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
     for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
-    // Score caches in view are worth a trip: banking one is worth more than another report.
-    const caches = view.caches.map((c): { kind: 'cache'; cacheId: string } => ({ kind: 'cache', cacheId: c.id }));
-    const target = caches.length > 0 && this.rng.next() < 0.6 ? this.pick(caches) : this.pick(targets);
+    const target = this.pick(targets);
     if (!scout || !target) return null;
     return { type: 'scout', scoutIndex: scout.index, target };
   }

@@ -3,6 +3,14 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.7.0, firestorm-net 0.7.0
+
+**What changed:** arena-sim's map generator gains per-ring spawn bands and scores radar towers on tier 3 and 4
+coverage; score caches now have a fixed value from the moment they spawn. firestorm-net's bots steal the closest
+visible enemy cache. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.6.0, firestorm-net 0.6.0
 
 **What changed:** arena-sim adds score pools and score caches (a node's tier points go into a

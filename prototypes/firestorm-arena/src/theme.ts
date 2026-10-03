@@ -34,7 +34,7 @@ const KIND_NAMES: Record<NodeKind, string> = {
 
 /** What a building is called: score nodes are named by tier. */
 export function nodeName(kind: NodeKind, tier: number): string {
-  if (kind === 'points') return tier >= 4 ? 'Nuclear Silo' : tier === 3 ? 'Oil Refinery' : KIND_NAMES.points;
+  if (kind === 'points') return tier >= 4 ? 'Nuclear Silo' : tier >= 2 ? 'Oil Refinery' : KIND_NAMES.points;
   return KIND_NAMES[kind];
 }
 

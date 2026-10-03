@@ -601,4 +601,17 @@ client.
   batch of 4 appears. When the node changes hands the old holder loses whatever is left in the pool, the caches
   vanish, and the new holder starts a fresh 60 seconds. Pool numbers and caches are only visible inside your vision.
   Bots scout visible caches. Values are in tune.json `pool`.
+- Layout revision: the Oil Refinery is now Tier 2 (the two refineries sit in the middle ring with the two Radar
+  Towers) and capturable from the start. The Missile Turret is now Tier 3 (inner ring with the Silo's T4 at the
+  centre) and unlocks with 75% of the clock left. The turret still hits enemy-held tier 3 and 4 nodes, so it now
+  targets enemy Missile Turrets and the Nuclear Silo, not refineries. Tier 1 nodes sit in a band close to each
+  team's spawn side (columns 10% to 70% of the way from the edge to the centre) and the refineries slightly
+  further out (30% to 85%), so there is early action. Radar Towers are placed to see the Tier 3 and 4 nodes
+  first. This supersedes the node tier table above.
+- Score cache values: a cache is worth the pool total at the moment it spawns divided by the number of caches
+  there are after it spawns, and that value never changes afterwards. The first caches appear once the pool has
+  earned 500 points (four of them), then one more each further 500 earned, up to eight; if all are collected the
+  next 500 earned brings four again. This supersedes the "equal share of the pool" wording above.
+- Bots: with enemy score caches in view, a bot with a scout at home sends it to the closest one (70% of decisions)
+  and never collects a cache of a node its own team holds.
 - Where this section conflicts with older text above, this section wins.
