@@ -8,6 +8,15 @@ issues).
 
 ## What was implemented
 
+- Foldable / fullscreen fix: the view was measured once at load, so
+  unfolding, folding or entering fullscreen letterboxed the game. Now the
+  canvas is resized on resize / orientationchange / fullscreenchange.
+  Menus (Menu, CharSelect) re-lay out at once; a running fight / lobby
+  keeps its layout fitted into the new canvas and the new shape applies
+  from the next scene. Verified in Playwright by resizing 844x390 ->
+  900x820 (menu fills edge to edge) -> 960x400 mid-Training (layout
+  intact). Not tested on a real foldable.
+
 - (Branch, not merged yet.) Character looks (`render/characterLook.ts`):
   per-character colour + alt (mirror match), render scale, Mia's
   ponytail; FighterView.setLook, scaled body / gloves; corner posts and
