@@ -133,8 +133,12 @@ export class Ui {
       t.setFontStyle(o.bold ? 'bold' : 'normal');
       l.keys[l.used] = key;
     }
-    t.setOrigin(align === 'left' ? 0 : align === 'center' ? 0.5 : 1, 0);
-    t.setPosition(Math.round(x), Math.round(y));
+    // Snap the text's top-left corner to a whole device pixel: a centred or right-aligned origin lands on
+    // half pixels and the glyphs get resampled (soft, uneven letter spacing).
+    const snap = (v: number) => Math.round(v * this.dpr) / this.dpr;
+    const left = align === 'left' ? x : align === 'center' ? x - t.width / 2 : x - t.width;
+    t.setOrigin(0, 0);
+    t.setPosition(snap(left), snap(y));
     t.setAlpha(o.alpha ?? 1);
     t.setVisible(true);
     l.used++;
