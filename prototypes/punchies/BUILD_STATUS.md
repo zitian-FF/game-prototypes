@@ -8,6 +8,16 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Scripted bot levels: `sim/bot.ts`
+  (`ScriptedBot` medium / hard, `makeBot`, `BOT_LEVELS`), per-level numbers
+  in `tune.ai.medium` / `tune.ai.hard` (Easy untouched), level picker on
+  the Single Player select screen (saved in `punchies:chars:v1`), HUD shows
+  "CPU (hard)". Bot-vs-bot headless ladder: Medium > Easy 72%, Hard > Easy
+  90%, Hard > Medium 68%. Hard-vs-Hard character matrix (30 matches per
+  pairing): Marco 63%, Mia 70%, Bruno 15% overall - Bruno loses heavily
+  to the bots' hit-and-punish style; character numbers NOT changed (yours
+  to tune). The bot-vs-bot harness lives outside the repo.
+
 - (Branch, not merged yet.) Blurry after entering fullscreen: the render
   scale (`PIXEL_RATIO`) was fixed at load from devicePixelRatio, so a game
   loaded small then fullscreened was a small buffer stretched up. It is now

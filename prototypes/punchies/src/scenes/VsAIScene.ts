@@ -5,7 +5,7 @@ import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
 import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
-import { EasyAI } from '../sim/ai';
+import { makeBot, type Bot, type BotLevel } from '../sim/bot';
 import { TICK_RATE } from '../sim/tune';
 import type { SimState } from '../sim/types';
 
@@ -17,7 +17,8 @@ const MAX_STEPS_PER_FRAME = 5;
 export class VsAIScene extends Phaser.Scene {
   private sim!: SimState;
   private stage!: FightStage;
-  private ai!: EasyAI;
+  private ai!: Bot;
+  private level: BotLevel = 'easy';
   private acc = 0;
   private over = false;
 
@@ -27,14 +28,15 @@ export class VsAIScene extends Phaser.Scene {
 
   private chars: [string, string] = ['marco', 'marco'];
 
-  create(data: { chars?: [string, string] }): void {
+  create(data: { chars?: [string, string]; level?: BotLevel }): void {
     this.chars = data?.chars ?? this.chars;
+    this.level = data?.level ?? this.level;
     applyCameraPixelRatio(this);
     this.acc = 0;
     this.over = false;
     this.sim = createSimState({ timed: true, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
-    this.ai = new EasyAI(1);
-    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU · ${charName(this.chars[1])}`], 0);
+    this.ai = makeBot(this.level, 1);
+    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0);
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
     addVersionStamp(this);
   }
@@ -72,7 +74,7 @@ export class VsAIScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(150);
-    makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart({ chars: this.chars }));
+    makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart({ chars: this.chars, level: this.level }));
     makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => this.scene.start('Menu'));
   }
 }

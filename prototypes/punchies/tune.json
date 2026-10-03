@@ -195,7 +195,39 @@
     "guardChance": 0.35,
     "guardHoldFrames": 30,
     "dodgeChance": 0.05,
-    "retreatStaminaBelow": 25
+    "retreatStaminaBelow": 25,
+    "medium": {
+      "reactionFrames": 7,
+      "attackChance": 0.11,
+      "attackCooldownFrames": 28,
+      "guardChance": 0.45,
+      "guardHoldFrames": 24,
+      "dodgeChance": 0.1,
+      "uppercutDodgeChance": 0.5,
+      "pgChance": 0.2,
+      "counterChance": 0.22,
+      "punishChance": 0.7,
+      "retreatStaminaBelow": 25,
+      "strafe": 0.3,
+      "strafePeriod": 40,
+      "cornerAvoid": 0.8
+    },
+    "hard": {
+      "reactionFrames": 5,
+      "attackChance": 0.14,
+      "attackCooldownFrames": 22,
+      "guardChance": 0.4,
+      "guardHoldFrames": 20,
+      "dodgeChance": 0.1,
+      "uppercutDodgeChance": 0.9,
+      "pgChance": 0.6,
+      "counterChance": 0.35,
+      "punishChance": 0.9,
+      "retreatStaminaBelow": 22,
+      "strafe": 0.4,
+      "strafePeriod": 35,
+      "cornerAvoid": 1.2
+    }
   },
   "characters": {
     "marco": {

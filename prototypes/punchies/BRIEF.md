@@ -13,8 +13,23 @@ decisions made in the planning round (2026-09-29).
 - Training dummy: static, toggle between idle and holding High Guard.
 - Three characters (orthodox stance), added 2026-10-03 at the user's
   request (see Characters).
+- Single Player bot levels Easy / Medium / Hard (added 2026-10-03 at the
+  user's request; scripted, see Bots).
 - Out of scope: progression, cosmetics, signature moves (planned next as
-  "option C"), southpaw, AI difficulties. (Easy AI only.)
+  "option C"), southpaw.
+
+## Bots
+Scripted, local-only (never online), they only emit FrameInputs and see
+the foe `reactionFrames` late. Level is picked on the character select
+screen under the AI label (tap, Up / Down, or D-pad up / down) and
+remembered. Easy = the original bot (`sim/ai.ts`). Medium and Hard
+(`sim/bot.ts`, numbers in `tune.ai.medium` / `tune.ai.hard`): spacing from
+each punch's real range, punish exposed foes (recovery, exhausted,
+stunned), fatigue-aware punch choice, uppercut when charged, ring
+awareness. Hard adds timed Perfect Guards, uppercut dodging, jab
+interrupts into slow wind-ups and a faster reaction (5 frames vs 7 / 10).
+Headless ladder (Marco mirror, 40 matches, seats swapped): Medium beats
+Easy 72%, Hard beats Easy 90%, Hard beats Medium 68%.
 
 ## Characters
 Stat archetypes on top of the shared tune (`tune.characters.<id>`):
