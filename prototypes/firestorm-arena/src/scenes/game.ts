@@ -8,7 +8,7 @@ import { session } from '../net/session';
 import { Iso, diamond } from '../render/iso';
 import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit } from '../render/icons';
+import { drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -58,6 +58,8 @@ export class GameScene extends BaseScene {
   private lastFrame = 0;
   private confirmEnd = false;
   private loadStartedAt = 0;
+  /** Last left/right facing per unit, so a unit that stops keeps looking where it was going. */
+  private facing = new Map<string, 1 | -1>();
   private loadFrames = 0;
   private missiles: { from: Vec; to: Vec; startMs: number; arriveMs: number; own: boolean }[] = [];
   private mapRect = { x: 0, y: 0, w: 0, h: 0 };
@@ -77,6 +79,7 @@ export class GameScene extends BaseScene {
     this.loadStartedAt = this.time.now;
     this.loadFrames = 0;
     this.missiles = [];
+    this.facing = new Map();
     this.fogKey = null;
     this.lastFrame = this.time.now;
   }
@@ -182,7 +185,7 @@ export class GameScene extends BaseScene {
     const mine = view.squads.filter((s) => s.owner === info.playerId);
     mine.forEach((s, i) => {
       const y = h / 2 + 16 + i * 30;
-      drawUnit(ui.gfx(), s.type, cx - 150, y + 20, 1, COLORS.mine, this.time.now / 1000);
+      drawUnit(ui.gfx(), s.type, cx - 150, y + 26, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false });
       const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, cx - 120, y + 2, { size: 14, bold: true });
       drawPowerSword(ui.gfx(), cx - 120 + w1 + 12, y + 10);
       ui.text(fmtPower(s.power), cx - 120 + w1 + 22, y + 2, { size: 14, bold: true, color: '#ffd54a' });
@@ -384,7 +387,8 @@ export class GameScene extends BaseScene {
     const period = dashLength + gapLength;
     const ux = dx / len;
     const uy = dy / len;
-    g.lineStyle(width, color, alpha);
+    g.lineStyle(width, color, 1); // solid: muted lines are a muted colour, not a faded one
+    void alpha;
     let s = -((now * flowSpeed) % period) + period;
     s -= period;
     g.beginPath();
@@ -445,19 +449,20 @@ export class GameScene extends BaseScene {
       const p = iso.p(n.pos.x, n.pos.y);
       add(n.pos, () => {
         const col = n.owner === null ? COLORS.neutral : teamColor(n.owner, mine);
-        const alpha = !n.explored ? 0.45 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
-        diamond(g, p.x, p.y, iso.tw / 2 - 3, iso.th / 2 - 1.5, col, n.visible ? 0.4 : 0.18, shade(col, 1.2), 1);
+        // Out of sight nodes are darkened, never faded: solid colours only.
+        const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
+        diamond(g, p.x, p.y, iso.tw / 2 - 3, iso.th / 2 - 1.5, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
           const pulse = 0.5 + 0.5 * Math.sin(now * 6);
           diamond(g, p.x, p.y, iso.tw / 2 + 4, iso.th / 2 + 2, undefined, 1, 0xffffff, 2 + pulse);
         }
-        const base = n.explored ? col : COLORS.neutral;
+        const base = shade(n.explored ? col : COLORS.neutral, dim);
         if (n.kind === 'points' && n.tier >= 4) {
-          drawSilo(g, p.x, p.y, base, hw * 1.1, alpha);
+          drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier === 3) {
-          drawRefinery(g, p.x, p.y, base, hw * 1.1, now, alpha);
+          drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
         } else {
-          const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw, alpha);
+          const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
           drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
         }
         if (n.garrisonCount !== undefined) {
@@ -475,12 +480,12 @@ export class GameScene extends BaseScene {
       const isMe = h.id === info.hqId;
       add(h.pos, () => {
         if (selHq === h.id) diamond(g, p.x, p.y, 30, 15, undefined, 1, 0xffffff, 2);
-        drawHq(g, p.x, p.y, COLORS.mine, 20);
-        for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 36, 6, 4);
-        if (h.burning) drawFlames(g, p.x, p.y - 4, now, 1.7, 3);
+        drawHq(g, p.x, p.y, COLORS.mine, 26, 1, now);
+        for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 62, 6, 4);
+        if (h.burning) drawFlames(g, p.x, p.y - 14, now, 2.2, 3);
         if (isMe) {
           const bob = Math.sin(now * 4) * 2;
-          g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 52 + bob, p.x + 6, p.y - 52 + bob, p.x, p.y - 44 + bob);
+          g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 78 + bob, p.x + 6, p.y - 78 + bob, p.x, p.y - 70 + bob);
         }
         if (isMe || this.zoom > 2.0) this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
       });
@@ -489,8 +494,8 @@ export class GameScene extends BaseScene {
       const p = iso.p(h.pos.x, h.pos.y);
       add(h.pos, () => {
         if (selHq === h.id) diamond(g, p.x, p.y, 30, 15, undefined, 1, 0xffffff, 2);
-        drawHq(g, p.x, p.y, COLORS.enemy, 20);
-        if (h.burning) drawFlames(g, p.x, p.y - 4, now, 1.7, 5);
+        drawHq(g, p.x, p.y, COLORS.enemy, 26, 1, now);
+        if (h.burning) drawFlames(g, p.x, p.y - 14, now, 2.2, 5);
       });
     }
 
@@ -504,11 +509,12 @@ export class GameScene extends BaseScene {
       const mineSquad = s.owner === info.playerId;
       if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.6);
       add(pos, () => {
-        const f = to.x >= p.x ? 1 : -1;
+        const f = this.face(s.id, p.x, to.x);
+        const hgt = unitHeight(s.type);
         if (this.selectedSquad === s.id) diamond(g, p.x, p.y, 22, 11, undefined, 1, COLORS.self, 2);
-        drawUnit(g, s.type, p.x, p.y - 8, f, COLORS.mine, now, mineSquad ? 1 : 0.8);
-        if (s.burning) drawFlames(g, p.x, p.y - 8, now, 1, s.id.length);
-        if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - 30, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - 30, 24 * (s.troops / s.maxTroops), 3);
+        drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now);
+        if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
+        if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);
       });
     }
 
@@ -519,9 +525,8 @@ export class GameScene extends BaseScene {
       const to = iso.p(m.march.to.x, m.march.to.y);
       if (!m.burning) this.dashed(lines, p, to, COLORS.enemyLine, now, 0.85);
       add(pos, () => {
-        const f = to.x >= p.x ? 1 : -1;
         if (m.revealed) {
-          drawUnit(g, m.revealed.type, p.x, p.y - 8, f, COLORS.enemy, now);
+          drawUnit(g, m.revealed.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
           this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
           g.lineStyle(2, COLORS.enemy, 1);
@@ -541,7 +546,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(sc.to.x, sc.to.y);
       if (sc.owner === info.playerId && sc.state === 'out') this.dashed(lines, p, to, 0xbfe9ff, now, 0.6, 1.5);
-      add(pos, () => drawUnit(g, 'scout', p.x, p.y - 30, to.x >= p.x ? 1 : -1, COLORS.mine, now, sc.owner === info.playerId ? 1 : 0.6));
+      add(pos, () => drawUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now));
     }
 
     items.sort((a, b) => a.d - b.d);
@@ -550,6 +555,13 @@ export class GameScene extends BaseScene {
     this.fx.draw(this.fxG, now);
     for (let i = this.labelUsed; i < this.labels.length; i++) this.labels[i].setVisible(false);
     void ch;
+  }
+
+  /** Billboard facing from the screen-space direction of travel; keeps the last one when not moving. */
+  private face(id: string, fromX: number, toX: number): 1 | -1 {
+    const d = toX - fromX;
+    if (Math.abs(d) > 1) this.facing.set(id, d > 0 ? 1 : -1);
+    return this.facing.get(id) ?? 1;
   }
 
   /** Turret missiles: fast arcing shots from a turret to a node, with a smoke trail. */
@@ -568,7 +580,7 @@ export class GameScene extends BaseScene {
       const head = pos(t);
       const tail = pos(Math.max(0, t - 0.04));
       const col = m.own ? COLORS.mine : COLORS.enemy;
-      g.lineStyle(5, 0xffffff, 0.15);
+      g.lineStyle(5, 0x8a8f98, 1);
       g.beginPath();
       g.moveTo(pos(Math.max(0, t - 0.12)).x, pos(Math.max(0, t - 0.12)).y);
       g.lineTo(tail.x, tail.y);
@@ -579,7 +591,7 @@ export class GameScene extends BaseScene {
       g.lineTo(head.x, head.y);
       g.strokePath();
       g.fillStyle(0xffe08a, 1).fillCircle(head.x, head.y, 3);
-      g.fillStyle(0xff7a22, 0.8).fillCircle(tail.x, tail.y, 2);
+      g.fillStyle(0xff7a22, 1).fillCircle(tail.x, tail.y, 2);
       return true;
     });
   }
@@ -743,7 +755,7 @@ export class GameScene extends BaseScene {
       const sel = this.selectedSquad === s.id;
       ui.rect(px + 6, y - 4, pw - 12, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
       ui.region(px + 6, y - 4, pw - 12, rowH - 4, () => (this.selectedSquad = sel ? null : s.id));
-      drawUnit(ui.gfx(), s.type, px + 32, y + 30, 1, COLORS.mine, this.time.now / 1000);
+      drawUnit(ui.gfx(), s.type, px + 32, y + 38, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false });
       // "Tank  Power [sword] 62.5M  #12"
       const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, px + 62, y, { size: 13, bold: true });
       drawPowerSword(ui.gfx(), px + 62 + w1 + 8, y + 8);
