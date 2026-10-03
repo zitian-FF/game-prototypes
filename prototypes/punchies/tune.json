@@ -38,13 +38,13 @@
       "damage": 4,
       "staminaCost": 4,
       "staminaDamage": 5,
-      "stunBuild": 8,
+      "stunBuild": 10.0,
       "startReachFrac": 0.4,
       "fatigueBars": 4,
       "fatigueSpeedPerBar": 0.12,
       "fatigueDamagePerBar": 0.1,
-      "pushHit": 2,
-      "pushBlock": 0
+      "pushHit": 3.0,
+      "pushBlock": 0.0
     },
     "cross": {
       "startup": 13,
@@ -58,13 +58,13 @@
       "damage": 10,
       "staminaCost": 9,
       "staminaDamage": 16,
-      "stunBuild": 18,
+      "stunBuild": 22.5,
       "startReachFrac": 0.4,
       "fatigueBars": 2,
       "fatigueSpeedPerBar": 0.24,
       "fatigueDamagePerBar": 0.2,
-      "pushHit": 10,
-      "pushBlock": 5
+      "pushHit": 15.0,
+      "pushBlock": 7.5
     },
     "hook": {
       "startup": 7,
@@ -78,14 +78,14 @@
       "damage": 7,
       "staminaCost": 7,
       "staminaDamage": 12,
-      "stunBuild": 14,
+      "stunBuild": 17.5,
       "startReachFrac": 0.75,
       "guardChipMult": 0.4,
       "fatigueBars": 3,
       "fatigueSpeedPerBar": 0.16,
       "fatigueDamagePerBar": 0.133,
-      "pushHit": 8,
-      "pushBlock": 4
+      "pushHit": 12.0,
+      "pushBlock": 6.0
     },
     "uppercut": {
       "startup": 2,
@@ -99,10 +99,10 @@
       "crossDamageMult": 2,
       "staminaCost": 10,
       "staminaDamage": 24,
-      "stunBuild": 30,
+      "stunBuild": 37.5,
       "startReachFrac": 0.4,
-      "pushHit": 16,
-      "pushBlock": 0
+      "pushHit": 24.0,
+      "pushBlock": 0.0
     }
   },
   "hit": {
@@ -117,14 +117,14 @@
     "perfectFrames": 6,
     "staminaDrainPerSec": 6,
     "perfectGuardStaminaGain": 12,
-    "perfectGuardAttackerStunFrames": 45,
-    "perfectGuardStunBuild": 25,
+    "perfectGuardAttackerStunFrames": 56,
+    "perfectGuardStunBuild": 31.25,
     "perfectCooldownFrames": 20
   },
   "dodge": {
     "frames": 14,
     "iFrames": 10,
-    "speed": 225,
+    "speed": 337.5,
     "vulnerableFrames": 12,
     "stunnedVulnerableMult": 2,
     "staminaCost": 12,

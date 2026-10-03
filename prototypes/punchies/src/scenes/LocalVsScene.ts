@@ -33,6 +33,7 @@ export class LocalVsScene extends Phaser.Scene {
     this.sim = createSimState({ timed: true, fighters: [{}, {}] });
     const names: [string, string] = [`P1 · ${SOURCE_LABEL[data.p1]}`, `P2 · ${SOURCE_LABEL[data.p2]}`];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
+    this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
     addVersionStamp(this);
   }

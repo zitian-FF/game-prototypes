@@ -8,6 +8,18 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) 2026-10-03 batch:
+  - Ring art: canvas weave + scuffs + centre mark, three ropes with tape
+    wraps, corner posts (blue P1 / red P2 / two neutral). Cached, redrawn
+    only if ring bounds change.
+  - Keyboard/controller HUD row under the player's name: star pips and
+    J/C/H fatigue pips (touch players still see them on the buttons;
+    Local VS shows it for each non-touch player).
+  - Whiffs no longer reset stars (uppercut whiff still spends them).
+  - Tune (user-requested): pushHit/pushBlock x1.5, all stunBuild values
+    (punches + perfectGuardStunBuild) x1.25, perfectGuardAttackerStunFrames
+    45 -> 56, dodge.speed 225 -> 337.5 (+50% distance).
+
 - (Branch, not merged yet.) Pushback on contact: the defender slides
   back along the punch over `hit.pushFrames` (6) ticks, hooks angled
   toward the side they came from; per punch `pushHit` / `pushBlock`

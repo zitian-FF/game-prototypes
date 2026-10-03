@@ -564,7 +564,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
     const p = f.punch;
     p.frame++;
     if (p.frame === activeEnd(p) && !p.connected) {
-      f.stars = 0;
+      // Whiffing keeps the star chain (it used to reset it).
       // Whiff punish window, on top of normal recovery.
       p.recovery += tune.punches[p.type].whiffRecovery;
       events.push({ kind: 'whiff', attacker: idx, punch: p.type });

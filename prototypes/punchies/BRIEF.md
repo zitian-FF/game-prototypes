@@ -92,14 +92,15 @@ reach.
 
 ## Star Power / Uppercut
 - Sweet hits grant +1 star (not vs High Guard).
-- Chain breaks (stars reset) when the player takes a sweet hit, whiffs,
-  is Perfect Guarded, or gets stunned. Sour hits taken and punches blocked
-  by High Guard keep the chain (changed 2026-09-30). No time decay.
+- Chain breaks (stars reset) when the player takes a sweet hit, is
+  Perfect Guarded, or gets stunned. Sour hits taken, punches blocked by
+  High Guard and whiffs keep the chain (changed 2026-09-30 / 2026-10-03).
+  No time decay.
 - At 3 stars Uppercut is active: near-instant startup, hook reach, 2x sweet
   Cross damage, cannot be blocked or Perfect Guarded, can be dodged.
   Always resolves on the Vulnerable row, even on the outer ring
   (2026-09-30): sweet 2x Cross, sour 1x Cross.
-- Whiff: stars consumed and a long Vulnerable recovery.
+- Uppercut whiff: stars consumed and a long Vulnerable recovery.
 
 ## Stamina, Health, Stun, Fatigue
 - Stamina spent by attacking, dodging, holding Guard. Moderate regen when

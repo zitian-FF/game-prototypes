@@ -73,6 +73,8 @@ export class FightStage {
   // Tutorial: reveal only the listed controls/HUD parts (null = all), and
   // optionally force the hitbox overlay on.
   forceHitboxes = false;
+  // Local VS: players on keyboard / controller (set by LocalVsScene).
+  localVsRows: number[] = [0, 1];
   reveal(parts: Set<string> | null): void {
     this.controls.shown = parts;
     this.hud.shown = parts;
@@ -104,6 +106,11 @@ export class FightStage {
       this.views[0].draw(s.fighters[0], time, show);
       this.views[1].draw(s.fighters[1], time, show);
     }
+    // Star / fatigue row for anyone not using the touch buttons: the local
+    // player on keyboard or controller, or both players in Local VS unless
+    // that player is on touch.
+    const touch = this.touchEnabled && devices.lastDevice === 'touch';
+    this.hud.resourceRow = this.localIdx === -1 ? this.localVsRows : touch ? [] : [this.localIdx];
     this.hud.draw(s);
     this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
   }
@@ -113,17 +120,86 @@ export class FightStage {
     return makeButton(this.scene, x, y, w, text, onTap);
   }
 
+  // Ring: canvas floor with a subtle weave and scuffs, three ropes per side
+  // with tape wraps, and corner posts (blue / red / neutral white). Redrawn
+  // only when the ring bounds change (they're tunable).
+  private ringKey = '';
   private drawRing(): void {
     const r = tune.ring;
+    const key = `${r.left},${r.top},${r.right},${r.bottom}`;
+    if (key === this.ringKey) return;
+    this.ringKey = key;
     const g = this.ring;
     g.clear();
+    const w = r.right - r.left;
+    const h = r.bottom - r.top;
+
+    // Apron just outside the ropes.
+    g.fillStyle(0x1b1f27, 1);
+    g.fillRect(r.left - 12, r.top - 12, w + 24, h + 24);
+
+    // Canvas floor.
     g.fillStyle(0x2a2f3a, 1);
-    g.fillRect(r.left, r.top, r.right - r.left, r.bottom - r.top);
-    g.lineStyle(4, 0xb03a3a, 1);
-    g.strokeRect(r.left, r.top, r.right - r.left, r.bottom - r.top);
-    g.lineStyle(1, 0xffffff, 0.06);
-    for (let x = r.left + 40; x < r.right; x += 40) g.lineBetween(x, r.top, x, r.bottom);
-    for (let y = r.top + 40; y < r.bottom; y += 40) g.lineBetween(r.left, y, r.right, y);
+    g.fillRect(r.left, r.top, w, h);
+    // Weave: faint crossing diagonals.
+    g.lineStyle(1, 0xffffff, 0.025);
+    // "/" diagonals: points with x + y = d inside the floor.
+    for (let d = 6; d < w + h; d += 6) {
+      const x0 = Math.max(0, d - h);
+      const x1 = Math.min(d, w);
+      g.lineBetween(r.left + x0, r.top + d - x0, r.left + x1, r.top + d - x1);
+    }
+    for (let x = r.left + 3; x < r.right; x += 6) g.lineBetween(x, r.top, x, r.bottom);
+    // Scuffs: fixed pseudo-random blotches (same every draw).
+    let seed = 1337;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 70; i++) {
+      g.fillStyle(rnd() < 0.5 ? 0x000000 : 0xffffff, 0.02 + rnd() * 0.03);
+      g.fillEllipse(r.left + rnd() * w, r.top + rnd() * h, 4 + rnd() * 18, 3 + rnd() * 10);
+    }
+    // Centre mark.
+    g.lineStyle(2, 0xffffff, 0.05);
+    g.strokeCircle(r.left + w / 2, r.top + h / 2, 34);
+
+    // Ropes: three per side, stepping outward, each with a highlight.
+    const ropes = [2, 5, 8];
+    ropes.forEach((o, i) => {
+      g.lineStyle(3, 0x6e1f1f, 1);
+      g.strokeRect(r.left - o, r.top - o, w + o * 2, h + o * 2);
+      g.lineStyle(1, i === 1 ? 0xf0f0f0 : 0xd85a5a, 0.55);
+      g.strokeRect(r.left - o - 0.5, r.top - o - 0.5, w + o * 2, h + o * 2);
+    });
+    // Tape wraps tying the ropes together along each side.
+    g.fillStyle(0xd8d8d8, 0.35);
+    for (let k = 1; k < 4; k++) {
+      const tx = r.left + (w * k) / 4;
+      const ty = r.top + (h * k) / 4;
+      g.fillRect(tx - 1.5, r.top - 10, 3, 9);
+      g.fillRect(tx - 1.5, r.bottom + 1, 3, 9);
+      g.fillRect(r.left - 10, ty - 1.5, 9, 3);
+      g.fillRect(r.right + 1, ty - 1.5, 9, 3);
+    }
+
+    // Corner posts with padded turnbuckle covers: blue (P1 side), red
+    // (P2 side), the other two neutral.
+    const posts: [number, number, number][] = [
+      [r.left, r.top, 0x3a78d0],
+      [r.right, r.bottom, 0xd04a4a],
+      [r.right, r.top, 0xdddddd],
+      [r.left, r.bottom, 0xdddddd],
+    ];
+    for (const [x, y, c] of posts) {
+      const px = x + (x === r.left ? -7 : 7);
+      const py = y + (y === r.top ? -7 : 7);
+      g.fillStyle(0x000000, 0.4);
+      g.fillCircle(px + 2, py + 2, 7);
+      g.fillStyle(0x444a55, 1);
+      g.fillCircle(px, py, 6.5);
+      g.fillStyle(c, 1);
+      g.fillCircle(px, py, 5);
+      g.fillStyle(0xffffff, 0.35);
+      g.fillCircle(px - 1.5, py - 1.5, 1.8);
+    }
   }
 }
 
