@@ -1905,7 +1905,7 @@
   },
   "ai.medium.pgChance": {
     "cat": "AI",
-    "desc": "Medium bot: chance to time a Perfect Guard on a punch it saw start.",
+    "desc": "Medium bot: chance, rolled once per incoming punch, to try a Perfect Guard.",
     "min": 0,
     "max": 1,
     "step": 0.01
@@ -2003,7 +2003,7 @@
   },
   "ai.hard.pgChance": {
     "cat": "AI",
-    "desc": "Hard bot: chance to time a Perfect Guard on a punch it saw start.",
+    "desc": "Hard bot: chance, rolled once per incoming punch, to try a Perfect Guard.",
     "min": 0,
     "max": 1,
     "step": 0.01
@@ -2049,5 +2049,33 @@
     "min": 0,
     "max": 3,
     "step": 0.1
+  },
+  "ai.medium.pgMistime": {
+    "cat": "AI",
+    "desc": "Medium bot: chance a Perfect Guard attempt is mistimed (raised early, so only a normal block).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.pgHesitateFrames": {
+    "cat": "AI",
+    "desc": "Medium bot: frames it holds off attacking after a Perfect Guard attempt (a human-like pause).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "ai.hard.pgMistime": {
+    "cat": "AI",
+    "desc": "Hard bot: chance a Perfect Guard attempt is mistimed (raised early, so only a normal block).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.pgHesitateFrames": {
+    "cat": "AI",
+    "desc": "Hard bot: frames it holds off attacking after a Perfect Guard attempt (a human-like pause).",
+    "min": 0,
+    "max": 60,
+    "step": 1
   }
 }

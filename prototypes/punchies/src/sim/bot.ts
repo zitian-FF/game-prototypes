@@ -42,6 +42,10 @@ export class ScriptedBot implements Bot {
   private hist: FoeView[] = [];
   private cooldown = 0;
   private guardHold = 0;
+  // Perfect Guard plan for the punch currently incoming (rolled once).
+  private pgKey = '';
+  private pgPlan: 'none' | 'perfect' | 'early' = 'none';
+  private holdOffUntil = 0;
   private rng: () => number;
 
   constructor(
@@ -110,15 +114,9 @@ export class ScriptedBot implements Bot {
             input.dodge = true;
             return input;
           }
-        } else if (
-          L.pgChance > 0 &&
-          remaining >= 1 &&
-          remaining <= tune.guard.perfectFrames - 2 &&
-          me.guardDownFrames >= tune.guard.perfectCooldownFrames &&
-          this.rng() < L.pgChance
-        ) {
-          // Raise guard so it is up for the last few frames: a Perfect Guard.
-          this.guardHold = Math.round(tune.guard.perfectFrames) + 6;
+        } else if (this.tryPerfectGuard(s, vp, remaining, delay, me.guardDownFrames)) {
+          // Guard raised for a Perfect Guard (or an early, mistimed one).
+          this.holdOffUntil = s.tick + this.guardHold + Math.round(L.pgHesitateFrames);
         } else if (this.guardHold === 0 && remaining >= 0) {
           const r = this.rng();
           if (r < L.dodgeChance) {
@@ -149,7 +147,7 @@ export class ScriptedBot implements Bot {
     }
 
     // --- offence --------------------------------------------------------
-    if (!busy && !tired) {
+    if (!busy && !tired && s.tick >= this.holdOffUntil) {
       const open = view.open && !view.guarding;
       const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance;
       if (want) {
@@ -198,6 +196,30 @@ export class ScriptedBot implements Bot {
     input.mx = Math.round(mx * 100);
     input.my = Math.round(my * 100);
     return input;
+  }
+
+  // Decide once per incoming punch whether to try a Perfect Guard, and
+  // whether the attempt is mistimed (raised too early, so it is only a
+  // normal block). Returns true when the guard goes up this frame.
+  private tryPerfectGuard(s: SimState, vp: NonNullable<FoeView['punch']>, remaining: number, delay: number, guardDown: number): boolean {
+    const L = this.L;
+    const key = `${vp.type}@${s.tick - delay - vp.frame}`;
+    if (key !== this.pgKey) {
+      this.pgKey = key;
+      this.pgPlan = 'none';
+      if (guardDown >= tune.guard.perfectCooldownFrames && this.rng() < L.pgChance) {
+        this.pgPlan = this.rng() < L.pgMistime ? 'early' : 'perfect';
+      }
+    }
+    if (this.pgPlan === 'none') return false;
+    const perfectAt = tune.guard.perfectFrames - 2; // frames before contact
+    const raiseAt = this.pgPlan === 'perfect' ? perfectAt : perfectAt + 5;
+    if (remaining >= 1 && remaining <= raiseAt) {
+      this.pgPlan = 'none';
+      this.guardHold = Math.round(tune.guard.perfectFrames) + 6;
+      return true;
+    }
+    return false;
   }
 
   // Distance that lands the jab sweet-ish while staying near the edge of
