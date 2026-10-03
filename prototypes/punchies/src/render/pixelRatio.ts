@@ -8,7 +8,30 @@
 // fill-rate cost.
 import type Phaser from 'phaser';
 
-export const PIXEL_RATIO = Math.min(Math.ceil(window.devicePixelRatio || 1), 2);
+// Render scale: canvas buffer pixels per logical pixel. It follows the size
+// the game is actually shown at (so fullscreen on a big screen stays sharp,
+// not a small buffer stretched), capped for fill-rate: 2x on touch devices
+// (many phones report 3x+), 3x elsewhere. `let` is a live binding, so every
+// importer sees updates.
+export let PIXEL_RATIO = 1;
+
+export function computeRenderScale(): number {
+  const dpr = window.devicePixelRatio || 1;
+  const long = Math.max(window.innerWidth, window.innerHeight) || WORLD_WIDTH;
+  const short = Math.min(window.innerWidth, window.innerHeight) || WORLD_HEIGHT;
+  // FIT: the canvas is as wide as the screen allows for its aspect ratio.
+  const shownW = Math.min(long, (short * VIEW.width) / VIEW.height);
+  const cap = window.matchMedia?.('(pointer: coarse)').matches ? 2 : 3;
+  return Math.max(1, Math.min(Math.ceil((shownW * dpr) / VIEW.width), cap));
+}
+
+// Re-evaluate after the display changed. Returns true when it changed.
+export function updateRenderScale(): boolean {
+  const next = computeRenderScale();
+  if (next === PIXEL_RATIO) return false;
+  PIXEL_RATIO = next;
+  return true;
+}
 
 // Fixed logical world. The ring and all gameplay live in this space on
 // every device (so PvP peers share identical geometry).
@@ -31,6 +54,7 @@ export function computeView() {
 }
 
 export const VIEW = computeView();
+PIXEL_RATIO = computeRenderScale();
 
 // Screen shape changes (foldable, fullscreen) while a fight is on are held
 // here and applied when the next scene is built, so a running fight never
