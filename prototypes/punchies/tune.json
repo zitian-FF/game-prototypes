@@ -111,7 +111,8 @@
     "counterDamageMult": 1.5,
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
-    "pushFrames": 6
+    "pushFrames": 6,
+    "pushLockFrames": 8
   },
   "guard": {
     "perfectFrames": 6,
@@ -147,7 +148,7 @@
     "threshold": 100,
     "decayPerSec": 8,
     "decayDelayFrames": 60,
-    "baseFrames": 117,
+    "baseFrames": 90,
     "overflowFramesPerPoint": 1.5
   },
   "stars": {

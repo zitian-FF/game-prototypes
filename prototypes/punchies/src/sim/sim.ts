@@ -62,6 +62,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     pushX: 0,
     pushY: 0,
     pushFrames: 0,
+    pushLock: 0,
     char: opts.char ?? 'marco',
   };
   f.health = maxHealth(f);
@@ -306,10 +307,10 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   const dt = 1 / TICK_RATE;
   // Being shoved: the push replaces the player's own walking for its
   // duration, so holding forward can't cancel it (dodging still works).
-  let shoved = false;
+  const shoved = f.pushLock > 0;
+  if (f.pushLock > 0) f.pushLock--;
   if (f.pushFrames > 0) {
     f.pushFrames--;
-    shoved = true;
     if (!f.anchored) {
       f.x += f.pushX;
       f.y += f.pushY;
@@ -460,6 +461,7 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushX = (dx * dist) / frames;
   def.pushY = (dy * dist) / frames;
   def.pushFrames = frames;
+  def.pushLock = Math.max(def.pushLock, tune.hit.pushLockFrames);
 }
 
 function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], events: SimEvent[]): void {
