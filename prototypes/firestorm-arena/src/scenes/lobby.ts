@@ -2,7 +2,7 @@ import { BaseScene, DEBUG, logicalSize } from './base';
 import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
-import { COLORS } from '../theme';
+import { COLORS, cssColor } from '../theme';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
 
@@ -55,24 +55,45 @@ export class LobbyScene extends BaseScene {
       const pw = Math.min(620, w - 40);
       const px = cx - pw / 2;
       const py = top + 118;
-      const ph = Math.min(280, h - py - 190);
-      ui.panel(px, py, pw, ph);
-      ui.text(`Players ${lobby.players.length} / ${lobby.maxPlayers}`, px + 14, py + 10, { size: 13, bold: true });
-      const colW = (pw - 28) / 2;
-      const rowH = 22;
-      const perCol = Math.max(1, Math.floor((ph - 44) / rowH));
-      lobby.players.slice(0, perCol * 2).forEach((p, i) => {
-        const col = Math.floor(i / perCol);
-        const row = i % perCol;
-        const x = px + 14 + col * colW;
-        const y = py + 36 + row * rowH;
-        ui.rect(x, y + 6, 8, 8, p.connected ? 0x5dff8a : 0x666c75, 1, undefined, 4);
-        const you = p.clientId === session.save.clientId ? ' (you)' : '';
-        const host = p.clientId === lobby.hostId ? '  host' : '';
-        ui.text(p.name + you + host, x + 16, y, { size: 13, color: p.clientId === lobby.hostId ? '#ffd54a' : COLORS.text });
+      const ph = Math.min(300, h - py - 200);
+      const me = lobby.players.find((p) => p.clientId === session.save.clientId);
+      const per = 20;
+      const gap = 12;
+      const tw = (pw - gap) / 2;
+      const rowH = 20;
+      const canSwitch = lobby.phase === 'lobby';
+      ([0, 1] as const).forEach((team) => {
+        const x0 = px + team * (tw + gap);
+        const members = lobby.players.filter((p) => p.team === team);
+        const mine = me?.team === team;
+        ui.panel(x0, py, tw, ph);
+        if (mine) ui.rect(x0, py, tw, 3, team === 0 ? COLORS.mine : COLORS.enemy, 1);
+        ui.text(`Team ${team + 1}`, x0 + 14, py + 10, { size: 15, bold: true, color: team === 0 ? cssColor(COLORS.mine) : cssColor(COLORS.enemy) });
+        ui.text(`${members.length} / ${per} players`, x0 + tw - 14, py + 12, { size: 12, align: 'right', color: COLORS.dim });
+        const rows = Math.max(1, Math.floor((ph - 86) / rowH));
+        members.slice(0, rows).forEach((p, i) => {
+          const y = py + 38 + i * rowH;
+          ui.rect(x0 + 14, y + 5, 8, 8, p.connected ? 0x5dff8a : 0x666c75, 1, undefined, 4);
+          const you = p.clientId === session.save.clientId ? ' (you)' : '';
+          const host = p.clientId === lobby.hostId ? '  host' : '';
+          ui.text(p.name + you + host, x0 + 28, y, { size: 13, color: p.clientId === lobby.hostId ? '#ffd54a' : COLORS.text });
+        });
+        if (members.length > rows) ui.text(`+${members.length - rows} more`, x0 + 28, py + 38 + rows * rowH, { size: 12, color: COLORS.dim });
+        const by2 = py + ph - 40;
+        if (mine) ui.text('You are on this team', x0 + tw / 2, by2 + 8, { size: 12, align: 'center', color: COLORS.dim });
+        else {
+          const full = members.length >= per;
+          ui.button(x0 + 14, by2, tw - 28, 30, full ? 'Team full' : `Join Team ${team + 1}`, {
+            onClick: () => session.send({ t: 'setTeam', team }),
+            enabled: canSwitch && !full,
+            size: 13,
+            accent: team === 0 ? COLORS.mine : COLORS.enemy,
+          });
+        }
       });
+      ui.text(`${lobby.players.length} ${lobby.players.length === 1 ? "player" : "players"}. Bots fill the empty slots of both teams to ${per} each when you start.`, cx, py + ph + 8, { size: 12, align: 'center', color: COLORS.dim });
 
-      const by = py + ph + 52;
+      const by = py + ph + 64;
       const counting = lobby.phase === 'countdown';
       if (counting) {
         const left = Math.max(0, Math.ceil(((lobby.countdownEndsAtMs ?? 0) - session.serverNow()) / 1000));

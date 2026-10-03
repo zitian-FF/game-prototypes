@@ -1,8 +1,7 @@
 ## Current milestone
 
-Post-playtest revision 1, built on the branch and verified locally, not yet merged or
-deployed. The live Worker and itch/Pages clients are still the previous build
-(protocol 1); merging deploys protocol 2 of both together.
+Post-playtest revision 1 is merged and deployed (protocol 2). Team selection in the lobby and
+the loading screen are built on the branch and verified locally, not yet merged.
 
 ## What was implemented
 
@@ -29,6 +28,11 @@ deployed. The live Worker and itch/Pages clients are still the previous build
   with orders to its right, square Scouts and Logs buttons at the left edge, nuclear silo
   and oil refinery drawn as their own shapes, hospital cross icon, missile flight and
   impact effects, "Reset saved session" on the menu (this browser only).
+- Teams: players join the smaller team and can switch in the lobby while the other team has room
+  (protocol `setTeam`, `teamFull`); bots fill both teams to 20; squads are dealt at match start.
+  Lobby shows two team columns with Join buttons.
+- Loading screen: shown while the map builds, then for 2.5s with your team, match length and the
+  squads you were dealt.
 - Packages: arena-sim 0.3.0, firestorm-net 0.2.0.
 
 ## Key technical decisions

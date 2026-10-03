@@ -57,6 +57,8 @@ export class GameScene extends BaseScene {
   private panel: Panel = 'none';
   private lastFrame = 0;
   private confirmEnd = false;
+  private loadStartedAt = 0;
+  private loadFrames = 0;
   private missiles: { from: Vec; to: Vec; startMs: number; arriveMs: number; own: boolean }[] = [];
   private mapRect = { x: 0, y: 0, w: 0, h: 0 };
 
@@ -72,6 +74,8 @@ export class GameScene extends BaseScene {
     this.selectedSquad = null;
     this.panel = 'none';
     this.confirmEnd = false;
+    this.loadStartedAt = this.time.now;
+    this.loadFrames = 0;
     this.missiles = [];
     this.fogKey = null;
     this.lastFrame = this.time.now;
@@ -118,16 +122,17 @@ export class GameScene extends BaseScene {
     const events = intents.drain();
     const view = session.view;
     if (!session.info || !view) {
-      this.ui.begin();
-      const { w, h } = logicalSize();
-      this.ui.rect(0, 0, w, h, 0x0b0709, 1);
-      this.ui.text('Loading match...', w / 2, h / 2, { size: 18, align: 'center', color: COLORS.dim });
-      this.drawVersion();
-      this.ui.end();
-      for (const e of events) if (e.type === 'primary') this.ui.click(e.x, e.y);
+      this.drawLoading(0.25, 'Waiting for the match...');
       return;
     }
-    if (!this.ready) this.buildWorld();
+    if (!this.ready) {
+      // Show the loading screen for a couple of frames before the heavy map bake blocks the thread.
+      if (this.loadFrames++ < 2) {
+        this.drawLoading(0.6, 'Building the map...');
+        return;
+      }
+      this.buildWorld();
+    }
 
     const simMs = session.simNow();
     const now = time / 1000;
@@ -137,6 +142,53 @@ export class GameScene extends BaseScene {
     this.fx.ambient(now);
     this.drawWorld(view, simMs, now);
     this.drawHud(view, simMs);
+  }
+
+  // --------------------------------------------------------------- loading
+
+  /** Full-screen loading screen used before the world exists. */
+  private drawLoading(progress: number, label: string): void {
+    const ui = this.ui;
+    const { w, h } = logicalSize();
+    ui.begin();
+    this.loadingPanel(w, h, progress, label);
+    this.drawVersion();
+    ui.end();
+  }
+
+  private loadingPanel(w: number, h: number, progress: number, label: string): void {
+    const ui = this.ui;
+    ui.rect(0, 0, w, h, 0x0b0709, 1);
+    ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
+    ui.rect(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    ui.block(0, 0, w, h);
+    const cx = w / 2;
+    const dots = '.'.repeat(1 + (Math.floor(Date.now() / 400) % 3));
+    ui.text('FIRESTORM ARENA', cx, h / 2 - 150, { size: 36, bold: true, align: 'center', color: '#ff8a3d' });
+    ui.text(label + dots, cx, h / 2 - 96, { size: 15, align: 'center', color: COLORS.dim });
+    ui.bar(cx - 160, h / 2 - 66, 320, 8, progress, 0xff8a3d);
+  }
+
+  /** Shown over the finished game for a moment: which team you are on and the squads you were dealt. */
+  private drawLoadedOverlay(view: WireView, w: number, h: number, progress: number): void {
+    const ui = this.ui;
+    const info = session.info!;
+    ui.setLayer(3);
+    this.loadingPanel(w, h, progress, 'Deploying');
+    const cx = w / 2;
+    const teamName = `Team ${info.team + 1}`;
+    ui.text(`You are on ${teamName}, ${Math.round(info.tune.match.durationSeconds / 60)} minute match`, cx, h / 2 - 34, { size: 15, bold: true, align: 'center', color: cssColor(COLORS.mine) });
+    ui.text('Your squads', cx, h / 2 - 6, { size: 12, align: 'center', color: COLORS.dim });
+    const mine = view.squads.filter((s) => s.owner === info.playerId);
+    mine.forEach((s, i) => {
+      const y = h / 2 + 16 + i * 30;
+      drawUnit(ui.gfx(), s.type, cx - 150, y + 20, 1, COLORS.mine, this.time.now / 1000);
+      const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, cx - 120, y + 2, { size: 14, bold: true });
+      drawPowerSword(ui.gfx(), cx - 120 + w1 + 12, y + 10);
+      ui.text(fmtPower(s.power), cx - 120 + w1 + 22, y + 2, { size: 14, bold: true, color: '#ffd54a' });
+      ui.text(`${Math.round(s.troops)} troops`, cx + 150, y + 3, { size: 12, align: 'right', color: COLORS.dim });
+    });
+    ui.setLayer(0);
   }
 
   // ----------------------------------------------------------------- camera
@@ -624,6 +676,10 @@ export class GameScene extends BaseScene {
     this.drawTargetPanel(view, simMs, w, h);
 
     ui.text('Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
+
+    // ---- loading overlay for the first moments
+    const loaded = (this.time.now - this.loadStartedAt) / 1000;
+    if (loaded < clientTune.hud.loadingSeconds) this.drawLoadedOverlay(view, w, h, 0.6 + 0.4 * (loaded / clientTune.hud.loadingSeconds));
 
     // ---- end of match
     if (session.result) {

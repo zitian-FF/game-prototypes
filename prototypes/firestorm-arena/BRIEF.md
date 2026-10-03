@@ -546,4 +546,11 @@ client.
   with a sword mark and an M suffix (63.2M).
 - HUD: total troops above the squad panel; the inspected node is bottom centre
   with its orders to the right; Scouts and Logs are square buttons at the left edge.
+- Teams are chosen in the lobby. A joiner is put on the team with fewer humans (team 1 on a tie)
+  and can switch to the other team while it has fewer than 20 humans. The choice locks when the
+  host starts the countdown. Bots then fill both teams up to 20 each.
+- Squads are dealt when the match starts, not in the lobby: the server rolls every player's squads
+  at that moment, in a shuffled order, from one seed.
+- Loading screen: while the world builds, and for 2.5 seconds after, a loading screen shows the
+  player's team, the match length and the squads they were dealt.
 - Where this section conflicts with older text above, this section wins.

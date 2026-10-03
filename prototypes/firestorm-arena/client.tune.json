@@ -36,7 +36,8 @@
   "hud": {
     "toastSeconds": 4.5,
     "logsMax": 30,
-    "minimapWidth": 210
+    "minimapWidth": 210,
+    "loadingSeconds": 2.5
   },
   "net": {
     "pingEverySeconds": 5,
