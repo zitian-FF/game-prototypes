@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DPR, logicalSize } from './scenes/base';
+import { DPR, logicalSize, refreshDpr } from './scenes/base';
 import { MenuScene } from './scenes/menu';
 import { LobbyScene } from './scenes/lobby';
 import { GameScene } from './scenes/game';
@@ -27,10 +27,31 @@ game.events.once(Phaser.Core.Events.READY, () => {
   intents.attach(game.canvas);
 });
 
-window.addEventListener('resize', () => {
+/** Keep the buffer sharp when the window, fullscreen state, browser zoom or monitor changes. */
+function fit(): void {
+  if (refreshDpr()) {
+    game.scale.setZoom(1 / DPR);
+    game.events.emit('dpr');
+  }
   const s = logicalSize();
   game.scale.resize(Math.round(s.w * DPR), Math.round(s.h * DPR));
-});
+}
+
+window.addEventListener('resize', fit);
+document.addEventListener('fullscreenchange', fit);
+// Moving the window to a monitor with another pixel ratio fires no resize, only this media query.
+function watchDpr(): void {
+  const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  mq.addEventListener(
+    'change',
+    () => {
+      fit();
+      watchDpr();
+    },
+    { once: true },
+  );
+}
+watchDpr();
 
 mountDebugPanelIfRequested();
 

@@ -56,6 +56,10 @@ Everything below the first two bullets of the merged work is on the branch, not 
   from overlapping rank bands (1-12, 7-16, 13-20, 16-20); HQ garrison at friendly HQs; hospital 20/s;
   combat result floaters (victor combined -N, "Defeated"); individual vanity scoring with a leaderboard on the
   victory screen.
+- Sharpness fix (branch, unmerged): the pixel ratio is now re-read live (resize, fullscreen change, browser zoom,
+  monitor change), so the buffer, camera and text resolution follow it. The baked floor is drawn at up to 1.5x
+  (`dpr.groundMaxPx` in client.tune.json) so it no longer looks soft on dense screens. Scouts and Logs buttons
+  now move up out of the way of a 4-row squad panel.
 - Packages: arena-sim 0.4.0, firestorm-net 0.3.0, protocol 3.
 
 ## Key technical decisions

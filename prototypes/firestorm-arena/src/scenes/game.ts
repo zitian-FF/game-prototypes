@@ -101,7 +101,7 @@ export class GameScene extends BaseScene {
     this.lava = this.ground.lava;
 
     this.world = this.add.container(0, 0);
-    this.world.add(this.add.image(0, 0, this.ground.groundKey).setOrigin(0, 0));
+    this.world.add(this.add.image(0, 0, this.ground.groundKey).setOrigin(0, 0).setScale(1 / this.ground.groundScale));
     this.lavaG = this.add.graphics();
     this.world.add(this.lavaG);
     this.world.add(this.add.image(0, 0, this.ground.fogKey).setOrigin(0, 0).setScale(1 / this.ground.fogScale));
@@ -405,6 +405,10 @@ export class GameScene extends BaseScene {
 
   // ------------------------------------------------------------------- world
 
+  protected onDprChanged(): void {
+    for (const t of this.labels) t.setResolution(DPR * 2);
+  }
+
   private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     let t = this.labels[this.labelUsed];
     if (!t) {
@@ -701,8 +705,12 @@ export class GameScene extends BaseScene {
       ui.text(String(count), 36, y + 27, { size: 18, bold: true, align: 'center', color: on ? '#08111a' : count > 0 ? COLORS.warn : COLORS.dim });
       ui.region(8, y, 56, 56, () => (this.panel = on ? 'none' : which));
     };
-    sq(h / 2 - 62, 'Scouts', activeReports, 'scouts');
-    sq(h / 2 + 6, 'Logs', view.combatLogs.length, 'logs');
+    // Middle of the edge, but never under the squad panel (it grows with the number of squads).
+    const ownSquads = view.squads.filter((q) => q.owner === session.info!.playerId).length;
+    const squadTop = h - (62 + ownSquads * 56) - 34 - 30;
+    const by = Math.max(40, Math.min(h / 2 - 62, squadTop - 8 - 118));
+    sq(by, 'Scouts', activeReports, 'scouts');
+    sq(by + 62, 'Logs', view.combatLogs.length, 'logs');
 
     // ---- toasts
     const nowWall = Date.now();
