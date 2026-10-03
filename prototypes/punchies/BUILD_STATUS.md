@@ -8,6 +8,17 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Blurry after entering fullscreen: the render
+  scale (`PIXEL_RATIO`) was fixed at load from devicePixelRatio, so a game
+  loaded small then fullscreened was a small buffer stretched up. It is now
+  a live value from the size the game is shown at (cap 2x on touch devices,
+  3x otherwise), re-evaluated on resize / orientation / fullscreen change;
+  the canvas buffer is resized and existing text is re-sharpened
+  (`setResolution`). Verified in Playwright: buffer 844x390 small ->
+  2532x1425 at 1920x1080 -> back to 844x390; menu text crisp. Not tested
+  on a real device. Note: 3x cap on non-touch is a small change from the
+  repo's "capped at 2x" DPR rule; touch devices stay at 2x.
+
 - (Branch, not merged yet.) Online character select: tapping a card only
   selects; a READY / UNREADY button locks it; the match starts only when
   both phones are READY. Opponent panel shows "waiting for opponent..." /

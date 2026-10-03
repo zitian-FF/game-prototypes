@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { computeView, PIXEL_RATIO, refitCamera, setPendingView, VIEW } from './render/pixelRatio';
+import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { TrainingScene } from './scenes/TrainingScene';
 import { MenuScene } from './scenes/MenuScene';
@@ -40,7 +40,14 @@ function onScreenShape(): void {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
     const v = computeView();
+    const sharper = updateRenderScale();
     game.scale.setGameSize(v.width * PIXEL_RATIO, v.height * PIXEL_RATIO);
+    // Existing text keeps the resolution it was made with: re-sharpen it.
+    if (sharper) {
+      for (const sc of game.scene.getScenes(false)) {
+        for (const o of sc.children.list) if (o instanceof Phaser.GameObjects.Text) o.setResolution(PIXEL_RATIO);
+      }
+    }
     const active = game.scene.getScenes(true);
     if (active.every((sc) => MENU_SCENES.includes(sc.scene.key))) {
       // Menus: adopt the new shape and re-lay out.
