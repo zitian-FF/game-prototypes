@@ -45,6 +45,14 @@ alarm set, and rebuilds the room from storage after an eviction.
   someone returns. The room closes 15 minutes after a match ends, and 60 seconds
   after a lobby host disconnects.
 
+## Teams and squads
+
+Each human joins the team with fewer humans and may switch (`setTeam`) in the lobby while the
+other team has fewer than `playersPerTeam` humans (refused with `teamFull` otherwise); the
+countdown locks it. At match start the server shuffles the humans, keeps their chosen teams,
+fills both teams to 20 with bots, and only then rolls every player's squads (one seed), so
+nobody knows their squads in the lobby.
+
 ## Bots
 
 A bot is a small state machine. Every 8 to 20 sim seconds (random per bot) it picks an

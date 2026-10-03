@@ -236,7 +236,7 @@ export class Session {
       case 'error':
         if (msg.code === 'replaced') this.error = 'This game was opened in another tab.';
         else this.error = msg.message;
-        if (msg.code !== 'rateLimited' && msg.code !== 'badPhase' && msg.code !== 'notHost') {
+        if (msg.code !== 'rateLimited' && msg.code !== 'badPhase' && msg.code !== 'notHost' && msg.code !== 'teamFull') {
           const message = this.error;
           this.leave(); // drops match state too, so screens fall back to the menu
           this.error = message;

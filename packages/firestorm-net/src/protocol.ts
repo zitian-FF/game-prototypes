@@ -28,6 +28,7 @@ export type ClientMsg =
   | { t: 'start'; fillBots: boolean; minutes: number }
   | { t: 'cancelStart' }
   | { t: 'endRoom' }
+  | { t: 'setTeam'; team: TeamId }
   | { t: 'cmd'; id: number; cmd: CommandBody }
   | { t: 'ping'; c: number };
 
@@ -46,12 +47,15 @@ export type ErrorCode =
   | 'rateLimited'
   | 'replaced'
   | 'hostLeft'
-  | 'roomClosed';
+  | 'roomClosed'
+  | 'teamFull';
 
 export interface LobbyPlayer {
   clientId: string;
   name: string;
   connected: boolean;
+  /** The team this player will be on. Changeable in the lobby while the other team has room. */
+  team: TeamId;
 }
 
 export interface MatchStartInfo {
@@ -178,6 +182,8 @@ export function parseClientMsg(raw: string): ParseResult {
       return { ok: true, msg: { t: 'cancelStart' } };
     case 'endRoom':
       return { ok: true, msg: { t: 'endRoom' } };
+    case 'setTeam':
+      return v.team === 0 || v.team === 1 ? { ok: true, msg: { t: 'setTeam', team: v.team } } : { ok: false, message: 'bad team' };
     case 'cmd': {
       const cmd = parseCommand(v.cmd);
       if (!cmd || typeof v.id !== 'number' || !Number.isInteger(v.id)) return { ok: false, message: 'bad command' };

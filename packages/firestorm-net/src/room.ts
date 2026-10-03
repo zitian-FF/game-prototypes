@@ -78,7 +78,7 @@ export interface RoomMeta {
   code: string;
   phase: RoomPhase | 'closed';
   hostId: string | null;
-  humans: { clientId: string; name: string }[];
+  humans: { clientId: string; name: string; team?: TeamId }[];
   fillBots: boolean;
   minutes?: number;
   countdownEndsAtMs?: number;
@@ -101,6 +101,7 @@ interface Human {
   clientId: string;
   name: string;
   connected: boolean;
+  team: TeamId;
 }
 
 const CLOSE_NORMAL = 1000;
@@ -175,7 +176,7 @@ export class ArenaRoom {
     room.countdownEndsAtMs = meta.countdownEndsAtMs;
     room.hostGoneAtMs = meta.hostGoneAtMs;
     room.cmdCount = log.length;
-    for (const h of meta.humans) room.humans.set(h.clientId, { clientId: h.clientId, name: h.name, connected: false });
+    for (const h of meta.humans) room.humans.set(h.clientId, { clientId: h.clientId, name: h.name, connected: false, team: h.team ?? 0 });
     if (meta.match) {
       room.match = meta.match;
       room.indexPlayers(meta.match);
@@ -210,7 +211,7 @@ export class ArenaRoom {
       code: this.code,
       phase: this.phase,
       hostId: this.hostId,
-      humans: [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name })),
+      humans: [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name, team: h.team })),
       fillBots: this.fillBots,
       minutes: this.minutes,
       countdownEndsAtMs: this.countdownEndsAtMs,
@@ -328,6 +329,8 @@ export class ArenaRoom {
         return this.onStart(connId, clientId, msg.fillBots, msg.minutes);
       case 'cancelStart':
         return this.onCancelStart(connId, clientId);
+      case 'setTeam':
+        return this.onSetTeam(connId, clientId, msg.team);
       case 'endRoom':
         // The host can end the room at any time, so the code is free for a fresh one.
         if (clientId !== this.hostId) return this.error(connId, 'notHost', 'only the host can end the room');
@@ -361,7 +364,9 @@ export class ArenaRoom {
     }
 
     const name = known?.name ?? msg.name;
-    this.humans.set(msg.clientId, { clientId: msg.clientId, name, connected: true });
+    // New players go to the team with fewer humans (team 0 on a tie); they can switch in the lobby.
+    const team: TeamId = known?.team ?? (this.humansOn(0) <= this.humansOn(1) ? 0 : 1);
+    this.humans.set(msg.clientId, { clientId: msg.clientId, name, connected: true, team });
     conn.clientId = msg.clientId;
     this.clientConn.set(msg.clientId, connId);
     this.env.identified?.(connId, msg.clientId);
@@ -401,6 +406,22 @@ export class ArenaRoom {
     this.fillBots = fillBots;
     this.minutes = minutes;
     this.countdownEndsAtMs = this.env.now() + this.tune.match.startCancelSeconds * 1000;
+    this.saveMeta();
+    this.sendLobby();
+  }
+
+  private humansOn(team: TeamId): number {
+    let n = 0;
+    for (const h of this.humans.values()) if (h.team === team) n++;
+    return n;
+  }
+
+  private onSetTeam(connId: string, clientId: string, team: TeamId): void {
+    if (this.phase !== 'lobby') return this.error(connId, 'badPhase', 'teams can only change in the lobby');
+    const h = this.humans.get(clientId);
+    if (!h || h.team === team) return;
+    if (this.humansOn(team) >= this.tune.match.playersPerTeam) return this.error(connId, 'teamFull', 'that team is full');
+    h.team = team;
     this.saveMeta();
     this.sendLobby();
   }
@@ -513,20 +534,25 @@ export class ArenaRoom {
       return name;
     };
 
+    // Humans keep the team they chose in the lobby. Squads are rolled for the roster in this
+    // (shuffled) order, now, so nobody knows their squads before the match starts.
     const roster: MatchPlayer[] = [];
     for (const h of rng.shuffle(humans)) {
       const id = unique(h.name);
-      roster.push({ id, name: id, bot: false, team: 0, clientId: h.clientId });
+      roster.push({ id, name: id, bot: false, team: h.team, clientId: h.clientId });
     }
     if (this.fillBots) {
-      const total = this.tune.match.playersPerTeam * 2;
-      for (let i = 0; roster.length < total; i++) {
+      // Bots fill each team up to the full size, alternating so the two teams grow together.
+      const per = this.tune.match.playersPerTeam;
+      const size: [number, number] = [0, 0];
+      for (const p of roster) size[p.team]++;
+      for (let i = 0; size[0] < per || size[1] < per; i++) {
+        const team: TeamId = size[0] <= size[1] ? (size[0] < per ? 0 : 1) : size[1] < per ? 1 : 0;
         const id = unique(`Bot ${BOT_NAMES[i % BOT_NAMES.length]}${i >= BOT_NAMES.length ? ` ${Math.floor(i / BOT_NAMES.length) + 1}` : ''}`);
-        roster.push({ id, name: id, bot: true, team: 0 });
+        roster.push({ id, name: id, bot: true, team });
+        size[team]++;
       }
     }
-    // Alternate teams down the list: humans first, so they are split evenly, then bots fill.
-    roster.forEach((p, i) => (p.team = (i % 2) as TeamId));
 
     this.match = { seed, startedAtMs: this.env.now(), timeScale: this.opt.timeScale, tune: { ...this.tune, match: { ...this.tune.match, durationSeconds: this.minutes * 60 } }, players: roster };
     this.indexPlayers(this.match);
@@ -611,7 +637,7 @@ export class ArenaRoom {
   }
 
   private lobbyMsg(): ServerMsg {
-    const players: LobbyPlayer[] = [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name, connected: h.connected }));
+    const players: LobbyPlayer[] = [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name, connected: h.connected, team: h.team }));
     return {
       t: 'lobby',
       phase: this.phase === 'closed' ? 'ended' : this.phase,

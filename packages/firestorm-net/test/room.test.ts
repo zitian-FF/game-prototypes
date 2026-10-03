@@ -322,3 +322,78 @@ test('lobby: only the host can end the room, and ending it closes every socket',
   assert.equal(guest.last('error')!.code, 'roomClosed');
   assert.ok(w.room.shouldDestroy());
 });
+
+// ------------------------------------------------------------------ teams
+
+const teamsOf = (c: { last(t: 'lobby'): { players: { name: string; team: 0 | 1 }[] } | undefined }) =>
+  Object.fromEntries(c.last('lobby')!.players.map((p) => [p.name, p.team]));
+
+test('teams: joiners are put on the smaller team, and anyone can switch while the other team has room', () => {
+  const w = makeWorld();
+  const a = w.client('Ann');
+  const b = w.client('Ben');
+  const c = w.client('Cat');
+  a.hello(true);
+  b.hello(false);
+  c.hello(false);
+  assert.deepEqual(teamsOf(a), { Ann: 0, Ben: 1, Cat: 0 });
+  b.send({ t: 'setTeam', team: 0 });
+  assert.deepEqual(teamsOf(a), { Ann: 0, Ben: 0, Cat: 0 }, 'a player can move to a team with room');
+  a.send({ t: 'setTeam', team: 1 });
+  assert.equal(teamsOf(c).Ann, 1);
+  // The host starting does not lock a player's own choice, but a countdown does.
+  a.send({ t: 'start', fillBots: false, minutes: 30 });
+  b.send({ t: 'setTeam', team: 1 });
+  assert.equal(b.last('error')!.code, 'badPhase');
+  assert.equal(teamsOf(c).Ben, 0);
+});
+
+test('teams: a full team refuses more, and a bad team value is rejected', () => {
+  const w = makeWorld();
+  const clients = Array.from({ length: 21 }, (_, i) => w.client(`P${i}`, `client-${i}-player`.padEnd(12, '_')));
+  clients.forEach((c, i) => c.hello(i === 0));
+  for (let i = 0; i < 20; i++) clients[i].send({ t: 'setTeam', team: 1 });
+  assert.equal(clients[0].last('lobby')!.players.filter((p) => p.team === 1).length, 20);
+  clients[20].send({ t: 'setTeam', team: 1 });
+  assert.equal(clients[20].last('error')!.code, 'teamFull');
+  assert.equal(clients[20].last('lobby')!.players.find((p) => p.name === 'P20')!.team, 0, 'stays where it was');
+  clients[20].send({ t: 'setTeam', team: 2 } as never);
+  assert.equal(clients[20].last('error')!.code, 'badMessage');
+});
+
+test('teams: players keep the team they chose, bots fill both teams to 20, squads are dealt at the start', () => {
+  const w = makeWorld();
+  const a = w.client('Ann');
+  const b = w.client('Ben');
+  const c = w.client('Cat');
+  a.hello(true);
+  b.hello(false);
+  c.hello(false);
+  for (const x of [a, b, c]) x.send({ t: 'setTeam', team: 1 });
+  assert.deepEqual(teamsOf(a), { Ann: 1, Ben: 1, Cat: 1 });
+  a.send({ t: 'start', fillBots: true, minutes: 10 });
+  assert.equal(a.of('matchStart').length, 0, 'no squads exist in the lobby');
+  w.advance(3100);
+  const info = (x: typeof a) => x.of('matchStart')[0].info;
+  for (const x of [a, b, c]) assert.equal(info(x).team, 1);
+  assert.equal(info(a).teammates.length, 19, '3 humans and 17 bots on team 1');
+  const g = w.room.sim!;
+  const per = [0, 0];
+  for (const p of g.players.values()) per[p.team]++;
+  assert.deepEqual(per, [20, 20]);
+  assert.ok(a.of('state').length > 0);
+});
+
+test('teams: without bots the chosen teams stand even when uneven, and a rebuilt room remembers them', () => {
+  const w = makeWorld();
+  const a = w.client('Ann');
+  const b = w.client('Ben');
+  a.hello(true);
+  b.hello(false);
+  b.send({ t: 'setTeam', team: 0 });
+  assert.equal(w.room.meta().humans.find((h) => h.name === 'Ben')!.team, 0);
+  a.send({ t: 'start', fillBots: false, minutes: 10 });
+  w.advance(3100);
+  const g = w.room.sim!;
+  assert.equal([...g.players.values()].filter((p) => p.team === 0).length, 2, 'both on team 0');
+});
