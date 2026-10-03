@@ -8,6 +8,44 @@ issues).
 
 ## What was implemented
 
+- Foldable / fullscreen fix: the view was measured once at load, so
+  unfolding, folding or entering fullscreen letterboxed the game. Now the
+  canvas is resized on resize / orientationchange / fullscreenchange.
+  Menus (Menu, CharSelect) re-lay out at once; a running fight / lobby
+  keeps its layout fitted into the new canvas and the new shape applies
+  from the next scene. Verified in Playwright by resizing 844x390 ->
+  900x820 (menu fills edge to edge) -> 960x400 mid-Training (layout
+  intact). Not tested on a real foldable.
+
+- (Branch, not merged yet.) Character looks (`render/characterLook.ts`):
+  per-character colour + alt (mirror match), render scale, Mia's
+  ponytail; FighterView.setLook, scaled body / gloves; corner posts and
+  KO colours follow the fighters; P1 / P2 tags fading `match.tagSec` (8 s)
+  after GO; select screen uses character colours. Verified in Playwright:
+  select screen colours, Mia mirror match (red vs pink, tags shown). Tag
+  fade-out timing not observed in a capture.
+
+- (Branch, not merged yet.) Characters + character select (BRIEF
+  "Characters"): `sim/character.ts` (per-fighter stat lookups, punch
+  config with reach / frame / fatigue overrides), `tune.characters` with
+  debug-panel entries under a new Characters category, `CharSelectScene`
+  (touch, keyboard, controller; vsai / localvs / online flows),
+  `sim/charPrefs.ts`, Training character toggle, character names in the
+  fight HUD. Punch reach is stored on the punch when thrown. Online:
+  'pick' control message, 'start' carries [host, guest] character ids;
+  rollback creates the sim with them; rematch keeps them.
+  Verified: headless stat table matches the spec; Mia vs Bruno rollback
+  3000 frames, 0 hash mismatches; Playwright select screen (touch +
+  keyboard into VsAI), and two-tab mock online pick -> match with both
+  sides showing MIA vs MARCO.
+
+- (Branch, not merged yet.) Uppercut can now be Perfect Guarded (High
+  Guard still can't block it); BRIEF + info panel updated. Pushback now
+  locks the defender's own walking for its duration (dodge still works),
+  so holding forward can't cancel knockback. Headless: PG stops the
+  uppercut, held High Guard / no guard take 20; push identical standing
+  still vs holding forward.
+
 - (Branch, not merged yet.) Keyboard / controller menu navigation
   (`ui/menuNav.ts`): every button registers; arrows / WASD / D-pad /
   left stick move a pulsing yellow highlight, Enter / Space / A press.
@@ -189,6 +227,9 @@ issues).
   URL (html-classic.itch.zone/...), which opens the game directly.
 
 ## Open questions
+
+- BRIEF.md had "extra characters" out of scope; the user moved it into
+  scope (2026-10-03). BRIEF updated with the character spec.
 
 - Hook chip vs "absorbed by normal guard": implemented as Hook chips only
   High Guard; vs Normal stance it follows the regular table. BRIEF.md

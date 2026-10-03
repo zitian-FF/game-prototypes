@@ -3,6 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
+import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { EasyAI } from '../sim/ai';
 import { TICK_RATE } from '../sim/tune';
@@ -24,13 +25,16 @@ export class VsAIScene extends Phaser.Scene {
     super('VsAI');
   }
 
-  create(): void {
+  private chars: [string, string] = ['marco', 'marco'];
+
+  create(data: { chars?: [string, string] }): void {
+    this.chars = data?.chars ?? this.chars;
     applyCameraPixelRatio(this);
     this.acc = 0;
     this.over = false;
-    this.sim = createSimState({ timed: true, fighters: [{}, {}] });
+    this.sim = createSimState({ timed: true, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
     this.ai = new EasyAI(1);
-    this.stage = new FightStage(this, ['YOU', 'CPU (easy)'], 0);
+    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU · ${charName(this.chars[1])}`], 0);
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
     addVersionStamp(this);
   }
@@ -68,7 +72,7 @@ export class VsAIScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(150);
-    makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart());
+    makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart({ chars: this.chars }));
     makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => this.scene.start('Menu'));
   }
 }

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage } from './FightStage';
+import { CHARACTER_IDS, charName, type CharId } from '../sim/character';
+import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { createSimState, step } from '../sim/sim';
 import { tune, TICK_RATE } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimState } from '../sim/types';
@@ -21,6 +23,8 @@ export class TrainingScene extends Phaser.Scene {
   private acc = 0;
   private dummyStance: DummyStance = 'NORMAL';
   private stanceLabel!: Phaser.GameObjects.Text;
+  private charLabel!: Phaser.GameObjects.Text;
+  private char: CharId = 'marco';
 
   constructor() {
     super('Training');
@@ -29,21 +33,32 @@ export class TrainingScene extends Phaser.Scene {
   create(): void {
     applyCameraPixelRatio(this);
     this.acc = 0;
+    this.char = loadCharPrefs().p1;
     this.newSim();
     this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0);
+    this.charLabel = this.stage.button(VIEW.cx - 160, VIEW.top + 46, 80, '', () => this.cycleChar());
     this.stanceLabel = this.stage.button(VIEW.cx - 58, VIEW.top + 46, 110, '', () => this.cycleStance());
     this.stage.button(VIEW.cx + 30, VIEW.top + 46, 56, 'RESET', () => this.newSim());
     this.stage.button(VIEW.cx + 82, VIEW.top + 46, 40, 'MENU', () => this.scene.start('Menu'));
     this.refreshStance();
+    this.charLabel.setText(`YOU: ${charName(this.char)}`);
     addVersionStamp(this);
   }
 
   private newSim(): void {
     this.sim = createSimState({
       timed: false,
-      fighters: [{}, { anchored: true, infiniteStamina: tune.training.dummyInfiniteStamina }],
+      fighters: [{ char: this.char }, { anchored: true, infiniteStamina: tune.training.dummyInfiniteStamina }],
     });
     this.applyStance();
+  }
+
+  // Swap the player's boxer (fresh sim, like RESET). Remembered as the P1 pick.
+  private cycleChar(): void {
+    this.char = CHARACTER_IDS[(CHARACTER_IDS.indexOf(this.char) + 1) % CHARACTER_IDS.length];
+    saveCharPrefs({ p1: this.char });
+    this.charLabel.setText(`YOU: ${charName(this.char)}`);
+    this.newSim();
   }
 
   private cycleStance(): void {

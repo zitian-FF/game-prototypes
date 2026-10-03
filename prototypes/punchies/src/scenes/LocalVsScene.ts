@@ -3,6 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
+import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { TICK_RATE } from '../sim/tune';
 import type { SimState } from '../sim/types';
@@ -18,7 +19,7 @@ const MAX_STEPS_PER_FRAME = 5;
 export class LocalVsScene extends Phaser.Scene {
   private sim!: SimState;
   private stage!: FightStage;
-  private inputs!: LocalInputs;
+  private inputs!: LocalInputs & { chars?: [string, string] };
   private acc = 0;
   private over = false;
 
@@ -26,13 +27,14 @@ export class LocalVsScene extends Phaser.Scene {
     super('LocalVs');
   }
 
-  create(data: LocalInputs): void {
+  create(data: LocalInputs & { chars?: [string, string] }): void {
     applyCameraPixelRatio(this);
     this.inputs = data;
     this.acc = 0;
     this.over = false;
-    this.sim = createSimState({ timed: true, fighters: [{}, {}] });
-    const names: [string, string] = [`P1 · ${SOURCE_LABEL[data.p1]}`, `P2 · ${SOURCE_LABEL[data.p2]}`];
+    const chars = data.chars ?? ['marco', 'marco'];
+    this.sim = createSimState({ timed: true, fighters: [{ char: chars[0] }, { char: chars[1] }] });
+    const names: [string, string] = [`P1 · ${charName(chars[0])} · ${SOURCE_LABEL[data.p1]}`, `P2 · ${charName(chars[1])} · ${SOURCE_LABEL[data.p2]}`];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));

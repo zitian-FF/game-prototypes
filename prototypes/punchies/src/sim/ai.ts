@@ -1,4 +1,5 @@
 import { tune } from './tune';
+import { punchCfg } from './character';
 import { phaseOf } from './sim';
 import { NEUTRAL_INPUT, type FrameInput, type SimState } from './types';
 
@@ -97,7 +98,7 @@ export class EasyAI {
       if (me.stars >= tune.stars.max) {
         input.uppercut = true;
       } else {
-        const close = dist < tune.punches.hook.reach + tune.body.hurtRadius;
+        const close = dist < punchCfg(me, 'hook').reach + tune.body.hurtRadius;
         const wj = tune.ai.jabWeight;
         const wc = tune.ai.crossWeight;
         const wh = close ? tune.ai.hookWeight * 2 : tune.ai.hookWeight;

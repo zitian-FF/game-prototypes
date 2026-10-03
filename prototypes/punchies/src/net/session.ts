@@ -15,7 +15,8 @@ export type CtlMessage =
   | { k: 'full' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
-  | { k: 'start'; round: number; delay: number; tune: string }
+  | { k: 'start'; round: number; delay: number; tune: string; chars: [string, string] }
+  | { k: 'pick'; char: string | null }
   | { k: 'rematch'; round: number };
 
 // Trystero 0.25 actions: `send(data, { target })` and an assignable

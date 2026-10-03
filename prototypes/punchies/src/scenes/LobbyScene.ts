@@ -6,7 +6,7 @@ import { makeButton } from './FightStage';
 import { NetSession, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
-import { applyTuneJson, snapshotTune, tune, TICK_RATE } from '../sim/tune';
+import { tune, TICK_RATE } from '../sim/tune';
 
 // Host: create a room code, show it big with a QR code + link, wait for a
 // guest, measure ping, pick the input delay, start the match.
@@ -20,6 +20,8 @@ export interface MatchData {
   // Guest only: its own tune, restored after the match (it plays on the
   // host's values).
   restoreTune?: string;
+  // Character ids [host, guest] (see sim/character.ts).
+  chars: [string, string];
 }
 
 export class LobbyScene extends Phaser.Scene {
@@ -115,8 +117,9 @@ export class LobbyScene extends Phaser.Scene {
     // Rollback covers up to maxRollbackFrames of lateness; only add input
     // delay beyond the base when the one-way ping exceeds that window.
     const delay = Math.max(tune.net.inputDelayFrames, oneWayFrames - tune.net.maxRollbackFrames + 1);
-    s.send({ k: 'start', round: 1, delay, tune: JSON.stringify(tune) });
-    this.startMatch({ session: s, localIdx: 0, delay, round: 1 });
+    // Both players now pick characters; the host starts from there.
+    this.handedOff = true;
+    this.scene.start('CharSelect', { mode: 'online', session: s, localIdx: 0, delay });
   }
 
   private async join(code: string): Promise<void> {
@@ -129,23 +132,17 @@ export class LobbyScene extends Phaser.Scene {
     const s = new NetSession(code, 'guest', ice);
     this.session = s;
     s.onRejected = () => this.back(`Room ${code} is full`);
-    s.onPaired = () => this.status.setText('Connected. Starting...');
+    s.onPaired = () => {
+      this.handedOff = true;
+      this.scene.start('CharSelect', { mode: 'online', session: s, localIdx: 1 });
+    };
     s.onPeerLeft = () => this.back('Host left the room');
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
-      if (m.k === 'start') {
-        const restore = snapshotTune();
-        applyTuneJson(m.tune);
-        this.startMatch({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore });
-      }
     };
     this.timeout = this.time.delayedCall(tune.net.connectTimeoutMs, () => {
       if (!s.peerId) this.back(`No host found for room ${code}`);
     });
   }
 
-  private startMatch(data: MatchData): void {
-    this.handedOff = true;
-    this.scene.start('Match', data);
-  }
 }

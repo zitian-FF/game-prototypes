@@ -18,7 +18,7 @@ export const WORLD_HEIGHT = 390;
 // Responsive view: the visible area grows beyond the world to match the
 // device's landscape aspect ratio (wider phones get extra width, squarer
 // tablets extra height). HUD and controls anchor to VIEW edges.
-function computeView() {
+export function computeView() {
   const long = Math.max(window.innerWidth, window.innerHeight) || WORLD_WIDTH;
   const short = Math.min(window.innerWidth, window.innerHeight) || WORLD_HEIGHT;
   const aspect = long / short;
@@ -32,8 +32,32 @@ function computeView() {
 
 export const VIEW = computeView();
 
+// Screen shape changes (foldable, fullscreen) while a fight is on are held
+// here and applied when the next scene is built, so a running fight never
+// has its layout pulled out from under it.
+let pendingView: ReturnType<typeof computeView> | null = null;
+
+export function setPendingView(v: ReturnType<typeof computeView>): void {
+  pendingView = v;
+}
+
 export function applyCameraPixelRatio(scene: Phaser.Scene): void {
+  if (pendingView) {
+    Object.assign(VIEW, pendingView);
+    pendingView = null;
+  }
   const cam = scene.cameras.main;
   cam.setZoom(PIXEL_RATIO);
+  cam.centerOn(VIEW.cx, VIEW.cy);
+}
+
+// Fit the current VIEW (the layout the scene was built for) inside the
+// canvas's present size, centred.
+export function refitCamera(scene: Phaser.Scene): void {
+  const w = scene.scale.gameSize.width / PIXEL_RATIO;
+  const h = scene.scale.gameSize.height / PIXEL_RATIO;
+  const fit = Math.min(w / VIEW.width, h / VIEW.height);
+  const cam = scene.cameras.main;
+  cam.setZoom(PIXEL_RATIO * fit);
   cam.centerOn(VIEW.cx, VIEW.cy);
 }
