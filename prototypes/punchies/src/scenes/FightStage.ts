@@ -10,9 +10,10 @@ import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
 import { tune } from '../sim/tune';
-import type { FrameInput, SimEvent, SimState } from '../sim/types';
+import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
 import { DEBUG_ENABLED, debugView } from '../debug/debugPanel';
+import { getNav, navRegister } from '../ui/menuNav';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
@@ -35,6 +36,7 @@ export class FightStage {
     private touchEnabled = true,
   ) {
     this.ring = scene.add.graphics().setDepth(0);
+    getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.fx = new Effects(scene);
@@ -63,11 +65,15 @@ export class FightStage {
   // Solo modes: touch + either keyboard half + any controller all drive the
   // one local player.
   sampleLocal(): FrameInput {
+    // While keyboard / controller are driving the menu highlight, only
+    // touch reaches the fighter.
+    if (getNav(this.scene).capturing) return this.intents.sample();
     return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
   }
 
   sampleSource(src: InputSource): FrameInput {
-    return src === 'touch' ? this.intents.sample() : devices.sample(src);
+    if (src === 'touch') return this.intents.sample();
+    return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src);
   }
 
   // Tutorial: reveal only the listed controls/HUD parts (null = all), and
@@ -215,6 +221,7 @@ export function makeButton(
 ): Phaser.GameObjects.Text {
   const bg = scene.add.rectangle(x, y, w, h, 0x222222, 0.9).setStrokeStyle(1, 0x888888).setDepth(130);
   bg.setInteractive().on('pointerdown', onTap);
+  navRegister(scene, bg, onTap);
   const label = scene.add
     .text(x, y, text, { fontFamily: 'monospace', fontSize: `${fontSize}px`, color: '#dddddd', resolution: PIXEL_RATIO })
     .setOrigin(0.5)

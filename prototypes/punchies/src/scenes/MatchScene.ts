@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
+import { getNav } from '../ui/menuNav';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
@@ -125,6 +126,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showResult(): void {
+    getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
     const r = this.ls.confirmedResult()!;
@@ -161,6 +163,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private opponentLeft(): void {
+    getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
     this.add

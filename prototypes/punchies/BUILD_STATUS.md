@@ -8,6 +8,18 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Keyboard / controller menu navigation
+  (`ui/menuNav.ts`): every button registers; arrows / WASD / D-pad /
+  left stick move a pulsing yellow highlight, Enter / Space / A press.
+  Modals (input popup, join keypad, tutorial end) trap the highlight.
+  In fights it's off until Esc / Start (fight input is muted while it's
+  on) and turns on by itself for result screens. Window-level key
+  listener, so no keys are lost before the canvas has focus.
+- Boxer look: 🥊-style gloves 15% bigger (round mitt, thumb lobe, knuckle
+  shine, white laced cuff), skin-tone arms (the red boxer read as a crab),
+  rest / guard glove spacing widened to match. Render only; hitboxes
+  unchanged.
+
 - (Branch, not merged yet.) 2026-10-03 batch:
   - Ring art: canvas weave + scuffs + centre mark, three ropes with tape
     wraps, corner posts (blue P1 / red P2 / two neutral). Cached, redrawn

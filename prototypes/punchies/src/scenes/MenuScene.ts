@@ -7,6 +7,7 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
 import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
+import { getNav, navRegister } from '../ui/menuNav';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -63,6 +64,7 @@ export class MenuScene extends Phaser.Scene {
     const btn = (x: number, y: number, w: number, label: string, onTap: () => void) => {
       const bg = this.add.rectangle(x, y, w, 30, 0x2a3140, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(D + 1).setInteractive();
       bg.on('pointerdown', onTap);
+      navRegister(this, bg, onTap);
       items.push(bg);
       return txt(x, y, label, 12, '#ffffff');
     };
@@ -134,11 +136,13 @@ export class MenuScene extends Phaser.Scene {
     };
     const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x2a3140) => {
       const bg = this.add.rectangle(x, y, w, h, fill, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(D + 1).setInteractive();
-      bg.on('pointerdown', () => {
+      const tap = () => {
         bg.setFillStyle(0x4a5a78);
         this.time.delayedCall(90, () => bg.active && bg.setFillStyle(fill));
         onTap();
-      });
+      };
+      bg.on('pointerdown', tap);
+      navRegister(this, bg, tap);
       items.push(bg);
       return txt(x, y, label, 13, '#ffffff');
     };
@@ -155,8 +159,10 @@ export class MenuScene extends Phaser.Scene {
     }
     const status = txt(VIEW.cx, VIEW.cy - 60, '', 10, '#ff8a7a');
 
+    getNav(this).textEntry = true;
     const close = () => {
-      this.input.keyboard?.off('keydown', onKey);
+      getNav(this).textEntry = false;
+      window.removeEventListener('keydown', onKey);
       for (const o of items) o.destroy();
     };
     const submit = () => {
@@ -206,6 +212,7 @@ export class MenuScene extends Phaser.Scene {
         if (ch.length === 1 && ROOM_ALPHABET.includes(ch)) type(ch);
       }
     };
-    this.input.keyboard?.on('keydown', onKey);
+    window.addEventListener('keydown', onKey);
+    this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
   }
 }
