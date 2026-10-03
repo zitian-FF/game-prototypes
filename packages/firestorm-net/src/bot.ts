@@ -2,9 +2,12 @@
 // their team's fog-filtered view: they cannot peek at hidden state.
 //
 // A bot is a tiny state machine. Every few seconds (a random wait in a window)
-// it picks one of three actions (weighted: mostly attack, rarely scout), then a
-// target for it, leaning toward nearby nodes and toward reinforcing its own. If the
-// action is legal it runs it; if not it does nothing and waits for the next cycle.
+// it first looks for something urgent or too good to skip: defending an ally HQ under
+// attack, moving its HQ onto a node its team holds, a visible enemy cache, an enemy HQ it
+// is confident about. Otherwise it picks one of three actions (weighted: mostly attack,
+// rarely scout), then a target for it, leaning toward nearby nodes and toward reinforcing
+// its own. If the action is legal it runs it; if not it does nothing and waits for the next
+// cycle. Each bot has its own appetite for caches, HQ assaults and helping allies.
 // A bot with less than one full squad of troops left stops acting altogether.
 
 import { Rng } from 'arena-sim';
@@ -16,7 +19,7 @@ export interface BotInput {
   team: TeamId;
   view: TeamView;
   tune: Tune;
-  /** Squad march speed in map units per second (unused by this bot, kept for the room). */
+  /** Squad march speed in map units per second (used to judge whether a squad can reach an ally in time). */
   speed: number;
   nowMs: number;
   /** Shared within a decision round (unused by this bot, kept for the room). */
@@ -44,7 +47,16 @@ const THREAT_MS = 30_000;
 /** With fewer own garrisons than this, a bot leans toward reinforcing its own nodes. */
 const WANT_GARRISONS = 3;
 
-/** Each bot has its own appetite for stealing caches, drawn once: from rarely to most of the time. */
+/** Each bot draws its own appetites once, so a team is not a flock. */
+const AGGRESSION_MIN = 0.25;
+const AGGRESSION_MAX = 0.9;
+const LOYALTY_MIN = 0.4;
+const LOYALTY_MAX = 0.95;
+/** A squad needs at least this fraction of its troops to go on an HQ assault or a rescue. */
+const FIT = 0.7;
+/** With no scout report, a squad this strong (effective power) is confident about an enemy HQ. */
+const CONFIDENT_POWER = 66;
+/** Each bot has its own appetite for stealing caches: from rarely to most of the time. */
 const STEAL_MIN = 0.1;
 const STEAL_MAX = 0.85;
 /** At most this many scouts of one team head for the same cache. */
@@ -54,12 +66,18 @@ export class BotBrain {
   private nextActMs: number | undefined;
   /** This bot's chance, each decision, of going for a visible enemy cache first. */
   private readonly stealChance: number;
+  /** How readily this bot goes for an enemy HQ it feels confident about. */
+  private readonly aggression: number;
+  /** How readily this bot rushes to help an ally whose HQ is under attack. */
+  private readonly loyalty: number;
 
   constructor(
     readonly playerId: string,
     private readonly rng: Rng,
   ) {
     this.stealChance = STEAL_MIN + rng.next() * (STEAL_MAX - STEAL_MIN);
+    this.aggression = AGGRESSION_MIN + rng.next() * (AGGRESSION_MAX - AGGRESSION_MIN);
+    this.loyalty = LOYALTY_MIN + rng.next() * (LOYALTY_MAX - LOYALTY_MIN);
   }
 
   think(input: BotInput): CommandBody[] {
@@ -72,10 +90,25 @@ export class BotBrain {
     if (nowMs < this.nextActMs) return [];
     this.nextActMs = nowMs + this.wait();
 
+    // An ally's HQ under attack that we can reach in time: go and garrison it.
+    if (this.rng.next() < this.loyalty) {
+      const rescue = this.defendAlly(input);
+      if (rescue) return [rescue];
+    }
+    // Still in the safe zone with a node of ours to land on: get the HQ out there.
+    if (this.rng.next() < 0.8) {
+      const move = this.teleport(input);
+      if (move && input.view.hqs.find((h) => h.owner === input.playerId)?.location.kind === 'safe') return [move];
+    }
     // Opportunistic: an enemy score cache inside our vision is worth a scout trip right now.
     if (this.rng.next() < this.stealChance) {
       const steal = this.stealCache(input);
       if (steal) return [steal];
+    }
+    // An enemy HQ out in the field that we feel confident about.
+    if (this.rng.next() < this.aggression) {
+      const assault = this.assaultHq(input);
+      if (assault) return [assault];
     }
 
     const action = this.pickWeighted(ACTION_WEIGHTS.map(([a, w]) => ({ item: a, weight: w })));
@@ -148,9 +181,86 @@ export class BotBrain {
         options.push({ item: { kind: 'node', nodeId: n.id }, weight: near(n.pos) });
       }
     }
-    for (const h of view.enemyHqs) options.push({ item: { kind: 'hq', hqId: h.id }, weight: near(h.pos) * 0.5 });
+    // Enemy HQs are not blind targets any more: assaultHq goes for one only when it is confident.
     const target = this.pickWeighted(options);
     return target ? { type: 'march', squadId: squad.id, target } : null;
+  }
+
+  /** True if the point is inside the team's vision (the circles around its visible nodes). */
+  private inVision({ view, team, tune }: BotInput, x: number, y: number): boolean {
+    for (const n of view.nodes) {
+      if (n.owner !== team || !n.visible) continue;
+      if (Math.hypot(n.pos.x - x, n.pos.y - y) <= tune.nodes[n.kind].visionRadiusCells * tune.map.cellSize) return true;
+    }
+    return false;
+  }
+
+  /** Where an enemy march is right now. */
+  private marchAt(m: TeamView['enemyMarches'][number], nowMs: number): { x: number; y: number } {
+    const span = m.march.arriveMs - m.march.startMs;
+    const k = span <= 0 ? 1 : Math.min(1, Math.max(0, (nowMs - m.march.startMs) / span));
+    return { x: m.march.from.x + (m.march.to.x - m.march.from.x) * k, y: m.march.from.y + (m.march.to.y - m.march.from.y) * k };
+  }
+
+  /**
+   * Help a teammate whose HQ (out on a node) is about to be hit by an enemy march we can see: garrison a fit
+   * squad there if it can arrive before the fight. The soonest threatened ally comes first.
+   */
+  private defendAlly(input: BotInput): CommandBody | null {
+    const { view, playerId, tune, nowMs, speed } = input;
+    const mine = view.squads.filter((s: OwnSquadView) => s.owner === playerId);
+    const squad = this.pick(mine.filter((s) => s.state === 'hq' && s.troops >= s.maxTroops * FIT));
+    const home = view.hqs.find((h) => h.owner === playerId);
+    if (!squad || !home) return null;
+    const cell = tune.map.cellSize;
+    let best: { hqId: string; eta: number } | null = null;
+    for (const h of view.hqs) {
+      if (h.owner === playerId || h.location.kind !== 'node') continue;
+      if (h.garrisonCount >= tune.garrison.maxSquads) continue;
+      // Already helping this one (garrisoned or on the way).
+      if (mine.some((s) => s.hqId === h.id || (s.march?.purpose === 'hq' && s.march.hqId === h.id))) continue;
+      let eta = Infinity;
+      for (const m of view.enemyMarches) {
+        if (Math.hypot(m.march.to.x - h.pos.x, m.march.to.y - h.pos.y) > cell * 0.5 || m.march.arriveMs <= nowMs) continue;
+        const at = this.marchAt(m, nowMs);
+        if (!this.inVision(input, at.x, at.y)) continue; // only what the team can actually see
+        eta = Math.min(eta, m.march.arriveMs - nowMs);
+      }
+      if (!Number.isFinite(eta)) continue;
+      const travelMs = (Math.hypot(home.pos.x - h.pos.x, home.pos.y - h.pos.y) / Math.max(1, speed)) * 1000;
+      if (travelMs > eta) continue; // would arrive after the fight
+      if (!best || eta < best.eta) best = { hqId: h.id, eta };
+    }
+    return best ? { type: 'march', squadId: squad.id, target: { kind: 'hq', hqId: best.hqId } } : null;
+  }
+
+  /**
+   * Go for an enemy HQ that is out in the field when confident. With a live scout report: our best squad must
+   * beat the strongest known defender. Without one: only a really strong squad, or against a damaged HQ.
+   */
+  private assaultHq(input: BotInput): CommandBody | null {
+    const { view, playerId, nowMs } = input;
+    const mine = view.squads.filter((s: OwnSquadView) => s.owner === playerId);
+    const fit = mine.filter((s) => s.state === 'hq' && s.troops >= s.maxTroops * FIT);
+    const home = view.hqs.find((h) => h.owner === playerId);
+    if (fit.length === 0 || !home) return null;
+    const eff = (s: OwnSquadView) => (s.power * s.troops) / s.maxTroops;
+    const best = fit.reduce((a, s) => (eff(s) > eff(a) ? s : a));
+    let pick: { id: string; d: number } | null = null;
+    for (const h of view.enemyHqs) {
+      const report = view.scoutReports.filter((r) => r.target.kind === 'hq' && r.target.hqId === h.id && r.expiresAtMs > nowMs && !r.empty).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
+      let confident: boolean;
+      if (report) {
+        const strongest = report.defenders.reduce((a, d) => Math.max(a, d.effectivePower), 0);
+        confident = report.defenders.length <= 4 && eff(best) >= strongest * 1.1;
+      } else {
+        confident = eff(best) >= CONFIDENT_POWER || (h.burning && eff(best) >= CONFIDENT_POWER - 8);
+      }
+      if (!confident) continue;
+      const d = Math.hypot(h.pos.x - home.pos.x, h.pos.y - home.pos.y);
+      if (!pick || d < pick.d) pick = { id: h.id, d };
+    }
+    return pick ? { type: 'march', squadId: best.id, target: { kind: 'hq', hqId: pick.id } } : null;
   }
 
   /**
@@ -187,7 +297,9 @@ export class BotBrain {
     const targets: Target[] = [];
     for (const n of view.nodes) if (!(n.owner === team && n.visible) && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
     for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
-    const target = this.pick(targets);
+    // An enemy HQ we have no live report on is the most useful thing to look at: it decides whether to assault.
+    const unreported = view.enemyHqs.filter((h) => !view.scoutReports.some((r) => r.target.kind === 'hq' && r.target.hqId === h.id && r.expiresAtMs > nowMs));
+    const target = unreported.length > 0 && this.rng.next() < 0.7 ? ({ kind: 'hq', hqId: this.pick(unreported)!.id } as Target) : this.pick(targets);
     if (!scout || !target) return null;
     return { type: 'scout', scoutIndex: scout.index, target };
   }
@@ -216,9 +328,9 @@ export class BotBrain {
     );
     const healthyAtHq = mine.some((s) => s.state === 'hq' && s.troops >= s.maxTroops * WOUNDED);
     const wounded = mine.filter((s) => s.troops < s.maxTroops * WOUNDED && s.state !== 'march').length;
-    const deployed = mine.filter((s) => s.state === 'garrison').length;
     const needsRefill = !healthyAtHq && wounded >= 2;
-    const idleInSafeZone = hq.location.kind === 'safe' && deployed === 0;
+    // Still in the safe zone: any node of ours with a free slot is a reason to move out.
+    const idleInSafeZone = hq.location.kind === 'safe';
     if (!underThreat && !needsRefill && !idleInSafeZone) return null;
 
     const here = hq.location.kind === 'node' ? hq.location.nodeId : null;

@@ -109,7 +109,7 @@
       "rows": 4,
       "insetCells": 3
     },
-    "nodeMinSpacingCells": 4,
+    "nodeMinSpacingCells": 5,
     "nodeMinDistFromSafeZoneCells": 5,
     "edgeMarginCells": 2,
     "rings": [
@@ -135,8 +135,8 @@
         "minR": 0.3,
         "maxR": 0.65,
         "spawnBand": [
-          0.3,
-          0.85
+          0.35,
+          0.9
         ],
         "nodes": {
           "points": 2,
@@ -151,15 +151,15 @@
         "minR": 0.25,
         "maxR": 0.98,
         "spawnBand": [
-          0.1,
-          0.7
+          0.2,
+          0.85
         ],
         "nodes": {
           "attackBoost": 2,
           "defenseBoost": 2,
           "speedBoost": 2,
           "teleportCooldown": 2,
-          "hospital": 2
+          "hospital": 4
         }
       }
     ]
