@@ -439,31 +439,154 @@ export function drawPowerSword(g: G, x: number, y: number, color = 0xffd54a): vo
   g.strokePath();
 }
 
-/** Nuclear silo: a round concrete cylinder with a split hatch and four anti-aircraft towers on the corners. */
+/**
+ * Nuclear silo after the reference art: a flat armoured hex pad with hazard-yellow bays, a raised ring with
+ * team-colour clamps, a central launch bore with the warhead tip showing, and four anti-aircraft towers.
+ */
 export function drawSilo(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1): void {
-  const hh = hw / 2;
+  const s = hw / 26;
   const art = new Art(g, color);
-  art.poly([[cx, cy - hh * 1.15], [cx + hw * 1.15, cy], [cx, cy + hh * 1.15], [cx - hw * 1.15, cy]], shade(color, 0.3));
+  const hex = (r: number, y: number, fill: number, inner = false) => {
+    const pts: Pt[] = [];
+    for (let k = 0; k < 6; k++) {
+      const a = (Math.PI / 3) * k;
+      pts.push([cx + Math.cos(a) * r, y + Math.sin(a) * r * 0.5]);
+    }
+    art.poly(pts, fill, inner);
+  };
+  const steel = 0x6e7580;
+  const yellow = 0xf2c230;
+  // Pad, then a slab below it for thickness.
+  hex(30 * s, cy + 4 * s, shade(steel, 0.6));
+  hex(30 * s, cy, steel);
+  // Hazard-yellow bays on four of the six sides.
+  for (const k of [0, 2, 3, 5]) {
+    const a0 = (Math.PI / 3) * k;
+    const a1 = (Math.PI / 3) * (k + 1);
+    const pt = (a: number, r: number): Pt => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.5];
+    art.poly([pt(a0, 30 * s), pt(a1, 30 * s), pt(a1, 21 * s), pt(a0, 21 * s)], yellow, true);
+  }
+  // Raised ring and team-colour clamps.
+  art.ell(cx, cy - 4 * s, 38 * s, 19 * s, shade(steel, 1.2));
+  art.ell(cx, cy - 7 * s, 38 * s, 19 * s, 0x9aa1ab);
+  for (const a of [0.5, 2.1, 4.2, 5.7]) {
+    art.quad(cx + Math.cos(a) * 19 * s - 2.5 * s, cy - 7 * s + Math.sin(a) * 9.5 * s - 3 * s, cx + Math.cos(a) * 19 * s + 2.5 * s, cy - 7 * s + Math.sin(a) * 9.5 * s + 3 * s, color, true);
+  }
+  // Launch bore with the warhead tip.
+  art.ell(cx, cy - 7 * s, 26 * s, 13 * s, 0x1a1f26, true);
+  art.ell(cx, cy - 7 * s, 18 * s, 9 * s, 0x2f3640, true);
+  art.poly([[cx - 5 * s, cy - 8 * s], [cx + 5 * s, cy - 8 * s], [cx + 4 * s, cy - 17 * s], [cx, cy - 25 * s], [cx - 4 * s, cy - 17 * s]], 0xd8dde3);
+  art.poly([[cx - 4 * s, cy - 17 * s], [cx, cy - 25 * s], [cx + 4 * s, cy - 17 * s]], 0xd8352f, true);
+  art.quad(cx - 4.4 * s, cy - 15 * s, cx + 4.4 * s, cy - 13 * s, yellow, true);
+  // Four AA towers on the corners.
   const tower = (dx: number, dy: number) => {
     const tx = cx + dx;
     const ty = cy + dy;
-    art.quad(tx - 1.5, ty - 17, tx + 1.5, ty, shade(color, 0.7));
-    art.circ(tx, ty - 18, 3.4, shade(color, 1.1));
-    art.poly([[tx, ty - 19.5], [tx + 8, ty - 27], [tx + 9.4, ty - 25.4], [tx + 1.4, ty - 17.6]], 0xe8edf2);
+    art.box(tx, ty, 6 * s, 9 * s, 0, yellow, shade(yellow, 1.12));
+    art.poly([[tx - 1 * s, ty - 10 * s], [tx + 9 * s, ty - 17 * s], [tx + 10.5 * s, ty - 15 * s], [tx + 1 * s, ty - 8 * s]], 0x4d535c);
   };
-  tower(-hw * 0.82, 0);
-  tower(0, -hh * 0.82);
-  const r = hw * 0.62;
-  const h = 26;
-  art.quad(cx - r, cy - h, cx + r, cy, shade(color, 0.55));
-  art.ell(cx, cy, r * 2, r, shade(color, 0.55));
-  art.ell(cx, cy - h, r * 2, r, shade(color, 1.05));
-  art.ell(cx, cy - h, r * 1.45, r * 0.72, 0x1a1f26, true);
-  art.quad(cx - 1, cy - h - r * 0.36, cx + 1, cy - h + r * 0.36, 0xffd54a, true);
-  art.quad(cx - r, cy - 9, cx + r, cy - 6, 0xffd54a, true);
-  tower(hw * 0.82, 0);
-  tower(0, hh * 0.82);
+  tower(-24 * s, 0);
+  tower(0, -12 * s);
+  tower(24 * s, 0);
+  tower(0, 12 * s);
   art.draw();
+}
+
+/**
+ * Missile turret after the reference art: four yellow gun pods on the corners of a cross-shaped base and a
+ * taller central launcher block with two red missile bays. Team colour is on the base and the pod trim.
+ */
+export function drawTurret(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1): void {
+  const s = hw / 26;
+  const art = new Art(g, color);
+  const yellow = 0xe8d233;
+  const slab = 0x6e7580;
+  art.box(cx, cy, 28 * s, 4 * s, 0, slab, shade(slab, 1.2));
+  const pod = (dx: number, dy: number) => {
+    art.box(cx + dx, cy + dy, 8 * s, 4 * s, 4 * s, shade(color, 0.9), color);
+    art.box(cx + dx, cy + dy, 6 * s, 9 * s, 8 * s, yellow, shade(yellow, 1.1));
+    art.quad(cx + dx - 1.2 * s, cy + dy - 22 * s, cx + dx + 5 * s, cy + dy - 19 * s, 0x4d535c);
+    art.quad(cx + dx - 3 * s, cy + dy - 18 * s, cx + dx + 3 * s, cy + dy - 14 * s, shade(color, 1.1), true);
+  };
+  pod(0, -13 * s);
+  pod(-21 * s, 0);
+  pod(21 * s, 0);
+  // Central launcher.
+  art.box(cx, cy + 3 * s, 14 * s, 24 * s, 4 * s, yellow, shade(yellow, 1.12));
+  art.box(cx, cy + 3 * s, 9 * s, 7 * s, 28 * s, shade(yellow, 0.9), shade(yellow, 1.05));
+  art.quad(cx - 12 * s, cy - 27 * s, cx - 4 * s, cy - 11 * s, 0x2f3640, true);
+  art.circ(cx - 8 * s, cy - 23 * s, 1.8 * s, 0xd8352f, true);
+  art.circ(cx - 8 * s, cy - 17 * s, 1.8 * s, 0xd8352f, true);
+  art.quad(cx + 4 * s, cy - 26 * s, cx + 12 * s, cy - 10 * s, 0x2f3640, true);
+  art.circ(cx + 8 * s, cy - 22 * s, 1.8 * s, 0xd8352f, true);
+  art.circ(cx + 8 * s, cy - 16 * s, 1.8 * s, 0xd8352f, true);
+  pod(0, 13 * s);
+  art.draw();
+}
+
+/** Hospital after the reference art: a tent with a cream canvas roof, team-colour walls, a red cross panel and a supply crate. */
+export function drawHospital(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1): void {
+  const s = hw / 24;
+  const art = new Art(g, color);
+  const canvas = 0xe6d5b2;
+  art.box(cx, cy, 26 * s, 3 * s, 0, 0x6e7580, 0x8a909a);
+  // Walls and the two roof planes.
+  art.poly([[cx - 20 * s, cy + 1 * s], [cx, cy + 11 * s], [cx, cy - 6 * s], [cx - 20 * s, cy - 14 * s]], shade(color, 0.85));
+  art.poly([[cx + 20 * s, cy + 1 * s], [cx, cy + 11 * s], [cx, cy - 6 * s], [cx + 20 * s, cy - 14 * s]], shade(color, 0.6));
+  art.poly([[cx - 22 * s, cy - 12 * s], [cx, cy - 2 * s], [cx, cy - 26 * s], [cx - 10 * s, cy - 30 * s]], canvas);
+  art.poly([[cx + 22 * s, cy - 12 * s], [cx, cy - 2 * s], [cx, cy - 26 * s], [cx + 10 * s, cy - 30 * s]], shade(canvas, 0.78));
+  // Red cross panel on the left roof plane.
+  art.poly([[cx - 16 * s, cy - 14 * s], [cx - 4 * s, cy - 9 * s], [cx - 4 * s, cy - 21 * s], [cx - 16 * s, cy - 26 * s]], 0xf4f1ea, true);
+  art.poly([[cx - 12.8 * s, cy - 22.6 * s], [cx - 8 * s, cy - 20.6 * s], [cx - 8 * s, cy - 12.6 * s], [cx - 12.8 * s, cy - 14.6 * s]], 0xd8352f, true);
+  art.poly([[cx - 15 * s, cy - 18.6 * s], [cx - 5 * s, cy - 14.6 * s], [cx - 5 * s, cy - 17 * s], [cx - 15 * s, cy - 21 * s]], 0xd8352f, true);
+  // Supply crate.
+  art.box(cx + 13 * s, cy + 9 * s, 5 * s, 6 * s, 0, 0xb98a55, 0xd2a46e);
+  art.draw();
+}
+
+/** A turret missile in flight, pointing along `angle` (radians, screen space). Green body, red nose, fins, flame. */
+export function drawMissile(g: G, x: number, y: number, angle: number, color: number, t: number, s = 1): void {
+  const c = Math.cos(angle);
+  const sn = Math.sin(angle);
+  const P = (u: number, v: number): Pt => [x + (u * c - v * sn) * s, y + (u * sn + v * c) * s];
+  const flick = Math.sin(t * 40) > 0 ? 1 : 0.8;
+  const art = new Art(g, color);
+  art.poly([P(-6, -3), P(-20 * flick - 6, 0), P(-6, 3)], 0xff7a22, true);
+  art.poly([P(-6, -1.6), P(-13 * flick - 6, 0), P(-6, 1.6)], 0xffe08a, true);
+  art.poly([P(-8, -3), P(-13, -8), P(-3, -3)], 0x3e6b36);
+  art.poly([P(-8, 3), P(-13, 8), P(-3, 3)], 0x3e6b36);
+  art.poly([P(-9, -3.4), P(7, -3.4), P(7, 3.4), P(-9, 3.4)], 0x5f9a4f);
+  art.poly([P(-4, -3.4), P(-1, -3.4), P(-1, 3.4), P(-4, 3.4)], 0xf2c230, true);
+  art.poly([P(7, -3.4), P(11, -2), P(14, 0), P(11, 2), P(7, 3.4)], 0xd8352f);
+  art.draw();
+}
+
+/** A chunky 3D question mark standing on (x, y): an extruded hook and dot, solid colours, one outline. */
+export function drawQuestion(g: G, x: number, y: number, color: number, size = 1): void {
+  const depth = 4 * size;
+  const pts: Pt[] = [];
+  // Hook: from the upper left, over the top, down the right and into the stem.
+  for (let a = Math.PI * 1.05; a <= Math.PI * 2.35; a += 0.18) pts.push([Math.cos(a) * 6.2 * size, -17 * size + Math.sin(a) * 6.2 * size]);
+  pts.push([2.4 * size, -8.5 * size], [0, -5.5 * size]);
+  const layer = (dx: number, dy: number, w: number, c: number) => {
+    g.lineStyle(w, c, 1);
+    g.beginPath();
+    g.moveTo(x + pts[0][0] + dx, y + pts[0][1] + dy);
+    for (let i = 1; i < pts.length; i++) g.lineTo(x + pts[i][0] + dx, y + pts[i][1] + dy);
+    g.strokePath();
+    g.fillStyle(c, 1).fillCircle(x + dx, y - 1.6 * size + dy, w * 0.52);
+  };
+  const w = 5 * size;
+  layer(depth * 0.7, depth, w + OUTLINE * 2, color);
+  layer(0, 0, w + OUTLINE * 2, color);
+  for (let k = depth; k >= 1; k--) layer(k * 0.7, k, w, shade(0xffa24a, 0.55));
+  layer(0, 0, w, 0xffb066);
+  // Lit highlight on the hook.
+  g.lineStyle(DETAIL, 0xffe0b8, 1);
+  g.beginPath();
+  g.moveTo(x + pts[1][0] - 1 * size, y + pts[1][1] - 1 * size);
+  for (let i = 2; i < Math.min(pts.length, 8); i++) g.lineTo(x + pts[i][0] - 1 * size, y + pts[i][1] - 1 * size);
+  g.strokePath();
 }
 
 /**

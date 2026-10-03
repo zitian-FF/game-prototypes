@@ -496,9 +496,8 @@ export class ArenaRoom {
   private static buildGame(m: MatchMeta): ArenaGame {
     const tune = m.tune;
     const map = generateMap(new Rng(m.seed), tune);
-    const rolled = rollPlayers(new Rng(m.seed + 1), tune, m.players.map((p) => p.id));
     const teamOf = new Map(m.players.map((p) => [p.id, p.team] as const));
-    const players: PlayerSpec[] = rolled.map((p) => ({ ...p, team: teamOf.get(p.id)! }));
+    const players: PlayerSpec[] = rollPlayers(new Rng(m.seed + 1), tune, m.players.map((p) => p.id), (id) => teamOf.get(id)!);
     return new ArenaGame({ seed: m.seed, tune, map, players });
   }
 

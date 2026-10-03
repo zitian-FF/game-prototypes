@@ -21,9 +21,9 @@ export interface NodeView {
   /** 1-4: number of stacked cubes to draw. */
   tier: number;
   pos: Vec;
-  /** Owner as the team knows it. Stale when the node is outside vision. */
+  /** Which team holds the node. Public to everyone, with or without vision. */
   owner: TeamId | null;
-  /** False if the team has never seen this node, so owner is unknown. */
+  /** Always true: node ownership is global. Kept for wire compatibility. */
   explored: boolean;
   visible: boolean;
   /**
@@ -45,16 +45,23 @@ export interface OwnSquadView {
   maxTroops: number;
   defend: boolean;
   pos: Vec;
-  state: 'hq' | 'garrison' | 'march';
+  state: 'hq' | 'garrison' | 'hqGarrison' | 'march';
   nodeId?: NodeId;
+  /** The friendly HQ this squad is garrisoned at. */
+  hqId?: HqId;
   march?: March;
   /** Defeated and walking home: draw it on fire. */
   burning: boolean;
 }
 
 export interface EnemyMarchView {
-  /** Opaque id: carries no owner, type or power. */
+  /** Opaque id: carries no owner or power. */
   id: SquadId;
+  /**
+   * Every enemy march is public, with its type. The client decides what to show: the type
+   * sprite while the march is inside your vision, a question mark while it is in fog.
+   */
+  type: SquadType;
   pos: Vec;
   march: Pick<March, 'from' | 'to' | 'startMs' | 'arriveMs' | 'speed'>;
   /** Present only while a scout reveal on this squad is unexpired. */
@@ -84,6 +91,8 @@ export interface OwnHqView {
   burning: boolean;
   location: HqLocation;
   nextTeleportAtMs: number;
+  /** Allied squads garrisoned here. */
+  garrisonCount: number;
 }
 
 export interface OwnScoutView {
@@ -104,7 +113,7 @@ export interface TeamView {
   squads: OwnSquadView[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
-  /** Enemy marches inside vision, masked unless revealed. */
+  /** Every enemy march (positions and types are public; power needs a scout). */
   enemyMarches: EnemyMarchView[];
   /** Enemy HQs inside vision (including stranded ones), masked. */
   enemyHqs: EnemyHqView[];
@@ -124,14 +133,13 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
   const nodes: NodeView[] = [];
   for (const n of game.nodes.values()) {
     const visible = n.owner === team || game.isVisibleTo(team, n.pos);
-    const known = game.lastKnownOwner[team];
     const view: NodeView = {
       id: n.id,
       kind: n.kind,
       tier: n.tier,
       pos: n.pos,
-      owner: visible ? n.owner : (known.get(n.id) ?? null),
-      explored: visible || known.has(n.id),
+      owner: n.owner,
+      explored: true,
       visible,
     };
     if (n.owner === team) {
@@ -168,14 +176,15 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         burning: sq.troops <= 0 && sq.state.kind === 'march',
       };
       if (sq.state.kind === 'garrison') v.nodeId = sq.state.nodeId;
+      if (sq.state.kind === 'hqGarrison') v.hqId = sq.state.hqId;
       if (sq.state.kind === 'march') v.march = sq.state.march;
       squads.push(v);
     } else if (sq.state.kind === 'march') {
       const pos = game.squadPos(sq);
-      if (!game.isVisibleTo(team, pos)) continue;
       const m = sq.state.march;
       const view: EnemyMarchView = {
         id: sq.id,
+        type: sq.type,
         pos,
         march: { from: m.from, to: m.to, startMs: m.startMs, arriveMs: m.arriveMs, speed: m.speed },
         burning: sq.troops <= 0,
@@ -203,6 +212,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         burning: p.hq.hp < maxHp,
         location: p.hq.location,
         nextTeleportAtMs: p.nextTeleportAtMs,
+        garrisonCount: p.hq.garrison.length,
       });
       p.scouts.forEach((sc, index) => {
         const v: OwnScoutView = { owner: p.id, index, state: sc.kind };

@@ -3,6 +3,8 @@ import { Ui, TextField, drawField } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session, normalizeRoomCode, randomRoomCode, serverBase } from '../net/session';
 import { COLORS } from '../theme';
+import { GAME_VERSION, VERSION_LOG } from '../versionLog';
+import { VERSION_STAMP } from '../version.generated';
 import { cleanName } from 'firestorm-net';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
@@ -110,6 +112,8 @@ export class MenuScene extends BaseScene {
       },
       size: 11,
     });
+    ui.text(`Version ${GAME_VERSION} (${VERSION_STAMP})`, cx, h - 96, { size: 11, align: 'center', color: COLORS.dim, bold: true });
+    ui.text(VERSION_LOG, cx, h - 80, { size: 11, align: 'center', color: COLORS.dim });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, h - 22, { size: 10, align: 'center', color: COLORS.dim });
     this.drawVersion();
     ui.end();

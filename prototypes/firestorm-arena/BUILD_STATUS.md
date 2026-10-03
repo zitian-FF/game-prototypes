@@ -1,7 +1,8 @@
 ## Current milestone
 
-Post-playtest revision 1, team selection and the loading screen are merged. The unit, HQ and
-refinery art pass is on the branch, verified locally, not yet merged.
+Post-playtest revision 1 plus a second round: global node ownership, public enemy marches with a
+fog/vision render split, redrawn silo, turret, hospital and missile, and a second-match hang fix.
+Everything below the first two bullets of the merged work is on the branch, not merged (by request).
 
 ## What was implemented
 
@@ -44,7 +45,18 @@ refinery art pass is on the branch, verified locally, not yet merged.
   reference (stepped beige building, team-colour roofs, rooftop cannon, antenna, flag, hazard-striped
   pad); oil refinery follows the second reference (two domed tanks with pulsing green tops, team
   clamps). All of it is solid colour, no transparency; out-of-sight nodes are darkened, not faded.
-- Packages: arena-sim 0.3.0, firestorm-net 0.2.0.
+- Round two (on the branch, unmerged): node ownership is global (`NodeView.owner` is always true,
+  `explored` always true, capture events go to everyone). Every enemy march is sent with its `type`
+  and position; the client shows the unit sprite inside its own vision and a 3D question mark in fog.
+  Bots only react to marches inside their own vision. Ally march lines at half strength. Silo, missile
+  turret, hospital (tent) and the turret missile redrawn from the new references. Fix: the second match
+  hung on "Building the map" because the pooled text labels of the first match were destroyed; the pool
+  is now reset when the scene starts.
+- Round three (on the branch, unmerged): 2 to 4 squads per commander (20% x4, 30% x3, rest x2, dealt per team)
+  from overlapping rank bands (1-12, 7-16, 13-20, 16-20); HQ garrison at friendly HQs; hospital 20/s;
+  combat result floaters (victor combined -N, "Defeated"); individual vanity scoring with a leaderboard on the
+  victory screen.
+- Packages: arena-sim 0.4.0, firestorm-net 0.3.0, protocol 3.
 
 ## Key technical decisions
 
@@ -63,6 +75,7 @@ refinery art pass is on the branch, verified locally, not yet merged.
 - Cost: bots issue about 1,150 commands per match (about 3,000 row writes), roughly 33
   matches a day on the Workers Free plan.
 - With 17 nodes and 20 players per team, garrisons will be crowded; worth a playtest.
+- Old rooms stored on the live Worker under protocol 2 will not replay under the new roster; start fresh rooms.
 - Missile damage floor is 1 troop (a hit cannot defeat a squad). Say if hits should be
   able to kill.
 - Placeholder numbers (reserve pool, score rates) still unplayed; BRIEF.md has a revision
@@ -70,12 +83,20 @@ refinery art pass is on the branch, verified locally, not yet merged.
 
 ## Known issues
 
+- HQ garrison and the squad-panel rows for 4 squads were checked by tests and typecheck only, not by eye
+  in a browser (the floaters and leaderboard were).
+- Bots never garrison friendly HQs.
+
 - Verified in headless Chromium and the local runtime only; the live Worker has not been
   exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.
-- Effects are first versions (missile arc, silo and refinery are simple vector shapes).
+- Effects are first versions. The silo bore is small and its front towers overlap the warhead tip; the
+  hospital roof reads a little like a house.
+- Enemy march types and positions are now sent to every client, so a modified client can see them in fog.
+  Accepted by the user for this prototype.
 
 ## Next proposed step
 
+0. Playtest squads 3 and 4, HQ garrisons and the leaderboard numbers.
 1. Merge to deploy protocol 2 (Worker and clients together), then Codex smoke-tests it.
 2. Playtest with real players for feel: march time at 257s, 17 nodes, bot activity.
 3. Narrow the Cloudflare token (Codex).

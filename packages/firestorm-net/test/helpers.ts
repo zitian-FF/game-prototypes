@@ -60,7 +60,7 @@ export class TestClient {
   }
 
   hello(create = false): void {
-    this.send({ t: 'hello', v: 2, clientId: this.clientId, name: this.name, create });
+    this.send({ t: 'hello', v: 3, clientId: this.clientId, name: this.name, create });
   }
 
   cmd(cmd: Record<string, unknown>): number {

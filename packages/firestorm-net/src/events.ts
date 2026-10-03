@@ -9,6 +9,8 @@ export type ClientEvent =
   | { type: 'marchCancelled'; timeMs: number; squadId: SquadId }
   | { type: 'garrisoned'; timeMs: number; nodeId: NodeId; squadId: SquadId }
   | { type: 'garrisonRejected'; timeMs: number; nodeId: NodeId; squadId: SquadId; reason: string }
+  | { type: 'hqGarrisoned'; timeMs: number; hqId: string; squadId: SquadId }
+  | { type: 'hqGarrisonRejected'; timeMs: number; hqId: string; squadId: SquadId; reason: string }
   | { type: 'nodeCaptured'; timeMs: number; nodeId: NodeId; team: TeamId; previous: TeamId | null }
   /** A fight your team was in: full details. */
   | { type: 'combat'; timeMs: number; log: CombatLog }
@@ -43,11 +45,15 @@ export function projectEvents(game: ArenaGame, team: TeamId, events: GameEvent[]
       case 'garrisoned':
         if (squadTeam(e.squadId) === team || sees(nodePos(e.nodeId))) out.push(e);
         break;
+      case 'hqGarrisoned':
+      case 'hqGarrisonRejected':
+        if (squadTeam(e.squadId) === team) out.push({ ...e });
+        break;
       case 'garrisonRejected':
         if (squadTeam(e.squadId) === team) out.push({ ...e });
         break;
       case 'nodeCaptured':
-        if (e.team === team || e.previous === team || sees(nodePos(e.nodeId))) out.push(e);
+        out.push(e); // who holds a node is public
         break;
       case 'combat': {
         const log = e.log;

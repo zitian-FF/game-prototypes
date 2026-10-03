@@ -26,29 +26,34 @@ export function rollSquad(rng: Rng, tune: Tune, rankMin: number, rankMax: number
 }
 
 /**
- * Deal teams and squads. Everyone gets one squad; most get a second from the
- * lower ranks; a few of those also get a third from the lowest ranks.
- * Teams are balanced (sizes differ by at most one).
+ * How many squads each commander of a team gets: fourSquadShare of them four, threeSquadShare three, the
+ * rest two. Rounded so the shares hold exactly for 20, and nobody has a single squad.
  */
-export function rollPlayers(rng: Rng, tune: Tune, playerIds: readonly string[]): PlayerSpec[] {
-  const r = tune.roster;
+export function squadCounts(n: number, tune: Tune): number[] {
+  const four = Math.round(n * tune.roster.fourSquadShare);
+  const three = Math.min(n - four, Math.round(n * tune.roster.threeSquadShare));
+  return Array.from({ length: n }, (_, i) => (i < four ? 4 : i < four + three ? 3 : 2));
+}
+
+/**
+ * Deal squads. Every commander gets at least two; the 1st and 2nd come from strong overlapping rank
+ * bands, the 3rd and 4th from weak ones (support and strategic movement). Squad counts are dealt per
+ * team so the shares hold on both sides. `teamOf` gives each id's team (default: alternate in shuffled order).
+ */
+export function rollPlayers(rng: Rng, tune: Tune, playerIds: readonly string[], teamOf?: (id: string) => TeamId): PlayerSpec[] {
+  const bands = tune.roster.bands;
   const order = rng.shuffle(playerIds);
-  const specs: PlayerSpec[] = [];
-  order.forEach((id, i) => {
-    const squads = [rollSquad(rng, tune, r.squad1RankMin, r.squad1RankMax)];
-    if (rng.chance(r.squad2Chance)) {
-      squads.push(rollSquad(rng, tune, r.squad2RankMin, r.squad2RankMax));
-      // A third squad needs a second one first.
-      if (rng.chance(r.squad3Chance)) {
-        squads.push(rollSquad(rng, tune, r.squad3RankMin, r.squad3RankMax));
-      }
-    }
-    specs.push({
-      id,
-      team: (i % 2) as TeamId,
-      pool: rng.int(tune.squad.reservePoolMin, tune.squad.reservePoolMax),
-      squads,
-    });
-  });
-  return specs;
+  const teams = order.map((id, i) => teamOf?.(id) ?? ((i % 2) as TeamId));
+  const counts: number[] = new Array(order.length).fill(2);
+  for (const team of [0, 1] as const) {
+    const idx = order.map((_, i) => i).filter((i) => teams[i] === team);
+    const sizes = rng.shuffle(squadCounts(idx.length, tune));
+    idx.forEach((i, k) => (counts[i] = sizes[k]));
+  }
+  return order.map((id, i) => ({
+    id,
+    team: teams[i],
+    pool: rng.int(tune.squad.reservePoolMin, tune.squad.reservePoolMax),
+    squads: Array.from({ length: counts[i] }, (_, s) => rollSquad(rng, tune, bands[s][0], bands[s][1])),
+  }));
 }

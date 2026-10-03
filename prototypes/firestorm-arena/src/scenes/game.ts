@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { CombatLog, SquadType, TeamId, Tune, Vec } from 'arena-sim';
+import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
 import { BaseScene, DPR, logicalSize } from './base';
 import { Ui } from '../ui/ui';
@@ -8,7 +8,7 @@ import { session } from '../net/session';
 import { Iso, diamond } from '../render/iso';
 import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawFlames, drawHospital, drawHq, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -46,6 +46,8 @@ export class GameScene extends BaseScene {
   private lava: LavaTile[] = [];
   private labels: Phaser.GameObjects.Text[] = [];
   private labelUsed = 0;
+  /** Combat result text that rises and fades over a fight (map position, start in seconds). */
+  private floaters: { text: string; color: string; size: number; x: number; y: number; start: number }[] = [];
   private fogKey: string | null = null;
 
   private camX = 0;
@@ -79,6 +81,9 @@ export class GameScene extends BaseScene {
     this.loadStartedAt = this.time.now;
     this.loadFrames = 0;
     this.missiles = [];
+    this.labels = [];
+    this.labelUsed = 0;
+    this.floaters = [];
     this.facing = new Map();
     this.fogKey = null;
     this.lastFrame = this.time.now;
@@ -312,6 +317,37 @@ export class GameScene extends BaseScene {
     return view.hqs.find((h) => h.id === id)?.pos ?? view.enemyHqs.find((h) => h.id === id)?.pos ?? null;
   }
 
+  /**
+   * After a fight the victor shows one combined number of troops defeated (like -23123) and every defeated
+   * commander shows "Defeated". Both rise and fade (drawFloaters).
+   */
+  private combatFloaters(log: CombatLog, pos: Vec, now: number): void {
+    const mine = this.mine;
+    const lostByDefenders = log.fights.reduce((a, f) => a + Math.max(0, f.defender.troopsBefore - f.defender.troopsAfter), 0);
+    const lostByAttacker = Math.max(0, log.attacker.troopsBefore - log.attacker.troopsAfter);
+    const attackerWon = log.attacker.troopsAfter > 0;
+    const victorTeam = attackerWon ? log.attacker.team : (log.fights[log.fights.length - 1]?.defender.team ?? log.attacker.team);
+    const defeated = [...(attackerWon ? [] : [log.attacker]), ...log.fights.map((f) => f.defender).filter((d) => d.troopsAfter <= 0)];
+    const victorColor = victorTeam === mine ? '#7dff9b' : '#ff7a5a';
+    const p = this.iso.p(pos.x, pos.y);
+    const number = attackerWon ? lostByDefenders : lostByAttacker;
+    this.floaters.push({ text: `-${fmtInt(Math.round(number))}`, color: victorColor, size: 18, x: p.x, y: p.y - 44, start: now });
+    defeated.slice(0, 3).forEach((d, i) => {
+      this.floaters.push({ text: 'Defeated', color: d.team === mine ? '#ff9a6a' : '#9fb3c8', size: 13, x: p.x, y: p.y - 22 + i * 15, start: now });
+    });
+    void lostByAttacker;
+  }
+
+  private drawFloaters(now: number): void {
+    const { floatSeconds, floatRise } = clientTune.fx;
+    this.floaters = this.floaters.filter((f) => now - f.start < floatSeconds);
+    for (const f of this.floaters) {
+      const k = (now - f.start) / floatSeconds;
+      const alpha = k < 0.55 ? 1 : 1 - (k - 0.55) / 0.45;
+      this.label(f.text, f.x, f.y - floatRise * k, f.color, f.size, 0.5, alpha);
+    }
+  }
+
   private handleEvents(view: WireView, now: number): void {
     const events = session.pendingEvents;
     if (events.length === 0) return;
@@ -323,6 +359,7 @@ export class GameScene extends BaseScene {
           const pos = this.subjectPos(view, e.log);
           if (pos) this.fx.combat(pos.x, pos.y, now);
           const where = e.log.subject.kind === 'node' ? this.nodeLabel(view, e.log.subject.nodeId) : 'an HQ';
+          if (pos) this.combatFloaters(e.log, pos, now);
           const mineAttack = e.log.attacker.team === mine;
           if (mineAttack && e.log.outcome === 'captured') session.toast(`Captured ${where}`, 'good');
           else if (mineAttack && e.log.outcome === 'attackerDefeated') session.toast(`Defeated attacking ${where}`, 'bad');
@@ -355,7 +392,8 @@ export class GameScene extends BaseScene {
           this.missiles.push({ from: e.from, to: e.to, startMs: e.startMs, arriveMs: e.arriveMs, own: e.own });
           break;
         case 'garrisonRejected':
-          session.toast(`Could not garrison: ${e.reason}`, 'bad');
+        case 'hqGarrisonRejected':
+          session.toast(`Could not garrison: ${e.reason === 'nodeFull' ? 'it is full' : 'you already have a squad there'}`, 'bad');
           break;
         case 'matchEnded':
           break;
@@ -367,14 +405,14 @@ export class GameScene extends BaseScene {
 
   // ------------------------------------------------------------------- world
 
-  private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5): void {
+  private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     let t = this.labels[this.labelUsed];
     if (!t) {
       t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: DPR * 2, stroke: '#000', strokeThickness: 3 });
       this.world.add(t);
       this.labels[this.labelUsed] = t;
     }
-    t.setText(text).setColor(color).setFontSize(size).setOrigin(align, 0).setPosition(x, y).setVisible(true);
+    t.setText(text).setColor(color).setFontSize(size).setOrigin(align, 0).setPosition(x, y).setAlpha(alpha).setVisible(true);
     this.labelUsed++;
   }
 
@@ -460,6 +498,10 @@ export class GameScene extends BaseScene {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier === 3) {
           drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
+        } else if (n.kind === 'turret') {
+          drawTurret(g, p.x, p.y, base, hw * 1.05);
+        } else if (n.kind === 'hospital') {
+          drawHospital(g, p.x, p.y, base, hw * 1.05);
         } else {
           const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
           drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
@@ -506,7 +548,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(s.march.to.x, s.march.to.y);
       const mineSquad = s.owner === info.playerId;
-      if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.6);
+      if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.3);
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
         const hgt = unitHeight(s.type);
@@ -517,22 +559,19 @@ export class GameScene extends BaseScene {
       });
     }
 
-    // Enemy marches: masked unless a scout has revealed them
+    // Enemy marches are public: the unit shows while it is inside our vision, a question mark while it is in fog.
+    const inSight = (pos: Vec): boolean => circles.some((c) => Math.hypot(pos.x - c.x, pos.y - c.y) <= c.r);
     for (const m of view.enemyMarches as WireEnemyMarch[]) {
       const pos = marchPos(m.march, simMs);
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(m.march.to.x, m.march.to.y);
       if (!m.burning) this.dashed(lines, p, to, COLORS.enemyLine, now, 0.85);
       add(pos, () => {
-        if (m.revealed) {
-          drawUnit(g, m.revealed.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
-          this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
+        if (inSight(pos)) {
+          drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
+          if (m.revealed) this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
-          g.lineStyle(2, COLORS.enemy, 1);
-          g.fillStyle(0x0c1016, 0.9);
-          g.fillRoundedRect(p.x - 11, p.y - 22, 22, 18, 4);
-          g.strokeRoundedRect(p.x - 11, p.y - 22, 22, 18, 4);
-          this.label('?', p.x, p.y - 22, '#ff9a6a', 13);
+          drawQuestion(g, p.x, p.y, COLORS.enemy, 1);
         }
         if (m.burning) drawFlames(g, p.x, p.y - 8, now, 1, 9);
       });
@@ -552,6 +591,7 @@ export class GameScene extends BaseScene {
     for (const it of items) it.draw();
     this.drawMissiles(simMs, now);
     this.fx.draw(this.fxG, now);
+    this.drawFloaters(now);
     for (let i = this.labelUsed; i < this.labels.length; i++) this.labels[i].setVisible(false);
     void ch;
   }
@@ -579,18 +619,13 @@ export class GameScene extends BaseScene {
       const head = pos(t);
       const tail = pos(Math.max(0, t - 0.04));
       const col = m.own ? COLORS.mine : COLORS.enemy;
-      g.lineStyle(5, 0x8a8f98, 1);
-      g.beginPath();
-      g.moveTo(pos(Math.max(0, t - 0.12)).x, pos(Math.max(0, t - 0.12)).y);
-      g.lineTo(tail.x, tail.y);
-      g.strokePath();
-      g.lineStyle(3, col, 0.9);
-      g.beginPath();
-      g.moveTo(tail.x, tail.y);
-      g.lineTo(head.x, head.y);
-      g.strokePath();
-      g.fillStyle(0xffe08a, 1).fillCircle(head.x, head.y, 3);
-      g.fillStyle(0xff7a22, 1).fillCircle(tail.x, tail.y, 2);
+      // Smoke puffs behind it, shrinking with age (solid greys, no fading).
+      for (let k = 1; k <= 6; k++) {
+        const q = pos(Math.max(0, t - k * 0.018));
+        g.fillStyle(k < 3 ? 0xb8bcc4 : 0x8a8f98, 1).fillCircle(q.x, q.y, Math.max(1, 4.2 - k * 0.55));
+      }
+      const ahead = pos(Math.min(1, t + 0.01));
+      drawMissile(g, head.x, head.y, Math.atan2(ahead.y - tail.y, ahead.x - tail.x), col, now, 1);
       return true;
     });
   }
@@ -602,8 +637,8 @@ export class GameScene extends BaseScene {
     if (!n) return null;
     const tune = this.tune;
     const lines: [string, string][] = [];
-    const owner = !n.explored ? 'Never seen' : n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
-    lines.push([n.visible ? owner : `${owner} (last known)`, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
+    const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
+    lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
     lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
     const k = tune.nodes[n.kind];
     const effects: string[] = [];
@@ -695,14 +730,16 @@ export class GameScene extends BaseScene {
     // ---- end of match
     if (session.result) {
       ui.setLayer(2);
-      ui.rect(0, 0, w, h, 0x000000, 0.65);
+      ui.rect(0, 0, w, h, 0x000000, 0.8);
       ui.block(0, 0, w, h);
       const r = session.result;
       const won = r.winner === mine;
       const head = r.winner === 'draw' ? 'DRAW' : won ? 'VICTORY' : 'DEFEAT';
-      ui.text(head, w / 2, h / 2 - 90, { size: 56, bold: true, align: 'center', color: r.winner === 'draw' ? '#ffffff' : won ? '#7dff9b' : '#ff6a6a' });
-      ui.text(`${fmtInt(r.points[mine])}  -  ${fmtInt(r.points[mine === 0 ? 1 : 0])}`, w / 2, h / 2 - 16, { size: 28, align: 'center', bold: true });
-      ui.button(w / 2 - 100, h / 2 + 40, 200, 44, 'Back to menu', {
+      const top = Math.max(16, h / 2 - 300);
+      ui.text(head, w / 2, top, { size: 48, bold: true, align: 'center', color: r.winner === 'draw' ? '#ffffff' : won ? '#7dff9b' : '#ff6a6a' });
+      ui.text(`${fmtInt(r.points[mine])}  -  ${fmtInt(r.points[mine === 0 ? 1 : 0])}`, w / 2, top + 60, { size: 24, align: 'center', bold: true });
+      this.drawLeaderboard(r.leaderboard ?? [], w, top + 104, h);
+      ui.button(w / 2 - 100, Math.min(h - 60, top + 104 + 38 + 12 * 26 + 18), 200, 40, 'Back to menu', {
         onClick: () => {
           session.finish();
           this.go('Menu');
@@ -715,9 +752,48 @@ export class GameScene extends BaseScene {
     ui.end();
   }
 
+  /** Individual leaderboard (vanity only): the top 10 and, if outside it, your own row. */
+  private drawLeaderboard(rows: PlayerScore[], w: number, y0: number, _h: number): void {
+    const ui = this.ui;
+    const me = session.info!.playerId;
+    const pw = Math.min(640, w - 24);
+    const px = Math.round((w - pw) / 2);
+    const rowH = 26;
+    const shown = rows.slice(0, 10);
+    const mineIdx = rows.findIndex((r) => r.id === me);
+    const extra = mineIdx >= 10 ? 1 : 0;
+    ui.panel(px, y0, pw, 38 + (shown.length + extra) * rowH + 8, 0.95);
+    ui.text('Commander leaderboard', px + 12, y0 + 8, { size: 14, bold: true });
+    const nameX = px + 44;
+    const colX = { troops: px + pw - 290, nodes: px + pw - 225, garrison: px + pw - 160, hqs: px + pw - 100, score: px + pw - 14 };
+    const head = (t: string, x: number) => ui.text(t, x, y0 + 11, { size: 10, color: COLORS.dim, align: 'right' });
+    head('Troops', colX.troops);
+    head('Nodes', colX.nodes);
+    head('Garrison s', colX.garrison);
+    head('HQs', colX.hqs);
+    head('Score', colX.score);
+    const line = (r: PlayerScore, rank: number, y: number) => {
+      const you = r.id === me;
+      if (you) ui.rect(px + 6, y - 2, pw - 12, rowH - 2, 0x24323f, 1);
+      ui.text(`${rank}`, px + 14, y + 3, { size: 12, color: COLORS.dim });
+      ui.text(r.id, nameX, y + 3, { size: 13, bold: you, color: cssColor(r.team === this.mine ? COLORS.mine : COLORS.enemy) });
+      ui.text(fmtInt(r.troopsDefeated), colX.troops, y + 3, { size: 12, align: 'right' });
+      ui.text(String(r.nodesCaptured), colX.nodes, y + 3, { size: 12, align: 'right' });
+      ui.text(String(Math.round(r.garrisonSeconds)), colX.garrison, y + 3, { size: 12, align: 'right' });
+      ui.text(String(r.hqsDowned), colX.hqs, y + 3, { size: 12, align: 'right' });
+      ui.text(fmtInt(r.score), colX.score, y + 3, { size: 13, bold: true, align: 'right', color: '#ffd54a' });
+    };
+    shown.forEach((r, i) => line(r, i + 1, y0 + 34 + i * rowH));
+    if (extra) line(rows[mineIdx], mineIdx + 1, y0 + 34 + shown.length * rowH);
+  }
+
   private squadStatus(s: WireSquad, view: WireView): string {
     if (s.state === 'hq') return 'At HQ';
     if (s.state === 'garrison') return `Garrisoned: ${s.nodeId ? this.nodeLabel(view, s.nodeId) : ''}`;
+    if (s.state === 'hqGarrison') {
+      const h = view.hqs.find((x) => x.id === s.hqId);
+      return `Garrisoned at HQ of ${h?.owner ?? 'an ally'}`;
+    }
     if (s.burning) return 'Defeated, limping home';
     if (s.march?.purpose === 'home') return 'Returning to HQ';
     return 'Marching';
@@ -768,7 +844,7 @@ export class GameScene extends BaseScene {
           active: s.defend,
           size: 11,
         });
-      } else if (s.state === 'garrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
+      } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
         ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
       }
     });
@@ -782,6 +858,7 @@ export class GameScene extends BaseScene {
     let title = '';
     let body: [string, string][] = [];
     let attackable = true;
+    let allyHq = false;
     let report: (typeof view.scoutReports)[number] | undefined;
     if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);
@@ -794,7 +871,12 @@ export class GameScene extends BaseScene {
       if (!hq) return null;
       title = hq.id === info.hqId ? 'Your HQ' : `HQ of ${hq.owner} (ally)`;
       body = [[`HP ${hq.hp} / ${hq.maxHp}${hq.burning ? ' (burning)' : ''}`, hq.burning ? COLORS.warn : COLORS.text]];
-      attackable = false;
+      body.push([`Allied garrison ${hq.garrisonCount} / ${this.tune.garrison.maxSquads}`, COLORS.text]);
+      if (hq.id !== info.hqId) {
+        body.push(['Garrison a squad here to help defend it, like at a node.', COLORS.dim]);
+        allyHq = hq.location.kind !== 'safe';
+      }
+      attackable = allyHq;
     } else {
       const hq = view.enemyHqs.find((x) => x.id === t.id);
       if (!hq) return null;
@@ -810,10 +892,11 @@ export class GameScene extends BaseScene {
       title,
       body,
       attackable,
+      allyHq,
       report,
       node,
       atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
-      here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : [],
+      here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : mine.filter((s) => s.state === 'hqGarrison' && s.hqId === t.id),
       scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
       canTeleport: !!(node && node.owner === this.mine && node.visible && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
     };
@@ -877,8 +960,8 @@ export class GameScene extends BaseScene {
   private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number): void {
     const ui = this.ui;
     const t = d.t;
-    const ownNode = d.node?.owner === this.mine;
-    const rows = d.atHq.length + d.here.length + 1 + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
+    const ownNode = d.node?.owner === this.mine || d.allyHq;
+    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
     const oh = 40 + rows * 32 + 6;
     const oy = bottom - oh;
     ui.panel(ox, oy, ow, oh);
@@ -904,13 +987,15 @@ export class GameScene extends BaseScene {
       y += 32;
     }
     const sc = d.scoutHome;
-    ui.button(ox + 10, y, ow - 20, 28, sc ? 'Send scout' : 'No scout at home', {
-      onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
-      enabled: !!sc,
-      size: 12,
-      accent: 0xbfe9ff,
-    });
-    y += 32;
+    if (!d.allyHq) {
+      ui.button(ox + 10, y, ow - 20, 28, sc ? 'Send scout' : 'No scout at home', {
+        onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
+        enabled: !!sc,
+        size: 12,
+        accent: 0xbfe9ff,
+      });
+      y += 32;
+    }
     if (d.canTeleport && d.node) {
       const nid = d.node.id;
       ui.button(ox + 10, y, ow - 20, 28, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), size: 12, accent: COLORS.gold });

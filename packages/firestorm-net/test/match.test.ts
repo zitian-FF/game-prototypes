@@ -170,7 +170,7 @@ test('room: nothing about the other team leaks into a client, over a whole match
     for (const s of c.view!.squads) assert.ok(friends.has(s.owner), `${c.name} sees a squad of ${s.owner}`);
     for (const h of c.view!.hqs) assert.ok(friends.has(h.owner));
     for (const em of c.view!.enemyMarches) {
-      for (const k of ['type', 'owner', 'power', 'troops', 'commander', 'team']) assert.ok(!(k in em), `enemy march leaks ${k}`);
+      for (const k of ['owner', 'power', 'troops', 'commander', 'team']) assert.ok(!(k in em), `enemy march leaks ${k}`);
     }
     for (const n of c.view!.nodes) {
       if (n.owner !== team && n.garrisonCount !== undefined) {
