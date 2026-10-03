@@ -6,6 +6,7 @@ import { lookFor, mainLook } from '../render/characterLook';
 import { createSimState } from '../sim/sim';
 import { charTune, CHARACTER_IDS, CHARACTER_INFO, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
+import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, snapshotTune, tune } from '../sim/tune';
 import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
@@ -68,6 +69,9 @@ export class CharSelectScene extends Phaser.Scene {
   private data0!: CharSelectData;
   private sides: Side[] = [];
   private active = 0;
+  // Single Player: the bot's difficulty (shown under the AI label).
+  private level: BotLevel = 'easy';
+  private levelText: Phaser.GameObjects.Text | null = null;
   private g!: Phaser.GameObjects.Graphics;
   private views: FighterView[] = [];
   private texts: { name: Phaser.GameObjects.Text; style: Phaser.GameObjects.Text; status: Phaser.GameObjects.Text; stats: Phaser.GameObjects.Text[] }[] = [];
@@ -90,12 +94,14 @@ export class CharSelectScene extends Phaser.Scene {
     this.remotePick = null;
     this.peerHere = false;
     this.active = 0;
+    this.levelText = null;
     this.cardViews = [];
     this.views = [];
     this.texts = [];
     this.prevPad = [];
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
+    this.level = prefs.level;
     if (data.mode === 'vsai') {
       this.sides = [
         { sel: idx(prefs.p1), locked: false, label: 'YOU', src: 'any' },
@@ -164,6 +170,15 @@ export class CharSelectScene extends Phaser.Scene {
       const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
       bg.on('pointerdown', () => this.tapPanel(s));
       this.add.text(x, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0.5);
+      if (this.data0.mode === 'vsai' && s === 1) {
+        // Tap (or Up / Down, D-pad up / down) to change the bot's level.
+        this.levelText = this.add
+          .text(x, VIEW.cy - 114, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: '#2a3140', padding: { x: 6, y: 2 }, resolution: PIXEL_RATIO })
+          .setOrigin(0.5)
+          .setDepth(6)
+          .setInteractive()
+          .on('pointerdown', () => this.cycleLevel(1));
+      }
       this.views.push(new FighterView(this, COLORS[s]));
       const name = this.add.text(x, VIEW.cy - 44, '', style(13)).setOrigin(0.5).setFontStyle('bold').setDepth(6);
       const st = this.add.text(x, VIEW.cy - 34, '', style(9, '#aab0bc')).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(184).setDepth(6);
@@ -218,7 +233,9 @@ export class CharSelectScene extends Phaser.Scene {
     const c = e.code;
     const s = this.keySide(c);
     if (s < 0) return;
-    if (c === 'ArrowLeft' || c === 'KeyA') this.move(s, -1);
+    if (c === 'ArrowUp' || c === 'KeyW') this.cycleLevel(-1);
+    else if (c === 'ArrowDown' || c === 'KeyS') this.cycleLevel(1);
+    else if (c === 'ArrowLeft' || c === 'KeyA') this.move(s, -1);
     else if (c === 'ArrowRight' || c === 'KeyD') this.move(s, 1);
     else if (['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'Numpad1'].includes(c)) this.confirm(s);
     else if (['Escape', 'Backspace', 'Numpad0'].includes(c)) this.back(s);
@@ -243,6 +260,8 @@ export class CharSelectScene extends Phaser.Scene {
         this.prevPad[k] = now;
         return now && !was;
       };
+      if (edge(12)) this.cycleLevel(-1);
+      if (edge(13)) this.cycleLevel(1);
       if (edge(14)) this.move(s, -1);
       if (edge(15)) this.move(s, 1);
       const ax = p.axes[0] ?? 0;
@@ -254,6 +273,13 @@ export class CharSelectScene extends Phaser.Scene {
       if (edge(1)) this.back(s);
       if (edge(9)) this.confirm(s);
     });
+  }
+
+  private cycleLevel(d: number): void {
+    if (this.data0.mode !== 'vsai') return;
+    const i = (BOT_LEVELS.indexOf(this.level) + d + BOT_LEVELS.length) % BOT_LEVELS.length;
+    this.level = BOT_LEVELS[i];
+    saveCharPrefs({ level: this.level });
   }
 
   private editable(s: number): boolean {
@@ -358,8 +384,8 @@ export class CharSelectScene extends Phaser.Scene {
     if (!this.bothLocked()) return;
     const [a, b] = this.picks();
     if (this.data0.mode === 'vsai') {
-      saveCharPrefs({ p1: a, ai: b });
-      this.scene.start('VsAI', { chars: [a, b] });
+      saveCharPrefs({ p1: a, ai: b, level: this.level });
+      this.scene.start('VsAI', { chars: [a, b], level: this.level });
     } else if (this.data0.mode === 'localvs') {
       saveCharPrefs({ p1: a, p2: b });
       this.scene.start('LocalVs', { ...this.data0.inputs!, chars: [a, b] });
@@ -422,6 +448,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   update(time: number): void {
     this.pollPads();
+    this.levelText?.setText(`< ${this.level.toUpperCase()} >`);
     const g = this.g;
     g.clear();
     // Each side wears its character's colour (alt colour on a mirror pick).
@@ -475,7 +502,7 @@ export class CharSelectScene extends Phaser.Scene {
         g.lineStyle(3, col[s], 0.35 + 0.25 * Math.sin(time / 160));
         g.strokeRect(x - 102, VIEW.cy + 8 - 154, 204, 308);
       }
-      this.drawBoxer(this.views[s], id, x, VIEW.cy - 84, s === 0 ? 1 : -1, time);
+      this.drawBoxer(this.views[s], id, x, VIEW.cy - 76, s === 0 ? 1 : -1, time);
       const info = CHARACTER_INFO[id];
       t.name.setText(`${info.name}`);
       t.style.setText(`"${info.nick}"\n${info.style}`);

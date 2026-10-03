@@ -1853,5 +1853,229 @@
     "min": 0,
     "max": 40,
     "step": 1
+  },
+  "ai.medium.reactionFrames": {
+    "cat": "AI",
+    "desc": "Medium bot: frames the bot sees the fight late (lower = sharper).",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "ai.medium.attackChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance per frame to start an attack when off cooldown.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.attackCooldownFrames": {
+    "cat": "AI",
+    "desc": "Medium bot: frames between its attacks.",
+    "min": 0,
+    "max": 120,
+    "step": 1
+  },
+  "ai.medium.guardChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance to guard a punch it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.guardHoldFrames": {
+    "cat": "AI",
+    "desc": "Medium bot: frames it holds guard.",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "ai.medium.dodgeChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance to dodge a punch it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.uppercutDodgeChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance to dodge a charged uppercut it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.pgChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance, rolled once per incoming punch, to try a Perfect Guard.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.counterChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance to jab-interrupt a slow wind-up.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.punishChance": {
+    "cat": "AI",
+    "desc": "Medium bot: chance per frame to hit an exposed foe (recovery / exhausted / stunned).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.retreatStaminaBelow": {
+    "cat": "AI",
+    "desc": "Medium bot: stamina under which it backs off.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "ai.medium.strafe": {
+    "cat": "AI",
+    "desc": "Medium bot: sideways drift strength.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "ai.medium.strafePeriod": {
+    "cat": "AI",
+    "desc": "Medium bot: frames per sideways drift cycle.",
+    "min": 10,
+    "max": 120,
+    "step": 1
+  },
+  "ai.medium.cornerAvoid": {
+    "cat": "AI",
+    "desc": "Medium bot: how hard it steers back to the centre near the ropes.",
+    "min": 0,
+    "max": 3,
+    "step": 0.1
+  },
+  "ai.hard.reactionFrames": {
+    "cat": "AI",
+    "desc": "Hard bot: frames the bot sees the fight late (lower = sharper).",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "ai.hard.attackChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance per frame to start an attack when off cooldown.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.attackCooldownFrames": {
+    "cat": "AI",
+    "desc": "Hard bot: frames between its attacks.",
+    "min": 0,
+    "max": 120,
+    "step": 1
+  },
+  "ai.hard.guardChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance to guard a punch it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.guardHoldFrames": {
+    "cat": "AI",
+    "desc": "Hard bot: frames it holds guard.",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  "ai.hard.dodgeChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance to dodge a punch it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.uppercutDodgeChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance to dodge a charged uppercut it saw start.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.pgChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance, rolled once per incoming punch, to try a Perfect Guard.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.counterChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance to jab-interrupt a slow wind-up.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.punishChance": {
+    "cat": "AI",
+    "desc": "Hard bot: chance per frame to hit an exposed foe (recovery / exhausted / stunned).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.retreatStaminaBelow": {
+    "cat": "AI",
+    "desc": "Hard bot: stamina under which it backs off.",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "ai.hard.strafe": {
+    "cat": "AI",
+    "desc": "Hard bot: sideways drift strength.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "ai.hard.strafePeriod": {
+    "cat": "AI",
+    "desc": "Hard bot: frames per sideways drift cycle.",
+    "min": 10,
+    "max": 120,
+    "step": 1
+  },
+  "ai.hard.cornerAvoid": {
+    "cat": "AI",
+    "desc": "Hard bot: how hard it steers back to the centre near the ropes.",
+    "min": 0,
+    "max": 3,
+    "step": 0.1
+  },
+  "ai.medium.pgMistime": {
+    "cat": "AI",
+    "desc": "Medium bot: chance a Perfect Guard attempt is mistimed (raised early, so only a normal block).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.medium.pgHesitateFrames": {
+    "cat": "AI",
+    "desc": "Medium bot: frames it holds off attacking after a Perfect Guard attempt (a human-like pause).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "ai.hard.pgMistime": {
+    "cat": "AI",
+    "desc": "Hard bot: chance a Perfect Guard attempt is mistimed (raised early, so only a normal block).",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "ai.hard.pgHesitateFrames": {
+    "cat": "AI",
+    "desc": "Hard bot: frames it holds off attacking after a Perfect Guard attempt (a human-like pause).",
+    "min": 0,
+    "max": 60,
+    "step": 1
   }
 }

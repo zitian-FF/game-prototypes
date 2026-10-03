@@ -8,6 +8,27 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Perfect Guard counter + fairer bots. Rule: a
+  Hook resolves as a normal High Guard block against a Perfect Guard (chip
+  damage, no attacker stun); BRIEF + info panel updated. Bots: Perfect
+  Guard is now rolled once per incoming punch (it was rolled every frame,
+  so 60% acted like ~97%), with a mistime chance (raised early = plain
+  block) and a hesitation pause; Hard PG chance 0.6 -> 0.35, Medium 0.15.
+  Headless: Hard Perfect Guards ~4% of punches (about once a minute);
+  hook vs a perfectly timed guard -> block with 1.4 chip, jab / cross
+  still Perfect Guarded. Ladder: Medium > Easy 65%, Hard > Easy 85%,
+  Hard > Medium 80%.
+
+- (Branch, not merged yet.) Scripted bot levels: `sim/bot.ts`
+  (`ScriptedBot` medium / hard, `makeBot`, `BOT_LEVELS`), per-level numbers
+  in `tune.ai.medium` / `tune.ai.hard` (Easy untouched), level picker on
+  the Single Player select screen (saved in `punchies:chars:v1`), HUD shows
+  "CPU (hard)". Bot-vs-bot headless ladder: Medium > Easy 72%, Hard > Easy
+  90%, Hard > Medium 68%. Hard-vs-Hard character matrix (30 matches per
+  pairing): Marco 63%, Mia 70%, Bruno 15% overall - Bruno loses heavily
+  to the bots' hit-and-punish style; character numbers NOT changed (yours
+  to tune). The bot-vs-bot harness lives outside the repo.
+
 - (Branch, not merged yet.) Blurry after entering fullscreen: the render
   scale (`PIXEL_RATIO`) was fixed at load from devicePixelRatio, so a game
   loaded small then fullscreened was a small buffer stretched up. It is now

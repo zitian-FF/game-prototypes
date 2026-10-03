@@ -155,7 +155,7 @@ export class InfoPanel {
         ['Vulnerable (no guard)', { text: 'FULL · def -stam', color: green }, `${red}% · def -stam`],
         ['High Guard', { text: '0 · both -stam', color: dim }, { text: '0 · attacker -stam', color: dim }],
         ['High Guard vs HOOK', { text: `chip ${chip}% of full`, color: '#ffb03a' }, { text: `chip ${chip}% of ${red}%`, color: '#ffb03a' }],
-        ['Perfect Guard', { text: 'attacker stunned, def +stam', color: '#9fd3ff' }, { text: 'same', color: '#9fd3ff' }],
+        ['Perfect Guard', { text: 'attacker stunned, def +stam', color: '#9fd3ff' }, { text: 'hook: chips through', color: '#9fd3ff' }],
         ['Uppercut', 'ignores High Guard', 'Perfect Guard or dodge'],
       ],
     );

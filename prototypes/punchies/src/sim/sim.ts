@@ -479,6 +479,11 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   if (p.type === 'uppercut' && stance === 'guard') {
     stance = 'normal';
   }
+  // A hook wraps around a Perfect Guard just as it does a High Guard: it
+  // resolves as an ordinary block (chip damage, no attacker stun).
+  if (p.type === 'hook' && stance === 'perfectGuard') {
+    stance = 'guard';
+  }
 
   if (stance === 'perfectGuard') {
     gainStamina(def, tune.guard.perfectGuardStaminaGain);

@@ -13,8 +13,27 @@ decisions made in the planning round (2026-09-29).
 - Training dummy: static, toggle between idle and holding High Guard.
 - Three characters (orthodox stance), added 2026-10-03 at the user's
   request (see Characters).
+- Single Player bot levels Easy / Medium / Hard (added 2026-10-03 at the
+  user's request; scripted, see Bots).
 - Out of scope: progression, cosmetics, signature moves (planned next as
-  "option C"), southpaw, AI difficulties. (Easy AI only.)
+  "option C"), southpaw.
+
+## Bots
+Scripted, local-only (never online), they only emit FrameInputs and see
+the foe `reactionFrames` late. Level is picked on the character select
+screen under the AI label (tap, Up / Down, or D-pad up / down) and
+remembered. Easy = the original bot (`sim/ai.ts`). Medium and Hard
+(`sim/bot.ts`, numbers in `tune.ai.medium` / `tune.ai.hard`): spacing from
+each punch's real range, punish exposed foes (recovery, exhausted,
+stunned), fatigue-aware punch choice, uppercut when charged, ring
+awareness. Hard adds timed Perfect Guards, uppercut dodging, jab
+interrupts into slow wind-ups and a faster reaction (5 frames vs 7 / 10).
+A bot decides once per incoming punch whether to try a Perfect Guard,
+sometimes mistimes it (raised early = plain block) and then pauses before
+attacking, so it is not an unbeatable wall (Hard Perfect Guards about 4%
+of punches thrown at it, roughly once a minute).
+Headless ladder (Marco mirror, 40 matches, seats swapped): Medium beats
+Easy 65%, Hard beats Easy 85%, Hard beats Medium 80%.
 
 ## Characters
 Stat archetypes on top of the shared tune (`tune.characters.<id>`):
@@ -101,6 +120,9 @@ reach.
   Anti-mash: a raise only gets a Perfect Guard window if guard was down
   for at least `guard.perfectCooldownFrames` first (re-raising sooner
   still blocks normally).
+  Counter (2026-10-03): a Hook goes through a Perfect Guard like it does
+  a High Guard (chip damage, no attacker stun, no stamina bonus), so a
+  well-timed Perfect Guard can be beaten by throwing a Hook.
 - Dodge: i-frames, then a brief Vulnerable window. A punch thrown within
   `dodge.buffWindowFrames` after a dodge ends is powered up
   (`dodge.buffDamageMult`, 1.5x).
@@ -116,7 +138,8 @@ reach.
 | Sour vs Normal | Both lose | None |
 | Sweet vs Vulnerable | Defender loses | Full |
 | Sour vs Vulnerable | Defender loses | Reduced |
-| Any vs Perfect Guard | Attacker stunned; defender recovers | None |
+| Jab / Cross / Uppercut vs Perfect Guard | Attacker stunned; defender recovers | None |
+| Hook vs Perfect Guard | Treated as a High Guard block | Chip only |
 
 ## Counters
 - Cross or Hook connecting during the opponent's Startup = counter: 1.5x
