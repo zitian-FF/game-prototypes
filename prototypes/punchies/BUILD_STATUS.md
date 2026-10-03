@@ -8,6 +8,13 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Uppercut can now be Perfect Guarded (High
+  Guard still can't block it); BRIEF + info panel updated. Pushback now
+  locks the defender's own walking for its duration (dodge still works),
+  so holding forward can't cancel knockback. Headless: PG stops the
+  uppercut, held High Guard / no guard take 20; push identical standing
+  still vs holding forward.
+
 - (Branch, not merged yet.) Keyboard / controller menu navigation
   (`ui/menuNav.ts`): every button registers; arrows / WASD / D-pad /
   left stick move a pulsing yellow highlight, Enter / Space / A press.

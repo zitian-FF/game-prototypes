@@ -97,7 +97,8 @@ reach.
   High Guard and whiffs keep the chain (changed 2026-09-30 / 2026-10-03).
   No time decay.
 - At 3 stars Uppercut is active: near-instant startup, hook reach, 2x sweet
-  Cross damage, cannot be blocked or Perfect Guarded, can be dodged.
+  Cross damage, cannot be blocked by High Guard, but a Perfect Guard stops it
+  (changed 2026-10-03); can be dodged.
   Always resolves on the Vulnerable row, even on the outer ring
   (2026-09-30): sweet 2x Cross, sour 1x Cross.
 - Uppercut whiff: stars consumed and a long Vulnerable recovery.

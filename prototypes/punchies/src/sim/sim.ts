@@ -296,8 +296,12 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
 function move(s: SimState, idx: number, input: FrameInput): void {
   const f = s.fighters[idx];
   const dt = 1 / TICK_RATE;
+  // Being shoved: the push replaces the player's own walking for its
+  // duration, so holding forward can't cancel it (dodging still works).
+  let shoved = false;
   if (f.pushFrames > 0) {
     f.pushFrames--;
+    shoved = true;
     if (!f.anchored) {
       f.x += f.pushX;
       f.y += f.pushY;
@@ -308,7 +312,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     f.y += f.dodge.dy * tune.dodge.speed * dt;
     return;
   }
-  if (f.anchored) return;
+  if (f.anchored || shoved) return;
   let mx = input.mx / 100;
   let my = input.my / 100;
   const mag = Math.sqrt(mx * mx + my * my);
@@ -460,9 +464,9 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const cfg = tune.punches[p.type];
 
   let stance = stances[defIdx];
-  // Uppercut cannot be blocked or Perfect Guarded (it can be dodged, handled
-  // in detectContacts). A guarding defender just takes it as a normal hit.
-  if (p.type === 'uppercut' && (stance === 'guard' || stance === 'perfectGuard')) {
+  // Uppercut ignores a normal High Guard (taken as a normal hit) but a
+  // Perfect Guard stops it. It can also be dodged (detectContacts).
+  if (p.type === 'uppercut' && stance === 'guard') {
     stance = 'normal';
   }
 
