@@ -51,7 +51,7 @@ export class KoAnim {
 
   constructor(
     private scene: Phaser.Scene,
-    private colors: [number, number],
+    public colors: [number, number],
   ) {
     this.g = scene.add.graphics().setDepth(11);
   }

@@ -9,6 +9,7 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
+import { lookFor } from '../render/characterLook';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
@@ -42,6 +43,13 @@ export class FightStage {
     this.fx = new Effects(scene);
     this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
     this.hud = new Hud(scene, names);
+    // P1 / P2 tags over each boxer at the start of a round.
+    this.tags = [0, 1].map((i) =>
+      scene.add
+        .text(0, 0, `P${i + 1}`, { fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#ffffff', stroke: '#000000', strokeThickness: 4, resolution: PIXEL_RATIO })
+        .setOrigin(0.5, 1)
+        .setDepth(60),
+    );
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
     addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
@@ -98,7 +106,13 @@ export class FightStage {
   // koAllowed: online passes false until the KO is confirmed, so a
   // predicted KO that gets rolled back never starts the animation.
   draw(s: SimState, time: number, koAllowed = true): void {
-    this.drawRing();
+    // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
+    const chars: [string, string] = [s.fighters[0].char, s.fighters[1].char];
+    const looks = [lookFor(chars, 0), lookFor(chars, 1)];
+    looks.forEach((l, i) => this.views[i].setLook(l.color, l.scale, l.ponytail));
+    this.ko.colors = [looks[0].color, looks[1].color];
+    this.drawRing(looks[0].color, looks[1].color);
+    this.drawTags(s, looks.map((l) => l.color));
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
@@ -130,9 +144,25 @@ export class FightStage {
   // with tape wraps, and corner posts (blue / red / neutral white). Redrawn
   // only when the ring bounds change (they're tunable).
   private ringKey = '';
-  private drawRing(): void {
+  // P1 / P2 tags: shown through READY / GO and the first match.tagSec
+  // seconds of the fight, fading out over the last second.
+  private tags: Phaser.GameObjects.Text[] = [];
+  private drawTags(s: SimState, colors: number[]): void {
+    const t = Math.max(0, s.tick - s.fightStartTick) / 60;
+    const left = tune.match.tagSec - t;
+    const a = s.result ? 0 : Math.max(0, Math.min(1, left));
+    this.tags.forEach((tag, i) => {
+      const f = s.fighters[i];
+      tag.setPosition(f.x, f.y - 26);
+      tag.setColor('#' + colors[i].toString(16).padStart(6, '0'));
+      tag.setAlpha(a);
+      tag.setVisible(a > 0);
+    });
+  }
+
+  private drawRing(c0 = 0x3a78d0, c1 = 0xd04a4a): void {
     const r = tune.ring;
-    const key = `${r.left},${r.top},${r.right},${r.bottom}`;
+    const key = `${r.left},${r.top},${r.right},${r.bottom},${c0},${c1}`;
     if (key === this.ringKey) return;
     this.ringKey = key;
     const g = this.ring;
@@ -189,8 +219,8 @@ export class FightStage {
     // Corner posts with padded turnbuckle covers: blue (P1 side), red
     // (P2 side), the other two neutral.
     const posts: [number, number, number][] = [
-      [r.left, r.top, 0x3a78d0],
-      [r.right, r.bottom, 0xd04a4a],
+      [r.left, r.top, c0],
+      [r.right, r.bottom, c1],
       [r.right, r.top, 0xdddddd],
       [r.left, r.bottom, 0xdddddd],
     ];

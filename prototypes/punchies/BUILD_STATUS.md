@@ -8,6 +8,14 @@ issues).
 
 ## What was implemented
 
+- (Branch, not merged yet.) Character looks (`render/characterLook.ts`):
+  per-character colour + alt (mirror match), render scale, Mia's
+  ponytail; FighterView.setLook, scaled body / gloves; corner posts and
+  KO colours follow the fighters; P1 / P2 tags fading `match.tagSec` (8 s)
+  after GO; select screen uses character colours. Verified in Playwright:
+  select screen colours, Mia mirror match (red vs pink, tags shown). Tag
+  fade-out timing not observed in a capture.
+
 - (Branch, not merged yet.) Characters + character select (BRIEF
   "Characters"): `sim/character.ts` (per-fighter stat lookups, punch
   config with reach / frame / fatigue overrides), `tune.characters` with

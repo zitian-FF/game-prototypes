@@ -79,8 +79,8 @@ const GLOVE = 1.15;
 // pointing along (fx, fy), a thumb lobe hugging the inner side, a shine
 // on the knuckles and a wide white cuff with a lace stripe.
 // side = +1 left hand, -1 right hand.
-export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, side: number, alpha: number): void {
-  const s = GLOVE;
+export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, fx: number, fy: number, color: number, side: number, alpha: number, size = 1): void {
+  const s = GLOVE * size;
   // Hand 0 sits on the +(fy, -fx) side, so its thumb points the other way,
   // toward the body's centre line.
   const lx = -fy * side;
@@ -130,11 +130,25 @@ export class FighterView {
     this.flashUntil = now + ms;
   }
 
+  // Character look (render only): body scale and Mia's ponytail.
+  private scale = 1;
+  private ponytail = false;
+
   constructor(
     scene: Phaser.Scene,
     private color: number,
   ) {
     this.g = scene.add.graphics().setDepth(10);
+  }
+
+  setLook(color: number, scale = 1, ponytail = false): void {
+    this.color = color;
+    this.scale = scale;
+    this.ponytail = ponytail;
+  }
+
+  get look(): number {
+    return this.color;
   }
 
   clear(): void {
@@ -148,6 +162,7 @@ export class FighterView {
     const lx = f.fy;
     const ly = -f.fx;
     const alpha = stance === 'dodging' ? 0.35 : 1;
+    const k = this.scale;
 
     const moved = Number.isNaN(this.lastX) ? 0 : Math.hypot(f.x - this.lastX, f.y - this.lastY);
     this.lastX = f.x;
@@ -158,12 +173,12 @@ export class FighterView {
 
     // Shadow, then legs: two soft dark feet stepping under the body.
     g.fillStyle(0x000000, 0.25);
-    g.fillEllipse(f.x + 3, f.y + 5, BODY_R * 2.3, BODY_R * 2);
+    g.fillEllipse(f.x + 3, f.y + 5, BODY_R * 2.3 * k, BODY_R * 2 * k);
     if (this.stride > 0.02) {
       for (const side of [1, -1]) {
         const swing = Math.sin(this.walk) * 9 * side * this.stride;
-        const x = f.x + f.fx * swing + lx * 8 * side;
-        const y = f.y + f.fy * swing + ly * 8 * side;
+        const x = f.x + f.fx * swing + lx * 8 * k * side;
+        const y = f.y + f.fy * swing + ly * 8 * k * side;
         g.fillStyle(0x000000, 0.3 * this.stride * alpha);
         g.fillEllipse(x + 2, y + 3, 11, 11);
       }
@@ -176,14 +191,14 @@ export class FighterView {
     // Gloves: player colour at rest; phase colours while punching/guarding.
     const rest = (hand: 0 | 1) => {
       const side = hand === 0 ? 1 : -1;
-      return { x: f.x + f.fx * 15 + lx * 15 * side, y: f.y + f.fy * 15 + ly * 15 * side };
+      return { x: f.x + f.fx * 15 * k + lx * 15 * k * side, y: f.y + f.fy * 15 * k + ly * 15 * k * side };
     };
     let fists = [rest(0), rest(1)];
     const colors = [this.color, this.color];
     if (f.guarding) {
       fists = [
-        { x: f.x + f.fx * 20 + lx * 9, y: f.y + f.fy * 20 + ly * 9 },
-        { x: f.x + f.fx * 20 - lx * 9, y: f.y + f.fy * 20 - ly * 9 },
+        { x: f.x + f.fx * 20 * k + lx * 9 * k, y: f.y + f.fy * 20 * k + ly * 9 * k },
+        { x: f.x + f.fx * 20 * k - lx * 9 * k, y: f.y + f.fy * 20 * k - ly * 9 * k },
       ];
       colors[0] = colors[1] = stance === 'perfectGuard' ? 0xffffff : 0x3ad0c0;
     }
@@ -214,11 +229,12 @@ export class FighterView {
     // Arms from the shoulders (torso edge) to the glove cuffs.
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? 1 : -1;
-      drawArm(g, f.x + lx * (BODY_R - 3) * side, f.y + ly * (BODY_R - 3) * side, fists[i].x, fists[i].y, this.color, alpha);
+      drawArm(g, f.x + lx * (BODY_R - 3) * k * side, f.y + ly * (BODY_R - 3) * k * side, fists[i].x, fists[i].y, this.color, alpha);
     }
-    drawTorso(g, f.x, f.y, f.fx, f.fy, this.color, alpha);
-    drawHelmet(g, f.x - f.fx * 2, f.y - f.fy * 2, f.fx, f.fy, this.color, alpha);
-    for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha);
+    drawTorso(g, f.x, f.y, f.fx, f.fy, this.color, alpha, k);
+    if (this.ponytail) this.drawPonytail(f, now, alpha);
+    drawHelmet(g, f.x - f.fx * 2 * k, f.y - f.fy * 2 * k, f.fx, f.fy, this.color, alpha, k);
+    for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha, k);
 
     if (now < this.flashUntil) {
       g.fillStyle(this.flashColor, 0.75);
@@ -243,6 +259,28 @@ export class FighterView {
     }
 
     if (showHitboxes) this.drawHitboxes(f);
+  }
+
+  // Yellow ponytail out the back of the helmet, swaying with the walk.
+  private drawPonytail(f: Fighter, now: number, alpha: number): void {
+    const g = this.g;
+    const k = this.scale;
+    const lx = f.fy;
+    const ly = -f.fx;
+    const sway = Math.sin(this.walk * 0.8 + now / 400) * (2 + 3 * this.stride);
+    const pts: { x: number; y: number; r: number }[] = [];
+    for (let i = 0; i < 4; i++) {
+      const back = (9 + i * 4.5) * k;
+      const off = sway * (i / 3);
+      pts.push({ x: f.x - f.fx * back + lx * off, y: f.y - f.fy * back + ly * off, r: (4.2 - i * 0.7) * k });
+    }
+    g.fillStyle(0x8a6a10, alpha);
+    for (const p of pts) g.fillCircle(p.x, p.y, p.r + 1);
+    g.fillStyle(0xf2cf3a, alpha);
+    for (const p of pts) g.fillCircle(p.x, p.y, p.r);
+    // Hair tie.
+    g.fillStyle(this.color, alpha);
+    g.fillCircle(pts[0].x, pts[0].y, 2 * k);
   }
 
   private drawHitboxes(f: Fighter): void {

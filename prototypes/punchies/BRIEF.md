@@ -35,6 +35,12 @@ fatigue rules, hit-stop, timer, ring.
   0.95, regen 0.9, stun 1.25, speed 0.88; Cross / Hook damage +15%,
   startup +1, recovery +2; Cross / Uppercut push 1.25; +1 fatigue bar on
   Jab / Cross / Hook.
+Looks (render only; hurtboxes and reach unchanged): Marco blue / alt
+cyan; Mia red / alt pink, smaller frame (0.88), yellow ponytail; Bruno
+green / alt lime, larger frame (1.12). In a mirror match P2 wears the alt
+colour. Corner posts take each player's colour. "P1" / "P2" tags float
+over the boxers from the start and fade out `match.tagSec` (8) seconds
+after GO.
 Character select: two panels (preview, name, nickname, style line, six
 stat bars with base tune at 80%: HP, Stamina, Stun resist, Speed, Power
 = mean J/C/H damage, Hand speed = J/C/H startup+recovery frames) and

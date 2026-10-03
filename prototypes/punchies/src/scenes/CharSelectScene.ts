@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FighterView } from '../render/FighterView';
+import { lookFor, mainLook } from '../render/characterLook';
 import { createSimState } from '../sim/sim';
 import { charTune, CHARACTER_IDS, CHARACTER_INFO, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
@@ -157,7 +158,7 @@ export class CharSelectScene extends Phaser.Scene {
     const style = (size: number, color = '#ffffff') => ({ fontFamily: 'monospace', fontSize: `${size}px`, color, resolution: PIXEL_RATIO });
     for (let s = 0; s < 2; s++) {
       const x = this.panelX(s);
-      const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setStrokeStyle(2, COLORS[s]).setInteractive();
+      const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
       bg.on('pointerdown', () => this.tapPanel(s));
       this.add.text(x, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0.5);
       this.views.push(new FighterView(this, COLORS[s]));
@@ -400,6 +401,15 @@ export class CharSelectScene extends Phaser.Scene {
     this.pollPads();
     const g = this.g;
     g.clear();
+    // Each side wears its character's colour (alt colour on a mirror pick).
+    const chars = this.picks();
+    const col = [lookFor(chars, 0), lookFor(chars, 1)].map((l, i) => (this.sides[i].src === 'remote' && !this.bothLocked() ? COLORS[i] : l.color));
+    for (let s = 0; s < 2; s++) {
+      const l = lookFor(chars, s);
+      this.views[s].setLook(l.color, l.scale, l.ponytail);
+      g.lineStyle(2, col[s], 1);
+      g.strokeRect(this.panelX(s) - 98, VIEW.cy + 8 - 150, 196, 300);
+    }
     // Cards and the cursors on them.
     CHARACTER_IDS.forEach((_, i) => {
       const { x, y } = this.cardPos(i);
@@ -410,14 +420,18 @@ export class CharSelectScene extends Phaser.Scene {
         const hide = this.data0.mode === 'online' && side.src === 'remote';
         if (hide) continue;
         const focus = this.data0.mode === 'vsai' ? this.active === s : true;
-        g.lineStyle(side.locked ? 4 : 2, COLORS[s], side.locked || focus ? 1 : 0.45);
+        g.lineStyle(side.locked ? 4 : 2, col[s], side.locked || focus ? 1 : 0.45);
         const o = s === 0 ? 0 : 5;
         g.strokeRect(x - 40 - o, y - 52 - o, 80 + o * 2, 104 + o * 2);
-        g.fillStyle(COLORS[s], 1);
+        g.fillStyle(col[s], 1);
         g.fillTriangle(x - 8 + (s ? 10 : -10), y + 60 + o, x + (s ? 10 : -10), y + 54 + o, x + 8 + (s ? 10 : -10), y + 60 + o);
       }
     });
-    for (const c of this.cardViews) this.drawBoxer(c.v, c.id, c.x, c.y, 1, time);
+    for (const c of this.cardViews) {
+      const l = mainLook(c.id);
+      c.v.setLook(l.color, l.scale, l.ponytail);
+      this.drawBoxer(c.v, c.id, c.x, c.y, 1, time);
+    }
 
     for (let s = 0; s < 2; s++) {
       const side = this.sides[s];
@@ -435,7 +449,7 @@ export class CharSelectScene extends Phaser.Scene {
       }
       // Active-side glow (vsai).
       if (this.data0.mode === 'vsai' && this.active === s && !this.bothLocked()) {
-        g.lineStyle(3, COLORS[s], 0.35 + 0.25 * Math.sin(time / 160));
+        g.lineStyle(3, col[s], 0.35 + 0.25 * Math.sin(time / 160));
         g.strokeRect(x - 102, VIEW.cy + 8 - 154, 204, 308);
       }
       this.drawBoxer(this.views[s], id, x, VIEW.cy - 84, s === 0 ? 1 : -1, time);
@@ -450,7 +464,7 @@ export class CharSelectScene extends Phaser.Scene {
         const w = 96;
         g.fillStyle(0x000000, 0.6);
         g.fillRect(bx, by - 4, w, 8);
-        g.fillStyle(COLORS[s], 1);
+        g.fillStyle(col[s], 1);
         g.fillRect(bx, by - 4, w * Math.min(1, 0.8 * v), 8);
         g.lineStyle(1, 0xffffff, 0.3);
         g.strokeRect(bx, by - 4, w, 8);

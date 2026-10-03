@@ -169,7 +169,8 @@
   "match": {
     "durationSec": 99,
     "startDistance": 180,
-    "introSec": 2
+    "introSec": 2,
+    "tagSec": 8
   },
   "training": {
     "dummyInfiniteStamina": true

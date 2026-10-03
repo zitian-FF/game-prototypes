@@ -1839,5 +1839,12 @@
     "min": -2,
     "max": 2,
     "step": 1
+  },
+  "match.tagSec": {
+    "cat": "Match & Online",
+    "desc": "P1 / P2 tags over the boxers: seconds after GO before they finish fading.",
+    "min": 0,
+    "max": 30,
+    "step": 0.5
   }
 }
