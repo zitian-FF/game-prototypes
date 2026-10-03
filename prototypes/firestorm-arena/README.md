@@ -25,7 +25,7 @@ creates a room, starts it with bots and plays on, for screenshots.
 | `src/net/session.ts` | socket, lobby and match state, server clock, toasts, save (`firestorm-arena:save:v1`) |
 | `src/input/intents.ts` | the only code reading keys, pointer and wheel |
 | `src/scenes/` | menu, lobby, game (world, HUD, panels) |
-| `src/render/` | isometric projection, volcanic ground and fog textures, unit and node icons, effects |
+| `src/render/` | square-grid projection, tiled volcanic floor with vector overlays, fog texture, unit and node icons, effects |
 | `client.tune.json` | client-only feel values; match rules stay in `tune.json` and come from the server |
 
 ## Controls
