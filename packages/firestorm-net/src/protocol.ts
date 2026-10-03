@@ -2,11 +2,11 @@
 // Everything from a client is untrusted: parseClientMsg checks shape and size
 // before anything else sees it.
 
-import type { Command, MapDef, MarchTarget, TeamId, Tune } from 'arena-sim';
+import type { Command, MapDef, MarchTarget, ScoutTarget, TeamId, Tune } from 'arena-sim';
 import type { ClientEvent } from './events';
 import type { ViewPatch, WireView } from './wire';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 6;
 
 /** Match lengths a host can choose in the lobby. */
 export const MATCH_MINUTES = [10, 15, 20, 30] as const;
@@ -18,7 +18,7 @@ export type CommandBody =
   | { type: 'march'; squadId: string; target: MarchTarget }
   | { type: 'cancel'; squadId: string }
   | { type: 'teleport'; nodeId: string }
-  | { type: 'scout'; scoutIndex: number; target: MarchTarget }
+  | { type: 'scout'; scoutIndex: number; target: ScoutTarget }
   | { type: 'setDefend'; squadId: string; defend: boolean };
 
 // ------------------------------------------------------------- client -> server
@@ -118,6 +118,11 @@ function parseTarget(v: unknown): MarchTarget | null {
   return null;
 }
 
+function parseScoutTarget(v: unknown): ScoutTarget | null {
+  if (isObj(v) && v.kind === 'cache' && typeof v.cacheId === 'string' && REF_RE.test(v.cacheId)) return { kind: 'cache', cacheId: v.cacheId };
+  return parseTarget(v);
+}
+
 function parseCommand(v: unknown): CommandBody | null {
   if (!isObj(v)) return null;
   const ref = (x: unknown): x is string => typeof x === 'string' && REF_RE.test(x);
@@ -131,7 +136,7 @@ function parseCommand(v: unknown): CommandBody | null {
     case 'teleport':
       return ref(v.nodeId) ? { type: 'teleport', nodeId: v.nodeId } : null;
     case 'scout': {
-      const target = parseTarget(v.target);
+      const target = parseScoutTarget(v.target);
       const i = v.scoutIndex;
       return typeof i === 'number' && Number.isInteger(i) && i >= 0 && i < 16 && target
         ? { type: 'scout', scoutIndex: i, target }

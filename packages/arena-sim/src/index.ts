@@ -10,9 +10,11 @@ export { viewFor, nodesWithin } from './fog';
 export type {
   TeamView,
   NodeView,
+  CacheView,
   OwnSquadView,
   OwnHqView,
   OwnScoutView,
+  EnemyScoutView,
   EnemyMarchView,
   EnemyHqView,
 } from './fog';

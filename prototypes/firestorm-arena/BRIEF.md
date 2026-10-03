@@ -577,4 +577,56 @@ client.
   Safe zones are tinted team blocks, the 8 tiles around each node (HQ slots) are lightly marked, and fog and
   vision are circles. In-world units are drawn at `iso.unitScale` (0.75) of their size, so they read smaller
   than buildings; UI icons are unchanged. This supersedes "Isometric view of the grid" above.
+- Compact map and slower units: the map is 57 x 39 cells (was 75 x 51), the safe-zone distance is 5 cells, and
+  units move at half their previous speed in cells per second (cross-map 392 s on the diagonal).
+- Escalation: Tier 3 nodes (oil refineries) are locked until the clock has 75% of the match left, and the Tier 4
+  node (nuclear silo) until 50% is left. Locked nodes cannot be marched on or scouted, show a padlock and a
+  countdown, and a toast announces each unlock. Values are in tune.json `phases`.
+- The lava patches are removed from the floor.
+- Commander names are public: shown above enemy and allied units and on HQs whenever the unit is inside your
+  vision. Power still needs a scout.
+- Fog edges are crisp (no soft gradient).
+- Daily capacity: the Worker keeps an estimate of this game's use of the Workers Free plan's daily limits
+  (row writes and requests, 90% of the plan, reset at 00:00 UTC; one match is costed at 4,000 writes and 2,500
+  requests). The landing page shows "about N games left today", and when less than one match is left the Create
+  button is disabled and the Worker refuses new rooms (joining and reconnecting stay allowed). The estimate only
+  sees this game's own traffic. It is not tied to R2, which holds no gameplay data.
+- Score pools and caches: when a node changes hands, a 60 second settling timer starts and its points are
+  permanent. After it ends, the points the node's tier generates (10/30/50/80 a second, not the garrison bonus)
+  also pile up in a temporary pool under the node, which counts toward the holder's total. The pool is split into
+  equal score caches scattered 1.8 to 4.6 cells around the node: 4 at first, one more for every 500 points the pool
+  has earned, up to 8. Any scout, friend or enemy, can fly to a visible cache; the moment it touches, that cache's
+  share leaves the pool and is banked permanently for the scout's team (the holder's own scout secures it, an enemy
+  scout steals it from the holder's total). Each collected share is pool / caches left; when none are left a fresh
+  batch of 4 appears. When the node changes hands the old holder loses whatever is left in the pool, the caches
+  vanish, and the new holder starts a fresh 60 seconds. Pool numbers and caches are only visible inside your vision.
+  Bots scout visible caches. Values are in tune.json `pool`.
+- Layout revision: the Oil Refinery is now Tier 2 (the two refineries sit in the middle ring with the two Radar
+  Towers) and capturable from the start. The Missile Turret is now Tier 3 (inner ring with the Silo's T4 at the
+  centre) and unlocks with 75% of the clock left. The turret still hits enemy-held tier 3 and 4 nodes, so it now
+  targets enemy Missile Turrets and the Nuclear Silo, not refineries. Tier 1 nodes sit in a band close to each
+  team's spawn side (columns 10% to 70% of the way from the edge to the centre) and the refineries slightly
+  further out (30% to 85%), so there is early action. Radar Towers are placed to see the Tier 3 and 4 nodes
+  first. This supersedes the node tier table above.
+- Score cache values: a cache is worth the pool total at the moment it spawns divided by the number of caches
+  there are after it spawns, and that value never changes afterwards. The first caches appear once the pool has
+  earned 500 points (four of them), then one more each further 500 earned, up to eight; if all are collected the
+  next 500 earned brings four again. This supersedes the "equal share of the pool" wording above.
+- Bots: with enemy score caches in view, a bot with a scout at home sends it to the closest one (70% of decisions)
+  and never collects a cache of a node its own team holds.
+- Enemy scouts: scouts of the other team are drawn (with the commander's name) while they are inside your vision,
+  so you can see them fly to a node, an HQ or a cache. Their position is only sent while it is inside your vision.
+- Bot variance: each bot has its own appetite for stealing caches, drawn once between 10% and 85% of decisions, and
+  at most two scouts of a team head for the same cache (counting the ones already flying and those sent in the same
+  decision round).
+- Even node spacing and four hospitals: Tier 1 and Tier 2 nodes are placed one at a time at the legal spot furthest
+  from everything already placed (and from its own mirror), inside the spawn-side band, so they end up evenly
+  spread and players get real choices of where to advance. There are now two hospitals on each side (4 in total) and
+  19 nodes in all. Nodes are at least 5 cells apart (nodeMinSpacingCells).
+- Bots and HQs: a bot still in the safe zone moves its HQ onto a node its team holds as soon as it can; it assaults
+  an enemy HQ that is out in the field only when confident (with a live scout report, its best squad must beat the
+  strongest known defender by 10%; with no report, only a squad of effective power 66 or more, a bit less against a
+  damaged HQ) and scouts unreported HQs first; and it sends a fit squad to garrison an ally's HQ that an enemy march
+  it can see is about to hit, when the squad can get there first. Each bot draws its own aggression and loyalty, as it
+  does its cache appetite. Bots no longer throw squads at enemy HQs blindly.
 - Where this section conflicts with older text above, this section wins.

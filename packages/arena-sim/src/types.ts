@@ -55,8 +55,16 @@ export interface RingTune {
   nodes: Partial<Record<NodeKind, number>>;
   /** Kinds in this ring that sit at a different tier than the ring's own. */
   kindTiers?: Partial<Record<NodeKind, number>>;
-  /** Kinds placed last, at the spot that sees the most other nodes (vision towers). */
+  /**
+   * Kinds placed last, at the spot that sees the most tier 3 and 4 nodes (vision towers), then the most other
+   * nodes. Placing them last means the high tier nodes already exist when they pick.
+   */
   strategic?: NodeKind[];
+  /**
+   * Keep this ring's nodes toward the team's own spawn: the column of a node in its team's half, as a fraction
+   * of the way from the map edge (0) to the centre column (1). Both teams mirror it, so it stays fair.
+   */
+  spawnBand?: [number, number];
 }
 
 export interface NodeKindTune {
@@ -111,6 +119,28 @@ export interface Tune {
   garrison: { maxSquads: number; maxPerCommander: number };
   /** Score per second by node tier (index 0 = tier 1), plus the garrison bonus. */
   scoring: { tierPointsPerSecond: number[]; garrisonPointsPerSecond: number };
+  /**
+   * Escalation: tier 3 nodes are locked until the clock has this fraction of the match left, tier 4 likewise.
+   * 0.75 means they open after a quarter of the match.
+   */
+  phases: { tier3UnlockRemaining: number; tier4UnlockRemaining: number };
+  /**
+   * Score pools. After a node has been held for settleSeconds, the points its tier generates (not the
+   * commander bonus) go into a temporary pool that counts for the holder but is lost with the node. The
+   * pool is spread over score caches around the node that any scout can collect to bank their share.
+   */
+  pool: {
+    settleSeconds: number;
+    minCaches: number;
+    maxCaches: number;
+    /**
+     * Every time the pool has earned this many points a cache appears (four the first time, then one at a
+     * time up to maxCaches). Its value is the pool total then divided by the caches there are, and stays fixed.
+     */
+    cachePointsStep: number;
+    scatterMinCells: number;
+    scatterMaxCells: number;
+  };
   /** Individual (vanity) score values. */
   personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number };
   /**
@@ -240,11 +270,21 @@ export interface Hq {
   garrison: SquadId[];
 }
 
+export interface Cache {
+  id: string;
+  nodeId: NodeId;
+  pos: Vec;
+  /** Fixed when it spawns (the pool then divided by the number of caches): what a scout banks by touching it. */
+  value: number;
+}
+
+export type ScoutTarget = MarchTarget | { kind: 'cache'; cacheId: string };
+
 export type ScoutState =
   | { kind: 'home' }
   | {
       kind: 'out';
-      target: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number };
+      target: { kind: 'node'; nodeId: NodeId } | { kind: 'hq'; hqId: HqId; hqEpoch: number } | { kind: 'cache'; cacheId: string };
       from: Vec;
       to: Vec;
       startMs: number;
@@ -292,6 +332,20 @@ export interface NodeState {
   garrison: SquadId[];
   /** HQ occupying each base slot around the node. */
   slots: (HqId | null)[];
+  /** Bumped on every change of owner, so a pending pool opening for an old owner is ignored. */
+  captureSeq: number;
+  /** When the held-for-a-while timer ends and the pool opens (null while nobody holds it). */
+  settlesAtMs: number | null;
+  poolOpen: boolean;
+  /** Temporary score: counted for the holder, lost with the node. */
+  pool: number;
+  /** Everything the pool has earned this cycle, including what was collected. */
+  poolEarned: number;
+  /** Cache steps passed so far: every cachePointsStep earned spawns more caches. */
+  batches: number;
+  /** Caches spawned this cycle, for ids and positions that do not depend on when time advanced. */
+  cacheSpawned: number;
+  caches: Cache[];
 }
 
 // ----------------------------------------------------------- scout/combat
@@ -343,7 +397,7 @@ export type Command =
   | { type: 'march'; playerId: string; squadId: SquadId; target: MarchTarget }
   | { type: 'cancel'; playerId: string; squadId: SquadId }
   | { type: 'teleport'; playerId: string; nodeId: NodeId }
-  | { type: 'scout'; playerId: string; scoutIndex: number; target: MarchTarget }
+  | { type: 'scout'; playerId: string; scoutIndex: number; target: ScoutTarget }
   | { type: 'setDefend'; playerId: string; squadId: SquadId; defend: boolean };
 
 export type CommandResult = { ok: true; events: GameEvent[] } | { ok: false; error: string };
@@ -360,6 +414,11 @@ export type GameEvent =
       squadId: SquadId;
       reason: 'nodeFull' | 'commanderAlreadyThere';
     }
+  | { type: 'nodesUnlocked'; timeMs: number; tier: number }
+  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId; caches: number }
+  /** The holder lost a node and with it its temporary pool. */
+  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number }
+  | { type: 'cacheCollected'; timeMs: number; nodeId: NodeId; cacheId: string; team: TeamId; commander: string; amount: number; at: Vec }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: HqId; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: HqId; squadId: SquadId; reason: 'nodeFull' | 'commanderAlreadyThere' }
   | { type: 'combat'; timeMs: number; log: CombatLog }

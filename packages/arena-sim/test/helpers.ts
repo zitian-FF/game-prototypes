@@ -28,7 +28,8 @@ export function withTune(overrides: DeepPartial<Tune> = {}): Tune {
 
 /** Deterministic tune for scenarios: no combat variance. */
 export function scenarioTune(overrides: DeepPartial<Tune> = {}): Tune {
-  return withTune({ combat: { variance: 0 }, ...overrides });
+  // Scenarios start with every tier open; escalation has its own tests.
+  return withTune({ combat: { variance: 0 }, phases: { tier3UnlockRemaining: 1, tier4UnlockRemaining: 1 }, ...overrides });
 }
 
 export interface NodeDef {

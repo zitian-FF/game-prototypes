@@ -8,7 +8,24 @@
     "ranks": 20,
     "fourSquadShare": 0.2,
     "threeSquadShare": 0.3,
-    "bands": [[1, 12], [7, 16], [13, 20], [16, 20]]
+    "bands": [
+      [
+        1,
+        12
+      ],
+      [
+        7,
+        16
+      ],
+      [
+        13,
+        20
+      ],
+      [
+        16,
+        20
+      ]
+    ]
   },
   "power": {
     "min": 50,
@@ -30,7 +47,7 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 257,
+    "crossMapSeconds": 392,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {
@@ -54,6 +71,18 @@
     ],
     "garrisonPointsPerSecond": 10
   },
+  "phases": {
+    "tier3UnlockRemaining": 0.75,
+    "tier4UnlockRemaining": 0.5
+  },
+  "pool": {
+    "settleSeconds": 60,
+    "minCaches": 4,
+    "maxCaches": 8,
+    "cachePointsStep": 500,
+    "scatterMinCells": 1.8,
+    "scatterMaxCells": 4.6
+  },
   "personalScoring": {
     "perTroopDefeated": 1,
     "perNodeCaptured": 1000,
@@ -73,15 +102,15 @@
   },
   "map": {
     "cellSize": 40,
-    "widthCells": 75,
-    "heightCells": 51,
+    "widthCells": 57,
+    "heightCells": 39,
     "safeZone": {
       "cols": 5,
       "rows": 4,
       "insetCells": 3
     },
-    "nodeMinSpacingCells": 4,
-    "nodeMinDistFromSafeZoneCells": 7,
+    "nodeMinSpacingCells": 5,
+    "nodeMinDistFromSafeZoneCells": 5,
     "edgeMarginCells": 2,
     "rings": [
       {
@@ -98,18 +127,19 @@
         "minR": 0.1,
         "maxR": 0.3,
         "nodes": {
-          "points": 2,
-          "turret": 2
-        },
-        "kindTiers": {
           "turret": 2
         }
       },
       {
         "tier": 2,
         "minR": 0.3,
-        "maxR": 0.55,
+        "maxR": 0.65,
+        "spawnBand": [
+          0.35,
+          0.9
+        ],
         "nodes": {
+          "points": 2,
           "largeVision": 2
         },
         "strategic": [
@@ -118,14 +148,18 @@
       },
       {
         "tier": 1,
-        "minR": 0.55,
-        "maxR": 0.95,
+        "minR": 0.25,
+        "maxR": 0.98,
+        "spawnBand": [
+          0.2,
+          0.85
+        ],
         "nodes": {
           "attackBoost": 2,
           "defenseBoost": 2,
           "speedBoost": 2,
           "teleportCooldown": 2,
-          "hospital": 2
+          "hospital": 4
         }
       }
     ]

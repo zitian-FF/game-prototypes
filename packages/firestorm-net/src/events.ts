@@ -9,6 +9,10 @@ export type ClientEvent =
   | { type: 'marchCancelled'; timeMs: number; squadId: SquadId }
   | { type: 'garrisoned'; timeMs: number; nodeId: NodeId; squadId: SquadId }
   | { type: 'garrisonRejected'; timeMs: number; nodeId: NodeId; squadId: SquadId; reason: string }
+  | { type: 'nodesUnlocked'; timeMs: number; tier: number }
+  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId; caches: number }
+  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number }
+  | { type: 'cacheCollected'; timeMs: number; nodeId: NodeId; cacheId: string; team: TeamId; commander: string; amount: number; at: Vec }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: string; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: string; squadId: SquadId; reason: string }
   | { type: 'nodeCaptured'; timeMs: number; nodeId: NodeId; team: TeamId; previous: TeamId | null }
@@ -44,6 +48,19 @@ export function projectEvents(game: ArenaGame, team: TeamId, events: GameEvent[]
         break;
       case 'garrisoned':
         if (squadTeam(e.squadId) === team || sees(nodePos(e.nodeId))) out.push(e);
+        break;
+      case 'nodesUnlocked':
+        out.push(e); // the clock is public
+        break;
+      case 'poolOpened':
+        if (game.nodes.get(e.nodeId)?.owner === team || sees(nodePos(e.nodeId))) out.push(e);
+        break;
+      case 'poolLost':
+        // Whoever held the node knows what it lost; anyone watching the node sees it too.
+        if (e.team === team || sees(nodePos(e.nodeId))) out.push(e);
+        break;
+      case 'cacheCollected':
+        if (e.team === team || sees(e.at) || game.nodes.get(e.nodeId)?.owner === team) out.push(e);
         break;
       case 'hqGarrisoned':
       case 'hqGarrisonRejected':

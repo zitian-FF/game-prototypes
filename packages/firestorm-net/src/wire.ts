@@ -4,9 +4,11 @@
 // every patch differ.
 
 import type {
+  CacheView,
   CombatLog,
   EnemyHqView,
   EnemyMarchView,
+  EnemyScoutView,
   NodeView,
   OwnHqView,
   OwnScoutView,
@@ -25,9 +27,11 @@ export interface WireView {
   squads: WireSquad[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
+  enemyScouts: EnemyScoutView[];
   enemyMarches: WireEnemyMarch[];
   enemyHqs: EnemyHqView[];
   scoutReports: ScoutReport[];
+  caches: CacheView[];
   /** Most recent first, capped. */
   combatLogs: CombatLog[];
 }
@@ -37,9 +41,11 @@ type Collections = {
   squads: WireSquad;
   hqs: OwnHqView;
   scouts: OwnScoutView;
+  enemyScouts: EnemyScoutView;
   enemyMarches: WireEnemyMarch;
   enemyHqs: EnemyHqView;
   scoutReports: ScoutReport;
+  caches: CacheView;
   combatLogs: CombatLog;
 };
 type CollectionName = keyof Collections;
@@ -49,9 +55,11 @@ const KEYS: { [K in CollectionName]: (item: Collections[K]) => string } = {
   squads: (s) => s.id,
   hqs: (h) => h.id,
   scouts: (s) => `${s.owner}#${s.index}`,
+  enemyScouts: (s) => `${s.owner}#${s.index}`,
   enemyMarches: (m) => m.id,
   enemyHqs: (h) => h.id,
   scoutReports: (r) => String(r.id),
+  caches: (c) => c.id,
   combatLogs: (l) => String(l.id),
 };
 const NAMES = Object.keys(KEYS) as CollectionName[];
@@ -77,12 +85,14 @@ export function toWire(view: TeamView): WireView {
     }),
     hqs: view.hqs,
     scouts: view.scouts,
+    enemyScouts: view.enemyScouts,
     enemyMarches: view.enemyMarches.map((m) => {
       const { pos: _pos, ...rest } = m;
       return rest;
     }),
     enemyHqs: view.enemyHqs,
     scoutReports: view.scoutReports,
+    caches: view.caches,
     combatLogs: view.combatLogs.slice(0, MAX_WIRE_LOGS),
   };
 }

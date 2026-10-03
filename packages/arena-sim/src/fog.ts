@@ -1,6 +1,7 @@
 import { dist } from './map';
 import type { ArenaGame } from './game';
 import type {
+  Cache,
   CombatLog,
   HqId,
   HqLocation,
@@ -33,6 +34,24 @@ export interface NodeView {
    */
   garrisonCount?: number;
   garrisonCountAsOfMs?: number;
+  /** Present while the node is still locked: the sim time it opens for capture. Public. */
+  unlocksAtMs?: number;
+  /**
+   * Score pool state, only while the node is inside your vision. Before the pool opens, settlesAtMs says when;
+   * once it is open, pool is its temporary score.
+   */
+  settlesAtMs?: number;
+  pool?: number;
+  poolOpen?: boolean;
+}
+
+/** A score cache inside your vision. Anyone's scout can collect it. */
+export interface CacheView {
+  id: string;
+  nodeId: NodeId;
+  pos: Vec;
+  /** What touching it banks. Fixed from the moment it spawns. */
+  value: number;
 }
 
 export interface OwnSquadView {
@@ -62,6 +81,8 @@ export interface EnemyMarchView {
    * sprite while the march is inside your vision, a question mark while it is in fog.
    */
   type: SquadType;
+  /** Commander name: public, like the type. Power still needs a scout. */
+  owner: string;
   pos: Vec;
   march: Pick<March, 'from' | 'to' | 'startMs' | 'arriveMs' | 'speed'>;
   /** Present only while a scout reveal on this squad is unexpired. */
@@ -72,6 +93,8 @@ export interface EnemyMarchView {
 
 export interface EnemyHqView {
   id: HqId;
+  /** Commander name: public. */
+  owner: string;
   pos: Vec;
   /** True while the HQ is below full HP. Exact HP is not revealed. */
   burning: boolean;
@@ -105,6 +128,18 @@ export interface OwnScoutView {
   arriveMs?: number;
 }
 
+/** A scout of the other team, only listed while it is inside your vision. Position is derived from the flight. */
+export interface EnemyScoutView {
+  /** Commander name: public inside vision. */
+  owner: string;
+  index: number;
+  state: 'out' | 'back';
+  from: Vec;
+  to: Vec;
+  startMs: number;
+  arriveMs: number;
+}
+
 export interface TeamView {
   timeMs: number;
   points: [number, number];
@@ -113,11 +148,15 @@ export interface TeamView {
   squads: OwnSquadView[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
+  /** Enemy scouts inside vision. */
+  enemyScouts: EnemyScoutView[];
   /** Every enemy march (positions and types are public; power needs a scout). */
   enemyMarches: EnemyMarchView[];
   /** Enemy HQs inside vision (including stranded ones), masked. */
   enemyHqs: EnemyHqView[];
   scoutReports: ScoutReport[];
+  /** Score caches inside your vision. */
+  caches: CacheView[];
   /** Most recent first. */
   combatLogs: CombatLog[];
 }
@@ -142,6 +181,16 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       explored: true,
       visible,
     };
+    if (visible && n.owner !== null) {
+      if (n.poolOpen) {
+        view.poolOpen = true;
+        view.pool = Math.round(n.pool);
+      } else if (n.settlesAtMs !== null) {
+        view.settlesAtMs = n.settlesAtMs;
+      }
+    }
+    const opensAt = game.unlockAtMsForTier(n.tier);
+    if (now < opensAt) view.unlocksAtMs = opensAt;
     if (n.owner === team) {
       view.garrisonCount = n.garrison.length;
       view.garrisonCountAsOfMs = now;
@@ -185,6 +234,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       const view: EnemyMarchView = {
         id: sq.id,
         type: sq.type,
+        owner: sq.owner,
         pos,
         march: { from: m.from, to: m.to, startMs: m.startMs, arriveMs: m.arriveMs, speed: m.speed },
         burning: sq.troops <= 0,
@@ -198,6 +248,7 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
   const enemyHqs: EnemyHqView[] = [];
   const hqs: OwnHqView[] = [];
   const scouts: OwnScoutView[] = [];
+  const enemyScouts: EnemyScoutView[] = [];
   const maxHp = game.tune.hq.hp;
   for (const p of game.players.values()) {
     if (p.team === team) {
@@ -226,15 +277,31 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       });
       continue;
     }
+    p.scouts.forEach((sc, index) => {
+      if (sc.kind === 'home') return;
+      const k = sc.arriveMs <= sc.startMs ? 1 : Math.min(1, Math.max(0, (now - sc.startMs) / (sc.arriveMs - sc.startMs)));
+      const pos = { x: sc.from.x + (sc.to.x - sc.from.x) * k, y: sc.from.y + (sc.to.y - sc.from.y) * k };
+      if (game.isVisibleTo(team, pos)) {
+        enemyScouts.push({ owner: p.id, index, state: sc.kind, from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs });
+      }
+    });
     if (p.hq.location.kind === 'safe') continue;
     if (game.isVisibleTo(team, p.hq.pos)) {
-      enemyHqs.push({ id: p.hq.id, pos: p.hq.pos, burning: p.hq.hp < maxHp });
+      enemyHqs.push({ id: p.hq.id, owner: p.id, pos: p.hq.pos, burning: p.hq.hp < maxHp });
     }
   }
 
   const logs = game.combatLogs
     .filter((l) => l.attacker.team === team || l.fights.some((f) => f.defender.team === team))
     .reverse();
+
+  const caches: CacheView[] = [];
+  for (const n of game.nodes.values()) {
+    if (!n.poolOpen || n.owner === null) continue;
+    for (const c of n.caches) {
+      if (game.isVisibleTo(team, c.pos)) caches.push({ id: c.id, nodeId: c.nodeId, pos: c.pos, value: Math.round(c.value) });
+    }
+  }
 
   return {
     timeMs: now,
@@ -243,9 +310,11 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
     squads,
     hqs,
     scouts,
+    enemyScouts,
     enemyMarches,
     enemyHqs,
     scoutReports: reports,
+    caches,
     combatLogs: logs,
   };
 }

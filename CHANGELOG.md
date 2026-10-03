@@ -3,6 +3,47 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.9.0, firestorm-net 0.9.0
+
+**What changed:** arena-sim's map generator places each ring's nodes with best-candidate spacing so they end
+up evenly spread; the real map now has 19 nodes (four hospitals). firestorm-net's bots assault enemy HQs when
+confident, rush to garrison an ally HQ under attack, and move their HQ onto a node as soon as they hold one.
+Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-04 — firestorm shared packages: arena-sim 0.8.0, firestorm-net 0.8.0
+
+**What changed:** arena-sim team views list enemy scouts inside vision (`enemyScouts`); firestorm-net moves to
+protocol 6, and its bots have individual cache-stealing appetites and cap scouts per cache. Only firestorm-arena
+uses either.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-04 — firestorm shared packages: arena-sim 0.7.0, firestorm-net 0.7.0
+
+**What changed:** arena-sim's map generator gains per-ring spawn bands and scores radar towers on tier 3 and 4
+coverage; score caches now have a fixed value from the moment they spawn. firestorm-net's bots steal the closest
+visible enemy cache. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-04 — firestorm shared packages: arena-sim 0.6.0, firestorm-net 0.6.0
+
+**What changed:** arena-sim adds score pools and score caches (a node's tier points go into a
+temporary pool after it has been held for a minute; scouts collect caches to bank or steal it).
+firestorm-net moves to protocol 5. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-04 — firestorm shared packages: arena-sim 0.5.0, firestorm-net 0.5.0
+
+**What changed:** arena-sim adds escalation (tier 3 and tier 4 nodes are locked until the
+clock reaches a set fraction), public commander names on enemy marches and HQs, and a
+more compact map. firestorm-net moves to protocol 4 and adds a daily-limit estimate (`quota`). Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-03 — firestorm shared packages: arena-sim 0.4.0, firestorm-net 0.3.0
 
 **What changed:** arena-sim adds HQ garrisons, individual (vanity) scoring with a

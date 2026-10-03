@@ -33,7 +33,8 @@ test('fog: enemy marches are masked, scout reveals show type for 10s (tuned) the
   assert.equal(seen[0].revealed?.type, 'tank');
   assert.equal(seen[0].revealed?.commander, 'a');
   assert.equal(seen[0].type, 'tank', 'type is public');
-  for (const k of ['owner', 'power', 'troops', 'commander', 'team']) {
+  assert.equal(seen[0].owner, 'a', 'commander name is public');
+  for (const k of ['power', 'troops', 'commander', 'team']) {
     assert.ok(!(k in seen[0]), `enemy march leaks ${k}`);
   }
 
@@ -113,7 +114,7 @@ test('fog: enemy HQs show only inside vision, never in a safe zone', () => {
   marchAndArrive(g, 'b', 's1', 'n1'); // 150 from n0, inside the 220 radius
   const hqs = viewFor(g, 1).enemyHqs;
   assert.equal(hqs.length, 1);
-  assert.deepEqual(Object.keys(hqs[0]).sort(), ['burning', 'id', 'pos'], 'no owner or exact HP leaked');
+  assert.deepEqual(Object.keys(hqs[0]).sort(), ['burning', 'id', 'owner', 'pos'], 'the name is public, exact HP is not');
   assert.equal(hqs[0].burning, false, 'undamaged');
 });
 
