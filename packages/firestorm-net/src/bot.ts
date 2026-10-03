@@ -156,8 +156,17 @@ export class BotBrain {
     const mine = view.squads.filter((s: OwnSquadView) => s.owner === playerId);
     const cell = tune.map.cellSize;
 
+    // Marches are public, but a bot only reacts to the ones inside its own vision, like a person would.
+    const vision = view.nodes.filter((n) => n.owner === team && n.visible).map((n) => ({ pos: n.pos, r: tune.nodes[n.kind].visionRadiusCells * cell }));
     const underThreat = view.enemyMarches.some(
-      (m) => Math.hypot(m.march.to.x - hq.pos.x, m.march.to.y - hq.pos.y) <= cell * 1.5 && m.march.arriveMs - nowMs <= THREAT_MS,
+      (m) =>
+        m.march.arriveMs > nowMs &&
+        vision.some((v) => {
+          const f = Math.min(1, Math.max(0, (nowMs - m.march.startMs) / Math.max(1, m.march.arriveMs - m.march.startMs)));
+          const x = m.march.from.x + (m.march.to.x - m.march.from.x) * f;
+          const y = m.march.from.y + (m.march.to.y - m.march.from.y) * f;
+          return Math.hypot(x - v.pos.x, y - v.pos.y) <= v.r;
+        }) && Math.hypot(m.march.to.x - hq.pos.x, m.march.to.y - hq.pos.y) <= cell * 1.5 && m.march.arriveMs - nowMs <= THREAT_MS,
     );
     const healthyAtHq = mine.some((s) => s.state === 'hq' && s.troops >= s.maxTroops * WOUNDED);
     const wounded = mine.filter((s) => s.troops < s.maxTroops * WOUNDED && s.state !== 'march').length;

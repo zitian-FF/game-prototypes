@@ -8,7 +8,7 @@ import { session } from '../net/session';
 import { Iso, diamond } from '../render/iso';
 import { bakeGround, paintFog, type Ground, type LavaTile } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawFlames, drawHq, drawNodeIcon, drawNodeStack, drawPowerSword, drawRefinery, drawSilo, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawFlames, drawHospital, drawHq, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -79,6 +79,8 @@ export class GameScene extends BaseScene {
     this.loadStartedAt = this.time.now;
     this.loadFrames = 0;
     this.missiles = [];
+    this.labels = [];
+    this.labelUsed = 0;
     this.facing = new Map();
     this.fogKey = null;
     this.lastFrame = this.time.now;
@@ -460,6 +462,10 @@ export class GameScene extends BaseScene {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier === 3) {
           drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
+        } else if (n.kind === 'turret') {
+          drawTurret(g, p.x, p.y, base, hw * 1.05);
+        } else if (n.kind === 'hospital') {
+          drawHospital(g, p.x, p.y, base, hw * 1.05);
         } else {
           const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
           drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
@@ -506,7 +512,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(s.march.to.x, s.march.to.y);
       const mineSquad = s.owner === info.playerId;
-      if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.6);
+      if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.3);
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
         const hgt = unitHeight(s.type);
@@ -517,22 +523,19 @@ export class GameScene extends BaseScene {
       });
     }
 
-    // Enemy marches: masked unless a scout has revealed them
+    // Enemy marches are public: the unit shows while it is inside our vision, a question mark while it is in fog.
+    const inSight = (pos: Vec): boolean => circles.some((c) => Math.hypot(pos.x - c.x, pos.y - c.y) <= c.r);
     for (const m of view.enemyMarches as WireEnemyMarch[]) {
       const pos = marchPos(m.march, simMs);
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(m.march.to.x, m.march.to.y);
       if (!m.burning) this.dashed(lines, p, to, COLORS.enemyLine, now, 0.85);
       add(pos, () => {
-        if (m.revealed) {
-          drawUnit(g, m.revealed.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
-          this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
+        if (inSight(pos)) {
+          drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
+          if (m.revealed) this.label(`${m.revealed.commander} ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
         } else {
-          g.lineStyle(2, COLORS.enemy, 1);
-          g.fillStyle(0x0c1016, 0.9);
-          g.fillRoundedRect(p.x - 11, p.y - 22, 22, 18, 4);
-          g.strokeRoundedRect(p.x - 11, p.y - 22, 22, 18, 4);
-          this.label('?', p.x, p.y - 22, '#ff9a6a', 13);
+          drawQuestion(g, p.x, p.y, COLORS.enemy, 1);
         }
         if (m.burning) drawFlames(g, p.x, p.y - 8, now, 1, 9);
       });
@@ -579,18 +582,13 @@ export class GameScene extends BaseScene {
       const head = pos(t);
       const tail = pos(Math.max(0, t - 0.04));
       const col = m.own ? COLORS.mine : COLORS.enemy;
-      g.lineStyle(5, 0x8a8f98, 1);
-      g.beginPath();
-      g.moveTo(pos(Math.max(0, t - 0.12)).x, pos(Math.max(0, t - 0.12)).y);
-      g.lineTo(tail.x, tail.y);
-      g.strokePath();
-      g.lineStyle(3, col, 0.9);
-      g.beginPath();
-      g.moveTo(tail.x, tail.y);
-      g.lineTo(head.x, head.y);
-      g.strokePath();
-      g.fillStyle(0xffe08a, 1).fillCircle(head.x, head.y, 3);
-      g.fillStyle(0xff7a22, 1).fillCircle(tail.x, tail.y, 2);
+      // Smoke puffs behind it, shrinking with age (solid greys, no fading).
+      for (let k = 1; k <= 6; k++) {
+        const q = pos(Math.max(0, t - k * 0.018));
+        g.fillStyle(k < 3 ? 0xb8bcc4 : 0x8a8f98, 1).fillCircle(q.x, q.y, Math.max(1, 4.2 - k * 0.55));
+      }
+      const ahead = pos(Math.min(1, t + 0.01));
+      drawMissile(g, head.x, head.y, Math.atan2(ahead.y - tail.y, ahead.x - tail.x), col, now, 1);
       return true;
     });
   }

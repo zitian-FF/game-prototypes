@@ -553,4 +553,9 @@ client.
   at that moment, in a shuffled order, from one seed.
 - Loading screen: while the world builds, and for 2.5 seconds after, a loading screen shows the
   player's team, the match length and the squads they were dealt.
+- Public information: which team holds every node is visible to everyone, with or without vision.
+  Garrison counts and defender details stay private (own nodes, or a live scout report). Every enemy
+  march is also public with its unit type and position; the client draws the unit sprite while the march
+  is inside your own vision and a 3D question mark while it is in fog. Power and commander still need a scout.
+- Allied march lines are drawn at half their previous strength.
 - Where this section conflicts with older text above, this section wins.

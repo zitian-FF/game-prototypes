@@ -1,7 +1,8 @@
 ## Current milestone
 
-Post-playtest revision 1, team selection and the loading screen are merged. The unit, HQ and
-refinery art pass is on the branch, verified locally, not yet merged.
+Post-playtest revision 1 plus a second round: global node ownership, public enemy marches with a
+fog/vision render split, redrawn silo, turret, hospital and missile, and a second-match hang fix.
+Everything below the first two bullets of the merged work is on the branch, not merged (by request).
 
 ## What was implemented
 
@@ -44,7 +45,14 @@ refinery art pass is on the branch, verified locally, not yet merged.
   reference (stepped beige building, team-colour roofs, rooftop cannon, antenna, flag, hazard-striped
   pad); oil refinery follows the second reference (two domed tanks with pulsing green tops, team
   clamps). All of it is solid colour, no transparency; out-of-sight nodes are darkened, not faded.
-- Packages: arena-sim 0.3.0, firestorm-net 0.2.0.
+- Round two (on the branch, unmerged): node ownership is global (`NodeView.owner` is always true,
+  `explored` always true, capture events go to everyone). Every enemy march is sent with its `type`
+  and position; the client shows the unit sprite inside its own vision and a 3D question mark in fog.
+  Bots only react to marches inside their own vision. Ally march lines at half strength. Silo, missile
+  turret, hospital (tent) and the turret missile redrawn from the new references. Fix: the second match
+  hung on "Building the map" because the pooled text labels of the first match were destroyed; the pool
+  is now reset when the scene starts.
+- Packages: arena-sim 0.3.0, firestorm-net 0.2.0 (view semantics changed, shape only gained `type`).
 
 ## Key technical decisions
 
@@ -72,10 +80,14 @@ refinery art pass is on the branch, verified locally, not yet merged.
 
 - Verified in headless Chromium and the local runtime only; the live Worker has not been
   exercised (the build sandbox cannot reach workers.dev). Codex has a smoke test queued.
-- Effects are first versions (missile arc, silo and refinery are simple vector shapes).
+- Effects are first versions. The silo bore is small and its front towers overlap the warhead tip; the
+  hospital roof reads a little like a house.
+- Enemy march types and positions are now sent to every client, so a modified client can see them in fog.
+  Accepted by the user for this prototype.
 
 ## Next proposed step
 
+0. Decide on the units-per-commander redistribution (maths sent in chat), then build it.
 1. Merge to deploy protocol 2 (Worker and clients together), then Codex smoke-tests it.
 2. Playtest with real players for feel: march time at 257s, 17 nodes, bot activity.
 3. Narrow the Cloudflare token (Codex).

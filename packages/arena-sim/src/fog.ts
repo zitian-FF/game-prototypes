@@ -53,8 +53,13 @@ export interface OwnSquadView {
 }
 
 export interface EnemyMarchView {
-  /** Opaque id: carries no owner, type or power. */
+  /** Opaque id: carries no owner or power. */
   id: SquadId;
+  /**
+   * Every enemy march is public, with its type. The client decides what to show: the type
+   * sprite while the march is inside your vision, a question mark while it is in fog.
+   */
+  type: SquadType;
   pos: Vec;
   march: Pick<March, 'from' | 'to' | 'startMs' | 'arriveMs' | 'speed'>;
   /** Present only while a scout reveal on this squad is unexpired. */
@@ -104,7 +109,7 @@ export interface TeamView {
   squads: OwnSquadView[];
   hqs: OwnHqView[];
   scouts: OwnScoutView[];
-  /** Enemy marches inside vision, masked unless revealed. */
+  /** Every enemy march (positions and types are public; power needs a scout). */
   enemyMarches: EnemyMarchView[];
   /** Enemy HQs inside vision (including stranded ones), masked. */
   enemyHqs: EnemyHqView[];
@@ -171,10 +176,10 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
       squads.push(v);
     } else if (sq.state.kind === 'march') {
       const pos = game.squadPos(sq);
-      if (!game.isVisibleTo(team, pos)) continue;
       const m = sq.state.march;
       const view: EnemyMarchView = {
         id: sq.id,
+        type: sq.type,
         pos,
         march: { from: m.from, to: m.to, startMs: m.startMs, arriveMs: m.arriveMs, speed: m.speed },
         burning: sq.troops <= 0,
