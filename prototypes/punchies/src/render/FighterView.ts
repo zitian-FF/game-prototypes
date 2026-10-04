@@ -3,6 +3,7 @@ import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 import { pose } from './art';
+import { GroundLayer } from './groundLayer';
 import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
@@ -119,6 +120,7 @@ export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, 
 export class FighterView {
   private g: Phaser.GameObjects.Graphics;
   private sprite: Phaser.GameObjects.Image;
+  private ground: GroundLayer;
   private flashColor = 0xffffff;
   private flashUntil = 0;
   // Walk cycle, driven by how far the body moves between frames.
@@ -141,6 +143,7 @@ export class FighterView {
     scene: Phaser.Scene,
     private color: number,
   ) {
+    this.ground = new GroundLayer(scene, BODY_R);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
   }
@@ -158,6 +161,7 @@ export class FighterView {
   clear(): void {
     this.g.clear();
     this.sprite.setVisible(false);
+    this.ground.hide();
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
@@ -189,6 +193,7 @@ export class FighterView {
       return;
     }
 
+    this.ground.hide();
     // Shadow, then legs: two soft dark feet stepping under the body.
     g.fillStyle(0x000000, 0.25);
     g.fillEllipse(f.x + 3, f.y + 5, BODY_R * 2.3 * k, BODY_R * 2 * k);
@@ -301,8 +306,10 @@ export class FighterView {
     else if (f.guarding) action = stance === 'perfectGuard' ? 'perfect_guard' : 'guard';
     else if (f.exhausted) action = 'exhausted';
     if (!pose(this.sprite, `${prefix}_${action}`, progress)) return false;
-    this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(Math.atan2(f.fy, f.fx));
+    const rotation = Math.atan2(f.fy, f.fx);
+    this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(rotation);
     this.sprite.setAlpha(stance === 'dodging' ? 0.4 : 1);
+    this.ground.draw(`${prefix}_${action}`, progress, f.x, f.y, rotation, this.scale, stance === 'dodging' ? 0.4 : 1);
     if (now < this.flashUntil) this.sprite.setTintFill(this.flashColor);
     else this.sprite.clearTint();
     return true;

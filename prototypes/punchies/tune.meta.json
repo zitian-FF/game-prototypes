@@ -2098,5 +2098,33 @@
     "min": 0.5,
     "max": 1,
     "step": 0.01
+  },
+  "view.shadowOffsetY": {
+    "cat": "View",
+    "desc": "Ground shadow drop below the boxer, in screen Y (world px). Raises the body off the floor so the tilt reads as depth.",
+    "min": 0,
+    "max": 24,
+    "step": 0.5
+  },
+  "view.shadowAlpha": {
+    "cat": "View",
+    "desc": "Ground shadow darkness (0 = none).",
+    "min": 0,
+    "max": 0.8,
+    "step": 0.02
+  },
+  "view.shadowSize": {
+    "cat": "View",
+    "desc": "Ground shadow size relative to the boxer body.",
+    "min": 0.4,
+    "max": 1.6,
+    "step": 0.05
+  },
+  "view.feetOffsetY": {
+    "cat": "View",
+    "desc": "Feet layer drop below the body, in screen Y (world px). 0 = feet directly under the body.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
   }
 }
