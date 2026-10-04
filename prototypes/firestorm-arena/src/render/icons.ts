@@ -387,6 +387,8 @@ export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1):
     case 'hospital':
       drawCross(g, x, y, s);
       break;
+    case 'portal':
+      break; // drawn as its own building (drawPortal)
     case 'turret': // cannon
       stroke(() => {
         g.strokeCircle(x - 2 * s, y + 2 * s, 5 * s);
@@ -671,4 +673,33 @@ export function drawCache(g: G, x: number, y: number, t: number, s = 1): void {
     g.fillRect(x + 5 * s, y - 17 * s, 2 * s, 6 * s);
     g.fillRect(x + 3 * s, y - 15 * s, 6 * s, 2 * s);
   }
+}
+
+/**
+ * Portal Nexus: a neutral teleporter. A low slab, two pylons and a ring of light with a swirling core. The core
+ * changes colour in steps (no fading), and nothing about it is team coloured because nobody owns it.
+ */
+export function drawPortal(g: G, cx: number, cy: number, t: number, hw: number): void {
+  const s = hw / 26;
+  const art = new Art(g, 0x9a7cff);
+  const slab = 0x4f5666;
+  art.box(cx, cy, 28 * s, 4 * s, 0, slab, shade(slab, 1.25));
+  const phase = Math.floor(t * 3) % 3;
+  const core = [0x7be0ff, 0xa58bff, 0xd7b8ff][phase];
+  const glow = [0x3a9bd1, 0x6b52d6, 0x8f6fe0][phase];
+  // Pylons either side.
+  const pylon = (dx: number) => {
+    art.box(cx + dx * s, cy + 2 * s, 5 * s, 18 * s, 4 * s, 0x6b7388, 0x9aa3b8);
+    art.circ(cx + dx * s, cy - 18 * s, 3 * s, core, true);
+  };
+  pylon(-20);
+  pylon(20);
+  // The ring and its core.
+  art.ell(cx, cy - 4 * s, 40 * s, 20 * s, shade(slab, 1.4));
+  art.ell(cx, cy - 6 * s, 40 * s, 20 * s, 0xb9c1d6);
+  art.ell(cx, cy - 6 * s, 30 * s, 14 * s, 0x1a1f26, true);
+  art.ell(cx, cy - 6 * s, 24 * s, 11 * s, glow, true);
+  art.ell(cx, cy - 6 * s, 14 * s, 6 * s, core, true);
+  art.ell(cx, cy - 6 * s, 5 * s, 2.2 * s, 0xffffff, true);
+  art.draw();
 }

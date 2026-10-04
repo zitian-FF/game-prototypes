@@ -123,8 +123,6 @@ export class ArenaGame {
         settlesAtMs: null,
         poolOpen: false,
         pool: 0,
-        poolEarned: 0,
-        batches: 0,
         cacheSpawned: 0,
         caches: [],
       });
@@ -154,7 +152,7 @@ export class ArenaGame {
         squadIds: [],
         scouts: Array.from({ length: opts.tune.scout.perHq }, () => ({ kind: 'home' as const })),
         nextTeleportAtMs: 0,
-        stats: { troopsDefeated: 0, nodesCaptured: 0, garrisonSeconds: 0, hqsDowned: 0 },
+        stats: { troopsDefeated: 0, nodesCaptured: 0, garrisonSeconds: 0, hqsDowned: 0, cachePoints: 0 },
       };
       this.players.set(spec.id, player);
       this.hqOwner.set(hq.id, spec.id);
@@ -267,7 +265,8 @@ export class ArenaGame {
   /** True if the point is inside the shared vision of the team's controlled nodes. */
   isVisibleTo(team: TeamId, pos: Vec): boolean {
     for (const n of this.nodes.values()) {
-      if (n.owner !== team) continue;
+      // A Portal Nexus lights up its surroundings for both teams, whoever's HQs are there.
+      if (n.owner !== team && n.kind !== 'portal') continue;
       if (dist(n.pos, pos) <= this.visionRadius(n)) return true;
     }
     return false;
@@ -354,8 +353,6 @@ export class ArenaGame {
       if (n.owner === null || !n.poolOpen) continue;
       const add = this.baseRate(n) * dt;
       n.pool += add;
-      n.poolEarned += add;
-      this.landBatches(n);
     }
     this.regenPools(dt);
     for (const sq of this.squads.values()) {
@@ -404,7 +401,7 @@ export class ArenaGame {
         id: p.id,
         team: p.team,
         ...s,
-        score: Math.round(s.troopsDefeated * k.perTroopDefeated + s.nodesCaptured * k.perNodeCaptured + s.garrisonSeconds * k.perGarrisonSecond + s.hqsDowned * k.perHqDowned),
+        score: Math.round(s.troopsDefeated * k.perTroopDefeated + s.nodesCaptured * k.perNodeCaptured + s.garrisonSeconds * k.perGarrisonSecond + s.hqsDowned * k.perHqDowned + s.cachePoints * k.perCachePoint),
       });
     }
     return rows.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
@@ -495,6 +492,7 @@ export class ArenaGame {
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (node.kind === 'portal') return 'notCapturable';
       if (this.isLocked(node)) return 'nodeLocked';
       // Reinforcing a node your team already holds must fit in its garrison.
       if (node.owner === player.team) {
@@ -539,7 +537,8 @@ export class ArenaGame {
   private cmdTeleport(player: Player, nodeId: NodeId): string | null {
     const node = this.nodes.get(nodeId);
     if (!node) return 'unknownNode';
-    if (node.owner !== player.team) return 'notControlled';
+    // Any HQ may teleport to a Portal Nexus; every other node must be held by the team.
+    if (node.owner !== player.team && node.kind !== 'portal') return 'notControlled';
     if (this.nowMs < player.nextTeleportAtMs) return 'onCooldown';
     if (player.hq.location.kind === 'node' && player.hq.location.nodeId === nodeId) return 'alreadyThere';
     const slot = node.slots.findIndex((s) => s === null);
@@ -567,6 +566,7 @@ export class ArenaGame {
     } else if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (node.kind === 'portal') return 'notCapturable';
       if (this.isLocked(node)) return 'nodeLocked';
       to = node.pos;
       dest = { kind: 'node', nodeId: node.id };
@@ -598,18 +598,26 @@ export class ArenaGame {
     return null;
   }
 
-  /** A node changed hands: the old holder loses its pool, and the new holder starts a fresh settling timer. */
+  /**
+   * A node changed hands. If the old owner had an open pool, the pool is emptied: their team score drops by it and
+   * the very same points are dropped as caches, split equally (four at least, one more for every cachePointsStep of
+   * the pool, up to maxCaches), each with a fixed value. Caches are only ever created here. Whoever captured the node
+   * (neutral or not) starts a fresh settling timer before a new pool opens.
+   */
   private ownerChanged(node: NodeState, previous: TeamId | null): void {
-    if (previous !== null && (node.poolOpen || node.pool > 0)) {
+    if (previous !== null && node.poolOpen) {
       const lost = node.pool;
       this.pointTotals[previous] = Math.max(0, this.pointTotals[previous] - lost);
-      this.emit({ type: 'poolLost', timeMs: this.nowMs, nodeId: node.id, team: previous, amount: lost });
+      let count = 0;
+      if (lost > 0) {
+        const p = this.tune.pool;
+        count = Math.min(p.maxCaches, p.minCaches + Math.floor(lost / p.cachePointsStep));
+        const each = lost / count;
+        for (let i = 0; i < count; i++) this.spawnCache(node, each, previous);
+      }
+      this.emit({ type: 'poolLost', timeMs: this.nowMs, nodeId: node.id, team: previous, amount: lost, caches: count });
     }
     node.pool = 0;
-    node.poolEarned = 0;
-    node.batches = 0;
-    node.cacheSpawned = 0;
-    node.caches = [];
     node.poolOpen = false;
     node.captureSeq++;
     node.settlesAtMs = this.nowMs + this.tune.pool.settleSeconds * 1000;
@@ -621,36 +629,15 @@ export class ArenaGame {
     if (!node || node.owner === null || node.captureSeq !== version) return;
     node.poolOpen = true;
     node.settlesAtMs = null;
-    this.emit({ type: 'poolOpened', timeMs: this.nowMs, nodeId: node.id, caches: 0 });
+    this.emit({ type: 'poolOpened', timeMs: this.nowMs, nodeId: node.id });
   }
 
   /**
-   * Every cachePointsStep earned, caches appear: four the first time (or when none are left), then one more
-   * each time, up to the maximum. A new cache is worth the pool total at that moment divided by the number of
-   * caches there are after it appears, and that value never changes afterwards, so the bigger the pool, the
-   * bigger the share. The pool at the crossing is the pool now minus the overshoot, so the outcome does not
-   * depend on how time was advanced.
+   * Drop a cache around the node, worth `value` for good. The spot comes from a hash of this node's own history,
+   * so it never touches the combat random stream and a replay ends up with identical caches.
    */
-  private landBatches(node: NodeState): void {
+  private spawnCache(node: NodeState, value: number, from: TeamId): void {
     const p = this.tune.pool;
-    while (node.poolEarned >= (node.batches + 1) * p.cachePointsStep) {
-      node.batches++;
-      const poolThen = node.pool - (node.poolEarned - node.batches * p.cachePointsStep);
-      const fresh = node.caches.length === 0 ? p.minCaches : node.caches.length < p.maxCaches ? 1 : 0;
-      if (fresh === 0) continue;
-      const share = poolThen / (node.caches.length + fresh);
-      for (let i = 0; i < fresh; i++) {
-        this.spawnCache(node);
-        node.caches[node.caches.length - 1].value = share;
-      }
-    }
-  }
-
-  /** Scatter a cache around the node. The spot comes from a hash, so it never touches the combat random stream. */
-  private spawnCache(node: NodeState): void {
-    const p = this.tune.pool;
-    // Id and spot depend only on this node's own history, so a replay that advanced time in different steps
-    // (accrual points differ) still ends up with identical caches.
     const n = ++node.cacheSpawned;
     const salt = Math.round(node.pos.x * 7 + node.pos.y * 13);
     const h = (k: number) => {
@@ -663,22 +650,19 @@ export class ArenaGame {
     const radius = (p.scatterMinCells + h(2) * (p.scatterMaxCells - p.scatterMinCells)) * cell;
     const x = Math.min(this.map.width - cell / 2, Math.max(cell / 2, node.pos.x + Math.cos(angle) * radius));
     const y = Math.min(this.map.height - cell / 2, Math.max(cell / 2, node.pos.y + Math.sin(angle) * radius));
-    node.caches.push({ id: `${node.id}-${node.captureSeq}-${n}`, nodeId: node.id, pos: { x, y }, value: 0 });
+    node.caches.push({ id: `${node.id}-${n}`, nodeId: node.id, pos: { x, y }, value, from });
   }
 
   /**
-   * A scout touched a cache: its share moves out of the pool and into the scout team's permanent score.
-   * The holder's own scout just secures it (their total does not change); an enemy scout steals it.
+   * A scout touched a cache: its value is added to the scout's team score for good, whichever team that is (even the
+   * team the pool was lost from). The commander is credited on the individual leaderboard with the points banked.
    */
   private collectCache(cache: Cache, player: Player): void {
     const node = this.nodes.get(cache.nodeId)!;
     const amount = cache.value;
-    node.pool = Math.max(0, node.pool - amount);
     node.caches = node.caches.filter((c) => c.id !== cache.id);
-    if (node.owner !== null && node.owner !== player.team) {
-      this.pointTotals[node.owner] = Math.max(0, this.pointTotals[node.owner] - amount);
-      this.pointTotals[player.team] += amount;
-    }
+    this.pointTotals[player.team] += amount;
+    player.stats.cachePoints += amount;
     this.emit({ type: 'cacheCollected', timeMs: this.nowMs, nodeId: node.id, cacheId: cache.id, team: player.team, commander: player.id, amount, at: cache.pos });
   }
 
@@ -917,6 +901,10 @@ export class ArenaGame {
   }
 
   private arriveAtNode(sq: Squad, node: NodeState): void {
+    if (node.kind === 'portal') {
+      this.sendHome(sq, node.pos, false); // cannot be held (a march to it is refused anyway)
+      return;
+    }
     if (node.owner === sq.team) {
       const block = this.garrisonBlock(sq, node, false);
       if (block) {

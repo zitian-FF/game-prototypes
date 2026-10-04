@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 6, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -152,7 +152,7 @@ class Client {
   }
 }
 
-const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const ALPHA = 'ACDEFHJKMNPRTWXY';
 const code = Array.from({ length: 3 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
 
 try {
@@ -161,7 +161,7 @@ try {
   check(true, 'worker is up and /health answers');
 
   // --- routing and refusals ------------------------------------------------------------------
-  const wrongRoom = new Client('Nobody', 'ZZ9', 'client-nobody-0001');
+  const wrongRoom = new Client('Nobody', 'AAA', 'client-nobody-0001');
   await wrongRoom.connect(false);
   await wrongRoom.waitFor((m) => m.t === 'error', 5000, 'an error');
   check(wrongRoom.last('error').code === 'roomNotFound', 'joining a room that does not exist is refused');
@@ -203,14 +203,14 @@ try {
   await ivo.waitFor((m) => m.t === 'state' && m.full, 5000, 'first full state');
   const hInfo = hana.last('matchStart').info;
   const iInfo = ivo.last('matchStart').info;
-  check(hInfo.map.nodes.length === 19, 'matchStart carries the 19 node map');
+  check(hInfo.map.nodes.length === 23, 'matchStart carries the 23 node map');
   check(hInfo.team !== iInfo.team, 'the two humans are on opposite teams');
   check(hana.view.hqs.length === 20, 'the host sees all 20 HQs of their team');
 
   // --- play: send a real order -----------------------------------------------------------------
   await hana.waitFor((m) => m.t === 'state', 5000, 'a state');
   const squad = hana.view.squads.find((s) => s.owner === 'Hana');
-  const node = hana.view.nodes.find((n) => n.owner === null && n.unlocksAtMs === undefined);
+  const node = hana.view.nodes.find((n) => n.owner === null && n.unlocksAtMs === undefined && n.kind !== 'portal');
   hana.send({ t: 'cmd', id: 1, cmd: { type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } } });
   const res = await hana.waitFor((m) => m.t === 'cmdResult' && m.id === 1, 5000, 'cmdResult');
   check(res.ok === true, `a human march order is accepted${res.ok ? '' : ` (${res.error})`}`);

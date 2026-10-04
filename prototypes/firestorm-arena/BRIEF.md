@@ -629,4 +629,44 @@ client.
   damaged HQ) and scouts unreported HQs first; and it sends a fit squad to garrison an ally's HQ that an enemy march
   it can see is about to hit, when the squad can get there first. Each bot draws its own aggression and loyalty, as it
   does its cache appetite. Bots no longer throw squads at enemy HQs blindly.
+- Square map and Portal Nexus: the map is a 41 x 41 square (was 57 x 39), with per-cell march speed unchanged
+  (cross-map 329 s on the diagonal), so at least four capturable nodes are under two minutes from each spawn.
+  There are four Portal Nexus nodes (two per half, evenly placed): neutral, never capturable (marches and scouts
+  to them are refused, no garrison, no score), any HQ of either team may teleport onto one (it has the usual 8
+  slots, shared), and each lights only the 8 cells around it for both teams, so HQs that land there are in plain
+  view of everyone. That makes 23 nodes in total.
+- Line strength: march and order lines are drawn at 40% of their old strength (`lines.strength` in client.tune.json)
+  and slightly thinner.
+- Bot targeting: bots creep the front forward from the nodes they hold (a node's pull is how close it is to the
+  nearest node of ours), and one decision in ten raids a node at least 12 cells beyond that front. Bots only scout
+  enemy-held nodes and enemy HQs, never neutral or friendly nodes. Bot HQ aggression is 10% to 55% per decision.
+- Pool rule fix: a score pool (and its caches) now only exists on a node whose control swapped from one team to
+  the other. Capturing a neutral node opens nothing and its points are simply permanent. The 60 second settling timer,
+  the fixed-value caches and the loss of the pool when the node swaps back all work as described above, but only for
+  swapped nodes. This supersedes "when a node changes hands" in the pool paragraph.
+- Cache model (final, supersedes every earlier pool and cache paragraph). After ANY capture of a node a 60 second
+  settling timer runs, during which its points are simply permanent. When it ends the node's pool opens: every node
+  tier point (not the garrison bonus) the node earns from then on goes into its pool and into the holder's team
+  score. When control swaps to the other team the pool is emptied, taken off the old holder's team score and dropped
+  as caches: min 4, +1 per 500 points of the dropped pool, max 8, each worth pool / count, fixed for good. This is the
+  only time caches spawn, once per swap. Caches stay forever, older ones stay separate from a newer batch, and any
+  scout of any team (including the old holder's) that touches one banks its value permanently for its own team.
+  Node score, pools and caches are all TEAM scores. Capturing a neutral node opens a pool after the timer but never
+  drops caches by itself.
+- Commander score: a commander gains +1 personal score for every team score point in a cache their scout collects
+  (tune `personalScoring.perCachePoint`, shown as a Caches column on the leaderboard).
+- Bot caches: bots go for all visible caches, but a bot does not send a scout to a cache a closer friendly scout is
+  already flying to or has been assigned this round.
+- Glossary: Team, Commander (human or bot, base is its HQ), Squad (Tank, Missile, Aircraft), Scout, Radar Tower,
+  Node, Portal Nexus, Garrison, Safe zone, Capture, Swap, Node score, Garrison bonus, Pool, Team score, Cache,
+  Settling timer, Commander score.
+- Selected target: the orders panel is always drawn to the right of the info panel for any selected target (locked
+  nodes show why there are no orders), the two share one height, and the pair is centred, sliding clear of the
+  squad panel on narrow windows.
+- Room codes: 3 characters from a 16 letter set (A C D E F H J K M N P R T W X Y), so the on-screen code pad is 4 x 4.
+- Mobile: touch devices are supported. Tap inspects, drag pans, two fingers pinch to zoom, holding a finger still
+  sends the selected squad (the secondary order). A canvas-drawn on-screen keyboard (name and room code) appears when
+  the device reports a coarse pointer. The UI scale is responsive: the logical layout shrinks on small touch windows
+  so controls grow on screen, and the menu moves the keyboard beside the form in landscape or below it in portrait.
+  The in-game HUD is usable in landscape but crowded on small phones; portrait in a match is not designed for.
 - Where this section conflicts with older text above, this section wins.

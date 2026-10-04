@@ -50,8 +50,10 @@ export interface CacheView {
   id: string;
   nodeId: NodeId;
   pos: Vec;
-  /** What touching it banks. Fixed from the moment it spawns. */
+  /** What touching it banks for a scout's team. Fixed for ever. */
   value: number;
+  /** The team whose pool it was dropped from. */
+  from: TeamId;
 }
 
 export interface OwnSquadView {
@@ -297,9 +299,8 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
 
   const caches: CacheView[] = [];
   for (const n of game.nodes.values()) {
-    if (!n.poolOpen || n.owner === null) continue;
     for (const c of n.caches) {
-      if (game.isVisibleTo(team, c.pos)) caches.push({ id: c.id, nodeId: c.nodeId, pos: c.pos, value: Math.round(c.value) });
+      if (game.isVisibleTo(team, c.pos)) caches.push({ id: c.id, nodeId: c.nodeId, pos: c.pos, value: Math.round(c.value), from: c.from });
     }
   }
 

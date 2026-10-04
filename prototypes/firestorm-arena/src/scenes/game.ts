@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
-import { BaseScene, DPR, logicalSize } from './base';
+import { BaseScene, bufferScale, isTouch, logicalSize } from './base';
 import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -222,11 +222,15 @@ export class GameScene extends BaseScene {
   }
 
   private zoomAt(steps: number, px: number, py: number): void {
+    this.zoomBy(Math.pow(clientTune.camera.zoomStep, steps), px, py);
+  }
+
+  private zoomBy(factor: number, px: number, py: number): void {
     const { w, h } = logicalSize();
     const x = px < 0 ? w / 2 : px;
     const y = py < 0 ? h / 2 : py;
     const before = this.screenToMap(x, y);
-    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), this.minZoom(), clientTune.camera.zoomMax);
+    this.zoom = Phaser.Math.Clamp(this.zoom * factor, this.minZoom(), clientTune.camera.zoomMax);
     this.camX = before.x - (x - w / 2) / this.zoom;
     this.camY = before.y - (y - h / 2) / this.zoom;
   }
@@ -246,6 +250,9 @@ export class GameScene extends BaseScene {
           break;
         case 'zoom':
           if (!this.ui.covers(intents.pointer.x, intents.pointer.y)) this.zoomAt(e.steps, e.x, e.y);
+          break;
+        case 'pinch':
+          this.zoomBy(e.factor, e.x, e.y);
           break;
         case 'primary':
           if (!this.ui.click(e.x, e.y)) this.target = this.pick(e.x, e.y, view);
@@ -412,17 +419,17 @@ export class GameScene extends BaseScene {
           this.fx.ring(e.at.x, e.at.y, now, e.team === mine ? 0xffd54a : COLORS.enemy, 0.8, 0.8);
           this.floaters.push({ text: `+${fmtInt(Math.round(e.amount))}`, color: e.team === mine ? '#ffe08a' : '#ff9a7a', size: 16, x: p.x, y: p.y - 30, start: now });
           const where = this.nodeLabel(view, e.nodeId);
-          const holder = view.nodes.find((n) => n.id === e.nodeId)?.owner;
-          if (e.team === mine && holder === mine) session.toast(`Banked ${fmtInt(Math.round(e.amount))} points at ${where}`, 'good');
-          else if (e.team === mine) session.toast(`Your scout stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'good');
-          else if (holder === mine) session.toast(`${e.commander} stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'bad');
+          if (e.team === mine) session.toast(`Your scouts banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'good');
+          else session.toast(`${e.commander} banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'bad');
           break;
         }
         case 'poolLost':
-          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)} and its ${fmtInt(Math.round(e.amount))} point pool`, 'bad');
+          if (e.amount <= 0) break;
+          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)}: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Scouts can win it back`, 'bad');
+          else session.toast(`${this.nodeLabel(view, e.nodeId)} taken: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Send scouts`, 'good');
           break;
         case 'poolOpened':
-          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: collect its caches with scouts`, 'info');
+          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: hold the node to keep it`, 'info');
           break;
         case 'nodesUnlocked':
           session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Missile Turrets unlocked: they can be captured now', 'good');
@@ -438,13 +445,13 @@ export class GameScene extends BaseScene {
   // ------------------------------------------------------------------- world
 
   protected onDprChanged(): void {
-    for (const t of this.labels) t.setResolution(DPR * 2);
+    for (const t of this.labels) t.setResolution(bufferScale() * 2);
   }
 
   private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     let t = this.labels[this.labelUsed];
     if (!t) {
-      t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: DPR * 2, stroke: '#000', strokeThickness: 3 });
+      t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: bufferScale() * 2, stroke: '#000', strokeThickness: 3 });
       this.world.add(t);
       this.labels[this.labelUsed] = t;
     }
@@ -461,8 +468,8 @@ export class GameScene extends BaseScene {
     const period = dashLength + gapLength;
     const ux = dx / len;
     const uy = dy / len;
-    g.lineStyle(width, color, 1); // solid: muted lines are a muted colour, not a faded one
-    void alpha;
+    // Order and march lines are background information: scale them all down so they never drown the map.
+    g.lineStyle(width, color, Math.min(1, alpha * clientTune.lines.strength));
     let s = -((now * flowSpeed) % period) + period;
     s -= period;
     g.beginPath();
@@ -484,7 +491,8 @@ export class GameScene extends BaseScene {
 
     // Fog follows which nodes are ours.
     const circles = view.nodes
-      .filter((n) => n.owner === mine && n.visible)
+      // Our nodes light their surroundings, and a Portal Nexus lights its 8 cells for everyone.
+      .filter((n) => (n.owner === mine && n.visible) || n.kind === 'portal')
       .map((n) => ({ x: n.pos.x, y: n.pos.y, r: this.tune.nodes[n.kind].visionRadiusCells * this.tune.map.cellSize }));
     const key = circles.map((c) => `${c.x},${c.y},${c.r}`).join(';');
     if (key !== this.fogKey) {
@@ -521,7 +529,9 @@ export class GameScene extends BaseScene {
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.55) : dim);
-        if (n.kind === 'points' && n.tier >= 4) {
+        if (n.kind === 'portal') {
+          drawPortal(g, p.x, p.y, now, hw * 1.05);
+        } else if (n.kind === 'points' && n.tier >= 4) {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier >= 2) {
           drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
@@ -695,6 +705,16 @@ export class GameScene extends BaseScene {
     if (!n) return null;
     const tune = this.tune;
     const lines: [string, string][] = [];
+    if (n.kind === 'portal') {
+      return {
+        title: nodeName(n.kind, n.tier),
+        lines: [
+          ['Neutral. It cannot be captured and has no garrison.', COLORS.dim],
+          ['Any HQ of either team can teleport here (8 slots around it).', COLORS.text],
+          ['Both teams see the 8 cells around it, so HQs that land here are in plain view.', COLORS.warn],
+        ],
+      };
+    }
     const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
     lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
     lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
@@ -711,7 +731,7 @@ export class GameScene extends BaseScene {
       effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Missile Turret and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
     }
     if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
-    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder, lost with the node. Scouts can bank it by collecting its caches.`, COLORS.warn]);
+    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder. If the node is taken, it drops as caches that any scout can bank.`, COLORS.warn]);
     else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}: until then its points are permanent.`, COLORS.dim]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
@@ -785,7 +805,7 @@ export class GameScene extends BaseScene {
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
     this.drawTargetPanel(view, simMs, w, h);
 
-    ui.text('Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
+    ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
     // ---- loading overlay for the first moments
     const loaded = (this.time.now - this.loadStartedAt) / 1000;
@@ -829,12 +849,13 @@ export class GameScene extends BaseScene {
     ui.panel(px, y0, pw, 38 + (shown.length + extra) * rowH + 8, 0.95);
     ui.text('Commander leaderboard', px + 12, y0 + 8, { size: 14, bold: true });
     const nameX = px + 44;
-    const colX = { troops: px + pw - 290, nodes: px + pw - 225, garrison: px + pw - 160, hqs: px + pw - 100, score: px + pw - 14 };
+    const colX = { troops: px + pw - 330, nodes: px + pw - 268, garrison: px + pw - 205, hqs: px + pw - 150, caches: px + pw - 95, score: px + pw - 14 };
     const head = (t: string, x: number) => ui.text(t, x, y0 + 11, { size: 10, color: COLORS.dim, align: 'right' });
     head('Troops', colX.troops);
     head('Nodes', colX.nodes);
     head('Garrison s', colX.garrison);
     head('HQs', colX.hqs);
+    head('Caches', colX.caches);
     head('Score', colX.score);
     const line = (r: PlayerScore, rank: number, y: number) => {
       const you = r.id === me;
@@ -845,6 +866,7 @@ export class GameScene extends BaseScene {
       ui.text(String(r.nodesCaptured), colX.nodes, y + 3, { size: 12, align: 'right' });
       ui.text(String(Math.round(r.garrisonSeconds)), colX.garrison, y + 3, { size: 12, align: 'right' });
       ui.text(String(r.hqsDowned), colX.hqs, y + 3, { size: 12, align: 'right' });
+      ui.text(fmtInt(r.cachePoints ?? 0), colX.caches, y + 3, { size: 12, align: 'right' });
       ui.text(fmtInt(r.score), colX.score, y + 3, { size: 13, bold: true, align: 'right', color: '#ffd54a' });
     };
     shown.forEach((r, i) => line(r, i + 1, y0 + 34 + i * rowH));
@@ -929,9 +951,9 @@ export class GameScene extends BaseScene {
       if (!c) return null;
       title = 'Score cache';
       body = [
-        [`Worth ${fmtInt(c.value)} points right now`, '#ffe08a'],
-        [`Part of the pool of ${this.nodeLabel(view, c.nodeId)}. Any scout can collect it, yours or an enemy's.`, COLORS.dim],
-        ['The points are banked the moment the scout touches it. If it is the holder\'s own, that secures it; if it is an enemy\'s, it steals it.', COLORS.dim],
+        [`Worth ${fmtInt(c.value)} points, fixed`, '#ffe08a'],
+        [`Dropped from the pool of ${this.nodeLabel(view, c.nodeId)} when it changed hands, from ${c.from === this.mine ? 'your team' : 'the enemy team'}.`, COLORS.dim],
+        ['Any scout can collect it. The points are added to its team score for good the moment it touches.', COLORS.dim],
       ];
     } else if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);
@@ -939,6 +961,7 @@ export class GameScene extends BaseScene {
       title = d.title;
       body = d.lines;
       const nv = view.nodes.find((x) => x.id === t.id);
+      if (nv?.kind === 'portal') attackable = true; // the order panel offers the teleport
       if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) {
         body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)} (${nv.tier === 4 ? 'at 50%' : 'at 75%'} of the clock left)`, COLORS.warn], ...body];
         attackable = false;
@@ -970,6 +993,7 @@ export class GameScene extends BaseScene {
       title,
       body,
       attackable,
+      portal: node?.kind === 'portal',
       allyHq,
       cache: t.kind === 'cache',
       report,
@@ -977,7 +1001,7 @@ export class GameScene extends BaseScene {
       atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
       here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : mine.filter((s) => s.state === 'hqGarrison' && s.hqId === t.id),
       scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
-      canTeleport: !!(node && node.owner === this.mine && node.visible && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
+      canTeleport: !!(node && ((node.owner === this.mine && node.visible) || node.kind === 'portal') && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
     };
   }
 
@@ -1003,8 +1027,10 @@ export class GameScene extends BaseScene {
     const pw = 340;
     const gap = 8;
     const ow = 290;
-    const total = d.attackable ? pw + gap + ow : pw;
-    const px = Math.round((w - total) / 2);
+    const total = pw + gap + ow;
+    // Centre the pair, but slide it clear of the squad panel on the left when the window is narrow.
+    const squadRight = 560;
+    const px = Math.round(Math.max((w - total) / 2, Math.min(squadRight, w - total - 8)));
     const bottom = h - 34;
 
     const lines: { text: string; color: string }[] = [];
@@ -1012,7 +1038,8 @@ export class GameScene extends BaseScene {
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const shown = defenders.slice(0, 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
-    const ph = 40 + lines.length * 16 + reportH + 8;
+    // Both panels share one height so the pair reads as a single, aligned group.
+    const ph = Math.max(40 + lines.length * 16 + reportH + 8, this.orderHeight(d));
     const py = bottom - ph;
 
     ui.panel(px, py, pw, ph);
@@ -1033,16 +1060,45 @@ export class GameScene extends BaseScene {
       if (defenders.length > shown.length) ui.text(`+${defenders.length - shown.length} more`, px + 20, y, { size: 11, color: COLORS.dim });
     }
 
-    if (d.attackable) this.drawOrderPanel(d, px + pw + gap, ow, bottom);
+    this.drawOrderPanel(d, px + pw + gap, ow, bottom, ph);
   }
 
-  private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number): void {
+  /** Natural height of the orders panel for the current target. */
+  private orderHeight(d: NonNullable<ReturnType<GameScene['targetData']>>): number {
+    if (!d.attackable || d.portal || d.cache) return 40 + 32 + 6;
+    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
+    return 40 + rows * 32 + 6;
+  }
+
+  private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number, fixedH: number): void {
     const ui = this.ui;
     const t = d.t;
     const ownNode = d.node?.owner === this.mine || d.allyHq;
+    if (!d.attackable) {
+      const oh = fixedH;
+      ui.panel(ox, bottom - oh, ow, oh);
+      ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
+      const locked = d.node?.unlocksAtMs !== undefined && d.node.unlocksAtMs > session.simNow();
+      const msg = locked ? 'Locked. Orders open when the node unlocks.' : 'No orders for this target.';
+      ui.text(msg, ox + 12, bottom - oh + 36, { size: 12, color: COLORS.dim });
+      return;
+    }
+    if (d.portal) {
+      const oh = fixedH;
+      ui.panel(ox, bottom - oh, ow, oh);
+      ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
+      const nid = d.node!.id;
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', {
+        onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }),
+        enabled: d.canTeleport,
+        size: 12,
+        accent: COLORS.gold,
+      });
+      return;
+    }
     if (d.cache) {
       const sc = d.scoutHome;
-      const oh = 40 + 32 + 6;
+      const oh = fixedH;
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
       ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, sc ? 'Send scout to collect' : 'No scout at home', {
@@ -1053,8 +1109,7 @@ export class GameScene extends BaseScene {
       });
       return;
     }
-    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
-    const oh = 40 + rows * 32 + 6;
+    const oh = fixedH;
     const oy = bottom - oh;
     ui.panel(ox, oy, ow, oh);
     ui.text('Orders', ox + 12, oy + 10, { size: 14, bold: true });

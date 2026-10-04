@@ -47,7 +47,7 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 392,
+    "crossMapSeconds": 329,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {
@@ -87,7 +87,8 @@
     "perTroopDefeated": 1,
     "perNodeCaptured": 1000,
     "perGarrisonSecond": 10,
-    "perHqDowned": 500
+    "perHqDowned": 500,
+    "perCachePoint": 1
   },
   "garrison": {
     "maxSquads": 20,
@@ -102,15 +103,15 @@
   },
   "map": {
     "cellSize": 40,
-    "widthCells": 57,
-    "heightCells": 39,
+    "widthCells": 41,
+    "heightCells": 41,
     "safeZone": {
       "cols": 5,
       "rows": 4,
       "insetCells": 3
     },
-    "nodeMinSpacingCells": 5,
-    "nodeMinDistFromSafeZoneCells": 5,
+    "nodeMinSpacingCells": 4,
+    "nodeMinDistFromSafeZoneCells": 4,
     "edgeMarginCells": 2,
     "rings": [
       {
@@ -125,18 +126,26 @@
       {
         "tier": 3,
         "minR": 0.1,
-        "maxR": 0.3,
+        "maxR": 0.4,
         "nodes": {
           "turret": 2
         }
       },
       {
+        "tier": 1,
+        "minR": 0.15,
+        "maxR": 0.65,
+        "nodes": {
+          "portal": 4
+        }
+      },
+      {
         "tier": 2,
         "minR": 0.3,
-        "maxR": 0.65,
+        "maxR": 0.75,
         "spawnBand": [
           0.35,
-          0.9
+          0.95
         ],
         "nodes": {
           "points": 2,
@@ -148,11 +157,11 @@
       },
       {
         "tier": 1,
-        "minR": 0.25,
-        "maxR": 0.98,
+        "minR": 0.2,
+        "maxR": 1.0,
         "spawnBand": [
           0.2,
-          0.85
+          0.95
         ],
         "nodes": {
           "attackBoost": 2,
@@ -193,6 +202,9 @@
     "hospital": {
       "visionRadiusCells": 6,
       "poolRegenPerSecond": 20
+    },
+    "portal": {
+      "visionRadiusCells": 1.5
     }
   }
 }

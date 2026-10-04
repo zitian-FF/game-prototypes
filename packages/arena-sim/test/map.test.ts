@@ -143,7 +143,8 @@ test('map: the real layout has the silo, 2 refineries (tier 2), 2 turrets (tier 
   for (const seed of [1, 2, 3, 4]) {
     const map = generateMap(new Rng(seed), tune);
     const count = (kind: string, tier?: number) => map.nodes.filter((n) => n.kind === kind && (tier === undefined || n.tier === tier)).length;
-    assert.equal(map.nodes.length, 19, `seed ${seed}`);
+    assert.equal(map.nodes.length, 23, `seed ${seed}`);
+    assert.equal(count('portal'), 4, 'portal nexus');
     assert.equal(count('points', 4), 1, 'nuclear silo');
     assert.equal(count('points', 2), 2, 'oil refineries are tier 2');
     assert.equal(count('turret', 3), 2, 'missile turrets are tier 3');
@@ -152,9 +153,9 @@ test('map: the real layout has the silo, 2 refineries (tier 2), 2 turrets (tier 
     assert.equal(count('hospital', 1), 4, 'two hospitals each side');
     // One of each outer building per side of the map.
     const mid = map.width / 2;
-    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown', 'hospital', 'largeVision', 'turret']) {
+    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown', 'hospital', 'largeVision', 'turret', 'portal']) {
       const left = map.nodes.filter((n) => n.kind === kind && n.pos.x < mid).length;
-      assert.equal(left, kind === 'hospital' ? 2 : 1, `${kind} per half`);
+      assert.equal(left, kind === 'hospital' || kind === 'portal' ? 2 : 1, `${kind} per half`);
     }
   }
 });
@@ -191,7 +192,24 @@ test('map: tier 1 and 2 nodes are evenly spaced, never crowded together', () => 
     const map = generateMap(new Rng(seed), tune);
     const low = map.nodes.filter((n) => n.tier <= 2);
     const nearest = low.map((a) => Math.min(...map.nodes.filter((b) => b !== a).map((b) => Math.hypot(a.cell.cx - b.cell.cx, a.cell.cy - b.cell.cy))));
-    assert.ok(Math.min(...nearest) >= 5, `seed ${seed}: two nodes only ${Math.min(...nearest).toFixed(1)} cells apart`);
-    assert.ok(nearest.reduce((a, b) => a + b, 0) / nearest.length >= 7, `seed ${seed}: mean gap too small`);
+    assert.ok(Math.min(...nearest) >= 4, `seed ${seed}: two nodes only ${Math.min(...nearest).toFixed(1)} cells apart`);
+    assert.ok(nearest.reduce((a, b) => a + b, 0) / nearest.length >= 6, `seed ${seed}: mean gap too small`);
+  }
+});
+
+test('map: the map is a square, and the first nodes are within a couple of minutes of every spawn', () => {
+  const tune = loadTune();
+  assert.equal(tune.map.widthCells, tune.map.heightCells, 'square');
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    const map = generateMap(new Rng(seed), tune);
+    const speed = Math.hypot(map.width, map.height) / tune.march.crossMapSeconds; // units per second
+    for (const zone of map.safeZones) {
+      const secondsTo = map.nodes
+        .filter((n) => n.kind !== 'portal' && n.tier <= 2)
+        .map((n) => dist(zone.center, n.pos) / speed)
+        .sort((a, b) => a - b);
+      // At least four capturable nodes are under two minutes away from each spawn.
+      assert.ok(secondsTo[3] <= 120, `seed ${seed}: fourth nearest node is ${Math.round(secondsTo[3])}s away`);
+    }
   }
 });

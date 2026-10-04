@@ -11,12 +11,15 @@ export type IntentEvent =
   | { type: 'secondary'; x: number; y: number }
   | { type: 'pause' }
   | { type: 'zoom'; steps: number; x: number; y: number }
+  | { type: 'pinch'; factor: number; x: number; y: number }
   | { type: 'drag'; dx: number; dy: number; startX: number; startY: number }
   | { type: 'text'; char: string }
   | { type: 'backspace' }
   | { type: 'submit' };
 
 const DRAG_THRESHOLD = 5;
+/** Holding a finger still this long gives the secondary order (there is no right click on a phone). */
+const LONG_PRESS_MS = 450;
 
 export class Intents {
   /** Pan direction from held keys, each axis -1..1. */
@@ -29,7 +32,13 @@ export class Intents {
   textMode = false;
   private queue: IntentEvent[] = [];
   private held = new Set<string>();
-  private down: { x: number; y: number; moved: boolean; button: number } | null = null;
+  /** True on a phone or tablet: set from the pointer type, so a laptop with a touch screen switches on first touch. */
+  touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  /** Logical pixels are CSS pixels divided by this (the responsive UI scale). */
+  scale = 1;
+  private down: { x: number; y: number; lastX: number; lastY: number; moved: boolean; button: number; pressed: boolean; timer: number } | null = null;
+  private fingers = new Map<number, { x: number; y: number }>();
+  private pinchDist = 0;
   private canvas: HTMLElement | null = null;
 
   attach(canvas: HTMLElement): void {
@@ -66,31 +75,83 @@ export class Intents {
 
   private local(e: MouseEvent): { x: number; y: number } {
     const r = this.canvas!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    return { x: (e.clientX - r.left) / this.scale, y: (e.clientY - r.top) / this.scale };
   }
 
   private onDown(e: PointerEvent): void {
     const p = this.local(e);
     this.pointer = p;
-    this.down = { x: p.x, y: p.y, moved: false, button: e.button };
+    if (e.pointerType === 'touch') {
+      this.touch = true;
+      this.inside = true;
+      this.fingers.set(e.pointerId, p);
+      if (this.fingers.size >= 2) {
+        // A second finger turns the gesture into a pinch: drop the tap and the long press.
+        this.cancelDown();
+        this.pinchDist = this.fingerSpread();
+        return;
+      }
+    }
+    this.cancelDown();
+    const timer = e.pointerType === 'touch' ? window.setTimeout(() => this.longPress(), LONG_PRESS_MS) : 0;
+    this.down = { x: p.x, y: p.y, lastX: p.x, lastY: p.y, moved: false, button: e.button, pressed: false, timer };
+  }
+
+  private cancelDown(): void {
+    if (this.down) window.clearTimeout(this.down.timer);
+    this.down = null;
+  }
+
+  private longPress(): void {
+    const d = this.down;
+    if (!d || d.moved) return;
+    d.pressed = true;
+    this.queue.push({ type: 'secondary', x: d.x, y: d.y });
+  }
+
+  private fingerSpread(): number {
+    const [a, b] = [...this.fingers.values()];
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
   }
 
   private onMove(e: PointerEvent): void {
     const p = this.local(e);
     this.pointer = p;
-    this.inside = p.x >= 0 && p.y >= 0 && p.x <= this.canvas!.clientWidth && p.y <= this.canvas!.clientHeight;
+    this.inside = p.x >= 0 && p.y >= 0 && p.x <= this.canvas!.clientWidth / this.scale && p.y <= this.canvas!.clientHeight / this.scale;
+    if (e.pointerType === 'touch' && this.fingers.has(e.pointerId)) {
+      this.fingers.set(e.pointerId, p);
+      if (this.fingers.size >= 2) {
+        const spread = this.fingerSpread();
+        if (this.pinchDist > 0 && spread > 0) {
+          const [a, b] = [...this.fingers.values()];
+          this.queue.push({ type: 'pinch', factor: spread / this.pinchDist, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        }
+        this.pinchDist = spread;
+        return;
+      }
+    }
     const d = this.down;
     if (!d) return;
-    if (!d.moved && Math.hypot(p.x - d.x, p.y - d.y) > DRAG_THRESHOLD) d.moved = true;
-    if (d.moved) {
-      this.queue.push({ type: 'drag', dx: e.movementX, dy: e.movementY, startX: d.x, startY: d.y });
+    if (!d.moved && Math.hypot(p.x - d.x, p.y - d.y) > DRAG_THRESHOLD) {
+      d.moved = true;
+      window.clearTimeout(d.timer);
     }
+    if (d.moved) {
+      this.queue.push({ type: 'drag', dx: p.x - d.lastX, dy: p.y - d.lastY, startX: d.x, startY: d.y });
+    }
+    d.lastX = p.x;
+    d.lastY = p.y;
   }
 
   private onUp(e: PointerEvent): void {
+    if (e.pointerType === 'touch') {
+      this.fingers.delete(e.pointerId);
+      this.pinchDist = 0;
+      if (this.fingers.size === 0) this.inside = false;
+    }
     const d = this.down;
-    this.down = null;
-    if (!d || d.moved) return;
+    this.cancelDown();
+    if (!d || d.moved || d.pressed) return;
     const p = this.local(e);
     if (d.button === 0) this.queue.push({ type: 'primary', x: p.x, y: p.y });
     else if (d.button === 2) this.queue.push({ type: 'secondary', x: p.x, y: p.y });

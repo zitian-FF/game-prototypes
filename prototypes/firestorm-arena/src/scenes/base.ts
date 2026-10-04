@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Ui } from '../ui/ui';
 import { clientTune } from '../clientTune';
 import { VERSION_STAMP } from '../version.generated';
+import { intents } from '../input/intents';
 
 export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
@@ -16,8 +17,40 @@ export function refreshDpr(): boolean {
   return true;
 }
 
+function computeUiScale(): number {
+  // Desktop keeps 1:1. On a touch device the layout is drawn smaller in logical pixels so every
+  // control grows on screen: the smaller the window, the larger the scale, within sane bounds.
+  if (!intents.touch) return 1;
+  const k = Math.min(window.innerWidth / 900, window.innerHeight / 520);
+  return Math.min(1.5, Math.max(0.8, k));
+}
+
+/** Responsive scale: logical size is the window size divided by this. */
+export let UI_SCALE = computeUiScale();
+intents.scale = UI_SCALE;
+
+/** Re-read the UI scale (rotation, resize, first touch). Returns true if it changed. */
+export function refreshUiScale(): boolean {
+  const next = computeUiScale();
+  if (Math.abs(next - UI_SCALE) < 1e-6) return false;
+  UI_SCALE = next;
+  intents.scale = next;
+  return true;
+}
+
+/** Device pixels per logical pixel: what camera zoom and text resolution use. */
+export function bufferScale(): number {
+  return DPR * UI_SCALE;
+}
+
+/** Real window size in CSS pixels, and the logical size scenes lay out in. */
 export function logicalSize(): { w: number; h: number } {
-  return { w: window.innerWidth, h: window.innerHeight };
+  return { w: window.innerWidth / UI_SCALE, h: window.innerHeight / UI_SCALE };
+}
+
+/** Phone or tablet, by the pointer that has been used. */
+export function isTouch(): boolean {
+  return intents.touch;
 }
 
 /** Shared scene plumbing: DPR-correct camera, a UI layer and the version stamp. */
@@ -35,13 +68,13 @@ export abstract class BaseScene extends Phaser.Scene {
 
   protected setup(): void {
     this.leaving = false;
-    this.ui = new Ui(this, DPR);
+    this.ui = new Ui(this, bufferScale());
     this.applyCamera();
     const onResize = () => this.applyCamera();
     this.scale.on('resize', onResize);
     // The pixel ratio can change under a running game (fullscreen, browser zoom, another monitor).
     const onDpr = () => {
-      this.ui.setDpr(DPR);
+      this.ui.setDpr(bufferScale());
       this.onDprChanged();
       this.applyCamera();
     };
@@ -59,7 +92,7 @@ export abstract class BaseScene extends Phaser.Scene {
   protected applyCamera(): void {
     const { w, h } = logicalSize();
     const cam = this.cameras.main;
-    cam.setZoom(DPR);
+    cam.setZoom(bufferScale());
     cam.centerOn(w / 2, h / 2);
   }
 

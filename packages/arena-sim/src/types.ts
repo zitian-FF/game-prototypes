@@ -25,7 +25,9 @@ export type NodeKind =
   | 'teleportCooldown'
   | 'largeVision'
   | 'turret'
-  | 'hospital';
+  | 'hospital'
+  /** Neutral and never capturable: any HQ may teleport onto it, and both teams see the 8 cells around it. */
+  | 'portal';
 
 export const NODE_KINDS: readonly NodeKind[] = [
   'points',
@@ -36,6 +38,7 @@ export const NODE_KINDS: readonly NodeKind[] = [
   'largeVision',
   'turret',
   'hospital',
+  'portal',
 ];
 
 export interface Vec {
@@ -125,24 +128,22 @@ export interface Tune {
    */
   phases: { tier3UnlockRemaining: number; tier4UnlockRemaining: number };
   /**
-   * Score pools. After a node has been held for settleSeconds, the points its tier generates (not the
-   * commander bonus) go into a temporary pool that counts for the holder but is lost with the node. The
-   * pool is spread over score caches around the node that any scout can collect to bank their share.
+   * Score pools. After a node has been held for settleSeconds, the points its tier generates (not the commander bonus)
+   * also go into a temporary pool that counts for the holder. When control of the node swaps, the pool is emptied (the
+   * old holder's score drops by it) and dropped as score caches around the node, split equally with a fixed value each.
+   * A scout of either team that touches a cache banks its value for its team for good.
    */
   pool: {
     settleSeconds: number;
     minCaches: number;
     maxCaches: number;
-    /**
-     * Every time the pool has earned this many points a cache appears (four the first time, then one at a
-     * time up to maxCaches). Its value is the pool total then divided by the caches there are, and stays fixed.
-     */
+    /** When a pool is dropped as caches there is one more cache for every this many points in it (up to maxCaches). */
     cachePointsStep: number;
     scatterMinCells: number;
     scatterMaxCells: number;
   };
   /** Individual (vanity) score values. */
-  personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number };
+  personalScoring: { perTroopDefeated: number; perNodeCaptured: number; perGarrisonSecond: number; perHqDowned: number; perCachePoint: number };
   /**
    * Every pulse each held turret fires a missile at every enemy-held node of
    * minTargetTier or higher. A hit takes damageFraction of max troops from every
@@ -274,8 +275,10 @@ export interface Cache {
   id: string;
   nodeId: NodeId;
   pos: Vec;
-  /** Fixed when it spawns (the pool then divided by the number of caches): what a scout banks by touching it. */
+  /** Fixed for ever: what a scout banks for its team by touching it. */
   value: number;
+  /** The team whose pool it was dropped from (the team that lost the node). */
+  from: TeamId;
 }
 
 export type ScoutTarget = MarchTarget | { kind: 'cache'; cacheId: string };
@@ -314,6 +317,8 @@ export interface PlayerStats {
   /** Seconds spent garrisoning a node, summed over squads. */
   garrisonSeconds: number;
   hqsDowned: number;
+  /** Team points banked by touching caches with this commander's scouts. */
+  cachePoints: number;
 }
 
 export interface PlayerScore extends PlayerStats {
@@ -339,12 +344,9 @@ export interface NodeState {
   poolOpen: boolean;
   /** Temporary score: counted for the holder, lost with the node. */
   pool: number;
-  /** Everything the pool has earned this cycle, including what was collected. */
-  poolEarned: number;
-  /** Cache steps passed so far: every cachePointsStep earned spawns more caches. */
-  batches: number;
-  /** Caches spawned this cycle, for ids and positions that do not depend on when time advanced. */
+  /** Caches ever dropped here, for ids and positions that do not depend on when time advanced. */
   cacheSpawned: number;
+  /** Caches that were dropped here by swaps of control and not collected yet. They stay until a scout takes them. */
   caches: Cache[];
 }
 
@@ -415,9 +417,9 @@ export type GameEvent =
       reason: 'nodeFull' | 'commanderAlreadyThere';
     }
   | { type: 'nodesUnlocked'; timeMs: number; tier: number }
-  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId; caches: number }
+  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId }
   /** The holder lost a node and with it its temporary pool. */
-  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number }
+  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number; caches: number }
   | { type: 'cacheCollected'; timeMs: number; nodeId: NodeId; cacheId: string; team: TeamId; commander: string; amount: number; at: Vec }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: HqId; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: HqId; squadId: SquadId; reason: 'nodeFull' | 'commanderAlreadyThere' }

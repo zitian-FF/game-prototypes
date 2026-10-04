@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DPR, logicalSize, refreshDpr } from './scenes/base';
+import { DPR, refreshDpr, refreshUiScale } from './scenes/base';
 import { MenuScene } from './scenes/menu';
 import { LobbyScene } from './scenes/lobby';
 import { GameScene } from './scenes/game';
@@ -7,15 +7,14 @@ import { session } from './net/session';
 import { intents } from './input/intents';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 
-const { w, h } = logicalSize();
 
 // The pixel buffer is logical size x DPR; Scale zoom of 1/DPR shows it at logical CSS size,
 // and every scene's camera zoom of DPR maps logical coordinates back onto it.
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
-  width: Math.round(w * DPR),
-  height: Math.round(h * DPR),
+  width: Math.round(window.innerWidth * DPR),
+  height: Math.round(window.innerHeight * DPR),
   backgroundColor: '#0b0709',
   scale: { mode: Phaser.Scale.NONE, zoom: 1 / DPR },
   input: { mouse: false, touch: false, keyboard: false, gamepad: false },
@@ -26,15 +25,16 @@ const game = new Phaser.Game({
 game.events.once(Phaser.Core.Events.READY, () => {
   intents.attach(game.canvas);
 });
+// The first touch on a laptop with a touch screen switches the UI to its touch scale.
+window.addEventListener('pointerdown', (e) => e.pointerType === 'touch' && fit(), { passive: true });
 
 /** Keep the buffer sharp when the window, fullscreen state, browser zoom or monitor changes. */
 function fit(): void {
-  if (refreshDpr()) {
-    game.scale.setZoom(1 / DPR);
-    game.events.emit('dpr');
-  }
-  const s = logicalSize();
-  game.scale.resize(Math.round(s.w * DPR), Math.round(s.h * DPR));
+  const dprChanged = refreshDpr();
+  const scaleChanged = refreshUiScale();
+  if (dprChanged) game.scale.setZoom(1 / DPR);
+  game.scale.resize(Math.round(window.innerWidth * DPR), Math.round(window.innerHeight * DPR));
+  if (dprChanged || scaleChanged) game.events.emit('dpr');
 }
 
 window.addEventListener('resize', fit);

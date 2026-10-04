@@ -16,7 +16,7 @@ interface Env {
   PULSE_MS?: string;
 }
 
-const ROOM_CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{3}$/;
+const ROOM_CODE = /^[ACDEFHJKMNPRTWXY]{3}$/;
 const TUNE = tuneJson as unknown as Tune;
 
 const CORS = {
@@ -48,7 +48,7 @@ export default {
       return json(await (await meter(env).fetch(new Request('https://meter/status'))).json());
     }
 
-    const room = url.pathname.match(/^\/ws\/([ABCDEFGHJKMNPQRSTUVWXYZ23456789]{3})$/)?.[1];
+    const room = url.pathname.match(/^\/ws\/([ACDEFHJKMNPRTWXY]{3})$/)?.[1];
     if (!room || !ROOM_CODE.test(room)) {
       return new Response('Not found', { status: 404 });
     }

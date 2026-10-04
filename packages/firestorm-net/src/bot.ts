@@ -22,7 +22,7 @@ export interface BotInput {
   /** Squad march speed in map units per second (used to judge whether a squad can reach an ally in time). */
   speed: number;
   nowMs: number;
-  /** Shared within a decision round (unused by this bot, kept for the room). */
+  /** Shared by the team within a decision round: cache id to the distance of the bot that claimed it. */
   claims?: Map<string, number>;
 }
 
@@ -47,9 +47,14 @@ const THREAT_MS = 30_000;
 /** With fewer own garrisons than this, a bot leans toward reinforcing its own nodes. */
 const WANT_GARRISONS = 3;
 
+/** One decision in this many reaches for a distant node instead of creeping the front forward. */
+const RAID_CHANCE = 0.1;
+/** A raid target must be at least this many cells beyond the team's nearest node. */
+const RAID_MIN_CELLS = 12;
+
 /** Each bot draws its own appetites once, so a team is not a flock. */
-const AGGRESSION_MIN = 0.25;
-const AGGRESSION_MAX = 0.9;
+const AGGRESSION_MIN = 0.1;
+const AGGRESSION_MAX = 0.55;
 const LOYALTY_MIN = 0.4;
 const LOYALTY_MAX = 0.95;
 /** A squad needs at least this fraction of its troops to go on an HQ assault or a rescue. */
@@ -59,8 +64,6 @@ const CONFIDENT_POWER = 66;
 /** Each bot has its own appetite for stealing caches: from rarely to most of the time. */
 const STEAL_MIN = 0.1;
 const STEAL_MAX = 0.85;
-/** At most this many scouts of one team head for the same cache. */
-const MAX_PER_CACHE = 2;
 
 export class BotBrain {
   private nextActMs: number | undefined;
@@ -168,19 +171,34 @@ export class BotBrain {
       if (s.nodeId) busy.add(s.nodeId);
       if (s.march?.nodeId) busy.add(s.march.nodeId);
     }
-    const near = (pos: { x: number; y: number }) => 1 / (1 + Math.hypot(pos.x - hq.pos.x, pos.y - hq.pos.y) / (tune.map.cellSize * 15));
+    // Leap and bound: advance from what the team already holds. A node's pull is how close it is to the nearest
+    // node of ours (or the HQ), so the front creeps outward; one decision in ten instead reaches for a distant node.
+    const anchors = [hq.pos, ...view.nodes.filter((n) => n.owner === team && n.visible).map((n) => n.pos)];
+    const reach = (pos: { x: number; y: number }) => Math.min(...anchors.map((a) => Math.hypot(pos.x - a.x, pos.y - a.y)));
+    const cellsAway = (pos: { x: number; y: number }) => reach(pos) / tune.map.cellSize;
+    const raid = this.rng.next() < RAID_CHANCE;
+    const near = (pos: { x: number; y: number }) => 1 / (1 + (cellsAway(pos) / 8) ** 2);
 
-    const options: { item: Target; weight: number }[] = [];
-    for (const n of view.nodes) {
-      if (n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs) continue; // locked: cannot be marched on yet
-      if (n.owner === team && n.visible) {
-        // Reinforce: a free slot, and this commander not already there or on the way.
-        if (busy.has(n.id) || (n.garrisonCount ?? 0) >= tune.garrison.maxSquads) continue;
-        options.push({ item: { kind: 'node', nodeId: n.id }, weight: near(n.pos) * (wantMore ? 3 : 1) });
-      } else {
-        options.push({ item: { kind: 'node', nodeId: n.id }, weight: near(n.pos) });
+    const gather = (far: boolean): { item: Target; weight: number }[] => {
+      const options: { item: Target; weight: number }[] = [];
+      for (const n of view.nodes) {
+        if (n.kind === 'portal') continue; // not capturable
+        if (n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs) continue; // locked: cannot be marched on yet
+        if (n.owner === team && n.visible) {
+          // Reinforce: a free slot, and this commander not already there or on the way.
+          if (far || busy.has(n.id) || (n.garrisonCount ?? 0) >= tune.garrison.maxSquads) continue;
+          options.push({ item: { kind: 'node', nodeId: n.id }, weight: near(n.pos) * (wantMore ? 3 : 1) });
+        } else if (far) {
+          // A raid: only nodes well beyond our front count.
+          if (cellsAway(n.pos) >= RAID_MIN_CELLS) options.push({ item: { kind: 'node', nodeId: n.id }, weight: 1 });
+        } else {
+          options.push({ item: { kind: 'node', nodeId: n.id }, weight: near(n.pos) });
+        }
       }
-    }
+      return options;
+    };
+    let options = gather(raid);
+    if (options.length === 0 && raid) options = gather(false); // nothing distant to raid: carry on normally
     // Enemy HQs are not blind targets any more: assaultHq goes for one only when it is confident.
     const target = this.pickWeighted(options);
     return target ? { type: 'march', squadId: squad.id, target } : null;
@@ -189,7 +207,7 @@ export class BotBrain {
   /** True if the point is inside the team's vision (the circles around its visible nodes). */
   private inVision({ view, team, tune }: BotInput, x: number, y: number): boolean {
     for (const n of view.nodes) {
-      if (n.owner !== team || !n.visible) continue;
+      if (!((n.owner === team && n.visible) || n.kind === 'portal')) continue;
       if (Math.hypot(n.pos.x - x, n.pos.y - y) <= tune.nodes[n.kind].visionRadiusCells * tune.map.cellSize) return true;
     }
     return false;
@@ -264,38 +282,40 @@ export class BotBrain {
   }
 
   /**
-   * Send a scout to the closest cache that belongs to an enemy-held node, among those in view. Caches of a node
-   * our own team holds are left alone: collecting those only secures what we already have.
+   * Send a scout to the closest cache in view, whichever team it came from. A cache that a friendly scout is already
+   * flying to, and will reach no later than this one could, is skipped: there is no point in the whole team swarming
+   * the screen after the same prize.
    */
-  private stealCache({ view, playerId, team, claims }: BotInput): CommandBody | null {
+  private stealCache({ view, playerId, claims, nowMs }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const hq = view.hqs.find((h) => h.owner === playerId);
     if (!scout || !hq) return null;
-    const enemyNode = new Set(view.nodes.filter((n) => n.owner !== null && n.owner !== team).map((n) => n.id));
-    // Scouts of our team already on their way, so the whole team does not pile onto one cache.
-    const heading = new Map<string, number>();
-    for (const s of view.scouts) {
-      if (s.state !== 'out' || !s.to) continue;
-      const to = s.to;
-      const hit = view.caches.find((c) => Math.hypot(c.pos.x - to.x, c.pos.y - to.y) < 1);
-      if (hit) heading.set(hit.id, (heading.get(hit.id) ?? 0) + 1);
-    }
+    // Where the team's scouts are heading, and how far from it they still are.
+    const flying = view.scouts.filter((s) => s.state === 'out' && s.to && s.from && s.startMs !== undefined && s.arriveMs !== undefined);
+    const remaining = (s: (typeof flying)[number], target: { x: number; y: number }): number => {
+      const k = Math.min(1, Math.max(0, (nowMs - s.startMs!) / Math.max(1, s.arriveMs! - s.startMs!)));
+      const x = s.from!.x + (s.to!.x - s.from!.x) * k;
+      const y = s.from!.y + (s.to!.y - s.from!.y) * k;
+      return Math.hypot(target.x - x, target.y - y);
+    };
     let best: { id: string; d: number } | null = null;
     for (const c of view.caches) {
-      if (!enemyNode.has(c.nodeId)) continue;
-      if ((heading.get(c.id) ?? 0) + (claims?.get(c.id) ?? 0) >= MAX_PER_CACHE) continue;
       const d = Math.hypot(c.pos.x - hq.pos.x, c.pos.y - hq.pos.y);
+      const covered = flying.some((s) => Math.hypot(s.to!.x - c.pos.x, s.to!.y - c.pos.y) < 1 && remaining(s, c.pos) <= d);
+      const claimed = claims?.get(c.id);
+      if (covered || (claimed !== undefined && claimed <= d)) continue;
       if (!best || d < best.d) best = { id: c.id, d };
     }
     if (!best) return null;
-    claims?.set(best.id, (claims.get(best.id) ?? 0) + 1);
+    claims?.set(best.id, best.d);
     return { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } };
   }
 
   private scout({ view, playerId, team, nowMs }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const targets: Target[] = [];
-    for (const n of view.nodes) if (!(n.owner === team && n.visible) && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
+    // Only enemy-held nodes are worth a report: neutral and friendly ones hold nothing to learn.
+    for (const n of view.nodes) if (n.kind !== 'portal' && n.owner !== null && n.owner !== team && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
     for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
     // An enemy HQ we have no live report on is the most useful thing to look at: it decides whether to assault.
     const unreported = view.enemyHqs.filter((h) => !view.scoutReports.some((r) => r.target.kind === 'hq' && r.target.hqId === h.id && r.expiresAtMs > nowMs));
@@ -315,7 +335,7 @@ export class BotBrain {
     const cell = tune.map.cellSize;
 
     // Marches are public, but a bot only reacts to the ones inside its own vision, like a person would.
-    const vision = view.nodes.filter((n) => n.owner === team && n.visible).map((n) => ({ pos: n.pos, r: tune.nodes[n.kind].visionRadiusCells * cell }));
+    const vision = view.nodes.filter((n) => (n.owner === team && n.visible) || n.kind === 'portal').map((n) => ({ pos: n.pos, r: tune.nodes[n.kind].visionRadiusCells * cell }));
     const underThreat = view.enemyMarches.some(
       (m) =>
         m.march.arriveMs > nowMs &&
@@ -341,8 +361,11 @@ export class BotBrain {
       return c;
     };
     // Only nodes we can see are ours: a remembered owner may be out of date.
-    const open = view.nodes.filter((n) => n.owner === team && n.visible && n.id !== here && taken(n) < tune.hq.slotsPerNode);
-    const node = this.pick(open);
+    // Our own nodes first (weight 3); a Portal Nexus is open to everyone, so it is a fallback and an occasional gamble.
+    const open = view.nodes.filter((n) => ((n.owner === team && n.visible) || n.kind === 'portal') && n.id !== here && taken(n) < tune.hq.slotsPerNode);
+    // With no node of ours to land on, a bot only occasionally gambles on a portal straight from the safe zone.
+    if (!underThreat && !needsRefill && !open.some((n) => n.kind !== 'portal') && this.rng.next() > 0.15) return null;
+    const node = this.pickWeighted(open.map((n) => ({ item: n, weight: n.kind === 'portal' ? 1 : 3 })));
     return node ? { type: 'teleport', nodeId: node.id } : null;
   }
 }

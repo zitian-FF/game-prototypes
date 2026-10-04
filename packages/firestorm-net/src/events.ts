@@ -10,8 +10,8 @@ export type ClientEvent =
   | { type: 'garrisoned'; timeMs: number; nodeId: NodeId; squadId: SquadId }
   | { type: 'garrisonRejected'; timeMs: number; nodeId: NodeId; squadId: SquadId; reason: string }
   | { type: 'nodesUnlocked'; timeMs: number; tier: number }
-  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId; caches: number }
-  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number }
+  | { type: 'poolOpened'; timeMs: number; nodeId: NodeId }
+  | { type: 'poolLost'; timeMs: number; nodeId: NodeId; team: TeamId; amount: number; caches: number }
   | { type: 'cacheCollected'; timeMs: number; nodeId: NodeId; cacheId: string; team: TeamId; commander: string; amount: number; at: Vec }
   | { type: 'hqGarrisoned'; timeMs: number; hqId: string; squadId: SquadId }
   | { type: 'hqGarrisonRejected'; timeMs: number; hqId: string; squadId: SquadId; reason: string }
