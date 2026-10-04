@@ -30,6 +30,7 @@ const KIND_NAMES: Record<NodeKind, string> = {
   largeVision: 'Radar Tower',
   turret: 'Missile Turret',
   hospital: 'Hospital',
+  portal: 'Portal Nexus',
 };
 
 /** What a building is called: score nodes are named by tier. */

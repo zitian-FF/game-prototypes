@@ -25,7 +25,9 @@ export type NodeKind =
   | 'teleportCooldown'
   | 'largeVision'
   | 'turret'
-  | 'hospital';
+  | 'hospital'
+  /** Neutral and never capturable: any HQ may teleport onto it, and both teams see the 8 cells around it. */
+  | 'portal';
 
 export const NODE_KINDS: readonly NodeKind[] = [
   'points',
@@ -36,6 +38,7 @@ export const NODE_KINDS: readonly NodeKind[] = [
   'largeVision',
   'turret',
   'hospital',
+  'portal',
 ];
 
 export interface Vec {

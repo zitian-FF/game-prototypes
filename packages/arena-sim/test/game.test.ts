@@ -956,3 +956,26 @@ test('fog: an enemy scout is listed only while it is inside your vision, with it
   assert.equal(seen[0].owner, 'b');
   assert.equal(viewFor(g, 1).enemyScouts.length, 0, 'b sees its own scout in scouts, not as an enemy');
 });
+
+// ----------------------------------------------------------------- portal nexus
+
+test('portal: both teams may teleport onto it, it cannot be captured, and it lights its 8 cells for both', () => {
+  const P: NodeDef = { id: 'P', kind: 'portal', x: 300, y: 300 };
+  const g = makeGame({ nodes: [P, N1], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'P' } }), 'notCapturable');
+  assert.equal(err(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'node', nodeId: 'P' } }), 'notCapturable');
+
+  // Neither team holds it, yet both can teleport there, into different slots.
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'P' });
+  must(g, { type: 'teleport', playerId: 'b', nodeId: 'P' });
+  const slots = g.nodes.get('P')!.slots.filter((s) => s !== null);
+  assert.equal(slots.length, 2);
+  assert.equal(g.nodes.get('P')!.owner, null, 'still neutral');
+
+  // Everyone sees the cells right around it (and so the HQs that landed), nothing further out.
+  assert.ok(g.isVisibleTo(0, { x: 340, y: 340 }) && g.isVisibleTo(1, { x: 340, y: 340 }), 'the 8 cells around it are visible to both');
+  assert.ok(!g.isVisibleTo(0, { x: 300 + 40 * 4, y: 300 }) && !g.isVisibleTo(1, { x: 300 + 40 * 4, y: 300 }), 'but not further out');
+  assert.equal(viewFor(g, 0).enemyHqs.length, 1, 'a sees b HQ at the portal');
+  assert.equal(viewFor(g, 1).enemyHqs.length, 1, 'b sees a HQ at the portal');
+  assert.deepEqual(g.checkInvariants(), []);
+});

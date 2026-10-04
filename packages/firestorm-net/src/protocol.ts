@@ -6,7 +6,7 @@ import type { Command, MapDef, MarchTarget, ScoutTarget, TeamId, Tune } from 'ar
 import type { ClientEvent } from './events';
 import type { ViewPatch, WireView } from './wire';
 
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 /** Match lengths a host can choose in the lobby. */
 export const MATCH_MINUTES = [10, 15, 20, 30] as const;

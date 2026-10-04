@@ -77,7 +77,7 @@ test('bots: at most two scouts of a team head for the same cache', () => {
 
 // ------------------------------------------------------------ HQ fights and teleporting
 
-const TUNE = { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 } } } as unknown as Tune;
+const TUNE = { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 }, portal: { visionRadiusCells: 1.5 } } } as unknown as Tune;
 
 function base(over: Record<string, unknown> = {}): TeamView {
   return {
@@ -144,4 +144,46 @@ test('bots: still in the safe zone with a node of their own, they move the HQ ou
   const tele = decisions(safe, 40).filter((c) => c.type === 'teleport');
   assert.ok(tele.length >= 25, `most bots teleport onto their node (${tele.length} of 40)`);
   assert.equal(decisions(base(), 40).filter((c) => c.type === 'teleport').length, 0, 'an HQ already on a node stays unless threatened');
+});
+
+test('bots: scouts only go to enemy-held nodes, never neutral, friendly or portal ones', () => {
+  const node = (id: string, kind: string, owner: 0 | 1 | null, x: number, y: number) => ({ id, kind, tier: 1, pos: { x, y }, owner, explored: true, visible: owner === 0 });
+  const v = base({
+    nodes: [node('own', 'points', 0, 600, 100), node('neu', 'points', null, 900, 100), node('foe', 'points', 1, 1200, 100), node('p', 'portal', null, 800, 400)],
+    scouts: [{ owner: 'bot', index: 0, state: 'home' }],
+  });
+  const targets = new Set<string>();
+  for (let seed = 1; seed <= 300; seed++) {
+    const brain = new BotBrain('bot', new Rng(seed));
+    const input = { playerId: 'bot', team: 0 as const, view: v, tune: TUNE, speed: 120, nowMs: 0 };
+    brain.think(input);
+    for (let i = 1; i <= 8; i++) for (const c of brain.think({ ...input, nowMs: i * 30_000 })) if (c.type === 'scout' && c.target.kind === 'node') targets.add(c.target.nodeId);
+  }
+  assert.deepEqual([...targets], ['foe']);
+});
+
+test('bots: they creep the front forward from nodes they hold, and about one decision in ten raids a distant node', () => {
+  const node = (id: string, kind: string, owner: 0 | 1 | null, x: number, y: number) => ({ id, kind, tier: 1, pos: { x, y }, owner, explored: true, visible: owner === 0 });
+  const v = base({
+    nodes: [node('own', 'points', 0, 600, 100), node('near', 'points', null, 760, 100), node('far', 'points', null, 2000, 1400), node('p', 'portal', null, 800, 400)],
+    // This commander already holds its own node, so reinforcing it is off the table.
+    squads: [...(base().squads as unknown as object[]), { id: 's2', owner: 'bot', type: 'tank', rank: 5, power: 60, troops: 3000, maxTroops: 3000, defend: true, state: 'garrison', nodeId: 'own' }],
+  });
+  const picked: Record<string, number> = {};
+  let total = 0;
+  for (let seed = 1; seed <= 400; seed++) {
+    const brain = new BotBrain('bot', new Rng(seed));
+    const input = { playerId: 'bot', team: 0 as const, view: v, tune: TUNE, speed: 120, nowMs: 0 };
+    brain.think(input);
+    for (const c of brain.think({ ...input, nowMs: 60_000 })) {
+      if (c.type === 'march' && c.target.kind === 'node') {
+        picked[c.target.nodeId] = (picked[c.target.nodeId] ?? 0) + 1;
+        total++;
+      }
+    }
+  }
+  assert.equal(picked['p'], undefined, 'a portal cannot be captured');
+  assert.ok((picked['near'] ?? 0) > total * 0.5, `the front creeps toward the node beside ours (${JSON.stringify(picked)})`);
+  const raids = (picked['far'] ?? 0) / total;
+  assert.ok(raids > 0.03 && raids < 0.3, `roughly one in ten reaches for the distant node (${(raids * 100).toFixed(0)}%)`);
 });

@@ -3,6 +3,15 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.10.0, firestorm-net 0.10.0
+
+**What changed:** arena-sim adds the neutral Portal Nexus node (never capturable, any HQ may teleport onto it,
+it lights the 8 cells around it for both teams) and a square 41 x 41 map; firestorm-net moves to protocol 7 and
+its bots creep the front forward (leap and bound), raid a distant node one decision in ten, and only scout
+enemy-held nodes. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.9.0, firestorm-net 0.9.0
 
 **What changed:** arena-sim's map generator places each ring's nodes with best-candidate spacing so they end

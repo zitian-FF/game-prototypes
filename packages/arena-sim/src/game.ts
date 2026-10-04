@@ -267,7 +267,8 @@ export class ArenaGame {
   /** True if the point is inside the shared vision of the team's controlled nodes. */
   isVisibleTo(team: TeamId, pos: Vec): boolean {
     for (const n of this.nodes.values()) {
-      if (n.owner !== team) continue;
+      // A Portal Nexus lights up its surroundings for both teams, whoever's HQs are there.
+      if (n.owner !== team && n.kind !== 'portal') continue;
       if (dist(n.pos, pos) <= this.visionRadius(n)) return true;
     }
     return false;
@@ -495,6 +496,7 @@ export class ArenaGame {
     if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (node.kind === 'portal') return 'notCapturable';
       if (this.isLocked(node)) return 'nodeLocked';
       // Reinforcing a node your team already holds must fit in its garrison.
       if (node.owner === player.team) {
@@ -539,7 +541,8 @@ export class ArenaGame {
   private cmdTeleport(player: Player, nodeId: NodeId): string | null {
     const node = this.nodes.get(nodeId);
     if (!node) return 'unknownNode';
-    if (node.owner !== player.team) return 'notControlled';
+    // Any HQ may teleport to a Portal Nexus; every other node must be held by the team.
+    if (node.owner !== player.team && node.kind !== 'portal') return 'notControlled';
     if (this.nowMs < player.nextTeleportAtMs) return 'onCooldown';
     if (player.hq.location.kind === 'node' && player.hq.location.nodeId === nodeId) return 'alreadyThere';
     const slot = node.slots.findIndex((s) => s === null);
@@ -567,6 +570,7 @@ export class ArenaGame {
     } else if (target.kind === 'node') {
       const node = this.nodes.get(target.nodeId);
       if (!node) return 'unknownNode';
+      if (node.kind === 'portal') return 'notCapturable';
       if (this.isLocked(node)) return 'nodeLocked';
       to = node.pos;
       dest = { kind: 'node', nodeId: node.id };
@@ -917,6 +921,10 @@ export class ArenaGame {
   }
 
   private arriveAtNode(sq: Squad, node: NodeState): void {
+    if (node.kind === 'portal') {
+      this.sendHome(sq, node.pos, false); // cannot be held (a march to it is refused anyway)
+      return;
+    }
     if (node.owner === sq.team) {
       const block = this.garrisonBlock(sq, node, false);
       if (block) {

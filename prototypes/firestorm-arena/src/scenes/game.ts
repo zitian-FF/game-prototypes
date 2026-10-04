@@ -8,7 +8,7 @@ import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -461,8 +461,8 @@ export class GameScene extends BaseScene {
     const period = dashLength + gapLength;
     const ux = dx / len;
     const uy = dy / len;
-    g.lineStyle(width, color, 1); // solid: muted lines are a muted colour, not a faded one
-    void alpha;
+    // Order and march lines are background information: scale them all down so they never drown the map.
+    g.lineStyle(width, color, Math.min(1, alpha * clientTune.lines.strength));
     let s = -((now * flowSpeed) % period) + period;
     s -= period;
     g.beginPath();
@@ -484,7 +484,8 @@ export class GameScene extends BaseScene {
 
     // Fog follows which nodes are ours.
     const circles = view.nodes
-      .filter((n) => n.owner === mine && n.visible)
+      // Our nodes light their surroundings, and a Portal Nexus lights its 8 cells for everyone.
+      .filter((n) => (n.owner === mine && n.visible) || n.kind === 'portal')
       .map((n) => ({ x: n.pos.x, y: n.pos.y, r: this.tune.nodes[n.kind].visionRadiusCells * this.tune.map.cellSize }));
     const key = circles.map((c) => `${c.x},${c.y},${c.r}`).join(';');
     if (key !== this.fogKey) {
@@ -521,7 +522,9 @@ export class GameScene extends BaseScene {
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.55) : dim);
-        if (n.kind === 'points' && n.tier >= 4) {
+        if (n.kind === 'portal') {
+          drawPortal(g, p.x, p.y, now, hw * 1.05);
+        } else if (n.kind === 'points' && n.tier >= 4) {
           drawSilo(g, p.x, p.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier >= 2) {
           drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
@@ -695,6 +698,16 @@ export class GameScene extends BaseScene {
     if (!n) return null;
     const tune = this.tune;
     const lines: [string, string][] = [];
+    if (n.kind === 'portal') {
+      return {
+        title: nodeName(n.kind, n.tier),
+        lines: [
+          ['Neutral. It cannot be captured and has no garrison.', COLORS.dim],
+          ['Any HQ of either team can teleport here (8 slots around it).', COLORS.text],
+          ['Both teams see the 8 cells around it, so HQs that land here are in plain view.', COLORS.warn],
+        ],
+      };
+    }
     const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
     lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
     lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
@@ -939,6 +952,7 @@ export class GameScene extends BaseScene {
       title = d.title;
       body = d.lines;
       const nv = view.nodes.find((x) => x.id === t.id);
+      if (nv?.kind === 'portal') attackable = true; // the order panel offers the teleport
       if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) {
         body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)} (${nv.tier === 4 ? 'at 50%' : 'at 75%'} of the clock left)`, COLORS.warn], ...body];
         attackable = false;
@@ -970,6 +984,7 @@ export class GameScene extends BaseScene {
       title,
       body,
       attackable,
+      portal: node?.kind === 'portal',
       allyHq,
       cache: t.kind === 'cache',
       report,
@@ -977,7 +992,7 @@ export class GameScene extends BaseScene {
       atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
       here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : mine.filter((s) => s.state === 'hqGarrison' && s.hqId === t.id),
       scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
-      canTeleport: !!(node && node.owner === this.mine && node.visible && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
+      canTeleport: !!(node && ((node.owner === this.mine && node.visible) || node.kind === 'portal') && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
     };
   }
 
@@ -1040,6 +1055,19 @@ export class GameScene extends BaseScene {
     const ui = this.ui;
     const t = d.t;
     const ownNode = d.node?.owner === this.mine || d.allyHq;
+    if (d.portal) {
+      const oh = 40 + 32 + 6;
+      ui.panel(ox, bottom - oh, ow, oh);
+      ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
+      const nid = d.node!.id;
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', {
+        onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }),
+        enabled: d.canTeleport,
+        size: 12,
+        accent: COLORS.gold,
+      });
+      return;
+    }
     if (d.cache) {
       const sc = d.scoutHome;
       const oh = 40 + 32 + 6;

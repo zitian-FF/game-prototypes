@@ -71,7 +71,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
 - Layout revision (branch): refinery T2 in the mid ring, turret T3, T1/T2 nodes banded toward each spawn, radars placed for T3/T4 vision; cache values fixed at spawn; bots steal the closest enemy cache.
 - Enemy scouts are visible inside vision (`enemyScouts`); bots have individual steal appetites and a two-scouts-per-cache cap.
 - Even node spacing (best-candidate placement), 4 hospitals, 19 nodes; bots assault HQs when confident, defend ally HQs and move their HQ out early (bot-only matches now see 50 to 80 HQ fights and 12 to 20 HQs downed).
-- Packages: arena-sim 0.9.0, firestorm-net 0.9.0, protocol 6.
+- Square 41x41 map, Portal Nexus (4, neutral, teleport for both teams, 8-cell vision), weaker lines, bots creep the front (leap and bound, 10% raids) and only scout enemy nodes.
+- Packages: arena-sim 0.10.0, firestorm-net 0.10.0, protocol 7.
 
 ## Key technical decisions
 
@@ -86,6 +87,8 @@ Everything below the first two bullets of the merged work is on the branch, not 
   at the HQ (`notAtHq`).
 
 ## Open questions
+
+- Cache bug report ("caches spawn although the node did not change hands") is not fixed yet: the rule that decides when caches (re)spawn needs the user's answer.
 
 - Score pools are a large new lever on the result: cache sizes, the 60 s settle time and the +1 cache per 500 are first numbers, unplayed.
 

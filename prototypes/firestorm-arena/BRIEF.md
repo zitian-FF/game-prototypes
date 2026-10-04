@@ -629,4 +629,15 @@ client.
   damaged HQ) and scouts unreported HQs first; and it sends a fit squad to garrison an ally's HQ that an enemy march
   it can see is about to hit, when the squad can get there first. Each bot draws its own aggression and loyalty, as it
   does its cache appetite. Bots no longer throw squads at enemy HQs blindly.
+- Square map and Portal Nexus: the map is a 41 x 41 square (was 57 x 39), with per-cell march speed unchanged
+  (cross-map 329 s on the diagonal), so at least four capturable nodes are under two minutes from each spawn.
+  There are four Portal Nexus nodes (two per half, evenly placed): neutral, never capturable (marches and scouts
+  to them are refused, no garrison, no score), any HQ of either team may teleport onto one (it has the usual 8
+  slots, shared), and each lights only the 8 cells around it for both teams, so HQs that land there are in plain
+  view of everyone. That makes 23 nodes in total.
+- Line strength: march and order lines are drawn at 40% of their old strength (`lines.strength` in client.tune.json)
+  and slightly thinner.
+- Bot targeting: bots creep the front forward from the nodes they hold (a node's pull is how close it is to the
+  nearest node of ours), and one decision in ten raids a node at least 12 cells beyond that front. Bots only scout
+  enemy-held nodes and enemy HQs, never neutral or friendly nodes. Bot HQ aggression is 10% to 55% per decision.
 - Where this section conflicts with older text above, this section wins.

@@ -23,7 +23,8 @@
     "dashLength": 10,
     "gapLength": 8,
     "flowSpeed": 40,
-    "width": 2
+    "width": 1.5,
+    "strength": 0.4
   },
   "fx": {
     "combatSeconds": 2.5,
