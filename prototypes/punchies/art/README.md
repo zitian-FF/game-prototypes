@@ -15,6 +15,32 @@ vector-authored; the retired cinematic menu is replaced by coherent gym art
 until a dedicated menu pass. Mia clothing/face revisions are deferred by owner.
 This is an initial adaptation, not an exact reproduction of the master.
 
+## Layered ring pass
+
+The approved logo is cut from the original 1844x853 board using `extract-logo.cjs`;
+no full-board regeneration. Export with `node prototypes/punchies/art/export.mjs
+'' /absolute/path/logo.png` (empty second argument uses the authored gym menu).
+The optional third argument copies the logo into `loose/logo.png`; it is kept
+when omitted. Menu and loading screens show the logo with text fallback.
+
+Body keys stay `<prefix>_<action>`. Matching `<prefix>_<action>_feet` folders
+contain only feet, same frame numbers, canvas and registration. Bodies contain
+neither baked feet nor ground shadow. There are 210 folders / 1344 frames.
+Claude owns FighterView/KoAnim feet placement and screen-direction shadow wiring;
+these exports alone do not render a separate feet layer in the current runtime.
+Grouping remains derived from the existing character/alt prefixes.
+
+The ring adds `ring_apron` and `ring_turnbuckle` loose layers with padded posts
+and highlighted ropes. The flat floor footprint stays unchanged; the existing
+keystone shader handles tilt. The near apron fits inside the unwarped camera so
+its pixels survive the shader's input render. No tuning or simulation edits.
+Run `node prototypes/punchies/art/check-layers.cjs` before upload.
+
+The gym backdrop uses a shared vanishing point and faint floor seams. Props are
+limited to grounded rear benches, bottles and folded towels, outside ring and
+thumb-control zones. The HUD has rounded layered housings, lit fills and HP/STM/
+STUN labels; values, damage trail and tutorial reveals retain their existing logic.
+
 ## Export contract
 
 Fighters face right on a transparent **256x256** canvas, registered at

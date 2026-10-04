@@ -1,31 +1,32 @@
 ## Current milestone
 
-Ring perspective trial: the ring is drawn with a slight tilt while the sim arena stays a flat square.
+PR199 art handoff expanded with a quieter perspective gym and polished labelled HUD. R2 updated and public hash verified; code remains unmerged.
 
 ## What was implemented
 
-- `render/perspective.ts`: the ring floor, ropes, posts, boxers, KO animation, hit effects and P1/P2 tags are gathered into one container drawn through a keystone shader (far edge narrower, picture vertically squashed). HUD, buttons, touch controls and screen-space overlays stay flat.
-- `tune.view`: `perspective` (1 / 0), `topScale` (0.90, far edge width relative to the near edge) and `squash` (0.85). Panel category "View", live in `?debug=1`. Set `perspective` to 0 to turn it off.
-- Wired into `FightStage`, so Single Player, Local VS, Online, Training and Tutorial all get it.
+- Approved alpha logo in menu/loading, tilted-ring apron, turnbuckles, taller posts and highlighted ropes.
+- 105 matching *_feet exports alongside body frames without baked feet/shadows (210 folders, 1344 registered frames).
+- Quieter gym with shared vanishing point, faint floor seams and two grounded rear benches/bottles/towels; removed repeated equipment and spotlight triangle.
+- Rounded dimensional HUD housings and lit fills with HP/STM/STUN labels. Meter labels obey tutorial reveals; full and partial values inspected.
 
 ## Key technical decisions
 
-- Presentation only: no change to `src/sim`, hitboxes, reach, positions, input mapping or the hit-box overlay maths. Joystick up still moves along the flat world axis.
-- A shader on one container warps everything at once (placeholder shapes and art alike) instead of projecting every draw call. Container children draw in list order, so the container is sorted by depth each frame.
-- Hit effects spawned during a fight join the container when their depth is 60 to 75; depth 76 and above is treated as screen-space.
-- WebGL only. The Canvas renderer has no post effects, so the ring simply stays flat there.
-- The online host's tune is adopted by the guest for a match, so the host's `view` values apply to both screens.
+- Preserved simulation/tuning, ring footprint, existing per-character loading and tilt shader.
+- Resource rows moved below names; short stun bars remain outside central Training buttons.
+- Body/feet layers keep 256x256 canvas and 128,128 anchor. Claude owns runtime feet/shadow and KO wiring.
+- Typecheck/build and layer contract pass; 7 atlas sheets <=2048. Browser verified 210 configs loaded on demand, 84 poses, combat/KO/results, desktop and phone training/tutorial, debug/version, labels/reveal and zero console errors. Separate art-free fallback passed; final captures inspected.
 
 ## Open questions
 
-- Is the strength right? Defaults are a first guess; tune `topScale` and `squash` by eye. Perspective makes vertical distances look shorter than they are (a vertical jab looks shorter than a horizontal one at the same real reach).
-- BRIEF.md has no mention of perspective; it may need a line if this stays.
+- Owner merge decision after Claude feet/shadow integration review.
 
 ## Known issues
 
-- Checked in a desktop Chromium via Playwright (Training, hits and a whiff popup, zero console errors). Not checked on a phone, in KO, online, or in Local VS.
-- Existing Phaser bundle-size warning.
+- Feet/shadow exported but not drawn by current FighterView/KoAnim; integration remains with Claude.
+- Latest R2 bundle has split bodies, so coordinate deployment with feet wiring. PR199 not merged/deployed.
+- Real-phone networking/controller checks unverified; existing Phaser bundle-size warning.
+- Prior ZIP retained locally at outputs/layered-art/punchies-assets-before-gym-hud.zip.
 
 ## Next proposed step
 
-Play it, adjust the View values, then decide whether the perspective stays on by default.
+Claude completes feet/shadow/KO wiring on PR199, then coordinates merge/deploy and live verification with owner.
