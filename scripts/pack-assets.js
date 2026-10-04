@@ -68,6 +68,21 @@ const IMAGE_OPTIMIZATION_RULES = {
   ],
 };
 
+// Per-prototype, opt-in atlas splitting. A prototype with no entry here is
+// packed into one shared atlas (atlas-0, atlas-1, ...) exactly as before.
+// With an entry, each animation key is mapped to a group name and every
+// group is packed into its own atlas set (atlas-<group>-0, ...), so the game
+// can download only the groups a scene needs. The mapping is derived from
+// the folder names, never a hand-kept list.
+//   punchies: "<char>_<action>" -> "<char>", "<char>_alt_<action>" -> "<char>_alt",
+//   "dummy_<action>" -> "dummy".
+const ATLAS_GROUPING = {
+  punchies: (key) => {
+    const [first, second] = key.split('_');
+    return second === 'alt' ? `${first}_alt` : first;
+  },
+};
+
 function fail(message) {
   console.error(`pack-assets: ${message}`);
   process.exit(1);
@@ -137,74 +152,98 @@ if (animKeysPresent.length > 0) {
     folders.push(dir);
   }
 
-  const atlasName = 'atlas';
-  const projectPath = path.join(rootDir, '.cache', `${name}-pack.ftpp`);
-  mkdirSync(path.dirname(projectPath), { recursive: true });
-
-  const project = {
-    packOptions: {
-      textureName: atlasName,
-      width: 2048,
-      height: 2048,
-      fixedSize: false,
-      powerOfTwo: false,
-      padding: 2,
-      extrude: 0,
-      allowRotation: false,
-      detectIdentical: false,
-      allowTrim: true,
-      trimMode: 'trim',
-      removeFileExtension: true,
-      prependFolderName: true,
-      textureFormat: 'png',
-      base64Export: false,
-      scale: 1,
-      packer: 'MaxRectsBin',
-      packerMethod: 'BestShortSideFit',
-      exporter: 'Phaser 3',
-    },
-    images: [],
-    folders,
-    savePath: atlasOutDir,
-  };
-
-  writeFileSync(projectPath, JSON.stringify(project, null, 2));
-
-  console.log(`pack-assets: packing ${animKeys.length} animation folder(s) with free-tex-packer-cli`);
+  const groupOf = ATLAS_GROUPING[name];
+  const groups = new Map(); // atlas name -> { folders, animations }
+  for (const key of animKeys) {
+    const group = groupOf ? groupOf(key) : null;
+    const atlasName = group ? `atlas-${group}` : 'atlas';
+    if (!groups.has(atlasName)) groups.set(atlasName, { group, folders: [], animations: [] });
+    groups.get(atlasName).folders.push(path.join(packedSrcDir, key));
+    groups.get(atlasName).animations.push(key);
+  }
 
   // Invoke Node directly so Windows does not need to execute a shell shim.
   const cliBin = path.join(rootDir, 'node_modules', 'free-tex-packer-cli', 'index.js');
-  try {
-    execFileSync(process.execPath, [cliBin, '--project', projectPath, '--output', atlasOutDir], {
-      stdio: 'inherit',
-      cwd: rootDir,
-    });
-  } catch (err) {
-    fail(`free-tex-packer-cli failed: ${err.message}`);
+  const groupIndex = {};
+  mkdirSync(path.join(rootDir, '.cache'), { recursive: true });
+
+  for (const [atlasName, info] of groups) {
+    const projectPath = path.join(rootDir, '.cache', `${name}-pack-${atlasName}.ftpp`);
+    const project = {
+      packOptions: {
+        textureName: atlasName,
+        width: 2048,
+        height: 2048,
+        fixedSize: false,
+        powerOfTwo: false,
+        padding: 2,
+        extrude: 0,
+        allowRotation: false,
+        detectIdentical: false,
+        allowTrim: true,
+        trimMode: 'trim',
+        removeFileExtension: true,
+        prependFolderName: true,
+        textureFormat: 'png',
+        base64Export: false,
+        scale: 1,
+        packer: 'MaxRectsBin',
+        packerMethod: 'BestShortSideFit',
+        exporter: 'Phaser 3',
+      },
+      images: [],
+      folders: info.folders,
+      savePath: atlasOutDir,
+    };
+    writeFileSync(projectPath, JSON.stringify(project, null, 2));
+
+    console.log(`pack-assets: packing ${info.folders.length} animation folder(s) into ${atlasName}`);
+    try {
+      execFileSync(process.execPath, [cliBin, '--project', projectPath, '--output', atlasOutDir], {
+        stdio: 'inherit',
+        cwd: rootDir,
+      });
+    } catch (err) {
+      fail(`free-tex-packer-cli failed: ${err.message}`);
+    }
+
+    // Exactly this atlas's files: "<atlasName>.json|png" for a single sheet or
+    // "<atlasName>-<n>.json|png" when it spills. Anchoring keeps "atlas-marco"
+    // from claiming "atlas-marco_alt".
+    const own = new RegExp(`^${atlasName}(-\\d+)?\\.(png|json)$`);
+    const atlasFiles = readdirSync(atlasOutDir).filter((f) => own.test(f));
+    if (atlasFiles.length === 0) {
+      fail(`free-tex-packer-cli did not produce any output for ${atlasName}`);
+    }
+    for (const file of atlasFiles) {
+      if (file.endsWith('.json')) {
+        // The CLI preserves absolute folder paths on Windows. Export portable
+        // frame keys matching animations.json without altering trim offsets.
+        const atlasPath = path.join(atlasOutDir, file);
+        const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
+        const prefix = packedSrcDir.replaceAll('\\', '/') + '/';
+        for (const texture of atlas.textures ?? []) {
+          for (const frame of texture.frames ?? []) {
+            const filename = frame.filename.replaceAll('\\', '/');
+            if (filename.startsWith(prefix)) frame.filename = filename.slice(prefix.length);
+          }
+        }
+        writeFileSync(atlasPath, JSON.stringify(atlas));
+      }
+      addToManifest(`atlas/${file}`, path.join(atlasOutDir, file));
+    }
+    if (info.group) {
+      groupIndex[info.group] = {
+        atlases: atlasFiles.filter((f) => f.endsWith('.json')).map((f) => `atlas/${f}`),
+        animations: info.animations,
+      };
+    }
   }
 
-  const atlasFiles = readdirSync(atlasOutDir).filter(
-    (f) => f.startsWith(atlasName) && (f.endsWith('.png') || f.endsWith('.json'))
-  );
-  if (atlasFiles.length === 0) {
-    fail('free-tex-packer-cli did not produce any atlas output');
-  }
-  for (const file of atlasFiles) {
-    if (file.endsWith('.json')) {
-      // The CLI preserves absolute folder paths on Windows. Export portable
-      // frame keys matching animations.json without altering trim offsets.
-      const atlasPath = path.join(atlasOutDir, file);
-      const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
-      const prefix = packedSrcDir.replaceAll('\\', '/') + '/';
-      for (const texture of atlas.textures ?? []) {
-        for (const frame of texture.frames ?? []) {
-          const filename = frame.filename.replaceAll('\\', '/');
-          if (filename.startsWith(prefix)) frame.filename = filename.slice(prefix.length);
-        }
-      }
-      writeFileSync(atlasPath, JSON.stringify(atlas));
-    }
-    addToManifest(`atlas/${file}`, path.join(atlasOutDir, file));
+  if (groupOf) {
+    const groupsPath = path.join(atlasOutDir, 'groups.json');
+    writeFileSync(groupsPath, JSON.stringify(groupIndex, null, 2));
+    addToManifest('atlas/groups.json', groupsPath);
   }
 
   const animationsPath = path.join(atlasOutDir, 'animations.json');

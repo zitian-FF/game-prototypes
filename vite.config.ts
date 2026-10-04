@@ -37,7 +37,7 @@ function punchiesArtIndex(): unknown {
   const dir = path.resolve(__dirname, 'public/prototypes/punchies/assets');
   const read = (file: string, fallback: unknown) => fs.existsSync(path.join(dir, file))
     ? JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) : fallback;
-  return { manifest: read('manifest.json', []), animations: read('atlas/animations.json', {}) };
+  return { manifest: read('manifest.json', []), animations: read('atlas/animations.json', {}), groups: read('atlas/groups.json', {}) };
 }
 
 export default defineConfig(({ command }) => ({

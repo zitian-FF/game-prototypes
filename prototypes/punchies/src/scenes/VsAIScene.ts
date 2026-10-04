@@ -3,7 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
-import { resultArt } from '../render/art';
+import { fighterGroups, resultArt, whenGroupsReady } from '../render/art';
 import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { makeBot, type Bot, type BotLevel } from '../sim/bot';
@@ -33,6 +33,14 @@ export class VsAIScene extends Phaser.Scene {
     this.chars = data?.chars ?? this.chars;
     this.level = data?.level ?? this.level;
     applyCameraPixelRatio(this);
+    this.built = false;
+    whenGroupsReady(this, fighterGroups(this.chars), () => this.build());
+  }
+
+  private built = false;
+
+  private build(): void {
+    this.built = true;
     this.acc = 0;
     this.over = false;
     this.sim = createSimState({ timed: true, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
@@ -43,6 +51,7 @@ export class VsAIScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    if (!this.built) return;
     this.stage.pollDevices();
     if (!this.over) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);

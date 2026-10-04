@@ -12,7 +12,7 @@ import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
 import type { MatchData } from './LobbyScene';
-import { artImage, backdrop } from '../render/art';
+import { artImage, backdrop, fighterGroups, prefetchGroups } from '../render/art';
 
 // Character select. UI chrome only: it never touches the sim except to hand
 // the chosen ids to the fight scene.
@@ -458,6 +458,8 @@ export class CharSelectScene extends Phaser.Scene {
     g.clear();
     // Each side wears its character's colour (alt colour on a mirror pick).
     const chars = this.picks();
+    // Download the boxers on show (and so the next fight's art) in the background.
+    prefetchGroups(fighterGroups(chars));
     const col = [lookFor(chars, 0), lookFor(chars, 1)].map((l, i) => (this.sides[i].src === 'remote' && !this.bothLocked() ? COLORS[i] : l.color));
     for (let s = 0; s < 2; s++) {
       const l = lookFor(chars, s);

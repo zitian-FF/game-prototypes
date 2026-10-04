@@ -3,7 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
-import { resultArt } from '../render/art';
+import { fighterGroups, prefetchGroups, resultArt } from '../render/art';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { charName } from '../sim/character';
@@ -68,6 +68,8 @@ export class MatchScene extends Phaser.Scene {
     const nm = (i: 0 | 1) => charName(data.chars[i]);
     const names: [string, string] =
       data.localIdx === 0 ? [`YOU (host) · ${nm(0)}`, `OPPONENT · ${nm(1)}`] : [`OPPONENT · ${nm(0)}`, `YOU · ${nm(1)}`];
+    // No waiting here: the session is live, so a late atlas just pops in.
+    prefetchGroups(fighterGroups(data.chars));
     this.stage = new FightStage(this, names, data.localIdx);
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'LEAVE', () => this.leave());
 
