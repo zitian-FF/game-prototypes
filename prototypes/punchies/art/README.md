@@ -36,6 +36,11 @@ keystone shader handles tilt. The near apron fits inside the unwarped camera so
 its pixels survive the shader's input render. No tuning or simulation edits.
 Run `node prototypes/punchies/art/check-layers.cjs` before upload.
 
+The gym backdrop uses a shared vanishing point and faint floor seams. Props are
+limited to grounded rear benches, bottles and folded towels, outside ring and
+thumb-control zones. The HUD has rounded layered housings, lit fills and HP/STM/
+STUN labels; values, damage trail and tutorial reveals retain their existing logic.
+
 ## Export contract
 
 Fighters face right on a transparent **256x256** canvas, registered at

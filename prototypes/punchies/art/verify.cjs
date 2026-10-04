@@ -48,6 +48,11 @@ async function main() {
   await waitScene('Training');
   await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
   await shot('training');
+  const meterLabels = await page.evaluate(() => window.__testGame.scene.getScene('Training').stage.hud.meterLabels.map(({text})=>({text:text.text,visible:text.visible})));
+  assert.deepEqual(meterLabels.map(l=>l.text),['HP','STM','STUN','HP','STM','STUN']);
+  assert(meterLabels.every(l=>l.visible),'both fighters have visible meter labels');
+  await page.evaluate(()=>{const s=window.__testGame.scene.getScene('Training');s.sim.fighters[0].health*=0.5;s.sim.fighters[0].stamina*=0.5;s.sim.fighters[0].stun=20;s.stage.hud.draw(s.sim);});
+  await shot('hud-partial');
   // Exercise on-demand main/alt loading through real mirror-match scene entry.
   for (const id of ['marco','mia','bruno']) {
     await page.evaluate(id => {const game=window.__testGame;game.scene.getScenes(true).find(s=>s.scene.key!=='ArtBoot').scene.start('VsAI',{chars:[id,id],level:'easy'});},id);
@@ -102,6 +107,11 @@ async function main() {
   await shot('results');
   await page.evaluate(()=>window.__testGame.scene.getScene('VsAI').scene.start('Tutorial',{restart:true}));await waitScene('Tutorial');await shot('tutorial');
   await page.setViewportSize({width:844,height:390});await page.waitForTimeout(300);await shot('mobile-tutorial');
+  assert(await page.evaluate(()=>window.__testGame.scene.getScene('Tutorial').stage.hud.meterLabels.every(({text})=>!text.visible)), 'meter labels respect tutorial reveal');
+  await page.evaluate(()=>window.__testGame.scene.getScene('Tutorial').scene.start('Training'));
+  await waitScene('Training');await page.waitForFunction(()=>!!window.__testGame.scene.getScene('Training').stage);
+  await shot('mobile-training');
+  await page.evaluate(()=>window.__testGame.scene.getScene('Training').scene.start('Tutorial',{restart:true}));await waitScene('Tutorial');
   // Lobby presentation only: mock TURN and relay sockets to avoid creating
   // a public test room or claiming a two-peer network playtest.
   await page.route('https://mp-net-turn-relay.tianz-88.workers.dev/**', route => route.fulfill({json:{iceServers:[]}}));
