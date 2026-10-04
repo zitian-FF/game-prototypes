@@ -55,6 +55,7 @@
   "cardCollectEase": "Cubic.easeInOut",
   "cardCollectFadeMs": 250,
   "cardCollectFadeScale": 0.4,
+  "cardRedistributionRevealHoldMs": 500,
   "cardRevealFlipMs": 260,
   "cardRevealFlipEase": "Sine.easeInOut",
   "doublePlayOverlapFraction": 0.72,
