@@ -172,9 +172,10 @@ if (animKeysPresent.length > 0) {
 
   console.log(`pack-assets: packing ${animKeys.length} animation folder(s) with free-tex-packer-cli`);
 
-  const cliBin = path.join(rootDir, 'node_modules', '.bin', 'free-tex-packer-cli');
+  // Invoke Node directly so Windows does not need to execute a shell shim.
+  const cliBin = path.join(rootDir, 'node_modules', 'free-tex-packer-cli', 'index.js');
   try {
-    execFileSync(cliBin, ['--project', projectPath, '--output', atlasOutDir], {
+    execFileSync(process.execPath, [cliBin, '--project', projectPath, '--output', atlasOutDir], {
       stdio: 'inherit',
       cwd: rootDir,
     });
@@ -189,6 +190,20 @@ if (animKeysPresent.length > 0) {
     fail('free-tex-packer-cli did not produce any atlas output');
   }
   for (const file of atlasFiles) {
+    if (file.endsWith('.json')) {
+      // The CLI preserves absolute folder paths on Windows. Export portable
+      // frame keys matching animations.json without altering trim offsets.
+      const atlasPath = path.join(atlasOutDir, file);
+      const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
+      const prefix = packedSrcDir.replaceAll('\\', '/') + '/';
+      for (const texture of atlas.textures ?? []) {
+        for (const frame of texture.frames ?? []) {
+          const filename = frame.filename.replaceAll('\\', '/');
+          if (filename.startsWith(prefix)) frame.filename = filename.slice(prefix.length);
+        }
+      }
+      writeFileSync(atlasPath, JSON.stringify(atlas));
+    }
     addToManifest(`atlas/${file}`, path.join(atlasOutDir, file));
   }
 

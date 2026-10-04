@@ -7,7 +7,7 @@
 // never executes vite.config.ts) still has a file to import.
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 function formatDate(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
@@ -36,7 +36,7 @@ export function generateVersionStamps(rootDir) {
   }
 }
 
-const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   generateVersionStamps(rootDir);
