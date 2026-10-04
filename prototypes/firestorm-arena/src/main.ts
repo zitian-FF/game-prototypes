@@ -5,6 +5,7 @@ import { LobbyScene } from './scenes/lobby';
 import { GameScene } from './scenes/game';
 import { session } from './net/session';
 import { intents } from './input/intents';
+import { installFullscreen } from './input/fullscreen';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 
 
@@ -52,6 +53,8 @@ function watchDpr(): void {
   );
 }
 watchDpr();
+
+installFullscreen(() => intents.touch);
 
 mountDebugPanelIfRequested();
 
