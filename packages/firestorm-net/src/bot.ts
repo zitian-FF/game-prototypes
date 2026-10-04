@@ -22,7 +22,7 @@ export interface BotInput {
   /** Squad march speed in map units per second (used to judge whether a squad can reach an ally in time). */
   speed: number;
   nowMs: number;
-  /** Shared within a decision round (unused by this bot, kept for the room). */
+  /** Shared by the team within a decision round: cache id to the distance of the bot that claimed it. */
   claims?: Map<string, number>;
 }
 
@@ -64,8 +64,6 @@ const CONFIDENT_POWER = 66;
 /** Each bot has its own appetite for stealing caches: from rarely to most of the time. */
 const STEAL_MIN = 0.1;
 const STEAL_MAX = 0.85;
-/** At most this many scouts of one team head for the same cache. */
-const MAX_PER_CACHE = 2;
 
 export class BotBrain {
   private nextActMs: number | undefined;
@@ -284,31 +282,32 @@ export class BotBrain {
   }
 
   /**
-   * Send a scout to the closest cache that belongs to an enemy-held node, among those in view. Caches of a node
-   * our own team holds are left alone: collecting those only secures what we already have.
+   * Send a scout to the closest cache in view, whichever team it came from. A cache that a friendly scout is already
+   * flying to, and will reach no later than this one could, is skipped: there is no point in the whole team swarming
+   * the screen after the same prize.
    */
-  private stealCache({ view, playerId, team, claims }: BotInput): CommandBody | null {
+  private stealCache({ view, playerId, claims, nowMs }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
     const hq = view.hqs.find((h) => h.owner === playerId);
     if (!scout || !hq) return null;
-    const enemyNode = new Set(view.nodes.filter((n) => n.owner !== null && n.owner !== team).map((n) => n.id));
-    // Scouts of our team already on their way, so the whole team does not pile onto one cache.
-    const heading = new Map<string, number>();
-    for (const s of view.scouts) {
-      if (s.state !== 'out' || !s.to) continue;
-      const to = s.to;
-      const hit = view.caches.find((c) => Math.hypot(c.pos.x - to.x, c.pos.y - to.y) < 1);
-      if (hit) heading.set(hit.id, (heading.get(hit.id) ?? 0) + 1);
-    }
+    // Where the team's scouts are heading, and how far from it they still are.
+    const flying = view.scouts.filter((s) => s.state === 'out' && s.to && s.from && s.startMs !== undefined && s.arriveMs !== undefined);
+    const remaining = (s: (typeof flying)[number], target: { x: number; y: number }): number => {
+      const k = Math.min(1, Math.max(0, (nowMs - s.startMs!) / Math.max(1, s.arriveMs! - s.startMs!)));
+      const x = s.from!.x + (s.to!.x - s.from!.x) * k;
+      const y = s.from!.y + (s.to!.y - s.from!.y) * k;
+      return Math.hypot(target.x - x, target.y - y);
+    };
     let best: { id: string; d: number } | null = null;
     for (const c of view.caches) {
-      if (!enemyNode.has(c.nodeId)) continue;
-      if ((heading.get(c.id) ?? 0) + (claims?.get(c.id) ?? 0) >= MAX_PER_CACHE) continue;
       const d = Math.hypot(c.pos.x - hq.pos.x, c.pos.y - hq.pos.y);
+      const covered = flying.some((s) => Math.hypot(s.to!.x - c.pos.x, s.to!.y - c.pos.y) < 1 && remaining(s, c.pos) <= d);
+      const claimed = claims?.get(c.id);
+      if (covered || (claimed !== undefined && claimed <= d)) continue;
       if (!best || d < best.d) best = { id: c.id, d };
     }
     if (!best) return null;
-    claims?.set(best.id, (claims.get(best.id) ?? 0) + 1);
+    claims?.set(best.id, best.d);
     return { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } };
   }
 

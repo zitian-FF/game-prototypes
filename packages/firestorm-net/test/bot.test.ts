@@ -26,7 +26,7 @@ function view(): TeamView {
   } as unknown as TeamView;
 }
 
-test('bots: with enemy caches in view they send a scout to the closest one and leave friendly caches alone', () => {
+test('bots: with caches in view they send a scout to the closest one, whichever team it came from', () => {
   let stole = 0;
   for (let seed = 1; seed <= 40; seed++) {
     const brain = new BotBrain('bot', new Rng(seed));
@@ -35,8 +35,7 @@ test('bots: with enemy caches in view they send a scout to the closest one and l
     const cmds = brain.think({ ...input, nowMs: 60_000 });
     for (const c of cmds) {
       if (c.type === 'scout' && c.target.kind === 'cache') {
-        assert.notEqual(c.target.cacheId, 'friendly', 'never collects a cache of a node its own team holds');
-        assert.equal(c.target.cacheId, 'near', 'goes for the closest enemy cache');
+        assert.equal(c.target.cacheId, 'friendly', 'the closest cache, even one from its own team lost pool');
         stole++;
       }
     }
@@ -57,22 +56,34 @@ test('bots: with enemy caches in view they send a scout to the closest one and l
   assert.ok(Math.max(...perBot) - Math.min(...perBot) >= 8, `appetites differ between bots: ${perBot.join(',')}`);
 });
 
-test('bots: at most two scouts of a team head for the same cache', () => {
+test('bots: a cache a closer friendly scout is already flying to is left alone, so the team does not swarm it', () => {
   const v = view();
-  const near = v.caches.find((c) => c.id === 'near')!;
+  const closest = v.caches.find((c) => c.id === 'friendly')!;
+  // A teammate scout, almost there (30 units away), already heading for the closest cache.
   (v as unknown as { scouts: unknown[] }).scouts = [
     { owner: 'bot', index: 0, state: 'home' },
-    { owner: 'mate1', index: 0, state: 'out', to: near.pos },
-    { owner: 'mate2', index: 0, state: 'out', to: near.pos },
+    { owner: 'mate', index: 0, state: 'out', from: { x: 1000, y: 100 }, to: closest.pos, startMs: 0, arriveMs: 100_000 },
   ];
-  for (let seed = 1; seed <= 40; seed++) {
+  const picks = new Set<string>();
+  for (let seed = 1; seed <= 60; seed++) {
     const brain = new BotBrain('bot', new Rng(seed));
     const input = { playerId: 'bot', team: 0 as const, view: v, tune: { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 } } } as unknown as Tune, speed: 1, nowMs: 0 };
     brain.think(input);
-    for (const c of brain.think({ ...input, nowMs: 60_000 })) {
-      if (c.type === 'scout' && c.target.kind === 'cache') assert.equal(c.target.cacheId, 'far', 'the crowded cache is skipped');
-    }
+    for (const c of brain.think({ ...input, nowMs: 99_000 })) if (c.type === 'scout' && c.target.kind === 'cache') picks.add(c.target.cacheId);
   }
+  assert.ok(picks.size > 0, 'bots still go for the other caches');
+  assert.ok(!picks.has('friendly'), 'but not the one a nearer friendly scout will reach first');
+  // Within one decision round, the team shares claims: the first bot's claim keeps the second away.
+  const claims = new Map<string, number>();
+  const fresh = view();
+  const results: string[] = [];
+  for (let seed = 1; seed <= 6; seed++) {
+    const brain = new BotBrain('bot', new Rng(seed));
+    const input = { playerId: 'bot', team: 0 as const, view: fresh, tune: { map: { cellSize: 40 }, garrison: { maxSquads: 20, maxPerCommander: 1 }, hq: { slotsPerNode: 8 }, nodes: { points: { visionRadiusCells: 6 } } } as unknown as Tune, speed: 1, nowMs: 0, claims };
+    brain.think(input);
+    for (const c of brain.think({ ...input, nowMs: 60_000 })) if (c.type === 'scout' && c.target.kind === 'cache') results.push(c.target.cacheId);
+  }
+  assert.equal(results.filter((id) => id === 'friendly').length, 1, 'only one bot of the round takes the closest cache');
 });
 
 // ------------------------------------------------------------ HQ fights and teleporting

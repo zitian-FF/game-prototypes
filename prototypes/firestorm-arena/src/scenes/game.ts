@@ -412,17 +412,17 @@ export class GameScene extends BaseScene {
           this.fx.ring(e.at.x, e.at.y, now, e.team === mine ? 0xffd54a : COLORS.enemy, 0.8, 0.8);
           this.floaters.push({ text: `+${fmtInt(Math.round(e.amount))}`, color: e.team === mine ? '#ffe08a' : '#ff9a7a', size: 16, x: p.x, y: p.y - 30, start: now });
           const where = this.nodeLabel(view, e.nodeId);
-          const holder = view.nodes.find((n) => n.id === e.nodeId)?.owner;
-          if (e.team === mine && holder === mine) session.toast(`Banked ${fmtInt(Math.round(e.amount))} points at ${where}`, 'good');
-          else if (e.team === mine) session.toast(`Your scout stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'good');
-          else if (holder === mine) session.toast(`${e.commander} stole ${fmtInt(Math.round(e.amount))} points from ${where}`, 'bad');
+          if (e.team === mine) session.toast(`Your scouts banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'good');
+          else session.toast(`${e.commander} banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'bad');
           break;
         }
         case 'poolLost':
-          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)} and its ${fmtInt(Math.round(e.amount))} point pool`, 'bad');
+          if (e.amount <= 0) break;
+          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)}: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Scouts can win it back`, 'bad');
+          else session.toast(`${this.nodeLabel(view, e.nodeId)} taken: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Send scouts`, 'good');
           break;
         case 'poolOpened':
-          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: collect its caches with scouts`, 'info');
+          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: hold the node to keep it`, 'info');
           break;
         case 'nodesUnlocked':
           session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Missile Turrets unlocked: they can be captured now', 'good');
@@ -724,7 +724,7 @@ export class GameScene extends BaseScene {
       effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Missile Turret and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
     }
     if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
-    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder, lost with the node. Scouts can bank it by collecting its caches.`, COLORS.warn]);
+    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder. If the node is taken, it drops as caches that any scout can bank.`, COLORS.warn]);
     else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}: until then its points are permanent.`, COLORS.dim]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
@@ -842,12 +842,13 @@ export class GameScene extends BaseScene {
     ui.panel(px, y0, pw, 38 + (shown.length + extra) * rowH + 8, 0.95);
     ui.text('Commander leaderboard', px + 12, y0 + 8, { size: 14, bold: true });
     const nameX = px + 44;
-    const colX = { troops: px + pw - 290, nodes: px + pw - 225, garrison: px + pw - 160, hqs: px + pw - 100, score: px + pw - 14 };
+    const colX = { troops: px + pw - 330, nodes: px + pw - 268, garrison: px + pw - 205, hqs: px + pw - 150, caches: px + pw - 95, score: px + pw - 14 };
     const head = (t: string, x: number) => ui.text(t, x, y0 + 11, { size: 10, color: COLORS.dim, align: 'right' });
     head('Troops', colX.troops);
     head('Nodes', colX.nodes);
     head('Garrison s', colX.garrison);
     head('HQs', colX.hqs);
+    head('Caches', colX.caches);
     head('Score', colX.score);
     const line = (r: PlayerScore, rank: number, y: number) => {
       const you = r.id === me;
@@ -858,6 +859,7 @@ export class GameScene extends BaseScene {
       ui.text(String(r.nodesCaptured), colX.nodes, y + 3, { size: 12, align: 'right' });
       ui.text(String(Math.round(r.garrisonSeconds)), colX.garrison, y + 3, { size: 12, align: 'right' });
       ui.text(String(r.hqsDowned), colX.hqs, y + 3, { size: 12, align: 'right' });
+      ui.text(fmtInt(r.cachePoints ?? 0), colX.caches, y + 3, { size: 12, align: 'right' });
       ui.text(fmtInt(r.score), colX.score, y + 3, { size: 13, bold: true, align: 'right', color: '#ffd54a' });
     };
     shown.forEach((r, i) => line(r, i + 1, y0 + 34 + i * rowH));
@@ -942,9 +944,9 @@ export class GameScene extends BaseScene {
       if (!c) return null;
       title = 'Score cache';
       body = [
-        [`Worth ${fmtInt(c.value)} points right now`, '#ffe08a'],
-        [`Part of the pool of ${this.nodeLabel(view, c.nodeId)}. Any scout can collect it, yours or an enemy's.`, COLORS.dim],
-        ['The points are banked the moment the scout touches it. If it is the holder\'s own, that secures it; if it is an enemy\'s, it steals it.', COLORS.dim],
+        [`Worth ${fmtInt(c.value)} points, fixed`, '#ffe08a'],
+        [`Dropped from the pool of ${this.nodeLabel(view, c.nodeId)} when it changed hands, from ${c.from === this.mine ? 'your team' : 'the enemy team'}.`, COLORS.dim],
+        ['Any scout can collect it. The points are added to its team score for good the moment it touches.', COLORS.dim],
       ];
     } else if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);

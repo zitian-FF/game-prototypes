@@ -87,7 +87,8 @@
     "perTroopDefeated": 1,
     "perNodeCaptured": 1000,
     "perGarrisonSecond": 10,
-    "perHqDowned": 500
+    "perHqDowned": 500,
+    "perCachePoint": 1
   },
   "garrison": {
     "maxSquads": 20,
