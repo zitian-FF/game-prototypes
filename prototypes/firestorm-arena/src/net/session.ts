@@ -4,7 +4,7 @@ import type { MatchResult } from 'arena-sim';
 import { clientTune } from '../clientTune';
 
 const SAVE_KEY = 'firestorm-arena:save:v1';
-const ROOM_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const ROOM_ALPHABET = 'ACDEFHJKMNPRTWXY';
 
 interface Save {
   clientId: string;
@@ -38,7 +38,7 @@ export function randomRoomCode(): string {
 }
 
 export function normalizeRoomCode(raw: string): string {
-  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+  return raw.toUpperCase().replace(new RegExp('[^' + ROOM_ALPHABET + ']', 'g'), '').slice(0, 3);
 }
 
 const DEPLOYED_SERVER = 'wss://firestorm-arena-server.tianz-88.workers.dev';

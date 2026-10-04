@@ -3,6 +3,16 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.11.0, firestorm-net 0.11.0
+
+**What changed:** arena-sim reworks score pools and caches: a node's pool opens 60 s after any capture and counts
+toward its team; only when the node swaps sides is the pool emptied and dropped as 4 to 8 equal, permanent caches
+that any scout can bank for its own team. Commanders earn +1 personal score per team point banked from a cache.
+firestorm-net moves to protocol 8 and bots no longer swarm a cache a closer friendly scout is already flying to.
+Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.10.0, firestorm-net 0.10.0
 
 **What changed:** arena-sim adds the neutral Portal Nexus node (never capturable, any HQ may teleport onto it,

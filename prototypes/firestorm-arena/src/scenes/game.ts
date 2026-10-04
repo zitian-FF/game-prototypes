@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
-import { BaseScene, DPR, logicalSize } from './base';
+import { BaseScene, bufferScale, isTouch, logicalSize } from './base';
 import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
@@ -222,11 +222,15 @@ export class GameScene extends BaseScene {
   }
 
   private zoomAt(steps: number, px: number, py: number): void {
+    this.zoomBy(Math.pow(clientTune.camera.zoomStep, steps), px, py);
+  }
+
+  private zoomBy(factor: number, px: number, py: number): void {
     const { w, h } = logicalSize();
     const x = px < 0 ? w / 2 : px;
     const y = py < 0 ? h / 2 : py;
     const before = this.screenToMap(x, y);
-    this.zoom = Phaser.Math.Clamp(this.zoom * Math.pow(clientTune.camera.zoomStep, steps), this.minZoom(), clientTune.camera.zoomMax);
+    this.zoom = Phaser.Math.Clamp(this.zoom * factor, this.minZoom(), clientTune.camera.zoomMax);
     this.camX = before.x - (x - w / 2) / this.zoom;
     this.camY = before.y - (y - h / 2) / this.zoom;
   }
@@ -246,6 +250,9 @@ export class GameScene extends BaseScene {
           break;
         case 'zoom':
           if (!this.ui.covers(intents.pointer.x, intents.pointer.y)) this.zoomAt(e.steps, e.x, e.y);
+          break;
+        case 'pinch':
+          this.zoomBy(e.factor, e.x, e.y);
           break;
         case 'primary':
           if (!this.ui.click(e.x, e.y)) this.target = this.pick(e.x, e.y, view);
@@ -438,13 +445,13 @@ export class GameScene extends BaseScene {
   // ------------------------------------------------------------------- world
 
   protected onDprChanged(): void {
-    for (const t of this.labels) t.setResolution(DPR * 2);
+    for (const t of this.labels) t.setResolution(bufferScale() * 2);
   }
 
   private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     let t = this.labels[this.labelUsed];
     if (!t) {
-      t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: DPR * 2, stroke: '#000', strokeThickness: 3 });
+      t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: bufferScale() * 2, stroke: '#000', strokeThickness: 3 });
       this.world.add(t);
       this.labels[this.labelUsed] = t;
     }
@@ -798,7 +805,7 @@ export class GameScene extends BaseScene {
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
     this.drawTargetPanel(view, simMs, w, h);
 
-    ui.text('Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
+    ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
     // ---- loading overlay for the first moments
     const loaded = (this.time.now - this.loadStartedAt) / 1000;
@@ -1020,8 +1027,10 @@ export class GameScene extends BaseScene {
     const pw = 340;
     const gap = 8;
     const ow = 290;
-    const total = d.attackable ? pw + gap + ow : pw;
-    const px = Math.round((w - total) / 2);
+    const total = pw + gap + ow;
+    // Centre the pair, but slide it clear of the squad panel on the left when the window is narrow.
+    const squadRight = 560;
+    const px = Math.round(Math.max((w - total) / 2, Math.min(squadRight, w - total - 8)));
     const bottom = h - 34;
 
     const lines: { text: string; color: string }[] = [];
@@ -1029,7 +1038,8 @@ export class GameScene extends BaseScene {
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const shown = defenders.slice(0, 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
-    const ph = 40 + lines.length * 16 + reportH + 8;
+    // Both panels share one height so the pair reads as a single, aligned group.
+    const ph = Math.max(40 + lines.length * 16 + reportH + 8, this.orderHeight(d));
     const py = bottom - ph;
 
     ui.panel(px, py, pw, ph);
@@ -1050,15 +1060,31 @@ export class GameScene extends BaseScene {
       if (defenders.length > shown.length) ui.text(`+${defenders.length - shown.length} more`, px + 20, y, { size: 11, color: COLORS.dim });
     }
 
-    if (d.attackable) this.drawOrderPanel(d, px + pw + gap, ow, bottom);
+    this.drawOrderPanel(d, px + pw + gap, ow, bottom, ph);
   }
 
-  private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number): void {
+  /** Natural height of the orders panel for the current target. */
+  private orderHeight(d: NonNullable<ReturnType<GameScene['targetData']>>): number {
+    if (!d.attackable || d.portal || d.cache) return 40 + 32 + 6;
+    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
+    return 40 + rows * 32 + 6;
+  }
+
+  private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number, fixedH: number): void {
     const ui = this.ui;
     const t = d.t;
     const ownNode = d.node?.owner === this.mine || d.allyHq;
+    if (!d.attackable) {
+      const oh = fixedH;
+      ui.panel(ox, bottom - oh, ow, oh);
+      ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
+      const locked = d.node?.unlocksAtMs !== undefined && d.node.unlocksAtMs > session.simNow();
+      const msg = locked ? 'Locked. Orders open when the node unlocks.' : 'No orders for this target.';
+      ui.text(msg, ox + 12, bottom - oh + 36, { size: 12, color: COLORS.dim });
+      return;
+    }
     if (d.portal) {
-      const oh = 40 + 32 + 6;
+      const oh = fixedH;
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
       const nid = d.node!.id;
@@ -1072,7 +1098,7 @@ export class GameScene extends BaseScene {
     }
     if (d.cache) {
       const sc = d.scoutHome;
-      const oh = 40 + 32 + 6;
+      const oh = fixedH;
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
       ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, sc ? 'Send scout to collect' : 'No scout at home', {
@@ -1083,8 +1109,7 @@ export class GameScene extends BaseScene {
       });
       return;
     }
-    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
-    const oh = 40 + rows * 32 + 6;
+    const oh = fixedH;
     const oy = bottom - oh;
     ui.panel(ox, oy, ow, oh);
     ui.text('Orders', ox + 12, oy + 10, { size: 14, bold: true });

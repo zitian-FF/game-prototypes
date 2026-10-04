@@ -111,7 +111,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 7, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -152,7 +152,7 @@ class Client {
   }
 }
 
-const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const ALPHA = 'ACDEFHJKMNPRTWXY';
 const code = Array.from({ length: 3 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
 
 try {
@@ -161,7 +161,7 @@ try {
   check(true, 'worker is up and /health answers');
 
   // --- routing and refusals ------------------------------------------------------------------
-  const wrongRoom = new Client('Nobody', 'ZZ9', 'client-nobody-0001');
+  const wrongRoom = new Client('Nobody', 'AAA', 'client-nobody-0001');
   await wrongRoom.connect(false);
   await wrongRoom.waitFor((m) => m.t === 'error', 5000, 'an error');
   check(wrongRoom.last('error').code === 'roomNotFound', 'joining a room that does not exist is refused');
