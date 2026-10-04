@@ -7,6 +7,11 @@
     "flyMaxDistance": 200,
     "resultDelayMs": 500
   },
+  "view": {
+    "perspective": 1,
+    "topScale": 0.9,
+    "squash": 0.85
+  },
   "ring": {
     "left": 267,
     "top": 64,

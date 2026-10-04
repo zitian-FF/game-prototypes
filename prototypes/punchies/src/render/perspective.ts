@@ -1,0 +1,106 @@
+import Phaser from 'phaser';
+import { tune } from '../sim/tune';
+
+// Ring perspective: a presentation-only tilt. The sim arena stays a flat
+// square; everything that belongs to the ring (floor, ropes, boxers, hit
+// effects) is gathered into one container and drawn through a keystone
+// shader, so the far edge is narrower and the picture is slightly squashed.
+// HUD, buttons and touch controls are not in the container and stay flat.
+// The shader works in logical world pixels, so it is independent of the
+// render scale and of the camera fit.
+
+const KEY = 'PunchiesKeystone';
+
+// Shared by the pipeline (read every frame): what the camera shows, in
+// logical world pixels, and the ring the taper is anchored to.
+const state = { view: [0, 0, 844, 390], ring: [0, 0, 1, 1], warp: [1, 1] };
+
+const FRAG = `
+#define SHADER_NAME PUNCHIES_KEYSTONE_FS
+precision mediump float;
+uniform sampler2D uMainSampler;
+uniform vec4 uView;   // camera view: x, y, w, h (world px)
+uniform vec4 uRing;   // ring: left, top, width, height (world px)
+uniform vec2 uWarp;   // far-edge scale, vertical squash
+varying vec2 outTexCoord;
+void main() {
+  vec2 uv = vec2(outTexCoord.x, 1.0 - outTexCoord.y);
+  vec2 p = uView.xy + uv * uView.zw;
+  float cx = uRing.x + uRing.z * 0.5;
+  float cy = uRing.y + uRing.w * 0.5;
+  // Invert the tilt: where in the flat picture does this output pixel come from?
+  float ys = cy + (p.y - cy) / uWarp.y;
+  float t = (ys - uRing.y) / uRing.w;
+  float s = max(mix(uWarp.x, 1.0, t), 0.2);
+  float xs = cx + (p.x - cx) / s;
+  vec2 q = (vec2(xs, ys) - uView.xy) / uView.zw;
+  if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) {
+    gl_FragColor = vec4(0.0);
+  } else {
+    gl_FragColor = texture2D(uMainSampler, vec2(q.x, 1.0 - q.y));
+  }
+}
+`;
+
+class KeystonePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
+  constructor(game: Phaser.Game) {
+    super({ game, name: KEY, fragShader: FRAG });
+  }
+  onPreRender(): void {
+    this.set4f('uView', state.view[0], state.view[1], state.view[2], state.view[3]);
+    this.set4f('uRing', state.ring[0], state.ring[1], state.ring[2], state.ring[3]);
+    this.set2f('uWarp', state.warp[0], state.warp[1]);
+  }
+}
+
+// The ring world: add the objects that should tilt, call update() each frame.
+export class RingPerspective {
+  readonly world: Phaser.GameObjects.Container | null;
+  private applied = false;
+
+  constructor(private scene: Phaser.Scene) {
+    const renderer = scene.game.renderer;
+    if (!(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)) {
+      this.world = null; // Canvas renderer: no shaders, the ring simply stays flat.
+      return;
+    }
+    if (!renderer.pipelines.getPostPipeline(KEY)) renderer.pipelines.addPostPipeline(KEY, KeystonePipeline);
+    this.world = scene.add.container(0, 0).setDepth(5);
+    // Effects spawn at run time (hit sparks, rings, popups); the ones at the
+    // world depths join the container so they tilt with the ring.
+    scene.children.events.on('add', this.adopt, this);
+    scene.events.once('shutdown', () => scene.children.events.off('add', this.adopt, this));
+  }
+
+  // Move already-built objects into the ring world.
+  take(objects: Phaser.GameObjects.GameObject[]): void {
+    this.world?.add(objects);
+  }
+
+  private adopt(obj: Phaser.GameObjects.GameObject): void {
+    // setDepth is chained after creation, so decide on the next microtask.
+    queueMicrotask(() => {
+      if (!this.world || !obj.scene || obj.parentContainer) return;
+      const d = (obj as Phaser.GameObjects.GameObject & { depth: number }).depth;
+      if (d >= 60 && d < 76) this.world.add(obj);
+    });
+  }
+
+  update(): void {
+    const world = this.world;
+    if (!world) return;
+    const on = tune.view.perspective >= 0.5;
+    if (on !== this.applied) {
+      if (on) world.setPostPipeline(KEY);
+      else world.resetPostPipeline();
+      this.applied = on;
+    }
+    world.sort('depth'); // container children draw in list order, not by depth
+    if (!on) return;
+    const r = tune.ring;
+    const v = this.scene.cameras.main.worldView;
+    state.view = [v.x, v.y, v.width, v.height];
+    state.ring = [r.left, r.top, r.right - r.left, r.bottom - r.top];
+    state.warp = [tune.view.topScale, tune.view.squash];
+  }
+}

@@ -11,6 +11,7 @@ import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
 import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
+import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
@@ -31,6 +32,7 @@ export class FightStage {
   private floor: Phaser.GameObjects.Image | null;
   private ropes: (Phaser.GameObjects.Image | null)[];
   private posts: (Phaser.GameObjects.Image | null)[];
+  private persp: RingPerspective;
 
   constructor(
     private scene: Phaser.Scene,
@@ -41,6 +43,8 @@ export class FightStage {
     private touchEnabled = true,
   ) {
     backdrop(scene, 0.15, 'stage_background');
+    this.persp = new RingPerspective(scene);
+    const before = new Set(scene.children.list);
     this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
     this.ropes = [0, 1, 2, 3].map(() => artImage(scene, 'ring_rope', 0, 0, 326, 12, 1));
     this.posts = [0, 1, 2, 3].map(() => artImage(scene, 'ring_post', 0, 0, 20, 20, 2));
@@ -50,6 +54,9 @@ export class FightStage {
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.fx = new Effects(scene);
     this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
+    // Ring, boxers and hit effects tilt together; screen-space overlays
+    // (depth 76 and up), the HUD and the controls stay flat.
+    this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
     this.hud = new Hud(scene, names);
     // P1 / P2 tags over each boxer at the start of a round.
     this.tags = [0, 1].map((i) =>
@@ -58,6 +65,7 @@ export class FightStage {
         .setOrigin(0.5, 1)
         .setDepth(60),
     );
+    this.persp.take(this.tags);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
     addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
@@ -125,6 +133,7 @@ export class FightStage {
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
+    this.persp.update();
     this.ko.sync(s, koAllowed, time);
     if (this.ko.active) {
       const loser = this.ko.loser;
