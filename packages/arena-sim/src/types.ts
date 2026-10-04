@@ -128,7 +128,8 @@ export interface Tune {
    */
   phases: { tier3UnlockRemaining: number; tier4UnlockRemaining: number };
   /**
-   * Score pools. After a node has been held for settleSeconds, the points its tier generates (not the
+   * Score pools. A pool only exists on a node taken from the other team (never on a neutral capture). After it has been
+   * held for settleSeconds, the points its tier generates (not the
    * commander bonus) go into a temporary pool that counts for the holder but is lost with the node. The
    * pool is spread over score caches around the node that any scout can collect to bank their share.
    */

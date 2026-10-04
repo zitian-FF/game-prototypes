@@ -602,7 +602,10 @@ export class ArenaGame {
     return null;
   }
 
-  /** A node changed hands: the old holder loses its pool, and the new holder starts a fresh settling timer. */
+  /**
+   * A node changed hands: the old holder loses its pool. If the node came from the other team (not from neutral),
+   * the new holder starts a fresh settling timer before a new pool opens.
+   */
   private ownerChanged(node: NodeState, previous: TeamId | null): void {
     if (previous !== null && (node.poolOpen || node.pool > 0)) {
       const lost = node.pool;
@@ -616,6 +619,12 @@ export class ArenaGame {
     node.caches = [];
     node.poolOpen = false;
     node.captureSeq++;
+    // A pool only exists after control swaps from one team to the other. Taking a neutral node starts nothing:
+    // its points are simply permanent.
+    if (previous === null) {
+      node.settlesAtMs = null;
+      return;
+    }
     node.settlesAtMs = this.nowMs + this.tune.pool.settleSeconds * 1000;
     this.schedule(node.settlesAtMs, 'poolOpen', node.id, node.captureSeq);
   }

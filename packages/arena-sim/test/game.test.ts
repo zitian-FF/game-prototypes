@@ -819,9 +819,25 @@ function poolScene() {
     nodes: [PN0, PN1],
     players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }, { power: 60 }])],
   });
+  // The pool only exists after a swap of control: b takes n0 first, then a takes it from b.
+  marchAndArrive(g, 'b', 's2', 'n0');
+  g.squads.get('s2')!.troops = 100;
   marchAndArrive(g, 'a', 's0', 'n0');
+  assert.equal(g.nodes.get('n0')!.owner, 0, 'a now holds it');
   return g;
 }
+
+test('pool: capturing a neutral node never opens a pool or caches', () => {
+  const g = makeGame({ nodes: [PN0], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  g.advanceTo(g.now + 600_000);
+  const n0 = g.nodes.get('n0')!;
+  assert.equal(n0.poolOpen, false);
+  assert.equal(n0.pool, 0);
+  assert.equal(n0.caches.length, 0);
+  assert.equal(viewFor(g, 0).caches.length, 0);
+  assert.equal(viewFor(g, 0).nodes.find((n) => n.id === 'n0')!.settlesAtMs, undefined, 'no settling timer either');
+});
 
 test('pool: points earned in the first minute are permanent, the pool opens after settleSeconds', () => {
   const g = poolScene();
@@ -843,7 +859,9 @@ test('pool: points earned in the first minute are permanent, the pool opens afte
 test('pool: caches appear every 500 earned, four first then one more up to eight, each fixed at pool / caches', () => {
   const T4: NodeDef = { id: 'T4', kind: 'points', x: 300, y: 300, tier: 4 };
   const g = makeGame({ nodes: [T4], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
-  marchAndArrive(g, 'a', 's0', 'T4');
+  marchAndArrive(g, 'b', 's1', 'T4');
+  g.squads.get('s1')!.troops = 100;
+  marchAndArrive(g, 'a', 's0', 'T4'); // taken from b: a swap of control, so a pool opens for a
   const node = g.nodes.get('T4')!;
   const open = g.now + 60_000;
   g.advanceTo(open + 6_000); // 480 earned at 80 a second: nothing yet
@@ -873,8 +891,8 @@ test('pool: losing the node takes the pool away from the holder and starts a fre
   const n0 = g.nodes.get('n0')!;
   g.advanceTo(g.now + 90_000);
   g.squads.get('s0')!.troops = 100; // a weak garrison
-  must(g, { type: 'march', playerId: 'b', squadId: 's2', target: { kind: 'node', nodeId: 'n0' } });
-  const hit = arrival(g, 's2');
+  must(g, { type: 'march', playerId: 'b', squadId: 's3', target: { kind: 'node', nodeId: 'n0' } });
+  const hit = arrival(g, 's3');
   g.advanceTo(hit - 1);
   const before = g.points()[0];
   const pool = n0.pool;
@@ -893,7 +911,7 @@ test('pool: losing the node takes the pool away from the holder and starts a fre
 
 test('pool: an enemy scout steals a cache, the holder own scout only secures it', () => {
   const g = poolScene();
-  marchAndArrive(g, 'b', 's2', 'n1'); // b holds n1 next door, and sees the caches around n0
+  marchAndArrive(g, 'b', 's3', 'n1'); // b holds n1 next door, and sees the caches around n0
   g.advanceTo(g.now + 90_000);
   const n0 = g.nodes.get('n0')!;
 

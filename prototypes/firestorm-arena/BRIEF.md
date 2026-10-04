@@ -640,4 +640,8 @@ client.
 - Bot targeting: bots creep the front forward from the nodes they hold (a node's pull is how close it is to the
   nearest node of ours), and one decision in ten raids a node at least 12 cells beyond that front. Bots only scout
   enemy-held nodes and enemy HQs, never neutral or friendly nodes. Bot HQ aggression is 10% to 55% per decision.
+- Pool rule fix: a score pool (and its caches) now only exists on a node whose control swapped from one team to
+  the other. Capturing a neutral node opens nothing and its points are simply permanent. The 60 second settling timer,
+  the fixed-value caches and the loss of the pool when the node swaps back all work as described above, but only for
+  swapped nodes. This supersedes "when a node changes hands" in the pool paragraph.
 - Where this section conflicts with older text above, this section wins.
