@@ -79,8 +79,12 @@ export class TouchControls {
           .setAlpha(0.85)
           .setDepth(101),
       );
-    txt(MAIN.x - MAIN.r / 2, MAIN.y - 6, 'JAB', 13);
-    txt(MAIN.x + MAIN.r / 2, MAIN.y - 6, 'CROSS', 13);
+    const jabIcon = artImage(scene, 'icon_jab', MAIN.x - MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
+    const crossIcon = artImage(scene, 'icon_cross', MAIN.x + MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
+    if (jabIcon) this.chrome.push({ image: jabIcon, ids: ['jab'] });
+    if (crossIcon) this.chrome.push({ image: crossIcon, ids: ['cross'] });
+    txt(MAIN.x - MAIN.r / 2, MAIN.y + (jabIcon ? 18 : -6), 'JAB', 13);
+    txt(MAIN.x + MAIN.r / 2, MAIN.y + (crossIcon ? 18 : -6), 'CROSS', 13);
     for (const b of ARC_BUTTONS) txt(b.x, b.id === 'uppercut' ? b.y + 2 : b.y, b.label, 10);
 
     scene.input.on('pointerdown', this.onDown, this);

@@ -8,7 +8,12 @@ Body scales remain 1 / 0.88 / 1.12. Changes are presentation only.
 Original vector-authored characters, poses, stage and UI are rendered offline
 by `export.mjs` using the existing Sharp dependency, then loaded as raster
 assets in Phaser. The former procedural rendering remains as fallback.
-The gym menu illustration was generated with the built-in imagegen tool.
+The restored approved composite guides the fight-first reskin. Headguards keep
+padded panels and seams; the ring uses a slate-blue floor and rounded posts.
+Jab/cross have separate transparent left/right glove icons. The gym props are
+vector-authored; the retired cinematic menu is replaced by coherent gym art
+until a dedicated menu pass. Mia clothing/face revisions are deferred by owner.
+This is an initial adaptation, not an exact reproduction of the master.
 
 ## Export contract
 

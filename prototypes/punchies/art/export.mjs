@@ -7,8 +7,8 @@ import AdmZip from 'adm-zip';
 const out = 'prototypes/punchies/assets-src';
 const ink = '#101b32', cream = '#fff1d1', gold = '#ffc84a';
 const roster = {
-  marco: { color: '#3a78d0', alt: '#2ec4d6', skin: '#cb865e', hair: '#252030' },
-  mia: { color: '#d04a4a', alt: '#f06fae', skin: '#f2bd92', hair: '#ffd34a' },
+  marco: { color: '#079cf0', alt: '#2ec4d6', skin: '#cb865e', hair: '#252030' },
+  mia: { color: '#f33c48', alt: '#f06fae', skin: '#f2bd92', hair: '#ffd34a' },
   bruno: { color: '#3fa34d', alt: '#9be84a', skin: '#dfad84', hair: '#6c4031' },
   dummy: { color: '#b7834a', skin: '#d6ad74', hair: '#604333' },
 };
@@ -56,18 +56,17 @@ function fighter(id,color,action,index,count) {
     s+=line(-1,side*25,ex,ey,'#fff1d14d',3);
   }
   s+=`<g transform="translate(${-k*12} ${bob})">`;
-  s+=`<path d="M-29 -18Q-18 -37 6 -31Q22 -30 27 -16L27 16Q20 31 4 32Q-23 36 -29 18Z" fill="${c.skin}" stroke="${ink}" stroke-width="4"/>`;
-  s+=`<path d="M-28 -19Q-16 -25 -10 -18L-9 18Q-17 26 -28 20Z" fill="${color}" stroke="${ink}" stroke-width="3"/>`;
-  s+=line(-21,-17,-21,18,cream,3);
-  s+=`<path d="M4 21Q12 18 20 20L15 29Q5 31 -2 29Z" fill="#101b3233"/>`;
-  s+=ellipse(3,-22,12,6,'#fff1d14d','none',0);
-  if(id==='mia') s+=`<path d="M-12 -3Q-30 ${-19-wave*4} -46 ${-8+wave*6}Q-39 7 -17 7Z" fill="${gold}" stroke="${ink}" stroke-width="3"/>`;
-  s+=ellipse(7+k*19,0,21,22,c.skin);
-  s+=`<path d="M-11 -12Q-6 -27 9 -20Q22 -23 23 -7L12 -7L8 -13L-1 -8Z" fill="${c.hair}" stroke="${ink}" stroke-width="3"/>`;
-  s+=ellipse(26+k*19,0,7,8,c.skin)+line(24,-9,25,-5,ink,2)+line(24,9,25,5,ink,2);
-  s+=`<path d="M-5 8Q5 18 19 12L21 18Q7 25 -6 15Z" fill="#101b322a"/>`;
-  if(id==='bruno') s+=`<path d="M19 11L25 8L30 11L24 16Z" fill="${c.hair}"/>`;
-  if(id==='dummy') s+=line(-3,-13,14,13,'#795b3c',2)+line(-3,13,14,-13,'#795b3c',2);
+
+  // Padded overhead headguard: compact original master silhouette and layered panels.
+  s+=ellipse(-3,0,30,31,color,ink,4);
+  s+=`<path d="M-27 14Q-22 33 2 31Q24 28 26 13L15 18Q-8 27 -27 14Z" fill="#101b3240"/>`;
+  s+=`<path d="M-26 -16Q-12 -34 8 -26Q23 -22 24 -10" fill="none" stroke="#ffffff70" stroke-width="3" stroke-linecap="round"/>`;
+  s+=`<path d="M-24 -20Q-34 0 -24 23M-16 -25Q-25 0 -16 26" fill="none" stroke="${ink}" stroke-width="2"/>`;
+  s+=ellipse(25,0,5,10,c.skin,ink,2);
+  s+=rect(-8,-4,24,8,color,4,ink,2)+line(-5,-1,9,-1,cream,2);
+  s+=rect(-32,-6,5,12,gold,2,ink,2);
+  if(id==='mia') s+=`<path d="M-33 -3L-49 -4L-49 4L-33 3Z" fill="${gold}" stroke="${ink}" stroke-width="3"/>`+ellipse(-44,0,3,6,gold,ink,1)+ellipse(-50,0,3,5,gold,ink,1);
+  if(id==='dummy') s+=line(-12,-12,7,12,'#795b3c',2)+line(-12,12,7,-12,'#795b3c',2);
   s+='</g>';
   s+=glove(left.x,left.y,color,1)+glove(right.x,right.y,color,-1);
   if(action==='perfect_guard') s+=`<path d="M61 -43Q86 0 61 43" fill="none" stroke="${cream}" stroke-width="5"/>`;
@@ -98,10 +97,10 @@ for(const [id,c] of Object.entries(roster)) {
   if(id!=='dummy') await write(`loose/portrait_${id}.png`,360,440,portrait(id));
 }
 // Ring floor has no ropes: existing dynamic corner/post layer sits above it.
-let floor=rect(0,0,620,620,'#d9c8a6',0,ink,0)+rect(16,16,588,588,'#eee0bf',0,ink,0);
-for(let n=0;n<50;n++) {const x=30+(n*113)%560,y=30+(n*71)%560;floor+=line(x,y,x+18,y+3,'#bbae9633',2);}
-floor+=`<circle cx="310" cy="310" r="115" fill="none" stroke="#a58b6250" stroke-width="4"/><path d="M240 340L275 268L315 291L355 265L389 340Z" fill="#a58b6238"/>`;
-floor+=star(310,309,35,'#a58b6250');
+let floor=rect(0,0,620,620,'#304665',0,ink,0)+rect(16,16,588,588,'#3d5678',0,ink,0);
+for(let n=0;n<50;n++) {const x=30+(n*113)%560,y=30+(n*71)%560;floor+=line(x,y,x+18,y+3,'#8197b322',2);}
+floor+=`<circle cx="310" cy="310" r="115" fill="none" stroke="#94acc44d" stroke-width="4"/>`;
+floor+=line(310,288,310,332,'#94acc44d',4)+line(288,310,332,310,'#94acc44d',4);
 await write('loose/ring_floor.png',620,620,floor);
 let gym=rect(0,0,1688,780,ink,0,ink,0);
 for(let x=0;x<1688;x+=90) for(let y=0;y<780;y+=90) gym+=rect(x+2,y+2,86,86,(x+y)%180===0?'#17253d':'#1b2b43',0,ink,0);
@@ -111,12 +110,24 @@ for(const x of [58,1510]) {
   for(let n=0;n<4;n++)gym+=line(x+28,169+n*43,x+85,169+n*43,'#6f8190',8)+rect(x+15,159+n*43,15,20,'#101b32',3)+rect(x+85,159+n*43,15,20,'#101b32',3);
   gym+=rect(x+12,377,88,29,'#624b37',6)+rect(x+16,409,80,10,'#101b32',3);
 }
+// Outlined gym props follow the approved master, kept out of the playable ring.
+for (const x of [28, 1440]) {
+  gym+=rect(x,105,195,38,'#6b5046',6,ink,5);
+  gym+=rect(x+13,140,12,69,'#283650',3)+rect(x+168,140,12,69,'#283650',3);
+  gym+=`<path d="M${x+48} 106Q${x+51} 80 ${x+88} 88L${x+107} 111L${x+98} 173L${x+62} 169L${x+68} 112Z" fill="#9ba9c0" stroke="${ink}" stroke-width="5"/>`;
+  gym+=rect(x+137,58,22,45,'#0778c4',6,ink,4)+rect(x+141,49,14,12,'#24598c',3)+line(x+143,65,x+143,88,'#54bdf0',3);
+  gym+=rect(x+28,267,65,21,'#7c353e',8,ink,5)+rect(x+35,289,8,37,ink,2)+rect(x+76,289,8,37,ink,2);
+  gym+=ellipse(x+62,266,34,12,'#a84850',ink,4);
+  gym+=rect(x+97,342,100,51,'#1f3048',10,ink,5)+`<path d="M${x+126} 342Q${x+127} 319 ${x+157} 326L${x+168} 342" fill="none" stroke="${ink}" stroke-width="8"/>`;
+  gym+=line(x+105,357,x+186,357,'#43556e',3);
+}
+gym+=`<path d="M65 0L65 22M88 0L88 24" stroke="#53657c" stroke-width="7"/>`+rect(48,23,62,99,'#973b49',18,ink,5)+line(58,42,58,100,'#c75a66',5);
 await write('loose/stage_background.png',1688,780,gym);
 let ropes=rect(0,0,652,24,'#101b3240',0,ink,0);
 for(const y of [4,12,20]) ropes+=line(0,y,652,y,ink,7)+line(0,y-1,652,y-1,y===12?cream:'#d55757',4);
 for(const x of [163,326,489]) ropes+=rect(x-3,1,6,22,'#fff1d1aa',1,ink,1);
 await write('loose/ring_rope.png',652,24,ropes);
-await write('loose/ring_post.png',40,40,rect(4,7,32,31,'#00000066',8,ink,0)+rect(2,2,32,32,'#edf3f5',7)+rect(6,5,24,6,'#ffffff',2,ink,0)+line(9,26,27,26,'#a5aebe',3));
+await write('loose/ring_post.png',40,40,ellipse(21,25,17,14,'#00000066','none',0)+ellipse(19,19,17,17,'#edf3f5',ink,3)+ellipse(14,12,5,4,'#ffffff','none',0)+line(12,30,27,29,'#8695a7',3));
 await write('loose/ui_button.png',440,72,polygon('10,4 430,4 438,12 438,61 429,68 10,68 2,60 2,12','#253650',4)+line(16,9,421,9,'#4d698d',3)+line(14,64,424,64,'#101b32',4));
 await write('loose/ui_panel.png',392,600,rect(3,3,386,594,'#16243bee',16,'#4d698d',5)+line(24,18,368,18,gold,4));
 await write('loose/ui_prompt.png',1080,112,rect(3,3,1074,106,'#101b32ed',12,'#ffc84a',4));
@@ -125,6 +136,10 @@ await write('loose/ui_hud.png',520,82,polygon('4,4 497,4 516,22 516,78 4,78','#1
 await write('loose/ui_touch.png',128,128,ellipse(64,64,60,60,'#16243bdd','#7fa9c7',4)+ellipse(64,64,53,53,'none','#ffffff25',2));
 await write('loose/ui_stick.png',128,128,ellipse(64,64,59,59,'#101b3260','#a5ccdca0',3)+polygon('64,9 57,20 71,20','#a5ccdc',0)+polygon('64,119 57,108 71,108','#a5ccdc',0)+polygon('9,64 20,57 20,71','#a5ccdc',0)+polygon('119,64 108,57 108,71','#a5ccdc',0));
 await write('loose/ui_knob.png',88,88,ellipse(44,44,39,39,'#e6e7d3aa','#ffffffa0',4)+ellipse(38,35,23,23,'#ffffff22','none',0));
-if(process.argv[2]) fs.copyFileSync(process.argv[2],path.join(out,'loose/menu_background.png'));
+for(const [name,color,side] of [['icon_jab','#079cf0',1],['icon_cross','#f33c48',-1]]) {
+  await write('loose/'+name+'.png',64,64,`<g transform="translate(32 27) rotate(-90)">${glove(0,0,color,side)}</g>`);
+}
+// Until the menu pass lands, use coherent gym art rather than the retired cinematic image.
+fs.copyFileSync(process.argv[2] || path.join(out,'loose/stage_background.png'),path.join(out,'loose/menu_background.png'));
 const zip=new AdmZip();zip.addLocalFolder(out);zip.writeZip('punchies_assets.zip');
 console.log(`Exported ${Object.keys(roster).length} fighters, fixed 256x256 canvases, ${Object.keys(actions).length} poses and loose presentation assets into ${out}; punchies_assets.zip`);
