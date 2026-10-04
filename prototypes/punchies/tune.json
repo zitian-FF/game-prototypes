@@ -10,7 +10,11 @@
   "view": {
     "perspective": 1,
     "topScale": 0.9,
-    "squash": 0.85
+    "squash": 0.85,
+    "shadowOffsetY": 8,
+    "shadowAlpha": 0.3,
+    "shadowSize": 1,
+    "feetOffsetY": 5
   },
   "ring": {
     "left": 267,

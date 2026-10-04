@@ -1,32 +1,32 @@
 ## Current milestone
 
-PR199 art handoff expanded with a quieter perspective gym and polished labelled HUD. R2 updated and public hash verified; code remains unmerged.
+Ground shadow and feet layers wired in, so the body reads as standing above the floor under the ring tilt. Builds on the merged logo, quieter perspective gym, tilted ring art and labelled HUD (PR #199).
 
 ## What was implemented
 
-- Approved alpha logo in menu/loading, tilted-ring apron, turnbuckles, taller posts and highlighted ropes.
-- 105 matching *_feet exports alongside body frames without baked feet/shadows (210 folders, 1344 registered frames).
-- Quieter gym with shared vanishing point, faint floor seams and two grounded rear benches/bottles/towels; removed repeated equipment and spotlight triangle.
-- Rounded dimensional HUD housings and lit fills with HP/STM/STUN labels. Meter labels obey tutorial reveals; full and partial values inspected.
+- `render/groundLayer.ts`: for each boxer, a code-drawn ground shadow (always falls the same way, whichever way the boxer faces) plus the separate `<body key>_feet` art layer, both drawn below the body. Used by `FighterView` and by `KoAnim` for the KO pose.
+- Tune values in `tune.view` (panel folder "View", live in `?debug=1`): `shadowOffsetY` 8, `shadowAlpha` 0.3, `shadowSize` 1, `feetOffsetY` 5. The body stays at the sim position; only the shadow and feet are pushed down in screen Y.
+- Earlier this session (already merged): per-character atlas groups with on-demand loading and a loading bar, centered menu, ring perspective (`tune.view.perspective`, `topScale`, `squash`), logo, quieter gym, tilted ring art with apron and turnbuckles, rounded labelled HUD.
 
 ## Key technical decisions
 
-- Preserved simulation/tuning, ring footprint, existing per-character loading and tilt shader.
-- Resource rows moved below names; short stun bars remain outside central Training buttons.
-- Body/feet layers keep 256x256 canvas and 128,128 anchor. Claude owns runtime feet/shadow and KO wiring.
-- Typecheck/build and layer contract pass; 7 atlas sheets <=2048. Browser verified 210 configs loaded on demand, 84 poses, combat/KO/results, desktop and phone training/tutorial, debug/version, labels/reveal and zero console errors. Separate art-free fallback passed; final captures inspected.
+- Presentation only: no change to `src/sim`, hitboxes or tuned gameplay values. Hitboxes stay on the body.
+- The procedural fallback (no art, or a missing feet frame) keeps its own drawn shadow and legs; the ground layer is hidden there. A missing `_feet` frame just skips the feet; the code shadow still draws.
+- The shadow and feet sit at depth 9 / 8 inside the perspective container, so they tilt with the ring.
+- The R2 bundle holds split bodies without baked shadow or feet, so the older fallback bodies no longer carry a shadow of their own.
 
 ## Open questions
 
-- Owner merge decision after Claude feet/shadow integration review.
+- Are the offsets right? Defaults are a first guess; tune `shadowOffsetY`, `shadowSize` and `feetOffsetY` by eye.
+- BRIEF.md does not mention the perspective, the shadow and feet layers, or the logo; it may need a line.
 
 ## Known issues
 
-- Feet/shadow exported but not drawn by current FighterView/KoAnim; integration remains with Claude.
-- Latest R2 bundle has split bodies, so coordinate deployment with feet wiring. PR199 not merged/deployed.
-- Real-phone networking/controller checks unverified; existing Phaser bundle-size warning.
-- Prior ZIP retained locally at outputs/layered-art/punchies-assets-before-gym-hud.zip.
+- Checked in desktop Chromium via Playwright (Training: idle, walk, punch; zero console errors). The KO shadow and feet were not exercised live: the KO path uses the same draw call but no KO was reached in the test run.
+- Not checked on a phone, in Local VS, or online.
+- The flying KO spins the body but the shadow just follows its path; it may look odd.
+- Real-phone networking and controllers unverified. Existing Phaser bundle-size warning.
 
 ## Next proposed step
 
-Claude completes feet/shadow/KO wiring on PR199, then coordinates merge/deploy and live verification with owner.
+Play it, adjust the View values, then review the KO and check on a phone.

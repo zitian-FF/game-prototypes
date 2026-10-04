@@ -4,6 +4,7 @@ import { punchTotal } from '../sim/sim';
 import type { Fighter, MatchResult, SimState } from '../sim/types';
 import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso, muted } from './FighterView';
 import { pose } from './art';
+import { GroundLayer } from './groundLayer';
 import { mainLook, type Look } from './characterLook';
 
 // KO finish, render-only (the sim has already stopped; nothing here can
@@ -51,6 +52,7 @@ export class KoAnim {
   private winnerFrame0 = 0;
   private shook = false;
   private sprite: Phaser.GameObjects.Image;
+  private ground: GroundLayer;
   private loserFighter: Fighter | null = null;
   public looks: Look[] = [mainLook('marco'), mainLook('marco')];
 
@@ -58,6 +60,7 @@ export class KoAnim {
     private scene: Phaser.Scene,
     public colors: [number, number],
   ) {
+    this.ground = new GroundLayer(scene, BODY_R, 8);
     this.g = scene.add.graphics().setDepth(11);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(11).setVisible(false);
   }
@@ -78,6 +81,7 @@ export class KoAnim {
       this.result = null;
       this.g.clear();
       this.sprite.setVisible(false);
+      this.ground.hide();
       return;
     }
     if (!allowed) return;
@@ -124,6 +128,7 @@ export class KoAnim {
     const g = this.g;
     g.clear();
     const ko = this.result?.ko;
+    this.ground.hide();
     if (!ko) return;
     const color = this.colors[ko.loser];
     const el = now - this.start;
@@ -135,7 +140,9 @@ export class KoAnim {
       const u = clamp01(el / (fly ? tune.ko.flyMs + tune.ko.sitMs : tune.ko.dropMs));
       if (pose(this.sprite, `${prefix}_ko`, u)) {
         const p = fly ? this.flyPos(el / tune.ko.flyMs) : { x: this.from.x + this.dx * 10 * easeOut(u), y: this.from.y + this.dy * 10 * easeOut(u) };
-        this.sprite.setPosition(p.x, p.y).setScale(look.scale / 2).setRotation(fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx));
+        const rotation = fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx);
+        this.sprite.setPosition(p.x, p.y).setScale(look.scale / 2).setRotation(rotation);
+        this.ground.draw(`${prefix}_ko`, u, p.x, p.y, rotation, look.scale, 1);
         if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006); }
         return;
       }
