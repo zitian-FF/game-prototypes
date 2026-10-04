@@ -43,6 +43,7 @@ export class GameScene extends BaseScene {
   private fxG!: Phaser.GameObjects.Graphics;
   private fx!: FxSystem;
   private labels: Phaser.GameObjects.Text[] = [];
+  private labelKeys: string[] = [];
   private labelUsed = 0;
   /** Combat result text that rises and fades over a fight (map position, start in seconds). */
   private floaters: { text: string; color: string; size: number; x: number; y: number; start: number }[] = [];
@@ -82,6 +83,7 @@ export class GameScene extends BaseScene {
     this.loadFrames = 0;
     this.missiles = [];
     this.labels = [];
+    this.labelKeys = [];
     this.labelUsed = 0;
     this.floaters = [];
     this.facing = new Map();
@@ -470,7 +472,13 @@ export class GameScene extends BaseScene {
       this.world.add(t);
       this.labels[this.labelUsed] = t;
     }
-    t.setText(text).setColor(color).setFontSize(size).setOrigin(align, 0).setPosition(x, y).setAlpha(alpha).setVisible(true);
+    // Text style setters re-render the whole string into a texture, so only touch them when something changed.
+    const key = `${text}|${color}|${size}|${align}`;
+    if (this.labelKeys[this.labelUsed] !== key) {
+      t.setText(text).setColor(color).setFontSize(size).setOrigin(align, 0);
+      this.labelKeys[this.labelUsed] = key;
+    }
+    t.setPosition(x, y).setAlpha(alpha).setVisible(true);
     this.labelUsed++;
   }
 
@@ -524,7 +532,15 @@ export class GameScene extends BaseScene {
 
     type Item = { d: number; draw: () => void };
     const items: Item[] = [];
-    const add = (pos: Vec, draw: () => void) => items.push({ d: iso.depth(pos.x, pos.y), draw });
+    // Only what is on screen (plus a margin for tall art and names) is drawn: the map is far bigger than a phone view.
+    const view2 = logicalSize();
+    const halfW = view2.w / 2 / this.zoom + 140;
+    const halfH = view2.h / 2 / this.zoom + 140;
+    const add = (pos: Vec, draw: () => void) => {
+      const q = iso.p(pos.x, pos.y);
+      if (Math.abs(q.x - this.camX) > halfW || Math.abs(q.y - this.camY) > halfH) return;
+      items.push({ d: iso.depth(pos.x, pos.y), draw });
+    };
 
     const selNode = this.target?.kind === 'node' ? this.target.id : null;
     const selHq = this.target?.kind === 'hq' ? this.target.id : null;
@@ -738,7 +754,7 @@ export class GameScene extends BaseScene {
     if (k.attackPct) effects.push(`+${Math.round(k.attackPct * n.tier * 100)}% attack for your team`);
     if (k.defensePct) effects.push(`+${Math.round(k.defensePct * n.tier * 100)}% defense for your team`);
     if (k.speedPct) effects.push(`+${Math.round(k.speedPct * n.tier * 100)}% march speed for your team`);
-    if (k.teleportCooldownReductionSeconds) effects.push(`-${k.teleportCooldownReductionSeconds * n.tier}s teleport cooldown`);
+    if (k.teleportCooldownRate) effects.push(`teleport cooldown runs ${1 + k.teleportCooldownRate * n.tier}x as fast (stacks)`);
     if (k.poolRegenPerSecond) effects.push(`every ally regains ${k.poolRegenPerSecond * n.tier} reserve troops a second`);
     if (n.kind === 'largeVision') effects.push(`reveals ${k.visionRadiusCells} cells around it`);
     if (n.kind === 'turret') {

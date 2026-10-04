@@ -11,7 +11,7 @@
 // A bot with less than one full squad of troops left stops acting altogether.
 
 import { Rng } from 'arena-sim';
-import type { NodeView, OwnSquadView, TeamId, TeamView, Tune } from 'arena-sim';
+import type { NodeView, OwnSquadView, TeamId, TeamView, Tune, Vec } from 'arena-sim';
 import type { CommandBody } from './protocol';
 
 export interface BotInput {
@@ -311,16 +311,32 @@ export class BotBrain {
     return { type: 'scout', scoutIndex: scout.index, target: { kind: 'cache', cacheId: best.id } };
   }
 
-  private scout({ view, playerId, team, nowMs }: BotInput): CommandBody | null {
+  private scout({ view, playerId, team, nowMs, tune, claims }: BotInput): CommandBody | null {
     const scout = this.pick(view.scouts.filter((s) => s.owner === playerId && s.state === 'home'));
+    const cell = tune.map.cellSize;
+    // A target is already covered when the team holds a live report on it or a scout (ours or an ally's) is flying there.
+    const flying = view.scouts.filter((s) => s.state === 'out' && s.to);
+    const reported = (t: Target) => view.scoutReports.some((r) => r.expiresAtMs > nowMs && r.target.kind === t.kind && (t.kind === 'node' ? r.target.kind === 'node' && r.target.nodeId === t.nodeId : r.target.kind === 'hq' && r.target.hqId === t.hqId));
+    const enRoute = (pos: Vec) => flying.some((s) => Math.hypot(s.to!.x - pos.x, s.to!.y - pos.y) <= cell * 1.5);
+    const key = (t: Target) => (t.kind === 'node' ? `scout:${t.nodeId}` : `scout:${t.hqId}`);
+    const covered = (t: Target, pos: Vec) => reported(t) || enRoute(pos) || claims?.has(key(t));
     const targets: Target[] = [];
     // Only enemy-held nodes are worth a report: neutral and friendly ones hold nothing to learn.
-    for (const n of view.nodes) if (n.kind !== 'portal' && n.owner !== null && n.owner !== team && !(n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) targets.push({ kind: 'node', nodeId: n.id });
-    for (const h of view.enemyHqs) targets.push({ kind: 'hq', hqId: h.id });
-    // An enemy HQ we have no live report on is the most useful thing to look at: it decides whether to assault.
-    const unreported = view.enemyHqs.filter((h) => !view.scoutReports.some((r) => r.target.kind === 'hq' && r.target.hqId === h.id && r.expiresAtMs > nowMs));
-    const target = unreported.length > 0 && this.rng.next() < 0.7 ? ({ kind: 'hq', hqId: this.pick(unreported)!.id } as Target) : this.pick(targets);
+    for (const n of view.nodes) {
+      if (n.kind === 'portal' || n.owner === null || n.owner === team || (n.unlocksAtMs !== undefined && nowMs < n.unlocksAtMs)) continue;
+      const t: Target = { kind: 'node', nodeId: n.id };
+      if (!covered(t, n.pos)) targets.push(t);
+    }
+    const hqTargets: Target[] = [];
+    for (const h of view.enemyHqs) {
+      const t: Target = { kind: 'hq', hqId: h.id };
+      if (!covered(t, h.pos)) hqTargets.push(t);
+    }
+    targets.push(...hqTargets);
+    // An enemy HQ we know nothing about is the most useful thing to look at: it decides whether to assault.
+    const target = hqTargets.length > 0 && this.rng.next() < 0.7 ? this.pick(hqTargets) : this.pick(targets);
     if (!scout || !target) return null;
+    claims?.set(key(target), 0);
     return { type: 'scout', scoutIndex: scout.index, target };
   }
 

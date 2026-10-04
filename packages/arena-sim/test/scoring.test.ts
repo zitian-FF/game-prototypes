@@ -126,7 +126,7 @@ test('tiers: a power node is stronger by tier (base value times tier)', () => {
     marchAndArrive(g, 'a', 's1', 'sp');
     const t = g.now;
     must(g, { type: 'teleport', playerId: 'a', nodeId: 'tc' });
-    assert.equal(g.players.get('a')!.nextTeleportAtMs - t, (120 - 15 * tier) * 1000, `tier ${tier} cooldown`);
+    assert.ok(Math.abs(g.players.get('a')!.nextTeleportAtMs - t - (120 / (1 + tier)) * 1000) < 1, `tier ${tier} cooldown runs ${1 + tier}x as fast`);
     must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'sp' } });
     const m = g.squads.get('s2')!.state;
     assert.ok(m.kind === 'march' && Math.abs(m.march.speed - g.marchSpeed * (1 + 0.1 * tier)) < 1e-9, `tier ${tier} speed`);

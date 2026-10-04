@@ -3,6 +3,18 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-04 — firestorm shared packages: arena-sim 0.12.0, firestorm-net 0.12.0
+
+**What changed:** arena-sim's Tech Centre now makes the teleport cooldown run faster instead of cutting it by a
+flat amount: each one held (times tier) drains an extra second per second, so one doubles the speed and two triple
+it, and a running cooldown is retimed when a Tech Centre changes hands. The tune keys
+`hq.teleportCooldownMinSeconds` and `nodes.teleportCooldown.teleportCooldownReductionSeconds` are gone, replaced by
+`nodes.teleportCooldown.teleportCooldownRate`. HQ refills now move whole troops only (replay stability).
+firestorm-net's bots no longer scout a node or HQ that has a live report or a scout already flying to it.
+Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.11.0, firestorm-net 0.11.0
 
 **What changed:** arena-sim reworks score pools and caches: a node's pool opens 60 s after any capture and counts
