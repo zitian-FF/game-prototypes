@@ -10,7 +10,8 @@
     "zoomMin": 0.15,
     "zoomMax": 2.4,
     "zoomStep": 1.12,
-    "startZoom": 0.85
+    "startZoom": 0.85,
+    "focusZoom": 1.4
   },
   "dpr": {
     "max": 2

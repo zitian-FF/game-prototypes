@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.12.0 on the branch (not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.12.1 on the branch (0.12.0 merged in PR 191, this follow-up not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- Follow-up: fullscreen plus landscape lock on first tap or click (not iOS); tapping a selected squad card focuses the camera on it.
 
 ## Key technical decisions
 
@@ -30,6 +31,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Known issues
 
+- Fullscreen and landscape lock could not be exercised in headless Chromium; needs a real Android phone and desktop test.
+- iOS gets no fullscreen or lock and no rotate hint, so portrait play there is cramped.
 - In-game HUD is crowded on small phones (target panel and minimap can overlap).
 - Touch was verified with Playwright touch emulation only, never on a real device.
 - Portal Nexus causes heavy early HQ brawls; bot HQ aggression numbers are first guesses.

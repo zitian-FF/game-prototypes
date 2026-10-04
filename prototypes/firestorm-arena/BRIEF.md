@@ -669,4 +669,9 @@ client.
   the device reports a coarse pointer. The UI scale is responsive: the logical layout shrinks on small touch windows
   so controls grow on screen, and the menu moves the keyboard beside the form in landscape or below it in portrait.
   The in-game HUD is usable in landscape but crowded on small phones; portrait in a match is not designed for.
+- Landscape and fullscreen: on the first tap or click the game asks the browser for fullscreen, and on Android
+  Chromium also locks the screen to landscape. Touch devices ask again on any tap while not fullscreen; desktop
+  asks once so Esc is respected. iOS is left alone (no usable API) and refusals are silent.
+- Squad panel: tapping a squad selects it; tapping the selected squad again centres the camera on where it is now
+  and zooms to `camera.focusZoom` (client.tune.json), keeping it selected. It no longer deselects on a second tap.
 - Where this section conflicts with older text above, this section wins.

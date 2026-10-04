@@ -221,6 +221,19 @@ export class GameScene extends BaseScene {
     this.world.setScale(this.zoom);
   }
 
+  /** Centre the camera on a squad's current position and zoom in to the focus level. */
+  private focusSquad(s: WireSquad, view: WireView, simMs: number): void {
+    let pos: Vec | undefined = s.march ? marchPos(s.march, simMs) : s.pos;
+    if (!pos && s.nodeId) pos = view.nodes.find((n) => n.id === s.nodeId)?.pos;
+    if (!pos && s.hqId) pos = view.hqs.find((h) => h.id === s.hqId)?.pos;
+    if (!pos) pos = view.hqs.find((h) => h.id === session.info?.hqId)?.pos;
+    if (!pos) return;
+    const p = this.iso.p(pos.x, pos.y);
+    this.camX = p.x;
+    this.camY = p.y;
+    this.zoom = Math.max(this.zoom, clientTune.camera.focusZoom);
+  }
+
   private zoomAt(steps: number, px: number, py: number): void {
     this.zoomBy(Math.pow(clientTune.camera.zoomStep, steps), px, py);
   }
@@ -915,7 +928,11 @@ export class GameScene extends BaseScene {
       const y = py + 36 + i * rowH;
       const sel = this.selectedSquad === s.id;
       ui.rect(px + 6, y - 4, pw - 12, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
-      ui.region(px + 6, y - 4, pw - 12, rowH - 4, () => (this.selectedSquad = sel ? null : s.id));
+      ui.region(px + 6, y - 4, pw - 12, rowH - 4, () => {
+        // First tap selects; tapping the selected squad again flies the camera to where it is now.
+        if (sel) this.focusSquad(s, view, simMs);
+        else this.selectedSquad = s.id;
+      });
       drawUnit(ui.gfx(), s.type, px + 32, y + 38, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false });
       // "Tank  Power [sword] 62.5M  #12"
       const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, px + 62, y, { size: 13, bold: true });
