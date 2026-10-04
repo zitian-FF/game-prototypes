@@ -1,35 +1,31 @@
 ## Current milestone
 
-Art loading optimisation: the boxer art now downloads on demand instead of all at boot. Art itself (merged as PR #194, uploaded to R2) is unchanged.
+Ring perspective trial: the ring is drawn with a slight tilt while the sim arena stays a flat square.
 
 ## What was implemented
 
-- Packer (opt-in per prototype in `scripts/pack-assets.js`, `ATLAS_GROUPING`) now writes one atlas per boxer group (`marco`, `marco_alt`, `mia`, `mia_alt`, `bruno`, `bruno_alt`, `dummy`) plus `atlas/groups.json`, derived from the folder names. Each group is about 0.8 to 0.9 MB. Other prototypes still pack one shared atlas.
-- Boot loads only the loose UI files (about 0.3 MB) behind a loading bar. The menu no longer waits on any fighter art.
-- Fighter groups load in the background through the ArtBoot scene, which now stays running as a persistent loader (`art.ts`: `prefetchGroups`, `whenGroupsReady`, `fighterGroups`, `trainingGroups`).
-- Character select prefetches the boxers on show, so a fight usually has its art ready.
-- Single Player, Local VS, Training and Tutorial wait for their groups behind a loading bar, then build. Online Match only prefetches (the session is live), so late art pops in over the procedural fallback.
-- A group that fails to download is treated as done and that boxer uses the procedural fallback.
+- `render/perspective.ts`: the ring floor, ropes, posts, boxers, KO animation, hit effects and P1/P2 tags are gathered into one container drawn through a keystone shader (far edge narrower, picture vertically squashed). HUD, buttons, touch controls and screen-space overlays stay flat.
+- `tune.view`: `perspective` (1 / 0), `topScale` (0.90, far edge width relative to the near edge) and `squash` (0.85). Panel category "View", live in `?debug=1`. Set `perspective` to 0 to turn it off.
+- Wired into `FightStage`, so Single Player, Local VS, Online, Training and Tutorial all get it.
 
 ## Key technical decisions
 
-- A scene may not wait inside the online Match scene: its Rollback session is already wired, so it prefetches instead.
-- The loader scene has to keep running because Phaser's loader only ticks while its scene runs; `main.ts` ignores `ArtBoot` when re-laying out screens.
-- Builds without `groups.json` (older zip) fall back to loading every atlas at boot. Builds without art make no asset requests.
-- No new dependency and no tune or sim changes.
+- Presentation only: no change to `src/sim`, hitboxes, reach, positions, input mapping or the hit-box overlay maths. Joystick up still moves along the flat world axis.
+- A shader on one container warps everything at once (placeholder shapes and art alike) instead of projecting every draw call. Container children draw in list order, so the container is sorted by depth each frame.
+- Hit effects spawned during a fight join the container when their depth is 60 to 75; depth 76 and above is treated as screen-space.
+- WebGL only. The Canvas renderer has no post effects, so the ring simply stays flat there.
+- The online host's tune is adopted by the guest for a match, so the host's `view` values apply to both screens.
 
 ## Open questions
 
-- WebP for the atlases (`sharp` is already a dependency of the pack script) would cut size further but changes how the art is encoded. Needs an owner decision and a visual check on the outlines.
-- Dropping the alt-colour atlases in favour of runtime tinting would save about a third of the fighter art but changes the look. Needs owner and Codex input.
+- Is the strength right? Defaults are a first guess; tune `topScale` and `squash` by eye. Perspective makes vertical distances look shorter than they are (a vertical jab looks shorter than a horizontal one at the same real reach).
+- BRIEF.md has no mention of perspective; it may need a line if this stays.
 
 ## Known issues
 
-- Measured locally with Playwright (not on a real phone): menu loads about 277 KB of art (was about 6.2 MB); a Marco mirror fight loads about 1.9 MB; Training on a throttled 400 KB/s link took about 7 s behind the loading bar.
-- Character select shows the procedural helmets for a moment until the boxer atlas arrives.
-- The online Match pop-in path and the failed-download path were not exercised in a browser.
-- Real-phone networking and hardware controllers unverified. Existing Phaser bundle-size warning.
+- Checked in a desktop Chromium via Playwright (Training, hits and a whiff popup, zero console errors). Not checked on a phone, in KO, online, or in Local VS.
+- Existing Phaser bundle-size warning.
 
 ## Next proposed step
 
-Measure on a real phone, then decide on WebP atlases. Art refinement passes (Codex) continue separately; the perspective tilt for the ring is still waiting on the owner.
+Play it, adjust the View values, then decide whether the perspective stays on by default.

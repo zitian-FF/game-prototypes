@@ -2077,5 +2077,26 @@
     "min": 0,
     "max": 60,
     "step": 1
+  },
+  "view.perspective": {
+    "cat": "View",
+    "desc": "Ring perspective on/off (1 / 0). Pure presentation: the sim arena stays a flat square, only the picture of it is tilted.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "view.topScale": {
+    "cat": "View",
+    "desc": "Width of the far (top) ring edge relative to the near (bottom) edge. 1 = no taper.",
+    "min": 0.6,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.squash": {
+    "cat": "View",
+    "desc": "Vertical squash of the ring picture (1 = none). Lower looks flatter, as if viewed at a lower angle.",
+    "min": 0.5,
+    "max": 1,
+    "step": 0.01
   }
 }
