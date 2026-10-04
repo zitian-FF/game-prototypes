@@ -1,18 +1,18 @@
 ## Current milestone
 
-The host can display a quick-join QR code, and the game has basic sound cues with a persistent menu mute switch.
+Redistribution now has a visible card flight before the next turn begins locally.
 
 ## What was implemented
 
-- Added Show QR to the host lobby. The QR encodes the published itch.io game URL with the current three-character room code.
-- Kept the existing invite-link startup path, which reads the room code and enters the joining flow after scanning.
-- Added lightweight synthesized tap, card, action, and victory cues, plus Sound: On/Off in the game menu.
+- At the end of redistribution, cards travel from the redistributor's play area to each recipient's play area.
+- Cards received by the local player appear face up, pause briefly, then move into their hand. Other recipients' cards stay face down.
+- The latest host state is held for presentation until the local animation finishes; game rules and network turns continue normally.
 
 ## Key technical decisions
 
-- The QR is drawn from the already-installed qrcode package directly into Phaser graphics, with a white quiet zone; no image upload or additional download is required.
-- Sound is generated through WebAudio after interaction and the preference is saved in localStorage. Unavailable audio or storage does not block gameplay.
-- Typecheck and build passed. Host lobby, QR, and mute switch were inspected in the local browser; no browser errors were reported.
+- The animation derives recipient counts from the completed trick and face identities only from the viewer's masked redistribution log. It does not reveal another player's cards.
+- Travel timing reuses the existing card collection tuning; the face-up pause has its own tune.json value.
+- Typecheck and production build passed. The local browser rendered the tutorial board with no console errors. The redistribution sequence itself awaits human review on the merged itch.io build.
 
 ## Open questions
 
@@ -20,8 +20,8 @@ The host can display a quick-join QR code, and the game has basic sound cues wit
 
 ## Known issues
 
-- The generated WebAudio cues are prototype sounds, pending final sound design.
+- The redistribution animation has not yet been visually reviewed during a completed round in the browser.
 
 ## Next proposed step
 
-- Review QR scanning and sound levels on the merged itch.io phone build.
+- Review the card paths and face-up pause on the merged itch.io phone build.

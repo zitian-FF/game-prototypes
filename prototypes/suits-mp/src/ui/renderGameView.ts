@@ -9,7 +9,7 @@ import { bindTapIntent } from '../input/intents';
 import { PIXEL_RATIO } from '../render/pixelRatio';
 import { ALL_NET_PLAYER_IDS, fromNetPlayerId } from '../net/netPlayerId';
 import type { NetPlayerId } from '../net/netPlayerId';
-import type { ClientAction, MaskedState, MaskedTrickPlay } from '../net/actions';
+import type { ClientAction, MaskedState, MaskedTrickPlay, RedistributionLogEntry } from '../net/actions';
 import { colorFor, computeHandLegality, nextSelectionAfterTap } from './handLegality';
 import type { CardVisualState } from './handLegality';
 import { buildSeatMap, computeSuitRing, seatFor } from './seating';
@@ -369,6 +369,11 @@ export interface PersistentUIState {
   // runs - the animation's own visuals are built exclusively from this
   // pre-masked source, never from that cleartext hand array.
   pendingHandCollectFaces: Map<CardId, CardFace> | null;
+  // A completed redistribution is presented once per client. Keep the
+  // newest host state while its cards travel so network turns never wait
+  // for this local-only animation.
+  lastAnimatedRedistributionTrick: number;
+  pendingRedistributionMasked: MaskedState | null;
   // Victory sequence (Local Victory + universal Victory Screen, see
   // startVictorySequence below): fires at most once, the first render
   // where `state.winner.reason === 'suit'` is seen. Once true, every
@@ -392,6 +397,8 @@ export function createPersistentUIState(): PersistentUIState {
     collectAnimatedTrickKey: '',
     pendingHandCollectOrigins: null,
     pendingHandCollectFaces: null,
+    lastAnimatedRedistributionTrick: 0,
+    pendingRedistributionMasked: null,
     victorySequenceStarted: false,
   };
 }
@@ -460,6 +467,12 @@ export function presentGameView(
   isMultiplayer: boolean,
   tutorial?: TutorialHudConfig | null,
 ): void {
+  const newestLog = masked.redistributionLog[masked.redistributionLog.length - 1];
+  if (!ui.hasPresentedOnce) ui.lastAnimatedRedistributionTrick = newestLog?.trickNumber ?? 0;
+  if (ui.pendingRedistributionMasked) {
+    ui.pendingRedistributionMasked = masked;
+    return;
+  }
   const key = previousTrickKey(masked);
   const justCompletedTrick = ui.hasPresentedOnce && masked.previousTrick !== null && key !== ui.lastPreviousTrickKey;
   ui.lastPreviousTrickKey = key;
@@ -489,6 +502,7 @@ export function presentGameView(
   }
 
   if (!justCompletedTrick) {
+    if (startRedistributionFlight(scene, container, masked, sendAction, ui, isMultiplayer, tutorial)) return;
     renderGameView(scene, container, masked, sendAction, ui, isMultiplayer, tutorial);
     // Double-win path for the "cards to collector" animation (see its own
     // doc comment below): the collector isn't known the instant a double
@@ -573,8 +587,112 @@ export function presentGameView(
   scene.time.delayedCall(tune.trickResultDwellMs, () => {
     const latest = ui.pendingHoldMasked;
     ui.pendingHoldMasked = null;
-    if (latest) renderGameView(scene, container, latest, sendAction, ui, isMultiplayer, tutorial);
+    if (latest && !startRedistributionFlight(scene, container, latest, sendAction, ui, isMultiplayer, tutorial)) {
+      renderGameView(scene, container, latest, sendAction, ui, isMultiplayer, tutorial);
+    }
   });
+}
+
+// The received log exposes only this viewer's new card identities. The
+// completed trick supplies each other seat's contribution count, which is
+// enough to animate facedown cards without exposing their contents.
+function redistributionFlightGroups(state: MaskedState, entry: RedistributionLogEntry): Array<{ to: NetPlayerId; cards: CardFace[] }> {
+  if (!state.previousTrick || state.trickNumber !== entry.trickNumber + 1) return [];
+  const counts = new Map<NetPlayerId, number>();
+  for (const play of state.previousTrick) {
+    if (play.player === entry.fromPlayer) continue;
+    counts.set(play.player, (counts.get(play.player) ?? 0) + (play.kind === 'double' ? 2 : 1));
+  }
+  return ALL_NET_PLAYER_IDS.filter((to) => to !== entry.fromPlayer && (counts.get(to) ?? 0) > 0).map((to) => {
+    const count = counts.get(to)!;
+    const ownCards = to === state.yourSlot && entry.perspective === 'received'
+      ? (entry.groups.find((group) => group.toPlayer === to)?.cards ?? []).filter((id) => state.yourHand.includes(id))
+      : [];
+    const cards: CardFace[] = Array.from({ length: count }, (_, i) => ownCards[i]
+      ? { kind: 'faceup', cardId: ownCards[i] }
+      : { kind: 'facedown' });
+    return { to, cards };
+  });
+}
+
+function startRedistributionFlight(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  state: MaskedState,
+  sendAction: (action: ClientAction) => void,
+  ui: PersistentUIState,
+  isMultiplayer: boolean,
+  tutorial?: TutorialHudConfig | null,
+): boolean {
+  const entry = state.redistributionLog[state.redistributionLog.length - 1];
+  if (!entry || entry.trickNumber <= ui.lastAnimatedRedistributionTrick) return false;
+  ui.lastAnimatedRedistributionTrick = entry.trickNumber;
+  const groups = redistributionFlightGroups(state, entry);
+  if (groups.length === 0) return false;
+  ui.pendingRedistributionMasked = state;
+  const ownIds = new Set(groups.flatMap((group) => group.to === state.yourSlot
+    ? group.cards.flatMap((face) => face.kind === 'faceup' ? [face.cardId] : []) : []));
+  const frozen = (): MaskedState => {
+    const latest = ui.pendingRedistributionMasked ?? state;
+    return {
+      ...latest,
+      yourHand: latest.yourHand.filter((id) => !ownIds.has(id)),
+      currentTrick: [],
+      currentTurn: null,
+      redistribution: null,
+      delegateChoices: null,
+      winner: null,
+    };
+  };
+  renderGameView(scene, container, frozen(), sendAction, ui, isMultiplayer, tutorial);
+
+  const from = seatCenter(seatFor(entry.fromPlayer, state.yourSlot));
+  const localArrival = seatCenter('bottom');
+  const flightCards: Phaser.GameObjects.Container[] = [];
+  let sequence = 0;
+  for (const group of groups) {
+    const dest = seatCenter(seatFor(group.to, state.yourSlot));
+    group.cards.forEach((face, i) => {
+      const spread = (i - (group.cards.length - 1) / 2) * CARD_DIMS_STANDARD.width * 0.25;
+      const targetX = dest.x + spread;
+      const drawn = drawCard(scene, container, from.x, from.y, 0, face, playAreaStyle(face), CARD_DIMS_STANDARD);
+      flightCards.push(drawn.container);
+      scene.tweens.addCounter({
+        from: 0, to: 1,
+        duration: tune.cardCollectTravelMs,
+        delay: sequence++ * tune.cardCollectStaggerMs,
+        ease: tune.cardCollectEase,
+        onUpdate: (_tween, _target, _key, t: number) => {
+          drawn.container.x = from.x + (targetX - from.x) * t;
+          drawn.container.y = from.y + (dest.y - from.y) * t - tune.cardCollectArcHeight * Math.sin(Math.PI * t);
+        },
+        onComplete: () => {
+          drawn.container.setPosition(targetX, dest.y);
+          if (group.to !== state.yourSlot) scene.tweens.add({ targets: drawn.container, alpha: 0, duration: tune.cardCollectFadeMs });
+        },
+      });
+    });
+  }
+
+  scene.time.delayedCall(tune.cardCollectTravelMs + (sequence - 1) * tune.cardCollectStaggerMs + tune.cardRedistributionRevealHoldMs, () => {
+    flightCards.forEach((card) => card.destroy());
+    const latest = ui.pendingRedistributionMasked ?? state;
+    if (ownIds.size > 0) {
+      ui.pendingHandCollectOrigins = new Map([...ownIds].map((id) => [id, localArrival]));
+      ui.pendingHandCollectFaces = new Map([...ownIds].map((id) => [id, { kind: 'faceup', cardId: id }]));
+    }
+    // Keep the next turn and any victory screen gated until the received
+    // cards have flown from the local play area into the hand fan.
+    renderGameView(scene, container, { ...latest, currentTurn: null, winner: null }, sendAction, ui, isMultiplayer, tutorial);
+    ui.pendingHandCollectOrigins = null;
+    ui.pendingHandCollectFaces = null;
+    scene.time.delayedCall(tune.cardCollectTravelMs + Math.max(0, ownIds.size - 1) * tune.cardCollectStaggerMs, () => {
+      const final = ui.pendingRedistributionMasked;
+      ui.pendingRedistributionMasked = null;
+      if (final) presentGameView(scene, container, final, sendAction, ui, isMultiplayer, tutorial);
+    });
+  });
+  return true;
 }
 
 // --- End-of-trick "cards to collector" animation ------------------------
