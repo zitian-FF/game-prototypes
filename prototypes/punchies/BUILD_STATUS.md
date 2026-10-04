@@ -35,6 +35,10 @@ is pending an existing upload configuration; the public object returns 404.
 
 ## Known issues
 
+- PR #194 is open. Automatic approval review rejected enabling auto-merge
+  because a consequential main-branch merge needs explicit owner approval.
+  No merge occurred.
+
 - Art is not yet in R2; fresh CI builds display procedural fallback.
 - Lobby presentation uses mocked TURN/relay sockets. Real two-phone online
   play, hardware controllers and real-phone art/feel review remain unverified.
