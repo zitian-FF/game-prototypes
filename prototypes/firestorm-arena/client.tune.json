@@ -40,6 +40,8 @@
     "toastSeconds": 4.5,
     "logsMax": 30,
     "minimapWidth": 210,
+    "minimapWidthTouch": 120,
+    "touchHintSeconds": 25,
     "loadingSeconds": 2.5
   },
   "net": {

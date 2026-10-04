@@ -53,6 +53,8 @@ export class GameScene extends BaseScene {
   private zoom = clientTune.camera.startZoom;
 
   private selectedSquad: string | null = null;
+  /** Touch layout: the squad list can be folded away to leave the map clear. */
+  private squadsOpen = true;
   private target: Target | null = null;
   private panel: Panel = 'none';
   private lastFrame = 0;
@@ -761,7 +763,9 @@ export class GameScene extends BaseScene {
     ui.begin();
 
     // ---- scoreboard
-    ui.rect(0, 0, w, 34, 0x000000, 0.55);
+    const compact = this.compact();
+    const barH = compact ? 38 : 34;
+    ui.rect(0, 0, w, barH, 0x000000, 0.55);
     const remain = this.tune.match.durationSeconds * 1000 - simMs;
     const mineP = view.points[mine];
     const theirP = view.points[mine === 0 ? 1 : 0];
@@ -772,7 +776,7 @@ export class GameScene extends BaseScene {
     // Leave (anyone) or end the room (host), with a confirm step.
     const endLabel = session.isHost ? 'End room' : 'Leave';
     if (!this.confirmEnd) {
-      ui.button(84, 5, 74, 24, endLabel, { onClick: () => (this.confirmEnd = true), size: 11 });
+      ui.button(compact ? 78 : 84, compact ? 4 : 5, compact ? 66 : 74, compact ? 30 : 24, endLabel, { onClick: () => (this.confirmEnd = true), size: 11 });
     } else {
       ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', 84, 10, { size: 12, color: COLORS.warn });
       ui.button(214, 5, 44, 24, 'Yes', {
@@ -787,6 +791,14 @@ export class GameScene extends BaseScene {
     }
     // Square buttons on the left edge, middle of the screen.
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
+    if (compact && !this.confirmEnd) {
+      const chip = (x: number, w0: number, label: string, count: number, which: Panel) => {
+        const on = this.panel === which;
+        ui.button(x, 4, w0, 30, `${label} ${count}`, { onClick: () => (this.panel = on ? 'none' : which), active: on, size: 11 });
+      };
+      chip(148, 76, 'Scouts', activeReports, 'scouts');
+      chip(228, 66, 'Logs', view.combatLogs.length, 'logs');
+    }
     const sq = (y: number, label: string, count: number, which: Panel) => {
       const on = this.panel === which;
       ui.rect(8, y, 56, 56, on ? COLORS.mine : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 6);
@@ -798,8 +810,10 @@ export class GameScene extends BaseScene {
     const ownSquads = view.squads.filter((q) => q.owner === session.info!.playerId).length;
     const squadTop = h - (62 + ownSquads * 56) - 34 - 30;
     const by = Math.max(40, Math.min(h / 2 - 62, squadTop - 8 - 118));
-    sq(by, 'Scouts', activeReports, 'scouts');
-    sq(by + 62, 'Logs', view.combatLogs.length, 'logs');
+    if (!compact) {
+      sq(by, 'Scouts', activeReports, 'scouts');
+      sq(by + 62, 'Logs', view.combatLogs.length, 'logs');
+    }
 
     // ---- toasts
     const nowWall = Date.now();
@@ -807,8 +821,8 @@ export class GameScene extends BaseScene {
     session.toasts.forEach((t, i) => {
       const col = t.kind === 'good' ? COLORS.good : t.kind === 'bad' ? COLORS.bad : COLORS.text;
       const tw = Math.max(200, t.text.length * 7.2 + 24);
-      ui.rect(w / 2 - tw / 2, 42 + i * 28, tw, 24, 0x000000, 0.7, undefined, 5);
-      ui.text(t.text, w / 2, 46 + i * 28, { size: 13, align: 'center', color: col });
+      ui.rect(w / 2 - tw / 2, barH + 8 + i * 28, tw, 24, 0x000000, 0.7, undefined, 5);
+      ui.text(t.text, w / 2, barH + 12 + i * 28, { size: 13, align: 'center', color: col });
     });
     if (session.status === 'reconnecting') ui.text('Connection lost, reconnecting...', w / 2, h / 2, { size: 18, align: 'center', color: COLORS.warn, bold: true });
 
@@ -818,7 +832,8 @@ export class GameScene extends BaseScene {
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
     this.drawTargetPanel(view, simMs, w, h);
 
-    ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
+    const hintOn = !compact || (this.time.now - this.loadStartedAt) / 1000 < clientTune.hud.touchHintSeconds;
+    if (hintOn) ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
     // ---- loading overlay for the first moments
     const loaded = (this.time.now - this.loadStartedAt) / 1000;
@@ -898,7 +913,63 @@ export class GameScene extends BaseScene {
     return 'Marching';
   }
 
+  /** Touch layout of the squad list: one slim row per squad, and the whole list folds to a single header. */
+  private drawSquadPanelCompact(view: WireView, simMs: number, h: number): void {
+    const ui = this.ui;
+    const info = session.info!;
+    const squads = view.squads.filter((s) => s.owner === info.playerId);
+    const hq = view.hqs.find((x) => x.id === info.hqId);
+    const pw = 270;
+    const rowH = 40;
+    const head = 32;
+    const px = 8;
+    const open = this.squadsOpen;
+    const ph = head + (open ? squads.length * rowH + 2 : 0);
+    const py = h - ph - 8;
+
+    const inSquads = squads.reduce((a, q) => a + q.troops, 0);
+    ui.panel(px, py - 26, pw, 22, 0.92);
+    ui.text(`Troops ${fmtInt(inSquads)}`, px + 8, py - 23, { size: 11, bold: true });
+    if (hq) ui.text(`Reserve ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, px + pw - 8, py - 23, { size: 11, align: 'right', color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
+
+    ui.panel(px, py, pw, ph);
+    ui.region(px, py, pw, head, () => (this.squadsOpen = !this.squadsOpen));
+    if (hq) {
+      const ready = hq.nextTeleportAtMs <= simMs;
+      ui.text(`HQ ${hq.hp}/${hq.maxHp}`, px + 8, py + 9, { size: 12, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
+      ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, px + 84, py + 10, { size: 11, color: ready ? COLORS.good : COLORS.dim });
+    }
+    ui.text(open ? 'Hide' : `Squads ${squads.length}`, px + pw - 8, py + 10, { size: 11, bold: true, align: 'right', color: '#8fd0ff' });
+    if (!open) return;
+
+    squads.forEach((s, i) => {
+      const y = py + head + i * rowH;
+      const sel = this.selectedSquad === s.id;
+      ui.rect(px + 4, y, pw - 8, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
+      ui.region(px + 4, y, pw - 8, rowH - 4, () => {
+        if (sel) this.focusSquad(s, view, simMs);
+        else this.selectedSquad = s.id;
+      });
+      drawUnit(ui.gfx(), s.type, px + 26, y + 28, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false, scale: 0.55 });
+      const w1 = ui.text(SQUAD_LABEL[s.type], px + 48, y + 3, { size: 12, bold: true });
+      ui.text(fmtPower(s.power), px + 48 + w1 + 6, y + 3, { size: 12, bold: true, color: '#ffd54a' });
+      const status = this.squadStatus(s, view);
+      ui.text(status.length > 20 ? status.slice(0, 19) + '...' : status, px + 48, y + 19, { size: 10, color: COLORS.dim });
+      ui.bar(px + 48, y + 31, 100, 3, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
+      if (s.state === 'hq') {
+        ui.button(px + pw - 92, y + 3, 84, 30, s.defend ? 'Defend ON' : 'Defend OFF', {
+          onClick: () => session.sendCommand({ type: 'setDefend', squadId: s.id, defend: !s.defend }),
+          active: s.defend,
+          size: 11,
+        });
+      } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
+        ui.button(px + pw - 92, y + 3, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
+      }
+    });
+  }
+
   private drawSquadPanel(view: WireView, simMs: number, h: number): void {
+    if (this.compact()) return this.drawSquadPanelCompact(view, simMs, h);
     const ui = this.ui;
     const info = session.info!;
     const squads = view.squads.filter((s) => s.owner === info.playerId);
@@ -951,6 +1022,11 @@ export class GameScene extends BaseScene {
         ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
       }
     });
+  }
+
+  /** Touch screens get the compact HUD: slim panels, small minimap, buttons moved to the top bar. */
+  private compact(): boolean {
+    return isTouch();
   }
 
   /** Everything the inspector and the order panel need about the selected target. */
@@ -1041,19 +1117,21 @@ export class GameScene extends BaseScene {
     const d = this.targetData(view, simMs);
     if (!d) return;
     const ui = this.ui;
-    const pw = 340;
-    const gap = 8;
-    const ow = 290;
+    const compact = this.compact();
+    const pw = compact ? 250 : 340;
+    const gap = compact ? 6 : 8;
+    const ow = compact ? 300 : 290;
     const total = pw + gap + ow;
     // Centre the pair, but slide it clear of the squad panel on the left when the window is narrow.
-    const squadRight = 560;
+    const squadRight = compact ? 286 : 560;
     const px = Math.round(Math.max((w - total) / 2, Math.min(squadRight, w - total - 8)));
-    const bottom = h - 34;
+    const bottom = compact ? h - 8 : h - 34;
 
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.wrap(text, 50)) lines.push({ text: l, color });
+    for (const [text, color] of d.body) for (const l of this.wrap(text, compact ? 36 : 50)) lines.push({ text: l, color });
+    if (compact && lines.length > 5) lines.length = 5;
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
-    const shown = defenders.slice(0, 6);
+    const shown = defenders.slice(0, compact ? 3 : 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
     // Both panels share one height so the pair reads as a single, aligned group.
     const ph = Math.max(40 + lines.length * 16 + reportH + 8, this.orderHeight(d));
@@ -1082,12 +1160,15 @@ export class GameScene extends BaseScene {
 
   /** Natural height of the orders panel for the current target. */
   private orderHeight(d: NonNullable<ReturnType<GameScene['targetData']>>): number {
-    if (!d.attackable || d.portal || d.cache) return 40 + 32 + 6;
+    const pitch = (this.compact() ? 32 : 28) + 4;
+    if (!d.attackable || d.portal || d.cache) return 40 + pitch + 6;
     const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
-    return 40 + rows * 32 + 6;
+    return 40 + Math.ceil(rows / this.orderColumns()) * pitch + 6;
   }
 
   private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number, fixedH: number): void {
+    const bh = this.compact() ? 32 : 28;
+    const pitch = bh + 4;
     const ui = this.ui;
     const t = d.t;
     const ownNode = d.node?.owner === this.mine || d.allyHq;
@@ -1105,7 +1186,7 @@ export class GameScene extends BaseScene {
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
       const nid = d.node!.id;
-      ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', {
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, bh, d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', {
         onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }),
         enabled: d.canTeleport,
         size: 12,
@@ -1118,7 +1199,7 @@ export class GameScene extends BaseScene {
       const oh = fixedH;
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
-      ui.button(ox + 10, bottom - oh + 34, ow - 20, 28, sc ? 'Send scout to collect' : 'No scout at home', {
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, bh, sc ? 'Send scout to collect' : 'No scout at home', {
         onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
         enabled: !!sc,
         size: 12,
@@ -1130,40 +1211,56 @@ export class GameScene extends BaseScene {
     const oy = bottom - oh;
     ui.panel(ox, oy, ow, oh);
     ui.text('Orders', ox + 12, oy + 10, { size: 14, bold: true });
-    let y = oy + 34;
+    // Touch screens lay the buttons out in two columns so the panel stays short.
+    const cols = this.orderColumns();
+    const colGap = 6;
+    const cw = (ow - 20 - colGap * (cols - 1)) / cols;
+    const fs = cols > 1 ? 10 : 12;
+    let n = 0;
+    const slot = () => {
+      const c = n % cols;
+      const r = Math.floor(n / cols);
+      n++;
+      return { x: ox + 10 + c * (cw + colGap), y: oy + 34 + r * pitch };
+    };
     for (const s of d.atHq) {
-      ui.button(ox + 10, y, ow - 20, 28, `${ownNode ? 'Garrison' : 'Attack'}: ${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, {
+      const q = slot();
+      ui.button(q.x, q.y, cw, bh, `${ownNode ? 'Garrison' : 'Attack'}${cols > 1 ? ' ' : ': '}${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, {
         onClick: () => {
           this.selectedSquad = s.id;
           this.sendSquad(s.id, t);
         },
         active: this.selectedSquad === s.id,
-        size: 12,
+        size: fs,
       });
-      y += 32;
     }
     if (d.atHq.length === 0) {
-      ui.text('No squad at HQ. Return one first.', ox + 12, y + 6, { size: 12, color: COLORS.dim });
-      y += 32;
+      const q = slot();
+      ui.text('No squad at HQ.', q.x + 2, q.y + 8, { size: 11, color: COLORS.dim });
     }
     for (const s of d.here) {
-      ui.button(ox + 10, y, ow - 20, 28, `Return to HQ: ${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 12, accent: COLORS.enemy });
-      y += 32;
+      const q = slot();
+      ui.button(q.x, q.y, cw, bh, `Return${cols > 1 ? ' ' : ' to HQ: '}${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: fs, accent: COLORS.enemy });
     }
     const sc = d.scoutHome;
     if (!d.allyHq) {
-      ui.button(ox + 10, y, ow - 20, 28, sc ? 'Send scout' : 'No scout at home', {
+      const q = slot();
+      ui.button(q.x, q.y, cw, bh, sc ? 'Send scout' : 'No scout at home', {
         onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
         enabled: !!sc,
-        size: 12,
+        size: fs,
         accent: 0xbfe9ff,
       });
-      y += 32;
     }
     if (d.canTeleport && d.node) {
       const nid = d.node.id;
-      ui.button(ox + 10, y, ow - 20, 28, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), size: 12, accent: COLORS.gold });
+      const q = slot();
+      ui.button(q.x, q.y, cw, bh, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), size: fs, accent: COLORS.gold });
     }
+  }
+
+  private orderColumns(): number {
+    return this.compact() ? 2 : 1;
   }
 
   /** Draw one line, truncating rather than overflowing the panel. */
@@ -1264,10 +1361,10 @@ export class GameScene extends BaseScene {
 
   private drawMinimap(view: WireView, w: number, h: number): void {
     const ui = this.ui;
-    const mw = clientTune.hud.minimapWidth;
+    const mw = this.compact() ? clientTune.hud.minimapWidthTouch : clientTune.hud.minimapWidth;
     const mh = Math.round((mw * this.iso.rows) / this.iso.cols);
     const mx = w - mw - 12;
-    const my = h - mh - 34;
+    const my = h - mh - (this.compact() ? 12 : 34);
     this.mapRect = { x: mx, y: my, w: mw, h: mh };
     ui.panel(mx - 4, my - 4, mw + 8, mh + 8, 0.92);
     ui.rect(mx, my, mw, mh, 0x1a1210, 1);

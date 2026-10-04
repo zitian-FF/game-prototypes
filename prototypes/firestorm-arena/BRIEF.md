@@ -674,4 +674,9 @@ client.
   asks once so Esc is respected. iOS is left alone (no usable API) and refusals are silent.
 - Squad panel: tapping a squad selects it; tapping the selected squad again centres the camera on where it is now
   and zooms to `camera.focusZoom` (client.tune.json), keeping it selected. It no longer deselects on a second tap.
+- Compact touch HUD: on touch devices the squad list is one slim row per squad (starts open, tap its header to fold it
+  to one line), the minimap is 120 wide (`hud.minimapWidthTouch`), Scouts and Logs are chips in the top bar beside
+  Leave or End room, the selected node or HQ shows the info and Orders panels as a short bar with the order buttons
+  in two columns (only while something is selected), and the control hint fades after `hud.touchHintSeconds`.
+  Desktop layout is unchanged.
 - Where this section conflicts with older text above, this section wins.
