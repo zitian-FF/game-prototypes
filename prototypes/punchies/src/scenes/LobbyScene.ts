@@ -7,6 +7,7 @@ import { NetSession, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
 import { tune, TICK_RATE } from '../sim/tune';
+import { artImage, backdrop } from '../render/art';
 
 // Host: create a room code, show it big with a QR code + link, wait for a
 // guest, measure ping, pick the input delay, start the match.
@@ -36,6 +37,8 @@ export class LobbyScene extends Phaser.Scene {
 
   create(data: { role: Role; code?: string }): void {
     applyCameraPixelRatio(this);
+    backdrop(this);
+    artImage(this, 'ui_panel', VIEW.cx, VIEW.cy, 470, 286, -1);
     this.handedOff = false;
     this.session = null;
     this.status = this.add

@@ -1,0 +1,89 @@
+# Punchies art
+
+Bold navy outlines and flat cel shading. Navy `#101b32`, slate `#253650`,
+cream `#fff1d1`, gold `#ffc84a`; existing player colors remain authoritative.
+Marco wears blue/cyan; Mia red/pink with a gold ponytail; Bruno green/lime.
+Body scales remain 1 / 0.88 / 1.12. Changes are presentation only.
+
+Original vector-authored characters, poses, stage and UI are rendered offline
+by `export.mjs` using the existing Sharp dependency, then loaded as raster
+assets in Phaser. The former procedural rendering remains as fallback.
+The gym menu illustration was generated with the built-in imagegen tool.
+
+## Export contract
+
+Fighters face right on a transparent **256x256** canvas, registered at
+**(128,128)**, displayed at half size before character scale. Never trim,
+crop, recenter, or realign source frames. Only the existing packer trims.
+
+| Action | Frames |
+| --- | ---: |
+| idle | 6 |
+| walk | 8 |
+| jab | 6 |
+| cross | 8 |
+| hook_l / hook_r | 8 each |
+| uppercut | 8 |
+| guard / perfect_guard | 4 each |
+| dodge | 6 |
+| hit_light | 4 |
+| hit_heavy | 6 |
+| stunned / exhausted | 6 each |
+| ko | 8 |
+
+Prefixes: `marco`, `marco_alt`, `mia`, `mia_alt`, `bruno`, `bruno_alt`,
+`dummy`. **105 folders / 672 frames**, plus 16 loose images. Animation
+configs are derived exclusively from the packer's folder index and resolve
+frames across both atlas sheets. Simulation phases sample attack frames at
+tuned startup/active/recovery boundaries. KO motion/timing remain unchanged.
+Missing individual animations or loose textures use the original drawings.
+
+Layout: `packed/<prefix>_<action>/0001.png...`; `loose/<name>.png`.
+The source ZIP contains no atlases. Packing yields two sheets, each at most
+2048x2048, plus hashes/fetch timestamps in `manifest.json`.
+No PNG, ZIP or generated atlas is committed.
+
+```sh
+node prototypes/punchies/art/export.mjs /external/path/menu_background.png
+npm run pack:assets punchies
+npm run typecheck
+npm run build
+```
+
+The exporter retains an existing menu illustration if its optional path is
+omitted. For a fresh complete export, supply the approved illustration.
+Upload `punchies_assets.zip` to the configured public R2 bucket, notify the
+owner on every overwrite, and keep credentials outside the repository.
+The WIP workflow caches sources by ETag, packs each build and embeds the
+generated file/animation index. A missing object builds fallback; other HTTP
+failures fail the workflow instead of silently shipping stale art. After an
+art-only R2 upload, dispatch the WIP workflow to rebuild its embedded index.
+Local dev requires restarting Vite after repacking.
+
+## Verification
+
+```sh
+node prototypes/punchies/art/verify.cjs
+```
+
+Use `PLAYWRIGHT_MODULE` for an existing bundled Playwright installation,
+`PUNCHIES_URL` for a production preview URL, and `SCREENSHOT_DIR` for captures.
+The test uses a browser-only hook, checks registered poses/alternate colors,
+drives menus/controls, captures KO/results/tutorial/lobby, checks the version
+stamp and `?debug=1`, and fails on browser errors. Lobby TURN/relay sockets
+are mocked; this is a presentation test, not an online match.
+`EXPECT_FALLBACK=1` checks an art-free build.
+
+## Generated menu prompt (built-in imagegen)
+
+Create a polished 2D videogame MAIN MENU BACKGROUND for Punchies, a mobile
+top-down boxing brawler. Wide landscape 2.16:1 composition 1688x780 desired.
+Bold navy ink outlines and flat cel shading, restrained navy #101b32 slate
+#253650 cream #fff1d1 gold #ffc84a. A boxing gym at night with dramatic gold
+overhead lighting, viewed from above at a slight illustrative angle, an empty
+boxing ring anchored on the RIGHT half, cyan and red rope accents, gym
+lockers, championship banners without words, scuffed canvas, warm restrained
+comic book texture. LEFT half is dark navy negative space, quiet and
+uncluttered for separate UI buttons and title. Absolutely no text, no letters,
+no logos, no people, no UI controls. Crisp professional arcade visual,
+readable at mobile size.

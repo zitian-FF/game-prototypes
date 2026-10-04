@@ -12,6 +12,7 @@ import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
 import type { MatchData } from './LobbyScene';
+import { artImage, backdrop } from '../render/art';
 
 // Character select. UI chrome only: it never touches the sim except to hand
 // the chosen ids to the fight scene.
@@ -89,6 +90,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   create(data: CharSelectData): void {
     applyCameraPixelRatio(this);
+    backdrop(this, 0.84);
     this.data0 = data;
     this.handedOff = false;
     this.remotePick = null;
@@ -150,11 +152,13 @@ export class CharSelectScene extends Phaser.Scene {
       const { x, y } = this.cardPos(i);
       const bg = this.add.rectangle(x, y, 80, 104, 0x1c212b, 1).setStrokeStyle(1, 0x5a6378).setInteractive();
       bg.on('pointerdown', () => this.tapCard(i));
+      artImage(this, 'ui_panel', x, y, 80, 104);
+      const portrait = artImage(this, `portrait_${id}`, x, y - 12, 55, 67, 10);
       this.add
         .text(x, y + 38, CHARACTER_INFO[id].name.split(' ')[0].toUpperCase(), { fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
         .setOrigin(0.5);
       const v = new FighterView(this, 0xb8bcc8);
-      this.cardViews.push({ v, id, x, y: y - 8 });
+      if (!portrait) this.cardViews.push({ v, id, x, y: y - 8 });
     });
   }
   private cardViews: { v: FighterView; id: CharId; x: number; y: number }[] = [];
@@ -169,6 +173,7 @@ export class CharSelectScene extends Phaser.Scene {
       const x = this.panelX(s);
       const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
       bg.on('pointerdown', () => this.tapPanel(s));
+      artImage(this, 'ui_panel', x, VIEW.cy + 8, 196, 300);
       this.add.text(x, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0.5);
       if (this.data0.mode === 'vsai' && s === 1) {
         // Tap (or Up / Down, D-pad up / down) to change the bot's level.

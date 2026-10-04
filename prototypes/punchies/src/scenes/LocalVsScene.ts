@@ -3,6 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
+import { resultArt } from '../render/art';
 import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { TICK_RATE } from '../sim/tune';
@@ -56,6 +57,7 @@ export class LocalVsScene extends Phaser.Scene {
   }
 
   private showResult(): void {
+    resultArt(this);
     this.over = true;
     getNav(this).engage();
     const r = this.sim.result!;

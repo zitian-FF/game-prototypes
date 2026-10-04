@@ -9,6 +9,7 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
+import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
@@ -27,6 +28,9 @@ export class FightStage {
   private fx: Effects;
   private ko: KoAnim;
   private ring: Phaser.GameObjects.Graphics;
+  private floor: Phaser.GameObjects.Image | null;
+  private ropes: (Phaser.GameObjects.Image | null)[];
+  private posts: (Phaser.GameObjects.Image | null)[];
 
   constructor(
     private scene: Phaser.Scene,
@@ -36,6 +40,10 @@ export class FightStage {
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
   ) {
+    backdrop(scene, 0.15, 'stage_background');
+    this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
+    this.ropes = [0, 1, 2, 3].map(() => artImage(scene, 'ring_rope', 0, 0, 326, 12, 1));
+    this.posts = [0, 1, 2, 3].map(() => artImage(scene, 'ring_post', 0, 0, 20, 20, 2));
     this.ring = scene.add.graphics().setDepth(0);
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
@@ -111,6 +119,7 @@ export class FightStage {
     const looks = [lookFor(chars, 0), lookFor(chars, 1)];
     looks.forEach((l, i) => this.views[i].setLook(l.color, l.scale, l.ponytail));
     this.ko.colors = [looks[0].color, looks[1].color];
+    this.ko.looks = looks;
     this.drawRing(looks[0].color, looks[1].color);
     this.drawTags(s, looks.map((l) => l.color));
     this.controls.enabled = this.touchEnabled && !this.info.open;
@@ -169,6 +178,20 @@ export class FightStage {
     g.clear();
     const w = r.right - r.left;
     const h = r.bottom - r.top;
+    this.floor?.setPosition(r.left + w / 2, r.top + h / 2).setDisplaySize(w, h);
+    if (this.floor && this.ropes.every(Boolean) && this.posts.every(Boolean)) {
+      const cx = r.left + w / 2, cy = r.top + h / 2;
+      this.ropes[0]!.setPosition(cx, r.top - 5).setDisplaySize(w + 16, 12);
+      this.ropes[1]!.setPosition(cx, r.bottom + 5).setDisplaySize(w + 16, 12);
+      this.ropes[2]!.setPosition(r.left - 5, cy).setDisplaySize(h + 16, 12).setRotation(Math.PI / 2);
+      this.ropes[3]!.setPosition(r.right + 5, cy).setDisplaySize(h + 16, 12).setRotation(Math.PI / 2);
+      const positions = [[r.left - 7, r.top - 7, c0], [r.right + 7, r.bottom + 7, c1], [r.right + 7, r.top - 7, 0xffffff], [r.left - 7, r.bottom + 7, 0xffffff]];
+      this.posts.forEach((post, i) => post!.setPosition(positions[i][0], positions[i][1]).setTint(positions[i][2]));
+      return;
+    }
+    // Partial stage assets are hidden so the intact procedural ring stays coherent.
+    this.ropes.forEach(image => image?.setVisible(false));
+    this.posts.forEach(image => image?.setVisible(false));
 
     // Apron just outside the ropes.
     g.fillStyle(0x1b1f27, 1);
@@ -193,6 +216,8 @@ export class FightStage {
       g.fillStyle(rnd() < 0.5 ? 0x000000 : 0xffffff, 0.02 + rnd() * 0.03);
       g.fillEllipse(r.left + rnd() * w, r.top + rnd() * h, 4 + rnd() * 18, 3 + rnd() * 10);
     }
+    // Keep the authored floor above procedural floor, below ropes/posts.
+    if (this.floor) g.clear();
     // Centre mark.
     g.lineStyle(2, 0xffffff, 0.05);
     g.strokeCircle(r.left + w / 2, r.top + h / 2, 34);
@@ -250,6 +275,9 @@ export function makeButton(
   fontSize = 10,
 ): Phaser.GameObjects.Text {
   const bg = scene.add.rectangle(x, y, w, h, 0x222222, 0.9).setStrokeStyle(1, 0x888888).setDepth(130);
+  const art = artImage(scene, 'ui_button', x, y, w, h, 130);
+  if (art) bg.setFillStyle(0x222222, 0).setStrokeStyle(0);
+  bg.on('destroy', () => art?.destroy());
   bg.setInteractive().on('pointerdown', onTap);
   navRegister(scene, bg, onTap);
   const label = scene.add

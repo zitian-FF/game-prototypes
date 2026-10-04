@@ -3,6 +3,8 @@ import { tune, TICK_RATE } from '../sim/tune';
 import { punchTotal } from '../sim/sim';
 import type { Fighter, MatchResult, SimState } from '../sim/types';
 import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso, muted } from './FighterView';
+import { pose } from './art';
+import { mainLook, type Look } from './characterLook';
 
 // KO finish, render-only (the sim has already stopped; nothing here can
 // affect the result or online sync).
@@ -48,12 +50,16 @@ export class KoAnim {
   private winner: Fighter | null = null;
   private winnerFrame0 = 0;
   private shook = false;
+  private sprite: Phaser.GameObjects.Image;
+  private loserFighter: Fighter | null = null;
+  public looks: Look[] = [mainLook('marco'), mainLook('marco')];
 
   constructor(
     private scene: Phaser.Scene,
     public colors: [number, number],
   ) {
     this.g = scene.add.graphics().setDepth(11);
+    this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(11).setVisible(false);
   }
 
   get active(): boolean {
@@ -71,6 +77,7 @@ export class KoAnim {
     if (!r) {
       this.result = null;
       this.g.clear();
+      this.sprite.setVisible(false);
       return;
     }
     if (!allowed) return;
@@ -81,6 +88,7 @@ export class KoAnim {
     this.dx = ko.dx / len;
     this.dy = ko.dy / len;
     const f = s.fighters[ko.loser];
+    this.loserFighter = structuredClone(f);
     this.from = { x: f.x, y: f.y };
     this.to = this.ropePoint(this.from);
     this.winner = structuredClone(s.fighters[1 - ko.loser]);
@@ -119,6 +127,19 @@ export class KoAnim {
     if (!ko) return;
     const color = this.colors[ko.loser];
     const el = now - this.start;
+    const f = this.loserFighter;
+    if (f) {
+      const look = this.looks[ko.loser];
+      const prefix = f.anchored ? 'dummy' : `${f.char}${look.color !== mainLook(f.char).color ? '_alt' : ''}`;
+      const fly = ko.style === 'fly';
+      const u = clamp01(el / (fly ? tune.ko.flyMs + tune.ko.sitMs : tune.ko.dropMs));
+      if (pose(this.sprite, `${prefix}_ko`, u)) {
+        const p = fly ? this.flyPos(el / tune.ko.flyMs) : { x: this.from.x + this.dx * 10 * easeOut(u), y: this.from.y + this.dy * 10 * easeOut(u) };
+        this.sprite.setPosition(p.x, p.y).setScale(look.scale / 2).setRotation(fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx));
+        if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006); }
+        return;
+      }
+    }
     if (ko.style === 'drop') this.drawDrop(el, color);
     else this.drawFly(el, color, now);
   }

@@ -9,7 +9,7 @@ import { VsAIScene } from './scenes/VsAIScene';
 import { LocalVsScene } from './scenes/LocalVsScene';
 import { TutorialScene } from './scenes/TutorialScene';
 import { CharSelectScene } from './scenes/CharSelectScene';
-import { roomFromUrl } from './net/roomCode';
+import { ArtBootScene } from './render/art';
 import { setupOrientation } from './orientation/orientation';
 
 mountDebugPanelIfRequested();
@@ -74,6 +74,4 @@ game.scene.add('Tutorial', TutorialScene, false);
 game.scene.add('CharSelect', CharSelectScene, false);
 
 // ?room=ABC (from the host's QR code / link) skips straight to joining.
-const room = roomFromUrl();
-if (room) game.scene.start('Lobby', { role: 'guest', code: room });
-else game.scene.start('Menu');
+game.scene.add('ArtBoot', ArtBootScene, true);
