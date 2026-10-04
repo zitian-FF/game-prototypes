@@ -53,7 +53,6 @@
   "hq": {
     "hp": 4,
     "teleportCooldownSeconds": 120,
-    "teleportCooldownMinSeconds": 20,
     "refillSeconds": 0,
     "slotsPerNode": 8
   },
@@ -191,7 +190,7 @@
     },
     "teleportCooldown": {
       "visionRadiusCells": 6,
-      "teleportCooldownReductionSeconds": 15
+      "teleportCooldownRate": 1
     },
     "largeVision": {
       "visionRadiusCells": 15

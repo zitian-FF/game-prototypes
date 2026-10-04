@@ -679,4 +679,15 @@ client.
   Leave or End room, the selected node or HQ shows the info and Orders panels as a short bar with the order buttons
   in two columns (only while something is selected), and the control hint fades after `hud.touchHintSeconds`.
   Desktop layout is unchanged.
+- Tech Centre: instead of a flat cooldown cut, each Tech Centre held (times tier, all T1) drains the HQ teleport
+  cooldown one extra second per second: one held doubles its speed, two triple it. The base cooldown stays 120 s
+  (so 60 s with one, 40 s with both). A running cooldown speeds up or slows down immediately when a Tech Centre
+  changes hands. Tune: `nodes.teleportCooldown.teleportCooldownRate`.
+- Bot scouting: a bot does not send a scout to a node or HQ that already has a live team report on it or a scout
+  (its own or an ally's) flying to it, and claims its target for the rest of that decision round.
+- Reserve troops: losses vanish when they happen. A squad that returns to its HQ refills to full on arrival, drawing
+  the missing whole troops from the reserve, so the reserve drops when the squad gets home. Hospitals are the only
+  way the reserve rises (+20 per second per tier each, never above the starting amount).
+- Phone performance: world labels re-render only when their text changes, and units, nodes and caches outside
+  the screen are not drawn.
 - Where this section conflicts with older text above, this section wins.

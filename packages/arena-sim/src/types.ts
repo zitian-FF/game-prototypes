@@ -76,7 +76,8 @@ export interface NodeKindTune {
   attackPct?: number;
   defensePct?: number;
   speedPct?: number;
-  teleportCooldownReductionSeconds?: number;
+  /** Tech Centre: extra teleport-cooldown seconds drained per second, times tier (1 = twice as fast). */
+  teleportCooldownRate?: number;
   /** Hospital: troops per second added to each ally's reserve pool, times tier. */
   poolRegenPerSecond?: number;
 }
@@ -112,7 +113,6 @@ export interface Tune {
   hq: {
     hp: number;
     teleportCooldownSeconds: number;
-    teleportCooldownMinSeconds: number;
     refillSeconds: number;
     /** Slots are the 8 cells around a node, taken in a fixed order. */
     slotsPerNode: number;

@@ -327,14 +327,36 @@ test('teleport: every squad goes home with the HQ and held nodes are left empty'
   assert.equal(g.squads.get('s2')!.state.kind, 'hq');
 });
 
-test('teleport: cooldown nodes shorten the cooldown', () => {
+test('teleport: each Tech Centre held adds one second of cooldown drained per second', () => {
+  const tc: NodeDef = { id: 'tc', kind: 'teleportCooldown', x: 500, y: 300 };
+  const tc2: NodeDef = { id: 'tc2', kind: 'teleportCooldown', x: 600, y: 300 };
+  const g = makeGame({ nodes: [N0, tc, tc2], players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  marchAndArrive(g, 'a', 's0', 'n0');
+  marchAndArrive(g, 'a', 's1', 'tc');
+  let t = g.now;
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
+  assert.ok(Math.abs(g.players.get('a')!.nextTeleportAtMs - t - 60_000) < 1, 'one Tech Centre: twice as fast');
+  g.advanceTo(g.players.get('a')!.nextTeleportAtMs);
+  // Both held: three times as fast.
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'tc' });
+  g.advanceTo(g.players.get('a')!.nextTeleportAtMs);
+  marchAndArrive(g, 'a', 's2', 'tc2');
+  t = g.now;
+  must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
+  assert.ok(Math.abs(g.players.get('a')!.nextTeleportAtMs - t - 40_000) < 1, 'two Tech Centres: three times as fast');
+});
+
+test('teleport: a running cooldown speeds up when a Tech Centre is taken', () => {
   const tc: NodeDef = { id: 'tc', kind: 'teleportCooldown', x: 500, y: 300 };
   const g = makeGame({ nodes: [N0, tc], players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])] });
   marchAndArrive(g, 'a', 's0', 'n0');
-  marchAndArrive(g, 'a', 's1', 'tc');
   const t = g.now;
   must(g, { type: 'teleport', playerId: 'a', nodeId: 'n0' });
-  assert.equal(g.players.get('a')!.nextTeleportAtMs - t, 105_000, '120s - 15s');
+  assert.ok(Math.abs(g.players.get('a')!.nextTeleportAtMs - t - 120_000) < 1);
+  g.advanceTo(t + 60_000); // 60s left at normal speed
+  marchAndArrive(g, 'a', 's1', 'tc');
+  const left = g.players.get('a')!.nextTeleportAtMs - g.now;
+  assert.ok(left > 0 && left <= 30_000, `the remaining time halved, got ${left}`);
 });
 
 test('teleport: stranded HQs stay after a node flips and can be hit; the new owner can teleport in beside them', () => {

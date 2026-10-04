@@ -52,7 +52,8 @@ interface TeamBonus {
   attack: number;
   defense: number;
   speed: number;
-  teleportReductionSeconds: number;
+  /** Extra teleport-cooldown seconds drained per second: 1 means the cooldown runs twice as fast. */
+  teleportRate: number;
 }
 
 interface PointSample {
@@ -237,7 +238,7 @@ export class ArenaGame {
   }
 
   teamBonus(team: TeamId): TeamBonus {
-    const out: TeamBonus = { attack: 0, defense: 0, speed: 0, teleportReductionSeconds: 0 };
+    const out: TeamBonus = { attack: 0, defense: 0, speed: 0, teleportRate: 0 };
     for (const n of this.nodes.values()) {
       if (n.owner !== team) continue;
       // A power node's strength is its base value times its tier.
@@ -245,7 +246,7 @@ export class ArenaGame {
       out.attack += (k.attackPct ?? 0) * n.tier;
       out.defense += (k.defensePct ?? 0) * n.tier;
       out.speed += (k.speedPct ?? 0) * n.tier;
-      out.teleportReductionSeconds += (k.teleportCooldownReductionSeconds ?? 0) * n.tier;
+      out.teleportRate += (k.teleportCooldownRate ?? 0) * n.tier;
     }
     return out;
   }
@@ -543,9 +544,9 @@ export class ArenaGame {
     if (player.hq.location.kind === 'node' && player.hq.location.nodeId === nodeId) return 'alreadyThere';
     const slot = node.slots.findIndex((s) => s === null);
     if (slot < 0) return 'noFreeSlot';
-    const reduction = this.teamBonus(player.team).teleportReductionSeconds;
-    const cooldown = Math.max(this.tune.hq.teleportCooldownMinSeconds, this.tune.hq.teleportCooldownSeconds - reduction);
-    player.nextTeleportAtMs = this.nowMs + cooldown * 1000;
+    // Tech Centres make the cooldown run faster rather than shorter: one held doubles its speed, two triple it.
+    const rate = 1 + this.teamBonus(player.team).teleportRate;
+    player.nextTeleportAtMs = this.nowMs + Math.round((this.tune.hq.teleportCooldownSeconds * 1000) / rate);
     this.moveHq(player, { kind: 'node', nodeId, slot }, false);
     return null;
   }
@@ -604,7 +605,30 @@ export class ArenaGame {
    * the pool, up to maxCaches), each with a fixed value. Caches are only ever created here. Whoever captured the node
    * (neutral or not) starts a fresh settling timer before a new pool opens.
    */
+  /** A Tech Centre changing hands speeds up or slows down the teleport cooldowns already running. */
+  private retimeTeleports(node: NodeState, previous: TeamId | null): void {
+    const k = this.tune.nodes[node.kind].teleportCooldownRate;
+    if (!k) return;
+    const delta = k * node.tier;
+    const retime = (team: TeamId, oldRate: number, newRate: number): void => {
+      for (const p of this.players.values()) {
+        if (p.team !== team) continue;
+        const left = p.nextTeleportAtMs - this.nowMs;
+        if (left > 0) p.nextTeleportAtMs = this.nowMs + Math.round((left * (1 + oldRate)) / (1 + newRate));
+      }
+    };
+    if (node.owner !== null) {
+      const now = this.teamBonus(node.owner).teleportRate;
+      retime(node.owner, now - delta, now);
+    }
+    if (previous !== null) {
+      const now = this.teamBonus(previous).teleportRate;
+      retime(previous, now + delta, now);
+    }
+  }
+
   private ownerChanged(node: NodeState, previous: TeamId | null): void {
+    this.retimeTeleports(node, previous);
     if (previous !== null && node.poolOpen) {
       const lost = node.pool;
       this.pointTotals[previous] = Math.max(0, this.pointTotals[previous] - lost);
@@ -728,7 +752,9 @@ export class ArenaGame {
 
   private refill(sq: Squad): void {
     const player = this.players.get(sq.owner)!;
-    const add = Math.min(sq.maxTroops - sq.troops, player.pool);
+    // Whole troops only: hospital regeneration leaves the pool fractional, and how many fractions it holds depends on
+    // how time was chunked, so a fractional refill would make replays drift by float noise.
+    const add = Math.floor(Math.min(sq.maxTroops - sq.troops, player.pool));
     if (add <= 0) return;
     sq.troops += add;
     player.pool -= add;

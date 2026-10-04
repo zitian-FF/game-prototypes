@@ -173,6 +173,34 @@ test('bots: scouts only go to enemy-held nodes, never neutral, friendly or porta
   assert.deepEqual([...targets], ['foe']);
 });
 
+test('bots: they do not scout a node or HQ that already has a live report or a scout flying to it', () => {
+  const node = (id: string, x: number, y: number) => ({ id, kind: 'points', tier: 1, pos: { x, y }, owner: 1, explored: true, visible: false });
+  const report = (target: object, expiresAtMs: number) => ({ target, takenAtMs: 0, expiresAtMs, empty: false, defenders: [] });
+  const targetsFor = (extra: object) => {
+    const v = base({
+      nodes: [node('a', 600, 100), node('b', 1200, 100), node('c', 1800, 100)],
+      scouts: [{ owner: 'bot', index: 0, state: 'home' }, ...(((extra as { scouts?: object[] }).scouts) ?? [])],
+      scoutReports: ((extra as { scoutReports?: object[] }).scoutReports ?? []) as never,
+    });
+    const out = new Set<string>();
+    for (let seed = 1; seed <= 300; seed++) {
+      const brain = new BotBrain('bot', new Rng(seed));
+      const input = { playerId: 'bot', team: 0 as const, view: v, tune: TUNE, speed: 120, nowMs: 0 };
+      brain.think(input);
+      for (let i = 1; i <= 8; i++) for (const c of brain.think({ ...input, nowMs: i * 30_000 })) if (c.type === 'scout' && c.target.kind === 'node') out.add(c.target.nodeId);
+    }
+    return [...out].sort();
+  };
+  assert.deepEqual(targetsFor({}), ['a', 'b', 'c']);
+  assert.deepEqual(targetsFor({ scoutReports: [report({ kind: 'node', nodeId: 'a' }, 999_999_999)] }), ['b', 'c'], 'a live report covers the node');
+  assert.deepEqual(targetsFor({ scoutReports: [report({ kind: 'node', nodeId: 'a' }, 1)] }), ['a', 'b', 'c'], 'an expired one does not');
+  assert.deepEqual(
+    targetsFor({ scouts: [{ owner: 'ally', index: 0, state: 'out', from: { x: 0, y: 0 }, to: { x: 1200, y: 100 }, startMs: 0, arriveMs: 99_999 }] }),
+    ['a', 'c'],
+    'a scout already flying to b covers it, even one of an ally',
+  );
+});
+
 test('bots: they creep the front forward from nodes they hold, and about one decision in ten raids a distant node', () => {
   const node = (id: string, kind: string, owner: 0 | 1 | null, x: number, y: number) => ({ id, kind, tier: 1, pos: { x, y }, owner, explored: true, visible: owner === 0 });
   const v = base({
