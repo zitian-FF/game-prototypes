@@ -13,6 +13,8 @@ on:
       - 'prototypes/**'
       - 'scripts/generate-versions.js'
       - 'scripts/bump-version.js'
+      - 'scripts/fetch-assets.js'
+      - 'scripts/pack-assets.js'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.ts'
@@ -73,6 +75,38 @@ jobs:
       - name: Typecheck
         if: steps.relevant.outputs.run == 'true'
         run: npm run typecheck
+
+      - name: Get Punchies art ETag
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        id: punchies-art
+        run: |
+          url="https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_assets.zip"
+          status=$(curl -sS -o /dev/null -D /tmp/punchies-art-headers -w '%{http_code}' -I "$url")
+          if [ "$status" = "404" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Punchies art absent; build procedural fallback"
+          elif [ "$status" = "200" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            etag=$(awk 'tolower($1)=="etag:" {gsub(/[\r"]/, "", $2); print $2}' /tmp/punchies-art-headers)
+            echo "etag=$etag" >> "$GITHUB_OUTPUT"
+          else
+            echo "Art endpoint returned HTTP $status" >&2; exit 1
+          fi
+
+      - name: Cache Punchies source art by ETag
+        if: steps.punchies-art.outputs.available == 'true' && steps.punchies-art.outputs.etag != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            prototypes/punchies/assets-src
+            .cache/punchies.etag
+          key: punchies-art-${{ steps.punchies-art.outputs.etag }}
+
+      - name: Fetch and pack Punchies art
+        if: steps.punchies-art.outputs.available == 'true'
+        run: |
+          npm run fetch:assets punchies
+          npm run pack:assets punchies
 
       # Bumps the target's deploy counter (see "Version stamping" in root
       # CLAUDE.md) without committing yet - committed only after a

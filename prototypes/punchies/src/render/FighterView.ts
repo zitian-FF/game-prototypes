@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
+import { pose } from './art';
+import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
 // gloves, stepping legs, state tints. Reads sim state only; never writes it.
@@ -116,6 +118,7 @@ export function drawGlove(g: Phaser.GameObjects.Graphics, x: number, y: number, 
 
 export class FighterView {
   private g: Phaser.GameObjects.Graphics;
+  private sprite: Phaser.GameObjects.Image;
   private flashColor = 0xffffff;
   private flashUntil = 0;
   // Walk cycle, driven by how far the body moves between frames.
@@ -139,6 +142,7 @@ export class FighterView {
     private color: number,
   ) {
     this.g = scene.add.graphics().setDepth(10);
+    this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
   }
 
   setLook(color: number, scale = 1, ponytail = false): void {
@@ -153,6 +157,7 @@ export class FighterView {
 
   clear(): void {
     this.g.clear();
+    this.sprite.setVisible(false);
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
@@ -170,6 +175,19 @@ export class FighterView {
     const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
     if (walking) this.walk += moved * 0.35;
     this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+
+    if (this.drawArt(f, now, walking)) {
+      if (isVulnerable(f) && stance !== 'dodging') {
+        g.lineStyle(2, 0xff4a3a, 0.45);
+        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
+      }
+      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
+        g.lineStyle(2, 0xffe03a, 0.6);
+        g.strokeCircle(f.x, f.y, BODY_R + 4);
+      }
+      if (showHitboxes) this.drawHitboxes(f);
+      return;
+    }
 
     // Shadow, then legs: two soft dark feet stepping under the body.
     g.fillStyle(0x000000, 0.25);
@@ -259,6 +277,35 @@ export class FighterView {
     }
 
     if (showHitboxes) this.drawHitboxes(f);
+  }
+
+  private drawArt(f: Fighter, now: number, walking: boolean): boolean {
+    const stance = stanceOf(f);
+    const prefix = f.anchored ? 'dummy' : `${f.char}${this.color !== mainLook(f.char).color ? '_alt' : ''}`;
+    let action = walking ? 'walk' : 'idle';
+    let progress = ((now / 1000) % 1);
+    if (f.punch) {
+      const p = f.punch;
+      action = p.type === 'hook' ? (p.hand === 0 ? 'hook_l' : 'hook_r') : p.type;
+      const end = activeEnd(p);
+      // Preserve authored anticipation/extension/recovery at the sim's
+      // tuned boundaries, including character/fatigue/whiff frame changes.
+      progress = p.frame < p.startup ? 0.25 * p.frame / p.startup
+        : p.frame < end ? 0.25 + 0.3 * (p.frame - p.startup) / Math.max(1, end - p.startup)
+        : 0.55 + 0.45 * (p.frame - end) / Math.max(1, p.recovery);
+    } else if (f.dodge) { action = 'dodge'; progress = f.dodge.frame / Math.max(1, tune.dodge.frames); }
+    else if (f.lastBlow && f.framesSinceHit < 10) {
+      action = f.lastBlow.sweet && f.lastBlow.punch !== 'jab' ? 'hit_heavy' : 'hit_light';
+      progress = f.framesSinceHit / 10;
+    } else if (f.stunTimer > 0) action = 'stunned';
+    else if (f.guarding) action = stance === 'perfectGuard' ? 'perfect_guard' : 'guard';
+    else if (f.exhausted) action = 'exhausted';
+    if (!pose(this.sprite, `${prefix}_${action}`, progress)) return false;
+    this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(Math.atan2(f.fy, f.fx));
+    this.sprite.setAlpha(stance === 'dodging' ? 0.4 : 1);
+    if (now < this.flashUntil) this.sprite.setTintFill(this.flashColor);
+    else this.sprite.clearTint();
+    return true;
   }
 
   // Yellow ponytail out the back of the helmet, swaying with the walk.

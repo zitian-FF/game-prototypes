@@ -5,6 +5,7 @@ import { punchCfg } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { fatigueLevel } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { artImage } from '../render/art';
 
 // MOBA-style touch controls drawn in-canvas. Left side: floating joystick.
 // Right side: a main button split into Jab (left half) / Cross (right half),
@@ -45,6 +46,9 @@ export class TouchControls {
   private flash = new Map<string, number>();
   private labelIds: string[] = ['jab', 'cross', 'hook', 'guard', 'dodge', 'uppercut'];
   private visible = true;
+  private chrome: { image: Phaser.GameObjects.Image; ids: string[] }[] = [];
+  private stickArt: Phaser.GameObjects.Image | null = null;
+  private knobArt: Phaser.GameObjects.Image | null = null;
   // Tutorial: only these parts are shown/usable ('stick', 'jab', 'cross',
   // 'hook', 'guard', 'dodge', 'uppercut', 'fatigue'). null = everything.
   shown: Set<string> | null = null;
@@ -59,6 +63,14 @@ export class TouchControls {
   ) {
     scene.input.addPointer(3);
     this.g = scene.add.graphics().setDepth(100);
+    const main = artImage(scene, 'ui_touch', MAIN.x, MAIN.y, MAIN.r * 2, MAIN.r * 2, 99);
+    if (main) this.chrome.push({ image: main, ids: ['jab', 'cross'] });
+    for (const b of ARC_BUTTONS) {
+      const image = artImage(scene, 'ui_touch', b.x, b.y, b.r * 2, b.r * 2, 99);
+      if (image) this.chrome.push({ image, ids: [b.id] });
+    }
+    this.stickArt = artImage(scene, 'ui_stick', JOYSTICK_HINT.x, JOYSTICK_HINT.y, tune.input.joystickRadius * 2, tune.input.joystickRadius * 2, 99);
+    this.knobArt = artImage(scene, 'ui_knob', JOYSTICK_HINT.x, JOYSTICK_HINT.y, 44, 44, 99);
     const txt = (x: number, y: number, s: string, size: number) =>
       this.labels.push(
         scene.add
@@ -67,8 +79,12 @@ export class TouchControls {
           .setAlpha(0.85)
           .setDepth(101),
       );
-    txt(MAIN.x - MAIN.r / 2, MAIN.y - 6, 'JAB', 13);
-    txt(MAIN.x + MAIN.r / 2, MAIN.y - 6, 'CROSS', 13);
+    const jabIcon = artImage(scene, 'icon_jab', MAIN.x - MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
+    const crossIcon = artImage(scene, 'icon_cross', MAIN.x + MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
+    if (jabIcon) this.chrome.push({ image: jabIcon, ids: ['jab'] });
+    if (crossIcon) this.chrome.push({ image: crossIcon, ids: ['cross'] });
+    txt(MAIN.x - MAIN.r / 2, MAIN.y + (jabIcon ? 18 : -6), 'JAB', 13);
+    txt(MAIN.x + MAIN.r / 2, MAIN.y + (crossIcon ? 18 : -6), 'CROSS', 13);
     for (const b of ARC_BUTTONS) txt(b.x, b.id === 'uppercut' ? b.y + 2 : b.y, b.label, 10);
 
     scene.input.on('pointerdown', this.onDown, this);
@@ -102,6 +118,9 @@ export class TouchControls {
     this.visible = v;
     this.g.setVisible(v);
     this.labels.forEach((l, i) => l.setVisible(v && this.isShown(this.labelIds[i])));
+    this.chrome.forEach(c => c.image.setVisible(v && c.ids.some(id => this.isShown(id))));
+    this.stickArt?.setVisible(v && this.isShown('stick'));
+    this.knobArt?.setVisible(v && this.isShown('stick'));
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
@@ -174,6 +193,8 @@ export class TouchControls {
     // Joystick
     const r = tune.input.joystickRadius;
     const base = this.stick.active ? this.stick : { ox: JOYSTICK_HINT.x, oy: JOYSTICK_HINT.y, x: JOYSTICK_HINT.x, y: JOYSTICK_HINT.y };
+    this.stickArt?.setPosition(base.ox, base.oy).setDisplaySize(r * 2, r * 2);
+    this.knobArt?.setPosition(base.x, base.y);
     if (this.isShown('stick')) {
       g.lineStyle(2, 0xffffff, this.stick.active ? 0.5 : 0.18);
       g.strokeCircle(base.ox, base.oy, r);

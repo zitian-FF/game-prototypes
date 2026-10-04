@@ -8,6 +8,7 @@ import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { devices } from '../input/devices';
 import { getNav, navRegister } from '../ui/menuNav';
+import { artImage } from '../render/art';
 
 // Step-by-step tutorial vs a scripted dummy. Each step reveals only the
 // controls/HUD it needs, shows one instruction, and completes when the
@@ -270,6 +271,7 @@ export class TutorialScene extends Phaser.Scene {
 
     const panelY = tune.ring.top + 30;
     this.add.rectangle(VIEW.cx, panelY, 540, 56, 0x000000, 0.72).setStrokeStyle(1, 0x5a6378).setDepth(140);
+    artImage(this, 'ui_prompt', VIEW.cx, panelY, 540, 56, 140);
     this.title = this.add
       .text(VIEW.cx, panelY - 18, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
       .setOrigin(0.5)

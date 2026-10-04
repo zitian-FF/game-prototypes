@@ -8,6 +8,7 @@ import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
 import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
 import { getNav, navRegister } from '../ui/menuNav';
+import { backdrop } from '../render/art';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -18,16 +19,18 @@ export class MenuScene extends Phaser.Scene {
 
   create(data: { message?: string }): void {
     applyCameraPixelRatio(this);
+    backdrop(this, 0.18);
+    const menuX = VIEW.left + Math.min(210, VIEW.width * 0.3);
     this.add
-      .text(VIEW.cx, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
+      .text(menuX, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    makeButton(this, VIEW.cx, VIEW.cy - 80, 220, 'SINGLE PLAYER', () => this.scene.start('CharSelect', { mode: 'vsai' }), 36, 15);
-    makeButton(this, VIEW.cx - 32, VIEW.cy - 38, 156, 'LOCAL VS', () => this.scene.start('CharSelect', { mode: 'localvs', inputs: loadLocalInputs() }), 36, 15);
-    makeButton(this, VIEW.cx + 80, VIEW.cy - 38, 60, 'INPUT', () => this.openInputPopup(), 36, 12);
-    makeButton(this, VIEW.cx - 40, VIEW.cy + 4, 140, 'TRAINING', () => this.scene.start('Training'), 36, 15);
-    makeButton(this, VIEW.cx + 72, VIEW.cy + 4, 76, 'TUTORIAL', () => this.scene.start('Tutorial'), 36, 11);
-    makeButton(this, VIEW.cx, VIEW.cy + 46, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 36, 15);
-    makeButton(this, VIEW.cx, VIEW.cy + 88, 220, 'JOIN WITH CODE', () => this.join(), 36, 15);
+    makeButton(this, menuX, VIEW.cy - 80, 220, 'SINGLE PLAYER', () => this.scene.start('CharSelect', { mode: 'vsai' }), 36, 15);
+    makeButton(this, menuX - 32, VIEW.cy - 38, 156, 'LOCAL VS', () => this.scene.start('CharSelect', { mode: 'localvs', inputs: loadLocalInputs() }), 36, 15);
+    makeButton(this, menuX + 80, VIEW.cy - 38, 60, 'INPUT', () => this.openInputPopup(), 36, 12);
+    makeButton(this, menuX - 40, VIEW.cy + 4, 140, 'TRAINING', () => this.scene.start('Training'), 36, 15);
+    makeButton(this, menuX + 72, VIEW.cy + 4, 76, 'TUTORIAL', () => this.scene.start('Tutorial'), 36, 11);
+    makeButton(this, menuX, VIEW.cy + 46, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 36, 15);
+    makeButton(this, menuX, VIEW.cy + 88, 220, 'JOIN WITH CODE', () => this.join(), 36, 15);
     const tuneLabel = this.add
       .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
       .setOrigin(1, 0.5);
@@ -42,7 +45,7 @@ export class MenuScene extends Phaser.Scene {
     });
     addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
     this.msg = this.add
-      .text(VIEW.cx, VIEW.cy + 122, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
+      .text(menuX, VIEW.cy + 122, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
   }

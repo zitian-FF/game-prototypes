@@ -4,6 +4,7 @@ import { maxHealth, maxStamina, punchCfg, stunThreshold } from '../sim/character
 import type { Fighter, SimState } from '../sim/types';
 import { fatigueLevel, remainingSeconds } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { artImage } from '../render/art';
 
 const FATIGUE_TYPES = ['jab', 'cross', 'hook'] as const;
 const ROW_W = 170;
@@ -19,6 +20,7 @@ export class Hud {
   private g: Phaser.GameObjects.Graphics;
   private timer: Phaser.GameObjects.Text;
   private shownHealth = [0, 0];
+  private chrome: (Phaser.GameObjects.Image | null)[];
   // Tutorial: only these parts are drawn ('health', 'stamina', 'stun',
   // 'timer'). null = everything.
   shown: Set<string> | null = null;
@@ -29,6 +31,8 @@ export class Hud {
 
   constructor(scene: Phaser.Scene, names: [string, string]) {
     this.g = scene.add.graphics().setDepth(90);
+    this.chrome = [artImage(scene, 'ui_hud', VIEW.left + MARGIN + BAR_W / 2, VIEW.top + 22, 260, 41, 89),
+      artImage(scene, 'ui_hud', VIEW.right - MARGIN - BAR_W / 2, VIEW.top + 22, 260, 41, 89)?.setFlipX(true) ?? null];
     const style = { fontFamily: 'monospace', fontSize: '10px', color: '#cccccc', resolution: PIXEL_RATIO };
     const tag = { fontFamily: 'monospace', fontSize: '9px', color: '#aab0bc', resolution: PIXEL_RATIO };
     for (let i = 0; i < 2; i++) {
@@ -49,6 +53,7 @@ export class Hud {
   draw(s: SimState): void {
     const g = this.g;
     g.clear();
+    this.chrome.forEach(image => image?.setVisible(this.shown === null || ['health', 'stamina', 'stun'].some(p => this.shown!.has(p))));
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i];
       const left = i === 0;

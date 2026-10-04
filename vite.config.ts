@@ -31,15 +31,26 @@ function getPrototypeEntries(): Record<string, string> {
 
 generateVersionStamps(__dirname);
 
-export default defineConfig({
+// Optional packed art index: generated from the R2 source folders by the
+// packer. An art-free checkout boots the existing procedural fallback.
+function punchiesArtIndex(): unknown {
+  const dir = path.resolve(__dirname, 'public/prototypes/punchies/assets');
+  const read = (file: string, fallback: unknown) => fs.existsSync(path.join(dir, file))
+    ? JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) : fallback;
+  return { manifest: read('manifest.json', []), animations: read('atlas/animations.json', {}) };
+}
+
+export default defineConfig(({ command }) => ({
   base: '/game-prototypes/',
   plugins: [react(), tailwindcss()],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
+    __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
+    __PUNCHIES_ASSET_BASE__: JSON.stringify(command === 'serve' ? '/game-prototypes/' : '../../'),
   },
   build: {
     rollupOptions: {
       input: getPrototypeEntries(),
     },
   },
-});
+}));

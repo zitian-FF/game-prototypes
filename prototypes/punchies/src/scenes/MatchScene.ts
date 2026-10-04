@@ -3,6 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
+import { resultArt } from '../render/art';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { charName } from '../sim/character';
@@ -130,6 +131,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showResult(): void {
+    resultArt(this);
     getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
