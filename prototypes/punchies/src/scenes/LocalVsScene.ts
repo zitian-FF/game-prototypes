@@ -3,7 +3,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
-import { resultArt } from '../render/art';
+import { fighterGroups, resultArt, whenGroupsReady } from '../render/art';
 import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { TICK_RATE } from '../sim/tune';
@@ -30,6 +30,15 @@ export class LocalVsScene extends Phaser.Scene {
 
   create(data: LocalInputs & { chars?: [string, string] }): void {
     applyCameraPixelRatio(this);
+    this.built = false;
+    const chars = data.chars ?? ['marco', 'marco'];
+    whenGroupsReady(this, fighterGroups(chars as [string, string]), () => this.build(data));
+  }
+
+  private built = false;
+
+  private build(data: LocalInputs & { chars?: [string, string] }): void {
+    this.built = true;
     this.inputs = data;
     this.acc = 0;
     this.over = false;
@@ -43,6 +52,7 @@ export class LocalVsScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    if (!this.built) return;
     this.stage.pollDevices();
     if (!this.over) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);

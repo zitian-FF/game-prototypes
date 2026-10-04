@@ -8,7 +8,7 @@ import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { devices } from '../input/devices';
 import { getNav, navRegister } from '../ui/menuNav';
-import { artImage } from '../render/art';
+import { artImage, fighterGroups, whenGroupsReady } from '../render/art';
 
 // Step-by-step tutorial vs a scripted dummy. Each step reveals only the
 // controls/HUD it needs, shows one instruction, and completes when the
@@ -261,6 +261,15 @@ export class TutorialScene extends Phaser.Scene {
 
   create(data?: { restart?: boolean }): void {
     applyCameraPixelRatio(this);
+    this.built = false;
+    // Both fighters are default boxers here, so the second wears the alt look.
+    whenGroupsReady(this, fighterGroups(['marco', 'marco']), () => this.build(data));
+  }
+
+  private built = false;
+
+  private build(data?: { restart?: boolean }): void {
+    this.built = true;
     this.acc = 0;
     this.finished = false;
     this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
@@ -391,6 +400,7 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    if (!this.built) return;
     this.stage.pollDevices();
     const st = STEPS[this.idx];
     this.title.setText(`STEP ${this.idx + 1}/${STEPS.length} · ${st.title}${st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''}`);

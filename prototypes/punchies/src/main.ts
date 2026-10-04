@@ -48,7 +48,8 @@ function onScreenShape(): void {
         for (const o of sc.children.list) if (o instanceof Phaser.GameObjects.Text) o.setResolution(PIXEL_RATIO);
       }
     }
-    const active = game.scene.getScenes(true);
+    // ArtBoot stays running as the background art loader; it is not a screen.
+    const active = game.scene.getScenes(true).filter((sc) => sc.scene.key !== 'ArtBoot');
     if (active.every((sc) => MENU_SCENES.includes(sc.scene.key))) {
       // Menus: adopt the new shape and re-lay out.
       setPendingView(v);
