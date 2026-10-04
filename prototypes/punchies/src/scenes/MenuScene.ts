@@ -20,7 +20,7 @@ export class MenuScene extends Phaser.Scene {
   create(data: { message?: string }): void {
     applyCameraPixelRatio(this);
     backdrop(this, 0.18);
-    const menuX = VIEW.left + Math.min(210, VIEW.width * 0.3);
+    const menuX = VIEW.cx;
     this.add
       .text(menuX, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
