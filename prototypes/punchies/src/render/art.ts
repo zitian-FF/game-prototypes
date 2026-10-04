@@ -134,6 +134,8 @@ function loadingBar(scene: Phaser.Scene): { set(v: number): void; destroy(): voi
   const W = 220;
   const objs: Phaser.GameObjects.GameObject[] = [];
   objs.push(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, 1).setDepth(1000));
+  const logo = artImage(scene, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
+  if (logo) objs.push(logo);
   objs.push(
     scene.add
       .text(VIEW.cx, VIEW.cy - 18, 'LOADING', { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
@@ -156,6 +158,14 @@ export class ArtBootScene extends Phaser.Scene {
   preload(): void {
     this.bar = loadingBar(this);
     this.load.on('progress', (v: number) => this.bar?.set(v));
+    // The logo becomes available during the first loose-file download, before boot completes.
+    this.load.once(`filecomplete-image-${textureKey('logo')}`, () => {
+      const logo = artImage(this, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
+      if (logo) {
+        this.events.once('shutdown', () => logo.destroy());
+        this.load.once('complete', () => logo.destroy());
+      }
+    });
     for (const file of index.manifest) {
       if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
         const name = file.path.slice(6).replace(/\.[^.]+$/, '');

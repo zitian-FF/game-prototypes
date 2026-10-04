@@ -30,6 +30,8 @@ export class FightStage {
   private ko: KoAnim;
   private ring: Phaser.GameObjects.Graphics;
   private floor: Phaser.GameObjects.Image | null;
+  private apron: Phaser.GameObjects.Image | null;
+  private turnbuckles: (Phaser.GameObjects.Image | null)[];
   private ropes: (Phaser.GameObjects.Image | null)[];
   private posts: (Phaser.GameObjects.Image | null)[];
   private persp: RingPerspective;
@@ -46,6 +48,9 @@ export class FightStage {
     this.persp = new RingPerspective(scene);
     const before = new Set(scene.children.list);
     this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
+    this.apron = artImage(scene, 'ring_apron', 422, 382, 326, 16, -1);
+    this.turnbuckles = [0, 1, 2, 3].map(() => artImage(scene, 'ring_turnbuckle', 0, 0, 22, 22, 2));
+    if (this.apron) this.persp.take([this.apron]);
     this.ropes = [0, 1, 2, 3].map(() => artImage(scene, 'ring_rope', 0, 0, 326, 12, 1));
     this.posts = [0, 1, 2, 3].map(() => artImage(scene, 'ring_post', 0, 0, 20, 20, 2));
     this.ring = scene.add.graphics().setDepth(0);
@@ -188,19 +193,25 @@ export class FightStage {
     const w = r.right - r.left;
     const h = r.bottom - r.top;
     this.floor?.setPosition(r.left + w / 2, r.top + h / 2).setDisplaySize(w, h);
+    // Keep the skirt inside the flat camera before the post-effect samples it.
+    this.apron?.setPosition(r.left + w / 2, r.bottom + 8).setDisplaySize(w + 16, 16);
     if (this.floor && this.ropes.every(Boolean) && this.posts.every(Boolean)) {
       const cx = r.left + w / 2, cy = r.top + h / 2;
       this.ropes[0]!.setPosition(cx, r.top - 5).setDisplaySize(w + 16, 12);
-      this.ropes[1]!.setPosition(cx, r.bottom + 5).setDisplaySize(w + 16, 12);
+      this.ropes[1]!.setPosition(cx, r.bottom - 3).setDisplaySize(w + 16, 12);
       this.ropes[2]!.setPosition(r.left - 5, cy).setDisplaySize(h + 16, 12).setRotation(Math.PI / 2);
       this.ropes[3]!.setPosition(r.right + 5, cy).setDisplaySize(h + 16, 12).setRotation(Math.PI / 2);
       const positions = [[r.left - 7, r.top - 7, c0], [r.right + 7, r.bottom + 7, c1], [r.right + 7, r.top - 7, 0xffffff], [r.left - 7, r.bottom + 7, 0xffffff]];
       this.posts.forEach((post, i) => post!.setPosition(positions[i][0], positions[i][1]).setTint(positions[i][2]));
+      const pads = [[r.left + 3, r.top + 3, -Math.PI / 4], [r.right - 3, r.bottom - 3, Math.PI * 3 / 4], [r.right - 3, r.top + 3, Math.PI / 4], [r.left + 3, r.bottom - 3, -Math.PI * 3 / 4]];
+      this.turnbuckles.forEach((pad, i) => pad?.setPosition(pads[i][0], pads[i][1]).setRotation(pads[i][2]));
       return;
     }
     // Partial stage assets are hidden so the intact procedural ring stays coherent.
     this.ropes.forEach(image => image?.setVisible(false));
     this.posts.forEach(image => image?.setVisible(false));
+    this.turnbuckles.forEach(image => image?.setVisible(false));
+    this.apron?.setVisible(false);
 
     // Apron just outside the ropes.
     g.fillStyle(0x1b1f27, 1);

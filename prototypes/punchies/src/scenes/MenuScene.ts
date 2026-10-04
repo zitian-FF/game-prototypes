@@ -8,7 +8,7 @@ import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
 import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
 import { getNav, navRegister } from '../ui/menuNav';
-import { backdrop } from '../render/art';
+import { artImage, backdrop } from '../render/art';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -21,7 +21,8 @@ export class MenuScene extends Phaser.Scene {
     applyCameraPixelRatio(this);
     backdrop(this, 0.18);
     const menuX = VIEW.cx;
-    this.add
+    const logo = artImage(this, 'logo', menuX, VIEW.cy - 135, 250, 71);
+    if (!logo) this.add
       .text(menuX, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     makeButton(this, menuX, VIEW.cy - 80, 220, 'SINGLE PLAYER', () => this.scene.start('CharSelect', { mode: 'vsai' }), 36, 15);

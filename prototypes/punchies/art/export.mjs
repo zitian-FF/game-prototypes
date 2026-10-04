@@ -23,7 +23,7 @@ async function write(name,w,h,s) { const file=path.join(out,name); fs.mkdirSync(
 function glove(x,y,color,side) {
   return `<g transform="translate(${x} ${y})">${rect(-16,-12,12,24,cream,3)}${ellipse(1,0,17,17,color)}${ellipse(-3,side*12,8,6,color)}${ellipse(9,-5,3,7,'#ffffff88','none',0)}${line(-13,-6,-13,6,'#7e8794',2)}</g>`;
 }
-function fighter(id,color,action,index,count) {
+function fighter(id,color,action,index,count,feetOnly=false) {
   const c=roster[id], t=count<=1?0:index/(count-1), wave=Math.sin(t*Math.PI*2), attack=['jab','cross','hook_l','hook_r','uppercut'].includes(action);
   const k=action==='ko'?t:0, slump=action==='exhausted'?3:0;
   let left={x:31,y:-28},right={x:23,y:30};
@@ -44,11 +44,13 @@ function fighter(id,color,action,index,count) {
   if(action==='ko') {left={x:24-32*k,y:-28-17*k};right={x:24-32*k,y:28+17*k};}
   const bob=action==='idle'?wave*1.3:action==='walk'?wave*2:action==='stunned'?wave*3:slump;
   const stride=action==='walk'?wave*14:0;
-  let s=ellipse(131,135,39,34,'#00000030','none',0);
-  s+=`<g transform="translate(128 128) rotate(${twist})">`;
-  s+=ellipse(-24+stride,-20,15,9,ink)+ellipse(-17-stride,20,15,9,ink);
-  s+=rect(-35,-27,25,20,color,5)+rect(-35,10,25,20,color,5);
-  s+=line(-31,-22,-17,-22,cream,3)+line(-31,15,-17,15,cream,3);
+  let s=`<g transform="translate(128 128) rotate(${twist})">`;
+  if (feetOnly) {
+    s+=ellipse(-24+stride,-20,15,9,ink)+ellipse(-17-stride,20,15,9,ink);
+    s+=rect(-35,-27,25,20,color,5)+rect(-35,10,25,20,color,5);
+    s+=line(-31,-22,-17,-22,cream,3)+line(-31,15,-17,15,cream,3);
+    return s+'</g>';
+  }
   for(const [pt,side] of [[left,-1],[right,1]]) {
     const ex=(pt.x-7)*.55-3,ey=side*27+(pt.y-side*27)*.4;
     s+=`<path d="M-1 ${side*25}Q${ex} ${ey} ${pt.x-12} ${pt.y}" fill="none" stroke="${ink}" stroke-width="16" stroke-linecap="round"/>`;
@@ -92,16 +94,26 @@ function portrait(id) {
 for(const [id,c] of Object.entries(roster)) {
   const variants=id==='dummy'?[[id,c.color]]:[[id,c.color],[`${id}_alt`,c.alt]];
   for(const [prefix,color] of variants) for(const [action,count] of Object.entries(actions)) {
-    for(let i=0;i<count;i++) await write(`packed/${prefix}_${action}/${String(i+1).padStart(4,'0')}.png`,256,256,fighter(id,color,action,i,count));
+    for(let i=0;i<count;i++) {
+      const frame=String(i+1).padStart(4,'0')+'.png';
+      await write(`packed/${prefix}_${action}/${frame}`,256,256,fighter(id,color,action,i,count));
+      await write(`packed/${prefix}_${action}_feet/${frame}`,256,256,fighter(id,color,action,i,count,true));
+    }
   }
   if(id!=='dummy') await write(`loose/portrait_${id}.png`,360,440,portrait(id));
 }
 // Ring floor has no ropes: existing dynamic corner/post layer sits above it.
 let floor=rect(0,0,620,620,'#304665',0,ink,0)+rect(16,16,588,588,'#3d5678',0,ink,0);
+floor+=rect(3,3,614,614,'none',0,'#101b32',6)+rect(12,12,596,596,'none',0,'#6e8bac',3);
 for(let n=0;n<50;n++) {const x=30+(n*113)%560,y=30+(n*71)%560;floor+=line(x,y,x+18,y+3,'#8197b322',2);}
 floor+=`<circle cx="310" cy="310" r="115" fill="none" stroke="#94acc44d" stroke-width="4"/>`;
 floor+=line(310,288,310,332,'#94acc44d',4)+line(288,310,332,310,'#94acc44d',4);
 await write('loose/ring_floor.png',620,620,floor);
+await write('loose/ring_apron.png',652,54,
+  rect(2,2,648,48,'#203951',4,ink,4)+rect(4,3,644,8,'#7897b8',2,ink,0)+
+  line(6,15,646,15,'#0c1728',3)+line(10,45,642,45,'#3a4f6c',2)+
+  rect(24,20,604,16,'#263d5b',3,ink,0)+
+  `<text x="326" y="33" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" letter-spacing="8" fill="${cream}">PUNCHIES</text>`);
 let gym=rect(0,0,1688,780,ink,0,ink,0);
 for(let x=0;x<1688;x+=90) for(let y=0;y<780;y+=90) gym+=rect(x+2,y+2,86,86,(x+y)%180===0?'#17253d':'#1b2b43',0,ink,0);
 gym+=polygon('650,0 1038,0 1280,780 408,780','#253650',0);
@@ -124,10 +136,13 @@ for (const x of [28, 1440]) {
 gym+=`<path d="M65 0L65 22M88 0L88 24" stroke="#53657c" stroke-width="7"/>`+rect(48,23,62,99,'#973b49',18,ink,5)+line(58,42,58,100,'#c75a66',5);
 await write('loose/stage_background.png',1688,780,gym);
 let ropes=rect(0,0,652,24,'#101b3240',0,ink,0);
-for(const y of [4,12,20]) ropes+=line(0,y,652,y,ink,7)+line(0,y-1,652,y-1,y===12?cream:'#d55757',4);
+for(const y of [4,12,20]) ropes+=line(0,y+2,652,y+2,'#00000066',8)+line(0,y,652,y,ink,7)+line(0,y-1,652,y-1,y===12?cream:'#ed4b59',4)+line(1,y-2,651,y-2,y===12?'#ffffff':'#ff9a9f',1);
 for(const x of [163,326,489]) ropes+=rect(x-3,1,6,22,'#fff1d1aa',1,ink,1);
 await write('loose/ring_rope.png',652,24,ropes);
-await write('loose/ring_post.png',40,40,ellipse(21,25,17,14,'#00000066','none',0)+ellipse(19,19,17,17,'#edf3f5',ink,3)+ellipse(14,12,5,4,'#ffffff','none',0)+line(12,30,27,29,'#8695a7',3));
+await write('loose/ring_post.png',40,40,ellipse(21,29,17,10,'#00000066','none',0)+rect(8,16,24,21,'#8290a4',7,ink,3)+ellipse(19,16,17,14,'#edf3f5',ink,3)+ellipse(14,10,5,4,'#ffffff','none',0)+line(12,29,27,29,'#52657f',3));
+await write('loose/ring_turnbuckle.png',44,44,
+  rect(12,6,26,32,cream,8,ink,3)+rect(17,9,17,25,'#b1becf',5,ink,0)+
+  line(20,10,20,32,'#ffffff',3)+line(8,10,14,12,ink,4)+line(8,33,14,31,ink,4));
 await write('loose/ui_button.png',440,72,polygon('10,4 430,4 438,12 438,61 429,68 10,68 2,60 2,12','#253650',4)+line(16,9,421,9,'#4d698d',3)+line(14,64,424,64,'#101b32',4));
 await write('loose/ui_panel.png',392,600,rect(3,3,386,594,'#16243bee',16,'#4d698d',5)+line(24,18,368,18,gold,4));
 await write('loose/ui_prompt.png',1080,112,rect(3,3,1074,106,'#101b32ed',12,'#ffc84a',4));
@@ -141,5 +156,7 @@ for(const [name,color,side] of [['icon_jab','#079cf0',1],['icon_cross','#f33c48'
 }
 // Until the menu pass lands, use coherent gym art rather than the retired cinematic image.
 fs.copyFileSync(process.argv[2] || path.join(out,'loose/stage_background.png'),path.join(out,'loose/menu_background.png'));
+// Optional exact approved logo cutout. Preserve an already exported logo otherwise.
+if(process.argv[3]) fs.copyFileSync(process.argv[3],path.join(out,'loose/logo.png'));
 const zip=new AdmZip();zip.addLocalFolder(out);zip.writeZip('punchies_assets.zip');
 console.log(`Exported ${Object.keys(roster).length} fighters, fixed 256x256 canvases, ${Object.keys(actions).length} poses and loose presentation assets into ${out}; punchies_assets.zip`);

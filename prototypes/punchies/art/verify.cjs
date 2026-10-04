@@ -34,9 +34,10 @@ async function main() {
   });
   assert(boot.stamp, 'version stamp remains visible');
   const fallback = process.env.EXPECT_FALLBACK === '1';
-  assert.equal(boot.animations, fallback ? 0 : 105, 'all folder-derived animations load');
+  assert.equal(boot.animations, 0, 'grouped fighter animations are deferred at boot');
+  if (!fallback) assert(await page.evaluate(() => window.__testGame.textures.exists('punchies:logo')), 'approved logo loads');
   // Exercise real menu hit targets and roster locking.
-  await page.mouse.click(420, 230); await waitScene('CharSelect');
+  await page.mouse.click(844, 230); await waitScene('CharSelect');
   await shot('character-select');
   await page.mouse.click(844, 365); // Mia for player
   await page.mouse.click(1028, 365); // Bruno for CPU
@@ -45,7 +46,20 @@ async function main() {
   await shot('fight');
   await page.evaluate(() => window.__testGame.scene.getScene('VsAI').scene.start('Training'));
   await waitScene('Training');
+  await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
   await shot('training');
+  // Exercise on-demand main/alt loading through real mirror-match scene entry.
+  for (const id of ['marco','mia','bruno']) {
+    await page.evaluate(id => {const game=window.__testGame;game.scene.getScenes(true).find(s=>s.scene.key!=='ArtBoot').scene.start('VsAI',{chars:[id,id],level:'easy'});},id);
+    await waitScene('VsAI');
+    await page.waitForFunction(() => !!window.__testGame.scene.getScene('VsAI').stage);
+  }
+  await page.evaluate(()=>window.__testGame.scene.getScene('VsAI').scene.start('Training'));
+  await waitScene('Training');
+  await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
+  const loaded = await page.evaluate(() => Object.keys(window.__testGame.anims.anims.entries));
+  assert.equal(loaded.length, fallback ? 0 : 210, 'all body and feet animation configs load on demand');
+  if (!fallback) for (const key of loaded.filter(k=>!k.endsWith('_feet'))) assert(loaded.includes(`${key}_feet`), `${key} has matching feet`);
   // Validate every packed action against an actual sprite, at its fixed origin.
   const poses = await page.evaluate(() => {
     const scene = window.__testGame.scene.getScene('Training');
@@ -76,6 +90,7 @@ async function main() {
   }
   // Fresh training state; exercise keyboard movement, guard and real punches.
   await page.evaluate(() => window.__testGame.scene.getScene('Training').scene.restart()); await waitScene('Training');
+  await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
   await page.keyboard.down('d'); await page.waitForTimeout(170); await page.keyboard.up('d');
   await page.keyboard.down('Shift'); await page.waitForTimeout(80); await shot('guard'); await page.keyboard.up('Shift');
   await page.keyboard.press('j'); await page.waitForTimeout(50); await shot('jab');

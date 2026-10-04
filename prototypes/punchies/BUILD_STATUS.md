@@ -1,31 +1,33 @@
 ## Current milestone
 
-Ring perspective trial: the ring is drawn with a slight tilt while the sim arena stays a flat square.
+Logo, tilted-ring presentation and split feet exports completed on proto/punchies/layered-ring-art; R2 upload verified. Runtime feet/shadow wiring remains with Claude.
 
 ## What was implemented
 
-- `render/perspective.ts`: the ring floor, ropes, posts, boxers, KO animation, hit effects and P1/P2 tags are gathered into one container drawn through a keystone shader (far edge narrower, picture vertically squashed). HUD, buttons, touch controls and screen-space overlays stay flat.
-- `tune.view`: `perspective` (1 / 0), `topScale` (0.90, far edge width relative to the near edge) and `squash` (0.85). Panel category "View", live in `?debug=1`. Set `perspective` to 0 to turn it off.
-- Wired into `FightStage`, so Single Player, Local VS, Online, Training and Tutorial all get it.
+- Extracted approved original logo pixels into alpha PNG; menu and boot/group loading display it with text fallback.
+- Added near-side apron and turnbuckle layers, taller padded posts and highlighted/shadowed ropes; preserved flat ring floor footprint and existing keystone shader.
+- Exported 105 matching *_feet folders; bodies have no baked ground shadow or feet. Total 210 folders / 1344 fixed 256x256 frames.
+- Adapted browser checks for deferred character groups and added asset-layer contract verification.
 
 ## Key technical decisions
 
-- Presentation only: no change to `src/sim`, hitboxes, reach, positions, input mapping or the hit-box overlay maths. Joystick up still moves along the flat world axis.
-- A shader on one container warps everything at once (placeholder shapes and art alike) instead of projecting every draw call. Container children draw in list order, so the container is sorted by depth each frame.
-- Hit effects spawned during a fight join the container when their depth is 60 to 75; depth 76 and above is treated as screen-space.
-- WebGL only. The Canvas renderer has no post effects, so the ring simply stays flat there.
-- The online host's tune is adopted by the guest for a match, so the host's `view` values apply to both screens.
+- Owner sketch never used as helmet design; Mia clothing/face revisions remain deferred.
+- Existing per-character grouping retained. No simulation, tuning, FighterView or KoAnim edits.
+- Feet keys append _feet to body keys, preserving registration/frame counts. Claude owns feet screen-Y and nonrotating ground-shadow wiring.
+- Apron stays inside the flat camera before shader warp; near rope moves upward in presentation to expose skirt.
+- Typecheck/build pass; 7 atlas sheets <=2048; alpha logo and 1344 layer frames verified. Playwright loads 210 configs on demand, checks 84 body poses, KO/results, mobile/tutorial, version/debug and zero errors. Separate art-free fallback passed. Final menu/ring captures inspected.
 
 ## Open questions
 
-- Is the strength right? Defaults are a first guess; tune `topScale` and `squash` by eye. Perspective makes vertical distances look shorter than they are (a vertical jab looks shorter than a horizontal one at the same real reach).
-- BRIEF.md has no mention of perspective; it may need a line if this stays.
+- New art PR needs owner merge decision after Claude feet/shadow integration review.
 
 ## Known issues
 
-- Checked in a desktop Chromium via Playwright (Training, hits and a whiff popup, zero console errors). Not checked on a phone, in KO, online, or in Local VS.
-- Existing Phaser bundle-size warning.
+- Feet/shadow are exported but not drawn by current FighterView/KoAnim; Claude integration is outstanding.
+- Ring/logo updates are not yet merged/deployed. Latest pre-change WIP deployment run 37220320885 succeeded.
+- Real-phone networking/controller checks unverified; existing Phaser bundle-size warning.
+- Previous R2 bundle retained in local outputs/punchies-assets-pre-layer-split.zip for rollback.
 
 ## Next proposed step
 
-Play it, adjust the View values, then decide whether the perspective stays on by default.
+Claude wires separate feet and ground shadows, reviews the PR, then coordinates merge/deploy and live verification with owner.
