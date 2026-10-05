@@ -4,6 +4,7 @@ import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 import { pose } from './art';
 import { GroundLayer } from './groundLayer';
+import { Puppet } from './puppet';
 import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
@@ -121,6 +122,8 @@ export class FighterView {
   private g: Phaser.GameObjects.Graphics;
   private sprite: Phaser.GameObjects.Image;
   private ground: GroundLayer;
+  // True-overhead puppet (head, torso, gloves, boots + code limbs); first choice.
+  private puppet: Puppet;
   // Layered art (top to bottom): effects, head, gloves, torso; feet and the
   // shadow sit below in `ground`. Falls back to the single baked body sprite.
   private torso: Phaser.GameObjects.Image;
@@ -164,6 +167,7 @@ export class FighterView {
     private color: number,
   ) {
     this.ground = new GroundLayer(scene, BODY_R);
+    this.puppet = new Puppet(scene);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
     // Same depth family as the body sprite, ordered: torso, gloves, head, effects.
@@ -189,6 +193,7 @@ export class FighterView {
     this.g.clear();
     this.sprite.setVisible(false);
     this.hideLayers();
+    this.puppet.hide();
     this.ground.hide();
     this.fx.clear();
   }
@@ -203,12 +208,28 @@ export class FighterView {
     const alpha = stance === 'dodging' ? 0.35 : 1;
     const k = this.scale;
 
-    const moved = Number.isNaN(this.lastX) ? 0 : Math.hypot(f.x - this.lastX, f.y - this.lastY);
+    const dxm = Number.isNaN(this.lastX) ? 0 : f.x - this.lastX;
+    const dym = Number.isNaN(this.lastX) ? 0 : f.y - this.lastY;
+    const moved = Math.hypot(dxm, dym);
     this.lastX = f.x;
     this.lastY = f.y;
     const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
     if (walking) this.walk += moved * 0.35;
     this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+
+    if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
+      if (isVulnerable(f) && stance !== 'dodging') {
+        g.lineStyle(2, 0xff4a3a, 0.45);
+        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
+      }
+      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
+        g.lineStyle(2, 0xffe03a, 0.6);
+        g.strokeCircle(f.x, f.y, BODY_R + 4);
+      }
+      this.drawStun(f, now);
+      if (showHitboxes) this.drawHitboxes(f);
+      return;
+    }
 
     if (this.drawArt(f, now, walking)) {
       if (isVulnerable(f) && stance !== 'dodging') {
@@ -243,13 +264,47 @@ export class FighterView {
       g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
     }
 
-    // Gloves: player colour at rest; phase colours while punching/guarding.
+    const { fists, colors } = this.fistPoints(f, k, stance);
+
+    // Arms from the shoulders (torso edge) to the glove cuffs.
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? 1 : -1;
+      drawArm(g, f.x + lx * (BODY_R - 3) * k * side, f.y + ly * (BODY_R - 3) * k * side, fists[i].x, fists[i].y, this.color, alpha);
+    }
+    drawTorso(g, f.x, f.y, f.fx, f.fy, this.color, alpha, k);
+    if (this.ponytail) this.drawPonytail(f, now, alpha);
+    drawHelmet(g, f.x - f.fx * 2 * k, f.y - f.fy * 2 * k, f.fx, f.fy, this.color, alpha, k);
+    for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha, k);
+
+    if (now < this.flashUntil) {
+      g.fillStyle(this.flashColor, 0.75);
+      g.fillCircle(f.x, f.y, BODY_R + 2);
+    }
+    // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
+    if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
+      const pulse = 0.5 + 0.5 * Math.sin(now / (f.dashBuff > 0 ? 45 : 110));
+      g.fillStyle(0xffe03a, 0.1 + 0.18 * pulse);
+      g.fillCircle(f.x, f.y, BODY_R + 1);
+      g.lineStyle(2, 0xffe03a, 0.25 + 0.35 * pulse);
+      g.strokeCircle(f.x, f.y, BODY_R + 4);
+    }
+
+    this.drawStun(f, now);
+
+    if (showHitboxes) this.drawHitboxes(f);
+  }
+
+  // Glove centres and phase colours from the sim state: rest, guard, or the
+  // punch travelling out and back. Shared by the drawn fallback and the puppet.
+  private fistPoints(f: Fighter, k: number, stance: string): { fists: [Pt, Pt]; colors: [number, number] } {
+    const lx = f.fy;
+    const ly = -f.fx;
     const rest = (hand: 0 | 1) => {
       const side = hand === 0 ? 1 : -1;
       return { x: f.x + f.fx * 15 * k + lx * 15 * k * side, y: f.y + f.fy * 15 * k + ly * 15 * k * side };
     };
-    let fists = [rest(0), rest(1)];
-    const colors = [this.color, this.color];
+    let fists: [Pt, Pt] = [rest(0), rest(1)];
+    const colors: [number, number] = [this.color, this.color];
     if (f.guarding) {
       fists = [
         { x: f.x + f.fx * 20 * k + lx * 9 * k, y: f.y + f.fy * 20 * k + ly * 9 * k },
@@ -281,32 +336,36 @@ export class FighterView {
         phase === 'sweet' ? 0xffe03a : phase === 'sour' ? 0xff8a3a : p.type === 'uppercut' ? 0xffc83a : this.color;
     }
 
-    // Arms from the shoulders (torso edge) to the glove cuffs.
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? 1 : -1;
-      drawArm(g, f.x + lx * (BODY_R - 3) * k * side, f.y + ly * (BODY_R - 3) * k * side, fists[i].x, fists[i].y, this.color, alpha);
-    }
-    drawTorso(g, f.x, f.y, f.fx, f.fy, this.color, alpha, k);
-    if (this.ponytail) this.drawPonytail(f, now, alpha);
-    drawHelmet(g, f.x - f.fx * 2 * k, f.y - f.fy * 2 * k, f.fx, f.fy, this.color, alpha, k);
-    for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha, k);
+    return { fists, colors };
+  }
 
-    if (now < this.flashUntil) {
-      g.fillStyle(this.flashColor, 0.75);
-      g.fillCircle(f.x, f.y, BODY_R + 2);
+  private drawPuppet(f: Fighter, now: number, stance: string, vel: Pt): boolean {
+    const k = this.scale;
+    const alt = this.color !== mainLook(f.char).color;
+    const { fists, colors } = this.fistPoints(f, k, stance);
+    const ok = this.puppet.draw({
+      f,
+      now,
+      k,
+      alt,
+      fists,
+      fistColors: colors,
+      baseColor: this.color,
+      walk: this.walk,
+      stride: this.stride,
+      vel,
+      flashHead: now < this.flashHeadUntil,
+      flashBody: now < this.flashBodyUntil,
+      flashColor: this.flashColor,
+      dodging: stance === 'dodging',
+      guarding: f.guarding,
+    });
+    if (ok) {
+      this.sprite.setVisible(false);
+      this.hideLayers();
+      this.ground.shadowOnly(f.x, f.y, k, stance === 'dodging' ? 0.55 : 1);
     }
-    // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
-    if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-      const pulse = 0.5 + 0.5 * Math.sin(now / (f.dashBuff > 0 ? 45 : 110));
-      g.fillStyle(0xffe03a, 0.1 + 0.18 * pulse);
-      g.fillCircle(f.x, f.y, BODY_R + 1);
-      g.lineStyle(2, 0xffe03a, 0.25 + 0.35 * pulse);
-      g.strokeCircle(f.x, f.y, BODY_R + 4);
-    }
-
-    this.drawStun(f, now);
-
-    if (showHitboxes) this.drawHitboxes(f);
+    return ok;
   }
 
   // Stun: three stars circling the head in a true circle, each also spinning

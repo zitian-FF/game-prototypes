@@ -6,7 +6,7 @@
 // public/prototypes/<name>/assets/.
 import { existsSync, mkdirSync, readdirSync, statSync, rmSync, writeFileSync, readFileSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -251,6 +251,17 @@ if (animKeysPresent.length > 0) {
   addToManifest('atlas/animations.json', animationsPath);
 } else {
   console.log('pack-assets: no packed/ folder in assets-src, skipping atlas packing');
+}
+
+// --- Optional per-prototype prepare step ---
+// A prototype may ship art/prepare-assets.mjs (default export, async). It runs
+// here, after the fetch and before loose/ is copied, so it can derive extra
+// loose files (e.g. downsized parts) from the raw art. Prototypes without the
+// file are unaffected.
+const prepareHook = path.join(protoDir, 'art', 'prepare-assets.mjs');
+if (existsSync(prepareHook)) {
+  const mod = await import(pathToFileURL(prepareHook).href);
+  await mod.default({ assetsSrcDir, rootDir });
 }
 
 // --- Copy loose assets through (optionally optimized per the rules above) ---

@@ -31,6 +31,16 @@ export class GroundLayer {
     }
   }
 
+  // Just the ground shadow (the puppet draws its own feet).
+  shadowOnly(x: number, y: number, scale: number, alpha: number): void {
+    const v = tune.view;
+    const g = this.shadow;
+    g.clear();
+    g.fillStyle(0x000000, v.shadowAlpha * alpha);
+    g.fillEllipse(x, y + v.shadowOffsetY, this.bodyRadius * 2.3 * scale * v.shadowSize, this.bodyRadius * 1.5 * scale * v.shadowSize);
+    this.feet.setVisible(false);
+  }
+
   hide(): void {
     this.shadow.clear();
     this.feet.setVisible(false);
