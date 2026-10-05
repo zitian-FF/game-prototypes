@@ -2259,5 +2259,54 @@
     "min": 0.2,
     "max": 3,
     "step": 0.1
+  },
+  "view.trainingDummy.bodyHeight": {
+    "cat": "View",
+    "desc": "Dummy torso pad height. Presentation only; dummy hitboxes stay fixed.",
+    "min": 20,
+    "max": 60,
+    "step": 1
+  },
+  "view.trainingDummy.headHeight": {
+    "cat": "View",
+    "desc": "Dummy head pad height. Presentation only; dummy hitboxes stay fixed.",
+    "min": 10,
+    "max": 36,
+    "step": 1
+  },
+  "view.trainingDummy.headForward": {
+    "cat": "View",
+    "desc": "Head overlap along facing. Presentation only; dummy hitboxes stay fixed.",
+    "min": 0,
+    "max": 18,
+    "step": 0.5
+  },
+  "view.trainingDummy.shakeMs": {
+    "cat": "View",
+    "desc": "Struck pad shake duration (ms). Presentation only; dummy hitboxes stay fixed.",
+    "min": 80,
+    "max": 700,
+    "step": 10
+  },
+  "view.trainingDummy.shakeHz": {
+    "cat": "View",
+    "desc": "Struck pad shake frequency (Hz). Presentation only; dummy hitboxes stay fixed.",
+    "min": 8,
+    "max": 45,
+    "step": 1
+  },
+  "view.trainingDummy.shakeDistance": {
+    "cat": "View",
+    "desc": "Struck pad lateral displacement. Presentation only; dummy hitboxes stay fixed.",
+    "min": 0,
+    "max": 8,
+    "step": 0.5
+  },
+  "view.trainingDummy.shakeAngle": {
+    "cat": "View",
+    "desc": "Struck pad angular displacement (radians). Presentation only; dummy hitboxes stay fixed.",
+    "min": 0,
+    "max": 0.4,
+    "step": 0.01
   }
 }

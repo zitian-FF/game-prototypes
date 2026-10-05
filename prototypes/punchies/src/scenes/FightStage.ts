@@ -88,6 +88,13 @@ export class FightStage {
   }
 
   handleEvents(events: SimEvent[], s: SimState): void {
+    for (const e of events) {
+      if (e.kind !== 'hit' && e.kind !== 'block') continue;
+      const defender = 1 - e.attacker;
+      if (s.fighters[defender].anchored) {
+        this.views[defender].reactToDummyHit(e.kind === 'hit' && e.row === 'vulnerable' ? 'head' : 'body', this.scene.time.now);
+      }
+    }
     this.fx.handle(events, s, this.localIdx);
   }
 
