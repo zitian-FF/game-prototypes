@@ -2,30 +2,25 @@
   "match": {
     "durationSeconds": 1800,
     "playersPerTeam": 20,
-    "startCancelSeconds": 3
+    "startCancelSeconds": 3,
+    "introSeconds": 7
   },
   "roster": {
     "ranks": 20,
     "fourSquadShare": 0.2,
     "threeSquadShare": 0.3,
     "bands": [
-      [
-        1,
-        12
-      ],
-      [
-        7,
-        16
-      ],
-      [
-        13,
-        20
-      ],
-      [
-        16,
-        20
-      ]
-    ]
+      [1, 12],
+      [8, 20],
+      [15, 20],
+      [18, 20]
+    ],
+    "cardTiers": {
+      "gold": 0.1,
+      "silver": 0.2,
+      "bronze": 0.3
+    },
+    "cardTierSlots": 2
   },
   "power": {
     "min": 50,

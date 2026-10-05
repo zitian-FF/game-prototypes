@@ -85,14 +85,24 @@ export interface NodeKindTune {
 
 /** Mirrors prototypes/firestorm-arena/tune.json. */
 export interface Tune {
-  match: { durationSeconds: number; playersPerTeam: number; startCancelSeconds: number };
+  match: {
+    durationSeconds: number;
+    playersPerTeam: number;
+    startCancelSeconds: number;
+    /** Real seconds between the countdown ending and the match clock starting: the opening card reveal runs in it. */
+    introSeconds?: number;
+  };
   roster: {
     ranks: number;
     /** Share of commanders per team dealt 4 squads and 3 squads; the rest get 2. */
     fourSquadShare: number;
     threeSquadShare: number;
-    /** Rank band per squad slot (1 = strongest). Bands overlap with the next one. */
+    /** Rank band per squad slot (1 = strongest). The first two slots are the strong ones, the 3rd and 4th are utility. */
     bands: [number, number][];
+    /** Reveal cards: a squad in the best this share of its own slot's power range glows gold, silver or bronze. */
+    cardTiers: { gold: number; silver: number; bronze: number };
+    /** How many squad slots get a reveal-card tier: the first two, the fighting squads. The utility squads never do. */
+    cardTierSlots: number;
   };
   power: { min: number; max: number };
   squad: {

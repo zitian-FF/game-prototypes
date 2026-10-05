@@ -734,4 +734,22 @@ client.
   below `march.minEdgeToEdgeSeconds` (30 s). Squads walking home after a defeat go at half their current speed.
   Scouts and turret missiles fly at 5 times the unboosted base speed (about 54.7 units per second, 30 s edge to
   edge); Accelerators do not affect them.
+- Game log: when a match ends (or is ended early) each human player gets one small behaviour record, stored by the
+  server in a `GameLogs` Durable Object and readable only by the owner at `/admin/logs` with a secret token. See
+  server/README.md for the fields, retention (90 days, 20,000 rows) and how to download. Players are told on the
+  landing page that anonymous play stats are recorded. The hello message carries `device` (touch or desktop). Bots are
+  not logged.
+- Squad bands (supersedes the rank bands listed earlier): rank 1 is strongest. Squad 1 rolls ranks 1 to 12, squad 2
+  ranks 8 to 20, squad 3 ranks 15 to 20 and squad 4 ranks 18 to 20 (`roster.bands`). Players fight with their first two
+  squads; the 3rd and 4th are utility.
+- Opening reveal cards: at the start of the match each player sees one face-down card per squad dealt (2 to 4). The
+  cards flip one by one from squad 1 to the last, showing type and power. A squad whose power is in the best 10% of its
+  own slot's power range glows gold for a moment, the best 20% silver and the best 30% bronze (`roster.cardTiers`), and
+  keeps a tinted edge. Only squad 1's card also gets a big star in the tier colour, so a squad 1 draw looks different
+  from a squad 2 draw (squad 2 has the glow, edge and label only). Only the first two squads, the fighting
+  ones, are graded (`roster.cardTierSlots` 2); squads 3 and 4 are utility and never get a tier. Each graded squad is
+  judged against its own slot's power range. The reveal always takes 7 real seconds (`match.introSeconds`) and the round starts when it
+  ends: the server holds the match clock back, orders sent during it are refused, and nobody loses sim time. The
+  cards share the 7 seconds (a flip every up to 1.6 s, then a hold). Tap to skip the animation; the clock still waits
+  for the 7 seconds. Every client times it from the server's clock.
 - Where this section conflicts with older text above, this section wins.

@@ -13,6 +13,31 @@ export function powerBand(rank: number, tune: Tune): [number, number] {
   return [lo, lo + width];
 }
 
+/** The power range a squad slot can roll: from its weakest rank's floor to its strongest rank's ceiling. */
+export function slotPowerRange(slot: number, tune: Tune): [number, number] {
+  const [bestRank, worstRank] = tune.roster.bands[slot] ?? tune.roster.bands[tune.roster.bands.length - 1];
+  return [powerBand(worstRank, tune)[0], powerBand(bestRank, tune)[1]];
+}
+
+/** Where a power sits in its own slot's range: 0 is the weakest it could roll, 1 the strongest. */
+export function slotPercentile(slot: number, power: number, tune: Tune): number {
+  const [lo, hi] = slotPowerRange(slot, tune);
+  return hi > lo ? Math.min(1, Math.max(0, (power - lo) / (hi - lo))) : 1;
+}
+
+export type CardTier = 'gold' | 'silver' | 'bronze' | null;
+
+/**
+ * Reveal-card tier: gold for the top 10% of the slot's range, silver the top 20%, bronze the top 30%. Only the first
+ * `cardTierSlots` squads (the fighting ones) are graded; the utility squads never get a tier.
+ */
+export function cardTier(slot: number, power: number, tune: Tune): CardTier {
+  if (slot >= tune.roster.cardTierSlots) return null;
+  const top = 1 - slotPercentile(slot, power, tune);
+  const t = tune.roster.cardTiers;
+  return top <= t.gold ? 'gold' : top <= t.silver ? 'silver' : top <= t.bronze ? 'bronze' : null;
+}
+
 export function rollSquad(rng: Rng, tune: Tune, rankMin: number, rankMax: number): SquadSpec {
   const rank = rng.int(rankMin, rankMax);
   const [lo, hi] = powerBand(rank, tune);

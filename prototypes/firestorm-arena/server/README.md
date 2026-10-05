@@ -22,6 +22,37 @@ One WebSocket per player connects to `/ws/{ROOM_CODE}`. The first client to say
 A full 40 player match costs about 1,800 alarms and 2,500 storage row writes,
 which fits roughly 40 matches a day on the Workers Free plan.
 
+## Player behaviour log
+
+When a match ends (or the host ends it early), the room writes one small record per **human** player to a separate
+Durable Object, `GameLogs`. A record holds: the match and when it started, the result and final points, the player's
+team, a hash of their browser's random client id, the display name as typed, whether they played on touch or desktop,
+how many times they connected, their commander score and stats, counts of what they did (marches by kind, HQ attacks,
+scouts, teleports, Defend toggles, Return orders, refused orders), when they first acted, their longest idle gap,
+orders per tenth of the match, and the ordered list of everything they targeted (node id, kind and tier, or HQ or
+cache). It is a few KB per player, written once per match. Bots are never logged. Nothing is ever sent to a client.
+
+Rows older than 90 days are dropped, and the table is capped at 20,000 rows (about 2,000 matches of ten humans), oldest
+first. The landing page tells players that anonymous play stats are recorded.
+
+Reading it is for the owner only. Set a secret token once (it is stored in Cloudflare, never in the repo):
+
+```sh
+npx wrangler secret put LOG_TOKEN --config prototypes/firestorm-arena/server/wrangler.jsonc
+```
+
+or add a secret named `LOG_TOKEN` under Workers, firestorm-arena-server, Settings, Variables and Secrets in the
+dashboard. Without it `/admin/logs` does not exist (it answers 404, like any unknown path). Then download:
+
+```sh
+curl -H "Authorization: Bearer $LOG_TOKEN" \
+  "https://firestorm-arena-server.tianz-88.workers.dev/admin/logs?since=2026-10-01&limit=2000&format=ndjson" > logs.ndjson
+```
+
+`since` (YYYY-MM-DD) and `limit` (up to 2,000) are optional, and without `format=ndjson` you get one JSON object with
+`total`, `returned` and `records`. Each line of the ndjson is one player in one match, easy to load into a sheet or a
+notebook. To page past 2,000 rows, call again with a later `since`.
+
 ## Local development
 
 From the repository root:

@@ -3,6 +3,36 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0 (intro delay)
+
+**What changed:** firestorm-net's room starts the match clock `match.introSeconds` (tune, default 0, 7 in Firestorm
+Arena) real seconds after the start countdown ends, so a client can show an opening reveal without the sim running.
+`RoomOptions.introSeconds` overrides it (the Worker reads `INTRO_SECONDS` for tests) and orders sent before the clock
+starts are refused. Folded into the unreleased 0.14.0.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-05 — firestorm shared packages: arena-sim 0.14.0
+
+**What changed:** arena-sim's squad rank bands are now squad 1 ranks 1 to 12, squad 2 ranks 8 to 20, squad 3 ranks 15 to
+20 and squad 4 ranks 18 to 20 (1 is strongest), so the first two squads are the fighters and the 3rd and 4th are
+utility. New helpers `slotPowerRange`, `slotPercentile` and `cardTier`, and `roster.cardTiers` (0.1, 0.2 and 0.3) and
+`roster.cardTierSlots` (2) tune blocks, let a client grade the first two squads' rolls against their own slot's
+range for the opening reveal cards; squads 3 and 4 are never graded. Only firestorm-arena
+uses it.
+
+**Applies to:** firestorm-arena only.
+
+## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0
+
+**What changed:** firestorm-net's room keeps small behaviour counters per human player while a match runs and hands one
+record per human to the host when it ends (new `RoomEnv.gameLog`, `GameLogRecord`, and an optional `device` on the
+hello message; no protocol bump). The room persists the counters at most once a minute so an eviction loses little.
+The Firestorm server stores the records in a new `GameLogs` Durable Object (migration v3). arena-sim is unchanged.
+Only firestorm-arena uses it.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-05 — firestorm shared packages: arena-sim 0.13.0, firestorm-net 0.13.0
 
 **What changed:** arena-sim's march speed is now defined by `march.edgeToEdgeSeconds` (the map's longer side) instead

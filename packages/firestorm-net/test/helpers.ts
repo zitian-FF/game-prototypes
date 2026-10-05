@@ -2,13 +2,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ArenaRoom, applyPatch } from '../src/index';
-import type { ClientMsg, PersistOp, RoomMeta, RoomOptions, ServerMsg, WireView, LoggedCommand } from '../src/index';
+import type { ClientMsg, GameLogRecord, HlogStore, PersistOp, RoomMeta, RoomOptions, ServerMsg, WireView, LoggedCommand } from '../src/index';
 import type { Tune } from 'arena-sim';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadTune(): Tune {
-  return JSON.parse(readFileSync(path.resolve(here, '../../../prototypes/firestorm-arena/tune.json'), 'utf8')) as Tune;
+  const t = JSON.parse(readFileSync(path.resolve(here, '../../../prototypes/firestorm-arena/tune.json'), 'utf8')) as Tune;
+  // The opening card reveal delays the match clock by a few real seconds; tests that time the match turn it off.
+  t.match.introSeconds = 0;
+  return t;
 }
 
 export function withTune(over: (t: Tune) => void): Tune {
@@ -23,6 +26,8 @@ export class FakeEnv {
   seedValue = 0.123456;
   readonly outbox = new Map<string, string[]>();
   readonly closed = new Map<string, { code: number; reason: string }>();
+  /** Behaviour records the room produced (the host would store them). */
+  readonly gameLogs: GameLogRecord[] = [];
 
   send = (connId: string, data: string) => {
     if (this.closed.has(connId)) return;
@@ -35,6 +40,9 @@ export class FakeEnv {
   };
   now = () => this.wall;
   random = () => this.seedValue;
+  gameLog = (records: GameLogRecord[]) => {
+    this.gameLogs.push(...records);
+  };
 }
 
 /** One client connection to a room, recording everything it receives. */
@@ -59,8 +67,8 @@ export class TestClient {
     this.pull();
   }
 
-  hello(create = false): void {
-    this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create });
+  hello(create = false, device?: 'touch' | 'desktop'): void {
+    this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create, ...(device ? { device } : {}) });
   }
 
   cmd(cmd: Record<string, unknown>): number {
@@ -151,5 +159,5 @@ export function restoreFrom(store: Map<string, unknown>, env: FakeEnv, opts: Par
     .filter((k) => k.startsWith('c:'))
     .sort()
     .map((k) => store.get(k) as LoggedCommand);
-  return ArenaRoom.restore({ code: meta.code, tune, ...opts }, env, meta, log);
+  return ArenaRoom.restore({ code: meta.code, tune, ...opts }, env, meta, log, { hlog: store.get('hlog') as HlogStore | undefined });
 }

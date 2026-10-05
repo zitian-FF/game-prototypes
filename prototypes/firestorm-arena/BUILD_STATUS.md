@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.13.4 on the branch (0.13.0 merged, 0.13.1 to 0.13.4 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.15.3 on the branch (0.13.4 merged, 0.14.0 and 0.15.0 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,11 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.15.3: the tier star shows on squad 1's card only; squad 2 keeps the glow, edge and label.
+- 0.15.2: reveal-card tiers only for squads 1 and 2 (`roster.cardTierSlots`), with a big gold, silver or bronze star on the card.
+- 0.15.1: the opening card reveal is 7 real seconds and the match clock starts after it (`match.introSeconds`), orders are refused during it.
+- 0.15.0: squad bands 1-12, 8-20, 15-20, 18-20 (first two squads fight, 3rd and 4th are utility); opening card reveal with gold, silver and bronze glow by percentile within each slot's own power range. arena-sim 0.14.0.
+- 0.14.0: player behaviour log (one record per human per match in a GameLogs Durable Object, owner-only /admin/logs behind a LOG_TOKEN secret, 90 days or 20,000 rows), device sent in hello, landing-page notice. arena-sim unchanged, firestorm-net 0.14.0.
 - 0.13.4: speeds reworked: base edge to edge 150 s, each Accelerator cuts 30 s (120 s, 90 s) for squads only, scouts and missiles fixed at 5x the unboosted base. arena-sim 0.13.0.
 - 0.13.3: teleport-slot glow in team colour when a teleportable node is selected, scout names removed, scouts 50% faster.
 - 0.13.2: static unit sprites when zoomed out or crowded, pooled world labels (world draw about 2 to 6 times cheaper in a software-GL test), interface palette separated from team colours (violet accent, crimson danger), Teleport button reads the cooldown.
@@ -33,7 +38,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Open questions
 
-- Game log (per-match human behaviour record): design proposed, waiting for answers on storage, identity and retention before building.
+- Game log: needs `wrangler secret put LOG_TOKEN` before the endpoint exists; confirm records look right after the first real matches.
 - A tester reported being unable to teleport to a captured node until he scouted it. The sim has no such rule and a scripted capture then teleport worked at once; the likeliest cause was the Teleport button being hidden on cooldown. Waiting for the tester's details (device, HQ pill text, any toast).
 - Scouts and missiles sped up by 80% together with squads; say if scouts should stay as they were.
 - BRIEF.md was updated for the cache model, glossary, mobile and room codes; confirm the 4096 code space is acceptable.
