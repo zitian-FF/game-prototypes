@@ -5,6 +5,7 @@ import type { Fighter, MatchResult, SimState } from '../sim/types';
 import { BODY_R, drawArm, drawGlove, drawHelmet, drawTorso, muted } from './FighterView';
 import { pose } from './art';
 import { GroundLayer } from './groundLayer';
+import { Puppet } from './puppet';
 import { mainLook, type Look } from './characterLook';
 
 // KO finish, render-only (the sim has already stopped; nothing here can
@@ -53,6 +54,7 @@ export class KoAnim {
   private shook = false;
   private sprite: Phaser.GameObjects.Image;
   private ground: GroundLayer;
+  private puppet: Puppet;
   private loserFighter: Fighter | null = null;
   public looks: Look[] = [mainLook('marco'), mainLook('marco')];
 
@@ -61,6 +63,7 @@ export class KoAnim {
     public colors: [number, number],
   ) {
     this.ground = new GroundLayer(scene, BODY_R, 8);
+    this.puppet = new Puppet(scene);
     this.g = scene.add.graphics().setDepth(11);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(11).setVisible(false);
   }
@@ -81,6 +84,7 @@ export class KoAnim {
       this.result = null;
       this.g.clear();
       this.sprite.setVisible(false);
+      this.puppet.hide();
       this.ground.hide();
       return;
     }
@@ -124,6 +128,45 @@ export class KoAnim {
     return w;
   }
 
+  // The loser as the runtime puppet: limp, spinning on a fly KO, sinking and
+  // settling on a drop. False when the puppet parts are not loaded.
+  private drawPuppet(f: Fighter, look: Look, ko: NonNullable<MatchResult['ko']>, fly: boolean, el: number, u: number, now: number): boolean {
+    if (f.anchored) return false;
+    const p = fly ? this.flyPos(el / tune.ko.flyMs) : { x: this.from.x + this.dx * 10 * easeOut(u), y: this.from.y + this.dy * 10 * easeOut(u) };
+    const rot = fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx);
+    const k = look.scale * (fly ? 1 : 1 - 0.1 * easeOut(u));
+    const fx = Math.cos(rot);
+    const fy = Math.sin(rot);
+    const rest = (side: number): Pt => ({ x: p.x + fx * 15 * k + fy * 15 * k * side, y: p.y + fy * 15 * k - fx * 15 * k * side });
+    const lf: Fighter = { ...f, x: p.x, y: p.y, fx, fy, punch: null, guarding: false, exhausted: false, stunTimer: 0, dodge: null, lastBlow: null, framesSinceHit: 99 };
+    const ok = this.puppet.draw({
+      f: lf,
+      now,
+      k,
+      alt: look.color !== mainLook(f.char).color,
+      fists: [rest(1), rest(-1)],
+      fistColors: [look.color, look.color],
+      baseColor: look.color,
+      walk: 0,
+      stride: 0,
+      vel: { x: 0, y: 0 },
+      flashHead: false,
+      flashBody: false,
+      flashColor: 0xffffff,
+      dodging: false,
+      guarding: false,
+      limp: true,
+    });
+    if (!ok) return false;
+    this.sprite.setVisible(false);
+    this.ground.shadowOnly(p.x, p.y, k, 1);
+    if (fly && el >= tune.ko.flyMs && !this.shook) {
+      this.shook = true;
+      this.scene.cameras.main.shake(180, 0.006);
+    }
+    return true;
+  }
+
   draw(now: number): void {
     const g = this.g;
     g.clear();
@@ -138,6 +181,7 @@ export class KoAnim {
       const prefix = f.anchored ? 'dummy' : `${f.char}${look.color !== mainLook(f.char).color ? '_alt' : ''}`;
       const fly = ko.style === 'fly';
       const u = clamp01(el / (fly ? tune.ko.flyMs + tune.ko.sitMs : tune.ko.dropMs));
+      if (this.drawPuppet(f, look, ko, fly, el, u, now)) return;
       if (pose(this.sprite, `${prefix}_ko`, u)) {
         const p = fly ? this.flyPos(el / tune.ko.flyMs) : { x: this.from.x + this.dx * 10 * easeOut(u), y: this.from.y + this.dy * 10 * easeOut(u) };
         const rotation = fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx);

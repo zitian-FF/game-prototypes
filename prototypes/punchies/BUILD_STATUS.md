@@ -15,16 +15,17 @@ Runtime top-down puppet rig for Marco, Mia and Bruno, plus portraits on the char
 ## Key technical decisions
 - Parts live in the R2 zip under `parts/<char>/` and are never committed. If they are absent, the puppet reports failure and the existing layered art draws instead, so CI stays safe.
 - Sim is untouched; the rig is presentation only.
-- KO and the training dummy still use baked frames.
+- The knocked-out loser is now drawn by the puppet too (limp, spinning on a fly KO, sinking on a drop); the baked `_ko` frames remain as the fallback and for the dummy.
+- `prepare-assets.mjs` renders Mia's slice before measuring it (the first version stretched her head and ponytail horizontally); cut moved to 43% with a 5% overlap.
 
 ## Open questions
 - Puppet sizes and offsets are constants in `puppet.ts`; should they move to `tune.json` `view` for the Tweakpane panel?
 - BRIEF.md was not consulted for the portrait layout change; it may need a line if the panel layout is meant to be specified.
 
 ## Known issues
-- Rig stays dormant in CI until Codex adds the 18 raw parts to `punchies_assets.zip`.
-- Not verified: phone rendering, body-zone flash on the puppet, strafing gait visuals at sideways angles, KO with puppet, online matches with puppet.
+- The rig is live (parts are in the main zip). Mia culling/size fixed; confirm on device.
+- Not verified: phone rendering, body-zone flash on the puppet, strafing gait visuals at sideways angles, fly-style KO with the puppet (drop KO checked), online matches with puppet.
 - Sweat droplets are small.
 
 ## Next proposed step
-Once Codex uploads the parts, check the live build, then tune sizes and offsets, and move the constants into `tune.json`.
+Check the live build on a phone, then tune sizes and offsets, and move the constants into `tune.json`.
