@@ -113,6 +113,32 @@ export class Ui {
     this.rect(x, y, Math.max(0, Math.min(1, frac)) * w, h, color, 1);
   }
 
+  private measureCtx: CanvasRenderingContext2D | null = null;
+
+  /** Width of a string as `text()` would draw it, without drawing. */
+  measure(str: string, size: number, bold = false): number {
+    this.measureCtx ??= document.createElement('canvas').getContext('2d');
+    const c = this.measureCtx;
+    if (!c) return str.length * size * 0.55;
+    c.font = `${bold ? 'bold ' : ''}${size}px ${FONT}`;
+    return c.measureText(str).width;
+  }
+
+  /** Break a string into lines no wider than `maxW` pixels (a single over-long word stays whole). */
+  wrap(text: string, size: number, maxW: number, bold = false): string[] {
+    const out: string[] = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && this.measure(next, size, bold) > maxW) {
+        out.push(line);
+        line = word;
+      } else line = next;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
   /** Draw text and return its width. */
   text(str: string, x: number, y: number, o: TextOpts = {}): number {
     const l = this.layer();

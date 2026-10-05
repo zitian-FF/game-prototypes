@@ -8,6 +8,7 @@ import { GAME_VERSION, VERSION_LOG } from '../versionLog';
 import { QuotaWatcher } from '../net/quota';
 import { VERSION_STAMP } from '../version.generated';
 import { cleanName } from 'firestorm-net';
+import { HandbookView } from './handbookView';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
 
@@ -17,6 +18,8 @@ export class MenuScene extends BaseScene {
   private codeField = new TextField('', 3, normalizeRoomCode);
   private focus: 'name' | 'code' = 'name';
   private started = false;
+  private handbook = new HandbookView();
+  private handbookOpen = false;
 
   constructor() {
     super('Menu');
@@ -27,6 +30,8 @@ export class MenuScene extends BaseScene {
     this.nameField.value = session.name;
     this.focus = session.name ? 'code' : 'name';
     this.started = false;
+    this.handbookOpen = false;
+    this.handbook.reset();
     intents.textMode = true;
     this.quota.start();
     this.events.once('shutdown', () => this.quota.stop());
@@ -87,6 +92,11 @@ export class MenuScene extends BaseScene {
   update(): void {
     const field = this.focus === 'name' ? this.nameField : this.codeField;
     for (const e of intents.drain()) {
+      if (this.handbookOpen) {
+        if (this.handbook.input(e, this.handbook.area)) this.handbookOpen = false;
+        else if (e.type === 'primary') this.ui.click(e.x, e.y);
+        continue;
+      }
       if (e.type === 'text' && !this.connecting()) field.type(e.char);
       else if (e.type === 'backspace') field.backspace();
       else if (e.type === 'submit' && !this.connecting()) (this.focus === 'code' && this.codeField.value.length === 3 ? this.joinRoom() : this.createRoom());
@@ -101,6 +111,12 @@ export class MenuScene extends BaseScene {
     const { w, h } = logicalSize();
     const ui: Ui = this.ui;
     ui.begin();
+    if (this.handbookOpen) {
+      this.handbook.draw(ui, w, h, this.time.now / 1000, () => (this.handbookOpen = false));
+      this.drawVersion();
+      ui.end();
+      return;
+    }
     ui.rect(0, 0, w, h, 0x0b0709, 1);
     // A glow of lava on the horizon.
     ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
@@ -178,6 +194,7 @@ export class MenuScene extends BaseScene {
     }
     // Players are told, in one line, that anonymous play stats are kept.
     if (footer) ui.text('Anonymous play stats (what you order and score) are recorded to improve the game.', cx, h - 15, { size: 10, align: 'center', color: COLORS.dim, alpha: 0.8 });
+    ui.button(12, 20, 104, 30, 'Handbook', { onClick: () => (this.handbookOpen = true), size: 13 });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, 22, { size: 10, align: 'center', color: COLORS.dim });
     this.drawVersion();
     ui.end();

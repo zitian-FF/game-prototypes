@@ -760,4 +760,9 @@ client.
   that squad leaves.
 - Map fairness: every node kind and tier appears the same number of times on each half of the map (guaranteed by the
   point-symmetric placement, covered by a 400 seed test).
+- Handbook: a Handbook button on the main menu (top left) opens a full-screen, tabbed, scrollable page (What it is,
+  Nodes, Units, Teleport): the three ideas behind the game (fog of war, restrictive teleportation, random symmetric
+  map), how to win, every node and its effect, the counter triangle, a rough combat calculation, and the teleport
+  rules. Numbers are read from tune.json. Close with the Close button or Esc.
+- Selected-node text is short key facts only, wrapped by measured pixel width so it always fits the panel.
 - Where this section conflicts with older text above, this section wins.

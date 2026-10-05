@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.15.4 on the branch (PR #209 merged up to 0.15.3; 0.15.4 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.15.5 on the branch (PR #209 merged up to 0.15.3; 0.15.4 and 0.15.5 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.15.5: Handbook page on the main menu (four tabs, scrollable, numbers from tune.json); node panel text shortened and wrapped by measured width (`Ui.measure`, `Ui.wrap`).
 - 0.15.4: auto-selected strongest HQ squad (re-picked after a squad is sent); game log v2 (dealt squads with percentile and tier, connect and drop events); usage meter saved on every report and reported when the last socket leaves; map test over 400 seeds that both halves hold the same kinds and tiers.
 - 0.15.3: the tier star shows on squad 1's card only; squad 2 keeps the glow, edge and label.
 - 0.15.2: reveal-card tiers only for squads 1 and 2 (`roster.cardTierSlots`), with a big gold, silver or bronze star on the card.
@@ -49,6 +50,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- Handbook checked in desktop 1280 x 720 and emulated 844 x 390 only; it reads numbers from tune.json at build time, so a server tune change needs a client rebuild to match. The wording is mine and has not been proofread by the designer.
 
 - Fullscreen and landscape lock could not be exercised in headless Chromium; needs a real Android phone and desktop test.
 - iOS gets no fullscreen or lock and no rotate hint, so portrait play there is cramped.
