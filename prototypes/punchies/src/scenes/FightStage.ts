@@ -89,6 +89,7 @@ export class FightStage {
 
   handleEvents(events: SimEvent[], s: SimState): void {
     for (const e of events) {
+      if (e.kind === 'staminaRejected') this.hud.rejectStamina(e.fighter);
       if (e.kind !== 'hit' && e.kind !== 'block') continue;
       const defender = 1 - e.attacker;
       if (s.fighters[defender].anchored) {

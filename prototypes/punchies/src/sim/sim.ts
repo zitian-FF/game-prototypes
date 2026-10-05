@@ -250,17 +250,32 @@ function requestedAction(input: FrameInput): BufferedAction | null {
   return null;
 }
 
+// Refused actions must not start later after stamina regeneration.
+function rejectAction(f: Fighter, idx: number, action: BufferedAction, events: SimEvent[]): boolean {
+  if (action === 'dodge' && f.postDodgeVulnerable > 0) {
+    f.buffered = null;
+    f.bufferFrames = 0;
+    return true;
+  }
+  const cost = action === 'dodge' ? tune.dodge.staminaCost : punchCfg(f, action).staminaCost;
+  if (!f.infiniteStamina && f.stamina < cost) {
+    events.push({ kind: 'staminaRejected', fighter: idx });
+    f.buffered = null;
+    f.bufferFrames = 0;
+    return true;
+  }
+  return false;
+}
+
 function tryStartAction(s: SimState, idx: number, action: BufferedAction, input: FrameInput, events: SimEvent[]): boolean {
   const f = s.fighters[idx];
-  if (!canAct(f)) return false;
+  if (rejectAction(f, idx, action, events) || !canAct(f)) return false;
   if (action === 'dodge') {
-    if (f.stamina <= 0 && !f.infiniteStamina) return false;
     startDodge(s, idx, input);
     return true;
   }
   // Stunned fighters may move and dodge but never attack.
   if (f.stunTimer > 0) return false;
-  if (f.stamina <= 0 && !f.infiniteStamina) return false;
   if (action === 'uppercut' && f.stars < tune.stars.max) return false;
   startPunch(s, idx, action, events);
   return true;
@@ -270,7 +285,7 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
   const f = s.fighters[idx];
 
   const req = requestedAction(input);
-  if (req) {
+  if (req && !rejectAction(f, idx, req, events)) {
     f.buffered = req;
     f.bufferFrames = tune.input.bufferFrames;
   }
@@ -333,6 +348,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   if (f.punch) speed *= tune.movement.punchMoveMult;
   else if (f.guarding) speed *= tune.movement.guardMoveMult;
   if (f.stunTimer > 0) speed *= tune.movement.stunMoveMult;
+  if (f.postDodgeVulnerable > 0) speed *= tune.dodge.penaltyMoveMult;
   f.x += mx * speed * dt;
   f.y += my * speed * dt;
 }
@@ -591,6 +607,8 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
     if (p.frame >= punchTotal(p)) f.punch = null;
   }
 
+  if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
+
   if (f.dodge) {
     f.dodge.frame++;
     if (f.dodge.frame >= tune.dodge.frames) {
@@ -614,7 +632,6 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   if (f.stunDecayWait > 0) f.stunDecayWait--;
   else if (!f.stunFromMeter) f.stun = Math.max(0, f.stun - tune.stun.decayPerSec / TICK_RATE);
 
-  if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
 
   // Decay pause: a type's fatigue only wears off after a spell of not
   // throwing it, so repeating a punch always builds up.
@@ -699,7 +716,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     s.hitstop--;
     for (let i = 0; i < 2; i++) {
       const req = requestedAction(inputs[i]);
-      if (req) {
+      if (req && !rejectAction(s.fighters[i], i, req, events)) {
         s.fighters[i].buffered = req;
         s.fighters[i].bufferFrames = tune.input.bufferFrames;
       }
