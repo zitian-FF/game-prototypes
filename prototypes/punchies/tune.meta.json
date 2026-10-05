@@ -2308,5 +2308,82 @@
     "min": 0,
     "max": 0.4,
     "step": 0.01
+  },
+  "view.trainingDummy.gloveHeight": {
+    "cat": "View",
+    "desc": "Wooden dummy gloveHeight. Presentation only.",
+    "min": 8,
+    "max": 32,
+    "step": 1
+  },
+  "view.trainingDummy.armWidth": {
+    "cat": "View",
+    "desc": "Wooden dummy armWidth. Presentation only.",
+    "min": 2,
+    "max": 10,
+    "step": 0.5
+  },
+  "view.trainingDummy.shoulderSpread": {
+    "cat": "View",
+    "desc": "Wooden dummy shoulderSpread. Presentation only.",
+    "min": 4,
+    "max": 24,
+    "step": 1
+  },
+  "view.trainingDummy.poseMs": {
+    "cat": "View",
+    "desc": "Wooden dummy poseMs. Presentation only.",
+    "min": 30,
+    "max": 500,
+    "step": 10
+  },
+  "view.trainingDummy.normalForward": {
+    "cat": "View",
+    "desc": "Wooden dummy normalForward. Presentation only.",
+    "min": 0,
+    "max": 30,
+    "step": 1
+  },
+  "view.trainingDummy.normalSpread": {
+    "cat": "View",
+    "desc": "Wooden dummy normalSpread. Presentation only.",
+    "min": 4,
+    "max": 30,
+    "step": 1
+  },
+  "view.trainingDummy.guardForward": {
+    "cat": "View",
+    "desc": "Wooden dummy guardForward. Presentation only.",
+    "min": 0,
+    "max": 26,
+    "step": 1
+  },
+  "view.trainingDummy.guardSpread": {
+    "cat": "View",
+    "desc": "Wooden dummy guardSpread. Presentation only.",
+    "min": 3,
+    "max": 24,
+    "step": 1
+  },
+  "view.trainingDummy.loweredForward": {
+    "cat": "View",
+    "desc": "Wooden dummy loweredForward. Presentation only.",
+    "min": -20,
+    "max": 10,
+    "step": 1
+  },
+  "view.trainingDummy.loweredSpread": {
+    "cat": "View",
+    "desc": "Wooden dummy loweredSpread. Presentation only.",
+    "min": 4,
+    "max": 30,
+    "step": 1
+  },
+  "view.trainingDummy.loweredOffsetY": {
+    "cat": "View",
+    "desc": "Wooden dummy loweredOffsetY. Presentation only.",
+    "min": 0,
+    "max": 24,
+    "step": 1
   }
 }

@@ -1,23 +1,23 @@
 ## Current milestone
-Two-part training dummy with independent impact shake.
+Correct overhead dummy art, wooden guard poses, and continuous zero-HP training.
 
 ## What was implemented
-- New overhead padded tan dummy body and head, separate alpha sprites in R2.
-- TrainingDummy renderer overlaps the neck connection and draws no limbs.
-- Head hits shake the head; body hits and blocks shake the torso, including absorbed hits.
-- Seven presentation controls under view.trainingDummy expose sizes, head overlap, shake duration/frequency/displacement/angle.
+- Replaced the dummy head/body textures: the head no longer has a sideways neck connector.
+- Added mirrored wooden gloves on articulated wooden arms, with smooth Normal / High Guard / Vulnerable transitions; vulnerable and stunned arms hang down.
+- Training opts out of match-end detection. HP clamps at zero, punches continue, and no automatic reset or KO event/sound occurs.
+- Added glove/arm/pose controls under view.trainingDummy; existing tuning values are preserved.
 
 ## Key technical decisions
-- Hit-zone routing uses the existing vulnerable/head and normal/body hit rows. No gameplay tuning, hitbox, stance or netcode changes.
-- High Guard retains existing blocking behavior without glove sprites; the training stance label remains its indicator.
-- Oscillation decays over 300 ms and only changes sprite transforms; ground shadow and fighter position stay fixed.
-- R2 main bundle retains every existing entry and adds two small WebP sprites. Verified upload/download SHA-256: 59AD5C48BE61BDD111FB2FC99A182EE3FB8B5F3052F7DB7C7A33228EA545401C.
+- The neck attaches beneath the head in the overhead view. Raw parts remain separate alpha images in R2.
+- Only Training calls step with finishMatch=false; ordinary matches retain default KO/result behavior and state schema.
+- Impact sounds remain enabled; suppressing KO events prevents defeat audio. Manual RESET still works.
+- Head/body impact shake remains separate; the wooden arms follow the body layer.
 
 ## Open questions
-- Owner review of the dummy proportions and shake strength at play size.
+- Owner was asked whether all impact sounds should be muted; default used is to retain impact sounds and suppress KO sounds only.
 
 ## Known issues
-- Real phone and online matches were not tested. Legacy art remains the fallback if new dummy textures are unavailable.
+- No real-phone or online-match verification in this pass.
 
 ## Next proposed step
-Play the new dummy in training and adjust View > view.trainingDummy if desired. Typecheck/build passed; Brave at 844x390 loaded the new dummy without errors. Controlled renderer assertions passed for finite idle transforms, independent head/body reactions, settling after shake duration, and unchanged fighter state.
+Review the dummy poses at play size. Typecheck and build passed. Brave renderer review showed all three poses without errors; simulation assertions verified continued ticks/hits at zero HP, no KO/reset in training, and unchanged ordinary KO behavior.
