@@ -15,6 +15,9 @@ import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamCol
 type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean } | { kind: 'cache'; id: string };
 type Panel = 'none' | 'logs' | 'scouts';
 
+/** Size and ground point of a pre-rendered unit sprite, in unscaled art pixels. */
+const UNIT_TEX = { w: 120, h: 110, ox: 60, oy: 84 };
+
 const fmtTime = (ms: number): string => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -42,9 +45,12 @@ export class GameScene extends BaseScene {
   private entG!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
   private fx!: FxSystem;
-  private labels: Phaser.GameObjects.Text[] = [];
-  private labelKeys: string[] = [];
-  private labelUsed = 0;
+  private labelPool = new Map<string, Phaser.GameObjects.Text[]>();
+  private labelCount = new Map<string, number>();
+  private labelStamp = new WeakMap<Phaser.GameObjects.Text, number>();
+  private labelActive: Phaser.GameObjects.Text[] = [];
+  private labelNow: Phaser.GameObjects.Text[] = [];
+  private frameNo = 0;
   /** Combat result text that rises and fades over a fight (map position, start in seconds). */
   private floaters: { text: string; color: string; size: number; x: number; y: number; start: number }[] = [];
   private fogKey: string | null = null;
@@ -57,6 +63,12 @@ export class GameScene extends BaseScene {
   /** Touch layout: the squad list can be folded away to leave the map clear. */
   private squadsOpen = true;
   private menuOpen = false;
+  /** Units are drawn as pre-rendered sprites instead of live vector art when zoomed out or crowded. */
+  private staticUnits = false;
+  private unitTex = new Set<string>();
+  private unitSprites: Phaser.GameObjects.Image[] = [];
+  private unitSpriteUsed = 0;
+  private spriteLayer!: Phaser.GameObjects.Container;
   private target: Target | null = null;
   private panel: Panel = 'none';
   private lastFrame = 0;
@@ -83,9 +95,10 @@ export class GameScene extends BaseScene {
     this.loadStartedAt = this.time.now;
     this.loadFrames = 0;
     this.missiles = [];
-    this.labels = [];
-    this.labelKeys = [];
-    this.labelUsed = 0;
+    this.labelPool = new Map();
+    this.labelCount = new Map();
+    this.labelActive = [];
+    this.labelNow = [];
     this.floaters = [];
     this.facing = new Map();
     this.fogKey = null;
@@ -114,7 +127,10 @@ export class GameScene extends BaseScene {
     this.linesG = this.add.graphics();
     this.entG = this.add.graphics();
     this.fxG = this.add.graphics();
-    this.world.add([this.linesG, this.entG, this.fxG]);
+    this.spriteLayer = this.add.container(0, 0);
+    this.unitTex = new Set();
+    this.unitSprites = [];
+    this.world.add([this.linesG, this.entG, this.spriteLayer, this.fxG]);
     this.fx = new FxSystem(this.iso);
 
     const hq = session.view!.hqs.find((h) => h.id === info.hqId);
@@ -501,24 +517,54 @@ export class GameScene extends BaseScene {
   // ------------------------------------------------------------------- world
 
   protected onDprChanged(): void {
-    for (const t of this.labels) t.setResolution(bufferScale() * 2);
+    for (const arr of this.labelPool.values()) for (const t of arr) if (t) t.setResolution(bufferScale() * 2);
   }
 
-  private label(text: string, x: number, y: number, color: string, size = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
-    let t = this.labels[this.labelUsed];
-    if (!t) {
-      t = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#fff', resolution: bufferScale() * 2, stroke: '#000', strokeThickness: 3 });
-      this.world.add(t);
-      this.labels[this.labelUsed] = t;
-    }
-    // Text style setters re-render the whole string into a texture, so only touch them when something changed.
+  /**
+   * World label. Texts are pooled by their content, so a label keeps its own texture while others come and go:
+   * re-rendering a string into a texture is the expensive part, and reusing slots by order made every label
+   * re-render whenever one appeared or vanished.
+   */
+  private label(text: string, x: number, y: number, color: string, size0 = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
+    // Labels live in the zoomed world, so up close they would swell: shrink them in steps to keep a steady screen size.
+    const size = Math.max(6, Math.round(size0 * (this.zoom > 1.5 ? 0.62 : this.zoom > 1.2 ? 0.78 : 1)));
     const key = `${text}|${color}|${size}|${align}`;
-    if (this.labelKeys[this.labelUsed] !== key) {
-      t.setText(text).setColor(color).setFontSize(size).setOrigin(align, 0);
-      this.labelKeys[this.labelUsed] = key;
+    const n = this.labelCount.get(key) ?? 0;
+    this.labelCount.set(key, n + 1);
+    let arr = this.labelPool.get(key);
+    if (!arr) {
+      arr = [];
+      this.labelPool.set(key, arr);
+    }
+    let t = arr[n];
+    if (!t) {
+      t = this.add.text(0, 0, text, { fontFamily: FONT, fontSize: `${size}px`, color, resolution: bufferScale() * 2, stroke: '#000', strokeThickness: 3 }).setOrigin(align, 0);
+      this.world.add(t);
+      arr[n] = t;
     }
     t.setPosition(x, y).setAlpha(alpha).setVisible(true);
-    this.labelUsed++;
+    this.labelStamp.set(t, this.frameNo);
+    this.labelNow.push(t);
+  }
+
+  /** After the world is drawn: hide labels not used this frame, and now and then free long-unused ones. */
+  private finishLabels(): void {
+    for (const t of this.labelActive) if (this.labelStamp.get(t) !== this.frameNo) t.setVisible(false);
+    this.labelActive = this.labelNow;
+    this.labelNow = [];
+    if (this.frameNo % 300 === 0) {
+      for (const [key, arr] of this.labelPool) {
+        for (let i = 0; i < arr.length; i++) {
+          const t = arr[i];
+          if (t && (this.labelStamp.get(t) ?? 0) < this.frameNo - 300) {
+            t.destroy();
+            this.labelStamp.delete(t);
+            delete arr[i];
+          }
+        }
+        if (arr.every((t) => !t)) this.labelPool.delete(key);
+      }
+    }
   }
 
   private dashed(g: Phaser.GameObjects.Graphics, a: Vec, b: Vec, color: number, now: number, alpha = 1, width = clientTune.lines.width): void {
@@ -545,6 +591,64 @@ export class GameScene extends BaseScene {
     g.strokePath();
   }
 
+  /** Pre-render a unit once per type and colour into a texture, at twice the size so it stays crisp when drawn small. */
+  private unitTexture(type: SquadType | 'scout', color: number): string {
+    const key = `u:${type}:${color.toString(16)}`;
+    if (this.unitTex.has(key)) return key;
+    if (this.textures.exists(key)) {
+      this.unitTex.add(key);
+      return key;
+    }
+    const RES = 2;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.save();
+    g.scaleCanvas(RES, RES);
+    drawUnit(g, type, UNIT_TEX.ox, UNIT_TEX.oy, 1, color, 0, 1, { scale: clientTune.iso.unitScale, moving: false });
+    g.restore();
+    g.generateTexture(key, UNIT_TEX.w * RES, UNIT_TEX.h * RES);
+    g.destroy();
+    this.unitTex.add(key);
+    return key;
+  }
+
+  /** One unit on the map: live vector art in the depth-sorted layer, or a static sprite when the scene is crowded. */
+  private putUnit(g: Phaser.GameObjects.Graphics, type: SquadType | 'scout', x: number, y: number, f: number, color: number, now: number): void {
+    if (!this.staticUnits) {
+      drawUnit(g, type, x, y, f, color, now, 1, { scale: clientTune.iso.unitScale });
+      return;
+    }
+    let img = this.unitSprites[this.unitSpriteUsed];
+    if (!img) {
+      img = this.add.image(0, 0, '__DEFAULT');
+      this.spriteLayer.add(img);
+      this.unitSprites[this.unitSpriteUsed] = img;
+    }
+    this.unitSpriteUsed++;
+    img.setTexture(this.unitTexture(type, color)).setOrigin(UNIT_TEX.ox / UNIT_TEX.w, UNIT_TEX.oy / UNIT_TEX.h).setScale(f < 0 ? -0.5 : 0.5, 0.5).setPosition(x, y).setVisible(true);
+  }
+
+  /** Decide, with hysteresis, whether units are drawn as static sprites this frame. */
+  private updateStaticUnits(view: WireView, simMs: number): void {
+    const { w, h } = logicalSize();
+    const halfW = w / 2 / this.zoom + 60;
+    const halfH = h / 2 / this.zoom + 60;
+    const onScreen = (pos: Vec): boolean => {
+      const q = this.iso.p(pos.x, pos.y);
+      return Math.abs(q.x - this.camX) <= halfW && Math.abs(q.y - this.camY) <= halfH;
+    };
+    let n = 0;
+    for (const s of view.squads) if (s.state === 'march' && s.march && onScreen(marchPos(s.march, simMs))) n++;
+    for (const m of view.enemyMarches as WireEnemyMarch[]) if (onScreen(marchPos(m.march, simMs))) n++;
+    for (const sc of view.scouts) if (sc.state !== 'home' && sc.from && sc.to && sc.startMs !== undefined && sc.arriveMs !== undefined && onScreen(marchPos({ from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs }, simMs))) n++;
+    for (const sc of view.enemyScouts) if (onScreen(marchPos({ from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs }, simMs))) n++;
+    const p = clientTune.perf;
+    if (this.staticUnits) {
+      if (this.zoom > p.staticUnitZoom / p.staticUnitHysteresis && n < p.staticUnitCount * p.staticUnitHysteresis) this.staticUnits = false;
+    } else if (this.zoom < p.staticUnitZoom || n > p.staticUnitCount) {
+      this.staticUnits = true;
+    }
+  }
+
   private drawWorld(view: WireView, simMs: number, now: number): void {
     const iso = this.iso;
     const mine = this.mine;
@@ -562,7 +666,10 @@ export class GameScene extends BaseScene {
       paintFog(this.ground, iso, circles);
     }
 
-    this.labelUsed = 0;
+    this.frameNo++;
+    this.labelCount.clear();
+    this.updateStaticUnits(view, simMs);
+    this.unitSpriteUsed = 0;
     const lines = this.linesG;
     const g = this.entG;
     lines.clear();
@@ -680,8 +787,8 @@ export class GameScene extends BaseScene {
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
         const hgt = unitHeight(s.type) * US;
-        if (this.selectedSquad === s.id) g.lineStyle(OUTLINE, COLORS.self, 1).strokeEllipse(p.x, p.y, 40, 22);
-        drawUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now, 1, { scale: US });
+        if (this.selectedSquad === s.id) g.lineStyle(OUTLINE, COLORS.accent, 1).strokeEllipse(p.x, p.y, 40, 22);
+        this.putUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now);
         if (!mineSquad) this.label(s.owner, p.x, p.y - hgt - 18, '#9fd0ff', 11);
         if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
         if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);
@@ -697,7 +804,7 @@ export class GameScene extends BaseScene {
       if (!m.burning) this.dashed(lines, p, to, COLORS.enemyLine, now, 0.85);
       add(pos, () => {
         if (inSight(pos)) {
-          drawUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now, 1, { scale: US });
+          this.putUnit(g, m.type, p.x, p.y, this.face(m.id, p.x, to.x), COLORS.enemy, now);
           // The commander's name is public while we can see the unit; power needs a scout.
           this.label(m.owner, p.x, p.y - unitHeight(m.type) * US - 18, '#ffb08a', 11);
           if (m.revealed) this.label(`Power ${fmtPower(m.revealed.effectivePower)}`, p.x, p.y + 2, '#ffb08a', 10);
@@ -715,7 +822,7 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(sc.to.x, sc.to.y);
       if (sc.owner === info.playerId && sc.state === 'out') this.dashed(lines, p, to, 0xbfe9ff, now, 0.6, 1.5);
-      add(pos, () => drawUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now, 1, { scale: US }));
+      add(pos, () => this.putUnit(g, 'scout', p.x, p.y, this.face(`scout:${sc.owner}#${sc.index}`, p.x, to.x), sc.owner === info.playerId ? COLORS.mine : shade(COLORS.mine, 0.75), now));
     }
 
     // Enemy scouts inside our vision, with the commander's name.
@@ -724,17 +831,18 @@ export class GameScene extends BaseScene {
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(sc.to.x, sc.to.y);
       add(pos, () => {
-        drawUnit(g, 'scout', p.x, p.y, this.face(`escout:${sc.owner}#${sc.index}`, p.x, to.x), COLORS.enemy, now, 1, { scale: US });
+        this.putUnit(g, 'scout', p.x, p.y, this.face(`escout:${sc.owner}#${sc.index}`, p.x, to.x), COLORS.enemy, now);
         this.label(sc.owner, p.x, p.y - unitHeight('scout') * US - 18, '#ffb08a', 11);
       });
     }
 
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.draw();
+    for (let i = this.unitSpriteUsed; i < this.unitSprites.length; i++) this.unitSprites[i].setVisible(false);
     this.drawMissiles(simMs, now);
     this.fx.draw(this.fxG, now);
     this.drawFloaters(now);
-    for (let i = this.labelUsed; i < this.labels.length; i++) this.labels[i].setVisible(false);
+    this.finishLabels();
     void ch;
   }
 
@@ -845,7 +953,7 @@ export class GameScene extends BaseScene {
             this.go('Menu');
           },
           size: 11,
-          accent: COLORS.enemy,
+          accent: COLORS.danger,
         });
         ui.button(262, 5, 44, 24, 'No', { onClick: () => (this.confirmEnd = false), size: 11 });
       }
@@ -854,7 +962,7 @@ export class GameScene extends BaseScene {
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
     const sq = (y: number, label: string, count: number, which: Panel) => {
       const on = this.panel === which;
-      ui.rect(8, y, 56, 56, on ? COLORS.mine : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 6);
+      ui.rect(8, y, 56, 56, on ? COLORS.accent : 0x1a212b, 1, on ? COLORS.accent : COLORS.panelEdge, 6);
       ui.text(label, 36, y + 9, { size: 12, bold: true, align: 'center', color: on ? '#08111a' : COLORS.text });
       ui.text(String(count), 36, y + 27, { size: 18, bold: true, align: 'center', color: on ? '#08111a' : count > 0 ? COLORS.warn : COLORS.dim });
       ui.region(8, y, 56, 56, () => (this.panel = on ? 'none' : which));
@@ -995,7 +1103,7 @@ export class GameScene extends BaseScene {
       ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, left + 70, pillY + 4, { size: 11, color: ready ? COLORS.good : COLORS.dim });
       ui.text(`Reserve ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, left + 8, pillY + 19, { size: 10, color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
     }
-    ui.text(open ? 'Hide' : `Squads ${squads.length}`, left + pillW - 8, pillY + 19, { size: 10, bold: true, align: 'right', color: '#8fd0ff' });
+    ui.text(open ? 'Hide' : `Squads ${squads.length}`, left + pillW - 8, pillY + 19, { size: 10, bold: true, align: 'right', color: cssColor(COLORS.accent) });
     if (!open) return;
 
     const sel = squads.find((q) => q.id === this.selectedSquad);
@@ -1004,15 +1112,15 @@ export class GameScene extends BaseScene {
     squads.forEach((s, i) => {
       const y = listTop + i * (chip + gap);
       const on = this.selectedSquad === s.id;
-      const edge = on ? COLORS.self : pulse && s.state === 'hq' ? 0xffd54a : COLORS.panelEdge;
-      ui.rect(left, y, chip, chip, on ? 0x1f3a52 : 0x161c25, 1, edge, 6);
+      const edge = on ? COLORS.accent : pulse && s.state === 'hq' ? 0xffd54a : COLORS.panelEdge;
+      ui.rect(left, y, chip, chip, on ? COLORS.accentFill : 0x161c25, 1, edge, 6);
       ui.region(left, y, chip, chip, () => {
         // First tap selects; tapping the selected squad again flies the camera to where it is now.
         if (on) this.focusSquad(s, view, simMs);
         else this.selectedSquad = s.id;
       });
       drawUnit(ui.gfx(), s.type, left + chip / 2, y + 26, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false, scale: 0.6 });
-      const dot = s.state === 'hq' ? 0x5dff8a : s.state === 'march' ? 0xffd54a : 0x8fd0ff;
+      const dot = s.state === 'hq' ? 0x5dff8a : s.state === 'march' ? 0xffd54a : 0xc9d2dd;
       ui.gfx().fillStyle(dot, 1).fillCircle(left + chip - 7, y + 7, 3);
       ui.text(fmtPower(s.power), left + chip / 2, y + 26, { size: 10, bold: true, align: 'center', color: '#ffd54a' });
       ui.bar(left + 5, y + chip - 8, chip - 10, 4, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
@@ -1037,7 +1145,7 @@ export class GameScene extends BaseScene {
           size: 11,
         });
       } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
-        ui.button(px + pw - 92, y + 9, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
+        ui.button(px + pw - 92, y + 9, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
       }
     }
   }
@@ -1072,7 +1180,7 @@ export class GameScene extends BaseScene {
     squads.forEach((s, i) => {
       const y = py + 36 + i * rowH;
       const sel = this.selectedSquad === s.id;
-      ui.rect(px + 6, y - 4, pw - 12, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
+      ui.rect(px + 6, y - 4, pw - 12, rowH - 4, sel ? COLORS.accentFill : 0x161c25, 1, sel ? COLORS.accent : COLORS.panelEdge, 5);
       ui.region(px + 6, y - 4, pw - 12, rowH - 4, () => {
         // First tap selects; tapping the selected squad again flies the camera to where it is now.
         if (sel) this.focusSquad(s, view, simMs);
@@ -1093,7 +1201,7 @@ export class GameScene extends BaseScene {
           size: 11,
         });
       } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
-        ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
+        ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
       }
     });
   }
@@ -1173,7 +1281,7 @@ export class GameScene extends BaseScene {
       scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
       canTeleport: teleportable && teleportReady && !teleportHere,
       // Why the Teleport button is greyed out, so it never just vanishes.
-      teleportWhy: teleportable && !(teleportReady && !teleportHere) ? (teleportHere ? 'HQ is already here' : `Teleport in ${fmtTime((hq?.nextTeleportAtMs ?? 0) - simMs)}`) : null,
+      teleportWhy: teleportable && !(teleportReady && !teleportHere) ? (teleportHere ? 'HQ is already here' : `Teleport cooldown ${fmtTime((hq?.nextTeleportAtMs ?? 0) - simMs)}`) : null,
     };
   }
 
@@ -1318,7 +1426,7 @@ export class GameScene extends BaseScene {
     }
     for (const s of d.here) {
       const q = slot();
-      ui.button(q.x, q.y, cw, bh, `Return${cols > 1 ? ' ' : ' to HQ: '}${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: fs, accent: COLORS.enemy });
+      ui.button(q.x, q.y, cw, bh, `Return${cols > 1 ? ' ' : ' to HQ: '}${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: fs, accent: COLORS.danger });
     }
     const sc = d.scoutHome;
     if (!d.allyHq) {
@@ -1327,7 +1435,7 @@ export class GameScene extends BaseScene {
         onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }),
         enabled: !!sc,
         size: fs,
-        accent: 0xbfe9ff,
+        accent: COLORS.soft,
       });
     }
     if (d.node && (d.canTeleport || d.teleportWhy)) {
@@ -1377,11 +1485,11 @@ export class GameScene extends BaseScene {
         } else {
           acts.push({ label: d.atHq.length ? 'Pick a squad first' : 'No squad at HQ', enabled: false, wide: true });
         }
-        for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.enemy });
-        if (!d.allyHq) acts.push({ label: sc ? 'Send scout' : 'No scout home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xbfe9ff });
+        for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.danger });
+        if (!d.allyHq) acts.push({ label: sc ? 'Send scout' : 'No scout home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: COLORS.soft });
         if (d.node && (d.canTeleport || d.teleportWhy)) {
           const nid = d.node.id;
-          acts.push({ label: d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? ''), onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold });
+          acts.push({ label: d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? ''), onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold, wide: true });
         }
       }
     }
@@ -1496,8 +1604,8 @@ export class GameScene extends BaseScene {
   private railButton(x: number, y: number, kind: 'menu' | 'scouts' | 'logs' | 'home', badge: number, onClick: () => void, on = false): void {
     const ui = this.ui;
     const size = 44;
-    ui.rect(x, y, size, size, on ? 0x1f3a52 : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 8);
-    this.railIcon(kind, x + size / 2, y + size / 2, on ? COLORS.mine : 0xe6edf5);
+    ui.rect(x, y, size, size, on ? COLORS.accentFill : 0x1a212b, 1, on ? COLORS.accent : COLORS.panelEdge, 8);
+    this.railIcon(kind, x + size / 2, y + size / 2, on ? COLORS.accent : 0xe6edf5);
     ui.region(x, y, size, size, onClick);
     if (badge > 0) {
       const label = badge > 99 ? '99+' : String(badge);
@@ -1595,7 +1703,7 @@ export class GameScene extends BaseScene {
         ui.panel(mx, my, mw, this.confirmEnd ? 78 : 52, 0.96);
         const endLabel = session.isHost ? 'End room' : 'Leave';
         if (!this.confirmEnd) {
-          ui.button(mx + 8, my + 8, mw - 16, 36, endLabel, { onClick: () => (this.confirmEnd = true), size: 12, accent: COLORS.enemy });
+          ui.button(mx + 8, my + 8, mw - 16, 36, endLabel, { onClick: () => (this.confirmEnd = true), size: 12, accent: COLORS.danger });
         } else {
           ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', mx + 8, my + 6, { size: 11, color: COLORS.warn });
           ui.button(mx + 8, my + 28, 64, 40, 'Yes', {
@@ -1604,7 +1712,7 @@ export class GameScene extends BaseScene {
               this.go('Menu');
             },
             size: 12,
-            accent: COLORS.enemy,
+            accent: COLORS.danger,
           });
           ui.button(mx + 80, my + 28, 68, 40, 'No', { onClick: () => ((this.confirmEnd = false), (this.menuOpen = false)), size: 12 });
         }

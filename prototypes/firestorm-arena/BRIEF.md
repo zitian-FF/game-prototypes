@@ -713,4 +713,14 @@ client.
 - Teleport button: on an own node (or a Portal Nexus) the Teleport button is always shown and is greyed out with the
   reason when it cannot be used ("Teleport in 0:42" on cooldown, "HQ is already here"), instead of disappearing.
   Teleporting needs no scouting: a node only has to be held by your team.
+- Teleport on cooldown: on an own node the Teleport button is always there. When it is not ready it is greyed out and
+  reads "Teleport cooldown 0:42" (or "HQ is already here"). A tester's "cannot teleport until I scout" was the cooldown.
+- Interface colours: team colours (blue for your team, orange for the enemy) are only used for team things: the score,
+  unit, HQ and node art, the minimap, team names. Interface elements use their own palette: violet `COLORS.accent` for
+  selection, focus, active and primary buttons, crimson `COLORS.danger` for leave and return, gold for teleport,
+  pale grey for secondary actions, and green or amber text for status.
+- Static unit sprites: units are drawn as pre-rendered sprites (one texture per type and colour, no animation) instead of
+  live vector art when the camera is zoomed out below `perf.staticUnitZoom` or more than `perf.staticUnitCount` units are
+  on screen (with hysteresis), which is much cheaper on a phone. World labels are pooled by their text so they are not
+  re-rendered when others appear, and shrink in steps when zoomed in close.
 - Where this section conflicts with older text above, this section wins.

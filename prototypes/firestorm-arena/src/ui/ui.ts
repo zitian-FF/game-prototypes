@@ -168,7 +168,7 @@ export class Ui {
   ): void {
     const enabled = o.enabled !== false;
     const hover = enabled && this.isOver(x, y, w, h);
-    const accent = o.accent ?? COLORS.mine;
+    const accent = o.accent ?? COLORS.accent;
     const fill = o.active ? accent : hover ? 0x26303d : 0x1a212b;
     this.rect(x, y, w, h, fill, enabled ? 1 : 0.5, hover || o.active ? accent : COLORS.panelEdge, 5);
     this.text(label, x + w / 2, y + h / 2 - (o.size ?? 13) * 0.62, {
@@ -222,7 +222,7 @@ export class TextField {
 }
 
 export function drawField(ui: Ui, f: TextField, x: number, y: number, w: number, h: number, focused: boolean, placeholder: string, onFocus: () => void): void {
-  ui.rect(x, y, w, h, 0x0b0f14, 1, focused ? COLORS.mine : COLORS.panelEdge, 5);
+  ui.rect(x, y, w, h, 0x0b0f14, 1, focused ? COLORS.accent : COLORS.panelEdge, 5);
   const caret = focused && Math.floor(Date.now() / 500) % 2 === 0 ? '|' : '';
   if (f.value || focused) ui.text(f.value + caret, x + 10, y + h / 2 - 9, { size: 16 });
   else ui.text(placeholder, x + 10, y + h / 2 - 9, { size: 16, color: COLORS.dim });

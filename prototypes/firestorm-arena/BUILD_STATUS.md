@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.13.1 on the branch (0.13.0 merged, this follow-up not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.13.2 on the branch (0.13.0 merged, 0.13.1 and 0.13.2 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.13.2: static unit sprites when zoomed out or crowded, pooled world labels (world draw about 2 to 6 times cheaper in a software-GL test), interface palette separated from team colours (violet accent, crimson danger), Teleport button reads the cooldown.
 - 0.13.1: edge Home marker pointing at the HQ with a distance in cells, marching 80% faster (crossMapSeconds 183), Teleport button greyed with a reason instead of hidden.
 - 0.13.0: touch HUD v2 (squad chips, anchored target bubble, icon rail, closer start zoom), Home button shown only when the HQ is off screen (H key on desktop, auto-centre on teleport), pinch zoom anchored on the fingers' midpoint, toasts limited to two on touch.
 - 0.12.3: Tech Centre makes the teleport cooldown run faster (x2 with one, x3 with two), bots skip already scouted or targeted nodes and HQs, whole-troop refills, phone rendering optimisations (label re-render only on change, off-screen culling; world draw about 7x cheaper in a software-GL headless test).
