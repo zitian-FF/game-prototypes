@@ -8,15 +8,15 @@
 // stores just those (drainPersist) and ArenaRoom.restore() rebuilds the game
 // exactly after the object was evicted.
 
-import { ArenaGame, Rng, generateMap, rollPlayers, viewFor } from 'arena-sim';
+import { ArenaGame, Rng, cardTier, generateMap, rollPlayers, slotPercentile, viewFor } from 'arena-sim';
 import type { Command, GameEvent, PlayerSpec, TeamId, TeamView, Tune } from 'arena-sim';
 import { BotBrain } from './bot';
 import { projectEvents } from './events';
 import type { ClientEvent } from './events';
 import { PROTOCOL_VERSION, cleanName, parseClientMsg, toSimCommand } from './protocol';
 import type { CommandBody, ErrorCode, LobbyPlayer, MatchStartInfo, RoomPhase, ServerMsg } from './protocol';
-import { GAME_LOG_VERSION, newLive, paceOf, pseudonym, recordOrder } from './gamelog';
-import type { GameLogRecord, HlogStore, TargetEntry } from './gamelog';
+import { GAME_LOG_VERSION, connSummary, newLive, paceOf, pseudonym, recordConn, recordOrder } from './gamelog';
+import type { GameLogRecord, HlogStore, RolledSquad, TargetEntry } from './gamelog';
 import { applyPatch, diffViews, toWire } from './wire';
 import type { WireView } from './wire';
 
@@ -300,6 +300,7 @@ export class ArenaRoom {
     if (!h) return;
     h.connected = false;
     const now = this.env.now();
+    if (this.phase === 'playing') this.noteConn(clientId, 'd');
     if (this.phase === 'lobby') {
       if (clientId === this.hostId) this.hostGoneAtMs = now;
       else this.humans.delete(clientId);
@@ -388,6 +389,7 @@ export class ArenaRoom {
     this.env.identified?.(connId, msg.clientId);
     this.noHumansSinceMs = undefined;
     if (msg.clientId === this.hostId) this.hostGoneAtMs = undefined;
+    if (this.phase === 'playing' && known) this.noteConn(msg.clientId, 'c');
 
     this.send(connId, {
       t: 'welcome',
@@ -520,9 +522,13 @@ export class ArenaRoom {
   private static buildGame(m: MatchMeta): ArenaGame {
     const tune = m.tune;
     const map = generateMap(new Rng(m.seed), tune);
+    return new ArenaGame({ seed: m.seed, tune, map, players: ArenaRoom.rolledPlayers(m) });
+  }
+
+  /** The squads every player was dealt. Deterministic from the seed, so it can be asked for again at any time. */
+  private static rolledPlayers(m: MatchMeta): PlayerSpec[] {
     const teamOf = new Map(m.players.map((p) => [p.id, p.team] as const));
-    const players: PlayerSpec[] = rollPlayers(new Rng(m.seed + 1), tune, m.players.map((p) => p.id), (id) => teamOf.get(id)!);
-    return new ArenaGame({ seed: m.seed, tune, map, players });
+    return rollPlayers(new Rng(m.seed + 1), m.tune, m.players.map((p) => p.id), (id) => teamOf.get(id)!);
   }
 
   private indexPlayers(m: MatchMeta): void {
@@ -588,6 +594,8 @@ export class ArenaRoom {
     this.cmdCount = 0;
     this.prevWire = [null, null];
     this.pending = [];
+    this.hlog.clear();
+    for (const h of humans) this.noteConn(h.clientId, 'c');
     this.saveMeta();
     this.sendLobby();
     for (const h of humans) {
@@ -787,6 +795,34 @@ export class ArenaRoom {
     }
   }
 
+  /** Sim seconds into the match right now, from the wall clock (the sim itself only moves when asked). */
+  private simSecondsNow(): number {
+    const m = this.match;
+    if (!m) return 0;
+    const cap = m.tune.match.durationSeconds;
+    return Math.round(Math.min(cap, Math.max(0, ((this.env.now() - m.startedAtMs) * m.timeScale) / 1000)));
+  }
+
+  /** Write the behaviour counters to storage: at most once a minute, unless forced. */
+  private saveHlog(force: boolean): void {
+    const now = this.env.now();
+    if (!force) {
+      if (now - this.lastHlogSaveWall < 60_000) return;
+      this.lastHlogSaveWall = now;
+    }
+    this.persist.push({ key: 'hlog', value: Object.fromEntries(this.hlog) });
+  }
+
+  /** A human's connection changed during the match. Rare, so it is saved straight away. */
+  private noteConn(clientId: string, e: 'c' | 'd'): void {
+    const playerId = this.playerOfClient.get(clientId);
+    if (!playerId) return;
+    let live = this.hlog.get(playerId);
+    if (!live) this.hlog.set(playerId, (live = newLive()));
+    recordConn(live, this.simSecondsNow(), e);
+    this.saveHlog(true);
+  }
+
   private recordHumanOrder(playerId: string, body: CommandBody, d: { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' }, ok: boolean): void {
     const g = this.game;
     if (!g) return;
@@ -799,11 +835,7 @@ export class ArenaRoom {
     recordOrder(live, Math.round(g.now / 1000), d.entry, d.other);
     void body;
     // One row for everyone, rewritten at most once a minute: a restart loses at most a minute of counters.
-    const now = this.env.now();
-    if (now - this.lastHlogSaveWall >= 60_000) {
-      this.lastHlogSaveWall = now;
-      this.persist.push({ key: 'hlog', value: Object.fromEntries(this.hlog) });
-    }
+    this.saveHlog(false);
   }
 
   /** Build one record per human and hand them to the host, once. */
@@ -814,10 +846,20 @@ export class ArenaRoom {
     this.logEmitted = true;
     const humans = m.players.filter((p) => !p.bot && p.clientId);
     const result = g.result;
-    const simSeconds = Math.round(g.now / 1000);
+    // An abandoned match was not advanced up to now, so take whichever clock is further.
+    const simSeconds = Math.max(Math.round(g.now / 1000), forced === 'abandoned' ? this.simSecondsNow() : 0);
     const records: GameLogRecord[] = [];
+    const rolled = ArenaRoom.rolledPlayers(m);
     for (const p of humans) {
       const live = this.hlog.get(p.id) ?? newLive();
+      const dealt: RolledSquad[] = (rolled.find((r) => r.id === p.id)?.squads ?? []).map((q, slot) => ({
+        slot,
+        type: q.type,
+        rank: q.rank,
+        power: Math.round(q.power),
+        pct: Math.round(slotPercentile(slot, q.power, m.tune) * 100),
+        tier: cardTier(slot, q.power, m.tune),
+      }));
       const pl = g.players.get(p.id);
       const rank = result ? result.leaderboard.findIndex((s) => s.id === p.id) : -1;
       const row = result?.leaderboard.find((s) => s.id === p.id);
@@ -841,6 +883,9 @@ export class ArenaRoom {
         team: p.team,
         device: human?.device ?? 'unknown',
         joins: human?.joins ?? 1,
+        connections: live.conn ?? [],
+        ...connSummary(live.conn, simSeconds),
+        squads: dealt,
         score: {
           score: Math.round(row?.score ?? 0),
           rank: rank >= 0 ? rank + 1 : null,

@@ -752,4 +752,12 @@ client.
   ends: the server holds the match clock back, orders sent during it are refused, and nobody loses sim time. The
   cards share the 7 seconds (a flip every up to 1.6 s, then a hold). Tap to skip the animation; the clock still waits
   for the 7 seconds. Every client times it from the server's clock.
+- Game log additions: each record also lists the squads the player was dealt (slot, type, rank, power, percentile in its
+  own slot's range, reveal tier) and the connection events during the match (connected, dropped, came back, in sim
+  seconds) with total connected seconds and drops. Record version 2.
+- Auto-selected squad: whenever no squad of yours is selected (the start of the match, or the selected one just left on
+  a march), the strongest squad waiting at HQ is selected for you. Picking another squad yourself is respected until
+  that squad leaves.
+- Map fairness: every node kind and tier appears the same number of times on each half of the map (guaranteed by the
+  point-symmetric placement, covered by a 400 seed test).
 - Where this section conflicts with older text above, this section wins.

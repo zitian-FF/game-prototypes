@@ -236,7 +236,9 @@ export class ArenaMatch {
     if (!room) return;
     await this.flush(room.drainPersist());
     await this.sendLogs();
-    await this.reportUsage(room.shouldDestroy());
+    // Report straight away when the room is ending or the last socket has gone: with nobody connected the object
+    // can be evicted before its next report, and whatever it had counted would be lost.
+    await this.reportUsage(room.shouldDestroy() || this.sockets.size === 0);
 
     if (room.shouldDestroy()) {
       this.room = null;
@@ -320,7 +322,6 @@ export class ArenaMatch {
  */
 export class QuotaMeter {
   private usage: QuotaUsage = { day: '', writes: 0, requests: 0 };
-  private lastPersistAt = 0;
   private readonly ready: Promise<void>;
 
   constructor(
@@ -359,12 +360,12 @@ export class QuotaMeter {
         // A malformed report only counts as the call itself.
       }
     }
+    // A report changes the count, so it is saved at once (one row write, at most every 20 seconds per room): the meter
+    // object is evicted whenever it is idle, and counts held only in memory would be lost. Status reads are not saved.
+    const reported = writes > 0 || requests > 1;
+    if (reported) writes += 1;
     this.usage = addUsage(this.usage, now, writes, requests);
-    if (now - this.lastPersistAt >= 60_000) {
-      this.lastPersistAt = now;
-      this.usage = addUsage(this.usage, now, 1, 0);
-      await this.state.storage.put({ usage: this.usage });
-    }
+    if (reported) await this.state.storage.put({ usage: this.usage });
     return new Response(JSON.stringify(quotaStatus(this.usage, now, this.config())), {
       headers: { 'content-type': 'application/json; charset=utf-8' },
     });

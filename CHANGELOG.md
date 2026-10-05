@@ -3,6 +3,15 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0 (log v2, usage meter)
+
+**What changed:** the game log record is version 2: it adds `squads` (the dealt squads with percentile and reveal tier),
+`connections`, `connectedSeconds` and `drops`. The Worker's usage meter is saved on every report (it used to save at most
+once a minute, so an eviction could lose counts) and a room reports straight away when its last socket leaves, so a
+match dropped half way is still counted. No protocol change. Folded into the unreleased 0.14.0.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0 (intro delay)
 
 **What changed:** firestorm-net's room starts the match clock `match.introSeconds` (tune, default 0, 7 in Firestorm

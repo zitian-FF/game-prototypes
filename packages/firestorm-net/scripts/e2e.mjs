@@ -273,6 +273,7 @@ try {
   check(!!logs && logs.records.length === 2, `two player records were stored (${logs ? logs.records.length : 0})`);
   if (logs) {
     const rec = logs.records.find((r) => r.name === 'Hana');
+    check(rec.squads.length >= 2 && rec.connections.length >= 1 && rec.connections[0].e === 'c', `her record has the squads she was dealt (${rec.squads.length}) and her connection events`);
     check(!!rec && rec.counts.captureNeutral === 1 && rec.counts.marches === 1, 'Hana\'s record has the node she captured');
     check(rec.targets[0].a === 'capture' && rec.targets[0].id === node.id, 'the first target in her record is the node she went for');
     check(logs.records.every((r) => r.pid.length === 14 && !JSON.stringify(r).includes('client-')), 'records carry a hashed id, never the client id');
@@ -280,6 +281,29 @@ try {
   }
   const nd = await fetch(`${base}?format=ndjson&since=2000-01-01`, { headers: { authorization: 'Bearer e2e-log-token' } });
   check((await nd.text()).trim().split('\n').length === 2, 'the ndjson export has one line per record');
+
+  // --- the usage counter moves, even for a match that is dropped half way -------------------------------
+  const quota = async () => (await fetch(`http://127.0.0.1:${PORT}/api/quota`)).json();
+  hana.ws.close();
+  ivo.ws.close();
+  await sleep(2500);
+  const q0 = await quota();
+  check(q0.writesUsed > 100 && q0.requestsUsed > 10, `the meter counted the whole first match once the players left (${q0.writesUsed} writes, ${q0.requestsUsed} requests, ${q0.matchesLeft} games left)`);
+  let code2 = code;
+  while (code2 === code) code2 = Array.from({ length: 3 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
+  const quitter = new Client('Quitter', code2, 'client-quit--e2e-0004');
+  await quitter.connect(true);
+  await quitter.waitFor((m) => m.t === 'welcome', 5000, 'welcome');
+  quitter.send({ t: 'start', fillBots: true, minutes: 30 });
+  await quitter.waitFor((m) => m.t === 'state' && m.full, 10_000, 'first full state');
+  await sleep(3000);
+  const q1 = await quota();
+  quitter.ws.close();
+  await sleep(2500);
+  const q2 = await quota();
+  check(q2.writesUsed > q0.writesUsed && q2.requestsUsed > q0.requestsUsed, `a match dropped half way still counts (writes ${q0.writesUsed} -> ${q2.writesUsed}, requests ${q0.requestsUsed} -> ${q2.requestsUsed})`);
+  check(q2.writesUsed >= q1.writesUsed && q2.requestsUsed >= q1.requestsUsed, 'and the count never goes backwards when the last player leaves');
+  check(q2.matchesLeft <= q0.matchesLeft, 'the games left never go up');
 
   const states = hana.of('state').length;
   console.log(`  info Hana got ${states} state messages, ${(hana.bytes / 1024).toFixed(0)} KiB after the restart`);

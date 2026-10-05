@@ -170,6 +170,7 @@ export class GameScene extends BaseScene {
 
     const simMs = session.simNow();
     const now = time / 1000;
+    this.autoSelectSquad(view);
     this.handleIntents(events, dt, view);
     if (!session.info || !session.view) return; // an order above may have left the match
     this.handleEvents(view, now);
@@ -446,7 +447,6 @@ export class GameScene extends BaseScene {
         case 'pause':
           if (this.panel !== 'none') this.panel = 'none';
           else if (this.target) this.target = null;
-          else this.selectedSquad = null;
           break;
         default:
           break;
@@ -493,6 +493,23 @@ export class GameScene extends BaseScene {
       return;
     }
     session.sendCommand({ type: 'march', squadId, target: t.kind === 'node' ? { kind: 'node', nodeId: t.id } : { kind: 'hq', hqId: t.id } });
+    // The squad just sent is no longer at HQ: let the next strongest one take its place.
+    if (this.selectedSquad === squadId) this.selectedSquad = null;
+  }
+
+  /**
+   * Keep a squad selected so one tap on a target is enough: with nothing selected (the start of the match, or the
+   * selected squad has just left or been lost), pick the strongest squad waiting at HQ. A squad the player picks
+   * themselves is left alone.
+   */
+  private autoSelectSquad(view: WireView): void {
+    const info = session.info;
+    if (!info) return;
+    const own = view.squads.filter((q) => q.owner === info.playerId);
+    if (this.selectedSquad && own.some((q) => q.id === this.selectedSquad)) return;
+    let best: (typeof own)[number] | null = null;
+    for (const q of own) if (q.state === 'hq' && q.troops > 0 && (!best || q.power > best.power)) best = q;
+    this.selectedSquad = best ? best.id : null;
   }
 
   // ------------------------------------------------------------------ events

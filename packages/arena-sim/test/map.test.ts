@@ -213,3 +213,20 @@ test('map: the map is a square, and the first nodes are within a couple of minut
     }
   }
 });
+
+test('map: over many seeds every kind and tier has the same count on both sides', () => {
+  const tune = loadTune();
+  const mid = (tune.map.widthCells - 1) / 2;
+  for (let seed = 1; seed <= 400; seed++) {
+    const map = generateMap(new Rng(seed), tune);
+    const side = (n: { cell: { cx: number } }) => (n.cell.cx < mid ? 0 : n.cell.cx > mid ? 1 : 2);
+    const tally = [new Map<string, number>(), new Map<string, number>()];
+    for (const n of map.nodes) {
+      const s = side(n);
+      if (s === 2) continue; // the exact centre holds only the silo
+      const key = `${n.kind}/${n.tier}`;
+      tally[s].set(key, (tally[s].get(key) ?? 0) + 1);
+    }
+    assert.deepEqual([...tally[0]].sort(), [...tally[1]].sort(), `seed ${seed}`);
+  }
+});

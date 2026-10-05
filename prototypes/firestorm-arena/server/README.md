@@ -27,7 +27,9 @@ which fits roughly 40 matches a day on the Workers Free plan.
 When a match ends (or the host ends it early), the room writes one small record per **human** player to a separate
 Durable Object, `GameLogs`. A record holds: the match and when it started, the result and final points, the player's
 team, a hash of their browser's random client id, the display name as typed, whether they played on touch or desktop,
-how many times they connected, their commander score and stats, counts of what they did (marches by kind, HQ attacks,
+how many times they connected (with each connect and drop during the match, in sim seconds, plus total connected
+seconds), the squads they were dealt at the start (type, rank, power, percentile in the slot's range, reveal tier),
+their commander score and stats, counts of what they did (marches by kind, HQ attacks,
 scouts, teleports, Defend toggles, Return orders, refused orders), when they first acted, their longest idle gap,
 orders per tenth of the match, and the ordered list of everything they targeted (node id, kind and tier, or HQ or
 cache). It is a few KB per player, written once per match. Bots are never logged. Nothing is ever sent to a client.

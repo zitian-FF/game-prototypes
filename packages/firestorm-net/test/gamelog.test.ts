@@ -114,6 +114,48 @@ test('game log: a match the host ends early is still logged, as abandoned', () =
   assert.equal(w.env.gameLogs[0].counts.captureNeutral, 1);
 });
 
+test('game log: the record lists the dealt squads with their tier and the connection drops', () => {
+  const { w, hana } = start(8000);
+  w.advance(60_000);
+  w.room.onClose(hana.connId);
+  w.advance(90_000);
+  const back = w.client('Hana', 'client-hana-gamelog-0001');
+  back.hello(false, 'touch');
+  w.advance(30_000);
+  w.runTo(w.env.wall + 10 * 60_000 + 5000);
+  assert.equal(w.env.gameLogs.length, 1);
+  const r = w.env.gameLogs[0];
+  assert.equal(r.v, 2);
+  assert.ok(r.squads.length >= 2 && r.squads.length <= 4, `squads ${r.squads.length}`);
+  r.squads.forEach((q, i) => {
+    assert.equal(q.slot, i);
+    assert.ok(q.pct >= 0 && q.pct <= 100 && q.power > 0 && q.rank >= 1);
+    if (i >= 2) assert.equal(q.tier, null, 'only squads 1 and 2 are graded');
+  });
+  // Connected at the start, dropped, came back.
+  assert.deepEqual(r.connections.map((c) => c.e), ['c', 'd', 'c']);
+  assert.equal(r.drops, 1);
+  assert.equal(r.joins, 2);
+  assert.ok(r.connections[1].t >= 55 && r.connections[1].t <= 75, `drop at ${r.connections[1].t}`);
+  assert.ok(r.connections[2].t - r.connections[1].t >= 85, 'the gap is about 90 seconds');
+  assert.ok(r.connectedSeconds > 0 && r.connectedSeconds < r.simSeconds - 80, `connected ${r.connectedSeconds} of ${r.simSeconds}`);
+  assert.ok(JSON.stringify(r).length < 4500, 'a record stays small');
+});
+
+test('game log: a player still disconnected when the match is abandoned is logged with the drop', () => {
+  const { w, hana } = start(8000);
+  w.advance(40_000);
+  w.room.onClose(hana.connId);
+  w.advance(30_000);
+  w.runTo(w.env.wall + 6 * 60 * 60_000);
+  assert.equal(w.env.gameLogs.length, 1);
+  const r = w.env.gameLogs[0];
+  assert.equal(r.result, 'abandoned');
+  assert.equal(r.drops, 1);
+  assert.ok(r.connectedSeconds >= 35 && r.connectedSeconds <= 50, `connected ${r.connectedSeconds}`);
+  assert.equal(r.squads.length >= 2, true);
+});
+
 test('opening reveal: the match clock starts only after the intro, and orders wait for it', () => {
   const w = makeWorld({ introSeconds: 7 });
   const hana = w.client('Hana', 'client-hana-intro-00001');
@@ -138,4 +180,19 @@ test('opening reveal: the match clock starts only after the intro, and orders wa
   const after = hana.cmd({ type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } });
   const accepted = hana.msgs.find((m) => m.t === 'cmdResult' && m.id === after);
   assert.ok(accepted && accepted.t === 'cmdResult' && accepted.ok, 'and accepted once the round has started');
+});
+
+test('game log: the first order is saved at once, so a restart right after it loses nothing', () => {
+  const { w, hana } = start(8000);
+  const t = firstTargets(hana);
+  hana.cmd({ type: 'march', squadId: t.squads[0].id, target: { kind: 'node', nodeId: t.neutral.id } });
+  flush(w.room, w.store);
+  const env2 = new FakeEnv();
+  env2.wall = w.env.wall;
+  const revived: ArenaRoom = restoreFrom(w.store, env2, {}, undefined);
+  revived.onConnect('c-new');
+  revived.onMessage('c-new', JSON.stringify({ t: 'hello', v: 8, clientId: 'client-hana-gamelog-0001', name: 'Hana', device: 'touch' }));
+  revived.onMessage('c-new', JSON.stringify({ t: 'endRoom' }));
+  assert.equal(env2.gameLogs.length, 1);
+  assert.equal(env2.gameLogs[0].counts.captureNeutral, 1);
 });
