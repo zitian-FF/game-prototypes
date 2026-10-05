@@ -111,15 +111,19 @@ reach.
   the Normal row. (Changed 2026-09-29: the original handoff described the
   core as a reduced-damage zone.)
 - Vulnerable: punch startup and recovery (including whiff recovery; not
-  the active frames), dodge tail + post-dodge window, stunned, empty
+  the active frames), guard-release penalty, dodge tail + post-dodge window, stunned, empty
   stamina. Core removed, hurtbox enlarged; every hit uses the Vulnerable
   row.
 - High Guard: blocks, drains stamina while held. Zero damage always.
 - Perfect Guard: hit lands within the first few frames of Guard. Applies
   to sweet and sour hits. Defender recovers stamina; attacker stunned.
-  Anti-mash: a raise only gets a Perfect Guard window if guard was down
-  for at least `guard.perfectCooldownFrames` first (re-raising sooner
-  still blocks normally).
+  Every legal guard raise starts a tight 3-frame Perfect Guard window;
+  there is no separate perfect-guard cooldown. Lowering an active guard
+  starts a 12-frame guard penalty (200 ms at 60 Hz): Vulnerable, full
+  damage on sweet hits, and guard cannot be raised until it ends. Punch
+  and dodge cancels also lower guard and keep this penalty. Holding the
+  guard input during the penalty raises it only once guarding is legal.
+  The penalty adds no movement slowdown or attack/dodge lockout.
   Counter (2026-10-03): a Hook goes through a Perfect Guard like it does
   a High Guard (chip damage, no attacker stun, no stamina bonus), so a
   well-timed Perfect Guard can be beaten by throwing a Hook.

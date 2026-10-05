@@ -99,7 +99,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'PERFECT GUARD',
-    text: () => 'Raise guard just as a punch lands for a PERFECT GUARD: it staggers them. Mashing won\'t work; let go, then time it.',
+    text: () => `Every guard raise opens a tight ${tune.guard.perfectFrames}-frame PERFECT GUARD window. Release exposes you for ${tune.guard.penaltyFrames} frames and locks guard; time the next raise after that.`,
     adds: [],
     dummy: 'jabber',
     goal: 1,
