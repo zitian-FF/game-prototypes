@@ -58,7 +58,7 @@ export class FightStage {
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.fx = new Effects(scene);
-    this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
+    this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, 110, zone);
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));

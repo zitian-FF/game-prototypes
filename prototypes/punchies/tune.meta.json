@@ -2161,5 +2161,19 @@
     "min": 1,
     "max": 12,
     "step": 1
+  },
+  "view.headOffsetY": {
+    "cat": "View",
+    "desc": "Layered boxer: head drop in screen Y (world px). Negative = higher on screen. Gloves stay at 0; torso, feet and shadow sit below.",
+    "min": -16,
+    "max": 6,
+    "step": 0.5
+  },
+  "view.bodyOffsetY": {
+    "cat": "View",
+    "desc": "Layered boxer: torso drop in screen Y (world px). Gloves stay at 0, the head sits above and the feet and shadow below.",
+    "min": -8,
+    "max": 12,
+    "step": 0.5
   }
 }

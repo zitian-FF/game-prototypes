@@ -11,6 +11,8 @@
     "perspective": 1,
     "topScale": 0.9,
     "squash": 0.85,
+    "headOffsetY": -4,
+    "bodyOffsetY": 2,
     "shadowOffsetY": 8,
     "shadowAlpha": 0.3,
     "shadowSize": 1,

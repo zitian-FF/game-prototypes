@@ -121,6 +121,14 @@ export class FighterView {
   private g: Phaser.GameObjects.Graphics;
   private sprite: Phaser.GameObjects.Image;
   private ground: GroundLayer;
+  // Layered art (top to bottom): effects, head, gloves, torso; feet and the
+  // shadow sit below in `ground`. Falls back to the single baked body sprite.
+  private torso: Phaser.GameObjects.Image;
+  private gloves: Phaser.GameObjects.Image;
+  private head: Phaser.GameObjects.Image;
+  private effects: Phaser.GameObjects.Image;
+  private flashHeadUntil = 0;
+  private flashBodyUntil = 0;
   // Overlay above the body sprites: stun stars.
   private fx: Phaser.GameObjects.Graphics;
   private flashColor = 0xffffff;
@@ -132,9 +140,19 @@ export class FighterView {
   private stride = 0;
 
   // Brief body flash when hit (white = you landed it, red = you took it).
-  flash(color: number, now: number, ms = 110): void {
+  flash(color: number, now: number, ms = 110, zone: 'head' | 'body' = 'body'): void {
     this.flashColor = color;
     this.flashUntil = now + ms;
+    // Layered art flashes only the part that was hit.
+    if (zone === 'head') this.flashHeadUntil = now + ms;
+    else this.flashBodyUntil = now + ms;
+  }
+
+  private hideLayers(): void {
+    this.torso.setVisible(false);
+    this.gloves.setVisible(false);
+    this.head.setVisible(false);
+    this.effects.setVisible(false);
   }
 
   // Character look (render only): body scale and Mia's ponytail.
@@ -148,6 +166,12 @@ export class FighterView {
     this.ground = new GroundLayer(scene, BODY_R);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
+    // Same depth family as the body sprite, ordered: torso, gloves, head, effects.
+    const layer = (d: number) => scene.add.image(0, 0, '__DEFAULT').setDepth(d).setVisible(false);
+    this.torso = layer(10);
+    this.gloves = layer(10.1);
+    this.head = layer(10.2);
+    this.effects = layer(10.3);
     this.fx = scene.add.graphics().setDepth(12);
   }
 
@@ -164,6 +188,7 @@ export class FighterView {
   clear(): void {
     this.g.clear();
     this.sprite.setVisible(false);
+    this.hideLayers();
     this.ground.hide();
     this.fx.clear();
   }
@@ -199,6 +224,7 @@ export class FighterView {
       return;
     }
 
+    this.hideLayers();
     this.ground.hide();
     // Shadow, then legs: two soft dark feet stepping under the body.
     g.fillStyle(0x000000, 0.25);
@@ -293,7 +319,7 @@ export class FighterView {
     for (let i = 0; i < 3; i++) {
       const a = now / 420 + (i * Math.PI * 2) / 3; // one lap per ~2.6 s
       const x = f.x + Math.cos(a) * orbit;
-      const y = f.y - 2 + Math.sin(a) * orbit;
+      const y = f.y - 2 + (this.head.visible ? tune.view.headOffsetY : 0) + Math.sin(a) * orbit;
       drawStar(g, x, y, 5.5 * k, -now / 260 + i);
     }
   }
@@ -319,11 +345,34 @@ export class FighterView {
     } else if (f.stunTimer > 0) action = 'stunned';
     else if (f.guarding) action = stance === 'perfectGuard' ? 'perfect_guard' : 'guard';
     else if (f.exhausted) action = 'exhausted';
-    if (!pose(this.sprite, `${prefix}_${action}`, progress)) return false;
+    const key = `${prefix}_${action}`;
     const rotation = Math.atan2(f.fy, f.fx);
+    const alpha = stance === 'dodging' ? 0.4 : 1;
+    const v = tune.view;
+    // Layered boxer: head above gloves above torso, each at its own screen-Y
+    // offset (gloves at 0). Needs all three layers; otherwise the baked body.
+    if (pose(this.torso, `${key}_torso`, progress) && pose(this.gloves, `${key}_gloves`, progress) && pose(this.head, `${key}_head`, progress)) {
+      this.sprite.setVisible(false);
+      const place = (img: Phaser.GameObjects.Image, dy: number) => img.setPosition(f.x, f.y + dy).setOrigin(0.5).setScale(this.scale / 2).setRotation(rotation).setAlpha(alpha);
+      place(this.torso, v.bodyOffsetY);
+      place(this.gloves, 0);
+      place(this.head, v.headOffsetY);
+      // Effects (dodge streaks, guard arc) ride on top. The stun stars are the
+      // runtime orbit, so the baked ones are skipped.
+      if (action !== 'stunned' && pose(this.effects, `${key}_effects`, progress)) place(this.effects, 0);
+      else this.effects.setVisible(false);
+      if (now < this.flashBodyUntil) this.torso.setTintFill(this.flashColor);
+      else this.torso.clearTint();
+      if (now < this.flashHeadUntil) this.head.setTintFill(this.flashColor);
+      else this.head.clearTint();
+      this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
+      return true;
+    }
+    this.hideLayers();
+    if (!pose(this.sprite, key, progress)) return false;
     this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(rotation);
-    this.sprite.setAlpha(stance === 'dodging' ? 0.4 : 1);
-    this.ground.draw(`${prefix}_${action}`, progress, f.x, f.y, rotation, this.scale, stance === 'dodging' ? 0.4 : 1);
+    this.sprite.setAlpha(alpha);
+    this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
     if (now < this.flashUntil) this.sprite.setTintFill(this.flashColor);
     else this.sprite.clearTint();
     return true;
