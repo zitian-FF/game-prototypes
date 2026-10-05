@@ -482,13 +482,6 @@
     "max": 20,
     "step": 1
   },
-  "guard.perfectCooldownFrames": {
-    "cat": "Defense",
-    "desc": "Guard must be down this many frames before a raise can Perfect Guard (anti-mash).",
-    "min": 0,
-    "max": 90,
-    "step": 1
-  },
   "guard.staminaDrainPerSec": {
     "cat": "Defense",
     "desc": "Stamina drained per second while holding High Guard.",
@@ -2405,6 +2398,13 @@
     "desc": "Pulse frequency of the empty-stamina rejection flash.",
     "min": 1,
     "max": 20,
+    "step": 1
+  },
+  "guard.penaltyFrames": {
+    "cat": "Guard",
+    "desc": "Vulnerable frames after lowering guard; guard cannot be raised during this penalty.",
+    "min": 0,
+    "max": 60,
     "step": 1
   }
 }

@@ -183,7 +183,7 @@ export class InfoPanel {
     ry += 8;
     this.text(rx, ry, 'VULNERABLE WHEN', 11, '#ffd24a', true);
     ry += 16;
-    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Stunned', `Stamina hit 0, until ${tune.stamina.exhaustRecoverAt}`, `  (regen x${tune.stamina.exhaustedRegenMult})`]) {
+    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', `Stamina hit 0, until ${tune.stamina.exhaustRecoverAt}`, `  (regen x${tune.stamina.exhaustedRegenMult})`]) {
       this.text(rx, ry, s, 9);
       ry += 12;
     }
@@ -192,10 +192,10 @@ export class InfoPanel {
     ry += 16;
     for (const s of [
       `Perfect Guard window: ${tune.guard.perfectFrames}f`,
-      `  only if guard was down ${tune.guard.perfectCooldownFrames}f`,
+      `Release: ${tune.guard.penaltyFrames}f vulnerable, no guard`,
       `Guard drain: ${tune.guard.staminaDrainPerSec}/s`,
       `Dodge: ${tune.dodge.iFrames}f invincible of ${tune.dodge.frames}f`,
-      `  then ${tune.dodge.vulnerableFrames}f Vulnerable`,
+      `Penalty: ${tune.dodge.vulnerableFrames}f, walk x${tune.dodge.penaltyMoveMult}, no dodge`,
       `Dodge then punch within ${tune.dodge.buffWindowFrames}f: x${tune.dodge.buffDamageMult} dmg`,
       `Counter (Cross/Hook on startup): x${tune.hit.counterDamageMult}`,
       `Round: ${tune.match.durationSec}s · HP ${tune.health.max}`,

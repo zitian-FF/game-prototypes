@@ -1,23 +1,23 @@
 ## Current milestone
-Full-cost stamina rejection and independent dodge penalty / follow-up buff.
+Guard-release penalty and tight perfect guard on every legal raise.
 
 ## What was implemented
-- Unaffordable punches/dodges do not execute or remain buffered; empty stamina flashes red on both mirrored HUD bars.
-- Dodge stamina cost 12 → 14.4; Hook base reach 35 → 28.
-- Dodge penalty lasts 14 vulnerable frames, reduces walking speed by 60%, and blocks re-dodging.
-- Follow-up damage buff lasts a separate six frames and is consumed by the first punch.
+- Lowering guard starts a 12-frame Vulnerable penalty and blocks re-guarding; sweet hits take full vulnerable-row damage.
+- Every legal guard raise begins a tight three-frame Perfect Guard window. Removed the separate 40-frame cooldown.
+- Punch/dodge cancels, exhaustion and stun cannot bypass the guard-release penalty.
+- Updated AI, defense reference, tutorial text, tune metadata and BRIEF.md for the new rules.
 
 ## Key technical decisions
-- Rounded the requested 12 × 1.2 vulnerable frames to 14 whole simulation frames; existing stunned duration multiplier remains.
-- Validate character-specific costs before changing stars, fatigue, punch hand or damage buff; reject even during hit-stop.
-- Simulation emits staminaRejected; HUD owns the 300 ms presentation flash. New feel values have tune metadata.
-- Buff timing starts with all six frames intact after dodge completion.
+- Guard penalty only starts on an actual transition out of guard; repeated releases or held guard during lockout do not restart it.
+- The release tick counts as the first penalty frame. Hit-stop pauses penalty with the fight.
+- Held guard may raise after the penalty ends; it cannot raise during the window. No added walking slowdown or attack/dodge lockout.
+- Added deterministic guardPenalty state, replacing obsolete guardDownFrames/perfectEligible. Rollback snapshots already clone the complete state.
 
 ## Open questions
-- Owner was offered six versus eight follow-up buff frames; used six for an immediate follow-up. BRIEF.md now records six and can be adjusted if requested.
+- Owner was offered timing choices; used 12 penalty frames and three Perfect Guard frames. BRIEF.md records the working timings and can be adjusted if requested.
 
 ## Known issues
-- No real-phone or online-match verification in this pass.
+- No real-phone or two-peer online-match verification in this pass.
 
 ## Next proposed step
-Playtest the short follow-up window. Typecheck/build, comprehensive stamina/dodge simulation checks, and prior training regression passed. Brave reviewed the actual HUD's mirrored empty-area flashes and actual game boot with no console errors.
+Playtest guard timing against live opponents. Guard regressions verify full damage, exact lockout, fresh perfect guard, cancels, hit-stop, deterministic replay and AI compatibility. Stamina/dodge and zero-HP training regressions, typecheck and production build passed. Brave checked the reference overlay and actual game boot without console errors.

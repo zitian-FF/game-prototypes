@@ -162,12 +162,12 @@
     "pushLockFrames": 8
   },
   "guard": {
-    "perfectFrames": 6,
+    "perfectFrames": 3,
     "staminaDrainPerSec": 6,
     "perfectGuardStaminaGain": 12,
     "perfectGuardAttackerStunFrames": 56,
     "perfectGuardStunBuild": 31.25,
-    "perfectCooldownFrames": 40
+    "penaltyFrames": 12
   },
   "dodge": {
     "frames": 14,

@@ -46,8 +46,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     stunFromMeter: false,
     guarding: false,
     guardFrames: 0,
-    guardDownFrames: 9999,
-    perfectEligible: false,
+    guardPenalty: 0,
     exhausted: false,
     regenWait: 0,
     buffered: null,
@@ -124,7 +123,7 @@ export function isVulnerable(f: Fighter): boolean {
     const phase = phaseOf(f.punch);
     if (phase === 'startup' || phase === 'recovery') return true;
   }
-  if (f.postDodgeVulnerable > 0) return true;
+  if (f.postDodgeVulnerable > 0 || f.guardPenalty > 0) return true;
   if (f.stunTimer > 0) return true;
   if (f.exhausted) return true;
   if (f.dodge && f.dodge.frame >= tune.dodge.iFrames) return true;
@@ -133,7 +132,7 @@ export function isVulnerable(f: Fighter): boolean {
 
 export function stanceOf(f: Fighter): Stance {
   if (f.dodge && f.dodge.frame < tune.dodge.iFrames) return 'dodging';
-  if (f.guarding) return f.perfectEligible && f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
+  if (f.guarding) return f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
   return isVulnerable(f) ? 'vulnerable' : 'normal';
 }
 
@@ -157,12 +156,19 @@ function canAct(f: Fighter): boolean {
   return f.punch === null && f.dodge === null;
 }
 
+// Every transition out of an active guard starts the release penalty.
+function lowerGuard(f: Fighter): void {
+  if (f.guarding) f.guardPenalty = tune.guard.penaltyFrames;
+  f.guarding = false;
+  f.guardFrames = 0;
+}
+
 function spendStamina(f: Fighter, amount: number): void {
   if (f.infiniteStamina) return;
   f.stamina = Math.max(0, f.stamina - amount);
   if (f.stamina <= 0) {
     f.exhausted = true;
-    f.guarding = false;
+    lowerGuard(f);
   }
 }
 
@@ -207,8 +213,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     connected: false,
     hand,
   };
-  f.guarding = false;
-  f.guardFrames = 0;
+  lowerGuard(f);
   if (type === 'uppercut') {
     f.stars = 0;
   } else {
@@ -234,8 +239,7 @@ function startDodge(s: SimState, idx: number, input: FrameInput): void {
     dy = input.my / len;
   }
   f.dodge = { frame: 0, dx, dy };
-  f.guarding = false;
-  f.guardFrames = 0;
+  lowerGuard(f);
   spendStamina(f, tune.dodge.staminaCost);
   f.regenWait = tune.stamina.regenDelayFrames;
 }
@@ -298,22 +302,17 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
     }
   }
 
-  const canGuard = canAct(f) && f.stunTimer <= 0 && !f.exhausted;
+  const canGuard = canAct(f) && f.stunTimer <= 0 && !f.exhausted && f.guardPenalty <= 0;
   if (input.guard && canGuard) {
     if (!f.guarding) {
       f.guarding = true;
       f.guardFrames = 0;
-      // Anti-mash: a Perfect Guard window only opens if guard was down long
-      // enough before this raise.
-      f.perfectEligible = f.guardDownFrames >= tune.guard.perfectCooldownFrames;
-      f.guardDownFrames = 0;
+      // Every legal raise starts a fresh, tight Perfect Guard window.
     } else {
       f.guardFrames++;
     }
   } else {
-    f.guarding = false;
-    f.guardFrames = 0;
-    f.guardDownFrames++;
+    lowerGuard(f);
   }
 }
 
@@ -398,8 +397,7 @@ function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): 
     f.stunTimer = tune.stun.baseFrames + Math.round(overflow * tune.stun.overflowFramesPerPoint);
     f.stunFromMeter = true;
     f.punch = null;
-    f.guarding = false;
-    f.guardFrames = 0;
+    lowerGuard(f);
     f.stars = 0;
     events.push({ kind: 'stunned', fighter: idx });
   }
@@ -607,6 +605,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
     if (p.frame >= punchTotal(p)) f.punch = null;
   }
 
+  if (f.guardPenalty > 0) f.guardPenalty--;
   if (f.dashBuff > 0 && !f.dodge) f.dashBuff--;
 
   if (f.dodge) {

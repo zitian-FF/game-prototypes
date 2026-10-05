@@ -83,7 +83,7 @@ export class ScriptedBot implements Bot {
       punch: fp
         ? { type: fp.type, frame: fp.frame, startup: fp.startup, sourEarly: fp.sourEarly, reach: fp.reach, recovering: phase === 'recovery', active: phase === 'sweet' || phase === 'sour' }
         : null,
-      open: phase === 'recovery' || foe.exhausted || foe.stunTimer > 0 || foe.postDodgeVulnerable > 0,
+      open: phase === 'recovery' || foe.exhausted || foe.stunTimer > 0 || foe.postDodgeVulnerable > 0 || foe.guardPenalty > 0,
       stars: foe.stars,
       guarding: foe.guarding,
     });
@@ -114,7 +114,7 @@ export class ScriptedBot implements Bot {
             input.dodge = true;
             return input;
           }
-        } else if (this.tryPerfectGuard(s, vp, remaining, delay, me.guardDownFrames)) {
+        } else if (this.tryPerfectGuard(s, vp, remaining, delay, me.guardPenalty)) {
           // Guard raised for a Perfect Guard (or an early, mistimed one).
           this.holdOffUntil = s.tick + this.guardHold + Math.round(L.pgHesitateFrames);
         } else if (this.guardHold === 0 && remaining >= 0) {
@@ -201,18 +201,18 @@ export class ScriptedBot implements Bot {
   // Decide once per incoming punch whether to try a Perfect Guard, and
   // whether the attempt is mistimed (raised too early, so it is only a
   // normal block). Returns true when the guard goes up this frame.
-  private tryPerfectGuard(s: SimState, vp: NonNullable<FoeView['punch']>, remaining: number, delay: number, guardDown: number): boolean {
+  private tryPerfectGuard(s: SimState, vp: NonNullable<FoeView['punch']>, remaining: number, delay: number, guardPenalty: number): boolean {
     const L = this.L;
     const key = `${vp.type}@${s.tick - delay - vp.frame}`;
     if (key !== this.pgKey) {
       this.pgKey = key;
       this.pgPlan = 'none';
-      if (guardDown >= tune.guard.perfectCooldownFrames && this.rng() < L.pgChance) {
+      if (guardPenalty <= 0 && this.rng() < L.pgChance) {
         this.pgPlan = this.rng() < L.pgMistime ? 'early' : 'perfect';
       }
     }
     if (this.pgPlan === 'none') return false;
-    const perfectAt = tune.guard.perfectFrames - 2; // frames before contact
+    const perfectAt = Math.max(1, tune.guard.perfectFrames - 2); // frames before contact
     const raiseAt = this.pgPlan === 'perfect' ? perfectAt : perfectAt + 5;
     if (remaining >= 1 && remaining <= raiseAt) {
       this.pgPlan = 'none';
