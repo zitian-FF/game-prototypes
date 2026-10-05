@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
+import { makeAltParts } from './puppet';
 import { roomFromUrl } from '../net/roomCode';
 
 interface AnimationSource { frameCount: number; frames: string[] }
@@ -16,6 +17,11 @@ const assetRoot = `${__PUNCHIES_ASSET_BASE__}prototypes/punchies/assets/`;
 declare const __PUNCHIES_ASSET_BASE__: string;
 const frameRefs = new Map<string, Phaser.Types.Animations.AnimationFrame[]>();
 const textureKey = (name: string) => `punchies:${name}`;
+// Texture key of a loaded loose art file (e.g. portrait_marco), or null.
+export function artKey(scene: Phaser.Scene, name: string): string | null {
+  const k = textureKey(name);
+  return scene.textures.exists(k) ? k : null;
+}
 const hashOf = (path: string) => index.manifest.find((f) => f.path === path)?.hash ?? '';
 const atlasUrl = (path: string) => `${assetRoot}${path}?v=${hashOf(path)}`;
 
@@ -179,6 +185,7 @@ export class ArtBootScene extends Phaser.Scene {
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;
+    makeAltParts(this); // hue-shifted copies of the boxer parts for mirror matches
     if (!grouped) {
       const atlases = index.manifest.filter((f) => /^atlas\/atlas.*\.json$/.test(f.path)).map((f) => textureKey(f.path));
       registerAnimations(this, Object.keys(index.animations), atlases);

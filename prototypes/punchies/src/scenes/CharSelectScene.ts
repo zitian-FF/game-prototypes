@@ -12,7 +12,7 @@ import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
 import type { MatchData } from './LobbyScene';
-import { artImage, backdrop, fighterGroups, prefetchGroups } from '../render/art';
+import { artImage, artKey, backdrop, fighterGroups, prefetchGroups } from '../render/art';
 
 // Character select. UI chrome only: it never touches the sim except to hand
 // the chosen ids to the fight scene.
@@ -73,6 +73,8 @@ export class CharSelectScene extends Phaser.Scene {
   // Single Player: the bot's difficulty (shown under the AI label).
   private level: BotLevel = 'easy';
   private levelText: Phaser.GameObjects.Text | null = null;
+  // Big character portraits on the panels (the live top-down preview is the fallback).
+  private portraits: (Phaser.GameObjects.Image | null)[] = [null, null];
   private g!: Phaser.GameObjects.Graphics;
   private views: FighterView[] = [];
   private texts: { name: Phaser.GameObjects.Text; style: Phaser.GameObjects.Text; status: Phaser.GameObjects.Text; stats: Phaser.GameObjects.Text[] }[] = [];
@@ -97,6 +99,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.peerHere = false;
     this.active = 0;
     this.levelText = null;
+    this.portraits = [null, null];
     this.cardViews = [];
     this.views = [];
     this.texts = [];
@@ -174,22 +177,22 @@ export class CharSelectScene extends Phaser.Scene {
       const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
       bg.on('pointerdown', () => this.tapPanel(s));
       artImage(this, 'ui_panel', x, VIEW.cy + 8, 196, 300);
-      this.add.text(x, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0.5);
+      this.add.text(x - 86, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0, 0.5);
       if (this.data0.mode === 'vsai' && s === 1) {
         // Tap (or Up / Down, D-pad up / down) to change the bot's level.
         this.levelText = this.add
-          .text(x, VIEW.cy - 114, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: '#2a3140', padding: { x: 6, y: 2 }, resolution: PIXEL_RATIO })
+          .text(x + 36, VIEW.cy - 130, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: '#2a3140', padding: { x: 6, y: 2 }, resolution: PIXEL_RATIO })
           .setOrigin(0.5)
           .setDepth(6)
           .setInteractive()
           .on('pointerdown', () => this.cycleLevel(1));
       }
       this.views.push(new FighterView(this, COLORS[s]));
-      const name = this.add.text(x, VIEW.cy - 44, '', style(13)).setOrigin(0.5).setFontStyle('bold').setDepth(6);
-      const st = this.add.text(x, VIEW.cy - 34, '', style(9, '#aab0bc')).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(184).setDepth(6);
+      const name = this.add.text(x, VIEW.cy - 18, '', style(13)).setOrigin(0.5).setFontStyle('bold').setDepth(6);
+      const st = this.add.text(x, VIEW.cy - 8, '', style(9, '#aab0bc')).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(184).setDepth(6);
       const status = this.add.text(x, VIEW.cy + 146, '', style(11, '#ffd24a')).setOrigin(0.5);
       const labels: Phaser.GameObjects.Text[] = [];
-      for (let r = 0; r < 6; r++) labels.push(this.add.text(x - 88, VIEW.cy + 14 + r * 20, '', style(9, '#cccccc')).setOrigin(0, 0.5).setDepth(6));
+      for (let r = 0; r < 6; r++) labels.push(this.add.text(x - 88, VIEW.cy + 30 + r * 20, '', style(9, '#cccccc')).setOrigin(0, 0.5).setDepth(6));
       this.texts.push({ name, style: st, status, stats: labels });
     }
   }
@@ -498,6 +501,7 @@ export class CharSelectScene extends Phaser.Scene {
       const id = CHARACTER_IDS[side.sel];
       if (hidden) {
         this.views[s].clear();
+        this.portraits[s]?.setVisible(false);
         t.name.setText('');
         t.style.setText('');
         t.stats.forEach((l) => l.setText(''));
@@ -509,14 +513,25 @@ export class CharSelectScene extends Phaser.Scene {
         g.lineStyle(3, col[s], 0.35 + 0.25 * Math.sin(time / 160));
         g.strokeRect(x - 102, VIEW.cy + 8 - 154, 204, 308);
       }
-      this.drawBoxer(this.views[s], id, x, VIEW.cy - 76, s === 0 ? 1 : -1, time);
+      // Portrait when the art is loaded, otherwise the live top-down preview.
+      const key = artKey(this, `portrait_${id}`);
+      if (key) {
+        let img = this.portraits[s];
+        if (!img) img = this.portraits[s] = this.add.image(x, VIEW.cy - 72, key).setDepth(5);
+        if (img.texture.key !== key) img.setTexture(key);
+        img.setVisible(true).setPosition(x, VIEW.cy - 72 + Math.sin(time / 600 + s) * 1.2).setScale(96 / img.height);
+        this.views[s].clear();
+      } else {
+        this.portraits[s]?.setVisible(false);
+        this.drawBoxer(this.views[s], id, x, VIEW.cy - 76, s === 0 ? 1 : -1, time);
+      }
       const info = CHARACTER_INFO[id];
       t.name.setText(`${info.name}`);
       t.style.setText(`"${info.nick}"\n${info.style}`);
       t.status.setText(side.locked ? 'LOCKED IN' : '');
       stats(id).forEach(([label, v], r) => {
         t.stats[r].setText(label);
-        const by = VIEW.cy + 14 + r * 20;
+        const by = VIEW.cy + 30 + r * 20;
         const bx = x - 12;
         const w = 96;
         g.fillStyle(0x000000, 0.6);
