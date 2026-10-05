@@ -1377,7 +1377,7 @@ export class GameScene extends BaseScene {
         } else {
           acts.push({ label: d.atHq.length ? 'Pick a squad first' : 'No squad at HQ', enabled: false, wide: true });
         }
-        for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]} ${fmtPower(s.power)}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.enemy });
+        for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.enemy });
         if (!d.allyHq) acts.push({ label: sc ? 'Send scout' : 'No scout home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xbfe9ff });
         if (d.node && (d.canTeleport || d.teleportWhy)) {
           const nid = d.node.id;
