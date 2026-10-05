@@ -19,7 +19,8 @@
       "gold": 0.1,
       "silver": 0.2,
       "bronze": 0.3
-    }
+    },
+    "cardTierSlots": 2
   },
   "power": {
     "min": 50,

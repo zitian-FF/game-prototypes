@@ -79,13 +79,18 @@ test('roster: reveal cards glow gold, silver or bronze by where the power sits i
   for (let slot = 0; slot < 4; slot++) {
     const [lo, hi] = slotPowerRange(slot, tune);
     const at = (f: number) => lo + (hi - lo) * f;
-    assert.equal(cardTier(slot, at(0.95), tune), 'gold', `slot ${slot + 1} top 10%`);
-    assert.equal(cardTier(slot, at(0.85), tune), 'silver');
-    assert.equal(cardTier(slot, at(0.75), tune), 'bronze');
+    if (slot < 2) {
+      assert.equal(cardTier(slot, at(0.95), tune), 'gold', `slot ${slot + 1} top 10%`);
+      assert.equal(cardTier(slot, at(0.85), tune), 'silver');
+      assert.equal(cardTier(slot, at(0.75), tune), 'bronze');
+    } else {
+      // The utility squads (3 and 4) never get a tier, however strong the roll.
+      for (const f of [0.95, 0.85, 0.75]) assert.equal(cardTier(slot, at(f), tune), null, `slot ${slot + 1} is utility`);
+    }
     assert.equal(cardTier(slot, at(0.5), tune), null);
     assert.equal(cardTier(slot, at(0.05), tune), null);
   }
-  // Each slot is judged against its own pool: the same power is gold for squad 4 and nothing for squad 1.
+  // Each graded slot is judged against its own pool.
   const [lo4, hi4] = slotPowerRange(3, tune);
   assert.ok(slotPercentile(3, (lo4 + hi4) / 2, tune) > 0.49 && slotPercentile(3, (lo4 + hi4) / 2, tune) < 0.51);
   assert.ok(slotPowerRange(0, tune)[1] > slotPowerRange(3, tune)[1], 'squad 1 can roll stronger than squad 4');

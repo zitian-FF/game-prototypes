@@ -101,6 +101,8 @@ export interface Tune {
     bands: [number, number][];
     /** Reveal cards: a squad in the best this share of its own slot's power range glows gold, silver or bronze. */
     cardTiers: { gold: number; silver: number; bronze: number };
+    /** How many squad slots get a reveal-card tier: the first two, the fighting squads. The utility squads never do. */
+    cardTierSlots: number;
   };
   power: { min: number; max: number };
   squad: {

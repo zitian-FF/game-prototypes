@@ -27,8 +27,12 @@ export function slotPercentile(slot: number, power: number, tune: Tune): number 
 
 export type CardTier = 'gold' | 'silver' | 'bronze' | null;
 
-/** Reveal-card tier: gold for the top 10% of the slot's range, silver the top 20%, bronze the top 30%. */
+/**
+ * Reveal-card tier: gold for the top 10% of the slot's range, silver the top 20%, bronze the top 30%. Only the first
+ * `cardTierSlots` squads (the fighting ones) are graded; the utility squads never get a tier.
+ */
 export function cardTier(slot: number, power: number, tune: Tune): CardTier {
+  if (slot >= tune.roster.cardTierSlots) return null;
   const top = 1 - slotPercentile(slot, power, tune);
   const t = tune.roster.cardTiers;
   return top <= t.gold ? 'gold' : top <= t.silver ? 'silver' : top <= t.bronze ? 'bronze' : null;

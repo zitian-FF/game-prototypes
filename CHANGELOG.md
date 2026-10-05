@@ -16,8 +16,9 @@ starts are refused. Folded into the unreleased 0.14.0.
 
 **What changed:** arena-sim's squad rank bands are now squad 1 ranks 1 to 12, squad 2 ranks 8 to 20, squad 3 ranks 15 to
 20 and squad 4 ranks 18 to 20 (1 is strongest), so the first two squads are the fighters and the 3rd and 4th are
-utility. New helpers `slotPowerRange`, `slotPercentile` and `cardTier`, and a `roster.cardTiers` tune block (0.1, 0.2
-and 0.3), let a client grade a roll against its own slot's range for the opening reveal cards. Only firestorm-arena
+utility. New helpers `slotPowerRange`, `slotPercentile` and `cardTier`, and `roster.cardTiers` (0.1, 0.2 and 0.3) and
+`roster.cardTierSlots` (2) tune blocks, let a client grade the first two squads' rolls against their own slot's
+range for the opening reveal cards; squads 3 and 4 are never graded. Only firestorm-arena
 uses it.
 
 **Applies to:** firestorm-arena only.

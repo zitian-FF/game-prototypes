@@ -203,6 +203,23 @@ export class GameScene extends BaseScene {
     ui.bar(cx - 160, h / 2 - 66, 320, 8, progress, 0xff8a3d);
   }
 
+  /** A five-point star: solid fill, a darker rim and a lighter inner star for a bit of shine. */
+  private drawStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, color: number): void {
+    const pts = (R: number, ri: number) => {
+      const out: Vec[] = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rr = i % 2 === 0 ? R : ri;
+        out.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr });
+      }
+      return out;
+    };
+    g.fillStyle(shade(color, 0.55), 1).fillPoints(pts(r * 1.12, r * 0.52), true);
+    g.fillStyle(color, 1).fillPoints(pts(r, r * 0.46), true);
+    g.fillStyle(shade(color, 1.18), 1).fillPoints(pts(r * 0.5, r * 0.23), true);
+    g.lineStyle(OUTLINE, shade(color, 0.5), 1).strokePoints(pts(r, r * 0.46), true);
+  }
+
   /** Real seconds the opening reveal takes: the server holds the match clock back this long after the countdown. */
   private introTotal(): number {
     return session.info?.tune.match.introSeconds ?? 0;
@@ -292,15 +309,21 @@ export class GameScene extends BaseScene {
         return;
       }
       if (f < 0.92) return; // the front only draws its art and text once the card is nearly flat again
-      ui.text(`SQUAD ${i + 1}`, x0 + cw / 2, y + 10, { size: 11, bold: true, align: 'center', color: COLORS.dim });
+      ui.text(`SQUAD ${i + 1}`, x0 + 10, y + 10, { size: 11, bold: true, color: COLORS.dim });
       drawUnit(g, s.type, x0 + cw / 2, y + ch * 0.55, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: true, moving: false, scale: Math.min(1.6, cw / 70) });
       ui.text(SQUAD_LABEL[s.type], x0 + cw / 2, y + ch * 0.66, { size: 15, bold: true, align: 'center' });
       const pw1 = fmtPower(s.power);
       const tw = pw1.length * 9 + 22;
       drawPowerSword(g, x0 + cw / 2 - tw / 2 + 6, y + ch * 0.77 + 8);
       ui.text(pw1, x0 + cw / 2 - tw / 2 + 18, y + ch * 0.77, { size: 17, bold: true, color: '#ffd54a' });
-      if (tier) ui.text(`${TIER_LABEL[tier]}  top ${Math.round(info.tune.roster.cardTiers[tier] * 100)}%`, x0 + cw / 2, y + ch - 24, { size: 11, bold: true, align: 'center', color: cssColor(TIER_COLOR[tier]) });
-      else ui.text(`${Math.round(s.troops)} troops`, x0 + cw / 2, y + ch - 24, { size: 11, align: 'center', color: COLORS.dim });
+      if (tier) {
+        ui.text(`${TIER_LABEL[tier]}  top ${Math.round(info.tune.roster.cardTiers[tier] * 100)}%`, x0 + cw / 2, y + ch - 24, { size: 11, bold: true, align: 'center', color: cssColor(TIER_COLOR[tier]) });
+        // A big star in the tier colour pops onto the card corner as it lands.
+        const pop = Math.min(1, Math.max(0, sinceFlip / 0.35));
+        const k = pop < 1 ? 1 + 0.35 * Math.sin(pop * Math.PI) * (1 - pop) * 2 : 1;
+        const r = cw * 0.2 * pop * k;
+        if (r > 1) this.drawStar(g, x0 + cw - cw * 0.17, y + cw * 0.17, r, TIER_COLOR[tier]);
+      } else ui.text(`${Math.round(s.troops)} troops`, x0 + cw / 2, y + ch - 24, { size: 11, align: 'center', color: COLORS.dim });
     });
     ui.text('Tap to skip', cx, h - 20, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
     ui.setLayer(0);
