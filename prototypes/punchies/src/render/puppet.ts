@@ -33,17 +33,7 @@ const LOOKS: Record<string, CharLook> = {
   bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1, alt: { from: [85, 175], shift: -38 } },
 };
 
-// Sizes in logical px at character scale 1.
-const TORSO_H = 40; // shoulder to shoulder
-const HEAD_H = 24;
-const GLOVE_H = 19; // cuff to knuckles
-const BOOT_W = 16;
-const SHOULDER_V = 13.5;
-const HIP_V = 6;
-const BOOT_V = 9;
-const BOOT_LEAD_U = 9;
-const BOOT_REAR_U = -7;
-const HEAD_FWD = 2.5;
+// Art registration follows prepare-assets.mjs; runtime sizes are in tune.view.puppet.
 const PONYTAIL_PIVOT = 0.915;
 
 const PARTS = ['head', 'torso', 'glove_left', 'glove_right', 'boot_left', 'boot_right'];
@@ -251,6 +241,7 @@ export class Puppet {
       return false;
     }
     const v = tune.view;
+    const rig = v.puppet;
     const k = a.k;
     const now = a.now;
     const fx = f.fx;
@@ -287,18 +278,18 @@ export class Puppet {
       const side = i === 0 ? 1 : -1; // boot_left on +v
       const ph = a.walk + (i === 0 ? 0 : Math.PI);
       const sw = Math.sin(ph);
-      const u0 = (i === 0 ? BOOT_LEAD_U : BOOT_REAR_U) * k;
-      const v0 = BOOT_V * k * side;
+      const u0 = (i === 0 ? rig.leadBootForward : rig.rearBootForward) * k;
+      const v0 = rig.bootSpread * k * side;
       const pos = P(u0 + mu * amp * sw, v0 + mv * amp * sw, v.feetOffsetY);
       const yaw = 0.3 * strafe * Math.sign(mv || 1) * a.stride;
       const lift = Math.max(0, Math.cos(ph)) * a.stride;
-      const hip = P(-2 * k, HIP_V * k * side, v.bodyOffsetY);
+      const hip = P(-2 * k, rig.hipSpread * k * side, v.bodyOffsetY);
       const ankle = { x: pos.x - fx * 4 * k, y: pos.y - fy * 4 * k };
       feet.push({ pos, yaw, lift, ankle, hip, out: { x: lx * side, y: ly * side } });
     }
     [this.bootL, this.bootR].forEach((boot, i) => {
       const ft = feet[i];
-      const s = ((BOOT_W * k) / boot.width) * (1 + 0.14 * ft.lift);
+      const s = ((rig.bootWidth * k) / boot.width) * (1 + 0.14 * ft.lift);
       boot.setPosition(ft.pos.x, ft.pos.y).setRotation(th + ft.yaw).setScale(s).setAlpha(alpha).setVisible(true).setDepth(9.3 + 0.01 * ft.lift);
     });
     for (const ft of feet) {
@@ -311,17 +302,17 @@ export class Puppet {
     this.torso
       .setPosition(tpos.x, tpos.y)
       .setRotation(th + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
-      .setScale(((TORSO_H * k) / this.torso.height) * look.torsoScale * (1 + 0.012 * breathe))
+      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
-    const hpos = P(HEAD_FWD * k - snap, 0, headDy);
+    const hpos = P(rig.headForward * k - snap, 0, headDy);
     const hrot = th + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
-    const hscale = ((HEAD_H * k) / this.head.height) * look.headScale;
+    const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale;
     this.head.setPosition(hpos.x, hpos.y).setRotation(hrot).setScale(hscale).setAlpha(alpha).setVisible(true);
     if (this.scene.textures.exists(partKey(f.char, a.alt, 'ponytail'))) {
       const sway = Math.sin(a.walk * 0.8 + now / 400) * (0.1 + 0.25 * a.stride) + (hitT < 1 ? 0.4 * (1 - hitT) : 0);
-      const ppos = P(HEAD_FWD * k - snap - 11 * k, 0, headDy);
+      const ppos = P(rig.headForward * k - snap - 11 * k, 0, headDy);
       this.ponytail.setPosition(ppos.x, ppos.y).setRotation(hrot + sway).setScale(hscale).setAlpha(alpha).setVisible(true);
     } else this.ponytail.setVisible(false);
 
@@ -339,8 +330,8 @@ export class Puppet {
     [this.gloveL, this.gloveR].forEach((glove, i) => {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
-      const sh = P(1 * k, SHOULDER_V * k * side, v.bodyOffsetY);
-      const gh = GLOVE_H * k;
+      const sh = P(1 * k, rig.shoulderSpread * k * side, v.bodyOffsetY);
+      const gh = rig.gloveHeight * k;
       let dx = fist.x - sh.x;
       let dy = fist.y - sh.y;
       let d = Math.hypot(dx, dy) || 1;
@@ -385,7 +376,7 @@ export class Puppet {
       if (!on) return;
       const ga = (i === 0 ? 0.38 : 0.2) * (alpha < 1 ? 1 : 1);
       g.torso.setPosition(past.x, past.y).setRotation(past.rot).setScale(this.torso.scale).setAlpha(ga);
-      g.head.setPosition(past.x + fx * HEAD_FWD * k, past.y + v.headOffsetY - v.bodyOffsetY + fy * HEAD_FWD * k).setRotation(past.rot).setScale(hscale).setAlpha(ga);
+      g.head.setPosition(past.x + fx * rig.headForward * k, past.y + v.headOffsetY - v.bodyOffsetY + fy * rig.headForward * k).setRotation(past.rot).setScale(hscale).setAlpha(ga);
     });
     if (f.dodge) {
       let dx = f.dodge.dx;
@@ -418,9 +409,9 @@ export class Puppet {
         const y = hpos.y + Math.sin(ang) * r + 6 * t * t;
         const al = (1 - t) * 0.9;
         this.fx.fillStyle(0x9fe0ff, al);
-        this.fx.fillCircle(x, y, 2.8 * k * (1 - 0.4 * t));
+        this.fx.fillCircle(x, y, rig.sweatRadius * k * (1 - 0.4 * t));
         this.fx.fillStyle(0xffffff, al * 0.8);
-        this.fx.fillCircle(x - 0.5, y - 0.6, 0.8 * k);
+        this.fx.fillCircle(x - 0.5, y - 0.6, rig.sweatHighlightRadius * k);
       }
     }
     return true;

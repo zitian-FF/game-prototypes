@@ -16,7 +16,21 @@
     "shadowOffsetY": 8,
     "shadowAlpha": 0.3,
     "shadowSize": 1,
-    "feetOffsetY": 5
+    "feetOffsetY": 5,
+    "puppet": {
+      "torsoHeight": 40,
+      "headHeight": 24,
+      "gloveHeight": 19,
+      "bootWidth": 16,
+      "shoulderSpread": 13.5,
+      "hipSpread": 6,
+      "bootSpread": 9,
+      "leadBootForward": 9,
+      "rearBootForward": -7,
+      "headForward": 2.5,
+      "sweatRadius": 2.8,
+      "sweatHighlightRadius": 0.8
+    }
   },
   "ring": {
     "left": 267,
@@ -49,13 +63,13 @@
       "damage": 4,
       "staminaCost": 4,
       "staminaDamage": 5,
-      "stunBuild": 10.0,
+      "stunBuild": 10,
       "startReachFrac": 0.4,
       "fatigueBars": 4,
       "fatigueSpeedPerBar": 0.12,
       "fatigueDamagePerBar": 0.1,
       "pushHit": 3.9,
-      "pushBlock": 0.0
+      "pushBlock": 0
     },
     "cross": {
       "startup": 13,
@@ -113,7 +127,7 @@
       "stunBuild": 37.5,
       "startReachFrac": 0.4,
       "pushHit": 31.2,
-      "pushBlock": 0.0
+      "pushBlock": 0
     }
   },
   "hit": {
