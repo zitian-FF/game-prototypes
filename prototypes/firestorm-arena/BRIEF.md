@@ -704,4 +704,13 @@ client.
   camera also centres on your HQ whenever it teleports.
 - Pinch zoom: the point under the midpoint of the two fingers stays under it while zooming, and moving the fingers
   also pans (computed from the camera state, since a pinch delivers several events per frame).
+- Home marker (supersedes the Home button wording above): while your HQ is off screen a round blue house button sits on
+  the screen edge in the direction of the HQ, with a tip pointing at it and the distance in cells under it. It slides
+  along the edge to stay clear of panels, the minimap and the rail, and tapping it (or H or Home) pans to the HQ.
+  Nothing is drawn while the HQ is in view.
+- Marching speed +80%: `march.crossMapSeconds` 329 to 183, so squads cover the map 1.8 times as fast. Scouts and
+  turret missiles are defined relative to the march speed, so they speed up by the same factor.
+- Teleport button: on an own node (or a Portal Nexus) the Teleport button is always shown and is greyed out with the
+  reason when it cannot be used ("Teleport in 0:42" on cooldown, "HQ is already here"), instead of disappearing.
+  Teleporting needs no scouting: a node only has to be held by your team.
 - Where this section conflicts with older text above, this section wins.

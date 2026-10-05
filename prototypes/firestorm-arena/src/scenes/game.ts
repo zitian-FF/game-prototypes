@@ -1155,6 +1155,9 @@ export class GameScene extends BaseScene {
     const mine = view.squads.filter((s) => s.owner === info.playerId);
     const node = t.kind === 'node' ? view.nodes.find((n) => n.id === t.id) : undefined;
     const hq = view.hqs.find((x) => x.id === info.hqId);
+    const teleportable = !!(node && ((node.owner === this.mine && node.visible) || node.kind === 'portal') && hq);
+    const teleportReady = !!hq && hq.nextTeleportAtMs <= simMs;
+    const teleportHere = !!(hq && node && hq.location.kind === 'node' && hq.location.nodeId === node.id);
     return {
       t,
       title,
@@ -1168,7 +1171,9 @@ export class GameScene extends BaseScene {
       atHq: mine.filter((s) => s.state === 'hq' && s.troops > 0),
       here: t.kind === 'node' ? mine.filter((s) => s.state === 'garrison' && s.nodeId === t.id) : mine.filter((s) => s.state === 'hqGarrison' && s.hqId === t.id),
       scoutHome: view.scouts.find((s) => s.owner === info.playerId && s.state === 'home'),
-      canTeleport: !!(node && ((node.owner === this.mine && node.visible) || node.kind === 'portal') && hq && hq.nextTeleportAtMs <= simMs && !(hq.location.kind === 'node' && hq.location.nodeId === node.id)),
+      canTeleport: teleportable && teleportReady && !teleportHere,
+      // Why the Teleport button is greyed out, so it never just vanishes.
+      teleportWhy: teleportable && !(teleportReady && !teleportHere) ? (teleportHere ? 'HQ is already here' : `Teleport in ${fmtTime((hq?.nextTeleportAtMs ?? 0) - simMs)}`) : null,
     };
   }
 
@@ -1235,7 +1240,7 @@ export class GameScene extends BaseScene {
   private orderHeight(d: NonNullable<ReturnType<GameScene['targetData']>>): number {
     const pitch = 32;
     if (!d.attackable || d.portal || d.cache) return 40 + pitch + 6;
-    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
+    const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport || d.teleportWhy ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
     return 40 + Math.ceil(rows / this.orderColumns()) * pitch + 6;
   }
 
@@ -1259,7 +1264,7 @@ export class GameScene extends BaseScene {
       ui.panel(ox, bottom - oh, ow, oh);
       ui.text('Orders', ox + 12, bottom - oh + 10, { size: 14, bold: true });
       const nid = d.node!.id;
-      ui.button(ox + 10, bottom - oh + 34, ow - 20, bh, d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', {
+      ui.button(ox + 10, bottom - oh + 34, ow - 20, bh, d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? 'HQ cannot teleport'), {
         onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }),
         enabled: d.canTeleport,
         size: 12,
@@ -1325,10 +1330,10 @@ export class GameScene extends BaseScene {
         accent: 0xbfe9ff,
       });
     }
-    if (d.canTeleport && d.node) {
+    if (d.node && (d.canTeleport || d.teleportWhy)) {
       const nid = d.node.id;
       const q = slot();
-      ui.button(q.x, q.y, cw, bh, 'Teleport HQ here', { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), size: fs, accent: COLORS.gold });
+      ui.button(q.x, q.y, cw, bh, d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? ''), { onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, size: fs, accent: COLORS.gold });
     }
   }
 
@@ -1363,7 +1368,7 @@ export class GameScene extends BaseScene {
     if (d.attackable) {
       if (d.portal) {
         const nid = d.node!.id;
-        acts.push({ label: d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold, wide: true });
+        acts.push({ label: d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? 'HQ cannot teleport'), onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold, wide: true });
       } else if (d.cache) {
         acts.push({ label: sc ? 'Send scout to collect' : 'No scout at home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xffd54a, wide: true });
       } else {
@@ -1374,9 +1379,9 @@ export class GameScene extends BaseScene {
         }
         for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]} ${fmtPower(s.power)}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.enemy });
         if (!d.allyHq) acts.push({ label: sc ? 'Send scout' : 'No scout home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xbfe9ff });
-        if (d.canTeleport && d.node) {
+        if (d.node && (d.canTeleport || d.teleportWhy)) {
           const nid = d.node.id;
-          acts.push({ label: 'Teleport HQ here', onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), accent: COLORS.gold });
+          acts.push({ label: d.canTeleport ? 'Teleport HQ here' : (d.teleportWhy ?? ''), onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold });
         }
       }
     }
@@ -1502,6 +1507,73 @@ export class GameScene extends BaseScene {
     }
   }
 
+  /**
+   * While your HQ is off screen: a round Home button sitting on the screen edge in the direction of the HQ, with a tip
+   * pointing at it and the distance in cells. Tapping it pans to the HQ. Nothing is drawn when the HQ is in view.
+   */
+  private drawHomeMarker(view: WireView, w: number, h: number): void {
+    const hq = view.hqs.find((x) => x.id === session.info?.hqId);
+    if (!hq || this.hqInView(view)) return;
+    const ui = this.ui;
+    const g = ui.gfx();
+    const ins = safeInsets();
+    const ip = this.iso.p(hq.pos.x, hq.pos.y);
+    const sx = this.world.x + ip.x * this.zoom;
+    const sy = this.world.y + ip.y * this.zoom;
+    const cx = w / 2;
+    const cy = h / 2;
+    let dx = sx - cx;
+    let dy = sy - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+    const R = 26;
+    const m = R + 14;
+    const barH = this.compact() ? 30 : 34;
+    const L = ins.l + m;
+    const Rt = w - ins.r - m;
+    const T = barH + m;
+    const B = h - ins.b - m - 14;
+    const tx = dx > 0 ? (Rt - cx) / dx : dx < 0 ? (L - cx) / dx : Infinity;
+    const ty = dy > 0 ? (B - cy) / dy : dy < 0 ? (T - cy) / dy : Infinity;
+    const t = Math.min(tx, ty);
+    let px = cx + dx * t;
+    let py = cy + dy * t;
+    // If the spot is under another widget (a panel, the minimap, a rail button) slide along the screen edge to a free one.
+    const free = (x: number, y: number) => ![[0, 0], [R, 0], [-R, 0], [0, R], [0, -R], [R * 0.7, R * 0.7], [-R * 0.7, -R * 0.7], [R * 0.7, -R * 0.7], [-R * 0.7, R * 0.7], [0, R + 18], [-18, R + 18], [18, R + 18]].some(([ox, oy]) => ui.covers(x + ox, y + oy, 'home'));
+    if (!free(px, py)) {
+      const vertical = Math.abs(px - L) < 1 || Math.abs(px - Rt) < 1;
+      search: for (let k = 1; k <= 120; k++) {
+        for (const sgn of [1, -1]) {
+          const nx = vertical ? px : Math.max(L, Math.min(Rt, px + sgn * k * 8));
+          const ny = vertical ? Math.max(T, Math.min(B, py + sgn * k * 8)) : py;
+          if (free(nx, ny)) {
+            px = nx;
+            py = ny;
+            break search;
+          }
+        }
+      }
+    }
+    // Tip toward the real HQ position from wherever the button ended up.
+    let ux = sx - px;
+    let uy = sy - py;
+    const ul = Math.hypot(ux, uy) || 1;
+    ux /= ul;
+    uy /= ul;
+    const col = COLORS.mine;
+    g.fillStyle(col, 1).fillTriangle(px + ux * (R + 12) , py + uy * (R + 12), px + ux * (R - 6) - uy * 10, py + uy * (R - 6) + ux * 10, px + ux * (R - 6) + uy * 10, py + uy * (R - 6) - ux * 10);
+    g.fillStyle(col, 1).fillCircle(px, py, R);
+    g.lineStyle(OUTLINE, 0xffffff, 1).strokeCircle(px, py, R);
+    this.railIcon('home', px, py - 1, 0xffffff);
+    const cells = Math.round(Math.hypot(ip.x - this.camX, ip.y - this.camY) / this.iso.tile);
+    const label = `${cells} cells`;
+    const lw = label.length * 6 + 10;
+    ui.rect(px - lw / 2, py + R + 3, lw, 14, 0x000000, 0.65, undefined, 5);
+    ui.text(label, px, py + R + 4, { size: 10, bold: true, align: 'center' });
+    ui.region(px - R, py - R, R * 2, R * 2, () => this.goHome(view), 'home');
+  }
+
   /** Icon buttons on the right edge (touch) and the Home button, which only exists while your HQ is off screen. */
   private drawRail(view: WireView, simMs: number, w: number, h: number): void {
     const ui = this.ui;
@@ -1538,12 +1610,7 @@ export class GameScene extends BaseScene {
         }
       }
     }
-    if (!this.hqInView(view)) {
-      const hx = compact ? bx : this.mapRect.x + this.mapRect.w - 44;
-      const hy = compact ? this.mapRect.y - 8 - 44 : this.mapRect.y - 56;
-      this.railButton(hx, hy, 'home', 0, () => this.goHome(view));
-      if (!compact) ui.text('H', hx + 40, hy + 30, { size: 10, color: COLORS.dim, align: 'right' });
-    }
+    this.drawHomeMarker(view, w, h);
   }
 
   /** Draw one line, truncating rather than overflowing the panel. */

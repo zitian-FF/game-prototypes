@@ -47,7 +47,7 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 329,
+    "crossMapSeconds": 183,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {

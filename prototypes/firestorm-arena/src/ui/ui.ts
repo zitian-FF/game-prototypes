@@ -8,6 +8,8 @@ interface Hit {
   w: number;
   h: number;
   onClick?: (px: number, py: number) => void;
+  /** Lets a widget ask whether anything else covers a spot, ignoring itself. */
+  tag?: string;
 }
 
 interface TextOpts {
@@ -152,8 +154,8 @@ export class Ui {
     this.hits.push({ x, y, w, h });
   }
 
-  region(x: number, y: number, w: number, h: number, onClick: (px: number, py: number) => void): void {
-    this.hits.push({ x, y, w, h, onClick });
+  region(x: number, y: number, w: number, h: number, onClick: (px: number, py: number) => void, tag?: string): void {
+    this.hits.push({ x, y, w, h, onClick, tag });
   }
 
   button(
@@ -196,9 +198,9 @@ export class Ui {
     return false;
   }
 
-  /** Is the point over any widget from the last frame? */
-  covers(px: number, py: number): boolean {
-    return this.lastHits.some((h) => px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h);
+  /** Is the point over any widget from the last frame (other than regions tagged `except`)? */
+  covers(px: number, py: number, except?: string): boolean {
+    return this.lastHits.some((h) => (except === undefined || h.tag !== except) && px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h);
   }
 }
 
