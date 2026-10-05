@@ -10,7 +10,7 @@ decisions made in the planning round (2026-09-29).
   (added 2026-09-30); an INPUT button next to it picks devices.
 - Online 1v1 PvP, plus Single Player vs an easy AI (added 2026-09-30 at
   the user's request; previously out of scope).
-- Training dummy: static, toggle between idle and holding High Guard.
+- Training dummy: static, toggle between idle and holding High Guard. A padded head and torso are separate overhead sprites with no limbs; the struck part shakes briefly and independently (added 2026-10-06). Hitboxes and stance rules remain unchanged.
 - Three characters (orthodox stance), added 2026-10-03 at the user's
   request (see Characters).
 - Single Player bot levels Easy / Medium / Hard (added 2026-10-03 at the

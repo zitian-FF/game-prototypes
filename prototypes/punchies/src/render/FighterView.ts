@@ -5,6 +5,7 @@ import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } fr
 import { pose } from './art';
 import { GroundLayer } from './groundLayer';
 import { Puppet } from './puppet';
+import { TrainingDummy } from './TrainingDummy';
 import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
@@ -124,6 +125,7 @@ export class FighterView {
   private ground: GroundLayer;
   // True-overhead puppet (head, torso, gloves, boots + code limbs); first choice.
   private puppet: Puppet;
+  private dummy: TrainingDummy;
   // Layered art (top to bottom): effects, head, gloves, torso; feet and the
   // shadow sit below in `ground`. Falls back to the single baked body sprite.
   private torso: Phaser.GameObjects.Image;
@@ -168,6 +170,7 @@ export class FighterView {
   ) {
     this.ground = new GroundLayer(scene, BODY_R);
     this.puppet = new Puppet(scene);
+    this.dummy = new TrainingDummy(scene);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
     // Same depth family as the body sprite, ordered: torso, gloves, head, effects.
@@ -198,6 +201,10 @@ export class FighterView {
     this.fx.clear();
   }
 
+  reactToDummyHit(zone: 'head' | 'body', now: number): void {
+    this.dummy.strike(zone, now);
+  }
+
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
     const g = this.g;
     g.clear();
@@ -216,6 +223,17 @@ export class FighterView {
     const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
     if (walking) this.walk += moved * 0.35;
     this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+
+    if (f.anchored && this.dummy.draw(f, now, k)) {
+      this.sprite.setVisible(false);
+      this.hideLayers();
+      this.puppet.hide();
+      this.ground.shadowOnly(f.x, f.y, k, 1);
+      this.drawStun(f, now);
+      if (showHitboxes) this.drawHitboxes(f);
+      return;
+    }
+    this.dummy.hide();
 
     if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
       if (isVulnerable(f) && stance !== 'dodging') {

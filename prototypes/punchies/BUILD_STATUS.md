@@ -1,23 +1,23 @@
 ## Current milestone
-Expose boxer presentation sizes and offsets in the live View tuning panel.
+Two-part training dummy with independent impact shake.
 
 ## What was implemented
-- Moved torso, head, glove and boot sizes, shoulder/hip/boot spreads, lead/rear boot offsets and head offset into `tune.view.puppet`.
-- Added range, description and reset metadata for all twelve controls, including sweat droplet and highlight sizes.
-- Puppet reads the live values each draw, including dodge ghosts and KO puppet rendering.
+- New overhead padded tan dummy body and head, separate alpha sprites in R2.
+- TrainingDummy renderer overlaps the neck connection and draws no limbs.
+- Head hits shake the head; body hits and blocks shake the torso, including absorbed hits.
+- Seven presentation controls under view.trainingDummy expose sizes, head overlap, shake duration/frequency/displacement/angle.
 
 ## Key technical decisions
-- Kept every existing tuning value and all former size/offset defaults identical.
-- Art registration, perspective, rig depth, gameplay and netcode are unchanged.
-- Existing Tweakpane binding provides immediate adjustment, reset and JSON export.
+- Hit-zone routing uses the existing vulnerable/head and normal/body hit rows. No gameplay tuning, hitbox, stance or netcode changes.
+- High Guard retains existing blocking behavior without glove sprites; the training stance label remains its indicator.
+- Oscillation decays over 300 ms and only changes sprite transforms; ground shadow and fighter position stay fixed.
+- R2 main bundle retains every existing entry and adds two small WebP sprites. Verified upload/download SHA-256: 59AD5C48BE61BDD111FB2FC99A182EE3FB8B5F3052F7DB7C7A33228EA545401C.
 
 ## Open questions
-- Owner/device review of the assembled rig remains useful before changing its proportions.
+- Owner review of the dummy proportions and shake strength at play size.
 
 ## Known issues
-- No real-phone or online-match verification in this pass.
-- Controlled renderer review in Brave exercised head/body flashes, lateral gait, sweat, and fly KO mid-spin/landing without console errors. This checks renderer inputs rather than hit-event routing or a complete match.
-- Live Punchies loaded in Brave at https://zitian-ff.itch.io/suits after the successful deployment. The suits-mp page belongs to Firestorm; it was initially checked by mistake.
+- Real phone and online matches were not tested. Legacy art remains the fallback if new dummy textures are unavailable.
 
 ## Next proposed step
-Review the rig on a real phone and verify complete-match hit routing and online play. Typecheck and production build passed; Brave at 844x390 loaded Marco, Mia and Bruno without console errors, and a live head-size edit/reset worked. Existing tuning values were checked for equality.
+Play the new dummy in training and adjust View > view.trainingDummy if desired. Typecheck/build passed; Brave at 844x390 loaded the new dummy without errors. Controlled renderer assertions passed for finite idle transforms, independent head/body reactions, settling after shake duration, and unchanged fighter state.

@@ -30,6 +30,15 @@
       "headForward": 2.5,
       "sweatRadius": 2.8,
       "sweatHighlightRadius": 0.8
+    },
+    "trainingDummy": {
+      "bodyHeight": 34,
+      "headHeight": 21,
+      "headForward": 7,
+      "shakeMs": 300,
+      "shakeHz": 28,
+      "shakeDistance": 4,
+      "shakeAngle": 0.18
     }
   },
   "ring": {
