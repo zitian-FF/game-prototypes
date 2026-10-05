@@ -10,6 +10,13 @@ import type { FrameInput, SimEvent, SimState } from '../sim/types';
 // visual correction instead of a freeze. If the remote falls more than
 // net.maxRollbackFrames behind, the sim waits (stall) like lockstep would.
 //
+// Optional split input delay (opts.tapExtra, off by default): stick and guard
+// are scheduled `delay` ticks ahead as always, while the taps (jab, cross,
+// hook, uppercut, dodge) are held back a further `tapExtra` ticks in a small
+// queue. The startup frames of a punch hide that extra wait. The remote side
+// just receives final per-tick inputs, so each peer may change its own
+// tapExtra at any time without coordination.
+//
 // No Phaser here: MatchScene drives it and it's tested headless.
 
 export type PackedInput = [number, number, number];
@@ -91,6 +98,9 @@ export class Rollback {
   private lastSyncWait = 0;
   rollbacks = 0;
   rolledBackFrames = 0;
+  maxRollbackDepth = 0;
+  private tapExtra: number;
+  private tapQueue: number[];
 
   constructor(
     readonly localIdx: 0 | 1,
@@ -100,7 +110,10 @@ export class Rollback {
     private sendInputs: (p: InputPacket) => void,
     private sendHash: (p: HashPacket) => void,
     chars: [string, string] = ['marco', 'marco'],
+    opts: { tapExtra?: number } = {},
   ) {
+    this.tapExtra = Math.max(0, Math.round(opts.tapExtra ?? 0));
+    this.tapQueue = new Array<number>(this.tapExtra).fill(0);
     this.sim = createSimState({ timed: true, fighters: [{ char: chars[0] }, { char: chars[1] }] });
     const neutral: PackedInput = [0, 0, 0];
     for (let t = 0; t < delay; t++) {
@@ -116,8 +129,22 @@ export class Rollback {
     return this.nextLocalTick <= this.sim.tick + this.delay;
   }
 
+  // Change how long taps are buffered (this peer only). Raising it leaves one
+  // tick without taps; lowering it merges the oldest buffered taps into one.
+  setTapExtra(n: number): void {
+    this.tapExtra = Math.max(0, Math.round(n));
+  }
+
+  get tapDelay(): number {
+    return this.tapExtra;
+  }
+
   scheduleLocal(input: FrameInput): void {
-    this.local.set(this.nextLocalTick, packInput(input));
+    const [mx, my, bits] = packInput(input);
+    this.tapQueue.push(bits & ~GUARD_BIT);
+    let taps = 0;
+    while (this.tapQueue.length > this.tapExtra) taps |= this.tapQueue.shift()!;
+    this.local.set(this.nextLocalTick, [mx, my, (bits & GUARD_BIT) | taps]);
     this.nextLocalTick++;
     this.local.delete(this.nextLocalTick - this.redundancy - 1);
     this.flushInputs();
@@ -225,6 +252,7 @@ export class Rollback {
     }
     this.rollbacks++;
     this.rolledBackFrames += target - from;
+    this.maxRollbackDepth = Math.max(this.maxRollbackDepth, target - from);
     return out;
   }
 

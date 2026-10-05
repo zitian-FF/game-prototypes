@@ -8,6 +8,8 @@ import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { charName } from '../sim/character';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
+import { isDebug } from '../debug/debugPanel';
+import type { SimState } from '../sim/types';
 
 // Online 1v1 over rollback netcode (see net/rollback.ts). Host is fighter 0 (left), guest fighter 1.
 // The sim only advances when both players' inputs for the next tick have
@@ -29,6 +31,22 @@ export class MatchScene extends Phaser.Scene {
   private rematchLocal = false;
   private rematchRemote = false;
   private over = false;
+  // Enhanced netcode (tune.net.enhanced, host authoritative): split input
+  // delay, eased corrections and an adaptive punch delay. Off = unchanged.
+  private enhanced = false;
+  private baseDelay = 0;
+  private rtt = 0;
+  private nextPing = 0;
+  private nextAdapt = 0;
+  private lastRollbacks = 0;
+  private shown: { x: number; y: number }[] = [];
+  private off: { x: number; y: number }[] = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+  // Debug readout (only drawn while debug mode is on).
+  private stats!: Phaser.GameObjects.Text;
+  private statsAt = 0;
+  private statsPrev = { t: 0, rb: 0, fr: 0 };
+  private statsRate = { rb: 0, fr: 0 };
+  private stallCount = 0;
 
   constructor() {
     super('Match');
@@ -43,21 +61,36 @@ export class MatchScene extends Phaser.Scene {
     this.rematchLocal = false;
     this.rematchRemote = false;
     this.endButtons = [];
+    this.enhanced = tune.net.enhanced >= 0.5;
+    this.rtt = 0;
+    this.nextPing = 0;
+    this.nextAdapt = 0;
+    this.lastRollbacks = 0;
+    this.shown = [];
+    this.off = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+    this.statsAt = 0;
+    this.statsPrev = { t: 0, rb: 0, fr: 0 };
+    this.statsRate = { rb: 0, fr: 0 };
+    this.stallCount = 0;
 
     const s = data.session;
+    // Enhanced: stick and guard use the short delay, taps keep the full one.
+    this.baseDelay = this.enhanced ? Math.max(0, Math.min(data.delay, Math.round(tune.net.moveDelayFrames))) : data.delay;
     this.ls = new Rollback(
       data.localIdx,
-      data.delay,
+      this.baseDelay,
       tune.net.maxRollbackFrames,
       data.round,
       (p) => s.sendInputs(p),
       (p) => s.sendHash(p),
       data.chars,
+      { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0 },
     );
     s.onInputs = (p) => this.ls.receiveInputs(p);
     s.onHash = (p) => this.ls.receiveHash(p);
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
+      if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
       if (m.k === 'rematch' && m.round === data.round + 1) {
         this.rematchRemote = true;
         this.tryRematch();
@@ -86,7 +119,9 @@ export class MatchScene extends Phaser.Scene {
       .setDepth(140)
       .setVisible(false);
     this.info = this.add
-      .text(VIEW.cx - 40, VIEW.top + 46, `room ${s.code}  delay ${data.delay}f · rollback`, {
+      .text(VIEW.cx - 40, VIEW.top + 46, this.enhanced
+        ? `room ${s.code}  stick ${this.baseDelay}f punch ${data.delay}f · rollback+`
+        : `room ${s.code}  delay ${data.delay}f · rollback`, {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: '#888888',
@@ -94,6 +129,10 @@ export class MatchScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(140);
+    this.stats = this.add
+      .text(VIEW.left + 8, VIEW.top + 112, '', { fontFamily: 'monospace', fontSize: '9px', color: '#ff9a9a', backgroundColor: '#000000aa', padding: { x: 4, y: 2 }, resolution: PIXEL_RATIO })
+      .setDepth(140)
+      .setVisible(false);
     addVersionStamp(this);
   }
 
@@ -121,7 +160,10 @@ export class MatchScene extends Phaser.Scene {
         // Don't bank time while stalled, or the sim would fast-forward in a
         // burst once inputs arrive.
         this.acc = Math.min(this.acc, STEP_MS);
-        if (!this.stalledSince) this.stalledSince = time;
+        if (!this.stalledSince) {
+          this.stalledSince = time;
+          this.stallCount++;
+        }
       } else {
         this.stalledSince = 0;
       }
@@ -129,7 +171,84 @@ export class MatchScene extends Phaser.Scene {
       if (this.ls.desynced) this.info.setText('DESYNC detected').setColor('#ff5a5a');
       if (this.ls.confirmedResult() && this.stage.koFinished(this.ls.sim, time)) this.showResult();
     }
-    this.stage.draw(this.ls.sim, time, !!this.ls.confirmedResult());
+    if (!this.over && (this.enhanced || isDebug())) this.adapt(time);
+    this.updateStats(time);
+    this.stage.draw(this.displayState(), time, !!this.ls.confirmedResult());
+  }
+
+  // Re-measure the ping during the match (also in standard mode while debug is
+  // on, for the readout). Enhanced only: move the punch delay one frame at a
+  // time toward adaptFactor times the one-way ping. Each peer picks its own,
+  // since inputs are stamped with ticks (see rollback.ts).
+  private adapt(time: number): void {
+    const s = this.match.session;
+    if (time >= this.nextPing) {
+      this.nextPing = time + 1000;
+      s.send({ k: 'ping', t: performance.now() });
+    }
+    if (!this.enhanced || this.rtt <= 0 || time < this.nextAdapt) return;
+    this.nextAdapt = time + 1500;
+    const oneWayFrames = this.rtt / 2 / STEP_MS;
+    const floor = Math.max(this.baseDelay, tune.net.inputDelayFrames);
+    const total = Math.round(Math.min(Math.max(tune.net.adaptMaxFrames, floor), Math.max(floor, oneWayFrames * tune.net.adaptFactor)));
+    const want = total - this.baseDelay;
+    const cur = this.ls.tapDelay;
+    if (want !== cur) this.ls.setTapExtra(cur + Math.sign(want - cur));
+  }
+
+  // Enhanced: after a rollback that moved a boxer by more than a few px, draw
+  // them where they were and ease to the exact sim position over smoothFrames.
+  // Picture only: the sim, hit effects and hitboxes stay exact.
+  private displayState(): SimState {
+    const sim = this.ls.sim;
+    const n = this.enhanced ? Math.round(tune.net.smoothFrames) : 0;
+    if (n <= 0) return sim;
+    const rolled = this.ls.rollbacks !== this.lastRollbacks;
+    this.lastRollbacks = this.ls.rollbacks;
+    const fighters = sim.fighters.map((f, i) => {
+      const prev = this.shown[i];
+      const off = this.off[i];
+      if (rolled && prev) {
+        const dx = prev.x - f.x;
+        const dy = prev.y - f.y;
+        const mag = Math.hypot(dx, dy);
+        if (mag > 3 && mag < 80) {
+          off.x = dx;
+          off.y = dy;
+        }
+      }
+      const decay = 1 - 1 / n;
+      off.x *= decay;
+      off.y *= decay;
+      if (Math.abs(off.x) < 0.2) off.x = 0;
+      if (Math.abs(off.y) < 0.2) off.y = 0;
+      const x = f.x + off.x;
+      const y = f.y + off.y;
+      this.shown[i] = { x, y };
+      return off.x === 0 && off.y === 0 ? f : { ...f, x, y };
+    }) as SimState['fighters'];
+    return { ...sim, fighters };
+  }
+
+  private updateStats(time: number): void {
+    const on = isDebug();
+    this.stats.setVisible(on);
+    if (!on || time < this.statsAt) return;
+    this.statsAt = time + 250;
+    const ls = this.ls;
+    if (time - this.statsPrev.t >= 1000) {
+      const dt = (time - this.statsPrev.t) / 1000;
+      if (this.statsPrev.t > 0) this.statsRate = { rb: (ls.rollbacks - this.statsPrev.rb) / dt, fr: (ls.rolledBackFrames - this.statsPrev.fr) / dt };
+      this.statsPrev = { t: time, rb: ls.rollbacks, fr: ls.rolledBackFrames };
+    }
+    const avg = ls.rollbacks > 0 ? ls.rolledBackFrames / ls.rollbacks : 0;
+    const ping = this.rtt > 0 ? `${Math.round(this.rtt)}ms` : '...';
+    this.stats.setText(
+      `net ${this.enhanced ? 'ENHANCED' : 'standard'}\n` +
+        `rollbacks ${this.statsRate.rb.toFixed(1)}/s  frames ${this.statsRate.fr.toFixed(1)}/s\n` +
+        `depth avg ${avg.toFixed(1)} max ${ls.maxRollbackDepth}  stalls ${this.stallCount}\n` +
+        `rtt ${ping}  stick ${this.baseDelay}f punch ${this.baseDelay + ls.tapDelay}f`,
+    );
   }
 
   private showResult(): void {

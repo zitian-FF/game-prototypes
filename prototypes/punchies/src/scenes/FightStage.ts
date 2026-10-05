@@ -15,7 +15,7 @@ import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
-import { DEBUG_ENABLED, debugView } from '../debug/debugPanel';
+import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
@@ -137,7 +137,7 @@ export class FightStage {
     this.drawTags(s, looks.map((l) => l.color));
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
-    const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
+    const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
     this.ko.sync(s, koAllowed, time);
     if (this.ko.active) {

@@ -52,9 +52,19 @@ category, description and allowed range.
   GitHub's web editor and test without a new build. A broken or partial
   file is ignored value by value; the label shows what's loaded.
 - **Online:** both players use the host's values for the match; the guest's
-  own values come back afterwards.
-- **`?debug=1`:** Tweakpane panel with every value grouped by category
-  (Attack, Defense, HP & Stun, Stamina, Movement & Arena, Match & Online,
+  own values come back afterwards. That includes `net.enhanced` (Match &
+  Online > net): 0 is plain rollback, 1 is the experiment (stick and guard
+  use `net.moveDelayFrames` while punches keep the full delay, drawn
+  positions ease for `net.smoothFrames` after a rollback, and the punch
+  delay follows the measured ping times `net.adaptFactor`, up to
+  `net.adaptMaxFrames`). Because the host's tune decides, both phones
+  always run the same mode.
+- **Red bug button (bottom centre, internal testing):** toggles debug mode:
+  the Tweakpane panel, the hitbox overlay and, in online matches, a net
+  stats readout (rollbacks per second, depth, stalls, ping, delays). The
+  last state is remembered; `?debug=1` also starts with it on. The panel
+  has every value grouped by category (Attack, Defense, HP & Stun,
+  Stamina, Movement & Arena, View, Match & Online, KO, Characters, AI,
   Training) and section. Each value has a range-limited slider, a
   description, the value it started from ("was") and a reset link. "Copy
   JSON" copies everything to paste into `tune.json`.
