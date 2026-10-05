@@ -728,4 +728,10 @@ client.
   colour; cells already taken by an HQ stay faint. On cooldown, or on an enemy or neutral node, there is no glow.
 - Scouts: no commander names are drawn on scouts any more, and they fly 50% faster (`scout.speedFactor` 3 to 4.5 times
   the squad march speed, which was itself raised 80%).
+- Speeds (supersedes every earlier speed line): the base squad speed crosses the map edge to edge in 150 s
+  (`march.edgeToEdgeSeconds`, about 10.9 units or 0.27 cells per second). Each Accelerator held (times tier, all T1)
+  cuts 30 s off that for your squads (`nodes.speedBoost.marchEdgeSecondsCut`): 120 s with one, 90 s with two, never
+  below `march.minEdgeToEdgeSeconds` (30 s). Squads walking home after a defeat go at half their current speed.
+  Scouts and turret missiles fly at 5 times the unboosted base speed (about 54.7 units per second, 30 s edge to
+  edge); Accelerators do not affect them.
 - Where this section conflicts with older text above, this section wins.

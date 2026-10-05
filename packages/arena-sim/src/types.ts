@@ -75,7 +75,8 @@ export interface NodeKindTune {
   /** Effect values are per tier: the node applies value * tier. */
   attackPct?: number;
   defensePct?: number;
-  speedPct?: number;
+  /** Accelerator: seconds cut off the edge-to-edge march time of squads, times tier. */
+  marchEdgeSecondsCut?: number;
   /** Tech Centre: extra teleport-cooldown seconds drained per second, times tier (1 = twice as fast). */
   teleportCooldownRate?: number;
   /** Hospital: troops per second added to each ally's reserve pool, times tier. */
@@ -109,7 +110,13 @@ export interface Tune {
     maxDefendersPerAttack: number;
     maxRounds: number;
   };
-  march: { crossMapSeconds: number; defeatedSpeedFactor: number };
+  march: {
+    /** Base time for a squad to cross the map from one edge to the opposite one. */
+    edgeToEdgeSeconds: number;
+    /** The edge-to-edge time never drops below this, however many Accelerators are held. */
+    minEdgeToEdgeSeconds: number;
+    defeatedSpeedFactor: number;
+  };
   hq: {
     hp: number;
     teleportCooldownSeconds: number;

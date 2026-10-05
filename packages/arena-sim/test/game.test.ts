@@ -37,7 +37,7 @@ test('nodes: march time is distance over base speed (tuned cross-map time)', () 
   must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'n0' } });
   const expected = (dist(from, { x: 300, y: 300 }) / g.marchSpeed) * 1000;
   assert.ok(Math.abs(arrival(g, 's0') - expected) < 1e-6);
-  assert.ok(Math.abs(Math.hypot(1000, 600) / g.marchSpeed - g.tune.march.crossMapSeconds) < 1e-9);
+  assert.ok(Math.abs(1000 / g.marchSpeed - g.tune.march.edgeToEdgeSeconds) < 1e-9, 'the longer side takes the tuned edge-to-edge time');
 });
 
 test('nodes: an ungarrisoned node keeps its owner until an enemy touches it', () => {
@@ -618,6 +618,34 @@ test('hospital: refills every ally pool by 20 a second times tier while held, ne
 
 // ---------------------------------------------------------------- boosts
 
+test('boost nodes: edge to edge is 150s, 120s with one Accelerator, 90s with two, for squads only', () => {
+  const sp1: NodeDef = { id: 'sp1', kind: 'speedBoost', x: 300, y: 100 };
+  const sp2: NodeDef = { id: 'sp2', kind: 'speedBoost', x: 200, y: 100 };
+  const far: NodeDef = { id: 'far', kind: 'points', x: 500, y: 300 };
+  const g = makeGame({
+    nodes: [sp1, sp2, far],
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
+  });
+  const edge = g.tune.march.edgeToEdgeSeconds;
+  const secondsPerEdge = (sq: string) => {
+    const st = g.squads.get(sq)!.state;
+    return st.kind === 'march' ? 1000 / st.march.speed : NaN; // the test map is 1000 units on its long side
+  };
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'sp1' } });
+  assert.ok(Math.abs(secondsPerEdge('s0') - edge) < 1e-6, 'no Accelerator: base');
+  g.advanceTo(arrival(g, 's0'));
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'sp2' } });
+  assert.ok(Math.abs(secondsPerEdge('s1') - (edge - 30)) < 1e-6, 'one Accelerator: 30s off');
+  g.advanceTo(arrival(g, 's1'));
+  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'far' } });
+  assert.ok(Math.abs(secondsPerEdge('s2') - (edge - 60)) < 1e-6, 'two Accelerators: 60s off');
+  // Scouts ignore the Accelerators: five times the base speed.
+  must(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'node', nodeId: 'far' } });
+  const sc = g.players.get('a')!.scouts[0];
+  assert.equal(sc.kind, 'out');
+  if (sc.kind === 'out') assert.ok(Math.abs(dist(sc.from, sc.to) / ((sc.arriveMs - sc.startMs) / 1000) - 5 * g.marchSpeed) < 1e-6, 'scout at 5x base speed');
+});
+
 test('boost nodes: speed boost makes marches faster', () => {
   const sp: NodeDef = { id: 'sp', kind: 'speedBoost', x: 300, y: 100 };
   const g = makeGame({
@@ -627,7 +655,7 @@ test('boost nodes: speed boost makes marches faster', () => {
   marchAndArrive(g, 'a', 's0', 'sp');
   must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'n0' } });
   const m = g.squads.get('s1')!.state;
-  assert.ok(m.kind === 'march' && Math.abs(m.march.speed - g.marchSpeed * 1.1) < 1e-9);
+  assert.ok(m.kind === 'march' && Math.abs(m.march.speed - g.marchSpeed * (g.tune.march.edgeToEdgeSeconds / (g.tune.march.edgeToEdgeSeconds - 30))) < 1e-9, 'one Accelerator cuts 30s off the edge-to-edge time');
 });
 
 // ----------------------------------------------------------------- match

@@ -936,7 +936,7 @@ export class GameScene extends BaseScene {
     const effects: string[] = [];
     if (k.attackPct) effects.push(`+${Math.round(k.attackPct * n.tier * 100)}% attack for your team`);
     if (k.defensePct) effects.push(`+${Math.round(k.defensePct * n.tier * 100)}% defense for your team`);
-    if (k.speedPct) effects.push(`+${Math.round(k.speedPct * n.tier * 100)}% march speed for your team`);
+    if (k.marchEdgeSecondsCut) effects.push(`squads cross the map ${k.marchEdgeSecondsCut * n.tier}s faster edge to edge (stacks)`);
     if (k.teleportCooldownRate) effects.push(`teleport cooldown runs ${1 + k.teleportCooldownRate * n.tier}x as fast (stacks)`);
     if (k.poolRegenPerSecond) effects.push(`every ally regains ${k.poolRegenPerSecond * n.tier} reserve troops a second`);
     if (n.kind === 'largeVision') effects.push(`reveals ${k.visionRadiusCells} cells around it`);

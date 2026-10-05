@@ -99,10 +99,10 @@ test('map: same seed gives the same map', () => {
   assert.deepEqual(generateMap(new Rng(9), tune), generateMap(new Rng(9), tune));
 });
 
-test('map: crossing the whole map takes the tuned cross-map time at base speed', () => {
+test('map: crossing the whole map takes the tuned edge-to-edge time at base speed', () => {
   const tune = loadTune();
   const map = generateMap(new Rng(1), tune);
-  assert.ok(Math.abs(Math.hypot(map.width, map.height) / baseSpeed(map, tune) - tune.march.crossMapSeconds) < 1e-9);
+  assert.ok(Math.abs(Math.max(map.width, map.height) / baseSpeed(map, tune) - tune.march.edgeToEdgeSeconds) < 1e-9);
 });
 
 test('map: the 8 HQ slots are exactly the 8 cells around the node', () => {
@@ -202,7 +202,7 @@ test('map: the map is a square, and the first nodes are within a couple of minut
   assert.equal(tune.map.widthCells, tune.map.heightCells, 'square');
   for (const seed of [1, 2, 3, 4, 5, 6]) {
     const map = generateMap(new Rng(seed), tune);
-    const speed = Math.hypot(map.width, map.height) / tune.march.crossMapSeconds; // units per second
+    const speed = Math.max(map.width, map.height) / tune.march.edgeToEdgeSeconds; // units per second
     for (const zone of map.safeZones) {
       const secondsTo = map.nodes
         .filter((n) => n.kind !== 'portal' && n.tier <= 2)
