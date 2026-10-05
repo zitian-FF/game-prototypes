@@ -64,6 +64,8 @@ async function startWorker() {
       'PULSE_MS:250',
       '--var',
       'LOG_TOKEN:e2e-log-token',
+      '--var',
+      'INTRO_SECONDS:0',
     ],
     // Own process group, so stopping it really stops wrangler and workerd, not just npx.
     { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'], detached: true, env: { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' } },

@@ -45,6 +45,8 @@ export interface RoomOptions {
   abandonMs?: number;
   /** How long the room lingers after a match ends. */
   closeAfterEndMs?: number;
+  /** Real seconds between the start countdown and the match clock (the opening card reveal). Defaults to the tune's. */
+  introSeconds?: number;
   /** Minimum wall ms between state broadcasts while playing (view refresh). */
   pulseMs?: number;
   /** Sim ms between bot decisions. */
@@ -167,6 +169,7 @@ export class ArenaRoom {
       hostGraceMs: opts.hostGraceMs ?? 60_000,
       abandonMs: opts.abandonMs ?? 10 * 60_000,
       closeAfterEndMs: opts.closeAfterEndMs ?? 15 * 60_000,
+      introSeconds: opts.introSeconds ?? opts.tune.match.introSeconds ?? 0,
       pulseMs: opts.pulseMs ?? 1000,
       botThinkSimMs: opts.botThinkSimMs ?? 4000,
       burst: opts.burst ?? 40,
@@ -455,6 +458,11 @@ export class ArenaRoom {
       this.send(connId, { t: 'cmdResult', id, ok: false, error: 'notPlaying' });
       return;
     }
+    if (this.match && this.env.now() < this.match.startedAtMs) {
+      // Still in the opening reveal: the round has not started.
+      this.send(connId, { t: 'cmdResult', id, ok: false, error: 'notPlaying' });
+      return;
+    }
     this.advance();
     const described = this.describeOrder(body, playerId);
     const result = this.applyCommand(toSimCommand(body, playerId));
@@ -569,7 +577,8 @@ export class ArenaRoom {
       }
     }
 
-    this.match = { seed, startedAtMs: this.env.now(), timeScale: this.opt.timeScale, tune: { ...this.tune, match: { ...this.tune.match, durationSeconds: this.minutes * 60 } }, players: roster };
+    // The match clock starts after the opening card reveal, so nobody loses sim time to it.
+    this.match = { seed, startedAtMs: this.env.now() + this.opt.introSeconds * 1000, timeScale: this.opt.timeScale, tune: { ...this.tune, match: { ...this.tune.match, durationSeconds: this.minutes * 60, introSeconds: this.opt.introSeconds } }, players: roster };
     this.indexPlayers(this.match);
     this.game = ArenaRoom.buildGame(this.match);
     this.initBots(this.match);

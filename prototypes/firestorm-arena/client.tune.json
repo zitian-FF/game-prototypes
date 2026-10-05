@@ -53,11 +53,11 @@
     "touchHintSeconds": 25,
     "loadingSeconds": 2.5,
     "intro": {
-      "dealSeconds": 0.7,
-      "flipEverySeconds": 0.9,
+      "dealSeconds": 0.8,
+      "maxFlipEverySeconds": 1.6,
       "flipSeconds": 0.5,
       "glowSeconds": 1.1,
-      "holdSeconds": 1.0
+      "holdSeconds": 1.2
     }
   },
   "net": {

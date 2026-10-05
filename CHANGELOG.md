@@ -3,6 +3,15 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0 (intro delay)
+
+**What changed:** firestorm-net's room starts the match clock `match.introSeconds` (tune, default 0, 7 in Firestorm
+Arena) real seconds after the start countdown ends, so a client can show an opening reveal without the sim running.
+`RoomOptions.introSeconds` overrides it (the Worker reads `INTRO_SECONDS` for tests) and orders sent before the clock
+starts are refused. Folded into the unreleased 0.14.0.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-05 — firestorm shared packages: arena-sim 0.14.0
 
 **What changed:** arena-sim's squad rank bands are now squad 1 ranks 1 to 12, squad 2 ranks 8 to 20, squad 3 ranks 15 to

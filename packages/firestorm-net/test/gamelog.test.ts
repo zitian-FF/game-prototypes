@@ -113,3 +113,29 @@ test('game log: a match the host ends early is still logged, as abandoned', () =
   assert.equal(w.env.gameLogs[0].result, 'abandoned');
   assert.equal(w.env.gameLogs[0].counts.captureNeutral, 1);
 });
+
+test('opening reveal: the match clock starts only after the intro, and orders wait for it', () => {
+  const w = makeWorld({ introSeconds: 7 });
+  const hana = w.client('Hana', 'client-hana-intro-00001');
+  hana.hello(true);
+  hana.send({ t: 'start', fillBots: true, minutes: 10 });
+  w.advance(3100); // the start countdown ends: the reveal begins
+  hana.pull();
+  const info = hana.msgs.find((m) => m.t === 'matchStart');
+  assert.ok(info && info.t === 'matchStart');
+  assert.ok(info.info.startedAtServerMs > w.env.wall + 6000, 'the match clock is set about 7 seconds ahead');
+  assert.equal(info.info.tune.match.introSeconds, 7);
+  w.advance(5000);
+  assert.equal(w.room.sim!.now, 0, 'no sim time passes during the reveal');
+  const v = hana.view!;
+  const squad = v.squads.find((s) => s.owner === info.info.playerId)!;
+  const node = v.nodes.find((n) => n.owner == null && n.kind !== 'portal' && n.unlocksAtMs === undefined)!;
+  const before = hana.cmd({ type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } });
+  const refused = hana.msgs.find((m) => m.t === 'cmdResult' && m.id === before);
+  assert.ok(refused && refused.t === 'cmdResult' && !refused.ok, 'an order during the reveal is refused');
+  w.advance(4000); // 9 seconds after the countdown: the round has been running for about 2
+  assert.ok(w.room.sim!.now > 1500 && w.room.sim!.now < 3000, `sim ${w.room.sim!.now}`);
+  const after = hana.cmd({ type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } });
+  const accepted = hana.msgs.find((m) => m.t === 'cmdResult' && m.id === after);
+  assert.ok(accepted && accepted.t === 'cmdResult' && accepted.ok, 'and accepted once the round has started');
+});

@@ -8,7 +8,10 @@ import type { Tune } from 'arena-sim';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadTune(): Tune {
-  return JSON.parse(readFileSync(path.resolve(here, '../../../prototypes/firestorm-arena/tune.json'), 'utf8')) as Tune;
+  const t = JSON.parse(readFileSync(path.resolve(here, '../../../prototypes/firestorm-arena/tune.json'), 'utf8')) as Tune;
+  // The opening card reveal delays the match clock by a few real seconds; tests that time the match turn it off.
+  t.match.introSeconds = 0;
+  return t;
 }
 
 export function withTune(over: (t: Tune) => void): Tune {

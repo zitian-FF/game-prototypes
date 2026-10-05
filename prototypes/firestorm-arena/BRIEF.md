@@ -746,6 +746,8 @@ client.
   cards flip one by one from squad 1 to the last, showing type and power. A squad whose power is in the best 10% of its
   own slot's power range glows gold for a moment, the best 20% silver and the best 30% bronze (`roster.cardTiers`), and
   keeps a tinted edge. Each slot is judged against its own pool, so a strong roll for squad 4 can glow while a weaker
-  roll for squad 1 does not. Tap to skip. The match clock is already running, so the reveal takes only about 3 to 5
-  seconds (`hud.intro`).
+  roll for squad 1 does not. The reveal always takes 7 real seconds (`match.introSeconds`) and the round starts when it
+  ends: the server holds the match clock back, orders sent during it are refused, and nobody loses sim time. The
+  cards share the 7 seconds (a flip every up to 1.6 s, then a hold). Tap to skip the animation; the clock still waits
+  for the 7 seconds. Every client times it from the server's clock.
 - Where this section conflicts with older text above, this section wins.

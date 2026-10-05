@@ -75,7 +75,6 @@ export class GameScene extends BaseScene {
   private lastFrame = 0;
   private confirmEnd = false;
   private loadStartedAt = 0;
-  private introStartedAt = 0;
   private introSkip = false;
   /** Last left/right facing per unit, so a unit that stops keeps looking where it was going. */
   private facing = new Map<string, 1 | -1>();
@@ -142,7 +141,6 @@ export class GameScene extends BaseScene {
     this.camX = c.x;
     this.camY = c.y;
     this.zoom = this.compact() ? clientTune.camera.startZoomTouch : clientTune.camera.startZoom;
-    this.introStartedAt = this.time.now;
     this.ready = true;
   }
 
@@ -205,18 +203,27 @@ export class GameScene extends BaseScene {
     ui.bar(cx - 160, h / 2 - 66, 320, 8, progress, 0xff8a3d);
   }
 
-  /** How long the opening card reveal runs for this player: a deal, one flip per squad, then a short hold. */
-  private introSeconds(view: WireView): number {
+  /** Real seconds the opening reveal takes: the server holds the match clock back this long after the countdown. */
+  private introTotal(): number {
+    return session.info?.tune.match.introSeconds ?? 0;
+  }
+
+  /** Seconds into the reveal, from the server's clock so every player sees it end when the round starts. */
+  private introTime(): number {
     const info = session.info!;
-    const n = view.squads.filter((s) => s.owner === info.playerId).length;
+    return this.introTotal() - (info.startedAtServerMs - session.serverNow()) / 1000;
+  }
+
+  /** Time between one card flipping and the next: the reveal always fills its total, up to a cap. */
+  private flipEvery(n: number): number {
     const c = clientTune.hud.intro;
-    return c.dealSeconds + n * c.flipEverySeconds + c.holdSeconds;
+    return Math.min(c.maxFlipEverySeconds, (this.introTotal() - c.dealSeconds - c.holdSeconds) / Math.max(1, n));
   }
 
   /**
    * The opening reveal: one face-down card per squad you were dealt, flipped one after another from squad 1 to the last
    * to show its type and power. A squad in the top 10% of its own slot's power range glows gold for a moment, the top
-   * 20% silver and the top 30% bronze. Tap to skip; the match clock is already running.
+   * 20% silver and the top 30% bronze. The round starts when it ends: the server holds the match clock back. Tap to skip.
    */
   private drawIntro(view: WireView, w: number, h: number, t: number): void {
     const ui = this.ui;
@@ -253,7 +260,7 @@ export class GameScene extends BaseScene {
     squads.forEach((s, i) => {
       const dealt = Math.min(1, Math.max(0, (t - i * 0.1) / (c.dealSeconds * 0.6)));
       if (dealt <= 0) return;
-      const flipStart = c.dealSeconds + i * c.flipEverySeconds;
+      const flipStart = c.dealSeconds + i * this.flipEvery(n);
       const f = Math.min(1, Math.max(0, (t - flipStart) / c.flipSeconds));
       const x0 = left + i * (cw + gap);
       const y = top + (1 - dealt) * 24;
@@ -1108,8 +1115,8 @@ export class GameScene extends BaseScene {
     if (hintOn) ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
     // ---- loading overlay for the first moments
-    const introT = (this.time.now - this.introStartedAt) / 1000;
-    if (!this.introSkip && introT < this.introSeconds(view)) this.drawIntro(view, w, h, introT);
+    const introT = Math.max(0, this.introTime());
+    if (!this.introSkip && this.introTotal() > 0 && introT < this.introTotal()) this.drawIntro(view, w, h, introT);
 
     // ---- end of match
     if (session.result) {

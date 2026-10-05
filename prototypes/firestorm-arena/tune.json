@@ -2,7 +2,8 @@
   "match": {
     "durationSeconds": 1800,
     "playersPerTeam": 20,
-    "startCancelSeconds": 3
+    "startCancelSeconds": 3,
+    "introSeconds": 7
   },
   "roster": {
     "ranks": 20,

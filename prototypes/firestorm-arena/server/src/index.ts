@@ -18,6 +18,8 @@ interface Env {
   TIME_SCALE?: string;
   /** Minimum ms between state broadcasts while playing. */
   PULSE_MS?: string;
+  /** Override the opening-reveal length in real seconds (testing: 0 skips it). */
+  INTRO_SECONDS?: string;
 }
 
 const ROOM_CODE = /^[ACDEFHJKMNPRTWXY]{3}$/;
@@ -116,11 +118,13 @@ export class ArenaMatch {
   private options(code: string): RoomOptions {
     const timeScale = Number(this.env.TIME_SCALE);
     const pulseMs = Number(this.env.PULSE_MS);
+    const intro = this.env.INTRO_SECONDS === undefined ? NaN : Number(this.env.INTRO_SECONDS);
     return {
       code,
       tune: TUNE,
       ...(Number.isFinite(timeScale) && timeScale > 0 ? { timeScale } : {}),
       ...(Number.isFinite(pulseMs) && pulseMs > 0 ? { pulseMs } : {}),
+      ...(Number.isFinite(intro) && intro >= 0 ? { introSeconds: intro } : {}),
     };
   }
 

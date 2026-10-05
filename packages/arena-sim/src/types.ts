@@ -85,7 +85,13 @@ export interface NodeKindTune {
 
 /** Mirrors prototypes/firestorm-arena/tune.json. */
 export interface Tune {
-  match: { durationSeconds: number; playersPerTeam: number; startCancelSeconds: number };
+  match: {
+    durationSeconds: number;
+    playersPerTeam: number;
+    startCancelSeconds: number;
+    /** Real seconds between the countdown ending and the match clock starting: the opening card reveal runs in it. */
+    introSeconds?: number;
+  };
   roster: {
     ranks: number;
     /** Share of commanders per team dealt 4 squads and 3 squads; the rest get 2. */
