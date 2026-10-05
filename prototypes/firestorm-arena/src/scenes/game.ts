@@ -170,6 +170,7 @@ export class GameScene extends BaseScene {
 
     const simMs = session.simNow();
     const now = time / 1000;
+    this.autoSelectSquad(view);
     this.handleIntents(events, dt, view);
     if (!session.info || !session.view) return; // an order above may have left the match
     this.handleEvents(view, now);
@@ -446,7 +447,6 @@ export class GameScene extends BaseScene {
         case 'pause':
           if (this.panel !== 'none') this.panel = 'none';
           else if (this.target) this.target = null;
-          else this.selectedSquad = null;
           break;
         default:
           break;
@@ -493,6 +493,23 @@ export class GameScene extends BaseScene {
       return;
     }
     session.sendCommand({ type: 'march', squadId, target: t.kind === 'node' ? { kind: 'node', nodeId: t.id } : { kind: 'hq', hqId: t.id } });
+    // The squad just sent is no longer at HQ: let the next strongest one take its place.
+    if (this.selectedSquad === squadId) this.selectedSquad = null;
+  }
+
+  /**
+   * Keep a squad selected so one tap on a target is enough: with nothing selected (the start of the match, or the
+   * selected squad has just left or been lost), pick the strongest squad waiting at HQ. A squad the player picks
+   * themselves is left alone.
+   */
+  private autoSelectSquad(view: WireView): void {
+    const info = session.info;
+    if (!info) return;
+    const own = view.squads.filter((q) => q.owner === info.playerId);
+    if (this.selectedSquad && own.some((q) => q.id === this.selectedSquad)) return;
+    let best: (typeof own)[number] | null = null;
+    for (const q of own) if (q.state === 'hq' && q.troops > 0 && (!best || q.power > best.power)) best = q;
+    this.selectedSquad = best ? best.id : null;
   }
 
   // ------------------------------------------------------------------ events
@@ -1029,33 +1046,33 @@ export class GameScene extends BaseScene {
       return {
         title: nodeName(n.kind, n.tier),
         lines: [
-          ['Neutral. It cannot be captured and has no garrison.', COLORS.dim],
-          ['Any HQ of either team can teleport here (8 slots around it).', COLORS.text],
-          ['Both teams see the 8 cells around it, so HQs that land here are in plain view.', COLORS.warn],
+          ['Neutral, cannot be captured.', COLORS.dim],
+          ['Any HQ can teleport here (8 slots).', COLORS.text],
+          ['Both teams see the cells around it.', COLORS.warn],
         ],
       };
     }
     const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
     lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
-    lines.push([`Score ${tune.scoring.tierPointsPerSecond[n.tier - 1]}/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
+    lines.push([`${tune.scoring.tierPointsPerSecond[n.tier - 1]} pts/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
     const k = tune.nodes[n.kind];
     const effects: string[] = [];
-    if (k.attackPct) effects.push(`+${Math.round(k.attackPct * n.tier * 100)}% attack for your team`);
-    if (k.defensePct) effects.push(`+${Math.round(k.defensePct * n.tier * 100)}% defense for your team`);
-    if (k.marchEdgeSecondsCut) effects.push(`squads cross the map ${k.marchEdgeSecondsCut * n.tier}s faster edge to edge (stacks)`);
-    if (k.teleportCooldownRate) effects.push(`teleport cooldown runs ${1 + k.teleportCooldownRate * n.tier}x as fast (stacks)`);
-    if (k.poolRegenPerSecond) effects.push(`every ally regains ${k.poolRegenPerSecond * n.tier} reserve troops a second`);
-    if (n.kind === 'largeVision') effects.push(`reveals ${k.visionRadiusCells} cells around it`);
+    if (k.attackPct) effects.push(`Team attack +${Math.round(k.attackPct * n.tier * 100)}%`);
+    if (k.defensePct) effects.push(`Team defense +${Math.round(k.defensePct * n.tier * 100)}%`);
+    if (k.marchEdgeSecondsCut) effects.push(`Squad march -${k.marchEdgeSecondsCut * n.tier}s edge to edge (stacks)`);
+    if (k.teleportCooldownRate) effects.push(`Teleport cooldown x${1 + k.teleportCooldownRate * n.tier} faster (stacks)`);
+    if (k.poolRegenPerSecond) effects.push(`Allies +${k.poolRegenPerSecond * n.tier} reserve troops/s`);
+    if (n.kind === 'largeVision') effects.push(`Vision ${k.visionRadiusCells} cells`);
     if (n.kind === 'turret') {
       const t = tune.turret;
-      effects.push(`every ${t.pulseSeconds}s fires a missile at each enemy Missile Turret and Nuclear Silo, taking ${Math.round(t.damageFraction * 100)}% of max troops from every garrisoned squad`);
+      effects.push(`Every ${t.pulseSeconds}s: missile on enemy turrets and silo, -${Math.round(t.damageFraction * 100)}% troops per garrisoned squad`);
     }
-    if (effects.length) lines.push([`Holding it: ${effects.join('; ')}`, COLORS.warn]);
-    if (n.poolOpen) lines.push([`Score pool ${fmtInt(n.pool ?? 0)}: counts for the holder. If the node is taken, it drops as caches that any scout can bank.`, COLORS.warn]);
-    else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}: until then its points are permanent.`, COLORS.dim]);
+    for (const e of effects) lines.push([e, COLORS.warn]);
+    if (n.poolOpen) lines.push([`Pool ${fmtInt(n.pool ?? 0)}. If taken, drops as caches.`, COLORS.warn]);
+    else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}`, COLORS.dim]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
-      lines.push([own ? `Garrison ${n.garrisonCount} / ${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
+      lines.push([own ? `Garrison ${n.garrisonCount}/${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
     } else lines.push(['Garrison unknown: send a scout', COLORS.dim]);
     return { title: `${nodeName(n.kind, n.tier)}  T${n.tier}`, lines };
   }
@@ -1364,9 +1381,9 @@ export class GameScene extends BaseScene {
       if (!c) return null;
       title = 'Score cache';
       body = [
-        [`Worth ${fmtInt(c.value)} points, fixed`, '#ffe08a'],
-        [`Dropped from the pool of ${this.nodeLabel(view, c.nodeId)} when it changed hands, from ${c.from === this.mine ? 'your team' : 'the enemy team'}.`, COLORS.dim],
-        ['Any scout can collect it. The points are added to its team score for good the moment it touches.', COLORS.dim],
+        [`Worth ${fmtInt(c.value)} pts`, '#ffe08a'],
+        [`From ${this.nodeLabel(view, c.nodeId)}, lost by ${c.from === this.mine ? 'your team' : 'the enemy'}.`, COLORS.dim],
+        ['Any scout banks it for its team on touch.', COLORS.dim],
       ];
     } else if (t.kind === 'node') {
       const d = this.nodeInfoLines(view, t.id);
@@ -1376,7 +1393,7 @@ export class GameScene extends BaseScene {
       const nv = view.nodes.find((x) => x.id === t.id);
       if (nv?.kind === 'portal') attackable = true; // the order panel offers the teleport
       if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) {
-        body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)} (${nv.tier === 4 ? 'at 50%' : 'at 75%'} of the clock left)`, COLORS.warn], ...body];
+        body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)}`, COLORS.warn], ...body];
         attackable = false;
       }
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'node' && r.target.nodeId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
@@ -1385,9 +1402,9 @@ export class GameScene extends BaseScene {
       if (!hq) return null;
       title = hq.id === info.hqId ? 'Your HQ' : `HQ of ${hq.owner} (ally)`;
       body = [[`HP ${hq.hp} / ${hq.maxHp}${hq.burning ? ' (burning)' : ''}`, hq.burning ? COLORS.warn : COLORS.text]];
-      body.push([`Allied garrison ${hq.garrisonCount} / ${this.tune.garrison.maxSquads}`, COLORS.text]);
+      body.push([`Garrison ${hq.garrisonCount}/${this.tune.garrison.maxSquads}`, COLORS.text]);
       if (hq.id !== info.hqId) {
-        body.push(['Garrison a squad here to help defend it, like at a node.', COLORS.dim]);
+        body.push(['Garrison a squad to help defend it.', COLORS.dim]);
         allyHq = hq.location.kind !== 'safe';
       }
       attackable = allyHq;
@@ -1395,7 +1412,7 @@ export class GameScene extends BaseScene {
       const hq = view.enemyHqs.find((x) => x.id === t.id);
       if (!hq) return null;
       title = 'Enemy HQ';
-      body = [[hq.burning ? 'Burning: below full HP' : 'Intact', hq.burning ? COLORS.warn : COLORS.dim], ['Hit it when it is out in the field. HQs in a safe zone cannot be attacked.', COLORS.dim]];
+      body = [[hq.burning ? 'Burning: below full HP' : 'Intact', hq.burning ? COLORS.warn : COLORS.dim], ['Attackable only outside a safe zone.', COLORS.dim]];
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'hq' && r.target.hqId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
     }
     const mine = view.squads.filter((s) => s.owner === info.playerId);
@@ -1424,19 +1441,6 @@ export class GameScene extends BaseScene {
   }
 
   /** Greedy word wrap by character count. */
-  private wrap(text: string, maxChars: number): string[] {
-    const out: string[] = [];
-    let line = '';
-    for (const word of text.split(' ')) {
-      if ((line + ' ' + word).trim().length > maxChars && line) {
-        out.push(line);
-        line = word;
-      } else line = (line + ' ' + word).trim();
-    }
-    if (line) out.push(line);
-    return out;
-  }
-
   /** Bottom centre: what is selected. Its orders sit to the right (drawOrderPanel). */
   private drawTargetPanel(view: WireView, simMs: number, w: number, h: number): void {
     const d = this.targetData(view, simMs);
@@ -1453,7 +1457,7 @@ export class GameScene extends BaseScene {
     const bottom = h - 34;
 
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.wrap(text, 50)) lines.push({ text: l, color });
+    for (const [text, color] of d.body) for (const l of this.ui.wrap(text, 12, pw - 28)) lines.push({ text: l, color });
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const shown = defenders.slice(0, 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
@@ -1634,10 +1638,10 @@ export class GameScene extends BaseScene {
 
     // Text: a few wrapped lines, then a one-line scout summary.
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.wrap(text, 38)) lines.push({ text: l, color });
-    if (lines.length > 4) {
-      lines.length = 4;
-      lines[3].text = lines[3].text.slice(0, 35) + '...';
+    for (const [text, color] of d.body) for (const l of this.ui.wrap(text, 11, 256 - 24)) lines.push({ text: l, color });
+    if (lines.length > 5) {
+      lines.length = 5;
+      lines[4].text = lines[4].text.slice(0, 33) + '...';
     }
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const repLines: { text: string; color: string }[] = [];

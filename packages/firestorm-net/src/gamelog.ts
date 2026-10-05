@@ -4,7 +4,7 @@
 
 import type { TeamId } from 'arena-sim';
 
-export const GAME_LOG_VERSION = 1;
+export const GAME_LOG_VERSION = 2;
 
 /** What one accepted order was aimed at, in words that are easy to filter on. */
 export type ActionKind =
@@ -46,9 +46,30 @@ export interface Counts {
   rejected: number;
 }
 
+/** One change of the player's connection while the match ran: `c` connected (or came back), `d` dropped. */
+export interface ConnEvent {
+  /** Sim seconds into the match (0 for a player who was already there at the start). */
+  t: number;
+  e: 'c' | 'd';
+}
+
+/** One squad as rolled at the start of the match, before any fighting. */
+export interface RolledSquad {
+  slot: number;
+  type: string;
+  rank: number;
+  power: number;
+  /** 0-100: where the power sits in its own slot's range (100 is the best it could roll). */
+  pct: number;
+  /** The reveal-card grade the player saw, or null. */
+  tier: 'gold' | 'silver' | 'bronze' | null;
+}
+
 /** What the room keeps for one human while the match runs. */
 export interface LiveLog {
   counts: Counts;
+  /** Connection changes since the match began (older stored logs have none). */
+  conn?: ConnEvent[];
   targets: TargetEntry[];
   /** Sim second of every accepted order (for pace and idle gaps). */
   times: number[];
@@ -58,6 +79,7 @@ export type HlogStore = Record<string, LiveLog>;
 
 const MAX_TARGETS = 400;
 const MAX_TIMES = 3000;
+const MAX_CONN = 60;
 
 export function newLive(): LiveLog {
   return {
@@ -65,6 +87,30 @@ export function newLive(): LiveLog {
     targets: [],
     times: [],
   };
+}
+
+/** Note a connect or drop. The first event of a kind that repeats right away is kept, the list is capped. */
+export function recordConn(live: LiveLog, tSec: number, e: ConnEvent['e']): void {
+  const list = (live.conn ??= []);
+  if (list.length > 0 && list[list.length - 1].e === e) return;
+  if (list.length < MAX_CONN) list.push({ t: tSec, e });
+}
+
+/** Total seconds connected, and how many times the player dropped, from the connection events. */
+export function connSummary(conn: ConnEvent[] | undefined, simSeconds: number): { connectedSeconds: number; drops: number } {
+  let connected = 0;
+  let since: number | null = null;
+  let drops = 0;
+  for (const ev of conn ?? []) {
+    if (ev.e === 'c') since ??= ev.t;
+    else {
+      drops++;
+      if (since !== null) connected += Math.max(0, ev.t - since);
+      since = null;
+    }
+  }
+  if (since !== null) connected += Math.max(0, simSeconds - since);
+  return { connectedSeconds: Math.round(connected), drops };
 }
 
 /** Count one accepted order. `entry` is set for orders that have a target worth keeping in the ordered list. */
@@ -111,6 +157,12 @@ export interface GameLogRecord {
   device: 'touch' | 'desktop' | 'unknown';
   /** Times this player connected: more than 1 means they dropped and came back. */
   joins: number;
+  /** Connect and drop events during the match, with the totals worked out from them. */
+  connections: ConnEvent[];
+  connectedSeconds: number;
+  drops: number;
+  /** The squads this player was dealt at the start, in slot order. */
+  squads: RolledSquad[];
   /** Commander score and the stats behind it, with the leaderboard rank (1 = best) when the match finished. */
   score: { score: number; rank: number | null; nodesCaptured: number; hqsDowned: number; troopsDefeated: number; garrisonSeconds: number; cachePoints: number };
   counts: Counts;

@@ -752,4 +752,21 @@ client.
   ends: the server holds the match clock back, orders sent during it are refused, and nobody loses sim time. The
   cards share the 7 seconds (a flip every up to 1.6 s, then a hold). Tap to skip the animation; the clock still waits
   for the 7 seconds. Every client times it from the server's clock.
+- Game log additions: each record also lists the squads the player was dealt (slot, type, rank, power, percentile in its
+  own slot's range, reveal tier) and the connection events during the match (connected, dropped, came back, in sim
+  seconds) with total connected seconds and drops. Record version 2.
+- Auto-selected squad: whenever no squad of yours is selected (the start of the match, or the selected one just left on
+  a march), the strongest squad waiting at HQ is selected for you. Picking another squad yourself is respected until
+  that squad leaves.
+- Map fairness: every node kind and tier appears the same number of times on each half of the map (guaranteed by the
+  point-symmetric placement, covered by a 400 seed test).
+- Handbook: a Handbook button on the main menu (top left) opens a full-screen, tabbed, scrollable page (What it is,
+  Nodes, Units, Teleport): the three ideas behind the game (fog of war, restrictive teleportation, random symmetric
+  map), how to win, every node and its effect, the counter triangle, a rough combat calculation, and the teleport
+  rules. Numbers are read from tune.json. Close with the Close button or Esc.
+- Selected-node text is short key facts only, wrapped by measured pixel width so it always fits the panel.
+- Landing-page capacity line: shows the percent of today's usable budget still free (the tighter of writes and
+  requests) and roughly how many more 30 minute games it can host, e.g. "Server capacity today: 97% left, room for
+  about 22 more 30 min games". The games figure still uses the cautious per-match cost (4,000 writes, 2,500 requests);
+  a measured full match is about 1,000 writes, so it is a floor.
 - Where this section conflicts with older text above, this section wins.

@@ -39,3 +39,10 @@ test('quota: adding usage never goes negative and limits are configurable', () =
   const tiny = quotaStatus({ day: utcDay(noon), writes: 0, requests: 0 }, noon, { ...DEFAULT_QUOTA, writesLimit: 1000 });
   assert.equal(tiny.canStart, false);
 });
+
+test('quota: percent left follows the tighter of writes and requests, from 100 down to 0', () => {
+  assert.equal(quotaStatus({ day: utcDay(noon), writes: 0, requests: 0 }, noon).percentLeft, 100);
+  assert.equal(quotaStatus({ day: utcDay(noon), writes: 45_000, requests: 0 }, noon).percentLeft, 50);
+  assert.equal(quotaStatus({ day: utcDay(noon), writes: 0, requests: 67_500 }, noon).percentLeft, 25);
+  assert.equal(quotaStatus({ day: utcDay(noon), writes: 200_000, requests: 0 }, noon).percentLeft, 0);
+});

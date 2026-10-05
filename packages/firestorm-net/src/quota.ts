@@ -37,6 +37,8 @@ export interface QuotaStatus {
   requestsLimit: number;
   /** Whole matches the remaining budget covers (the smaller of the two limits decides). */
   matchesLeft: number;
+  /** Share of today's usable budget still free (0 to 100): the tighter of writes and requests. */
+  percentLeft: number;
   /** False when there is not enough left for one more match. */
   canStart: boolean;
   /** When the counters reset (next 00:00 UTC), epoch ms. */
@@ -70,8 +72,12 @@ export function quotaStatus(u: QuotaUsage, nowMs: number, cfg: QuotaConfig = DEF
   const byWrites = Math.floor((writesBudget - cur.writes) / cfg.matchWrites);
   const byRequests = Math.floor((requestsBudget - cur.requests) / cfg.matchRequests);
   const matchesLeft = Math.max(0, Math.min(byWrites, byRequests));
+  const freeWrites = 1 - cur.writes / writesBudget;
+  const freeRequests = 1 - cur.requests / requestsBudget;
+  const percentLeft = Math.max(0, Math.min(100, Math.round(Math.min(freeWrites, freeRequests) * 100)));
   return {
     day: cur.day,
+    percentLeft,
     writesUsed: Math.round(cur.writes),
     writesLimit: cfg.writesLimit,
     requestsUsed: Math.round(cur.requests),
