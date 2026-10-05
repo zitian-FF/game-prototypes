@@ -17,7 +17,7 @@ Expose boxer presentation sizes and offsets in the live View tuning panel.
 ## Known issues
 - No real-phone or online-match verification in this pass.
 - Controlled renderer review in Brave exercised head/body flashes, lateral gait, sweat, and fly KO mid-spin/landing without console errors. This checks renderer inputs rather than hit-event routing or a complete match.
-- The shared itch page served Firestorm Arena during this check, so it was not counted as Punchies verification.
+- Live Punchies loaded in Brave at https://zitian-ff.itch.io/suits after the successful deployment. The suits-mp page belongs to Firestorm; it was initially checked by mistake.
 
 ## Next proposed step
 Review the rig on a real phone and verify complete-match hit routing and online play. Typecheck and production build passed; Brave at 844x390 loaded Marco, Mia and Bruno without console errors, and a live head-size edit/reset worked. Existing tuning values were checked for equality.
