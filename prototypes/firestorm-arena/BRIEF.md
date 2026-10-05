@@ -734,4 +734,9 @@ client.
   below `march.minEdgeToEdgeSeconds` (30 s). Squads walking home after a defeat go at half their current speed.
   Scouts and turret missiles fly at 5 times the unboosted base speed (about 54.7 units per second, 30 s edge to
   edge); Accelerators do not affect them.
+- Game log: when a match ends (or is ended early) each human player gets one small behaviour record, stored by the
+  server in a `GameLogs` Durable Object and readable only by the owner at `/admin/logs` with a secret token. See
+  server/README.md for the fields, retention (90 days, 20,000 rows) and how to download. Players are told on the
+  landing page that anonymous play stats are recorded. The hello message carries `device` (touch or desktop). Bots are
+  not logged.
 - Where this section conflicts with older text above, this section wins.

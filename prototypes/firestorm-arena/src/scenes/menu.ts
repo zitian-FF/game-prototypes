@@ -176,7 +176,9 @@ export class MenuScene extends BaseScene {
       const lines = this.wrapLog(VERSION_LOG, Math.min(w - 24, touch ? w * 0.5 : 900));
       lines.forEach((l, i) => ui.text(l, cx, h - 98 + i * 14, { size: 11, align: 'center', color: COLORS.dim }));
     }
-    if (DEBUG) ui.text(`server ${serverBase()}`, cx, h - 14, { size: 10, align: 'center', color: COLORS.dim });
+    // Players are told, in one line, that anonymous play stats are kept.
+    if (footer) ui.text('Anonymous play stats (what you order and score) are recorded to improve the game.', cx, h - 15, { size: 10, align: 'center', color: COLORS.dim, alpha: 0.8 });
+    if (DEBUG) ui.text(`server ${serverBase()}`, cx, 22, { size: 10, align: 'center', color: COLORS.dim });
     this.drawVersion();
     ui.end();
   }

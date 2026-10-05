@@ -4,9 +4,11 @@
 interface DurableObjectStorage {
   get<T = unknown>(key: string): Promise<T | undefined>;
   put(entries: Record<string, unknown>): Promise<void>;
+  put(key: string, value: unknown): Promise<void>;
   delete(keys: string[]): Promise<number>;
+  delete(key: string): Promise<boolean>;
   deleteAll(): Promise<void>;
-  list<T = unknown>(options?: { prefix?: string }): Promise<Map<string, T>>;
+  list<T = unknown>(options?: { prefix?: string; start?: string; end?: string; limit?: number }): Promise<Map<string, T>>;
   setAlarm(scheduledTime: number): Promise<void>;
   deleteAlarm(): Promise<void>;
 }

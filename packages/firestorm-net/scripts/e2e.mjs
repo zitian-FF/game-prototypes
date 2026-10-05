@@ -62,6 +62,8 @@ async function startWorker() {
       `TIME_SCALE:${SCALE}`,
       '--var',
       'PULSE_MS:250',
+      '--var',
+      'LOG_TOKEN:e2e-log-token',
     ],
     // Own process group, so stopping it really stops wrangler and workerd, not just npx.
     { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'], detached: true, env: { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' } },
@@ -254,6 +256,28 @@ try {
   check(hana.last('lobby').phase === 'ended', 'the lobby phase is ended');
   const errs = [...hana.of('error'), ...ivo.of('error')].map((e) => e.code);
   check(errs.length === 0, `no errors reached either player${errs.length ? ` (${errs.join(',')})` : ''}`);
+
+  // --- the behaviour log: only the owner's token opens it, and it holds one record per human ----------------
+  const base = `http://127.0.0.1:${PORT}/admin/logs`;
+  check((await fetch(base)).status === 404, 'the log endpoint is a 404 without the token');
+  check((await fetch(base, { headers: { authorization: 'Bearer wrong' } })).status === 404, 'and with the wrong token');
+  let logs = null;
+  for (let i = 0; i < 20 && !logs; i++) {
+    const res = await fetch(base, { headers: { authorization: 'Bearer e2e-log-token' } });
+    const body = await res.json();
+    if (body.records.length >= 2) logs = body;
+    else await sleep(500);
+  }
+  check(!!logs && logs.records.length === 2, `two player records were stored (${logs ? logs.records.length : 0})`);
+  if (logs) {
+    const rec = logs.records.find((r) => r.name === 'Hana');
+    check(!!rec && rec.counts.captureNeutral === 1 && rec.counts.marches === 1, 'Hana\'s record has the node she captured');
+    check(rec.targets[0].a === 'capture' && rec.targets[0].id === node.id, 'the first target in her record is the node she went for');
+    check(logs.records.every((r) => r.pid.length === 14 && !JSON.stringify(r).includes('client-')), 'records carry a hashed id, never the client id');
+    check(logs.records.every((r) => r.humans === 2 && r.bots === 38), 'each record knows the match had 2 humans and 38 bots');
+  }
+  const nd = await fetch(`${base}?format=ndjson&since=2000-01-01`, { headers: { authorization: 'Bearer e2e-log-token' } });
+  check((await nd.text()).trim().split('\n').length === 2, 'the ndjson export has one line per record');
 
   const states = hana.of('state').length;
   console.log(`  info Hana got ${states} state messages, ${(hana.bytes / 1024).toFixed(0)} KiB after the restart`);

@@ -3,6 +3,16 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0
+
+**What changed:** firestorm-net's room keeps small behaviour counters per human player while a match runs and hands one
+record per human to the host when it ends (new `RoomEnv.gameLog`, `GameLogRecord`, and an optional `device` on the
+hello message; no protocol bump). The room persists the counters at most once a minute so an eviction loses little.
+The Firestorm server stores the records in a new `GameLogs` Durable Object (migration v3). arena-sim is unchanged.
+Only firestorm-arena uses it.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-05 — firestorm shared packages: arena-sim 0.13.0, firestorm-net 0.13.0
 
 **What changed:** arena-sim's march speed is now defined by `march.edgeToEdgeSeconds` (the map's longer side) instead

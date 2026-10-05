@@ -2,6 +2,7 @@ import { PROTOCOL_VERSION, applyPatch } from 'firestorm-net';
 import type { ClientEvent, ClientMsg, CommandBody, LobbyPlayer, MatchStartInfo, RoomPhase, ServerMsg, WireView } from 'firestorm-net';
 import type { MatchResult } from 'arena-sim';
 import { clientTune } from '../clientTune';
+import { intents } from '../input/intents';
 
 const SAVE_KEY = 'firestorm-arena:save:v1';
 const ROOM_ALPHABET = 'ACDEFHJKMNPRTWXY';
@@ -136,7 +137,7 @@ export class Session {
     }
     this.socket = ws;
     ws.onopen = () => {
-      this.send({ t: 'hello', v: PROTOCOL_VERSION, clientId: this.save.clientId, name: this.save.name, create: this.creating });
+      this.send({ t: 'hello', v: PROTOCOL_VERSION, clientId: this.save.clientId, name: this.save.name, create: this.creating, device: intents.touch ? 'touch' : 'desktop' });
       this.creating = false;
     };
     ws.onmessage = (ev) => {

@@ -1,5 +1,5 @@
-import { ArenaRoom, DEFAULT_QUOTA, addUsage, cmdKey, quotaStatus } from 'firestorm-net';
-import type { LoggedCommand, PersistOp, QuotaConfig, QuotaUsage, RoomEnv, RoomMeta, RoomOptions } from 'firestorm-net';
+import { ArenaRoom, DEFAULT_QUOTA, addUsage, cmdKey, quotaStatus, utcDay } from 'firestorm-net';
+import type { GameLogRecord, HlogStore, LoggedCommand, PersistOp, QuotaConfig, QuotaUsage, RoomEnv, RoomMeta, RoomOptions } from 'firestorm-net';
 import type { Tune } from 'arena-sim';
 import tuneJson from '../../tune.json';
 
@@ -7,6 +7,10 @@ interface Env {
   MATCH_ROOMS: DurableObjectNamespace;
   /** One shared meter that estimates this game's daily use of the plan limits. */
   QUOTA: DurableObjectNamespace;
+  /** Per-match player behaviour records (see GameLogs). */
+  GAME_LOGS: DurableObjectNamespace;
+  /** Secret that unlocks /admin/logs. Set it with `wrangler secret put LOG_TOKEN`; without it the endpoint does not exist. */
+  LOG_TOKEN?: string;
   /** Override the plan limits the meter assumes (testing). */
   QUOTA_WRITES_LIMIT?: string;
   QUOTA_REQUESTS_LIMIT?: string;
@@ -46,6 +50,15 @@ export default {
     if (url.pathname === '/api/quota') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
       return json(await (await meter(env).fetch(new Request('https://meter/status'))).json());
+    }
+
+    if (url.pathname === '/admin/logs') {
+      // Only the owner, with the secret token in a header. Anything else gets the same 404 as an unknown path.
+      const token = env.LOG_TOKEN;
+      const given = request.headers.get('authorization') ?? '';
+      if (request.method !== 'GET' || !token || given !== `Bearer ${token}`) return new Response('Not found', { status: 404 });
+      const logs = env.GAME_LOGS.get(env.GAME_LOGS.idFromName('logs'));
+      return logs.fetch(new Request(`https://logs/list${url.search}`));
     }
 
     const room = url.pathname.match(/^\/ws\/([ACDEFHJKMNPRTWXY]{3})$/)?.[1];
@@ -90,6 +103,8 @@ export class ArenaMatch {
   private pendingWrites = 0;
   private pendingRequests = 0;
   private lastReportAt = Date.now();
+  /** Behaviour records waiting to be handed to the GameLogs object. */
+  private unsentLogs: GameLogRecord[] = [];
 
   constructor(
     private readonly state: DurableObjectState,
@@ -127,6 +142,9 @@ export class ArenaMatch {
     },
     now: () => Date.now(),
     random: () => Math.random(),
+    gameLog: (records) => {
+      this.unsentLogs.push(...records);
+    },
     identified: (connId, clientId) => {
       // Survives hibernation, so a rebuilt room knows whose socket this is.
       this.sockets.get(connId)?.serializeAttachment({ connId, clientId } satisfies Attachment);
@@ -135,12 +153,15 @@ export class ArenaMatch {
 
   /** Rebuild the room from storage after a restart or eviction, and re-bind surviving sockets. */
   private async load(): Promise<void> {
+    const leftover = await this.state.storage.get<GameLogRecord[]>('unsentLogs');
+    if (leftover?.length) this.unsentLogs.push(...leftover);
     const meta = await this.state.storage.get<RoomMeta>('meta');
     if (!meta) return;
+    const hlog = await this.state.storage.get<HlogStore>('hlog');
     const stored = await this.state.storage.list<LoggedCommand>({ prefix: 'c:' });
     // Keys sort in order because cmdKey pads the sequence number.
     const log = [...stored.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, v]) => v);
-    this.room = ArenaRoom.restore(this.options(meta.code), this.roomEnv, meta, log);
+    this.room = ArenaRoom.restore(this.options(meta.code), this.roomEnv, meta, log, { hlog });
     for (const ws of this.state.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (!att) continue;
@@ -210,6 +231,7 @@ export class ArenaMatch {
     const room = this.room;
     if (!room) return;
     await this.flush(room.drainPersist());
+    await this.sendLogs();
     await this.reportUsage(room.shouldDestroy());
 
     if (room.shouldDestroy()) {
@@ -246,6 +268,23 @@ export class ArenaMatch {
       await this.env.QUOTA.get(this.env.QUOTA.idFromName('meter')).fetch(new Request('https://meter/add', { method: 'POST', body }));
     } catch {
       // ignore
+    }
+  }
+
+  /** Hand finished behaviour records to the GameLogs object. If that fails, keep them and try again on the next call. */
+  private async sendLogs(): Promise<void> {
+    if (this.unsentLogs.length === 0) return;
+    const batch = this.unsentLogs;
+    this.unsentLogs = [];
+    this.pendingWrites += batch.length;
+    try {
+      const logs = this.env.GAME_LOGS.get(this.env.GAME_LOGS.idFromName('logs'));
+      const res = await logs.fetch(new Request('https://logs/add', { method: 'POST', body: JSON.stringify({ records: batch }) }));
+      if (!res.ok) throw new Error(`logs ${res.status}`);
+      await this.state.storage.delete('unsentLogs');
+    } catch {
+      this.unsentLogs = batch;
+      await this.state.storage.put('unsentLogs', batch);
     }
   }
 
@@ -325,6 +364,88 @@ export class QuotaMeter {
     return new Response(JSON.stringify(quotaStatus(this.usage, now, this.config())), {
       headers: { 'content-type': 'application/json; charset=utf-8' },
     });
+  }
+}
+
+const LOG_RETENTION_DAYS = 90;
+const LOG_MAX_ROWS = 20_000;
+const LOG_MAX_LIST = 2_000;
+
+/**
+ * Keeps one small behaviour record per human player per match, for the game's owner to download from /admin/logs.
+ * Rows are keyed `g:<date>:<match>:<player>` so they sort by date. Nothing here is ever sent to a player. Rows older
+ * than 90 days are dropped, and the table is capped at 20,000 rows (about 2,000 matches of ten humans), oldest first.
+ */
+export class GameLogs {
+  private count = 0;
+  private readonly ready: Promise<void>;
+
+  constructor(private readonly state: DurableObjectState) {
+    this.ready = state.blockConcurrencyWhile(async () => {
+      this.count = (await state.storage.get<number>('count')) ?? 0;
+    });
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    await this.ready;
+    const url = new URL(request.url);
+    if (request.method === 'POST' && url.pathname === '/add') {
+      let records: GameLogRecord[] = [];
+      try {
+        records = ((await request.json()) as { records?: GameLogRecord[] }).records ?? [];
+      } catch {
+        return new Response('bad body', { status: 400 });
+      }
+      await this.add(records.filter((r) => r && typeof r.at === 'string' && typeof r.match === 'string' && typeof r.pid === 'string'));
+      return new Response('ok');
+    }
+    if (request.method === 'GET' && url.pathname === '/list') {
+      const since = url.searchParams.get('since');
+      const limit = Math.min(LOG_MAX_LIST, Math.max(1, Number(url.searchParams.get('limit')) || 500));
+      const start = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `g:${since}` : 'g:';
+      const rows = await this.state.storage.list<GameLogRecord>({ prefix: 'g:', start, limit });
+      const records = [...rows.values()];
+      if (url.searchParams.get('format') === 'ndjson') {
+        return new Response(records.map((r) => JSON.stringify(r)).join('\n') + '\n', { headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store' } });
+      }
+      return new Response(JSON.stringify({ total: this.count, returned: records.length, records }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+    }
+    return new Response('Not found', { status: 404 });
+  }
+
+  private async add(records: GameLogRecord[]): Promise<void> {
+    if (records.length === 0) return;
+    const puts: Record<string, GameLogRecord> = {};
+    for (const r of records) puts[`g:${r.at.slice(0, 10)}:${r.match}:${r.pid}`] = r;
+    const keys = Object.keys(puts);
+    for (let i = 0; i < keys.length; i += 100) {
+      const chunk: Record<string, GameLogRecord> = {};
+      for (const k of keys.slice(i, i + 100)) chunk[k] = puts[k];
+      await this.state.storage.put(chunk);
+    }
+    this.count += keys.length;
+    await this.state.storage.put('count', this.count);
+    await this.prune();
+  }
+
+  /** At most once a day: drop rows past the retention window, then trim to the row cap, oldest first. */
+  private async prune(): Promise<void> {
+    const today = utcDay(Date.now());
+    if ((await this.state.storage.get<string>('prunedDay')) === today && this.count <= LOG_MAX_ROWS) return;
+    const cutoff = utcDay(Date.now() - LOG_RETENTION_DAYS * 86_400_000);
+    for (;;) {
+      const old = await this.state.storage.list({ prefix: 'g:', end: `g:${cutoff}`, limit: 100 });
+      if (old.size === 0) break;
+      await this.state.storage.delete([...old.keys()]);
+      this.count = Math.max(0, this.count - old.size);
+    }
+    while (this.count > LOG_MAX_ROWS) {
+      const old = await this.state.storage.list({ prefix: 'g:', limit: Math.min(100, this.count - LOG_MAX_ROWS) });
+      if (old.size === 0) break;
+      await this.state.storage.delete([...old.keys()]);
+      this.count -= old.size;
+    }
+    await this.state.storage.put({ count: this.count, prunedDay: today });
   }
 }
 

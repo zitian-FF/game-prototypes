@@ -15,6 +15,8 @@ import { projectEvents } from './events';
 import type { ClientEvent } from './events';
 import { PROTOCOL_VERSION, cleanName, parseClientMsg, toSimCommand } from './protocol';
 import type { CommandBody, ErrorCode, LobbyPlayer, MatchStartInfo, RoomPhase, ServerMsg } from './protocol';
+import { GAME_LOG_VERSION, newLive, paceOf, pseudonym, recordOrder } from './gamelog';
+import type { GameLogRecord, HlogStore, TargetEntry } from './gamelog';
 import { applyPatch, diffViews, toWire } from './wire';
 import type { WireView } from './wire';
 
@@ -27,6 +29,8 @@ export interface RoomEnv {
   random(): number;
   /** Called once a socket has said who it is, so the host can remember it across hibernation. */
   identified?(connId: string, clientId: string): void;
+  /** Called once per match, when it ends, with one behaviour record per human player. The host keeps them. */
+  gameLog?(records: GameLogRecord[]): void;
 }
 
 export interface RoomOptions {
@@ -78,7 +82,7 @@ export interface RoomMeta {
   code: string;
   phase: RoomPhase | 'closed';
   hostId: string | null;
-  humans: { clientId: string; name: string; team?: TeamId }[];
+  humans: { clientId: string; name: string; team?: TeamId; device?: 'touch' | 'desktop'; joins?: number }[];
   fillBots: boolean;
   minutes?: number;
   countdownEndsAtMs?: number;
@@ -102,6 +106,8 @@ interface Human {
   name: string;
   connected: boolean;
   team: TeamId;
+  device?: 'touch' | 'desktop';
+  joins: number;
 }
 
 const CLOSE_NORMAL = 1000;
@@ -144,6 +150,10 @@ export class ArenaRoom {
   private prevWire: [WireView | null, WireView | null] = [null, null];
   private cmdCount = 0;
   private persist: PersistOp[] = [];
+  /** Behaviour counters per human player id, kept while the match runs and written out when it ends. */
+  private hlog = new Map<string, ReturnType<typeof newLive>>();
+  private lastHlogSaveWall = 0;
+  private logEmitted = false;
   /** Commands from the log that the restored sim rejected, so diverged replays are visible. */
   replayMismatches = 0;
 
@@ -167,7 +177,7 @@ export class ArenaRoom {
   // ------------------------------------------------------------ persistence
 
   /** Rebuild a room from what a previous incarnation persisted. */
-  static restore(opts: RoomOptions, env: RoomEnv, meta: RoomMeta, log: LoggedCommand[]): ArenaRoom {
+  static restore(opts: RoomOptions, env: RoomEnv, meta: RoomMeta, log: LoggedCommand[], extra?: { hlog?: HlogStore }): ArenaRoom {
     const room = new ArenaRoom(opts, env);
     room.phase = meta.phase;
     room.hostId = meta.hostId;
@@ -176,7 +186,10 @@ export class ArenaRoom {
     room.countdownEndsAtMs = meta.countdownEndsAtMs;
     room.hostGoneAtMs = meta.hostGoneAtMs;
     room.cmdCount = log.length;
-    for (const h of meta.humans) room.humans.set(h.clientId, { clientId: h.clientId, name: h.name, connected: false, team: h.team ?? 0 });
+    for (const h of meta.humans) room.humans.set(h.clientId, { clientId: h.clientId, name: h.name, connected: false, team: h.team ?? 0, device: h.device, joins: h.joins ?? 0 });
+    if (extra?.hlog) for (const [id, live] of Object.entries(extra.hlog)) room.hlog.set(id, live);
+    // A match that already ended was logged then; do not log it again.
+    if (meta.phase === 'ended') room.logEmitted = true;
     if (meta.match) {
       room.match = meta.match;
       room.indexPlayers(meta.match);
@@ -211,7 +224,7 @@ export class ArenaRoom {
       code: this.code,
       phase: this.phase,
       hostId: this.hostId,
-      humans: [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name, team: h.team })),
+      humans: [...this.humans.values()].map((h) => ({ clientId: h.clientId, name: h.name, team: h.team, device: h.device, joins: h.joins })),
       fillBots: this.fillBots,
       minutes: this.minutes,
       countdownEndsAtMs: this.countdownEndsAtMs,
@@ -340,7 +353,7 @@ export class ArenaRoom {
     }
   }
 
-  private onHello(connId: string, conn: Conn, msg: { v: number; clientId: string; name: string; create?: boolean }): void {
+  private onHello(connId: string, conn: Conn, msg: { v: number; clientId: string; name: string; create?: boolean; device?: 'touch' | 'desktop' }): void {
     if (msg.v !== PROTOCOL_VERSION) return this.fail(connId, 'badVersion', `protocol ${PROTOCOL_VERSION} required`);
     const known = this.humans.get(msg.clientId);
 
@@ -366,7 +379,7 @@ export class ArenaRoom {
     const name = known?.name ?? msg.name;
     // New players go to the team with fewer humans (team 0 on a tie); they can switch in the lobby.
     const team: TeamId = known?.team ?? (this.humansOn(0) <= this.humansOn(1) ? 0 : 1);
-    this.humans.set(msg.clientId, { clientId: msg.clientId, name, connected: true, team });
+    this.humans.set(msg.clientId, { clientId: msg.clientId, name, connected: true, team, device: msg.device ?? known?.device, joins: (known?.joins ?? 0) + 1 });
     conn.clientId = msg.clientId;
     this.clientConn.set(msg.clientId, connId);
     this.env.identified?.(connId, msg.clientId);
@@ -390,6 +403,7 @@ export class ArenaRoom {
         if (this.game.result) {
           this.phase = 'ended';
           this.match.endedAtMs = this.env.now();
+          this.finishGameLog();
           this.saveMeta();
           this.sendLobby();
         }
@@ -442,7 +456,9 @@ export class ArenaRoom {
       return;
     }
     this.advance();
+    const described = this.describeOrder(body, playerId);
     const result = this.applyCommand(toSimCommand(body, playerId));
+    this.recordHumanOrder(playerId, body, described, result.ok);
     this.send(connId, { t: 'cmdResult', id, ok: result.ok, error: result.ok ? undefined : result.error });
     this.afterChange(result.ok ? result.events : []);
   }
@@ -613,6 +629,7 @@ export class ArenaRoom {
     if (g.result && this.phase === 'playing') {
       this.phase = 'ended';
       if (this.match) this.match.endedAtMs = this.env.now();
+      this.finishGameLog();
       this.saveMeta();
       this.sendLobby();
     }
@@ -720,7 +737,121 @@ export class ArenaRoom {
     for (const c of audience) this.env.send(c, data);
   }
 
+  // ------------------------------------------------------------ behaviour log
+
+  /** What an order is aimed at, worked out before it is applied (ownership may change because of it). */
+  private describeOrder(body: CommandBody, playerId: string): { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' } {
+    const g = this.game;
+    const team = this.teamOfPlayer.get(playerId);
+    if (!g || team === undefined) return { entry: null };
+    const nodeInfo = (id: string) => {
+      const n = g.nodes.get(id);
+      return n ? { k: n.kind, tier: n.tier, owner: n.owner } : null;
+    };
+    const hqTeam = (hqId: string): TeamId | null => {
+      for (const p of g.players.values()) if (p.hq.id === hqId) return p.team;
+      return null;
+    };
+    switch (body.type) {
+      case 'march': {
+        if (body.target.kind === 'node') {
+          const n = nodeInfo(body.target.nodeId);
+          const a = !n || n.owner === null ? 'capture' : n.owner === team ? 'garrison' : 'attack';
+          return { entry: { a, id: body.target.nodeId, ...(n ? { k: n.k, tier: n.tier } : {}) } };
+        }
+        return { entry: { a: hqTeam(body.target.hqId) === team ? 'hqGarrison' : 'hqAttack', id: body.target.hqId } };
+      }
+      case 'scout': {
+        if (body.target.kind === 'cache') return { entry: { a: 'scoutCache', id: body.target.cacheId } };
+        if (body.target.kind === 'hq') return { entry: { a: 'scoutHq', id: body.target.hqId } };
+        const n = nodeInfo(body.target.nodeId);
+        return { entry: { a: 'scoutNode', id: body.target.nodeId, ...(n ? { k: n.k, tier: n.tier } : {}) } };
+      }
+      case 'teleport': {
+        const n = nodeInfo(body.nodeId);
+        return { entry: { a: 'teleport', id: body.nodeId, ...(n ? { k: n.k, tier: n.tier } : {}) } };
+      }
+      case 'setDefend':
+        return { entry: null, other: 'defend' };
+      case 'cancel':
+        return { entry: null, other: 'return' };
+    }
+  }
+
+  private recordHumanOrder(playerId: string, body: CommandBody, d: { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' }, ok: boolean): void {
+    const g = this.game;
+    if (!g) return;
+    let live = this.hlog.get(playerId);
+    if (!live) this.hlog.set(playerId, (live = newLive()));
+    if (!ok) {
+      live.counts.rejected++;
+      return;
+    }
+    recordOrder(live, Math.round(g.now / 1000), d.entry, d.other);
+    void body;
+    // One row for everyone, rewritten at most once a minute: a restart loses at most a minute of counters.
+    const now = this.env.now();
+    if (now - this.lastHlogSaveWall >= 60_000) {
+      this.lastHlogSaveWall = now;
+      this.persist.push({ key: 'hlog', value: Object.fromEntries(this.hlog) });
+    }
+  }
+
+  /** Build one record per human and hand them to the host, once. */
+  private finishGameLog(forced?: 'abandoned'): void {
+    const g = this.game;
+    const m = this.match;
+    if (this.logEmitted || !g || !m || !this.env.gameLog) return;
+    this.logEmitted = true;
+    const humans = m.players.filter((p) => !p.bot && p.clientId);
+    const result = g.result;
+    const simSeconds = Math.round(g.now / 1000);
+    const records: GameLogRecord[] = [];
+    for (const p of humans) {
+      const live = this.hlog.get(p.id) ?? newLive();
+      const pl = g.players.get(p.id);
+      const rank = result ? result.leaderboard.findIndex((s) => s.id === p.id) : -1;
+      const row = result?.leaderboard.find((s) => s.id === p.id);
+      const own = result ? result.points[p.team] : g.points()[p.team];
+      const other = result ? result.points[p.team === 0 ? 1 : 0] : g.points()[p.team === 0 ? 1 : 0];
+      const outcome: GameLogRecord['result'] = forced === 'abandoned' || !result ? 'abandoned' : result.winner === 'draw' ? 'draw' : result.winner === p.team ? 'win' : 'loss';
+      const human = this.humans.get(p.clientId!);
+      records.push({
+        v: GAME_LOG_VERSION,
+        match: `${this.code}-${m.startedAtMs.toString(36)}`,
+        room: this.code,
+        at: new Date(m.startedAtMs).toISOString(),
+        minutes: Math.round(m.tune.match.durationSeconds / 60),
+        simSeconds,
+        result: outcome,
+        points: [Math.round(own), Math.round(other)],
+        humans: humans.length,
+        bots: m.players.length - humans.length,
+        pid: pseudonym(p.clientId!),
+        name: p.name,
+        team: p.team,
+        device: human?.device ?? 'unknown',
+        joins: human?.joins ?? 1,
+        score: {
+          score: Math.round(row?.score ?? 0),
+          rank: rank >= 0 ? rank + 1 : null,
+          nodesCaptured: pl?.stats.nodesCaptured ?? 0,
+          hqsDowned: pl?.stats.hqsDowned ?? 0,
+          troopsDefeated: Math.round(pl?.stats.troopsDefeated ?? 0),
+          garrisonSeconds: Math.round(pl?.stats.garrisonSeconds ?? 0),
+          cachePoints: Math.round(pl?.stats.cachePoints ?? 0),
+        },
+        counts: live.counts,
+        ...paceOf(live.times, simSeconds),
+        targets: live.targets,
+      });
+    }
+    if (records.length) this.env.gameLog(records);
+  }
+
   private close(code: ErrorCode, message: string): void {
+    // A match that never reached its end is still worth a record.
+    if (this.match && this.phase === 'playing') this.finishGameLog('abandoned');
     for (const [connId] of this.conns) {
       this.error(connId, code, message);
       this.env.close(connId, CLOSE_NORMAL, code);

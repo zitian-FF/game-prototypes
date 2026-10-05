@@ -24,7 +24,7 @@ export type CommandBody =
 // ------------------------------------------------------------- client -> server
 
 export type ClientMsg =
-  | { t: 'hello'; v: number; clientId: string; name: string; create?: boolean }
+  | { t: 'hello'; v: number; clientId: string; name: string; create?: boolean; device?: 'touch' | 'desktop' }
   | { t: 'start'; fillBots: boolean; minutes: number }
   | { t: 'cancelStart' }
   | { t: 'endRoom' }
@@ -174,7 +174,7 @@ export function parseClientMsg(raw: string): ParseResult {
       }
       const name = cleanName(v.name);
       if (!name) return { ok: false, message: 'empty name' };
-      return { ok: true, msg: { t: 'hello', v: v.v, clientId: v.clientId, name, create: v.create === true } };
+      return { ok: true, msg: { t: 'hello', v: v.v, clientId: v.clientId, name, create: v.create === true, ...(v.device === 'touch' || v.device === 'desktop' ? { device: v.device } : {}) } };
     }
     case 'start': {
       const minutes = v.minutes;
