@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.15.5 on the branch (PR #209 merged up to 0.15.3; 0.15.4 and 0.15.5 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.15.6 (PR #209 merged up to 0.15.3; 0.15.4 to 0.15.6 in the next PR): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.15.6: capacity line shows percent left and roughly how many 30 minute games (`QuotaStatus.percentLeft`).
 - 0.15.5: Handbook page on the main menu (four tabs, scrollable, numbers from tune.json); node panel text shortened and wrapped by measured width (`Ui.measure`, `Ui.wrap`).
 - 0.15.4: auto-selected strongest HQ squad (re-picked after a squad is sent); game log v2 (dealt squads with percentile and tier, connect and drop events); usage meter saved on every report and reported when the last socket leaves; map test over 400 seeds that both halves hold the same kinds and tiers.
 - 0.15.3: the tier star shows on squad 1's card only; squad 2 keeps the glow, edge and label.
@@ -40,7 +41,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Open questions
 
-- Usage counter: it assumes 4,000 writes per match but a measured full 30 minute match costs about 1,000, so the headline number only drops about once per 3 to 4 matches. Keep the cautious constant, lower it, or show percent used? Not changed.
+- Usage counter now shows percent left (moves smoothly). The games figure still assumes 4,000 writes and 2,500 requests per 30 minute match; measured is about 1,000 writes (request cost at real speed unmeasured), so consider lowering the constants after a real-time measurement.
 - A tester saw an Accelerator on only one side of the map. The generator always makes one per half (tested over 400 seeds), so the likeliest cause is fog hiding the far one; need the room code or a screenshot if it happens again.
 
 - Game log: needs `wrangler secret put LOG_TOKEN` before the endpoint exists; confirm records look right after the first real matches.

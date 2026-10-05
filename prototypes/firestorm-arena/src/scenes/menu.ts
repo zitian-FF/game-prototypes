@@ -178,11 +178,12 @@ export class MenuScene extends BaseScene {
     // Daily server capacity: an estimate of how many more games today's free limits allow.
     if (q && footer) {
       const left = q.matchesLeft;
+      const pctLeft = typeof q.percentLeft === 'number' ? q.percentLeft : Math.round((left / 22) * 100); // an older server has no percent
       const reset = Math.max(0, q.resetsAtMs - Date.now());
       const hh = Math.floor(reset / 3_600_000);
       const mm = Math.floor((reset % 3_600_000) / 60_000);
-      const text = q.canStart ? `Server capacity today: about ${left} ${left === 1 ? 'game' : 'games'} left` : `Server daily limit reached, new games open in ${hh}h ${mm}m`;
-      ui.text(text, cx, h - 142, { size: 12, align: 'center', bold: true, color: !q.canStart ? COLORS.bad : left <= 3 ? COLORS.warn : COLORS.dim });
+      const text = q.canStart ? `Server capacity today: ${pctLeft}% left, room for about ${left} more 30 min ${left === 1 ? 'game' : 'games'}` : `Server daily limit reached, new games open in ${hh}h ${mm}m`;
+      ui.text(text, cx, h - 142, { size: 12, align: 'center', bold: true, color: !q.canStart ? COLORS.bad : pctLeft <= 15 ? COLORS.warn : COLORS.dim });
     } else if (this.quota.failed && footer) {
       ui.text('Server capacity: unknown (server not reachable)', cx, h - 142, { size: 12, align: 'center', color: COLORS.dim });
     }
