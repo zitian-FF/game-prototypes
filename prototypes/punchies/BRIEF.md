@@ -226,6 +226,16 @@ KO animation (visual only, all modes including Training; decided
   The result screen waits until the animation ends. Timings in the KO
   tune category.
 
+## Limb animation
+- Jab and Cross extend the striking arm straight; the elbow straightens
+  progressively and the glove cuff stays aligned with the forearm.
+- Hooks wind up outward, snap through a mirrored circular arc to the
+  contact point, then follow through and return with a bent elbow.
+- Uppercut uses an outlined orange/yellow flame with a bright core and
+  embers to cover the striking arm and glove, fading during recovery.
+- Foot gait cadence is 40% slower (0.21 radians per pixel travelled,
+  previously 0.35). Movement speed, combat frames and hitboxes do not change.
+
 ## Hit feedback
 Judged from the local player's side. Landing a hit: bright directional
 Tekken-style spark along the punch direction, white flash on the opponent,

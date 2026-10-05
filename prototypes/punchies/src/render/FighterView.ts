@@ -6,6 +6,7 @@ import { pose } from './art';
 import { GroundLayer } from './groundLayer';
 import { Puppet } from './puppet';
 import { TrainingDummy } from './TrainingDummy';
+import { punchFist } from './punchMotion';
 import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
@@ -221,7 +222,7 @@ export class FighterView {
     this.lastX = f.x;
     this.lastY = f.y;
     const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
-    if (walking) this.walk += moved * 0.35;
+    if (walking) this.walk += moved * tune.view.puppet.walkPhasePerPixel;
     this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
 
     if (f.anchored && this.dummy.draw(f, now, k)) {
@@ -333,23 +334,7 @@ export class FighterView {
     if (f.punch) {
       const p = f.punch;
       const phase = phaseOf(p);
-      const end = activeEnd(p);
-      const reach = p.reach;
-      let t: number;
-      if (phase === 'startup') t = -0.15 * (p.frame / p.startup);
-      else if (phase === 'recovery') t = 1 - (p.frame - end) / p.recovery;
-      else t = 1;
-      const from = rest(p.hand);
-      const to = phase === 'recovery' ? { x: f.x + f.fx * reach, y: f.y + f.fy * reach } : punchPoint(f, p);
-      let x = from.x + (to.x - from.x) * t;
-      let y = from.y + (to.y - from.y) * t;
-      if (p.type === 'hook' || p.type === 'uppercut') {
-        const side = p.hand === 0 ? 1 : -1;
-        const bulge = Math.sin(Math.max(0, t) * Math.PI) * (p.type === 'hook' ? 14 : 6) * side;
-        x += lx * bulge;
-        y += ly * bulge;
-      }
-      fists[p.hand] = { x, y };
+      fists[p.hand] = punchFist(f, p, k);
       colors[p.hand] =
         phase === 'sweet' ? 0xffe03a : phase === 'sour' ? 0xff8a3a : p.type === 'uppercut' ? 0xffc83a : this.color;
     }
@@ -405,7 +390,7 @@ export class FighterView {
     const stance = stanceOf(f);
     const prefix = f.anchored ? 'dummy' : `${f.char}${this.color !== mainLook(f.char).color ? '_alt' : ''}`;
     let action = walking ? 'walk' : 'idle';
-    let progress = ((now / 1000) % 1);
+    let progress = ((now / 1000) * (walking ? tune.view.puppet.walkPhasePerPixel / 0.35 : 1)) % 1;
     if (f.punch) {
       const p = f.punch;
       action = p.type === 'hook' ? (p.hand === 0 ? 'hook_l' : 'hook_r') : p.type;

@@ -29,7 +29,16 @@
       "rearBootForward": -7,
       "headForward": 2.5,
       "sweatRadius": 2.8,
-      "sweatHighlightRadius": 0.8
+      "sweatHighlightRadius": 0.8,
+      "walkPhasePerPixel": 0.21,
+      "hookWindupDegrees": 80,
+      "hookFollowDegrees": 35,
+      "hookSnapPower": 2,
+      "hookElbowRatio": 0.68,
+      "uppercutFireWidth": 14,
+      "uppercutFireLength": 22,
+      "uppercutFireFadeFrames": 6,
+      "uppercutFireFlickerHz": 12
     },
     "trainingDummy": {
       "bodyHeight": 34,

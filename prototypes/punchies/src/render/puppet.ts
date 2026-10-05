@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
+import { armPose, punchExtension, uppercutFireIntensity } from './punchMotion';
 
 // Runtime boxer puppet, true overhead. Replaces the baked animation frames
 // for the three playable characters: head, torso, gloves and boots are static
@@ -332,17 +333,15 @@ export class Puppet {
       const fist = fists[i];
       const sh = P(1 * k, rig.shoulderSpread * k * side, v.bodyOffsetY);
       const gh = rig.gloveHeight * k;
-      let dx = fist.x - sh.x;
-      let dy = fist.y - sh.y;
-      let d = Math.hypot(dx, dy) || 1;
-      dx /= d;
-      dy /= d;
-      const wrist = { x: fist.x - dx * gh * 0.4, y: fist.y - dy * gh * 0.4 };
-      const elbow = joint(sh, wrist, 9 * k, { x: lx * side, y: ly * side });
-      limb(this.arms, sh, elbow, wrist, 6 * k, skinNow, alpha);
-      dx = fist.x - elbow.x;
-      dy = fist.y - elbow.y;
-      d = Math.hypot(dx, dy) || 1;
+      const striking = f.punch?.hand === i;
+      const straight = striking && (f.punch!.type === 'jab' || f.punch!.type === 'cross') ? punchExtension(f.punch!) : 0;
+      const minSegment = striking && f.punch!.type === 'hook' ? Math.max(9 * k, Math.hypot(fist.x - sh.x, fist.y - sh.y) * rig.hookElbowRatio) : 9 * k;
+      const { elbow, wrist } = armPose(sh, fist, gh * 0.4, minSegment, { x: lx * side, y: ly * side }, straight);
+      if (!striking || f.punch!.type !== 'uppercut' || uppercutFireIntensity(f.punch!) < 0.2) {
+        limb(this.arms, sh, elbow, wrist, 6 * k, skinNow, alpha);
+      }
+      const dx = fist.x - elbow.x;
+      const dy = fist.y - elbow.y;
       glove
         .setPosition(fist.x, fist.y)
         .setRotation(Math.atan2(dy, dx) + Math.PI / 2)
@@ -357,6 +356,13 @@ export class Puppet {
         this.fx.strokeCircle(fist.x, fist.y, gh * 0.55);
       }
     });
+
+    if (f.punch?.type === 'uppercut' && !a.limp) {
+      const p = f.punch;
+      const intensity = uppercutFireIntensity(p);
+      const side = p.hand === 0 ? 1 : -1;
+      this.uppercutFlame(P(k, rig.shoulderSpread * k * side, v.bodyOffsetY), fists[p.hand], intensity, now, k);
+    }
 
     // ---- tints: head and torso flash separately when hit ----
     const head = a.flashHead;
@@ -416,4 +422,42 @@ export class Puppet {
     }
     return true;
   }
+
+  private uppercutFlame(root: Pt, fist: Pt, intensity: number, now: number, k: number): void {
+    if (intensity <= 0) return;
+    const rig = tune.view.puppet;
+    const len = Math.hypot(fist.x - root.x, fist.y - root.y) || 1;
+    const dx = (fist.x - root.x) / len, dy = (fist.y - root.y) / len;
+    const flicker = 1 + 0.12 * Math.sin(now * rig.uppercutFireFlickerHz * Math.PI * 2 / 1000);
+    const width = rig.uppercutFireWidth * k * intensity * flicker;
+    const length = rig.uppercutFireLength * k * intensity;
+    const point = (u: number, v: number): Pt => ({ x: fist.x + dx * u - dy * v, y: fist.y + dy * u + dx * v });
+    const shape = (scale: number): Phaser.Math.Vector2[] => {
+      const outline = [
+      { x: root.x + (fist.x - root.x) * (1 - scale), y: root.y + (fist.y - root.y) * (1 - scale) },
+      point(-8 * k, width * 0.75 * scale), point(length * 0.55 * scale, width * scale),
+      point(4 * k, width * 0.35 * scale), point(length * scale, width * 0.1 * scale),
+      point(5 * k, -width * 0.35 * scale), point(length * 0.45 * scale, -width * 0.85 * scale),
+      point(-8 * k, -width * 0.7 * scale),
+      ];
+      const curve = new Phaser.Curves.Spline([...outline, outline[0]].map(p => new Phaser.Math.Vector2(p.x, p.y)));
+      return curve.getPoints(48);
+    };
+    const outer = shape(1);
+    this.fx.fillStyle(0xff5424, Math.min(1, intensity * 2));
+    this.fx.fillPoints(outer, true);
+    this.fx.lineStyle(1.5 * k, NAVY, intensity);
+    this.fx.strokePoints(outer, true, true);
+    this.fx.fillStyle(0xffc83a, intensity);
+    this.fx.fillPoints(shape(0.72), true);
+    this.fx.fillStyle(0xfff4ce, intensity);
+    this.fx.fillPoints(shape(0.4), true);
+    for (let i = 0; i < 3; i++) {
+      const t = (now * rig.uppercutFireFlickerHz / 1000 + i / 3) % 1;
+      const ember = point(length * (0.6 + t), width * (i - 1) * 0.55);
+      this.fx.fillStyle(i === 1 ? 0xfff4ce : 0xffb52a, intensity * (1 - t));
+      this.fx.fillCircle(ember.x, ember.y, (1.5 + i % 2) * k);
+    }
+  }
+
 }
