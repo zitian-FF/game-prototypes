@@ -690,4 +690,18 @@ client.
   way the reserve rises (+20 per second per tier each, never above the starting amount).
 - Phone performance: world labels re-render only when their text changes, and units, nodes and caches outside
   the screen are not drawn.
+- Touch HUD v2 (supersedes the earlier compact HUD wording): squads are a column of 48 px chips on the left edge
+  (unit, power, troop bar, state dot) under a small HQ pill (HP, teleport, reserve) that folds the list; the selected
+  chip shows a popover with its Defend toggle or Return button, and tapping it again flies the camera to it.
+  Selecting a node, HQ or cache opens a bubble anchored on it (only while something is selected) with a few lines of
+  info and its actions: Attack or Garrison with the selected squad (if none is picked, the squads at HQ pulse),
+  Return for garrisoned squads, Scout, Teleport. The right edge holds 44 px icon buttons (menu with Leave or End
+  room, Scouts, Logs, with badge counts) and the minimap sits in the corner. Toasts show at most two, for less time.
+  Notch insets are respected. Touch start zoom is `camera.startZoomTouch` and the fly-to zoom
+  `camera.focusZoomTouch`; timers on nodes only draw at `camera.labelDetailZoom` or closer, or when selected.
+- Home button: a house icon (above the minimap) that pans the camera to your own HQ and zooms in to at least the
+  focus level. It is only drawn while your HQ is off screen. The H or Home key does the same on desktop, and the
+  camera also centres on your HQ whenever it teleports.
+- Pinch zoom: the point under the midpoint of the two fingers stays under it while zooming, and moving the fingers
+  also pans (computed from the camera state, since a pinch delivers several events per frame).
 - Where this section conflicts with older text above, this section wins.

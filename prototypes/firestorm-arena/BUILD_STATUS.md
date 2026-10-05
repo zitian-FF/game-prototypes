@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.12.3 on the branch (0.12.2 merged, this follow-up not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.13.0 on the branch (0.12.3 merged, this follow-up not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.13.0: touch HUD v2 (squad chips, anchored target bubble, icon rail, closer start zoom), Home button shown only when the HQ is off screen (H key on desktop, auto-centre on teleport), pinch zoom anchored on the fingers' midpoint, toasts limited to two on touch.
 - 0.12.3: Tech Centre makes the teleport cooldown run faster (x2 with one, x3 with two), bots skip already scouted or targeted nodes and HQs, whole-troop refills, phone rendering optimisations (label re-render only on change, off-screen culling; world draw about 7x cheaper in a software-GL headless test).
 - 0.12.2: compact touch HUD (slim foldable squad list, small minimap, top-bar Scouts and Logs chips, two-column orders bar).
 - Follow-up: fullscreen plus landscape lock on first tap or click (not iOS); tapping a selected squad card focuses the camera on it.
@@ -35,7 +36,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 - Fullscreen and landscape lock could not be exercised in headless Chromium; needs a real Android phone and desktop test.
 - iOS gets no fullscreen or lock and no rotate hint, so portrait play there is cramped.
-- Compact HUD checked only in emulated 844 x 390 landscape; tiny phones and tablets unchecked. The Scouts and Logs panels were not re-checked in the compact layout.
+- Touch HUD v2 checked only in emulated 844 x 390 landscape; real phones, tiny phones and tablets unchecked. The Scouts and Logs panels and the menu popup were not re-checked visually. The default touch zoom (1.7) is a first guess to tune.
+- Pinch anchoring is exact away from the map edge; the camera centre is clamped to the map, so near an edge the anchor can slide.
 - Touch was verified with Playwright touch emulation only, never on a real device.
 - Portal Nexus causes heavy early HQ brawls; bot HQ aggression numbers are first guesses.
 - Old stored rooms will not replay under the new rules.

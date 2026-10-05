@@ -11,7 +11,10 @@
     "zoomMax": 2.4,
     "zoomStep": 1.12,
     "startZoom": 0.85,
-    "focusZoom": 1.4
+    "focusZoom": 1.4,
+    "focusZoomTouch": 1.9,
+    "startZoomTouch": 1.7,
+    "labelDetailZoom": 0.7
   },
   "dpr": {
     "max": 2
@@ -38,6 +41,7 @@
   },
   "hud": {
     "toastSeconds": 4.5,
+    "toastTouchTrimSeconds": 2,
     "logsMax": 30,
     "minimapWidth": 210,
     "minimapWidthTouch": 120,

@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
-import { BaseScene, bufferScale, isTouch, logicalSize } from './base';
+import { BaseScene, bufferScale, isTouch, logicalSize, safeInsets } from './base';
 import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
@@ -56,6 +56,7 @@ export class GameScene extends BaseScene {
   private selectedSquad: string | null = null;
   /** Touch layout: the squad list can be folded away to leave the map clear. */
   private squadsOpen = true;
+  private menuOpen = false;
   private target: Target | null = null;
   private panel: Panel = 'none';
   private lastFrame = 0;
@@ -120,6 +121,7 @@ export class GameScene extends BaseScene {
     const c = hq ? this.iso.p(hq.pos.x, hq.pos.y) : { x: this.iso.pxW / 2, y: this.iso.pxH / 2 };
     this.camX = c.x;
     this.camY = c.y;
+    this.zoom = this.compact() ? clientTune.camera.startZoomTouch : clientTune.camera.startZoom;
     this.ready = true;
   }
 
@@ -235,21 +237,53 @@ export class GameScene extends BaseScene {
     const p = this.iso.p(pos.x, pos.y);
     this.camX = p.x;
     this.camY = p.y;
-    this.zoom = Math.max(this.zoom, clientTune.camera.focusZoom);
+    this.zoom = Math.max(this.zoom, this.focusZoom());
   }
 
   private zoomAt(steps: number, px: number, py: number): void {
     this.zoomBy(Math.pow(clientTune.camera.zoomStep, steps), px, py);
   }
 
-  private zoomBy(factor: number, px: number, py: number): void {
+  /**
+   * Scale the view about a screen point. The map point under (px, py) ends up under (nx, ny), which is how a pinch
+   * both zooms and pans: the fingers' midpoint stays glued to the same bit of map. Worked from the camera state
+   * itself, not from the scene's last drawn position, because a pinch delivers several events per frame.
+   */
+  private zoomBy(factor: number, px: number, py: number, nx = px, ny = py): void {
     const { w, h } = logicalSize();
     const x = px < 0 ? w / 2 : px;
     const y = py < 0 ? h / 2 : py;
-    const before = this.screenToMap(x, y);
+    const tx = nx < 0 ? w / 2 : nx;
+    const ty = ny < 0 ? h / 2 : ny;
+    const mx = this.camX + (x - w / 2) / this.zoom;
+    const my = this.camY + (y - h / 2) / this.zoom;
     this.zoom = Phaser.Math.Clamp(this.zoom * factor, this.minZoom(), clientTune.camera.zoomMax);
-    this.camX = before.x - (x - w / 2) / this.zoom;
-    this.camY = before.y - (y - h / 2) / this.zoom;
+    this.camX = mx - (tx - w / 2) / this.zoom;
+    this.camY = my - (ty - h / 2) / this.zoom;
+  }
+
+  /** Is the player's own HQ inside the visible part of the map? */
+  private hqInView(view: WireView): boolean {
+    const hq = view.hqs.find((x) => x.id === session.info?.hqId);
+    if (!hq) return true;
+    const { w, h } = logicalSize();
+    const p = this.iso.p(hq.pos.x, hq.pos.y);
+    return Math.abs(p.x - this.camX) <= w / 2 / this.zoom && Math.abs(p.y - this.camY) <= h / 2 / this.zoom;
+  }
+
+  /** Centre the camera on the player's own HQ, zooming in to at least the focus level. */
+  private goHome(view: WireView): void {
+    const hq = view.hqs.find((x) => x.id === session.info?.hqId);
+    if (!hq) return;
+    const p = this.iso.p(hq.pos.x, hq.pos.y);
+    this.camX = p.x;
+    this.camY = p.y;
+    this.zoom = Math.max(this.zoom, this.focusZoom());
+  }
+
+  /** Zoom used when the camera flies to something: a touch screen needs a closer view to read it. */
+  private focusZoom(): number {
+    return this.compact() ? clientTune.camera.focusZoomTouch : clientTune.camera.focusZoom;
   }
 
   // ----------------------------------------------------------------- intents
@@ -269,7 +303,10 @@ export class GameScene extends BaseScene {
           if (!this.ui.covers(intents.pointer.x, intents.pointer.y)) this.zoomAt(e.steps, e.x, e.y);
           break;
         case 'pinch':
-          this.zoomBy(e.factor, e.x, e.y);
+          this.zoomBy(e.factor, e.px, e.py, e.x, e.y);
+          break;
+        case 'home':
+          this.goHome(view);
           break;
         case 'primary':
           if (!this.ui.click(e.x, e.y)) this.target = this.pick(e.x, e.y, view);
@@ -421,6 +458,8 @@ export class GameScene extends BaseScene {
           break;
         case 'teleportFx':
           this.fx.teleport(e.from, e.to, now, e.own ? COLORS.mine : COLORS.enemy);
+          // The camera follows your own HQ when it moves.
+          if (e.hqId === session.info?.hqId) this.goHome(view);
           break;
         case 'missileLaunched':
           this.missiles.push({ from: e.from, to: e.to, startMs: e.startMs, arriveMs: e.arriveMs, own: e.own });
@@ -543,6 +582,7 @@ export class GameScene extends BaseScene {
     };
 
     const selNode = this.target?.kind === 'node' ? this.target.id : null;
+    const detail = this.zoom >= clientTune.camera.labelDetailZoom;
     const selHq = this.target?.kind === 'hq' ? this.target.id : null;
     const hw = clientTune.iso.artHalfWidth;
     const US = clientTune.iso.unitScale;
@@ -576,10 +616,13 @@ export class GameScene extends BaseScene {
         }
         if (locked) {
           drawLock(g, p.x, p.y - 34, 1);
-          this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
+          if (detail || selNode === n.id) this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
         }
-        if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + iso.tile / 2 + 16, '#ffe08a', 11);
-        else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + iso.tile / 2 + 16, '#9fd0ff', 10);
+        // Zoomed far out the timers are unreadable, so they only show up close or on the selected node.
+        if (detail || selNode === n.id) {
+          if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + iso.tile / 2 + 16, '#ffe08a', 11);
+          else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + iso.tile / 2 + 16, '#9fd0ff', 10);
+        }
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
@@ -780,7 +823,7 @@ export class GameScene extends BaseScene {
 
     // ---- scoreboard
     const compact = this.compact();
-    const barH = compact ? 38 : 34;
+    const barH = compact ? 30 : 34;
     ui.rect(0, 0, w, barH, 0x000000, 0.55);
     const remain = this.tune.match.durationSeconds * 1000 - simMs;
     const mineP = view.points[mine];
@@ -789,32 +832,26 @@ export class GameScene extends BaseScene {
     ui.text(fmtTime(remain), w / 2, 7, { size: 17, bold: true, align: 'center' });
     ui.text(`${fmtInt(theirP)}  ENEMY`, w / 2 + 90, 7, { size: 17, bold: true, color: cssColor(COLORS.enemy) });
     this.drawVersion();
-    // Leave (anyone) or end the room (host), with a confirm step.
+    // Leave (anyone) or end the room (host), with a confirm step. On touch it lives in the menu button's popup.
     const endLabel = session.isHost ? 'End room' : 'Leave';
-    if (!this.confirmEnd) {
-      ui.button(compact ? 78 : 84, compact ? 4 : 5, compact ? 66 : 74, compact ? 30 : 24, endLabel, { onClick: () => (this.confirmEnd = true), size: 11 });
-    } else {
-      ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', 84, 10, { size: 12, color: COLORS.warn });
-      ui.button(214, 5, 44, 24, 'Yes', {
-        onClick: () => {
-          session.finish();
-          this.go('Menu');
-        },
-        size: 11,
-        accent: COLORS.enemy,
-      });
-      ui.button(262, 5, 44, 24, 'No', { onClick: () => (this.confirmEnd = false), size: 11 });
+    if (!compact) {
+      if (!this.confirmEnd) {
+        ui.button(84, 5, 74, 24, endLabel, { onClick: () => (this.confirmEnd = true), size: 11 });
+      } else {
+        ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', 84, 10, { size: 12, color: COLORS.warn });
+        ui.button(214, 5, 44, 24, 'Yes', {
+          onClick: () => {
+            session.finish();
+            this.go('Menu');
+          },
+          size: 11,
+          accent: COLORS.enemy,
+        });
+        ui.button(262, 5, 44, 24, 'No', { onClick: () => (this.confirmEnd = false), size: 11 });
+      }
     }
     // Square buttons on the left edge, middle of the screen.
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
-    if (compact && !this.confirmEnd) {
-      const chip = (x: number, w0: number, label: string, count: number, which: Panel) => {
-        const on = this.panel === which;
-        ui.button(x, 4, w0, 30, `${label} ${count}`, { onClick: () => (this.panel = on ? 'none' : which), active: on, size: 11 });
-      };
-      chip(148, 76, 'Scouts', activeReports, 'scouts');
-      chip(228, 66, 'Logs', view.combatLogs.length, 'logs');
-    }
     const sq = (y: number, label: string, count: number, which: Panel) => {
       const on = this.panel === which;
       ui.rect(8, y, 56, 56, on ? COLORS.mine : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 6);
@@ -834,7 +871,9 @@ export class GameScene extends BaseScene {
     // ---- toasts
     const nowWall = Date.now();
     session.toasts = session.toasts.filter((t) => t.until > nowWall);
-    session.toasts.forEach((t, i) => {
+    // On a phone only the two newest show, and for a shorter time: the map is the point.
+    const shownToasts = compact ? session.toasts.filter((t) => t.until - clientTune.hud.toastTouchTrimSeconds * 1000 > nowWall).slice(-2) : session.toasts;
+    shownToasts.forEach((t, i) => {
       const col = t.kind === 'good' ? COLORS.good : t.kind === 'bad' ? COLORS.bad : COLORS.text;
       const tw = Math.max(200, t.text.length * 7.2 + 24);
       ui.rect(w / 2 - tw / 2, barH + 8 + i * 28, tw, 24, 0x000000, 0.7, undefined, 5);
@@ -844,6 +883,7 @@ export class GameScene extends BaseScene {
 
     this.drawSquadPanel(view, simMs, h);
     this.drawMinimap(view, w, h);
+    this.drawRail(view, simMs, w, h);
     if (this.panel === 'logs') this.drawLogs(view, simMs, h);
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
     this.drawTargetPanel(view, simMs, w, h);
@@ -929,63 +969,81 @@ export class GameScene extends BaseScene {
     return 'Marching';
   }
 
-  /** Touch layout of the squad list: one slim row per squad, and the whole list folds to a single header. */
-  private drawSquadPanelCompact(view: WireView, simMs: number, h: number): void {
+  /** Touch layout of the squads: a column of chips on the left edge, a status pill above, a popover for the selected one. */
+  private drawSquadChips(view: WireView, simMs: number, h: number): void {
     const ui = this.ui;
     const info = session.info!;
+    const ins = safeInsets();
     const squads = view.squads.filter((s) => s.owner === info.playerId);
     const hq = view.hqs.find((x) => x.id === info.hqId);
-    const pw = 270;
-    const rowH = 40;
-    const head = 32;
-    const px = 8;
+    const left = 8 + ins.l;
+    const chip = 48;
+    const gap = 4;
     const open = this.squadsOpen;
-    const ph = head + (open ? squads.length * rowH + 2 : 0);
-    const py = h - ph - 8;
+    const listH = open ? squads.length * (chip + gap) : 0;
+    const bottom = h - 8 - ins.b;
+    const listTop = bottom - listH;
+    const pillW = 172;
+    const pillH = 36;
+    const pillY = listTop - pillH - 4;
 
-    const inSquads = squads.reduce((a, q) => a + q.troops, 0);
-    ui.panel(px, py - 26, pw, 22, 0.92);
-    ui.text(`Troops ${fmtInt(inSquads)}`, px + 8, py - 23, { size: 11, bold: true });
-    if (hq) ui.text(`Reserve ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, px + pw - 8, py - 23, { size: 11, align: 'right', color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
-
-    ui.panel(px, py, pw, ph);
-    ui.region(px, py, pw, head, () => (this.squadsOpen = !this.squadsOpen));
+    ui.panel(left, pillY, pillW, pillH, 0.92);
+    ui.region(left, pillY, pillW, pillH, () => (this.squadsOpen = !this.squadsOpen));
     if (hq) {
       const ready = hq.nextTeleportAtMs <= simMs;
-      ui.text(`HQ ${hq.hp}/${hq.maxHp}`, px + 8, py + 9, { size: 12, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
-      ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, px + 84, py + 10, { size: 11, color: ready ? COLORS.good : COLORS.dim });
+      ui.text(`HQ ${hq.hp}/${hq.maxHp}`, left + 8, pillY + 4, { size: 11, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
+      ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, left + 70, pillY + 4, { size: 11, color: ready ? COLORS.good : COLORS.dim });
+      ui.text(`Reserve ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, left + 8, pillY + 19, { size: 10, color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
     }
-    ui.text(open ? 'Hide' : `Squads ${squads.length}`, px + pw - 8, py + 10, { size: 11, bold: true, align: 'right', color: '#8fd0ff' });
+    ui.text(open ? 'Hide' : `Squads ${squads.length}`, left + pillW - 8, pillY + 19, { size: 10, bold: true, align: 'right', color: '#8fd0ff' });
     if (!open) return;
 
+    const sel = squads.find((q) => q.id === this.selectedSquad);
+    // With a target open and no squad picked, the squads at HQ pulse to say "pick one".
+    const pulse = this.target !== null && !(sel && sel.state === 'hq') && Math.sin(this.time.now / 160) > 0;
     squads.forEach((s, i) => {
-      const y = py + head + i * rowH;
-      const sel = this.selectedSquad === s.id;
-      ui.rect(px + 4, y, pw - 8, rowH - 4, sel ? 0x1f3a52 : 0x161c25, 1, sel ? COLORS.self : COLORS.panelEdge, 5);
-      ui.region(px + 4, y, pw - 8, rowH - 4, () => {
-        if (sel) this.focusSquad(s, view, simMs);
+      const y = listTop + i * (chip + gap);
+      const on = this.selectedSquad === s.id;
+      const edge = on ? COLORS.self : pulse && s.state === 'hq' ? 0xffd54a : COLORS.panelEdge;
+      ui.rect(left, y, chip, chip, on ? 0x1f3a52 : 0x161c25, 1, edge, 6);
+      ui.region(left, y, chip, chip, () => {
+        // First tap selects; tapping the selected squad again flies the camera to where it is now.
+        if (on) this.focusSquad(s, view, simMs);
         else this.selectedSquad = s.id;
       });
-      drawUnit(ui.gfx(), s.type, px + 26, y + 28, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false, scale: 0.55 });
-      const w1 = ui.text(SQUAD_LABEL[s.type], px + 48, y + 3, { size: 12, bold: true });
-      ui.text(fmtPower(s.power), px + 48 + w1 + 6, y + 3, { size: 12, bold: true, color: '#ffd54a' });
+      drawUnit(ui.gfx(), s.type, left + chip / 2, y + 26, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false, scale: 0.6 });
+      const dot = s.state === 'hq' ? 0x5dff8a : s.state === 'march' ? 0xffd54a : 0x8fd0ff;
+      ui.gfx().fillStyle(dot, 1).fillCircle(left + chip - 7, y + 7, 3);
+      ui.text(fmtPower(s.power), left + chip / 2, y + 26, { size: 10, bold: true, align: 'center', color: '#ffd54a' });
+      ui.bar(left + 5, y + chip - 8, chip - 10, 4, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
+    });
+
+    // Popover for the selected squad: what it is doing and its one button.
+    const si = squads.findIndex((q) => q.id === this.selectedSquad);
+    if (si >= 0) {
+      const s = squads[si];
+      const y = listTop + si * (chip + gap);
+      const px = left + chip + 6;
+      const pw = 236;
+      ui.panel(px, y, pw, chip, 0.95);
+      ui.text(`${SQUAD_LABEL[s.type]}  ${fmtPower(s.power)}`, px + 8, y + 5, { size: 12, bold: true });
+      ui.text(`${Math.round(s.troops)}/${s.maxTroops}`, px + 8, y + 21, { size: 10, color: COLORS.dim });
       const status = this.squadStatus(s, view);
-      ui.text(status.length > 20 ? status.slice(0, 19) + '...' : status, px + 48, y + 19, { size: 10, color: COLORS.dim });
-      ui.bar(px + 48, y + 31, 100, 3, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
+      ui.text(status.length > 22 ? status.slice(0, 21) + '...' : status, px + 8, y + 33, { size: 10, color: COLORS.dim });
       if (s.state === 'hq') {
-        ui.button(px + pw - 92, y + 3, 84, 30, s.defend ? 'Defend ON' : 'Defend OFF', {
+        ui.button(px + pw - 92, y + 9, 84, 30, s.defend ? 'Defend ON' : 'Defend OFF', {
           onClick: () => session.sendCommand({ type: 'setDefend', squadId: s.id, defend: !s.defend }),
           active: s.defend,
           size: 11,
         });
       } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
-        ui.button(px + pw - 92, y + 3, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
+        ui.button(px + pw - 92, y + 9, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.enemy });
       }
-    });
+    }
   }
 
   private drawSquadPanel(view: WireView, simMs: number, h: number): void {
-    if (this.compact()) return this.drawSquadPanelCompact(view, simMs, h);
+    if (this.compact()) return this.drawSquadChips(view, simMs, h);
     const ui = this.ui;
     const info = session.info!;
     const squads = view.squads.filter((s) => s.owner === info.playerId);
@@ -1133,21 +1191,20 @@ export class GameScene extends BaseScene {
     const d = this.targetData(view, simMs);
     if (!d) return;
     const ui = this.ui;
-    const compact = this.compact();
-    const pw = compact ? 250 : 340;
-    const gap = compact ? 6 : 8;
-    const ow = compact ? 300 : 290;
+    if (this.compact()) return this.drawBubble(d, view, simMs, w, h);
+    const pw = 340;
+    const gap = 8;
+    const ow = 290;
     const total = pw + gap + ow;
     // Centre the pair, but slide it clear of the squad panel on the left when the window is narrow.
-    const squadRight = compact ? 286 : 560;
+    const squadRight = 560;
     const px = Math.round(Math.max((w - total) / 2, Math.min(squadRight, w - total - 8)));
-    const bottom = compact ? h - 8 : h - 34;
+    const bottom = h - 34;
 
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.wrap(text, compact ? 36 : 50)) lines.push({ text: l, color });
-    if (compact && lines.length > 5) lines.length = 5;
+    for (const [text, color] of d.body) for (const l of this.wrap(text, 50)) lines.push({ text: l, color });
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
-    const shown = defenders.slice(0, compact ? 3 : 6);
+    const shown = defenders.slice(0, 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
     // Both panels share one height so the pair reads as a single, aligned group.
     const ph = Math.max(40 + lines.length * 16 + reportH + 8, this.orderHeight(d));
@@ -1176,14 +1233,14 @@ export class GameScene extends BaseScene {
 
   /** Natural height of the orders panel for the current target. */
   private orderHeight(d: NonNullable<ReturnType<GameScene['targetData']>>): number {
-    const pitch = (this.compact() ? 32 : 28) + 4;
+    const pitch = 32;
     if (!d.attackable || d.portal || d.cache) return 40 + pitch + 6;
     const rows = d.atHq.length + d.here.length + (d.allyHq ? 0 : 1) + (d.canTeleport ? 1 : 0) + (d.atHq.length === 0 ? 1 : 0);
     return 40 + Math.ceil(rows / this.orderColumns()) * pitch + 6;
   }
 
   private drawOrderPanel(d: NonNullable<ReturnType<GameScene['targetData']>>, ox: number, ow: number, bottom: number, fixedH: number): void {
-    const bh = this.compact() ? 32 : 28;
+    const bh = 28;
     const pitch = bh + 4;
     const ui = this.ui;
     const t = d.t;
@@ -1276,7 +1333,217 @@ export class GameScene extends BaseScene {
   }
 
   private orderColumns(): number {
-    return this.compact() ? 2 : 1;
+    return 1;
+  }
+
+  /**
+   * Touch layout of the selected target: a bubble anchored on it with a few lines of info and its actions. It only
+   * exists while something is selected, and follows the target as the camera moves.
+   */
+  private drawBubble(d: NonNullable<ReturnType<GameScene['targetData']>>, view: WireView, simMs: number, w: number, h: number): void {
+    const ui = this.ui;
+    const info = session.info!;
+    const ins = safeInsets();
+    const t = d.t;
+    let pos: Vec | undefined;
+    if (t.kind === 'cache') pos = view.caches.find((c) => c.id === t.id)?.pos;
+    else if (t.kind === 'node') pos = view.nodes.find((n) => n.id === t.id)?.pos;
+    else pos = (view.hqs.find((x) => x.id === t.id) ?? view.enemyHqs.find((x) => x.id === t.id))?.pos;
+    if (!pos) return;
+    const ip = this.iso.p(pos.x, pos.y);
+    const ax = this.world.x + ip.x * this.zoom;
+    const ay = this.world.y + ip.y * this.zoom;
+
+    type Act = { label: string; onClick?: () => void; enabled?: boolean; accent?: number; active?: boolean; wide?: boolean };
+    const acts: Act[] = [];
+    const sc = d.scoutHome;
+    const ownNode = d.node?.owner === this.mine || d.allyHq;
+    const sel = view.squads.find((q) => q.id === this.selectedSquad && q.owner === info.playerId);
+    const pick = sel && sel.state === 'hq' && sel.troops > 0 ? sel : undefined;
+    if (d.attackable) {
+      if (d.portal) {
+        const nid = d.node!.id;
+        acts.push({ label: d.canTeleport ? 'Teleport HQ here' : 'HQ cannot teleport yet', onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), enabled: d.canTeleport, accent: COLORS.gold, wide: true });
+      } else if (d.cache) {
+        acts.push({ label: sc ? 'Send scout to collect' : 'No scout at home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xffd54a, wide: true });
+      } else {
+        if (pick) {
+          acts.push({ label: `${ownNode ? 'Garrison' : 'Attack'} ${SQUAD_LABEL[pick.type]} ${fmtPower(pick.power)}`, onClick: () => this.sendSquad(pick.id, t), active: true, wide: true });
+        } else {
+          acts.push({ label: d.atHq.length ? 'Pick a squad first' : 'No squad at HQ', enabled: false, wide: true });
+        }
+        for (const s of d.here) acts.push({ label: `Return ${SQUAD_LABEL[s.type]} ${fmtPower(s.power)}`, onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), accent: COLORS.enemy });
+        if (!d.allyHq) acts.push({ label: sc ? 'Send scout' : 'No scout home', onClick: () => sc && session.sendCommand({ type: 'scout', scoutIndex: sc.index, target: this.targetBody(t) }), enabled: !!sc, accent: 0xbfe9ff });
+        if (d.canTeleport && d.node) {
+          const nid = d.node.id;
+          acts.push({ label: 'Teleport HQ here', onClick: () => session.sendCommand({ type: 'teleport', nodeId: nid }), accent: COLORS.gold });
+        }
+      }
+    }
+
+    // Text: a few wrapped lines, then a one-line scout summary.
+    const lines: { text: string; color: string }[] = [];
+    for (const [text, color] of d.body) for (const l of this.wrap(text, 38)) lines.push({ text: l, color });
+    if (lines.length > 4) {
+      lines.length = 4;
+      lines[3].text = lines[3].text.slice(0, 35) + '...';
+    }
+    const defenders = d.report && !d.report.empty ? d.report.defenders : [];
+    const repLines: { text: string; color: string }[] = [];
+    if (d.report) {
+      repLines.push({ text: `Scouted ${Math.round((simMs - d.report.takenAtMs) / 1000)}s ago, ${defenders.length} squads`, color: COLORS.warn });
+      for (const q of defenders.slice(0, 2)) repLines.push({ text: `${SQUAD_LABEL[q.type]} ${fmtPower(q.effectivePower)} ${q.commander}`, color: COLORS.text });
+    }
+
+    const pw = 256;
+    const inner = pw - 20;
+    const cw = (inner - 6) / 2;
+    let rows = 0;
+    let col = 0;
+    const slots = acts.map((a) => {
+      if (a.wide) {
+        if (col !== 0) {
+          rows++;
+          col = 0;
+        }
+        const r = { x: 0, row: rows, w: inner };
+        rows++;
+        return r;
+      }
+      const r = { x: col * (cw + 6), row: rows, w: cw };
+      col++;
+      if (col === 2) {
+        col = 0;
+        rows++;
+      }
+      return r;
+    });
+    if (col !== 0) rows++;
+    const ph = 30 + lines.length * 14 + repLines.length * 14 + (acts.length ? 6 + rows * 36 : 0) + 6;
+
+    const leftBound = ins.l + 64;
+    const rightBound = w - ins.r - 60;
+    const bx = Math.round(Math.max(leftBound, Math.min(rightBound - pw, ax - pw / 2)));
+    const barH = 30;
+    let by = ay - 28 * this.zoom - ph - 10;
+    let above = true;
+    if (by < barH + 4) {
+      by = ay + 20 * this.zoom + 12;
+      above = false;
+    }
+    by = Math.round(Math.max(barH + 4, Math.min(h - ph - 6 - ins.b, by)));
+
+    const g = ui.gfx();
+    const cx = Math.max(bx + 18, Math.min(bx + pw - 18, ax));
+    ui.panel(bx, by, pw, ph, 0.96);
+    if (above) g.fillStyle(COLORS.panelEdge, 1).fillTriangle(cx - 8, by + ph - 1, cx + 8, by + ph - 1, cx, by + ph + 8);
+    else g.fillStyle(COLORS.panelEdge, 1).fillTriangle(cx - 8, by + 1, cx + 8, by + 1, cx, by - 8);
+    ui.text(d.title, bx + 10, by + 7, { size: 13, bold: true });
+    ui.button(bx + pw - 32, by + 4, 26, 24, 'x', { onClick: () => (this.target = null), size: 12 });
+    let y = by + 30;
+    for (const l of lines) {
+      ui.text(l.text, bx + 10, y, { size: 11, color: l.color });
+      y += 14;
+    }
+    for (const l of repLines) {
+      ui.text(l.text.length > 40 ? l.text.slice(0, 39) + '...' : l.text, bx + 10, y, { size: 10, color: l.color });
+      y += 14;
+    }
+    if (acts.length) {
+      y += 6;
+      acts.forEach((a, i) => {
+        const sl = slots[i];
+        ui.button(bx + 10 + sl.x, y + sl.row * 36, sl.w, 32, a.label, { onClick: a.onClick, enabled: a.enabled, accent: a.accent, active: a.active, size: 11 });
+      });
+    }
+  }
+
+  // ------------------------------------------------------------- rail and icons
+
+  private railIcon(kind: 'menu' | 'scouts' | 'logs' | 'home', cx: number, cy: number, color: number): void {
+    const g = this.ui.gfx();
+    g.lineStyle(OUTLINE, color, 1);
+    if (kind === 'menu') {
+      for (const dy of [-7, 0, 7]) g.lineBetween(cx - 9, cy + dy, cx + 9, cy + dy);
+    } else if (kind === 'scouts') {
+      // A little aircraft seen from above.
+      g.strokeTriangle(cx, cy - 11, cx - 10, cy + 9, cx + 10, cy + 9);
+      g.lineStyle(DETAIL, color, 1).lineBetween(cx, cy - 4, cx, cy + 9);
+    } else if (kind === 'logs') {
+      g.strokeRect(cx - 9, cy - 11, 18, 22);
+      g.lineStyle(DETAIL, color, 1);
+      for (const dy of [-5, 0, 5]) g.lineBetween(cx - 5, cy + dy, cx + 5, cy + dy);
+    } else {
+      // A house: roof and walls.
+      g.beginPath();
+      g.moveTo(cx - 11, cy);
+      g.lineTo(cx, cy - 11);
+      g.lineTo(cx + 11, cy);
+      g.lineTo(cx + 8, cy);
+      g.lineTo(cx + 8, cy + 10);
+      g.lineTo(cx - 8, cy + 10);
+      g.lineTo(cx - 8, cy);
+      g.closePath();
+      g.strokePath();
+    }
+  }
+
+  private railButton(x: number, y: number, kind: 'menu' | 'scouts' | 'logs' | 'home', badge: number, onClick: () => void, on = false): void {
+    const ui = this.ui;
+    const size = 44;
+    ui.rect(x, y, size, size, on ? 0x1f3a52 : 0x1a212b, 1, on ? COLORS.mine : COLORS.panelEdge, 8);
+    this.railIcon(kind, x + size / 2, y + size / 2, on ? COLORS.mine : 0xe6edf5);
+    ui.region(x, y, size, size, onClick);
+    if (badge > 0) {
+      const label = badge > 99 ? '99+' : String(badge);
+      const bw = Math.max(16, label.length * 6 + 8);
+      ui.rect(x + size - bw + 4, y - 4, bw, 15, 0xd23b3b, 1, undefined, 7);
+      ui.text(label, x + size - bw / 2 + 4, y - 3, { size: 10, bold: true, align: 'center', color: '#ffffff' });
+    }
+  }
+
+  /** Icon buttons on the right edge (touch) and the Home button, which only exists while your HQ is off screen. */
+  private drawRail(view: WireView, simMs: number, w: number, h: number): void {
+    const ui = this.ui;
+    const compact = this.compact();
+    const ins = safeInsets();
+    const bx = w - ins.r - 52;
+    if (compact) {
+      let y = 30 + 6 + ins.t;
+      this.railButton(bx, y, 'menu', 0, () => (this.menuOpen = !this.menuOpen), this.menuOpen);
+      y += 50;
+      const reports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
+      this.railButton(bx, y, 'scouts', reports, () => (this.panel = this.panel === 'scouts' ? 'none' : 'scouts'), this.panel === 'scouts');
+      y += 50;
+      this.railButton(bx, y, 'logs', view.combatLogs.length, () => (this.panel = this.panel === 'logs' ? 'none' : 'logs'), this.panel === 'logs');
+      if (this.menuOpen) {
+        const mw = 156;
+        const mx = bx - mw - 6;
+        const my = 30 + 6 + ins.t;
+        ui.panel(mx, my, mw, this.confirmEnd ? 78 : 52, 0.96);
+        const endLabel = session.isHost ? 'End room' : 'Leave';
+        if (!this.confirmEnd) {
+          ui.button(mx + 8, my + 8, mw - 16, 36, endLabel, { onClick: () => (this.confirmEnd = true), size: 12, accent: COLORS.enemy });
+        } else {
+          ui.text(session.isHost ? 'End for everyone?' : 'Leave the match?', mx + 8, my + 6, { size: 11, color: COLORS.warn });
+          ui.button(mx + 8, my + 28, 64, 40, 'Yes', {
+            onClick: () => {
+              session.finish();
+              this.go('Menu');
+            },
+            size: 12,
+            accent: COLORS.enemy,
+          });
+          ui.button(mx + 80, my + 28, 68, 40, 'No', { onClick: () => ((this.confirmEnd = false), (this.menuOpen = false)), size: 12 });
+        }
+      }
+    }
+    if (!this.hqInView(view)) {
+      const hx = compact ? bx : this.mapRect.x + this.mapRect.w - 44;
+      const hy = compact ? this.mapRect.y - 8 - 44 : this.mapRect.y - 56;
+      this.railButton(hx, hy, 'home', 0, () => this.goHome(view));
+      if (!compact) ui.text('H', hx + 40, hy + 30, { size: 10, color: COLORS.dim, align: 'right' });
+    }
   }
 
   /** Draw one line, truncating rather than overflowing the panel. */
@@ -1379,8 +1646,9 @@ export class GameScene extends BaseScene {
     const ui = this.ui;
     const mw = this.compact() ? clientTune.hud.minimapWidthTouch : clientTune.hud.minimapWidth;
     const mh = Math.round((mw * this.iso.rows) / this.iso.cols);
-    const mx = w - mw - 12;
-    const my = h - mh - (this.compact() ? 12 : 34);
+    const ins = safeInsets();
+    const mx = w - mw - 12 - ins.r;
+    const my = h - mh - (this.compact() ? 12 + ins.b : 34);
     this.mapRect = { x: mx, y: my, w: mw, h: mh };
     ui.panel(mx - 4, my - 4, mw + 8, mh + 8, 0.92);
     ui.rect(mx, my, mw, mh, 0x1a1210, 1);

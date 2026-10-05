@@ -48,6 +48,25 @@ export function logicalSize(): { w: number; h: number } {
   return { w: window.innerWidth / UI_SCALE, h: window.innerHeight / UI_SCALE };
 }
 
+let probe: HTMLDivElement | null = null;
+
+/** Notch and rounded-corner insets in logical pixels (zero on devices without them). */
+export function safeInsets(): { l: number; r: number; t: number; b: number } {
+  if (!intents.touch) return { l: 0, r: 0, t: 0, b: 0 };
+  try {
+    if (!probe) {
+      probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+      document.body.appendChild(probe);
+    }
+    const c = getComputedStyle(probe);
+    const px = (v: string) => (parseFloat(v) || 0) / UI_SCALE;
+    return { t: px(c.paddingTop), r: px(c.paddingRight), b: px(c.paddingBottom), l: px(c.paddingLeft) };
+  } catch {
+    return { l: 0, r: 0, t: 0, b: 0 };
+  }
+}
+
 /** Phone or tablet, by the pointer that has been used. */
 export function isTouch(): boolean {
   return intents.touch;
