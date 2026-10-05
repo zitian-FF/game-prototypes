@@ -4,6 +4,7 @@
 //   primary   select / press (a click)
 //   secondary give an order at the pointer (right click)
 //   pause     back out: close panels, clear the selection
+//   home      pan the camera to your own HQ
 // Plus text input for the lobby fields, which is a device stream rather than a game action.
 
 export type IntentEvent =
@@ -11,7 +12,9 @@ export type IntentEvent =
   | { type: 'secondary'; x: number; y: number }
   | { type: 'pause' }
   | { type: 'zoom'; steps: number; x: number; y: number }
-  | { type: 'pinch'; factor: number; x: number; y: number }
+  /** Two fingers: scale by factor about the midpoint, which also moved from (px, py) to (x, y). */
+  | { type: 'pinch'; factor: number; x: number; y: number; px: number; py: number }
+  | { type: 'home' }
   | { type: 'drag'; dx: number; dy: number; startX: number; startY: number }
   | { type: 'text'; char: string }
   | { type: 'backspace' }
@@ -39,6 +42,7 @@ export class Intents {
   private down: { x: number; y: number; lastX: number; lastY: number; moved: boolean; button: number; pressed: boolean; timer: number } | null = null;
   private fingers = new Map<number, { x: number; y: number }>();
   private pinchDist = 0;
+  private pinchMid = { x: 0, y: 0 };
   private canvas: HTMLElement | null = null;
 
   attach(canvas: HTMLElement): void {
@@ -89,6 +93,7 @@ export class Intents {
         // A second finger turns the gesture into a pinch: drop the tap and the long press.
         this.cancelDown();
         this.pinchDist = this.fingerSpread();
+        this.pinchMid = this.fingerMid();
         return;
       }
     }
@@ -109,6 +114,11 @@ export class Intents {
     this.queue.push({ type: 'secondary', x: d.x, y: d.y });
   }
 
+  private fingerMid(): { x: number; y: number } {
+    const [a, b] = [...this.fingers.values()];
+    return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : { x: 0, y: 0 };
+  }
+
   private fingerSpread(): number {
     const [a, b] = [...this.fingers.values()];
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
@@ -122,11 +132,12 @@ export class Intents {
       this.fingers.set(e.pointerId, p);
       if (this.fingers.size >= 2) {
         const spread = this.fingerSpread();
+        const mid = this.fingerMid();
         if (this.pinchDist > 0 && spread > 0) {
-          const [a, b] = [...this.fingers.values()];
-          this.queue.push({ type: 'pinch', factor: spread / this.pinchDist, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          this.queue.push({ type: 'pinch', factor: spread / this.pinchDist, x: mid.x, y: mid.y, px: this.pinchMid.x, py: this.pinchMid.y });
         }
         this.pinchDist = spread;
+        this.pinchMid = mid;
         return;
       }
     }
@@ -178,6 +189,10 @@ export class Intents {
       if (this.textMode && e.key.length === 1) {
         e.preventDefault();
         this.queue.push({ type: 'text', char: e.key });
+        return;
+      }
+      if ((e.key === 'h' || e.key === 'H' || e.key === 'Home') && !this.textMode) {
+        this.queue.push({ type: 'home' });
         return;
       }
       if (e.key === '+' || e.key === '=') this.queue.push({ type: 'zoom', steps: 1, x: -1, y: -1 });
