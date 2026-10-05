@@ -15,9 +15,9 @@ export function cellCenter(cell: Cell, tune: Tune): Vec {
   return { x: (cell.cx + 0.5) * s, y: (cell.cy + 0.5) * s };
 }
 
-/** Squad march speed in map units per second, from the cross-map target. */
+/** Base march speed in map units per second: the map's longer side in `march.edgeToEdgeSeconds`. */
 export function baseSpeed(map: MapDef, tune: Tune): number {
-  return Math.hypot(map.width, map.height) / tune.march.crossMapSeconds;
+  return Math.max(map.width, map.height) / tune.march.edgeToEdgeSeconds;
 }
 
 /**

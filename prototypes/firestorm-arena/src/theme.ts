@@ -8,6 +8,14 @@ export const COLORS = {
   ally: 0x7a9a86,
   enemyLine: 0xff4a4a,
   gold: 0xffd54a,
+  /** Interface accent (selection, active, primary buttons): deliberately not a team colour. */
+  accent: 0xb58cff,
+  /** Selected-state fill that goes with the accent. */
+  accentFill: 0x2a2145,
+  /** Destructive actions (leave, return): not the enemy orange. */
+  danger: 0xd6455d,
+  /** Pale neutral for secondary actions. */
+  soft: 0xdfe6ee,
   panel: 0x10141a,
   panelEdge: 0x2b3440,
   text: '#e8edf3',

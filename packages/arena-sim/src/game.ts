@@ -51,7 +51,8 @@ interface Queued {
 interface TeamBonus {
   attack: number;
   defense: number;
-  speed: number;
+  /** Seconds cut off the squads' edge-to-edge march time (Accelerators held, times tier). */
+  marchCutSeconds: number;
   /** Extra teleport-cooldown seconds drained per second: 1 means the cooldown runs twice as fast. */
   teleportRate: number;
 }
@@ -238,14 +239,14 @@ export class ArenaGame {
   }
 
   teamBonus(team: TeamId): TeamBonus {
-    const out: TeamBonus = { attack: 0, defense: 0, speed: 0, teleportRate: 0 };
+    const out: TeamBonus = { attack: 0, defense: 0, marchCutSeconds: 0, teleportRate: 0 };
     for (const n of this.nodes.values()) {
       if (n.owner !== team) continue;
       // A power node's strength is its base value times its tier.
       const k = this.tune.nodes[n.kind];
       out.attack += (k.attackPct ?? 0) * n.tier;
       out.defense += (k.defensePct ?? 0) * n.tier;
-      out.speed += (k.speedPct ?? 0) * n.tier;
+      out.marchCutSeconds += (k.marchEdgeSecondsCut ?? 0) * n.tier;
       out.teleportRate += (k.teleportCooldownRate ?? 0) * n.tier;
     }
     return out;
@@ -711,7 +712,10 @@ export class ArenaGame {
     defeated: boolean,
   ): void {
     const bonus = this.teamBonus(sq.team);
-    const speed = this.speed * (1 + bonus.speed) * (defeated ? this.tune.march.defeatedSpeedFactor : 1);
+    // Squads: edge-to-edge time is the base minus what held Accelerators cut (floored); scouts and missiles ignore it.
+    const m = this.tune.march;
+    const squadSpeed = (this.speed * m.edgeToEdgeSeconds) / Math.max(m.minEdgeToEdgeSeconds, m.edgeToEdgeSeconds - bonus.marchCutSeconds);
+    const speed = squadSpeed * (defeated ? m.defeatedSpeedFactor : 1);
     const arriveMs = this.nowMs + (dist(from, to) / speed) * 1000;
     const march: March = {
       from,

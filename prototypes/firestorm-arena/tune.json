@@ -47,7 +47,8 @@
     "maxRounds": 100000
   },
   "march": {
-    "crossMapSeconds": 329,
+    "edgeToEdgeSeconds": 150,
+    "minEdgeToEdgeSeconds": 30,
     "defeatedSpeedFactor": 0.5
   },
   "hq": {
@@ -58,7 +59,7 @@
   },
   "scout": {
     "perHq": 3,
-    "speedFactor": 3,
+    "speedFactor": 5,
     "revealSeconds": 60
   },
   "scoring": {
@@ -186,7 +187,7 @@
     },
     "speedBoost": {
       "visionRadiusCells": 6,
-      "speedPct": 0.1
+      "marchEdgeSecondsCut": 30
     },
     "teleportCooldown": {
       "visionRadiusCells": 6,

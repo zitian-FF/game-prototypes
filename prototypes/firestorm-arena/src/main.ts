@@ -5,6 +5,7 @@ import { LobbyScene } from './scenes/lobby';
 import { GameScene } from './scenes/game';
 import { session } from './net/session';
 import { intents } from './input/intents';
+import { clientTune } from './clientTune';
 import { installFullscreen } from './input/fullscreen';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 
@@ -60,5 +61,5 @@ mountDebugPanelIfRequested();
 
 // Handle for the Playwright check (debug builds only).
 if (new URLSearchParams(location.search).get('debug') === '1') {
-  Object.assign(window, { __game: game, __session: session });
+  Object.assign(window, { __game: game, __session: session, __clientTune: clientTune });
 }

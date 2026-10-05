@@ -16,6 +16,11 @@
     "startZoomTouch": 1.7,
     "labelDetailZoom": 0.7
   },
+  "perf": {
+    "staticUnitZoom": 0.6,
+    "staticUnitCount": 14,
+    "staticUnitHysteresis": 0.8
+  },
   "dpr": {
     "max": 2
   },

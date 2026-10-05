@@ -98,7 +98,7 @@ export class LobbyScene extends BaseScene {
       if (counting) {
         const left = Math.max(0, Math.ceil(((lobby.countdownEndsAtMs ?? 0) - session.serverNow()) / 1000));
         ui.text(`${lobby.minutes} minute match starts in ${left}`, cx, by, { size: 22, align: 'center', bold: true, color: COLORS.warn });
-        if (session.isHost) ui.button(cx - 90, by + 38, 180, 40, 'Cancel start', { onClick: () => session.send({ t: 'cancelStart' }), accent: COLORS.enemy });
+        if (session.isHost) ui.button(cx - 90, by + 38, 180, 40, 'Cancel start', { onClick: () => session.send({ t: 'cancelStart' }), accent: COLORS.danger });
       } else if (session.isHost) {
         ui.text('Match length', cx - 250, by - 34, { size: 12, color: COLORS.dim });
         [10, 15, 20, 30].forEach((m, i) =>

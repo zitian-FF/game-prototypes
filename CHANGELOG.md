@@ -3,6 +3,17 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: arena-sim 0.13.0, firestorm-net 0.13.0
+
+**What changed:** arena-sim's march speed is now defined by `march.edgeToEdgeSeconds` (the map's longer side) instead
+of the cross-map diagonal, with `march.minEdgeToEdgeSeconds` as a floor. The Accelerator no longer adds a percentage:
+`nodes.speedBoost.marchEdgeSecondsCut` takes that many seconds (times tier) off the squads' edge-to-edge time, so 150 s
+becomes 120 s with one and 90 s with two. Scouts and turret missiles stay at a fixed multiple (`scout.speedFactor`,
+`missileSpeedFactor`, both 5) of the unboosted base speed. Tune keys removed: `march.crossMapSeconds`,
+`nodes.speedBoost.speedPct`. firestorm-net is unchanged apart from the dependency. Only firestorm-arena uses either.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-04 — firestorm shared packages: arena-sim 0.12.0, firestorm-net 0.12.0
 
 **What changed:** arena-sim's Tech Centre now makes the teleport cooldown run faster instead of cutting it by a

@@ -178,7 +178,7 @@ All actions are coordinates, timers and unit references:
   node your team holds is refused if it is full or your commander already
   has a squad there or on the way.
 - **Scout:** each HQ owns 3 scouts. A scout is a fast, non-combat unit
-  sent to a node or HQ. It travels at **3x squad march speed**. On
+  sent to a node or HQ. It travels at **4.5x squad march speed (see revision)**. On
   arrival it reveals that target's defender info: for each defender,
   the **squad type**, its **power adjusted by troops remaining**
   (`power * troops / maxTroops`), and its **commander**. The
@@ -481,7 +481,7 @@ client.
 - Defeated squads return to HQ at 50% speed, they are not deleted.
 - HQ HP only restores when the HQ is defeated and teleported to the safe
   zone. After an HQ attack, the attacker returns to its HQ.
-- Scouts: 3 per HQ, 3x squad speed, non-combat, must return before reuse.
+- Scouts: 3 per HQ, 4.5x squad speed (see revision), non-combat, must return before reuse.
   Reveal type and troop-adjusted power for 60 seconds.
 - A defeated squad is not deleted: it returns to its HQ at 50% speed and
   refills from the reserve pool.
@@ -704,4 +704,34 @@ client.
   camera also centres on your HQ whenever it teleports.
 - Pinch zoom: the point under the midpoint of the two fingers stays under it while zooming, and moving the fingers
   also pans (computed from the camera state, since a pinch delivers several events per frame).
+- Home marker (supersedes the Home button wording above): while your HQ is off screen a round blue house button sits on
+  the screen edge in the direction of the HQ, with a tip pointing at it and the distance in cells under it. It slides
+  along the edge to stay clear of panels, the minimap and the rail, and tapping it (or H or Home) pans to the HQ.
+  Nothing is drawn while the HQ is in view.
+- Marching speed +80%: `march.crossMapSeconds` 329 to 183, so squads cover the map 1.8 times as fast. Scouts and
+  turret missiles are defined relative to the march speed, so they speed up by the same factor.
+- Teleport button: on an own node (or a Portal Nexus) the Teleport button is always shown and is greyed out with the
+  reason when it cannot be used ("Teleport in 0:42" on cooldown, "HQ is already here"), instead of disappearing.
+  Teleporting needs no scouting: a node only has to be held by your team.
+- Teleport on cooldown: on an own node the Teleport button is always there. When it is not ready it is greyed out and
+  reads "Teleport cooldown 0:42" (or "HQ is already here"). A tester's "cannot teleport until I scout" was the cooldown.
+- Interface colours: team colours (blue for your team, orange for the enemy) are only used for team things: the score,
+  unit, HQ and node art, the minimap, team names. Interface elements use their own palette: violet `COLORS.accent` for
+  selection, focus, active and primary buttons, crimson `COLORS.danger` for leave and return, gold for teleport,
+  pale grey for secondary actions, and green or amber text for status.
+- Static unit sprites: units are drawn as pre-rendered sprites (one texture per type and colour, no animation) instead of
+  live vector art when the camera is zoomed out below `perf.staticUnitZoom` or more than `perf.staticUnitCount` units are
+  on screen (with hysteresis), which is much cheaper on a phone. World labels are pooled by their text so they are not
+  re-rendered when others appear, and shrink in steps when zoomed in close.
+- Teleport glow: selecting a node your HQ can teleport onto right now (held by your team, or a Portal Nexus, and only
+  while the teleport is ready and the HQ is not already there) makes its eight slot cells glow and pulse in your team
+  colour; cells already taken by an HQ stay faint. On cooldown, or on an enemy or neutral node, there is no glow.
+- Scouts: no commander names are drawn on scouts any more, and they fly 50% faster (`scout.speedFactor` 3 to 4.5 times
+  the squad march speed, which was itself raised 80%).
+- Speeds (supersedes every earlier speed line): the base squad speed crosses the map edge to edge in 150 s
+  (`march.edgeToEdgeSeconds`, about 10.9 units or 0.27 cells per second). Each Accelerator held (times tier, all T1)
+  cuts 30 s off that for your squads (`nodes.speedBoost.marchEdgeSecondsCut`): 120 s with one, 90 s with two, never
+  below `march.minEdgeToEdgeSeconds` (30 s). Squads walking home after a defeat go at half their current speed.
+  Scouts and turret missiles fly at 5 times the unboosted base speed (about 54.7 units per second, 30 s edge to
+  edge); Accelerators do not affect them.
 - Where this section conflicts with older text above, this section wins.
