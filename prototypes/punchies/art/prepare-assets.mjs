@@ -19,12 +19,15 @@ const QUALITY = 90;
 // Mia's master is one image: ponytail on the left, head on the right. The tie
 // sits at the join. Cut just left of the head circle; the ponytail piece keeps
 // a little overlap (it is drawn under the head) so no gap opens when it sways.
-const MIA_CUT = 0.45;
-const MIA_OVERLAP = 0.02;
+const MIA_CUT = 0.43;
+const MIA_OVERLAP = 0.05;
 
 async function save(img, out, scale) {
-  const meta = await img.metadata();
-  await img
+  // Render any extract first: metadata() on a pending pipeline reports the
+  // input size, which would stretch a cropped piece.
+  const buf = await img.toBuffer();
+  const meta = await sharp(buf).metadata();
+  await sharp(buf)
     .resize({ width: Math.max(1, Math.round(meta.width * scale)), height: Math.max(1, Math.round(meta.height * scale)), kernel: 'lanczos3' })
     .webp({ quality: QUALITY, alphaQuality: 100 })
     .toFile(out);

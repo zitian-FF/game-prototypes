@@ -168,6 +168,7 @@ export interface PuppetArgs {
   flashColor: number;
   dodging: boolean;
   guarding: boolean;
+  limp?: boolean; // knocked out: slumped, no sweat or wobble
 }
 
 export class Puppet {
@@ -259,7 +260,7 @@ export class Puppet {
     const th = Math.atan2(fy, fx);
     const alpha = a.dodging ? 0.55 : 1;
     const P = (u: number, vv: number, dy = 0): Pt => ({ x: f.x + fx * u + lx * vv, y: f.y + fy * u + ly * vv + dy });
-    const slump = f.exhausted || f.stunTimer > 0;
+    const slump = !!a.limp || f.exhausted || f.stunTimer > 0;
     const hitT = f.lastBlow && f.framesSinceHit < 10 ? f.framesSinceHit / 10 : 1;
     const heavy = !!f.lastBlow && f.lastBlow.sweet && f.lastBlow.punch !== 'jab';
     const snap = hitT < 1 ? (heavy ? 5 : 3) * k * (1 - hitT) : 0;
