@@ -593,14 +593,17 @@ export class GameScene extends BaseScene {
   }
 
   /**
-   * With a node selected that your HQ can teleport onto (one your team holds, or a Portal Nexus), its eight slot cells
-   * glow in your team colour. Free slots pulse; cells already taken by an HQ stay faint.
+   * With a node selected that your HQ can teleport onto right now (one your team holds, or a Portal Nexus, with the
+   * teleport ready), its eight slot cells glow in your team colour. Free slots pulse; cells already taken by an HQ stay faint.
    */
   private drawTeleportGlow(g: Phaser.GameObjects.Graphics, view: WireView, now: number): void {
     const t = this.target;
     if (!t || t.kind !== 'node') return;
     const n = view.nodes.find((x) => x.id === t.id);
     if (!n || !((n.owner === this.mine && n.visible) || n.kind === 'portal')) return;
+    // Only while the teleport is ready, and not on the node the HQ already sits on.
+    const hq = view.hqs.find((x) => x.id === session.info?.hqId);
+    if (!hq || hq.nextTeleportAtMs > session.simNow() || (hq.location.kind === 'node' && hq.location.nodeId === n.id)) return;
     const iso = this.iso;
     const cell = this.tune.map.cellSize;
     const col = COLORS.mine;

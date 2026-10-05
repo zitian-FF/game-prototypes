@@ -723,8 +723,9 @@ client.
   live vector art when the camera is zoomed out below `perf.staticUnitZoom` or more than `perf.staticUnitCount` units are
   on screen (with hysteresis), which is much cheaper on a phone. World labels are pooled by their text so they are not
   re-rendered when others appear, and shrink in steps when zoomed in close.
-- Teleport glow: selecting a node your HQ can teleport onto (held by your team, or a Portal Nexus) makes its eight slot
-  cells glow and pulse in your team colour; cells already taken by an HQ stay faint.
+- Teleport glow: selecting a node your HQ can teleport onto right now (held by your team, or a Portal Nexus, and only
+  while the teleport is ready and the HQ is not already there) makes its eight slot cells glow and pulse in your team
+  colour; cells already taken by an HQ stay faint. On cooldown, or on an enemy or neutral node, there is no glow.
 - Scouts: no commander names are drawn on scouts any more, and they fly 50% faster (`scout.speedFactor` 3 to 4.5 times
   the squad march speed, which was itself raised 80%).
 - Where this section conflicts with older text above, this section wins.
