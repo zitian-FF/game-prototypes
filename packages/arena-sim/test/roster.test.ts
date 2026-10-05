@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Rng } from '../src/rng';
-import { powerBand, rollPlayers, squadCounts } from '../src/roster';
+import { cardTier, powerBand, rollPlayers, slotPercentile, slotPowerRange, squadCounts } from '../src/roster';
 import { test } from './harness';
 import { loadTune } from './helpers';
 
@@ -20,7 +20,8 @@ test('roster: squads follow the brief (4/3/2 split, overlapping bands, weak 3rd 
   const tune = loadTune();
   const bands = tune.roster.bands;
   for (let s = 0; s + 1 < bands.length; s++) assert.ok(bands[s + 1][0] <= bands[s][1], `band ${s + 1} overlaps band ${s + 2}`);
-  assert.ok(bands[0][1] < 20 && bands[1][1] < 20, 'squads 1 and 2 never reach the weakest ranks');
+  assert.deepEqual(bands, [[1, 12], [8, 20], [15, 20], [18, 20]], 'bands: squad 1 ranks 1 to 12, squad 2 8 to 20, squad 3 15 to 20, squad 4 18 to 20');
+  assert.ok(bands[0][1] < 20, 'squad 1 never reaches the weakest ranks');
   const types: Record<string, number> = { missile: 0, aircraft: 0, tank: 0 };
   for (let seed = 1; seed <= 100; seed++) {
     const specs = rollPlayers(new Rng(seed), tune, ids(40));
@@ -71,4 +72,22 @@ test('roster: duplicate power ranks are allowed across players', () => {
   const specs = rollPlayers(new Rng(3), tune, ids(40));
   const ranks = specs.flatMap((p) => p.squads.map((s) => s.rank));
   assert.ok(new Set(ranks).size < ranks.length);
+});
+
+test('roster: reveal cards glow gold, silver or bronze by where the power sits in its own slot range', () => {
+  const tune = loadTune();
+  for (let slot = 0; slot < 4; slot++) {
+    const [lo, hi] = slotPowerRange(slot, tune);
+    const at = (f: number) => lo + (hi - lo) * f;
+    assert.equal(cardTier(slot, at(0.95), tune), 'gold', `slot ${slot + 1} top 10%`);
+    assert.equal(cardTier(slot, at(0.85), tune), 'silver');
+    assert.equal(cardTier(slot, at(0.75), tune), 'bronze');
+    assert.equal(cardTier(slot, at(0.5), tune), null);
+    assert.equal(cardTier(slot, at(0.05), tune), null);
+  }
+  // Each slot is judged against its own pool: the same power is gold for squad 4 and nothing for squad 1.
+  const [lo4, hi4] = slotPowerRange(3, tune);
+  assert.ok(slotPercentile(3, (lo4 + hi4) / 2, tune) > 0.49 && slotPercentile(3, (lo4 + hi4) / 2, tune) < 0.51);
+  assert.ok(slotPowerRange(0, tune)[1] > slotPowerRange(3, tune)[1], 'squad 1 can roll stronger than squad 4');
+  assert.ok(slotPowerRange(0, tune)[0] > slotPowerRange(3, tune)[0], 'and squad 4 can roll weaker than squad 1');
 });

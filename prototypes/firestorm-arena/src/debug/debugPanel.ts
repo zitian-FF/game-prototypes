@@ -20,8 +20,15 @@ export function mountDebugPanelIfRequested(): void {
   pane.addButton({ title: 'Copy JSON (paste into client.tune.json)' }).on('click', () => {
     void navigator.clipboard.writeText(JSON.stringify(clientTune, null, 2) + '\n');
   });
+  const addAll = (folder: { addBinding: (o: Obj, k: string) => unknown; addFolder: (p: { title: string; expanded: boolean }) => unknown }, values: Obj): void => {
+    for (const key of Object.keys(values)) {
+      const v = values[key];
+      // Tweakpane binds numbers, strings and booleans; a nested object becomes a folder of its own.
+      if (typeof v === 'object' && v !== null) addAll(folder.addFolder({ title: key, expanded: false }) as typeof folder, v as Obj);
+      else folder.addBinding(values, key);
+    }
+  };
   for (const [section, values] of Object.entries(clientTune as unknown as Obj)) {
-    const folder = pane.addFolder({ title: section, expanded: false });
-    for (const key of Object.keys(values as Obj)) folder.addBinding(values as Obj, key);
+    addAll(pane.addFolder({ title: section, expanded: false }) as never, values as Obj);
   }
 }

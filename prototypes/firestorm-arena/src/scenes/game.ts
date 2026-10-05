@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { RING_OFFSETS } from 'arena-sim';
+import { RING_OFFSETS, cardTier } from 'arena-sim';
 import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
 import { BaseScene, bufferScale, isTouch, logicalSize, safeInsets } from './base';
@@ -75,6 +75,8 @@ export class GameScene extends BaseScene {
   private lastFrame = 0;
   private confirmEnd = false;
   private loadStartedAt = 0;
+  private introStartedAt = 0;
+  private introSkip = false;
   /** Last left/right facing per unit, so a unit that stops keeps looking where it was going. */
   private facing = new Map<string, 1 | -1>();
   private loadFrames = 0;
@@ -94,6 +96,7 @@ export class GameScene extends BaseScene {
     this.panel = 'none';
     this.confirmEnd = false;
     this.loadStartedAt = this.time.now;
+    this.introSkip = false;
     this.loadFrames = 0;
     this.missiles = [];
     this.labelPool = new Map();
@@ -139,6 +142,7 @@ export class GameScene extends BaseScene {
     this.camX = c.x;
     this.camY = c.y;
     this.zoom = this.compact() ? clientTune.camera.startZoomTouch : clientTune.camera.startZoom;
+    this.introStartedAt = this.time.now;
     this.ready = true;
   }
 
@@ -201,25 +205,97 @@ export class GameScene extends BaseScene {
     ui.bar(cx - 160, h / 2 - 66, 320, 8, progress, 0xff8a3d);
   }
 
-  /** Shown over the finished game for a moment: which team you are on and the squads you were dealt. */
-  private drawLoadedOverlay(view: WireView, w: number, h: number, progress: number): void {
+  /** How long the opening card reveal runs for this player: a deal, one flip per squad, then a short hold. */
+  private introSeconds(view: WireView): number {
+    const info = session.info!;
+    const n = view.squads.filter((s) => s.owner === info.playerId).length;
+    const c = clientTune.hud.intro;
+    return c.dealSeconds + n * c.flipEverySeconds + c.holdSeconds;
+  }
+
+  /**
+   * The opening reveal: one face-down card per squad you were dealt, flipped one after another from squad 1 to the last
+   * to show its type and power. A squad in the top 10% of its own slot's power range glows gold for a moment, the top
+   * 20% silver and the top 30% bronze. Tap to skip; the match clock is already running.
+   */
+  private drawIntro(view: WireView, w: number, h: number, t: number): void {
     const ui = this.ui;
     const info = session.info!;
+    const c = clientTune.hud.intro;
+    const squads = view.squads
+      .filter((s) => s.owner === info.playerId)
+      .sort((a, b) => Number(a.id.replace(/\D/g, '')) - Number(b.id.replace(/\D/g, '')));
+    const n = squads.length;
     ui.setLayer(3);
-    this.loadingPanel(w, h, progress, 'Deploying');
+    ui.rect(0, 0, w, h, 0x0b0709, 1);
+    ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
+    ui.rect(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    ui.block(0, 0, w, h);
+    ui.region(0, 0, w, h, () => (this.introSkip = true));
     const cx = w / 2;
-    const teamName = `Team ${info.team + 1}`;
-    ui.text(`You are on ${teamName}, ${Math.round(info.tune.match.durationSeconds / 60)} minute match`, cx, h / 2 - 34, { size: 15, bold: true, align: 'center', color: cssColor(COLORS.mine) });
-    ui.text('Your squads', cx, h / 2 - 6, { size: 12, align: 'center', color: COLORS.dim });
-    const mine = view.squads.filter((s) => s.owner === info.playerId);
-    mine.forEach((s, i) => {
-      const y = h / 2 + 16 + i * 30;
-      drawUnit(ui.gfx(), s.type, cx - 150, y + 26, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false });
-      const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, cx - 120, y + 2, { size: 14, bold: true });
-      drawPowerSword(ui.gfx(), cx - 120 + w1 + 12, y + 10);
-      ui.text(fmtPower(s.power), cx - 120 + w1 + 22, y + 2, { size: 14, bold: true, color: '#ffd54a' });
-      ui.text(`${Math.round(s.troops)} troops`, cx + 150, y + 3, { size: 12, align: 'right', color: COLORS.dim });
+    const compact = h < 440;
+    ui.text(`You are on Team ${info.team + 1}, ${Math.round(info.tune.match.durationSeconds / 60)} minute match`, cx, compact ? 12 : h / 2 - 150, { size: compact ? 13 : 16, bold: true, align: 'center', color: cssColor(COLORS.mine) });
+    ui.text('Your squads', cx, compact ? 32 : h / 2 - 124, { size: 12, align: 'center', color: COLORS.dim });
+
+    const gap = 14;
+    let ch = compact ? Math.min(h - 96, 190) : Math.min(230, h - 260);
+    let cw = ch / 1.4;
+    if (n * cw + (n - 1) * gap > w - 24) {
+      cw = (w - 24 - (n - 1) * gap) / n;
+      ch = cw * 1.4;
+    }
+    const left = cx - (n * cw + (n - 1) * gap) / 2;
+    const top = compact ? 52 : h / 2 - 100;
+    const g = ui.gfx();
+    const TIER_COLOR = { gold: 0xffd54a, silver: 0xdfe6ee, bronze: 0xd08a4e } as const;
+    const TIER_LABEL = { gold: 'GOLD', silver: 'SILVER', bronze: 'BRONZE' } as const;
+
+    squads.forEach((s, i) => {
+      const dealt = Math.min(1, Math.max(0, (t - i * 0.1) / (c.dealSeconds * 0.6)));
+      if (dealt <= 0) return;
+      const flipStart = c.dealSeconds + i * c.flipEverySeconds;
+      const f = Math.min(1, Math.max(0, (t - flipStart) / c.flipSeconds));
+      const x0 = left + i * (cw + gap);
+      const y = top + (1 - dealt) * 24;
+      const wEff = Math.max(2, cw * Math.abs(Math.cos(Math.PI * f)));
+      const px = x0 + (cw - wEff) / 2;
+      const faceUp = f >= 0.5;
+      const tier = cardTier(i, s.power, info.tune);
+      const sinceFlip = t - (flipStart + c.flipSeconds);
+      const edge = faceUp && tier && sinceFlip >= 0 ? TIER_COLOR[tier] : COLORS.panelEdge;
+      // Glow: bright and pulsing for a moment after the flip, then a steady tinted edge.
+      if (faceUp && tier && sinceFlip >= 0) {
+        const k = Math.max(0, 1 - sinceFlip / c.glowSeconds);
+        const pulse = 0.55 + 0.45 * Math.sin(sinceFlip * 14);
+        for (const [grow, a] of [[14, 0.12], [9, 0.2], [5, 0.3]] as const) g.lineStyle(grow, TIER_COLOR[tier], a * (0.35 + 0.65 * k) * (0.6 + 0.4 * pulse)).strokeRoundedRect(px - grow / 2, y - grow / 2, wEff + grow, ch + grow, 12);
+      }
+      ui.rect(px, y, wEff, ch, faceUp ? 0x161c25 : 0x1a1630, 1, faceUp ? edge : COLORS.accent, 10);
+      if (!faceUp) {
+        // The back: a diamond lattice and a question mark.
+        if (wEff > cw * 0.4) {
+          const mx = x0 + cw / 2;
+          const my = y + ch / 2;
+          g.lineStyle(DETAIL, COLORS.accent, 0.5);
+          for (let k = 1; k <= 3; k++) {
+            const r = (k * Math.min(cw, ch)) / 7;
+            g.strokePoints([{ x: mx, y: my - r }, { x: mx + r * (wEff / cw), y: my }, { x: mx, y: my + r }, { x: mx - r * (wEff / cw), y: my }], true);
+          }
+        }
+        if (wEff > cw * 0.7) ui.text('?', x0 + cw / 2, y + ch / 2 - 22, { size: 44, bold: true, align: 'center', color: cssColor(COLORS.accent) });
+        return;
+      }
+      if (f < 0.92) return; // the front only draws its art and text once the card is nearly flat again
+      ui.text(`SQUAD ${i + 1}`, x0 + cw / 2, y + 10, { size: 11, bold: true, align: 'center', color: COLORS.dim });
+      drawUnit(g, s.type, x0 + cw / 2, y + ch * 0.55, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: true, moving: false, scale: Math.min(1.6, cw / 70) });
+      ui.text(SQUAD_LABEL[s.type], x0 + cw / 2, y + ch * 0.66, { size: 15, bold: true, align: 'center' });
+      const pw1 = fmtPower(s.power);
+      const tw = pw1.length * 9 + 22;
+      drawPowerSword(g, x0 + cw / 2 - tw / 2 + 6, y + ch * 0.77 + 8);
+      ui.text(pw1, x0 + cw / 2 - tw / 2 + 18, y + ch * 0.77, { size: 17, bold: true, color: '#ffd54a' });
+      if (tier) ui.text(`${TIER_LABEL[tier]}  top ${Math.round(info.tune.roster.cardTiers[tier] * 100)}%`, x0 + cw / 2, y + ch - 24, { size: 11, bold: true, align: 'center', color: cssColor(TIER_COLOR[tier]) });
+      else ui.text(`${Math.round(s.troops)} troops`, x0 + cw / 2, y + ch - 24, { size: 11, align: 'center', color: COLORS.dim });
     });
+    ui.text('Tap to skip', cx, h - 20, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
     ui.setLayer(0);
   }
 
@@ -1032,8 +1108,8 @@ export class GameScene extends BaseScene {
     if (hintOn) ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
 
     // ---- loading overlay for the first moments
-    const loaded = (this.time.now - this.loadStartedAt) / 1000;
-    if (loaded < clientTune.hud.loadingSeconds) this.drawLoadedOverlay(view, w, h, 0.6 + 0.4 * (loaded / clientTune.hud.loadingSeconds));
+    const introT = (this.time.now - this.introStartedAt) / 1000;
+    if (!this.introSkip && introT < this.introSeconds(view)) this.drawIntro(view, w, h, introT);
 
     // ---- end of match
     if (session.result) {

@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.14.0 on the branch (0.13.4 merged, this not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.15.0 on the branch (0.13.4 merged, 0.14.0 and 0.15.0 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.15.0: squad bands 1-12, 8-20, 15-20, 18-20 (first two squads fight, 3rd and 4th are utility); opening card reveal with gold, silver and bronze glow by percentile within each slot's own power range. arena-sim 0.14.0.
 - 0.14.0: player behaviour log (one record per human per match in a GameLogs Durable Object, owner-only /admin/logs behind a LOG_TOKEN secret, 90 days or 20,000 rows), device sent in hello, landing-page notice. arena-sim unchanged, firestorm-net 0.14.0.
 - 0.13.4: speeds reworked: base edge to edge 150 s, each Accelerator cuts 30 s (120 s, 90 s) for squads only, scouts and missiles fixed at 5x the unboosted base. arena-sim 0.13.0.
 - 0.13.3: teleport-slot glow in team colour when a teleportable node is selected, scout names removed, scouts 50% faster.

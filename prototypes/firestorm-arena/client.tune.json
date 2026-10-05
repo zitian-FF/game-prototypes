@@ -51,7 +51,14 @@
     "minimapWidth": 210,
     "minimapWidthTouch": 120,
     "touchHintSeconds": 25,
-    "loadingSeconds": 2.5
+    "loadingSeconds": 2.5,
+    "intro": {
+      "dealSeconds": 0.7,
+      "flipEverySeconds": 0.9,
+      "flipSeconds": 0.5,
+      "glowSeconds": 1.1,
+      "holdSeconds": 1.0
+    }
   },
   "net": {
     "pingEverySeconds": 5,

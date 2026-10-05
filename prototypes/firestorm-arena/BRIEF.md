@@ -739,4 +739,13 @@ client.
   server/README.md for the fields, retention (90 days, 20,000 rows) and how to download. Players are told on the
   landing page that anonymous play stats are recorded. The hello message carries `device` (touch or desktop). Bots are
   not logged.
+- Squad bands (supersedes the rank bands listed earlier): rank 1 is strongest. Squad 1 rolls ranks 1 to 12, squad 2
+  ranks 8 to 20, squad 3 ranks 15 to 20 and squad 4 ranks 18 to 20 (`roster.bands`). Players fight with their first two
+  squads; the 3rd and 4th are utility.
+- Opening reveal cards: at the start of the match each player sees one face-down card per squad dealt (2 to 4). The
+  cards flip one by one from squad 1 to the last, showing type and power. A squad whose power is in the best 10% of its
+  own slot's power range glows gold for a moment, the best 20% silver and the best 30% bronze (`roster.cardTiers`), and
+  keeps a tinted edge. Each slot is judged against its own pool, so a strong roll for squad 4 can glow while a weaker
+  roll for squad 1 does not. Tap to skip. The match clock is already running, so the reveal takes only about 3 to 5
+  seconds (`hud.intro`).
 - Where this section conflicts with older text above, this section wins.

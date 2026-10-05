@@ -3,6 +3,16 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-05 — firestorm shared packages: arena-sim 0.14.0
+
+**What changed:** arena-sim's squad rank bands are now squad 1 ranks 1 to 12, squad 2 ranks 8 to 20, squad 3 ranks 15 to
+20 and squad 4 ranks 18 to 20 (1 is strongest), so the first two squads are the fighters and the 3rd and 4th are
+utility. New helpers `slotPowerRange`, `slotPercentile` and `cardTier`, and a `roster.cardTiers` tune block (0.1, 0.2
+and 0.3), let a client grade a roll against its own slot's range for the opening reveal cards. Only firestorm-arena
+uses it.
+
+**Applies to:** firestorm-arena only.
+
 ## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0
 
 **What changed:** firestorm-net's room keeps small behaviour counters per human player while a match runs and hands one
