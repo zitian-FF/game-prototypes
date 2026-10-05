@@ -128,6 +128,7 @@ export type KoStyle = 'drop' | 'fly';
 export type Stance = 'dodging' | 'perfectGuard' | 'guard' | 'normal' | 'vulnerable';
 
 export type SimEvent =
+  | { kind: 'staminaRejected'; fighter: number }
   | {
       kind: 'hit';
       attacker: number;

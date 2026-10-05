@@ -50,7 +50,9 @@
       "loweredForward": -6,
       "loweredSpread": 6,
       "loweredOffsetY": 20
-    }
+    },
+    "staminaRejectFlashMs": 300,
+    "staminaRejectFlashHz": 10
   },
   "ring": {
     "left": 267,
@@ -118,7 +120,7 @@
       "sour": 3,
       "recovery": 12,
       "whiffRecovery": 8,
-      "reach": 35,
+      "reach": 28,
       "hitRadius": 13,
       "damage": 7,
       "staminaCost": 7,
@@ -171,12 +173,13 @@
     "frames": 14,
     "iFrames": 10,
     "speed": 337.5,
-    "vulnerableFrames": 12,
+    "vulnerableFrames": 14,
     "stunnedVulnerableMult": 2,
-    "staminaCost": 12,
+    "staminaCost": 14.4,
     "neutralDeadzone": 0.3,
-    "buffWindowFrames": 18,
-    "buffDamageMult": 1.5
+    "buffWindowFrames": 6,
+    "buffDamageMult": 1.5,
+    "penaltyMoveMult": 0.4
   },
   "stamina": {
     "max": 100,

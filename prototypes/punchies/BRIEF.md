@@ -123,9 +123,13 @@ reach.
   Counter (2026-10-03): a Hook goes through a Perfect Guard like it does
   a High Guard (chip damage, no attacker stun, no stamina bonus), so a
   well-timed Perfect Guard can be beaten by throwing a Hook.
-- Dodge: i-frames, then a brief Vulnerable window. A punch thrown within
-  `dodge.buffWindowFrames` after a dodge ends is powered up
-  (`dodge.buffDamageMult`, 1.5x).
+- Dodge: i-frames, followed by a distinct dodge penalty: 14 vulnerable frames
+  (12 increased by 20%, rounded to whole frames), walking speed at 40%,
+  and no further dodge until the penalty ends. Dodge costs 14.4 stamina
+  (+20%). Stunned dodge penalties retain their existing duration multiplier.
+  The first punch thrown within the separate 6-frame follow-up buff after
+  dodge ends is powered up (1.5x); throwing it consumes only the buff,
+  not the penalty. Hook base reach is 28 (-20%).
 - Punch hitboxes extend forward from the facing direction. No directional
   armour.
 
@@ -162,6 +166,10 @@ reach.
 - Uppercut whiff: stars consumed and a long Vulnerable recovery.
 
 ## Stamina, Health, Stun, Fatigue
+- Punches and dodges require their full stamina cost (including character
+  modifiers). An unaffordable press is discarded and flashes red only in
+  the empty part of that fighter's stamina meter; it cannot execute later
+  when stamina regenerates. Infinite-stamina training bypasses this check.
 - Stamina spent by attacking, dodging, holding Guard. Moderate regen when
   not attacking, fastest with no input. Zero = forced Vulnerable ("low
   stamina"), which lasts until stamina climbs back to 30; regen is much

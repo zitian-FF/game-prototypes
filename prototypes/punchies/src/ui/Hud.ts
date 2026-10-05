@@ -19,6 +19,7 @@ const MARGIN = 70;
 export class Hud {
   private g: Phaser.GameObjects.Graphics;
   private timer: Phaser.GameObjects.Text;
+  private staminaRejectedAt = [-Infinity, -Infinity];
   private shownHealth = [0, 0];
   private chrome: (Phaser.GameObjects.Image | null)[];
   // Tutorial: only these parts are drawn ('health', 'stamina', 'stun',
@@ -30,7 +31,7 @@ export class Hud {
   private labels: Phaser.GameObjects.Text[][] = [[], []];
   private meterLabels: { text: Phaser.GameObjects.Text; part: string }[] = [];
 
-  constructor(scene: Phaser.Scene, names: [string, string]) {
+  constructor(private scene: Phaser.Scene, names: [string, string]) {
     this.g = scene.add.graphics().setDepth(90);
     this.chrome = [artImage(scene, 'ui_hud', VIEW.left + MARGIN + BAR_W / 2, VIEW.top + 27, 260, 54, 89),
       artImage(scene, 'ui_hud', VIEW.right - MARGIN - BAR_W / 2, VIEW.top + 27, 260, 54, 89)];
@@ -58,6 +59,10 @@ export class Hud {
     this.shownHealth = [-1, -1];
   }
 
+  rejectStamina(fighter: number): void {
+    this.staminaRejectedAt[fighter] = this.scene.time.now;
+  }
+
   draw(s: SimState): void {
     const g = this.g;
     g.clear();
@@ -73,7 +78,10 @@ export class Hud {
       const show = (p: string) => this.shown === null || this.shown.has(p);
       if (show('health')) this.bar(x, y + 8, 14, f.health / maxHealth(f), this.shownHealth[i] / maxHealth(f), 0x3ad06a, left);
       const staminaColor = f.exhausted ? 0xff5a3a : 0x3ab0e0;
-      if (show('stamina')) this.bar(x, y + 25, 8, f.stamina / maxStamina(f), 0, staminaColor, left);
+      const elapsed = this.scene.time.now - this.staminaRejectedAt[i];
+      const flash = elapsed < tune.view.staminaRejectFlashMs
+        ? 0.35 + 0.6 * Math.abs(Math.cos(elapsed * tune.view.staminaRejectFlashHz * Math.PI / 1000)) : 0;
+      if (show('stamina')) this.bar(x, y + 25, 8, f.stamina / maxStamina(f), 0, staminaColor, left, BAR_W, flash);
       const stunFrac = Math.min(1, f.stun / stunThreshold(f));
       const stunColor = f.stunFromMeter ? 0xffe03a : stunFrac > 0.7 ? 0xffa03a : 0xb07a3a;
       if (show('stun')) this.bar(x + (left ? 0 : 110), y + 37, 8, f.stunFromMeter ? 1 : stunFrac, 0, stunColor, left, 140);
@@ -109,7 +117,7 @@ export class Hud {
     });
   }
 
-  private bar(x: number, y: number, h: number, frac: number, trail: number, color: number, fromLeft: boolean, w = BAR_W): void {
+  private bar(x: number, y: number, h: number, frac: number, trail: number, color: number, fromLeft: boolean, w = BAR_W, emptyFlash = 0): void {
     const g = this.g;
     g.fillStyle(0x050b15, 0.8);
     g.fillRoundedRect(x-1,y+2,w+2,h+2,Math.min(6,h/2));
@@ -118,6 +126,12 @@ export class Hud {
     g.fillStyle(0x102036,1);
     g.fillRoundedRect(x,y,w,h,Math.min(5,h/2));
     const tx=x+32,tw=w-34;
+    const filled = Math.max(0, Math.min(1, frac)) * tw;
+    const empty = tw - filled;
+    if (emptyFlash > 0 && empty >= 0.5) {
+      g.fillStyle(0xff3b30, emptyFlash);
+      g.fillRoundedRect(fromLeft ? tx + filled : tx, y + 1, empty, h - 2, Math.min(3, empty / 2));
+    }
     const draw = (f: number, c: number, a: number) => {
       const fw = Math.max(0, Math.min(1, f)) * tw;
       if(fw<0.5)return;
