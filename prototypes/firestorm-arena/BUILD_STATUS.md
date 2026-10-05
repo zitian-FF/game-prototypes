@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.15.2 on the branch (0.13.4 merged, 0.14.0 and 0.15.0 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.15.3 on the branch (0.13.4 merged, 0.14.0 and 0.15.0 not merged, no PR open): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.15.3: the tier star shows on squad 1's card only; squad 2 keeps the glow, edge and label.
 - 0.15.2: reveal-card tiers only for squads 1 and 2 (`roster.cardTierSlots`), with a big gold, silver or bronze star on the card.
 - 0.15.1: the opening card reveal is 7 real seconds and the match clock starts after it (`match.introSeconds`), orders are refused during it.
 - 0.15.0: squad bands 1-12, 8-20, 15-20, 18-20 (first two squads fight, 3rd and 4th are utility); opening card reveal with gold, silver and bronze glow by percentile within each slot's own power range. arena-sim 0.14.0.

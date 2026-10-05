@@ -318,11 +318,11 @@ export class GameScene extends BaseScene {
       ui.text(pw1, x0 + cw / 2 - tw / 2 + 18, y + ch * 0.77, { size: 17, bold: true, color: '#ffd54a' });
       if (tier) {
         ui.text(`${TIER_LABEL[tier]}  top ${Math.round(info.tune.roster.cardTiers[tier] * 100)}%`, x0 + cw / 2, y + ch - 24, { size: 11, bold: true, align: 'center', color: cssColor(TIER_COLOR[tier]) });
-        // A big star in the tier colour pops onto the card corner as it lands.
+        // Squad 1 alone gets the big star, so its draws read differently from squad 2's glow.
         const pop = Math.min(1, Math.max(0, sinceFlip / 0.35));
         const k = pop < 1 ? 1 + 0.35 * Math.sin(pop * Math.PI) * (1 - pop) * 2 : 1;
         const r = cw * 0.2 * pop * k;
-        if (r > 1) this.drawStar(g, x0 + cw - cw * 0.17, y + cw * 0.17, r, TIER_COLOR[tier]);
+        if (i === 0 && r > 1) this.drawStar(g, x0 + cw - cw * 0.17, y + cw * 0.17, r, TIER_COLOR[tier]);
       } else ui.text(`${Math.round(s.troops)} troops`, x0 + cw / 2, y + ch - 24, { size: 11, align: 'center', color: COLORS.dim });
     });
     ui.text('Tap to skip', cx, h - 20, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
