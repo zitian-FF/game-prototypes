@@ -3,12 +3,32 @@ import { tune, tuneBaseline, tuneSource, onTuneReplaced } from '../sim/tune';
 import meta from '../../tune.meta.json';
 
 // Tweakpane panel for every tune.json value, available in production builds
-// via ?debug=1 (see "Tuning" in root CLAUDE.md). Values are grouped by
+// (see "Tuning" in root CLAUDE.md). While we are in internal testing a red bug
+// button is always on screen: it toggles debug mode (this panel, the hitbox
+// overlay, the net stats readout). ?debug=1 still starts with it on, and the
+// last state is remembered. Values are grouped by
 // category from tune.meta.json; each shows its allowed range, a short
 // description and the value it started from ("was"), with a reset button.
 // Binds straight to the live tune object, so edits apply immediately.
 
-export const DEBUG_ENABLED = new URLSearchParams(location.search).get('debug') === '1';
+const DEBUG_KEY = 'punchies:debug:v1';
+
+function loadDebug(): boolean {
+  if (new URLSearchParams(location.search).get('debug') === '1') return true;
+  try {
+    return localStorage.getItem(DEBUG_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+let debugOn = loadDebug();
+let panelHost: HTMLElement | null = null;
+
+// Live debug-mode flag; read it every frame instead of caching it.
+export function isDebug(): boolean {
+  return debugOn;
+}
 
 // Debug-only view toggles. Not tuned values, so not in tune.json.
 export const debugView = { showHitboxes: true };
@@ -37,11 +57,43 @@ function readPath(root: Obj, path: string): unknown {
   return obj[key];
 }
 
+function setDebug(on: boolean): void {
+  debugOn = on;
+  try {
+    localStorage.setItem(DEBUG_KEY, on ? '1' : '0');
+  } catch {
+    // Private mode: the toggle still works for this page load.
+  }
+  if (on) mountPanel();
+  if (panelHost) panelHost.style.display = on ? '' : 'none';
+  bug?.style.setProperty('opacity', on ? '1' : '0.55');
+  bug?.style.setProperty('box-shadow', on ? '0 0 0 3px #ffd24a, 0 2px 6px #0008' : '0 2px 6px #0008');
+}
+
+let bug: HTMLButtonElement | null = null;
+
+// Always-visible red bug button (internal testing). Bottom centre, clear of
+// the touch controls. A debug aid, so it is a plain DOM button like the panel.
 export function mountDebugPanelIfRequested(): void {
-  if (!DEBUG_ENABLED) return;
+  bug = document.createElement('button');
+  bug.textContent = '\u{1F41E}';
+  bug.title = 'Toggle debug mode';
+  bug.setAttribute('aria-label', 'Toggle debug mode');
+  bug.style.cssText =
+    'position:fixed;left:50%;bottom:6px;transform:translateX(-50%);width:34px;height:34px;border-radius:50%;' +
+    'border:2px solid #7a0f0f;background:#d62b2b;color:#fff;font-size:18px;line-height:1;padding:0;cursor:pointer;' +
+    'z-index:2147483000;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+  bug.addEventListener('click', () => setDebug(!debugOn));
+  document.body.appendChild(bug);
+  setDebug(debugOn);
+}
+
+function mountPanel(): void {
+  if (panelHost) return;
   const pane = new Pane({ title: 'punchies tune', expanded: false });
   // Wider than Tweakpane's default so long value names aren't cut off.
   const host = pane.element.parentElement;
+  panelHost = host;
   if (host) host.style.width = '420px';
   pane.element.style.setProperty('--bld-vw', '230px');
   const root = tune as unknown as Obj;
