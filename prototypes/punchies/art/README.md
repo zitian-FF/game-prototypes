@@ -45,6 +45,16 @@ STUN labels; values, damage trail and tutorial reveals retain their existing log
 
 ## Component exports (owner-approved)
 
+After runtime PR204 merged, obsolete baked bodies for the 14 non-KO actions
+were removed. All KO bodies, feet and component keys remain: 532 folders /
+3416 frames. The 9,772,979-byte source ZIP packs into 14 sheets, two per
+character group (1.48–1.59 MB PNG+JSON). The packer already trims source
+bounds and deduplicates identical images. Fixed source canvases remain intact.
+This is still above the 1.2 MB/group target; Claude owns any packer/WebP work.
+Baseline checking requires the earlier ZIP to compare deleted baked frames;
+749 retained legacy PNGs stay byte-identical and all 672 composites stay exact.
+The original counts below describe the prior additive export.
+
 Each original body key additionally has `_torso`, `_gloves`, `_head` and
 `_effects` folders, with identical frame counts and 256x256 registration.
 Effects contain baked stun stars, dodge streaks and perfect-guard marks;

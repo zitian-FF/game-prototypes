@@ -1,31 +1,30 @@
 ## Current milestone
 
-Component artwork exported and verified for Claude's runtime layering pass.
+Layered renderer is merged in PR204; lean exports are ready for Claude.
 
 ## What was implemented
 
-- Added torso, gloves/forearms, head and owner-approved effects folders for all 105 body animation keys, including alt colors, dummy and KO.
-- Preserved all 1365 previous PNG files byte-for-byte. All 672 body frames reconstruct pixel-exactly at zero offsets.
-- Exported 630 folders / 4032 registered frames; packed into 21 sheets at most 2048px.
-- Verified current main's fly and drop KO feet/shadow path in Chromium.
+- Removed 98 obsolete non-KO body keys; retained all KO bodies, feet and component layers.
+- 532 folders /3416 frames. ZIP reduced from 13954263 to 9772979 bytes; atlas sheets from 21 to 14.
+- All 672 zero-offset composites remain RGBA-exact against the preserved reference ZIP; 749 retained legacy PNGs are byte-identical.
 
 ## Key technical decisions
 
-- Same 256x256 canvas, origin (128,128), frame counts and existing character/alt grouping.
-- Back-to-front composite: torso, gloves, head, effects. Hidden torso and arm underlap stays beneath opaque head coverage.
-- Effects include baked stun stars, dodge streaks and perfect-guard marks. Inactive effects frames are transparent; Claude can omit baked stars when using runtime orbit stars.
-- No FighterView, KoAnim, groundLayer, simulation or tune changes. Legacy body/feet keys remain available until replacement rendering merges.
+- Fixed 256x256 canvas and registration remain unchanged. Existing packer handles tight trim bounds and deduplication.
+- No runtime, packer, perspective, simulation or tune edits. This branch incorporates main's merged renderer.
+- Group PNG+JSON bytes: bruno1485045, bruno_alt1512525, dummy1569586, marco1482645, marco_alt1510544, mia1530972, mia_alt1586727.
 
 ## Open questions
 
-- Claude will wire per-layer offsets and core/outer hit flashes, keeping hitboxes unchanged. Offset visuals require review after runtime wiring.
+- Owner clarification pending: expressive character art for UI portraits/key art only, or also in-game sprites. BRIEF.md may need this scope recorded.
+- Mia face/clothing changes remain deferred. Layer cut-quality review is pending owner feedback; cleanup does not claim to fix cuts.
 
 ## Known issues
 
-- All component animations load on demand, but current runtime still renders legacy body plus feet.
-- Expanded ZIP is 13954263 bytes; per-character atlases are about 2.2 to 2.4 MB including JSON. Existing Phaser bundle-size warning.
-- Real-phone networking/controllers were not tested; lobby sockets are mocked in the presentation test.
+- Groups remain above Claude's 1.2 MB target. Claude owns lossless WebP/packer follow-up.
+- Typecheck/build and exact-composite checks pass. Brave menu/training loads Marco, Mia and dummy without console errors. Full automated pose/KO test was not rerun; only Brave automation is authorized on this PC.
+- Existing Phaser bundle-size warning. Real multiplayer/phone play unverified.
 
 ## Next proposed step
 
-Claude fetches the R2 bundle and merges the export PR with the runtime layering implementation. Review shifted layers and hit flashes in game before removing legacy keys.
+Claude reviews lean exports, considers lossless WebP, and deploys the smaller bundle. Await owner art scope and cut inspection before redrawing characters.

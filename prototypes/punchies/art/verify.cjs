@@ -63,8 +63,8 @@ async function main() {
   await waitScene('Training');
   await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
   const loaded = await page.evaluate(() => Object.keys(window.__testGame.anims.anims.entries));
-  assert.equal(loaded.length, fallback ? 0 : 630, 'all component animation configs load on demand');
-  if (!fallback) for (const key of loaded.filter(k=>!/(?:_feet|_torso|_gloves|_head|_effects)$/.test(k))) for(const suffix of ['feet','torso','gloves','head','effects']) assert(loaded.includes(`${key}_${suffix}`), `${key} has matching ${suffix}`);
+  assert.equal(loaded.length, fallback ? 0 : 532, 'all component animation configs load on demand');
+  if (!fallback) for (const key of loaded.filter(k=>k.endsWith('_feet')).map(k=>k.slice(0,-5))) for(const suffix of ['feet','torso','gloves','head','effects']) assert(loaded.includes(`${key}_${suffix}`), `${key} has matching ${suffix}`);
   // Validate every packed action against an actual sprite, at its fixed origin.
   const poses = await page.evaluate(() => {
     const scene = window.__testGame.scene.getScene('Training');
@@ -84,14 +84,15 @@ async function main() {
         if(action==='stunned')f.stunTimer=20;
         if(action==='exhausted')f.exhausted=true;
         view.drawArt(f,250,action==='walk');
-        results.push({action,id,color,visible:view.sprite.visible,frame:view.sprite.frame.name,source:[view.sprite.frame.realWidth,view.sprite.frame.realHeight],scale:view.sprite.scaleX,origin:[view.sprite.originX,view.sprite.originY]});
+        const image=view.head.visible?view.head:view.sprite;
+        results.push({action,id,color,visible:image.visible,frame:image.frame.name,source:[image.frame.realWidth,image.frame.realHeight],scale:image.scaleX,origin:[image.originX,image.originY]});
       }
     }
     return results;
   });
   for(const p of poses) {
     assert.equal(p.visible,!fallback,`${p.id} ${p.action} sprite availability`);
-    if(!fallback) {assert(p.frame.includes(`_${p.action}/`),`${p.id} selects ${p.action}`);assert.deepEqual(p.source,[256,256]);assert.deepEqual(p.origin,[.5,.5]);}
+    if(!fallback) {assert(p.frame.includes(`_${p.action}_head/`),`${p.id} selects ${p.action}`);assert.deepEqual(p.source,[256,256]);assert.deepEqual(p.origin,[.5,.5]);}
   }
   // Fresh training state; exercise keyboard movement, guard and real punches.
   await page.evaluate(() => window.__testGame.scene.getScene('Training').scene.restart()); await waitScene('Training');

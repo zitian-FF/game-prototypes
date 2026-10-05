@@ -203,5 +203,13 @@ for(const [name,color,side] of [['icon_jab','#079cf0',1],['icon_cross','#f33c48'
 fs.copyFileSync(process.argv[2] || path.join(out,'loose/stage_background.png'),path.join(out,'loose/menu_background.png'));
 // Optional exact approved logo cutout. Preserve an already exported logo otherwise.
 if(process.argv[3]) fs.copyFileSync(process.argv[3],path.join(out,'loose/logo.png'));
+// Remove generated non-KO baked bodies now that the layered renderer is merged.
+// Source canvases remain registered; only the packer trims their bounds.
+for(const key of fs.readdirSync(path.join(out,'packed'))){
+  if(/_(feet|torso|gloves|head|effects|ko)$/.test(key))continue;
+  const target=path.resolve(out,'packed',key),root=path.resolve(out,'packed')+path.sep;
+  if(!target.startsWith(root))throw new Error('Unsafe generated frame path');
+  fs.rmSync(target,{recursive:true,force:true});
+}
 const zip=new AdmZip();zip.addLocalFolder(out);zip.writeZip('punchies_assets.zip');
 console.log(`Exported ${Object.keys(roster).length} fighters, fixed 256x256 canvases, ${Object.keys(actions).length} poses and loose presentation assets into ${out}; punchies_assets.zip`);
