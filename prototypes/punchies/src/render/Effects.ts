@@ -9,7 +9,8 @@ export class Effects {
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
-  onFighterFlash: (idx: number, color: number) => void = () => {};
+  // zone: 'head' for a hit that reached the face (vulnerable row), 'body' for arms/torso.
+  onFighterFlash: (idx: number, color: number, zone: 'head' | 'body') => void = () => {};
 
   constructor(private scene: Phaser.Scene) {
     this.flashRect = scene.add
@@ -44,7 +45,7 @@ export class Effects {
     const size = big ? 2 : e.sweet ? 1.25 : 0.8;
     const palette = dealt ? [0xffffff, 0xfff27a, 0xffc83a] : [0xffd0b0, 0xff8a3a, 0xff3a2a];
     this.directionalSpark(e.x, e.y, att.fx, att.fy, size, palette, big ? 16 : e.sweet ? 10 : 6);
-    this.onFighterFlash(defIdx, dealt ? 0xffffff : 0xff4a4a);
+    this.onFighterFlash(defIdx, dealt ? 0xffffff : 0xff4a4a, e.row === 'vulnerable' ? 'head' : 'body');
     const def = s.fighters[defIdx];
     this.damageNumber(def.x, def.y - 34, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
 

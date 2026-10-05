@@ -11,6 +11,8 @@
     "perspective": 1,
     "topScale": 0.9,
     "squash": 0.85,
+    "headOffsetY": -4,
+    "bodyOffsetY": 2,
     "shadowOffsetY": 8,
     "shadowAlpha": 0.3,
     "shadowSize": 1,
@@ -191,7 +193,12 @@
     "turnFetchTimeoutMs": 4000,
     "stallIndicatorMs": 120,
     "inputDelayFrames": 2,
-    "maxRollbackFrames": 12
+    "maxRollbackFrames": 12,
+    "enhanced": 0,
+    "moveDelayFrames": 1,
+    "smoothFrames": 4,
+    "adaptFactor": 0.5,
+    "adaptMaxFrames": 6
   },
   "ai": {
     "reactionFrames": 10,

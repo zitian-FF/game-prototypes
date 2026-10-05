@@ -2126,5 +2126,54 @@
     "min": 0,
     "max": 20,
     "step": 0.5
+  },
+  "net.enhanced": {
+    "cat": "Match & Online",
+    "desc": "Online experiment, host authoritative (guests adopt the host value at match start). 0 = rollback as before. 1 = stick and guard use net.moveDelayFrames while punches keep the full input delay, drawn positions ease after a rollback, and the punch delay adapts to the measured ping.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "net.moveDelayFrames": {
+    "cat": "Match & Online",
+    "desc": "Enhanced only: input delay for stick and guard (frames). Punches and dodges keep the full delay, so they are buffered by the startup frames. Lower = snappier movement, more corrections.",
+    "min": 0,
+    "max": 4,
+    "step": 1
+  },
+  "net.smoothFrames": {
+    "cat": "Match & Online",
+    "desc": "Enhanced only: after a rollback, ease each boxer's drawn position back over this many frames instead of snapping (picture only, the sim is exact). 0 = off.",
+    "min": 0,
+    "max": 12,
+    "step": 1
+  },
+  "net.adaptFactor": {
+    "cat": "Match & Online",
+    "desc": "Enhanced only: the punch delay follows the measured one-way ping times this factor (in frames). Higher hides more latency from the opponent but feels slower for you.",
+    "min": 0,
+    "max": 1.5,
+    "step": 0.05
+  },
+  "net.adaptMaxFrames": {
+    "cat": "Match & Online",
+    "desc": "Enhanced only: the most the adaptive punch delay may reach (frames).",
+    "min": 1,
+    "max": 12,
+    "step": 1
+  },
+  "view.headOffsetY": {
+    "cat": "View",
+    "desc": "Layered boxer: head drop in screen Y (world px). Negative = higher on screen. Gloves stay at 0; torso, feet and shadow sit below.",
+    "min": -16,
+    "max": 6,
+    "step": 0.5
+  },
+  "view.bodyOffsetY": {
+    "cat": "View",
+    "desc": "Layered boxer: torso drop in screen Y (world px). Gloves stay at 0, the head sits above and the feet and shadow below.",
+    "min": -8,
+    "max": 12,
+    "step": 0.5
   }
 }

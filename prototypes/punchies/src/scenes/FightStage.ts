@@ -15,7 +15,7 @@ import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio } from '../audio/sfx';
-import { DEBUG_ENABLED, debugView } from '../debug/debugPanel';
+import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
@@ -58,7 +58,7 @@ export class FightStage {
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.fx = new Effects(scene);
-    this.fx.onFighterFlash = (idx, color) => this.views[idx].flash(color, scene.time.now);
+    this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, 110, zone);
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
@@ -137,7 +137,7 @@ export class FightStage {
     this.drawTags(s, looks.map((l) => l.color));
     this.controls.enabled = this.touchEnabled && !this.info.open;
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
-    const show = this.forceHitboxes || this.info.hitboxes || (DEBUG_ENABLED && debugView.showHitboxes);
+    const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
     this.ko.sync(s, koAllowed, time);
     if (this.ko.active) {
