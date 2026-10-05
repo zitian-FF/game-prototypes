@@ -23,7 +23,7 @@ async function write(name,w,h,s) { const file=path.join(out,name); fs.mkdirSync(
 function glove(x,y,color,side) {
   return `<g transform="translate(${x} ${y})">${rect(-16,-12,12,24,cream,3)}${ellipse(1,0,17,17,color)}${ellipse(-3,side*12,8,6,color)}${ellipse(9,-5,3,7,'#ffffff88','none',0)}${line(-13,-6,-13,6,'#7e8794',2)}</g>`;
 }
-function fighter(id,color,action,index,count,feetOnly=false) {
+function fighter(id,color,action,index,count,feetOnly=false,component=null) {
   const c=roster[id], t=count<=1?0:index/(count-1), wave=Math.sin(t*Math.PI*2), attack=['jab','cross','hook_l','hook_r','uppercut'].includes(action);
   const k=action==='ko'?t:0, slump=action==='exhausted'?3:0;
   let left={x:31,y:-28},right={x:23,y:30};
@@ -45,18 +45,21 @@ function fighter(id,color,action,index,count,feetOnly=false) {
   const bob=action==='idle'?wave*1.3:action==='walk'?wave*2:action==='stunned'?wave*3:slump;
   const stride=action==='walk'?wave*14:0;
   let s=`<g transform="translate(128 128) rotate(${twist})">`;
+  const outer=s;
   if (feetOnly) {
     s+=ellipse(-24+stride,-20,15,9,ink)+ellipse(-17-stride,20,15,9,ink);
     s+=rect(-35,-27,25,20,color,5)+rect(-35,10,25,20,color,5);
     s+=line(-31,-22,-17,-22,cream,3)+line(-31,15,-17,15,cream,3);
     return s+'</g>';
   }
+  const armStart=s.length;
   for(const [pt,side] of [[left,-1],[right,1]]) {
     const ex=(pt.x-7)*.55-3,ey=side*27+(pt.y-side*27)*.4;
     s+=`<path d="M-1 ${side*25}Q${ex} ${ey} ${pt.x-12} ${pt.y}" fill="none" stroke="${ink}" stroke-width="16" stroke-linecap="round"/>`;
     s+=`<path d="M-1 ${side*25}Q${ex} ${ey} ${pt.x-12} ${pt.y}" fill="none" stroke="${c.skin}" stroke-width="11" stroke-linecap="round"/>`;
     s+=line(-1,side*25,ex,ey,'#fff1d14d',3);
   }
+  const arms=s.slice(armStart),headStart=s.length;
   s+=`<g transform="translate(${-k*12} ${bob})">`;
 
   // Padded overhead headguard: compact original master silhouette and layered panels.
@@ -70,11 +73,45 @@ function fighter(id,color,action,index,count,feetOnly=false) {
   if(id==='mia') s+=`<path d="M-33 -3L-49 -4L-49 4L-33 3Z" fill="${gold}" stroke="${ink}" stroke-width="3"/>`+ellipse(-44,0,3,6,gold,ink,1)+ellipse(-50,0,3,5,gold,ink,1);
   if(id==='dummy') s+=line(-12,-12,7,12,'#795b3c',2)+line(-12,12,7,-12,'#795b3c',2);
   s+='</g>';
+  const head=s.slice(headStart),handsStart=s.length;
   s+=glove(left.x,left.y,color,1)+glove(right.x,right.y,color,-1);
+  const hands=s.slice(handsStart),effectsStart=s.length;
   if(action==='perfect_guard') s+=`<path d="M61 -43Q86 0 61 43" fill="none" stroke="${cream}" stroke-width="5"/>`;
   if(action==='stunned') s+=star(-16,-42,8)+star(12,-49,7)+star(35,-38,8);
   if(action==='dodge') s+=line(-48,-31,-68,-31,'#83ddec',3)+line(-43,0,-65,0,'#83ddec',3)+line(-48,32,-68,32,'#83ddec',3);
+  if(component==='head')return outer+head+'</g>';
+  if(component==='gloves')return outer+arms+hands+'</g>';
+  if(component==='hands')return outer+hands+'</g>';
+  if(component==='effects')return outer+s.slice(effectsStart)+'</g>';
+  if(component==='torso')return outer+`<g transform="translate(${-k*12} ${bob})">`+
+    ellipse(-5,3,23,24,c.skin,ink,3)+`<path d="M-26 -11Q-12 -21 9 -15L13 16Q-2 26 -22 17Z" fill="${color}" stroke="${ink}" stroke-width="3"/>`+
+    line(-20,-9,-20,15,cream,3)+'</g></g>';
   return s+'</g>';
+}
+// Preserve source RGBA values at visible edges rather than rerasterizing them
+// separately (which would change overlap anti-aliasing). Only fully opaque
+// occluded pixels get hidden underlap. Zero-offset source-over is exact.
+async function componentFrames(id,color,action,i,count,bodyFile,prefix,frame) {
+  const raw={width:256,height:256,channels:4};
+  const body=await sharp(bodyFile).ensureAlpha().raw().toBuffer();
+  const names=['torso','gloves','head','effects','hands'];
+  const rendered=await Promise.all(names.map(part=>sharp(Buffer.from(wrap(256,256,fighter(id,color,action,i,count,false,part)))).ensureAlpha().raw().toBuffer()));
+  const [torsoSvg,glovesSvg,headSvg,effectsSvg,handsSvg]=rendered;
+  const parts=Object.fromEntries(names.slice(0,4).map(name=>[name,Buffer.alloc(body.length)]));
+  for(let p=0;p<256*256;p++){
+    const n=p*4,alpha=body[n+3];if(!alpha)continue;
+    const owner=effectsSvg[n+3]?'effects':handsSvg[n+3]?'gloves':headSvg[n+3]?'head':'gloves';
+    body.copy(parts[owner],n,n,n+4);
+    // A torso exists under the helmet, even though the overhead source hid it.
+    // At least 16 source pixels of overlap through the central shoulders gives
+    // head offsets room; constrain it to opaque source coverage for exactness.
+    if(alpha===255&&owner==='head'&&torsoSvg[n+3])torsoSvg.copy(parts.torso,n,n,n+4);
+    if(alpha===255&&owner==='head'&&glovesSvg[n+3])glovesSvg.copy(parts.gloves,n,n,n+4);
+  }
+  for(const name of names.slice(0,4)){
+    const file=path.join(out,`packed/${prefix}_${action}_${name}/${frame}`);fs.mkdirSync(path.dirname(file),{recursive:true});
+    await sharp(parts[name],{raw}).png().toFile(file);
+  }
 }
 function portrait(id) {
   const c=roster[id],color=c.color;
@@ -98,6 +135,7 @@ for(const [id,c] of Object.entries(roster)) {
       const frame=String(i+1).padStart(4,'0')+'.png';
       await write(`packed/${prefix}_${action}/${frame}`,256,256,fighter(id,color,action,i,count));
       await write(`packed/${prefix}_${action}_feet/${frame}`,256,256,fighter(id,color,action,i,count,true));
+      await componentFrames(id,color,action,i,count,path.join(out,`packed/${prefix}_${action}/${frame}`),prefix,frame);
     }
   }
   if(id!=='dummy') await write(`loose/portrait_${id}.png`,360,440,portrait(id));

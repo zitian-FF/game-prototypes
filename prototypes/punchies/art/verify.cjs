@@ -63,8 +63,8 @@ async function main() {
   await waitScene('Training');
   await page.waitForFunction(() => !!window.__testGame.scene.getScene('Training').stage);
   const loaded = await page.evaluate(() => Object.keys(window.__testGame.anims.anims.entries));
-  assert.equal(loaded.length, fallback ? 0 : 210, 'all body and feet animation configs load on demand');
-  if (!fallback) for (const key of loaded.filter(k=>!k.endsWith('_feet'))) assert(loaded.includes(`${key}_feet`), `${key} has matching feet`);
+  assert.equal(loaded.length, fallback ? 0 : 630, 'all component animation configs load on demand');
+  if (!fallback) for (const key of loaded.filter(k=>!/(?:_feet|_torso|_gloves|_head|_effects)$/.test(k))) for(const suffix of ['feet','torso','gloves','head','effects']) assert(loaded.includes(`${key}_${suffix}`), `${key} has matching ${suffix}`);
   // Validate every packed action against an actual sprite, at its fixed origin.
   const poses = await page.evaluate(() => {
     const scene = window.__testGame.scene.getScene('Training');

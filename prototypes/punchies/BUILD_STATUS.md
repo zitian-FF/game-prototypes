@@ -1,30 +1,31 @@
 ## Current milestone
 
-Stun stars now circle the head in a true circle and are drawn with the art too. Next: a layered boxer (head, gloves, body, feet, round shadow) with a slight Y offset per layer for depth; waiting on the owner's go and on art.
+Component artwork exported and verified for Claude's runtime layering pass.
 
 ## What was implemented
 
-- `FighterView.drawStun`: three five-point stars orbit the boxer in a true circle (radius BODY_R + 4, scaled by the character), each also spinning on its own axis, drawn on an overlay above the body sprite. Used by both the art path and the procedural fallback.
-- Before this, the stars only existed in the procedural fallback with a flat ellipse orbit, so with the art loaded there were no stun stars at all.
-- Already merged this session: on-demand art loading with a loading bar, centered menu, ring perspective (`tune.view`), logo, quieter gym, tilted ring art, rounded labelled HUD, and the ground shadow plus separate feet layer (`render/groundLayer.ts`, `tune.view.shadow*` / `feetOffsetY`).
+- Added torso, gloves/forearms, head and owner-approved effects folders for all 105 body animation keys, including alt colors, dummy and KO.
+- Preserved all 1365 previous PNG files byte-for-byte. All 672 body frames reconstruct pixel-exactly at zero offsets.
+- Exported 630 folders / 4032 registered frames; packed into 21 sheets at most 2048px.
+- Verified current main's fly and drop KO feet/shadow path in Chromium.
 
 ## Key technical decisions
 
-- Presentation only: no change to `src/sim`, hitboxes or tuned gameplay values.
-- The stars live in their own graphics overlay at depth 12 inside the perspective container, so they tilt with the ring and sit above the body (depth 10) and below the HUD.
-- Orbit speed and radius are fixed in code for now (one lap about 2.6 s); they can move to `tune.view` if wanted.
+- Same 256x256 canvas, origin (128,128), frame counts and existing character/alt grouping.
+- Back-to-front composite: torso, gloves, head, effects. Hidden torso and arm underlap stays beneath opaque head coverage.
+- Effects include baked stun stars, dodge streaks and perfect-guard marks. Inactive effects frames are transparent; Claude can omit baked stars when using runtime orbit stars.
+- No FighterView, KoAnim, groundLayer, simulation or tune changes. Legacy body/feet keys remain available until replacement rendering merges.
 
 ## Open questions
 
-- Layered boxer: body frames currently carry the head (helmet) and the gloves baked in. Separate head and glove layers need new art from Codex. Proposed order top to bottom: head, gloves, body, feet, round shadow, with head, body, feet and shadow each offset in Y. Unknown: whether gloves get an offset too, and the offset sizes (would be `tune.view` values).
-- BRIEF.md does not mention the perspective, the shadow and feet layers, the logo or the stun stars; it may need a line.
+- Claude will wire per-layer offsets and core/outer hit flashes, keeping hitboxes unchanged. Offset visuals require review after runtime wiring.
 
 ## Known issues
 
-- Checked in desktop Chromium via Playwright with a temporary low stun threshold and short start distance (not committed): stars circle the dummy's head, zero console errors. Not checked on a phone, in KO, Local VS or online.
-- The KO shadow and feet (previous PR) are still not seen live.
-- Real-phone networking and controllers unverified. Existing Phaser bundle-size warning.
+- All component animations load on demand, but current runtime still renders legacy body plus feet.
+- Expanded ZIP is 13954263 bytes; per-character atlases are about 2.2 to 2.4 MB including JSON. Existing Phaser bundle-size warning.
+- Real-phone networking/controllers were not tested; lobby sockets are mocked in the presentation test.
 
 ## Next proposed step
 
-Confirm the layering plan, then ask Codex for head, glove and body-only layers and wire the per-layer Y offsets.
+Claude fetches the R2 bundle and merges the export PR with the runtime layering implementation. Review shifted layers and hit flashes in game before removing legacy keys.

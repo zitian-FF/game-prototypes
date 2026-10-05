@@ -43,6 +43,26 @@ STUN labels; values, damage trail and tutorial reveals retain their existing log
 
 ## Export contract
 
+## Component exports (owner-approved)
+
+Each original body key additionally has `_torso`, `_gloves`, `_head` and
+`_effects` folders, with identical frame counts and 256x256 registration.
+Effects contain baked stun stars, dodge streaks and perfect-guard marks;
+inactive effects frames are transparent. Arms/forearms belong to gloves.
+Compose torso, gloves, head, effects from back to front. Visible pixels retain
+the original RGBA values; hidden torso/arm underlap is confined beneath opaque
+head pixels so the zero-offset composite remains pixel-exact. Existing body,
+feet and loose PNGs are retained byte-for-byte. No ground shadow is baked.
+There are 630 animation folders / 4032 frames, packed into 21 sheets <=2048px.
+Character and alt grouping remains unchanged. Claude owns runtime offsets,
+hit-flash routing and replacing legacy body rendering; this export does not
+change FighterView, KoAnim, groundLayer or tune.
+
+Run `LAYER_BASELINE=/path/to/previous.zip node prototypes/punchies/art/check-components.cjs`
+(set the environment variable using your shell). This checks old file bytes,
+all 672 zero-offset RGBA composites, frame pairing and atlas bounds.
+The counts and two-sheet statements below describe the original export only.
+
 Fighters face right on a transparent **256x256** canvas, registered at
 **(128,128)**, displayed at half size before character scale. Never trim,
 crop, recenter, or realign source frames. Only the existing packer trims.
