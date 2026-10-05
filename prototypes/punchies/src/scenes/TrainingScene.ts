@@ -95,7 +95,7 @@ export class TrainingScene extends Phaser.Scene {
     this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
     while (this.acc >= STEP_MS) {
       this.acc -= STEP_MS;
-      const events = step(this.sim, [this.stage.sampleLocal(), this.dummyInput()]);
+      const events = step(this.sim, [this.stage.sampleLocal(), this.dummyInput()], false);
       this.stage.handleEvents(events, this.sim);
     }
     this.stage.draw(this.sim, time);

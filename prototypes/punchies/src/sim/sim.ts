@@ -680,7 +680,7 @@ export function remainingSeconds(s: SimState): number {
 
 // Advances the simulation one tick. Mutates `s` in place and returns the
 // events raised this tick for the renderer (sparks, sounds, labels).
-export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] {
+export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch = true): SimEvent[] {
   const events: SimEvent[] = [];
   if (s.result) return events;
 
@@ -724,6 +724,8 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput]): SimEvent[] 
   advanceTimers(s, 1, inputs[1], events);
 
   s.tick++;
-  checkMatchEnd(s, events);
+  // Training opts out: HP can stay at zero while hits and input continue.
+  // Default behavior remains identical for matches and rollback callers.
+  if (finishMatch) checkMatchEnd(s, events);
   return events;
 }

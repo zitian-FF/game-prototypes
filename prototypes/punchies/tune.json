@@ -38,7 +38,18 @@
       "shakeMs": 300,
       "shakeHz": 28,
       "shakeDistance": 4,
-      "shakeAngle": 0.18
+      "shakeAngle": 0.18,
+      "gloveHeight": 16,
+      "armWidth": 5,
+      "shoulderSpread": 12,
+      "poseMs": 140,
+      "normalForward": 17,
+      "normalSpread": 15,
+      "guardForward": 12,
+      "guardSpread": 8,
+      "loweredForward": -6,
+      "loweredSpread": 6,
+      "loweredOffsetY": 20
     }
   },
   "ring": {
