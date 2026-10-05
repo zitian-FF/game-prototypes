@@ -121,6 +121,8 @@ export class FighterView {
   private g: Phaser.GameObjects.Graphics;
   private sprite: Phaser.GameObjects.Image;
   private ground: GroundLayer;
+  // Overlay above the body sprites: stun stars.
+  private fx: Phaser.GameObjects.Graphics;
   private flashColor = 0xffffff;
   private flashUntil = 0;
   // Walk cycle, driven by how far the body moves between frames.
@@ -146,6 +148,7 @@ export class FighterView {
     this.ground = new GroundLayer(scene, BODY_R);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
+    this.fx = scene.add.graphics().setDepth(12);
   }
 
   setLook(color: number, scale = 1, ponytail = false): void {
@@ -162,11 +165,13 @@ export class FighterView {
     this.g.clear();
     this.sprite.setVisible(false);
     this.ground.hide();
+    this.fx.clear();
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
     const g = this.g;
     g.clear();
+    this.fx.clear();
     const stance = stanceOf(f);
     const lx = f.fy;
     const ly = -f.fx;
@@ -189,6 +194,7 @@ export class FighterView {
         g.lineStyle(2, 0xffe03a, 0.6);
         g.strokeCircle(f.x, f.y, BODY_R + 4);
       }
+      this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;
     }
@@ -272,16 +278,24 @@ export class FighterView {
       g.strokeCircle(f.x, f.y, BODY_R + 4);
     }
 
-    // Stun: orbiting stars
-    if (f.stunTimer > 0) {
-      g.fillStyle(0xffe03a, 1);
-      for (let i = 0; i < 3; i++) {
-        const a = now / 150 + (i * Math.PI * 2) / 3;
-        g.fillCircle(f.x + Math.cos(a) * 20, f.y - 4 + Math.sin(a) * 8, 3);
-      }
-    }
+    this.drawStun(f, now);
 
     if (showHitboxes) this.drawHitboxes(f);
+  }
+
+  // Stun: three stars circling the head in a true circle, each also spinning
+  // on its own axis. Drawn above the body (art and fallback alike).
+  private drawStun(f: Fighter, now: number): void {
+    if (f.stunTimer <= 0) return;
+    const g = this.fx;
+    const k = this.scale;
+    const orbit = (BODY_R + 4) * k;
+    for (let i = 0; i < 3; i++) {
+      const a = now / 420 + (i * Math.PI * 2) / 3; // one lap per ~2.6 s
+      const x = f.x + Math.cos(a) * orbit;
+      const y = f.y - 2 + Math.sin(a) * orbit;
+      drawStar(g, x, y, 5.5 * k, -now / 260 + i);
+    }
   }
 
   private drawArt(f: Fighter, now: number, walking: boolean): boolean {
@@ -353,4 +367,19 @@ export class FighterView {
       g.strokeCircle(pt.x, pt.y, tune.punches[f.punch.type].hitRadius);
     }
   }
+}
+
+
+// Five-point star with a dark outline, rotated by `rot`.
+function drawStar(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, rot: number): void {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 === 0 ? r : r * 0.45;
+    const a = rot - Math.PI / 2 + (i * Math.PI) / 5;
+    pts.push({ x: x + Math.cos(a) * rad, y: y + Math.sin(a) * rad });
+  }
+  g.fillStyle(0xffe03a, 1);
+  g.fillPoints(pts, true);
+  g.lineStyle(1.5, 0x101b32, 1);
+  g.strokePoints(pts, true, true);
 }
