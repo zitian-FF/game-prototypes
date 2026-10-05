@@ -1,23 +1,24 @@
 ## Current milestone
-Guard-release penalty and tight perfect guard on every legal raise.
+Straight jab/cross arms, snappy hook arcs, uppercut flames and slower foot gait.
 
 ## What was implemented
-- Lowering guard starts a 12-frame Vulnerable penalty and blocks re-guarding; sweet hits take full vulnerable-row damage.
-- Every legal guard raise begins a tight three-frame Perfect Guard window. Removed the separate 40-frame cooldown.
-- Punch/dodge cancels, exhaustion and stun cannot bypass the guard-release penalty.
-- Updated AI, defense reference, tutorial text, tune metadata and BRIEF.md for the new rules.
+- Jab/Cross striking elbows straighten during extension; glove cuffs align to the actual forearm axis.
+- Both hook hands wind up outward, snap through mirrored arcs aligned with the sweet-contact point, follow through and retract smoothly.
+- Uppercut flame covers the striking arm/glove with an outlined orange/yellow/cream core, flicker and embers; fades during recovery.
+- Gait phase changed from 0.35 to 0.21 radians/pixel (40% slower); older art fallback walking also runs at 60% of its former cadence.
+- Added tuning metadata for cadence, hook motion and flame presentation; documented the animation rules in BRIEF.md.
 
 ## Key technical decisions
-- Guard penalty only starts on an actual transition out of guard; repeated releases or held guard during lockout do not restart it.
-- The release tick counts as the first penalty frame. Hit-stop pauses penalty with the fight.
-- Held guard may raise after the penalty ends; it cannot raise during the window. No added walking slowdown or attack/dodge lockout.
-- Added deterministic guardPenalty state, replacing obsolete guardDownFrames/perfectEligible. Rollback snapshots already clone the complete state.
+- Reused existing approved character parts. No redraws or R2 asset changes are needed.
+- Pure presentation math is separate from combat simulation. Contact point, reach, damage, movement speed and combat timing remain unchanged.
+- Cuff placement and glove rotation share the same forearm axis; hook elbows remain bent while straight punches fully extend.
+- Flames are drawn in the puppet effects layer above the striking glove and clear during recovery.
 
 ## Open questions
-- Owner was offered timing choices; used 12 penalty frames and three Perfect Guard frames. BRIEF.md records the working timings and can be adjusted if requested.
+- None for this animation pass.
 
 ## Known issues
 - No real-phone or two-peer online-match verification in this pass.
 
 ## Next proposed step
-Playtest guard timing against live opponents. Guard regressions verify full damage, exact lockout, fresh perfect guard, cancels, hit-stop, deterministic replay and AI compatibility. Stamina/dodge and zero-HP training regressions, typecheck and production build passed. Brave checked the reference overlay and actual game boot without console errors.
+Playtest at normal speed. Limb checks cover all characters, straight arms/cuffs, mirrored hook arcs and recovery continuity, sweet-contact alignment, flame coverage/expiry, cadence and read-only presentation. Typecheck and production build passed. Brave reviewed actual existing character rigs at contact, hook sequence, live punches and walking, plus game boot without console errors.

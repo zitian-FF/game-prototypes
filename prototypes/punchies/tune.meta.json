@@ -2406,5 +2406,68 @@
     "min": 0,
     "max": 60,
     "step": 1
+  },
+  "view.puppet.walkPhasePerPixel": {
+    "cat": "Puppet",
+    "desc": "Foot gait phase per pixel walked; 0.21 is 40% slower than the former 0.35.",
+    "min": 0.01,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.hookWindupDegrees": {
+    "cat": "Puppet",
+    "desc": "Hook wind-up angle outward from facing; mirrored for either hand.",
+    "min": 20,
+    "max": 120,
+    "step": 5
+  },
+  "view.puppet.hookFollowDegrees": {
+    "cat": "Puppet",
+    "desc": "Hook follow-through angle inward across facing.",
+    "min": 0,
+    "max": 90,
+    "step": 5
+  },
+  "view.puppet.hookSnapPower": {
+    "cat": "Puppet",
+    "desc": "Hook sweep easing exponent; higher values snap across sooner.",
+    "min": 1,
+    "max": 5,
+    "step": 0.1
+  },
+  "view.puppet.hookElbowRatio": {
+    "cat": "Puppet",
+    "desc": "Minimum hook arm segment length relative to shoulder/glove distance, keeping the elbow bent.",
+    "min": 0.51,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.uppercutFireWidth": {
+    "cat": "Puppet",
+    "desc": "Width of the flame covering the uppercut arm and glove.",
+    "min": 4,
+    "max": 30,
+    "step": 1
+  },
+  "view.puppet.uppercutFireLength": {
+    "cat": "Puppet",
+    "desc": "Flame tongue length beyond the uppercut glove.",
+    "min": 4,
+    "max": 40,
+    "step": 1
+  },
+  "view.puppet.uppercutFireFadeFrames": {
+    "cat": "Puppet",
+    "desc": "Presentation frames for uppercut flames to fade after the active strike.",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "view.puppet.uppercutFireFlickerHz": {
+    "cat": "Puppet",
+    "desc": "Uppercut flame flicker and ember frequency.",
+    "min": 1,
+    "max": 30,
+    "step": 1
   }
 }
