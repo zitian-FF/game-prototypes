@@ -178,7 +178,7 @@ All actions are coordinates, timers and unit references:
   node your team holds is refused if it is full or your commander already
   has a squad there or on the way.
 - **Scout:** each HQ owns 3 scouts. A scout is a fast, non-combat unit
-  sent to a node or HQ. It travels at **3x squad march speed**. On
+  sent to a node or HQ. It travels at **4.5x squad march speed (see revision)**. On
   arrival it reveals that target's defender info: for each defender,
   the **squad type**, its **power adjusted by troops remaining**
   (`power * troops / maxTroops`), and its **commander**. The
@@ -481,7 +481,7 @@ client.
 - Defeated squads return to HQ at 50% speed, they are not deleted.
 - HQ HP only restores when the HQ is defeated and teleported to the safe
   zone. After an HQ attack, the attacker returns to its HQ.
-- Scouts: 3 per HQ, 3x squad speed, non-combat, must return before reuse.
+- Scouts: 3 per HQ, 4.5x squad speed (see revision), non-combat, must return before reuse.
   Reveal type and troop-adjusted power for 60 seconds.
 - A defeated squad is not deleted: it returns to its HQ at 50% speed and
   refills from the reserve pool.
@@ -723,4 +723,8 @@ client.
   live vector art when the camera is zoomed out below `perf.staticUnitZoom` or more than `perf.staticUnitCount` units are
   on screen (with hysteresis), which is much cheaper on a phone. World labels are pooled by their text so they are not
   re-rendered when others appear, and shrink in steps when zoomed in close.
+- Teleport glow: selecting a node your HQ can teleport onto (held by your team, or a Portal Nexus) makes its eight slot
+  cells glow and pulse in your team colour; cells already taken by an HQ stay faint.
+- Scouts: no commander names are drawn on scouts any more, and they fly 50% faster (`scout.speedFactor` 3 to 4.5 times
+  the squad march speed, which was itself raised 80%).
 - Where this section conflicts with older text above, this section wins.

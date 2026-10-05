@@ -428,7 +428,7 @@ test('cancel: a marching squad turns round from where it is and heads home', () 
 
 // ---------------------------------------------------------------- scouts
 
-test('scout: flies at 3x squad speed, reveals defenders, expires after 60s', () => {
+test('scout: flies at the tuned multiple of squad speed (4.5x), reveals defenders, expires after 60s', () => {
   const g = makeGame({
     nodes: [N0],
     players: [
@@ -444,7 +444,7 @@ test('scout: flies at 3x squad speed, reveals defenders, expires after 60s', () 
   const scout = g.players.get('b')!.scouts[0];
   assert.equal(scout.kind, 'out');
   if (scout.kind !== 'out') return;
-  const expected = (dist(scout.from, scout.to) / (g.marchSpeed * 3)) * 1000;
+  const expected = (dist(scout.from, scout.to) / (g.marchSpeed * g.tune.scout.speedFactor)) * 1000;
   assert.ok(Math.abs(scout.arriveMs - start - expected) < 1e-6);
 
   const events = g.advanceTo(scout.arriveMs);

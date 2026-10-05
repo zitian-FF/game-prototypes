@@ -58,7 +58,7 @@
   },
   "scout": {
     "perHq": 3,
-    "speedFactor": 3,
+    "speedFactor": 4.5,
     "revealSeconds": 60
   },
   "scoring": {

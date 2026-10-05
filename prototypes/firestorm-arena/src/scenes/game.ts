@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { RING_OFFSETS } from 'arena-sim';
 import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
 import { BaseScene, bufferScale, isTouch, logicalSize, safeInsets } from './base';
@@ -591,6 +592,36 @@ export class GameScene extends BaseScene {
     g.strokePath();
   }
 
+  /**
+   * With a node selected that your HQ can teleport onto (one your team holds, or a Portal Nexus), its eight slot cells
+   * glow in your team colour. Free slots pulse; cells already taken by an HQ stay faint.
+   */
+  private drawTeleportGlow(g: Phaser.GameObjects.Graphics, view: WireView, now: number): void {
+    const t = this.target;
+    if (!t || t.kind !== 'node') return;
+    const n = view.nodes.find((x) => x.id === t.id);
+    if (!n || !((n.owner === this.mine && n.visible) || n.kind === 'portal')) return;
+    const iso = this.iso;
+    const cell = this.tune.map.cellSize;
+    const col = COLORS.mine;
+    const pulse = 0.5 + 0.5 * Math.sin(now * 3.2);
+    const half = iso.tile / 2 - 3;
+    const hqs: Vec[] = [...view.hqs.map((h) => h.pos), ...view.enemyHqs.map((h) => h.pos)];
+    for (const o of RING_OFFSETS) {
+      const pos = { x: n.pos.x + o.cx * cell, y: n.pos.y + o.cy * cell };
+      const p = iso.p(pos.x, pos.y);
+      const taken = hqs.some((q) => Math.hypot(q.x - pos.x, q.y - pos.y) < cell * 0.45);
+      if (taken) {
+        g.lineStyle(DETAIL, col, 0.35).strokeRect(p.x - half, p.y - half, half * 2, half * 2);
+        continue;
+      }
+      // Soft halo, body, then a bright edge.
+      g.lineStyle(7, col, 0.1 + 0.1 * pulse).strokeRect(p.x - half - 2, p.y - half - 2, half * 2 + 4, half * 2 + 4);
+      g.fillStyle(col, 0.16 + 0.16 * pulse).fillRect(p.x - half, p.y - half, half * 2, half * 2);
+      g.lineStyle(OUTLINE, col, 0.6 + 0.4 * pulse).strokeRect(p.x - half, p.y - half, half * 2, half * 2);
+    }
+  }
+
   /** Pre-render a unit once per type and colour into a texture, at twice the size so it stays crisp when drawn small. */
   private unitTexture(type: SquadType | 'scout', color: number): string {
     const key = `u:${type}:${color.toString(16)}`;
@@ -673,6 +704,7 @@ export class GameScene extends BaseScene {
     const lines = this.linesG;
     const g = this.entG;
     lines.clear();
+    this.drawTeleportGlow(lines, view, now);
     g.clear();
     this.fxG.clear();
 
@@ -830,10 +862,7 @@ export class GameScene extends BaseScene {
       const pos = marchPos({ from: sc.from, to: sc.to, startMs: sc.startMs, arriveMs: sc.arriveMs }, simMs);
       const p = iso.p(pos.x, pos.y);
       const to = iso.p(sc.to.x, sc.to.y);
-      add(pos, () => {
-        this.putUnit(g, 'scout', p.x, p.y, this.face(`escout:${sc.owner}#${sc.index}`, p.x, to.x), COLORS.enemy, now);
-        this.label(sc.owner, p.x, p.y - unitHeight('scout') * US - 18, '#ffb08a', 11);
-      });
+      add(pos, () => this.putUnit(g, 'scout', p.x, p.y, this.face(`escout:${sc.owner}#${sc.index}`, p.x, to.x), COLORS.enemy, now));
     }
 
     items.sort((a, b) => a.d - b.d);
