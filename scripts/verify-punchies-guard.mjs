@@ -48,7 +48,7 @@ const release = fresh(); step(release, [guard, neutral]); incoming(release);
 const hit = step(release, [neutral, neutral]).find(e => e.kind === 'hit');
 assert(hit, 'jab must land during release');
 assert.equal(hit.row, 'vulnerable');
-assert.equal(hit.damage, punchCfg(release.fighters[1], 'jab').damage, 'sweet outer-ring hit during penalty takes full damage');
+assert.equal(hit.damage, punchCfg(release.fighters[1], 'jab').damage * tune.hit.counterDamageMult, 'sweet outer-ring hit during penalty takes full damage plus the punish counter');
 
 const reraised = fresh(); step(reraised, [guard, neutral]); step(reraised, [neutral, neutral]);
 while (reraised.fighters[0].guardPenalty > 0) step(reraised, [neutral, neutral]);

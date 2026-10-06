@@ -300,15 +300,22 @@ export class Puppet {
 
     // ---- torso and head ----
     const tpos = P(-snap * 0.5, 0, v.bodyOffsetY);
+    // Torso twist: the shoulder of the striking hand turns forward with the
+    // punch (left hand +, right hand -), the head follows part way.
+    const twist = f.punch && !a.limp ? (f.punch.hand === 0 ? 1 : -1) * ((rig.torsoTwistDegrees * Math.PI) / 180) * punchExtension(f.punch) : 0;
+    const tfx = Math.cos(th + twist);
+    const tfy = Math.sin(th + twist);
+    const tlx = tfy;
+    const tly = -tfx;
     this.torso
       .setPosition(tpos.x, tpos.y)
-      .setRotation(th + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
+      .setRotation(th + twist + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
       .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
     const hpos = P(rig.headForward * k - snap, 0, headDy);
-    const hrot = th + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
+    const hrot = th + twist * 0.4 + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
     const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale;
     this.head.setPosition(hpos.x, hpos.y).setRotation(hrot).setScale(hscale).setAlpha(alpha).setVisible(true);
     if (this.scene.textures.exists(partKey(f.char, a.alt, 'ponytail'))) {
@@ -331,7 +338,7 @@ export class Puppet {
     [this.gloveL, this.gloveR].forEach((glove, i) => {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
-      const sh = P(1 * k, rig.shoulderSpread * k * side, v.bodyOffsetY);
+      const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * k * side + v.bodyOffsetY };
       const gh = rig.gloveHeight * k;
       const striking = f.punch?.hand === i;
       const straight = striking && (f.punch!.type === 'jab' || f.punch!.type === 'cross') ? punchExtension(f.punch!) : 0;

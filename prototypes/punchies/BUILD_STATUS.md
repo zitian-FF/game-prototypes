@@ -1,24 +1,27 @@
 ## Current milestone
-Straight jab/cross arms, snappy hook arcs, uppercut flames and slower foot gait.
+Combat tuning pass 2026-10-06: punch ranges, sweet/sour windows, penalties, punish counters, face-only stamina loss, torso twist.
 
 ## What was implemented
-- Jab/Cross striking elbows straighten during extension; glove cuffs align to the actual forearm axis.
-- Both hook hands wind up outward, snap through mirrored arcs aligned with the sweet-contact point, follow through and retract smoothly.
-- Uppercut flame covers the striking arm/glove with an outlined orange/yellow/cream core, flicker and embers; fades during recovery.
-- Gait phase changed from 0.35 to 0.21 radians/pixel (40% slower); older art fallback walking also runs at 60% of its former cadence.
-- Added tuning metadata for cadence, hook motion and flame presentation; documented the animation rules in BRIEF.md.
+- Punch ranges (tune.json): Jab reach 42 / radius 6 (connects to 70 px), Cross 56 / 7 (85), Hook 31 / 12 (65), Uppercut 31 / 12 (65). Core (face) radius 11 to 15. The Jab's body band ends where the Cross face band starts (70), so the Jab is the range gauge.
+- Late sour removed (0 frames) for every punch. Jab: startup 6, early sour 3, sweet 2. Cross: sweet 6. Hook: startup 10, early sour 1, sweet 3. Uppercut: recovery 16. Total punch length unchanged.
+- Guard release penalty and post-dodge vulnerable window: 24 frames each.
+- Punish: any punch that connects on a defender in guard release, the dodge tail or post-dodge window gets the counter bonus (1.5x damage and stun, double hit-stop, counter stars). Cross and Hook keep the startup counter.
+- Defender stamina is lost only on face hits (the full-damage row) and sweet blocks; body hits drain none. Body hit damage stays at 50%.
+- Rig: torso twist toward the striking arm (`view.puppet.torsoTwistDegrees`, 22), head follows 40 percent. Visual only. Hit flashes already split by zone (face row flashes the head, body row the torso).
+- BRIEF.md updated; new `scripts/verify-punchies-combat-ranges.mjs`; older verify scripts updated for the new numbers.
 
 ## Key technical decisions
-- Reused existing approved character parts. No redraws or R2 asset changes are needed.
-- Pure presentation math is separate from combat simulation. Contact point, reach, damage, movement speed and combat timing remain unchanged.
-- Cuff placement and glove rotation share the same forearm axis; hook elbows remain bent while straight punches fully extend.
-- Flames are drawn in the puppet effects layer above the striking glove and clear during recovery.
+- Sim changes are two small edits in `resolveContact` (punish counter, no body-hit stamina drain); everything else is tune.json, which guests adopt from the host.
+- Sweet face windows are small by design (face hits are meant to be rare): about 6 px for the Jab, 4 px for the Hook, 8 px for the Cross.
 
 ## Open questions
-- None for this animation pass.
+- Bots hardcode spacing around reach, so their whiff count roughly doubled in bot-vs-bot batches. They still finish matches, but need a spacing retune.
+- Punish counters give Jab and Uppercut hits +2 counter stars; watch for star farming.
+- BRIEF.md tutorial and reference overlay text were not rechecked against the new numbers.
 
 ## Known issues
-- No real-phone or two-peer online-match verification in this pass.
+- Not verified: real phone, online match with two real devices, hook arc visuals with the new timing.
+- Headless two-peer rollback simulator: no mismatches (wifi and mobile profiles, one minute each).
 
 ## Next proposed step
-Playtest at normal speed. Limb checks cover all characters, straight arms/cuffs, mirrored hook arcs and recovery continuity, sweet-contact alignment, flame coverage/expiry, cadence and read-only presentation. Typecheck and production build passed. Brave reviewed actual existing character rigs at contact, hook sequence, live punches and walking, plus game boot without console errors.
+Playtest the new ranges and penalties, then retune bot spacing and adjust numbers from feel.
