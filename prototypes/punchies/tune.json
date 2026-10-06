@@ -62,7 +62,8 @@
       "loweredOffsetY": 20
     },
     "staminaRejectFlashMs": 300,
-    "staminaRejectFlashHz": 10
+    "staminaRejectFlashHz": 10,
+    "flashMs": 260
   },
   "ring": {
     "left": 267,

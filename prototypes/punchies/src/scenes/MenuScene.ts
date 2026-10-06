@@ -48,6 +48,10 @@ export class MenuScene extends Phaser.Scene {
     this.msg = this.add
       .text(menuX, VIEW.cy + 122, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
+    // Demo notice and credit (bottom left, clear of the debug button).
+    const note = { fontFamily: 'monospace', fontSize: '10px', color: '#9fb0c8', resolution: PIXEL_RATIO };
+    const lines = ['DEMO BUILD. Features, balance and art may change.', 'Created and designed by ZeeTea.', 'Built together with Claudia and G.P. Tea.'];
+    lines.forEach((line, i) => this.add.text(VIEW.left + 16, VIEW.bottom - 48 + i * 14, line, note).setOrigin(0, 0.5));
     addVersionStamp(this);
   }
 
