@@ -1,22 +1,23 @@
 ## Current milestone
-Readability and demo polish after the combat tuning pass: longer hit flashes, no hit or hurtbox rings in normal play, demo notice and credits on the main menu.
+Vulnerable-state cue and reference panel cleanup.
 
 ## What was implemented
-- Hit flash length is now `view.flashMs` (260 ms, was a fixed 110 ms), with a Tweakpane slider. Head and torso still flash separately.
-- Removed the red vulnerable ring around the boxer and the sweet/sour ring on the gloves in normal play (art, puppet and fallback drawing). The debug hitbox overlay (debug mode) is unchanged. The yellow power-up ring (dash buff or full stars) stays.
-- Main menu: demo notice and credits, bottom left ("DEMO BUILD. Features, balance and art may change." / "Created and designed by ZeeTea." / "Built together with Claudia and G.P. Tea.").
+- Vulnerable state (punch startup/recovery, guard release, dodge tail, stunned, exhausted): the whole boxer silhouette (head, torso, gloves, boots, arms) pulses red-orange for as long as the state lasts. Speed and strength are tune values (`view.puppet.vulnerablePulseMs`, `vulnerablePulseMax`) with sliders. Hit flashes still override it. Puppet art only.
+- Reference panel (info): removed the Late Sour column, updated the body-hit row (no defender stamina loss) and the sour legend (early contact only).
+- Menu credits and demo notice were added in the previous pass (bottom left of the main menu).
 
 ## Key technical decisions
-- Presentation only; sim and combat tuning untouched.
-- Without the rings there is no on-screen cue for the vulnerable state or sweet/sour timing; a replacement indicator is proposed to the owner and not built yet.
+- Pulse uses a multiplicative tint, so light parts (skin, highlights) show it strongest and dark blue/green parts less so; raise `vulnerablePulseMax` if it reads too weak on a character.
+- Presentation only; sim untouched.
 
 ## Open questions
-- Which replacement cue for the vulnerable state (options sent to the owner)?
-- The hub page (index.html) has no demo notice; the notice is on the Punchies main menu only.
+- Should the older layered-art and drawn fallbacks (used only if parts fail to load) also pulse? Not done.
+- The hub page (index.html) has no demo notice.
 
 ## Known issues
 - Not verified on a real phone.
-- Bot spacing still needs a retune after the range changes (see previous pass).
+- Bot spacing still needs a retune after the range changes.
+- Sweet/sour timing has no on-screen cue now that the glove ring is gone.
 
 ## Next proposed step
-Pick and build the vulnerable-state cue, then retune bot spacing.
+Playtest the pulse strength on all three characters, then retune bot spacing.

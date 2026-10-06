@@ -78,6 +78,11 @@ export function makeAltParts(scene: Phaser.Scene): void {
   }
 }
 
+function lerpRgb(a: number, b: number, t: number): number {
+  const ch = (shift: number) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
   const rr = r / 255;
   const gg = g / 255;
@@ -159,6 +164,7 @@ export interface PuppetArgs {
   flashColor: number;
   dodging: boolean;
   guarding: boolean;
+  vulnerable?: boolean; // open to full-damage hits: the silhouette pulses red-orange
   limp?: boolean; // knocked out: slumped, no sweat or wobble
 }
 
@@ -334,7 +340,10 @@ export class Puppet {
       }
       return p;
     });
-    const skinNow = a.flashBody ? a.flashColor : look.skin;
+    // Vulnerable: the whole silhouette pulses red-orange while it lasts.
+    const pulse = a.vulnerable && !a.limp ? rig.vulnerablePulseMax * (0.45 + 0.55 * (0.5 + 0.5 * Math.sin(now / rig.vulnerablePulseMs))) : 0;
+    const warn = pulse > 0 ? lerpRgb(0xffffff, 0xff5a28, pulse) : 0xffffff;
+    const skinNow = a.flashBody ? a.flashColor : pulse > 0 ? lerpRgb(look.skin, 0xff5a28, pulse * 0.8) : look.skin;
     [this.gloveL, this.gloveR].forEach((glove, i) => {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
@@ -369,9 +378,15 @@ export class Puppet {
     // ---- tints: head and torso flash separately when hit ----
     const head = a.flashHead;
     const body = a.flashBody;
-    for (const o of [this.head, this.ponytail]) (head ? o.setTintFill(a.flashColor) : o.clearTint());
-    if (body) this.torso.setTintFill(a.flashColor);
-    else this.torso.clearTint();
+    const tintOf = (o: Phaser.GameObjects.Image, flash: boolean) => {
+      if (flash) o.setTintFill(a.flashColor);
+      else if (pulse > 0) o.setTint(warn);
+      else o.clearTint();
+    };
+    tintOf(this.head, head);
+    tintOf(this.ponytail, head);
+    tintOf(this.torso, body);
+    for (const o of [this.gloveL, this.gloveR, this.bootL, this.bootR]) tintOf(o, false);
 
     // ---- effects: dodge afterimage + speed lines, exhausted sweat ----
     this.history.push({ x: tpos.x, y: tpos.y, rot: th });
