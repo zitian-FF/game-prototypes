@@ -94,8 +94,10 @@ localStorage `punchies:chars:v1`.
 
 ## Punch frames
 Startup -> Early Sour (active, fist extending) -> Sweet (active, full
-extension) -> Late Sour (active) -> Recovery. Active frames are continuous
-(no gaps). The fist travels outward during Early Sour; touching the outer
+extension) -> Recovery. Late Sour is no longer used (0 frames for every
+punch, 2026-10-06): a hit resolves on the first frame the fist is in range
+at full extension, so a late sour practically never happened. Active frames
+are continuous (no gaps). The fist travels outward during Early Sour; touching the outer
 hurtbox doesn't stop it, and the hit resolves when the fist reaches the
 core or full extension. The resolving frame decides sweet vs sour; whether
 it reached the core decides the Normal vs Vulnerable row. A whiff adds
@@ -103,6 +105,13 @@ per-punch whiff recovery frames (punish window). All frame data, reach, damage
 and stamina cost live in tune.json. Jab fastest/lightest/long reach; Cross
 slowest/heaviest/long reach; Hook medium speed, moderate damage, shorter
 reach.
+
+Ranges (2026-10-06, centre distance in px, defender standing still; fighters
+cannot stand closer than 44): the Jab reaches 70 (reach 42, radius 6) and
+its far body band ends where the Cross face band begins, so it is the range
+gauge. Cross reaches 85 (56 / 7): sour inside 70, sweet face 70-78, sweet
+body 78-85. Hook and Uppercut reach 65 (31 / 12), slightly under the Jab.
+Core (face) radius is 15. Early contact before full extension is sour.
 
 ## Defensive states
 - Normal: idle/moving. Circle hurtbox with a smaller core inside it. The
@@ -119,7 +128,7 @@ reach.
   to sweet and sour hits. Defender recovers stamina; attacker stunned.
   Every legal guard raise starts a tight 3-frame Perfect Guard window;
   there is no separate perfect-guard cooldown. Lowering an active guard
-  starts a 12-frame guard penalty (200 ms at 60 Hz): Vulnerable, full
+  starts a 24-frame guard penalty (400 ms at 60 Hz): Vulnerable, full
   damage on sweet hits, and guard cannot be raised until it ends. Punch
   and dodge cancels also lower guard and keep this penalty. Holding the
   guard input during the penalty raises it only once guarding is legal.
@@ -127,13 +136,12 @@ reach.
   Counter (2026-10-03): a Hook goes through a Perfect Guard like it does
   a High Guard (chip damage, no attacker stun, no stamina bonus), so a
   well-timed Perfect Guard can be beaten by throwing a Hook.
-- Dodge: i-frames, followed by a distinct dodge penalty: 14 vulnerable frames
-  (12 increased by 20%, rounded to whole frames), walking speed at 40%,
+- Dodge: i-frames, followed by a distinct dodge penalty: 24 vulnerable frames, walking speed at 40%,
   and no further dodge until the penalty ends. Dodge costs 14.4 stamina
   (+20%). Stunned dodge penalties retain their existing duration multiplier.
   The first punch thrown within the separate 6-frame follow-up buff after
   dodge ends is powered up (1.5x); throwing it consumes only the buff,
-  not the penalty. Hook base reach is 28 (-20%).
+  not the penalty. Hook base reach is 31.
 - Punch hitboxes extend forward from the facing direction. No directional
   armour.
 
@@ -142,9 +150,9 @@ reach.
 |---|---|---|
 | Sweet vs High Guard | Both lose | None |
 | Sour vs High Guard | Attacker loses | None |
-| Sweet vs Normal | Defender loses | Reduced |
-| Sour vs Normal | Both lose | None |
-| Sweet vs Vulnerable | Defender loses | Full |
+| Sweet vs Normal (body) | None (body hits cost the defender no stamina) | Reduced |
+| Sour vs Normal (body) | Attacker loses | None |
+| Sweet vs Vulnerable (face) | Defender loses | Full |
 | Sour vs Vulnerable | Defender loses | Reduced |
 | Jab / Cross / Uppercut vs Perfect Guard | Attacker stunned; defender recovers | None |
 | Hook vs Perfect Guard | Treated as a High Guard block | Chip only |
@@ -153,7 +161,13 @@ reach.
 - Cross or Hook connecting during the opponent's Startup = counter: 1.5x
   damage, +2 Stars total (`stars.counterGain`; not stacked with the
   sweet-hit star). Changed from +1 on 2026-09-30.
-- Jab on Startup = normal hit that interrupts. Uppercut is never a counter.
+- Jab on Startup = normal hit that interrupts. Uppercut is never a startup counter.
+- Punish (2026-10-06): ANY punch (Jab, Cross, Hook, Uppercut) that connects
+  while the defender is in a guard-release penalty, the dodge tail or the
+  post-dodge vulnerable window gets the same counter bonus (1.5x damage and
+  stun, double hit-stop, counter stars).
+- Defender stamina is only lost on face hits (the full-damage row) and
+  sweet blocks; body hits drain none.
 - Distinct flash and sound.
 
 ## Star Power / Uppercut

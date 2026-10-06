@@ -541,9 +541,10 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const full = baseDamage * p.damageMult;
   const reduced = full * tune.hit.reducedDamageMult;
 
+  // Only face hits (the full-damage row) cost the defender stamina; body
+  // hits leave it alone so stamina stays the attacker's resource.
   let damage = 0;
   if (row === 'normal') {
-    spendStamina(def, cfg.staminaDamage);
     if (c.sweet) damage = reduced;
     else spendStamina(att, tune.hit.attackerStaminaPenalty);
   } else {
@@ -551,7 +552,11 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     damage = c.sweet ? full : reduced;
   }
 
-  const counter = (p.type === 'cross' || p.type === 'hook') && defStartup[defIdx] && damage > 0;
+  // Counter (x1.5 damage and stun, double hit-stop, bonus stars): a Cross or
+  // Hook that catches a punch in startup, or any punch that catches a
+  // defender in a guard-release or dodge penalty (a punish).
+  const punished = def.guardPenalty > 0 || def.postDodgeVulnerable > 0 || (!!def.dodge && def.dodge.frame >= tune.dodge.iFrames);
+  const counter = damage > 0 && (((p.type === 'cross' || p.type === 'hook') && defStartup[defIdx]) || punished);
   if (counter) damage *= tune.hit.counterDamageMult;
 
   p.connected = true;
