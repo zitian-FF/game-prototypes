@@ -357,11 +357,6 @@ export class Puppet {
         .setVisible(true)
         // High Guard: the gloves come up over the head.
         .setDepth(a.guarding ? 10.25 : 10.1);
-      // Sweet / sour / guard feedback ring around the glove.
-      if (a.fistColors[i] !== a.baseColor) {
-        this.fx.lineStyle(2, a.fistColors[i], 0.85 * alpha);
-        this.fx.strokeCircle(fist.x, fist.y, gh * 0.55);
-      }
     });
 
     if (f.punch?.type === 'uppercut' && !a.limp) {

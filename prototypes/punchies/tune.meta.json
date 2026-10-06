@@ -2476,5 +2476,12 @@
     "min": 0,
     "max": 45,
     "step": 1
+  },
+  "view.flashMs": {
+    "cat": "View",
+    "desc": "How long a boxer flashes when hit, in ms (white = you landed it, red = you took it; head and torso flash separately).",
+    "min": 60,
+    "max": 800,
+    "step": 10
   }
 }

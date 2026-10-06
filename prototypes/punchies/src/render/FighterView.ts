@@ -237,10 +237,6 @@ export class FighterView {
     this.dummy.hide();
 
     if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
-      if (isVulnerable(f) && stance !== 'dodging') {
-        g.lineStyle(2, 0xff4a3a, 0.45);
-        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
-      }
       if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
         g.lineStyle(2, 0xffe03a, 0.6);
         g.strokeCircle(f.x, f.y, BODY_R + 4);
@@ -251,10 +247,6 @@ export class FighterView {
     }
 
     if (this.drawArt(f, now, walking)) {
-      if (isVulnerable(f) && stance !== 'dodging') {
-        g.lineStyle(2, 0xff4a3a, 0.45);
-        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
-      }
       if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
         g.lineStyle(2, 0xffe03a, 0.6);
         g.strokeCircle(f.x, f.y, BODY_R + 4);
@@ -277,10 +269,6 @@ export class FighterView {
         g.fillStyle(0x000000, 0.3 * this.stride * alpha);
         g.fillEllipse(x + 2, y + 3, 11, 11);
       }
-    }
-    if (isVulnerable(f) && stance !== 'dodging') {
-      g.lineStyle(2, 0xff4a3a, 0.35 + 0.2 * Math.sin(now / 60));
-      g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
     }
 
     const { fists, colors } = this.fistPoints(f, k, stance);
