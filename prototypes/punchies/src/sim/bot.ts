@@ -34,6 +34,7 @@ interface FoeView {
   open: boolean; // exposed: recovering, exhausted, stunned or after a dodge
   stars: number;
   guarding: boolean;
+  stamina: number; // the foe's meter, as a player would read it off the HUD
 }
 
 const ATTACKS: PunchType[] = ['jab', 'cross', 'hook'];
@@ -88,6 +89,7 @@ export class ScriptedBot implements Bot {
       open: phase === 'recovery' || foe.exhausted || foe.stunTimer > 0 || foe.postDodgeVulnerable > 0 || foe.guardPenalty > 0,
       stars: foe.stars,
       guarding: foe.guarding,
+      stamina: foe.exhausted ? 0 : foe.stamina,
     });
     const delay = Math.max(0, Math.round(L.reactionFrames));
     while (this.hist.length > delay + 1) this.hist.shift();
@@ -109,6 +111,8 @@ export class ScriptedBot implements Bot {
     // Watch the tank: below conserveBelow the bot throws less, and cheaper.
     const reserve = L.retreatStaminaBelow;
     const careful = me.stamina < L.conserveBelow;
+    // Pressure: the foe is running on empty, so close in and make them pay for it.
+    const pressing = !tired && L.pressureFoeBelow > 0 && view.stamina < L.pressureFoeBelow && me.stamina > reserve;
     const conserve = careful ? Math.max(0.2, (me.stamina - reserve) / Math.max(1, L.conserveBelow - reserve)) : 1;
 
     // A dodge costs real stamina; a bot that cannot pay it must block instead.
@@ -165,7 +169,7 @@ export class ScriptedBot implements Bot {
     // --- offence --------------------------------------------------------
     if (!busy && !tired && s.tick >= this.holdOffUntil) {
       const open = view.open && !view.guarding;
-      const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance * conserve;
+      const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance * (pressing ? L.pressureBoost : conserve);
       if (want) {
         const pick = this.pickPunch(me, dist, open);
         // Never spend into the reserve on a plain attack; a punish may dip
@@ -192,7 +196,7 @@ export class ScriptedBot implements Bot {
       // Cornered with the foe close: block instead of walking into a lock.
       if (rec.cornered && dist < L.safeDistance - 25 && !busy) input.guard = true;
       return input;
-    } else if (view.open && dist > ideal && !careful) {
+    } else if ((view.open || pressing) && dist > ideal && (!careful || pressing)) {
       mx = nx;
       my = ny;
     } else if (dist > ideal + 8) {
