@@ -139,6 +139,8 @@ export class FighterView {
   private fx: Phaser.GameObjects.Graphics;
   private flashColor = 0xffffff;
   private flashUntil = 0;
+  private flashAlt = 0xff4a4a;
+  private flashStart = 0;
   // Walk cycle, driven by how far the body moves between frames.
   private lastX = NaN;
   private lastY = NaN;
@@ -148,10 +150,20 @@ export class FighterView {
   // Brief body flash when hit (white = you landed it, red = you took it).
   flash(color: number, now: number, ms = 110, zone: 'head' | 'body' = 'body'): void {
     this.flashColor = color;
+    // The flash strobes between two colours: white <-> red when damage landed,
+    // red <-> dark red when it did not.
+    this.flashAlt = color === 0xffffff ? 0xff4a4a : 0x7a1010;
+    this.flashStart = now;
     this.flashUntil = now + ms;
     // Layered art flashes only the part that was hit.
     if (zone === 'head') this.flashHeadUntil = now + ms;
     else this.flashBodyUntil = now + ms;
+  }
+
+  // Current strobe colour of the hit flash.
+  private flashNow(now: number): number {
+    const step = Math.floor((now - this.flashStart) / Math.max(1, tune.view.flashStrobeMs));
+    return step % 2 === 0 ? this.flashColor : this.flashAlt;
   }
 
   private hideLayers(): void {
@@ -284,7 +296,7 @@ export class FighterView {
     for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha, k);
 
     if (now < this.flashUntil) {
-      g.fillStyle(this.flashColor, 0.75);
+      g.fillStyle(this.flashNow(now), 0.75);
       g.fillCircle(f.x, f.y, BODY_R + 2);
     }
     // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
@@ -347,7 +359,7 @@ export class FighterView {
       vel,
       flashHead: now < this.flashHeadUntil,
       flashBody: now < this.flashBodyUntil,
-      flashColor: this.flashColor,
+      flashColor: this.flashNow(now),
       dodging: stance === 'dodging',
       vulnerable: isVulnerable(f) && stance !== 'dodging',
       guarding: f.guarding,
@@ -412,9 +424,9 @@ export class FighterView {
       // runtime orbit, so the baked ones are skipped.
       if (action !== 'stunned' && pose(this.effects, `${key}_effects`, progress)) place(this.effects, 0);
       else this.effects.setVisible(false);
-      if (now < this.flashBodyUntil) this.torso.setTintFill(this.flashColor);
+      if (now < this.flashBodyUntil) this.torso.setTintFill(this.flashNow(now));
       else this.torso.clearTint();
-      if (now < this.flashHeadUntil) this.head.setTintFill(this.flashColor);
+      if (now < this.flashHeadUntil) this.head.setTintFill(this.flashNow(now));
       else this.head.clearTint();
       this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
       return true;
@@ -424,7 +436,7 @@ export class FighterView {
     this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(rotation);
     this.sprite.setAlpha(alpha);
     this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
-    if (now < this.flashUntil) this.sprite.setTintFill(this.flashColor);
+    if (now < this.flashUntil) this.sprite.setTintFill(this.flashNow(now));
     else this.sprite.clearTint();
     return true;
   }
