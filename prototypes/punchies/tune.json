@@ -39,7 +39,9 @@
       "uppercutFireLength": 22,
       "uppercutFireFadeFrames": 6,
       "uppercutFireFlickerHz": 12,
-      "torsoTwistDegrees": 22
+      "torsoTwistDegrees": 22,
+      "vulnerablePulseMs": 90,
+      "vulnerablePulseMax": 0.8
     },
     "trainingDummy": {
       "bodyHeight": 34,

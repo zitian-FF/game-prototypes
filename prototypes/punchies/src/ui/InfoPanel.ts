@@ -119,7 +119,6 @@ export class InfoPanel {
         String(p.startup),
         { text: String(p.sourEarly), color: '#ff9a4a' },
         { text: String(p.sweet), color: '#ffe03a' },
-        { text: String(p.sour), color: '#ff9a4a' },
         String(p.recovery),
         `+${p.whiffRecovery}`,
         String(total),
@@ -134,8 +133,8 @@ export class InfoPanel {
         left,
         y,
         'FRAME DATA (frames @60fps)',
-        [64, 44, 50, 42, 44, 44, 42, 38, 40, 34, 44],
-        ['Punch', 'Start', 'E.sour', 'Sweet', 'L.sour', 'Recov', 'Whiff', 'Total', 'Reach', 'Dmg', 'Stam'],
+        [68, 48, 54, 46, 48, 46, 42, 44, 38, 48],
+        ['Punch', 'Start', 'E.sour', 'Sweet', 'Recov', 'Whiff', 'Total', 'Reach', 'Dmg', 'Stam'],
         frameRows,
       ) + 10;
 
@@ -151,7 +150,7 @@ export class InfoPanel {
       ['Where it lands', 'Sweet', 'Sour'],
       [
         ['Face (core)', { text: 'FULL · def -stam', color: green }, `${red}% · def -stam`],
-        ['Body (outer ring)', `${red}% · def -stam`, { text: 'absorbed · both -stam', color: dim }],
+        ['Body (outer ring)', { text: `${red}% · no def stam loss`, color: dim }, { text: 'absorbed · attacker -stam', color: dim }],
         ['Vulnerable (no guard)', { text: 'FULL · def -stam', color: green }, `${red}% · def -stam`],
         ['High Guard', { text: '0 · both -stam', color: dim }, { text: '0 · attacker -stam', color: dim }],
         ['High Guard vs HOOK', { text: `chip ${chip}% of full`, color: '#ffb03a' }, { text: `chip ${chip}% of ${red}%`, color: '#ffb03a' }],
@@ -171,7 +170,7 @@ export class InfoPanel {
       [0x00ff88, 'Hurtbox (bigger when Vulnerable)'],
       [0x00aaff, 'Core = FACE'],
       [0x888888, 'Fist: startup'],
-      [0xff8800, 'Fist: sour (early / late)'],
+      [0xff8800, 'Fist: sour (early contact)'],
       [0xffff00, 'Fist: sweet'],
     ];
     for (const [c, label] of legend) {

@@ -349,6 +349,7 @@ export class FighterView {
       flashBody: now < this.flashBodyUntil,
       flashColor: this.flashColor,
       dodging: stance === 'dodging',
+      vulnerable: isVulnerable(f) && stance !== 'dodging',
       guarding: f.guarding,
     });
     if (ok) {
