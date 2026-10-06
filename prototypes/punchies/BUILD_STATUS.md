@@ -1,25 +1,23 @@
 ## Current milestone
-Vulnerable-state cue, reference panel cleanup and two-colour hit flash.
+Medium and Hard bots manage stamina: they recover in a safe spot and stay conservative while they still have some.
 
 ## What was implemented
-- Vulnerable state (punch startup/recovery, guard release, dodge tail, stunned, exhausted): the whole boxer silhouette (head, torso, gloves, boots, arms) pulses red-orange for as long as the state lasts. Speed and strength are tune values (`view.puppet.vulnerablePulseMs`, `vulnerablePulseMax`) with sliders. Hit flashes still override it. Puppet art only.
-- Reference panel (info): removed the Late Sour column, updated the body-hit row (no defender stamina loss) and the sour legend (early contact only).
-- Menu credits and demo notice were added in the previous pass (bottom left of the main menu).
-
-- Hit flash now strobes between two colours (`view.flashStrobeMs`, 50 ms each): white and red when damage landed, red and dark red when it did not. Head and torso still flash separately, for `view.flashMs`.
+- Recovery mode (medium and hard): when stamina drops under `retreatStaminaBelow` or the bot is exhausted, it goes to a safe spot and stands perfectly still (no input at all is the fastest stamina regen), until stamina is back above `recoverUntil` (hysteresis, so it does not flicker at the threshold). A safe spot is at least `safeDistance` from the foe and off the ropes (`edgeMargin`).
+- If the foe is closer than that, the bot picks the best of 16 directions: away from the foe but never into a wall or corner, so it circles instead of backing into a stun lock. If it still cannot gain distance and the foe is close, it blocks.
+- Conservative while it still has stamina: under `conserveBelow` it attacks less often (scaled down toward the reserve), prefers cheap punches, does not chase an open foe, and never spends into the reserve on a plain attack (a punish may dip into it). It also no longer tries a dodge it cannot afford, and keeps guard up while the punch it blocked is still in the air (dropping guard costs a 24-frame penalty).
+- New per-level tune values (`ai.medium.*`, `ai.hard.*`): `recoverUntil`, `conserveBelow`, `safeDistance`, `edgeMargin`. Hard `retreatStaminaBelow` 22 to 30. Easy bot untouched.
+- New `scripts/verify-punchies-bots.mjs`.
 
 ## Key technical decisions
-- Pulse uses a multiplicative tint, so light parts (skin, highlights) show it strongest and dark blue/green parts less so; raise `vulnerablePulseMax` if it reads too weak on a character.
-- Presentation only; sim untouched.
+- Bot-only change (`src/sim/bot.ts`, tune.json); the sim and online play are untouched (bots are local only).
+- Measured over 24 to 48 bot-vs-bot matches: time spent exhausted fell 2 to 5x, time pinned on the ropes fell about 90 percent for medium and 80 percent for hard, and matches end sooner.
 
 ## Open questions
-- Should the older layered-art and drawn fallbacks (used only if parts fail to load) also pulse? Not done.
-- The hub page (index.html) has no demo notice.
+- Hard now loses to Medium (about 16 of 48 matches). Hard's aggressive style pays more under the new stamina and guard-release rules, and a chased bot cannot stand still for long, so the difficulty order needs a retune. Not changed.
 
 ## Known issues
-- Not verified on a real phone.
-- Bot spacing still needs a retune after the range changes.
-- Sweet/sour timing has no on-screen cue now that the glove ring is gone.
+- A recovering bot that the foe keeps chasing circles instead of standing still, so it regenerates at the slower moving rate.
+- Not verified against real players or on a phone.
 
 ## Next proposed step
-Playtest the pulse strength on all three characters, then retune bot spacing.
+Retune Hard so it beats Medium again (smarter offence against a recovering foe), then playtest all three levels.

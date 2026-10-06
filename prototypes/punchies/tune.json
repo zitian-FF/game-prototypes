@@ -279,7 +279,11 @@
       "strafePeriod": 40,
       "cornerAvoid": 0.8,
       "pgMistime": 0.45,
-      "pgHesitateFrames": 15
+      "pgHesitateFrames": 15,
+      "recoverUntil": 55,
+      "conserveBelow": 45,
+      "safeDistance": 95,
+      "edgeMargin": 45
     },
     "hard": {
       "reactionFrames": 5,
@@ -292,12 +296,16 @@
       "pgChance": 0.35,
       "counterChance": 0.35,
       "punishChance": 0.9,
-      "retreatStaminaBelow": 22,
+      "retreatStaminaBelow": 30,
       "strafe": 0.4,
       "strafePeriod": 35,
       "cornerAvoid": 1.2,
       "pgMistime": 0.35,
-      "pgHesitateFrames": 12
+      "pgHesitateFrames": 12,
+      "recoverUntil": 50,
+      "conserveBelow": 45,
+      "safeDistance": 105,
+      "edgeMargin": 60
     }
   },
   "characters": {
