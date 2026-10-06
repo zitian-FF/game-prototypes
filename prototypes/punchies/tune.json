@@ -65,7 +65,8 @@
     },
     "staminaRejectFlashMs": 300,
     "staminaRejectFlashHz": 10,
-    "flashMs": 260
+    "flashMs": 260,
+    "flashStrobeMs": 50
   },
   "ring": {
     "left": 267,

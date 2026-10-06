@@ -1,10 +1,12 @@
 ## Current milestone
-Vulnerable-state cue and reference panel cleanup.
+Vulnerable-state cue, reference panel cleanup and two-colour hit flash.
 
 ## What was implemented
 - Vulnerable state (punch startup/recovery, guard release, dodge tail, stunned, exhausted): the whole boxer silhouette (head, torso, gloves, boots, arms) pulses red-orange for as long as the state lasts. Speed and strength are tune values (`view.puppet.vulnerablePulseMs`, `vulnerablePulseMax`) with sliders. Hit flashes still override it. Puppet art only.
 - Reference panel (info): removed the Late Sour column, updated the body-hit row (no defender stamina loss) and the sour legend (early contact only).
 - Menu credits and demo notice were added in the previous pass (bottom left of the main menu).
+
+- Hit flash now strobes between two colours (`view.flashStrobeMs`, 50 ms each): white and red when damage landed, red and dark red when it did not. Head and torso still flash separately, for `view.flashMs`.
 
 ## Key technical decisions
 - Pulse uses a multiplicative tint, so light parts (skin, highlights) show it strongest and dark blue/green parts less so; raise `vulnerablePulseMax` if it reads too weak on a character.
