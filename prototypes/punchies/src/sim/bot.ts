@@ -46,6 +46,8 @@ export class ScriptedBot implements Bot {
   private pgKey = '';
   private pgPlan: 'none' | 'perfect' | 'early' = 'none';
   private holdOffUntil = 0;
+  // Recovery mode: low on stamina, so go somewhere safe and stand still.
+  private recovering = false;
   private rng: () => number;
 
   constructor(
@@ -99,7 +101,18 @@ export class ScriptedBot implements Bot {
     const nx = dist > 0.001 ? vdx / dist : 1;
     const ny = dist > 0.001 ? vdy / dist : 0;
     const busy = me.punch !== null || me.dodge !== null;
-    const tired = me.stamina < L.retreatStaminaBelow || me.exhausted;
+    // Low on stamina (or exhausted): recover until well topped up again, so the
+    // bot does not flip in and out of the fight at the edge of the threshold.
+    if (!this.recovering && (me.exhausted || me.stamina < L.retreatStaminaBelow)) this.recovering = true;
+    else if (this.recovering && !me.exhausted && me.stamina >= L.recoverUntil) this.recovering = false;
+    const tired = this.recovering;
+    // Watch the tank: below conserveBelow the bot throws less, and cheaper.
+    const reserve = L.retreatStaminaBelow;
+    const careful = me.stamina < L.conserveBelow;
+    const conserve = careful ? Math.max(0.2, (me.stamina - reserve) / Math.max(1, L.conserveBelow - reserve)) : 1;
+
+    // A dodge costs real stamina; a bot that cannot pay it must block instead.
+    const canDodge = me.stamina >= tune.dodge.staminaCost + 2;
 
     // --- defence --------------------------------------------------------
     const vp = view.punch;
@@ -110,7 +123,7 @@ export class ScriptedBot implements Bot {
       if (dist < foeMax + 14) {
         if (vp.type === 'uppercut') {
           // Cannot be blocked: dodge it (a Perfect Guard also stops it).
-          if (remaining <= 7 && remaining >= 1 && this.rng() < L.uppercutDodgeChance) {
+          if (canDodge && remaining <= 7 && remaining >= 1 && this.rng() < L.uppercutDodgeChance) {
             input.dodge = true;
             return input;
           }
@@ -119,7 +132,7 @@ export class ScriptedBot implements Bot {
           this.holdOffUntil = s.tick + this.guardHold + Math.round(L.pgHesitateFrames);
         } else if (this.guardHold === 0 && remaining >= 0) {
           const r = this.rng();
-          if (r < L.dodgeChance) {
+          if (canDodge && r < L.dodgeChance) {
             input.dodge = true;
             return input;
           }
@@ -141,7 +154,10 @@ export class ScriptedBot implements Bot {
       }
     }
     if (this.guardHold > 0 && !busy) {
-      this.guardHold--;
+      // Dropping guard costs a long vulnerable penalty, so keep it up while
+      // the punch it was raised for is still in the air.
+      const incoming = vp !== null && !vp.recovering && dist < vp.reach + tune.body.hurtRadius + 30;
+      if (!(incoming && this.guardHold <= 2)) this.guardHold--;
       input.guard = true;
       return input;
     }
@@ -149,10 +165,13 @@ export class ScriptedBot implements Bot {
     // --- offence --------------------------------------------------------
     if (!busy && !tired && s.tick >= this.holdOffUntil) {
       const open = view.open && !view.guarding;
-      const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance;
+      const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance * conserve;
       if (want) {
         const pick = this.pickPunch(me, dist, open);
-        if (pick) {
+        // Never spend into the reserve on a plain attack; a punish may dip
+        // into it, but not to nothing.
+        const left = pick ? me.stamina - punchCfg(me, pick).staminaCost : 0;
+        if (pick && left >= (open ? reserve * 0.4 : reserve)) {
           input[pick] = true;
           this.cooldown = Math.round(L.attackCooldownFrames);
         }
@@ -164,9 +183,16 @@ export class ScriptedBot implements Bot {
     let mx = 0;
     let my = 0;
     if (tired) {
-      mx = -nx;
-      my = -ny;
-    } else if (view.open && dist > ideal) {
+      // Find a safe spot (out of the foe's reach, off the ropes and out of
+      // the corners) and stand perfectly still: that is the fastest regen.
+      const rec = this.recoverMove(me, view, dist);
+      if (rec.stay) return input;
+      input.mx = Math.round(rec.mx * 100);
+      input.my = Math.round(rec.my * 100);
+      // Cornered with the foe close: block instead of walking into a lock.
+      if (rec.cornered && dist < L.safeDistance - 25 && !busy) input.guard = true;
+      return input;
+    } else if (view.open && dist > ideal && !careful) {
       mx = nx;
       my = ny;
     } else if (dist > ideal + 8) {
@@ -222,6 +248,47 @@ export class ScriptedBot implements Bot {
     return false;
   }
 
+  // Recovery movement. Stays put when already safe (far enough from the foe
+  // and clear of the ropes). Otherwise picks the best of 16 directions:
+  // away from the foe, but never into a wall or corner, bending toward open
+  // ring so it circles instead of backing into a stun lock.
+  private recoverMove(me: SimState['fighters'][number], foe: { x: number; y: number }, dist: number): { mx: number; my: number; stay: boolean; cornered: boolean } {
+    const L = this.L;
+    const r = tune.ring;
+    const margin = L.edgeMargin;
+    const wallPen = (x: number, y: number): number => {
+      const d = [x - r.left, r.right - x, y - r.top, r.bottom - y];
+      let pen = 0;
+      for (const e of d) pen += e < margin ? (margin - e) * (e < 0 ? 3 : 1) : 0;
+      return pen;
+    };
+    const safeHere = dist >= L.safeDistance && wallPen(me.x, me.y) <= margin * 0.4;
+    if (safeHere) return { mx: 0, my: 0, stay: true, cornered: false };
+    const cap = L.safeDistance + 20;
+    const cx = (r.left + r.right) / 2;
+    const cy = (r.top + r.bottom) / 2;
+    let best = -Infinity;
+    let bx = 0;
+    let by = 0;
+    let bd = dist;
+    for (let k = 0; k < 16; k++) {
+      const ang = (k / 16) * Math.PI * 2;
+      const dx = Math.cos(ang);
+      const dy = Math.sin(ang);
+      const px = me.x + dx * 40;
+      const py = me.y + dy * 40;
+      const d = Math.hypot(px - foe.x, py - foe.y);
+      const score = Math.min(d, cap) - 1.5 * wallPen(px, py) - 0.05 * Math.hypot(px - cx, py - cy);
+      if (score > best) {
+        best = score;
+        bx = dx;
+        by = dy;
+        bd = d;
+      }
+    }
+    return { mx: bx, my: by, stay: false, cornered: bd < dist + 2 };
+  }
+
   // Distance that lands the jab sweet-ish while staying near the edge of
   // the foe's reach.
   private idealDistance(me: SimState['fighters'][number]): number {
@@ -245,6 +312,8 @@ export class ScriptedBot implements Bot {
       const inSweet = dist >= lo;
       const tired = Math.pow(0.45, fatigueLevel(me, t));
       let score = (inSweet ? 1 : 0.35) * tired * (open ? c.damage : 1 + c.damage * 0.1);
+      // Low on stamina: favour the cheap punches.
+      if (me.stamina < this.L.conserveBelow) score /= 1 + c.staminaCost / 6;
       if (t === 'jab' && !open) score *= 1.2; // cheap and safe
       score *= 0.8 + this.rng() * 0.4;
       if (score > bestScore) {
