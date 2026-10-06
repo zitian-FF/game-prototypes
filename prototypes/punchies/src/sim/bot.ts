@@ -16,6 +16,11 @@ import { NEUTRAL_INPUT, type FrameInput, type PunchType, type SimState } from '.
 //            awareness. Reacts faster.
 // Per-level numbers live in tune.ai.medium / tune.ai.hard.
 
+// Centre distance at which a punch's fist just touches the foe's hurt circle.
+function connect(c: { reach: number; hitRadius: number }): number {
+  return c.reach + c.hitRadius + tune.body.hurtRadius;
+}
+
 export type BotLevel = 'easy' | 'medium' | 'hard';
 export const BOT_LEVELS: BotLevel[] = ['easy', 'medium', 'hard'];
 
@@ -123,7 +128,7 @@ export class ScriptedBot implements Bot {
     if (!busy && vp && !vp.recovering && !vp.active) {
       // Frames until that punch connects, corrected for how stale the view is.
       const remaining = vp.startup + vp.sourEarly - vp.frame - delay;
-      const foeMax = vp.reach + tune.body.hurtRadius + 12;
+      const foeMax = connect({ reach: vp.reach, hitRadius: tune.punches[vp.type].hitRadius }) - 4;
       if (dist < foeMax + 14) {
         if (vp.type === 'uppercut') {
           // Cannot be blocked: dodge it (a Perfect Guard also stops it).
@@ -148,7 +153,7 @@ export class ScriptedBot implements Bot {
           this.guardHold === 0 &&
           vp.type !== 'jab' &&
           remaining > jab.startup + 1 &&
-          dist <= jab.reach + 28 &&
+          dist <= connect(jab) + 3 &&
           !tired &&
           this.rng() < L.counterChance
         ) {
@@ -160,7 +165,7 @@ export class ScriptedBot implements Bot {
     if (this.guardHold > 0 && !busy) {
       // Dropping guard costs a long vulnerable penalty, so keep it up while
       // the punch it was raised for is still in the air.
-      const incoming = vp !== null && !vp.recovering && dist < vp.reach + tune.body.hurtRadius + 30;
+      const incoming = vp !== null && !vp.recovering && dist < connect({ reach: vp.reach, hitRadius: tune.punches[vp.type].hitRadius }) + 8;
       if (!(incoming && this.guardHold <= 2)) this.guardHold--;
       input.guard = true;
       return input;
@@ -296,7 +301,7 @@ export class ScriptedBot implements Bot {
   // Distance that lands the jab sweet-ish while staying near the edge of
   // the foe's reach.
   private idealDistance(me: SimState['fighters'][number]): number {
-    return punchCfg(me, 'jab').reach + 20;
+    return connect(punchCfg(me, 'jab')) - 8;
   }
 
   // The best punch for this range, lowest fatigue first. Uppercut when
@@ -304,14 +309,14 @@ export class ScriptedBot implements Bot {
   private pickPunch(me: SimState['fighters'][number], dist: number, open: boolean): PunchType | null {
     if (me.stars >= tune.stars.max) {
       const up = punchCfg(me, 'uppercut');
-      if (dist <= up.reach + 33) return 'uppercut';
+      if (dist <= connect(up)) return 'uppercut';
     }
     let best: PunchType | null = null;
     let bestScore = 0;
     for (const t of ATTACKS) {
       const c = punchCfg(me, t);
-      const hi = c.reach + 33;
-      const lo = t === 'hook' ? c.reach * 0.75 + 4 : c.reach + 14;
+      const hi = connect(c) + (t === 'hook' ? 0 : 5);
+      const lo = connect(c) - (t === 'hook' ? 24 : 14);
       if (dist > hi || dist < lo - 14) continue;
       const inSweet = dist >= lo;
       const tired = Math.pow(0.45, fatigueLevel(me, t));
