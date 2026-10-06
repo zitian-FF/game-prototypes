@@ -66,7 +66,14 @@
     "staminaRejectFlashMs": 300,
     "staminaRejectFlashHz": 10,
     "flashMs": 260,
-    "flashStrobeMs": 50
+    "flashStrobeMs": 50,
+    "menu": {
+      "logoPulseMs": 1500,
+      "logoPulseScale": 1.025,
+      "stampMs": 260,
+      "loadingDrift": 15,
+      "crossfadeMs": 180
+    }
   },
   "ring": {
     "left": 267,

@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -377,7 +378,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private leave(): void {
-    this.scene.start('Menu');
+    startScreen(this, 'Menu');
   }
 
   // Online: the button is READY / UNREADY for your own pick.
@@ -393,10 +394,10 @@ export class CharSelectScene extends Phaser.Scene {
     const [a, b] = this.picks();
     if (this.data0.mode === 'vsai') {
       saveCharPrefs({ p1: a, ai: b, level: this.level });
-      this.scene.start('VsAI', { chars: [a, b], level: this.level });
+      startScreen(this, 'VsAI', { chars: [a, b], level: this.level });
     } else if (this.data0.mode === 'localvs') {
       saveCharPrefs({ p1: a, p2: b });
-      this.scene.start('LocalVs', { ...this.data0.inputs!, chars: [a, b] });
+      startScreen(this, 'LocalVs', { ...this.data0.inputs!, chars: [a, b] });
     } else if (this.data0.localIdx === 0) {
       this.hostStart();
     }
@@ -422,7 +423,7 @@ export class CharSelectScene extends Phaser.Scene {
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars });
       }
     };
-    s.onPeerLeft = () => this.scene.start('Menu', { message: 'Opponent left' });
+    s.onPeerLeft = () => startScreen(this, 'Menu', { message: 'Opponent left' });
     // Heartbeat: keep re-sending our status, so a message sent while the
     // other phone was still in the lobby (measuring ping) is never lost.
     this.time.addEvent({ delay: 500, loop: true, callback: () => this.sendPick() });
@@ -449,7 +450,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   private handOff(data: MatchData): void {
     this.handedOff = true;
-    this.scene.start('Match', data);
+    startScreen(this, 'Match', data);
   }
 
   // ---- draw ---------------------------------------------------------------

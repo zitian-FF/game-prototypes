@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -46,7 +47,7 @@ export class VsAIScene extends Phaser.Scene {
     this.sim = createSimState({ timed: true, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
     this.ai = makeBot(this.level, 1);
     this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0);
-    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
+    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => startScreen(this, 'Menu'));
     addVersionStamp(this);
   }
 
@@ -86,6 +87,6 @@ export class VsAIScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(150);
     makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart({ chars: this.chars, level: this.level }));
-    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => this.scene.start('Menu'));
+    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => startScreen(this, 'Menu'));
   }
 }

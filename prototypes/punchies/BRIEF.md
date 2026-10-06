@@ -6,6 +6,18 @@ dummy for solo testing. This file combines the original handoff with the
 decisions made in the planning round (2026-09-29).
 
 ## Scope
+- Title presentation (approved 2026-10-06): outlined cartoon gym with a
+  reusable, separately layered ring. Single Player is primary; Local VS and
+  Online sit under Versus; Training and Tutorial under Practice. Settings
+  retains local input setup, Online offers Host / Join, Credits opens a
+  dedicated panel. Remove the demo notice. Title logo gently pulses;
+  loading screens stamp the logo and continuously wrap a subdued logo
+  pattern across the background. Screen changes use a subtle crossfade.
+  Honour reduced-motion preferences. Keep all existing debug controls.
+- Approved presentation follow-ups, not part of the title pass: improve
+  character select, sweet/vulnerable and face/body feedback; collapsed KO
+  art with brushstroke KNOCK then OUT impacts and three bell strikes;
+  brief arena-only shake on landed uppercuts and counter/punish hits.
 - Local VS: two players on one screen, each on their own input device
   (added 2026-09-30); an INPUT button next to it picks devices.
 - Online 1v1 PvP, plus Single Player vs an easy AI (added 2026-09-30 at

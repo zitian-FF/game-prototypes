@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -48,7 +49,7 @@ export class TrainingScene extends Phaser.Scene {
     this.charLabel = this.stage.button(VIEW.cx - 160, VIEW.top + 46, 80, '', () => this.cycleChar());
     this.stanceLabel = this.stage.button(VIEW.cx - 58, VIEW.top + 46, 110, '', () => this.cycleStance());
     this.stage.button(VIEW.cx + 30, VIEW.top + 46, 56, 'RESET', () => this.newSim());
-    this.stage.button(VIEW.cx + 82, VIEW.top + 46, 40, 'MENU', () => this.scene.start('Menu'));
+    this.stage.button(VIEW.cx + 82, VIEW.top + 46, 40, 'MENU', () => startScreen(this, 'Menu'));
     this.refreshStance();
     this.charLabel.setText(`YOU: ${charName(this.char)}`);
     addVersionStamp(this);

@@ -3,6 +3,8 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
 import { makeAltParts } from './puppet';
 import { roomFromUrl } from '../net/roomCode';
+import { tune } from '../sim/tune';
+import { reducedMotion } from '../ui/presentation';
 
 interface AnimationSource { frameCount: number; frames: string[] }
 interface ArtGroup { atlases: string[]; animations: string[] }
@@ -136,12 +138,38 @@ export function whenGroupsReady(scene: Phaser.Scene, names: string[], build: () 
   }
 }
 
-function loadingBar(scene: Phaser.Scene): { set(v: number): void; destroy(): void } {
+function loadingBar(scene: Phaser.Scene): { set(v: number): void; refreshLogo(): void; destroy(): void } {
   const W = 220;
   const objs: Phaser.GameObjects.GameObject[] = [];
   objs.push(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, 1).setDepth(1000));
-  const logo = artImage(scene, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
-  if (logo) objs.push(logo);
+  let logo: Phaser.GameObjects.Image | null = null;
+  const stamps: Array<{image: Phaser.GameObjects.Image; x: number}> = [];
+  let offset = 0;
+  const drift = (_time: number, delta: number) => {
+    if (reducedMotion()) return;
+    offset = (offset + delta * tune.view.menu.loadingDrift / 1000) % 190;
+    for (const s of stamps) s.image.x = s.x - offset;
+  };
+  const refreshLogo = () => {
+    if (logo || !artKey(scene,'logo')) return;
+    for (let row=0; row<Math.ceil(VIEW.height/90)+2; row++) {
+      for (let col=0; col<Math.ceil(VIEW.width/190)+2; col++) {
+        const x=VIEW.left-190+col*190+(row%2)*95;
+        const image=artImage(scene,'logo',x,VIEW.top-45+row*90,145,42,1000)!;
+        image.setAngle(-12).setAlpha(0.09);
+        stamps.push({image,x}); objs.push(image);
+      }
+    }
+    logo=artImage(scene,'logo',VIEW.cx,VIEW.cy-73,250,71,1001)!;
+    objs.push(logo);
+    if (!reducedMotion()) {
+      const sx=logo.scaleX,sy=logo.scaleY;
+      logo.setScale(sx*1.3,sy*1.3).setAngle(-6).setAlpha(0);
+      scene.tweens.add({targets:logo,scaleX:sx,scaleY:sy,angle:0,alpha:1,duration:tune.view.menu.stampMs,ease:'Back.Out'});
+    }
+  };
+  refreshLogo();
+  scene.events.on('update',drift);
   objs.push(
     scene.add
       .text(VIEW.cx, VIEW.cy - 18, 'LOADING', { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
@@ -153,12 +181,13 @@ function loadingBar(scene: Phaser.Scene): { set(v: number): void; destroy(): voi
   objs.push(fill);
   return {
     set: (v) => fill.setSize(Math.max(1, W * Math.min(1, Math.max(0, v))), 8),
-    destroy: () => objs.forEach((o) => o.destroy()),
+    refreshLogo,
+    destroy: () => { scene.events.off('update',drift); if(logo)scene.tweens.killTweensOf(logo); objs.forEach((o) => o.destroy()); },
   };
 }
 
 export class ArtBootScene extends Phaser.Scene {
-  private bar: { set(v: number): void; destroy(): void } | null = null;
+  private bar: ReturnType<typeof loadingBar> | null = null;
   constructor() { super('ArtBoot'); }
   init(): void { applyCameraPixelRatio(this); }
   preload(): void {
@@ -166,11 +195,7 @@ export class ArtBootScene extends Phaser.Scene {
     this.load.on('progress', (v: number) => this.bar?.set(v));
     // The logo becomes available during the first loose-file download, before boot completes.
     this.load.once(`filecomplete-image-${textureKey('logo')}`, () => {
-      const logo = artImage(this, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
-      if (logo) {
-        this.events.once('shutdown', () => logo.destroy());
-        this.load.once('complete', () => logo.destroy());
-      }
+      this.bar?.refreshLogo();
     });
     for (const file of index.manifest) {
       if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
@@ -215,6 +240,7 @@ export function artImage(scene: Phaser.Scene, name: string, x: number, y: number
 
 export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): void {
   const image = artImage(scene, name, VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, -10);
+  if (image && name==='gym_background') image.setScale(Math.max(VIEW.width/image.width,VIEW.height/image.height));
   if (image) scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, dim).setDepth(-9);
 }
 

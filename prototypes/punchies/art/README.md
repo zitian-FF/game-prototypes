@@ -93,6 +93,24 @@ Local dev requires restarting Vite after repacking.
 
 ## Verification
 
+### Approved title/arena layers (2026-10-06)
+
+`gym_background.png` contains no baked ring or UI. `arena_floor.png`,
+`arena_rear.png`, `arena_front.png`, `arena_near.png` and `arena_apron.png` are alpha PNGs with identical
+1299x1211 registration; playable floor bounds are (186,163) to (1114,875).
+`ArenaArt` reuses them on Menu and FightStage. Rear ropes draw at depth 1,
+boxers at about 9–11, and side/front ropes at 30 and near ropes/apron at 31–32. The existing perspective
+shader applies to the arena and boxers together. Never trim/re-export these
+five PNGs independently. Gameplay reassembles native rope and round-cap crops (`arena_rope.png`, `arena_cap_neutral.png`, tinted to character colours) from the same master to fit the fixed camera; the title retains the full ring. Their lossless partition reconstructs the isolated
+ring master exactly. All pre-existing R2 entries remain byte-for-byte intact.
+
+Built-in imagegen produced the gym and isolated ring from the approved title
+reference. Prompt: preserve its navy-outlined cartoon art; remove all UI for
+a quiet gym layer; extract a transparent ring with red/cream ropes, red/blue
+corner pads and slate canvas, without a baked camera taper. Runtime UI is
+drawn separately. The workspace `outputs/title-screen-v1` keeps design
+masters, alpha layers, registration and bundle validation outside Git.
+
 ```sh
 node prototypes/punchies/art/verify.cjs
 ```

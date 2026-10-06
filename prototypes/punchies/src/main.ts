@@ -1,3 +1,4 @@
+import { ScreenTransition } from './ui/presentation';
 import Phaser from 'phaser';
 import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
@@ -49,7 +50,7 @@ function onScreenShape(): void {
       }
     }
     // ArtBoot stays running as the background art loader; it is not a screen.
-    const active = game.scene.getScenes(true).filter((sc) => sc.scene.key !== 'ArtBoot');
+    const active = game.scene.getScenes(true).filter((sc) => sc.scene.key !== 'ArtBoot' && sc.scene.key !== 'ScreenTransition');
     if (active.every((sc) => MENU_SCENES.includes(sc.scene.key))) {
       // Menus: adopt the new shape and re-lay out.
       setPendingView(v);
@@ -65,6 +66,7 @@ function onScreenShape(): void {
 window.addEventListener('resize', onScreenShape);
 window.addEventListener('orientationchange', onScreenShape);
 document.addEventListener('fullscreenchange', onScreenShape);
+game.scene.add('ScreenTransition', ScreenTransition, false);
 game.scene.add('Menu', MenuScene, false);
 game.scene.add('Training', TrainingScene, false);
 game.scene.add('Lobby', LobbyScene, false);

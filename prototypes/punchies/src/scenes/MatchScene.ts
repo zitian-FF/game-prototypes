@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -310,6 +311,6 @@ export class MatchScene extends Phaser.Scene {
   private leave(): void {
     this.match.session.leave();
     if (this.match.restoreTune) restoreTune(this.match.restoreTune);
-    this.scene.start('Menu');
+    startScreen(this, 'Menu');
   }
 }

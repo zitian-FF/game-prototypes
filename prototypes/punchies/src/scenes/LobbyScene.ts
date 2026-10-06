@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -55,7 +56,7 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private back(message?: string): void {
-    this.scene.start('Menu', { message });
+    startScreen(this, 'Menu', { message });
   }
 
   private async host(): Promise<void> {
@@ -122,7 +123,7 @@ export class LobbyScene extends Phaser.Scene {
     const delay = Math.max(tune.net.inputDelayFrames, oneWayFrames - tune.net.maxRollbackFrames + 1);
     // Both players now pick characters; the host starts from there.
     this.handedOff = true;
-    this.scene.start('CharSelect', { mode: 'online', session: s, localIdx: 0, delay });
+    startScreen(this, 'CharSelect', { mode: 'online', session: s, localIdx: 0, delay });
   }
 
   private async join(code: string): Promise<void> {
@@ -137,7 +138,7 @@ export class LobbyScene extends Phaser.Scene {
     s.onRejected = () => this.back(`Room ${code} is full`);
     s.onPaired = () => {
       this.handedOff = true;
-      this.scene.start('CharSelect', { mode: 'online', session: s, localIdx: 1 });
+      startScreen(this, 'CharSelect', { mode: 'online', session: s, localIdx: 1 });
     };
     s.onPeerLeft = () => this.back('Host left the room');
     s.onCtl = (m) => {
