@@ -66,7 +66,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'CROSS',
-    text: (b) => `Cross: slower but heavier, and the longest reach. ${b('cross')} to land 2 crosses.`,
+    text: (b) => `Cross: slower but heavier, and the longest reach (about 20% more than the jab). ${b('cross')} to land 2 crosses.`,
     adds: ['cross'],
     dummy: 'idle',
     goal: 2,
@@ -83,7 +83,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'HOOK',
-    text: (b) => `Hook: short reach, made for close range. Get close and ${b('hook')} to land a hook.`,
+    text: (b) => `Hook: a heavy swing with a shorter reach than the jab. Close in and ${b('hook')} to land a hook.`,
     adds: ['hook'],
     dummy: 'idle',
     goal: 1,
@@ -135,7 +135,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'HEALTH: FACE vs BODY',
-    text: () => 'Green is health. Hits that reach the FACE (inner circle) do full damage; the body only takes part. Land one face hit and one body hit (from max range).',
+    text: () => 'Green is health. Hits that reach the FACE (inner circle) do full damage and cost the defender stamina; body hits do half damage and no stamina loss. Land one face hit and one body hit (from max range).',
     adds: ['health'],
     dummy: 'idle',
     goal: 2,
@@ -155,7 +155,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'PUNISH',
-    text: () => 'Anyone recovering from a punch, especially a miss, is Vulnerable. The dummy will whiff: step in and hit it while it recovers.',
+    text: () => 'Anyone recovering from a punch, especially a miss, is Vulnerable and pulses red-orange. The dummy will whiff: step in and hit it while it recovers.',
     adds: [],
     dummy: 'whiffer',
     goal: 1,
@@ -163,7 +163,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'COUNTER',
-    text: () => 'Hit someone while they are STARTING a punch = COUNTER (x1.5 damage). The dummy throws slow crosses: beat one with a Cross or Hook.',
+    text: () => 'Hit someone while they are STARTING a punch, or right after they drop guard or dodge = COUNTER (x1.5 damage). The dummy throws slow crosses: beat one with a Cross or Hook.',
     adds: [],
     dummy: 'crossBait',
     goal: 1,
