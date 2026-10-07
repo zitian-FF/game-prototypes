@@ -30,7 +30,9 @@ export class Hud {
     }
     for(let i=0;i<2;i++){
       const sign=i===0?-1:1;
-      this.names.push(text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1'));
+      const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
+      name.setScale(Math.min(1,VIEW.width*.18/name.width));
+      this.names.push(name);
       this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,'UPPER',10,'#ffdf55').setVisible(false));
     }
   }
@@ -65,9 +67,10 @@ export class Hud {
       const stun=Math.min(1,f.stun/stunThreshold(f));
       if(show('stun'))this.bar(left,64,12,.20,f.stunFromMeter?1:stun,0,f.stunFromMeter?0xffdf43:stun>.7?0xff9d35:0xb88b53);
 
-      if(this.resourceRow.includes(i))this.drawResources(f,i);
+      const showUpper=this.resourceRow.includes(i)&&show('uppercut');
+      if(showUpper)this.drawResources(f,i);
       const ready=this.upperReady[i];
-      ready.setVisible(this.resourceRow.includes(i)&&f.stars>=tune.stars.max);
+      ready.setVisible(showUpper&&f.stars>=tune.stars.max);
       const pulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
       ready.setAlpha(.65+.35*pulse).setScale(1+.08*pulse);
     }

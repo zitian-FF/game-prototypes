@@ -1,17 +1,17 @@
 ## Current milestone
-Approved HUD and presentation released as r0083; training toolbar clearance follow-up ready.
+Overnight presentation/HUD QA complete; two straightforward fixes ready to publish. Shop and ranked proposal remain review drafts.
 
 ## What was implemented
-Integrated swept HP/STM/STUN bars, hexagonal timer, diamond round-win sockets, names beside STM, uppercut stars and pulsing UPPER over dimmed full-charge sockets. Improved clash, FIGHT and italic clipping. Training controls move to the left sidebar to clear the new HUD.
+Uppercut sockets and UPPER readiness now respect tutorial reveal stages. Long player names fit the reserved STM-row space. Tutorial instructions describe the current star sockets. Added HUD state/geometry regression checks.
 
 ## Key technical decisions
-Phaser canvas; no new art or dependencies. Pulse is tunable and reduced motion uses a steady label. Preserve combat and deterministic round timing. PR #246 merged and itch deployment succeeded.
+Retain approved art and gameplay tuning. Checked Phaser views in Brave at compact, wide and tablet landscape sizes. Outcome, timing, rematch and online handshake behaviour verified by simulation regression tests.
 
 ## Open questions
-None for the approved release.
+Shop costs, daily ad limit and fourth fighter identity use configurable placeholders pending review.
 
 ## Known issues
-Physical two-device and phone/controller checks remain pending. Existing Phaser bundle warning remains.
+Physical device/controller and two-device network fault testing remain pending. Existing Phaser bundle warning remains.
 
 ## Next proposed step
-Publish training toolbar clearance and verify the live release.
+Publish QA fixes, finish unpublished shop pull draft and ranked design proposal.
