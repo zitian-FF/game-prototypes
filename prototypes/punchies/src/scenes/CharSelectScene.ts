@@ -1,11 +1,9 @@
+import { CharacterSelectView } from '../ui/CharacterSelectView';
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
-import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { FighterView } from '../render/FighterView';
-import { lookFor, mainLook } from '../render/characterLook';
-import { createSimState } from '../sim/sim';
-import { charTune, CHARACTER_IDS, CHARACTER_INFO, isCharId, type CharId } from '../sim/character';
+import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, snapshotTune, tune } from '../sim/tune';
@@ -13,7 +11,7 @@ import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
 import type { MatchData } from './LobbyScene';
-import { artImage, artKey, backdrop, fighterGroups, prefetchGroups } from '../render/art';
+import { backdrop, fighterGroups, prefetchGroups } from '../render/art';
 
 // Character select. UI chrome only: it never touches the sim except to hand
 // the chosen ids to the fight scene.
@@ -34,8 +32,6 @@ export interface CharSelectData {
   localIdx?: 0 | 1; // online
   delay?: number; // online, host only (measured in the lobby)
 }
-
-const COLORS = [0x3a78d0, 0xd04a4a];
 
 // Bar fill per stat: today's base tune sits at 80%.
 function stats(id: CharId): [string, number][] {
@@ -71,15 +67,8 @@ export class CharSelectScene extends Phaser.Scene {
   private data0!: CharSelectData;
   private sides: Side[] = [];
   private active = 0;
-  // Single Player: the bot's difficulty (shown under the AI label).
   private level: BotLevel = 'easy';
-  private levelText: Phaser.GameObjects.Text | null = null;
-  // Big character portraits on the panels (the live top-down preview is the fallback).
-  private portraits: (Phaser.GameObjects.Image | null)[] = [null, null];
-  private g!: Phaser.GameObjects.Graphics;
-  private views: FighterView[] = [];
-  private texts: { name: Phaser.GameObjects.Text; style: Phaser.GameObjects.Text; status: Phaser.GameObjects.Text; stats: Phaser.GameObjects.Text[] }[] = [];
-  private fightBtn!: { bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text };
+  private selectionView!: CharacterSelectView;
   private remotePick: CharId | null = null;
   // Online: the opponent has reached this screen (heard from them here).
   private peerHere = false;
@@ -93,17 +82,12 @@ export class CharSelectScene extends Phaser.Scene {
 
   create(data: CharSelectData): void {
     applyCameraPixelRatio(this);
-    backdrop(this, 0.84);
+    backdrop(this, 0.14, 'character_select_background');
     this.data0 = data;
     this.handedOff = false;
     this.remotePick = null;
     this.peerHere = false;
     this.active = 0;
-    this.levelText = null;
-    this.portraits = [null, null];
-    this.cardViews = [];
-    this.views = [];
-    this.texts = [];
     this.prevPad = [];
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
@@ -130,14 +114,11 @@ export class CharSelectScene extends Phaser.Scene {
       this.setupNet();
     }
 
-    this.add
-      .text(VIEW.cx, VIEW.top + 22, 'CHOOSE YOUR BOXER', { fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
-      .setOrigin(0.5);
-    this.buildCards();
-    this.buildPanels();
-    // Above the panel backgrounds, below the text.
-    this.g = this.add.graphics().setDepth(5);
-    this.buildButtons();
+    this.selectionView = new CharacterSelectView(this, {
+      card: (i) => this.tapCard(i), panel: (i) => this.tapPanel(i),
+      action: () => this.fightButton(), back: () => this.back(-1, true),
+      level: (d) => this.cycleLevel(d),
+    });
     this.bindKeys();
     this.events.once('shutdown', () => {
       if (data.mode === 'online' && !this.handedOff) data.session?.leave();
@@ -145,77 +126,10 @@ export class CharSelectScene extends Phaser.Scene {
     addVersionStamp(this);
   }
 
-  // ---- layout -----------------------------------------------------------
-
-  private cardPos(i: number): { x: number; y: number } {
-    return { x: VIEW.cx + (i - 1) * 92, y: VIEW.cy - 10 };
-  }
-
-  private buildCards(): void {
-    CHARACTER_IDS.forEach((id, i) => {
-      const { x, y } = this.cardPos(i);
-      const bg = this.add.rectangle(x, y, 80, 104, 0x1c212b, 1).setStrokeStyle(1, 0x5a6378).setInteractive();
-      bg.on('pointerdown', () => this.tapCard(i));
-      artImage(this, 'ui_panel', x, y, 80, 104);
-      const portrait = artImage(this, `portrait_${id}`, x, y - 12, 55, 67, 10);
-      this.add
-        .text(x, y + 38, CHARACTER_INFO[id].name.split(' ')[0].toUpperCase(), { fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
-        .setOrigin(0.5);
-      const v = new FighterView(this, 0xb8bcc8);
-      if (!portrait) this.cardViews.push({ v, id, x, y: y - 8 });
-    });
-  }
-  private cardViews: { v: FighterView; id: CharId; x: number; y: number }[] = [];
-
-  private panelX(side: number): number {
-    return side === 0 ? VIEW.left + 112 : VIEW.right - 112;
-  }
-
-  private buildPanels(): void {
-    const style = (size: number, color = '#ffffff') => ({ fontFamily: 'monospace', fontSize: `${size}px`, color, resolution: PIXEL_RATIO });
-    for (let s = 0; s < 2; s++) {
-      const x = this.panelX(s);
-      const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
-      bg.on('pointerdown', () => this.tapPanel(s));
-      artImage(this, 'ui_panel', x, VIEW.cy + 8, 196, 300);
-      this.add.text(x - 86, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0, 0.5);
-      if (this.data0.mode === 'vsai' && s === 1) {
-        // Tap (or Up / Down, D-pad up / down) to change the bot's level.
-        this.levelText = this.add
-          .text(x + 36, VIEW.cy - 130, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: '#2a3140', padding: { x: 6, y: 2 }, resolution: PIXEL_RATIO })
-          .setOrigin(0.5)
-          .setDepth(6)
-          .setInteractive()
-          .on('pointerdown', () => this.cycleLevel(1));
-      }
-      this.views.push(new FighterView(this, COLORS[s]));
-      const name = this.add.text(x, VIEW.cy - 18, '', style(13)).setOrigin(0.5).setFontStyle('bold').setDepth(6);
-      const st = this.add.text(x, VIEW.cy - 8, '', style(9, '#aab0bc')).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(184).setDepth(6);
-      const status = this.add.text(x, VIEW.cy + 146, '', style(11, '#ffd24a')).setOrigin(0.5);
-      const labels: Phaser.GameObjects.Text[] = [];
-      for (let r = 0; r < 6; r++) labels.push(this.add.text(x - 88, VIEW.cy + 30 + r * 20, '', style(9, '#cccccc')).setOrigin(0, 0.5).setDepth(6));
-      this.texts.push({ name, style: st, status, stats: labels });
-    }
-  }
-
-  private buildButtons(): void {
-    const mk = (x: number, label: string, fill: number, onTap: () => void) => {
-      const bg = this.add.rectangle(x, VIEW.cy + 92, 110, 30, fill, 1).setStrokeStyle(1, 0x7fb3ff).setInteractive();
-      bg.on('pointerdown', onTap);
-      const t = this.add.text(x, VIEW.cy + 92, label, { fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5);
-      return { bg, label: t };
-    };
-    mk(VIEW.cx - 62, 'BACK', 0x3a2a2a, () => this.back(-1, true));
-    this.fightBtn = mk(VIEW.cx + 62, this.data0.mode === 'online' ? 'READY' : 'FIGHT!', 0x2a4a34, () => this.fightButton());
-    this.add
-      .text(VIEW.cx, VIEW.cy + 126, this.hint(), { fontFamily: 'monospace', fontSize: '9px', color: '#8a90a0', align: 'center', resolution: PIXEL_RATIO })
-      .setOrigin(0.5);
-  }
-
   private hint(): string {
-    if (this.data0.mode === 'localvs') return 'Keys: move left/right, punch or Enter to lock\nEsc / B / Numpad0 to change';
-    if (this.data0.mode === 'online') return 'Pick a boxer, then READY · starts when both are ready';
-    return 'Tap a boxer · or arrows + Enter / D-pad + A\nEsc / B to change';
+    if (this.data0.mode === 'localvs') return 'Each player picks and confirms.\nEsc / B to change';
+    if (this.data0.mode === 'online') return 'Pick your boxer, then READY.\nStarts when both are ready.';
+    return 'Pick a boxer, then confirm.\nArrows + Enter / D-pad + A';
   }
 
   // ---- input --------------------------------------------------------------
@@ -356,7 +270,6 @@ export class CharSelectScene extends Phaser.Scene {
       this.sendPick();
       return;
     }
-    this.confirm(s);
   }
 
   private tapPanel(s: number): void {
@@ -383,7 +296,14 @@ export class CharSelectScene extends Phaser.Scene {
 
   // Online: the button is READY / UNREADY for your own pick.
   private fightButton(): void {
-    if (this.data0.mode !== 'online') return this.fight();
+    if (this.data0.mode !== 'online') {
+      if (this.bothLocked()) this.fight();
+      else if (this.data0.mode === 'localvs') {
+        const touch = this.sides.findIndex((side) => side.src === 'touch');
+        if (touch >= 0) this.confirm(touch);
+      } else this.confirm(this.active);
+      return;
+    }
     const me = this.data0.localIdx ?? 0;
     if (this.sides[me].locked) this.back(me);
     else this.confirm(me);
@@ -453,118 +373,35 @@ export class CharSelectScene extends Phaser.Scene {
     startScreen(this, 'Match', data);
   }
 
-  // ---- draw ---------------------------------------------------------------
+  // ---- presentation -------------------------------------------------------
 
-  update(time: number): void {
+  update(): void {
     this.pollPads();
-    this.levelText?.setText(`< ${this.level.toUpperCase()} >`);
-    const g = this.g;
-    g.clear();
-    // Each side wears its character's colour (alt colour on a mirror pick).
     const chars = this.picks();
-    // Download the boxers on show (and so the next fight's art) in the background.
     prefetchGroups(fighterGroups(chars));
-    const col = [lookFor(chars, 0), lookFor(chars, 1)].map((l, i) => (this.sides[i].src === 'remote' && !this.bothLocked() ? COLORS[i] : l.color));
-    for (let s = 0; s < 2; s++) {
-      const l = lookFor(chars, s);
-      this.views[s].setLook(l.color, l.scale, l.ponytail);
-      g.lineStyle(2, col[s], 1);
-      g.strokeRect(this.panelX(s) - 98, VIEW.cy + 8 - 150, 196, 300);
-    }
-    // Cards and the cursors on them.
-    CHARACTER_IDS.forEach((_, i) => {
-      const { x, y } = this.cardPos(i);
-      for (let s = 0; s < 2; s++) {
-        const side = this.sides[s];
-        if (side.src === 'remote' && !side.locked) continue;
-        if (side.sel !== i) continue;
-        const hide = this.data0.mode === 'online' && side.src === 'remote';
-        if (hide) continue;
-        const focus = this.data0.mode === 'vsai' ? this.active === s : true;
-        g.lineStyle(side.locked ? 4 : 2, col[s], side.locked || focus ? 1 : 0.45);
-        const o = s === 0 ? 0 : 5;
-        g.strokeRect(x - 40 - o, y - 52 - o, 80 + o * 2, 104 + o * 2);
-        g.fillStyle(col[s], 1);
-        g.fillTriangle(x - 8 + (s ? 10 : -10), y + 60 + o, x + (s ? 10 : -10), y + 54 + o, x + 8 + (s ? 10 : -10), y + 60 + o);
-      }
+    const online = this.data0.mode === 'online';
+    const local = this.data0.mode === 'localvs';
+    const ready = this.bothLocked();
+    const me = this.data0.localIdx ?? 0;
+    this.selectionView.render({
+      panels: this.sides.map((side, s) => ({
+        id: chars[s], label: side.label === 'AI' ? 'OPPONENT' : side.label,
+        hidden: side.src === 'remote', locked: side.locked,
+        focused: !ready && (local ? !side.locked : this.active === s),
+        status: side.src === 'remote'
+          ? (!this.peerHere ? 'Waiting for opponent…' : side.locked ? 'READY' : 'Choosing boxer…')
+          : side.locked ? '✓ LOCKED IN' : '',
+        stats: stats(chars[s]),
+      })),
+      step: ready ? 2 : online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
+      steps: local ? ['PLAYER 1', 'PLAYER 2', 'FIGHT'] : online ? ['YOUR BOXER', 'READY', 'FIGHT'] : ['YOUR BOXER', 'OPPONENT', 'FIGHT'],
+      action: online ? (this.sides[me].locked ? 'UNREADY' : 'READY  ›')
+        : ready ? 'FIGHT!  ›' : local
+          ? (this.sides.some((side) => side.src === 'touch')
+            ? (this.sides[0].locked ? 'WAITING FOR P2' : 'CONFIRM BOXER  ›') : 'CONFIRM ON DEVICE')
+          : this.active === 0 ? 'CONFIRM BOXER  ›' : 'CONFIRM OPPONENT  ›',
+      level: this.data0.mode === 'vsai' ? this.level.toUpperCase() : null,
+      hint: this.hint(),
     });
-    for (const c of this.cardViews) {
-      const l = mainLook(c.id);
-      c.v.setLook(l.color, l.scale, l.ponytail);
-      this.drawBoxer(c.v, c.id, c.x, c.y, 1, time);
-    }
-
-    for (let s = 0; s < 2; s++) {
-      const side = this.sides[s];
-      const t = this.texts[s];
-      const x = this.panelX(s);
-      const hidden = side.src === 'remote';
-      const id = CHARACTER_IDS[side.sel];
-      if (hidden) {
-        this.views[s].clear();
-        this.portraits[s]?.setVisible(false);
-        t.name.setText('');
-        t.style.setText('');
-        t.stats.forEach((l) => l.setText(''));
-        t.status.setText(!this.peerHere ? 'waiting for opponent...' : side.locked ? 'READY' : 'picking...');
-        continue;
-      }
-      // Active-side glow (vsai).
-      if (this.data0.mode === 'vsai' && this.active === s && !this.bothLocked()) {
-        g.lineStyle(3, col[s], 0.35 + 0.25 * Math.sin(time / 160));
-        g.strokeRect(x - 102, VIEW.cy + 8 - 154, 204, 308);
-      }
-      // Portrait when the art is loaded, otherwise the live top-down preview.
-      const key = artKey(this, `portrait_${id}`);
-      if (key) {
-        let img = this.portraits[s];
-        if (!img) img = this.portraits[s] = this.add.image(x, VIEW.cy - 72, key).setDepth(5);
-        if (img.texture.key !== key) img.setTexture(key);
-        img.setVisible(true).setPosition(x, VIEW.cy - 72 + Math.sin(time / 600 + s) * 1.2).setScale(96 / img.height);
-        this.views[s].clear();
-      } else {
-        this.portraits[s]?.setVisible(false);
-        this.drawBoxer(this.views[s], id, x, VIEW.cy - 76, s === 0 ? 1 : -1, time);
-      }
-      const info = CHARACTER_INFO[id];
-      t.name.setText(`${info.name}`);
-      t.style.setText(`"${info.nick}"\n${info.style}`);
-      t.status.setText(side.locked ? 'LOCKED IN' : '');
-      stats(id).forEach(([label, v], r) => {
-        t.stats[r].setText(label);
-        const by = VIEW.cy + 30 + r * 20;
-        const bx = x - 12;
-        const w = 96;
-        g.fillStyle(0x000000, 0.6);
-        g.fillRect(bx, by - 4, w, 8);
-        g.fillStyle(col[s], 1);
-        g.fillRect(bx, by - 4, w * Math.min(1, 0.8 * v), 8);
-        g.lineStyle(1, 0xffffff, 0.3);
-        g.strokeRect(bx, by - 4, w, 8);
-        // 80% (base) tick.
-        g.lineStyle(1, 0xffffff, 0.5);
-        g.lineBetween(bx + w * 0.8, by - 6, bx + w * 0.8, by + 6);
-      });
-    }
-    if (this.data0.mode === 'online') {
-      const me = this.sides[this.data0.localIdx ?? 0];
-      this.fightBtn.label.setText(me.locked ? 'UNREADY' : 'READY');
-      this.fightBtn.bg.setAlpha(1);
-      this.fightBtn.label.setAlpha(1);
-    } else {
-      const ready = this.bothLocked();
-      this.fightBtn.bg.setAlpha(ready ? 1 : 0.35);
-      this.fightBtn.label.setAlpha(ready ? 1 : 0.35);
-    }
-  }
-
-  // Idle preview: the in-game boxer, gently bobbing, facing the centre.
-  private drawBoxer(v: FighterView, id: CharId, x: number, y: number, face: number, time: number): void {
-    const f = createSimState({ timed: false, fighters: [{ char: id }, {}] }).fighters[0];
-    f.x = x;
-    f.y = y + Math.sin(time / 300) * 1.5;
-    f.fx = face;
-    f.fy = 0;
-    v.draw(f, time, false);
   }
 }

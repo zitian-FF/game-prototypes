@@ -1,18 +1,18 @@
 ## Current milestone
-Clean gym props redraw uploaded to R2, ready for deployment.
+Approved character-selection presentation implemented and verified locally; preparing release.
 
 ## What was implemented
-Redrew gym_props.png with existing shapes and outlined style, opaque solid colours and controlled material shading. Registration remains 1844x853 with transparent centre; title layout unchanged.
+Large existing portraits facing the matchup centre, rounded blue/red panels, VS impact burst, bold names and nicknames, six segmented rounded stat bars, bottom portrait roster and staged confirmation. New gym background derived from the approved mockup as a separate raster. Selection changes slide the portrait/name/stat content in with a 260 ms Cubic.Out transition and roster lift. Reduced motion skips the interpolation.
 
 ## Key technical decisions
-Built-in image_gen redraw from prior alpha layer. Replaced only loose/gym_props.png in current R2 bundle; public SHA256 verified as 85a4825d3509706f7c0a9d63021283daa74a53d4998bf184dc35fdcbffc15cc9.
-Asset pack, typecheck and production build passed. Artwork remains outside Git.
+Phaser canvas UI in CharacterSelectView; scene still owns device inputs, selections and online ready state. Uniform 844x390 authored layout fits VIEW. Tapping selects; explicit confirmation advances the single-player steps. Stats remain live tune-derived values. Portrait crops are runtime frames and preserve source PNGs/default texture frame. Slide settings and metadata are in tune.json. New R2 backdrop is the only added archive entry; public bundle SHA256 98af4121b7a6f05a96855a84cd5c5aba080c64f2822dd6d583ed41006ffa9f9d verified. During upload, Remove all was incorrectly treated as clearing the completed queue and removed the previous object; the complete bundle was immediately restored and its public hash verified.
+Typecheck, build and diff checks pass. Desktop and phone composition inspected; phone single-player selection-confirm-opponent-confirm-fight handoff passed. Keyboard selection verified. Fresh boot and selection console contain no errors.
 
 ## Open questions
 None.
 
 ## Known issues
-Canvas fallback uses authored floor. Real-device and two-phone online checks remain pending.
+Real-device gamepad and two-phone online verification remain pending. The existing readiness protocol and device ownership were retained. Fresh-boot browser verification passed after asset packing completed.
 
 ## Next proposed step
-Desktop title inspected with clean material fills and no browser console errors. Merge release notes to trigger deployment and verify live redraw.
+Finish fresh-boot verification, merge the focused PR, verify the deployed screen and version.
