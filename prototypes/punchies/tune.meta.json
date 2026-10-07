@@ -2629,5 +2629,11 @@
   "view.arena.topGap": { "cat": "Arena presentation", "desc": "Top red rope gap below UI, as screen-height fraction.", "min": 0, "max": 0.15, "step": 0.01 },
   "view.arena.bottomGap": { "cat": "Arena presentation", "desc": "Bottom red rope gap above screen bottom, as screen-height fraction.", "min": 0, "max": 0.15, "step": 0.01 },
   "view.arena.floorTopScale": { "cat": "Arena presentation", "desc": "Inverse gym floor projection at the far edge.", "min": 0.5, "max": 1.5, "step": 0.01 },
-  "view.arena.floorBottomScale": { "cat": "Arena presentation", "desc": "Inverse gym floor projection at the near edge.", "min": 0.5, "max": 1.5, "step": 0.01 }
+  "view.arena.floorBottomScale": { "cat": "Arena presentation", "desc": "Inverse gym floor projection at the near edge.", "min": 0.5, "max": 1.5, "step": 0.01 },
+  "view.arena.floorTileWidth": { "cat": "Arena presentation", "desc": "Projected floor tile width at reference depth.", "min": 50, "max": 180, "step": 5 },
+  "view.arena.floorTileDepth": { "cat": "Arena presentation", "desc": "Projected floor tile depth at reference depth.", "min": 40, "max": 120, "step": 5 },
+  "view.arena.floorOverscan": { "cat": "Arena presentation", "desc": "Background source margin for shared perspective projection.", "min": 1, "max": 2, "step": 0.05 },
+  "view.arena.vanishingHeight": { "cat": "Arena presentation", "desc": "Shared floor and rope vanishing point above screen in screen heights.", "min": 1, "max": 10, "step": 0.1 },
+  "view.arena.floorSourceVanishingHeight": { "cat": "Arena presentation", "desc": "Authored gym floor vanishing point above source image.", "min": 0.5, "max": 5, "step": 0.1 },
+  "view.arena.ringSourceTopRatio": { "cat": "Arena presentation", "desc": "Authored far rope width relative to near rope width.", "min": 0.8, "max": 1, "step": 0.01 }
 }

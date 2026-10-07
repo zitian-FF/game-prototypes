@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import { VIEW } from './pixelRatio';
+import { arenaVanishingY, updateGymProjection } from './gymPerspective';
 
 // Ring perspective: a presentation-only tilt. The sim arena stays a flat
 // square; everything that belongs to the ring (floor, ropes, boxers, hit
@@ -14,7 +15,7 @@ const KEY = 'PunchiesKeystone';
 
 // Shared by the pipeline (read every frame): what the camera shows, in
 // logical world pixels, and the ring the taper is anchored to.
-const state = { view: [0, 0, 844, 390], ring: [0, 0, 1, 1], warp: [1, 1] };
+const state = { view: [0, 0, 844, 390], ring: [0, 0, 1, 1], warp: [1, 1], sourceTopRatio: 1 };
 
 const FRAG = `
 #define SHADER_NAME PUNCHIES_KEYSTONE_FS
@@ -22,6 +23,7 @@ precision mediump float;
 uniform sampler2D uMainSampler;
 uniform vec4 uView;   // camera view: x, y, w, h (world px)
 uniform vec4 uRing;   // ring: left, top, width, height (world px)
+uniform float uSourceTopRatio;
 uniform vec2 uWarp;   // far-edge scale, vertical squash
 varying vec2 outTexCoord;
 void main() {
@@ -32,7 +34,7 @@ void main() {
   // Invert the tilt: where in the flat picture does this output pixel come from?
   float ys = cy + (p.y - cy) / uWarp.y;
   float t = (ys - uRing.y) / uRing.w;
-  float s = max(mix(uWarp.x, 1.0, t), 0.2);
+  float s = max(mix(uWarp.x, 1.0, t) / mix(uSourceTopRatio, 1.0, t), 0.2);
   float xs = cx + (p.x - cx) / s;
   vec2 q = (vec2(xs, ys) - uView.xy) / uView.zw;
   if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) {
@@ -51,6 +53,7 @@ class KeystonePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
     this.set4f('uView', state.view[0], state.view[1], state.view[2], state.view[3]);
     this.set4f('uRing', state.ring[0], state.ring[1], state.ring[2], state.ring[3]);
     this.set2f('uWarp', state.warp[0], state.warp[1]);
+    this.set1f('uSourceTopRatio',state.sourceTopRatio);
   }
 }
 
@@ -134,7 +137,19 @@ export class RingPerspective {
         bg.image.setPosition(VIEW.cx+(bg.x-VIEW.cx)*ratio,
           world.y+(bg.y-startY)*ratio);
       }
-      if (this.applied) { world.resetPostPipeline(); this.applied=false; }
+      const renderer=this.scene.game.renderer;
+      if(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+        const nearY=world.y+(b.top+b.height*875/1211)*scale;
+        const farY=world.y+ropeTop*scale;
+        const authoredTopRatio=tune.view.arena.ringSourceTopRatio;
+        state.view=[VIEW.left,VIEW.top,VIEW.width,VIEW.height];
+        state.ring=[VIEW.cx-1,farY,2,nearY-farY];
+        // Remove the slight authored taper before applying the shared projection.
+        state.sourceTopRatio=authoredTopRatio;
+        state.warp=[(farY-arenaVanishingY())/(nearY-arenaVanishingY()),1];
+        if(!this.applied) { world.setPostPipeline(KEY); this.applied=true; }
+        if(this.backdrop) updateGymProjection(this.backdrop.image);
+      }
       world.sort('depth');
       return;
     }
@@ -150,6 +165,7 @@ export class RingPerspective {
     const v = this.scene.cameras.main.worldView;
     state.view = [v.x, v.y, v.width, v.height];
     state.ring = [r.left, r.top, r.right - r.left, r.bottom - r.top];
+    state.sourceTopRatio=1;
     state.warp = [tune.view.topScale, tune.view.squash];
   }
 }

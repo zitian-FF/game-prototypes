@@ -315,3 +315,6 @@ the animated interpolation. Training Reset replays the opening.
 
 ## Floor perspective correction — 2026-10-07
 Preserve the gym artwork’s authored converging tile columns as shown in the user’s annotated reference. Disable the previous flattening correction at neutral projection values. Keep the ring framing and round-opening zoom unchanged.
+
+## Shared arena vanishing point — 2026-10-07
+The floor columns and side ropes must converge toward the same point above the screen, following the annotated guide. Apply a shared presentation projection while retaining the zoom, top rope margin, steps margin and fixed HUD.
