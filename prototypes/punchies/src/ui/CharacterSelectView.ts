@@ -246,7 +246,9 @@ export class CharacterSelectView {
         }
         this.portraitBounds.set(key, bounds);
       }
-      const scale = Math.min(213 / (bounds.bottom - bounds.top), 190 / (bounds.right - bounds.left));
+      // Preserve the cast's body-size hierarchy on either side of the matchup.
+      const visibleHeight = { bruno: 189, marco: 174, mia: 159 }[p.id];
+      const scale = Math.min(visibleHeight / (bounds.bottom - bounds.top), 190 / (bounds.right - bounds.left));
       portrait.setScale(scale);
       const centreOffset = ((bounds.left + bounds.right) / 2 - portrait.width / 2) * scale;
       portrait.x -= (s === 1 ? -1 : 1) * centreOffset;
