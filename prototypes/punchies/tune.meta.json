@@ -2639,7 +2639,7 @@
   "view.arena.vanishingHeight": { "cat": "Arena presentation", "desc": "Shared floor and rope vanishing point above screen in screen heights.", "min": 1, "max": 10, "step": 0.1 },
   "view.arena.floorSourceVanishingHeight": { "cat": "Arena presentation", "desc": "Authored gym floor vanishing point above source image.", "min": 0.5, "max": 5, "step": 0.1 },
   "view.arena.ringSourceTopRatio": { "cat": "Arena presentation", "desc": "Authored far rope width relative to near rope width.", "min": 0.8, "max": 1, "step": 0.01 },
-  "view.fighterScale": {"cat":"View","desc":"In-ring boxer and dummy visual scale; does not change hitboxes.","min":0.5,"max":2,"step":0.05},
+  "view.fighterScale": {"cat":"View","desc":"Shared boxer/dummy artwork, hitbox, reach and spacing scale.","min":0.5,"max":2,"step":0.05},
   "view.cameraShakeScale": {"cat":"View","desc":"Camera shake intensity multiplier.","min":0,"max":1,"step":0.05},
   "view.roundSplashMs": {"cat":"View","desc":"Between-round Punchies splash duration.","min":300,"max":2000,"step":50},
   "match.bestOf": {"cat":"Match & Online","desc":"Match format: 1 or 3 rounds (first to two wins in Bo3).","min":1,"max":3,"step":2}

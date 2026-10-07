@@ -1,17 +1,17 @@
 ## Current milestone
-Approved match presentation and best-of-three implementation complete; release verification pending.
+Shared fighter artwork and hitbox scale implemented; release verification pending.
 
 ## What was implemented
-Bo3 (first to two wins) is the default for solo, local and online play; Bo1 is selectable. Between rounds the arena crossfades through the Punchies logo stamp splash, then displays ROUND N and FIGHT. Round-win pips track the score. Final results contain only a compact headline and Rematch, Change Boxer and Main Menu buttons. All boxer and dummy rendering is 150% of its previous size; combat and KO camera shake strength is halved.
+The existing 1.5x fighter scale now controls body/core/vulnerable hurtboxes, glove contact radius, punch reach, fighter separation and rope clearance as well as artwork. Character size proportions remain Marco 1, Mia 0.88, Bruno 1.12, with the dummy using its existing character scale. AI distance calculations and the debug overlays follow the same geometry.
 
 ## Key technical decisions
-Fresh simulation and AI/rollback instances reset positions and combat resources each round while carrying an immutable series score. Draws replay without a win. Online readiness uses the existing round epoch handshake and ignores duplicate readiness; character reselection preserves epoch progression. Disconnect/leave cancels a pending splash. Guest host-tune restoration survives reselection. Hitboxes, reach and combat timing are unchanged. New values are exposed through tune.json and tune.meta.json.
+A pure geometry module supplies the shared scale to simulation and rendering. Character punch reach modifiers are applied before scale. Hurtboxes use defender size and glove/reach geometry uses attacker size; mixed-character separation uses both sizes. Online peers receive the same scale in the existing host tune snapshot. Damage, stamina cost, movement speeds and action timing remain unchanged. No asset rerender is needed.
 
 ## Open questions
-None. The larger visual bodies can overlap sooner than the unchanged collision bodies; this was raised to the user as a presentation tradeoff.
+None. The enlarged collision bodies and increased reach intentionally change close-range spacing, as requested.
 
 ## Known issues
-Physical two-device online, phone and controller checks remain pending. The existing Phaser bundle size warning remains.
+Physical two-device online and phone/controller checks remain pending. Existing Phaser bundle size warning remains.
 
 ## Next proposed step
-Typecheck and build pass. Series tests cover sweeps, deciders, draws, Bo1, fresh resources, intro freeze and online early/late/duplicate readiness and rematch reset. Canvas/WebGL camera-effects regression passes. Brave review verified round carryover, splash, numbered announcement, minimal result, rematch and enlarged dummy with clean consoles. Publish and verify the live release.
+Geometry regression passes all character pairs and all four attacks at 1x, 1.5x and 2x, checking just-inside/just-outside contact, shared render scale, vulnerable/core radii, anchored dummy separation and rope clearance. Typecheck/build and series/online-readiness regression pass. Brave review confirms larger debug circles around the boxer and dummy with a clean console. Publish and verify the live release.

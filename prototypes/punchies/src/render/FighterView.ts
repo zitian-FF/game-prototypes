@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
+import { coreRadius } from '../sim/geometry';
+import { punchCfg } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 import { pose } from './art';
@@ -469,14 +471,14 @@ export class FighterView {
     g.strokeCircle(f.x, f.y, hurtRadius(f));
     if (!isVulnerable(f)) {
       g.lineStyle(1, 0x00aaff, 0.9);
-      g.strokeCircle(f.x, f.y, tune.body.coreRadius);
+      g.strokeCircle(f.x, f.y, coreRadius(f));
     }
     if (f.punch) {
       const phase = phaseOf(f.punch);
       const pt = punchPoint(f, f.punch);
       const c = phase === 'sweet' ? 0xffff00 : phase === 'sour' ? 0xff8800 : 0x888888;
       g.lineStyle(1, c, phase === 'startup' || phase === 'recovery' ? 0.4 : 1);
-      g.strokeCircle(pt.x, pt.y, tune.punches[f.punch.type].hitRadius);
+      g.strokeCircle(pt.x, pt.y, punchCfg(f, f.punch.type).hitRadius);
     }
   }
 }

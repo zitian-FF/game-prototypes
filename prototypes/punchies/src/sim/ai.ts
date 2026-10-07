@@ -1,5 +1,6 @@
 import { tune } from './tune';
 import { punchCfg } from './character';
+import { fighterScale, normalHurtRadius } from './geometry';
 import { phaseOf } from './sim';
 import { NEUTRAL_INPUT, type FrameInput, type SimState } from './types';
 
@@ -38,6 +39,8 @@ export class EasyAI {
   think(s: SimState): FrameInput {
     const me = s.fighters[this.idx];
     const foe = s.fighters[this.idx === 0 ? 1 : 0];
+    const scale = (fighterScale(me) + fighterScale(foe)) / 2;
+    const attackRange = tune.ai.attackRange * scale;
     const dx = foe.x - me.x;
     const dy = foe.y - me.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -55,7 +58,7 @@ export class EasyAI {
     const busy = me.punch !== null || me.dodge !== null;
 
     // Defense: react (late) to a punch the player started.
-    if (view?.playerStartingPunch && !busy && view.dist < tune.ai.attackRange + 20) {
+    if (view?.playerStartingPunch && !busy && view.dist < attackRange + 20 * scale) {
       if (this.rng() < tune.ai.dodgeChance) {
         input.dodge = true;
         return input;
@@ -72,7 +75,7 @@ export class EasyAI {
     const nx = dist > 0.001 ? dx / dist : 1;
     const ny = dist > 0.001 ? dy / dist : 0;
     const tired = me.stamina < tune.ai.retreatStaminaBelow || me.exhausted;
-    const ideal = tune.ai.attackRange - 8;
+    const ideal = attackRange - 8 * scale;
     let mx = 0;
     let my = 0;
     if (tired) {
@@ -93,12 +96,12 @@ export class EasyAI {
     input.my = Math.round(Math.max(-1, Math.min(1, my)) * 100);
 
     // Offense.
-    if (!tired && !busy && this.cooldown === 0 && dist <= tune.ai.attackRange && this.rng() < tune.ai.attackChance) {
+    if (!tired && !busy && this.cooldown === 0 && dist <= attackRange && this.rng() < tune.ai.attackChance) {
       this.cooldown = Math.round(tune.ai.attackCooldownFrames);
       if (me.stars >= tune.stars.max) {
         input.uppercut = true;
       } else {
-        const close = dist < punchCfg(me, 'hook').reach + tune.body.hurtRadius;
+        const close = dist < punchCfg(me, 'hook').reach + normalHurtRadius(foe);
         const wj = tune.ai.jabWeight;
         const wc = tune.ai.crossWeight;
         const wh = close ? tune.ai.hookWeight * 2 : tune.ai.hookWeight;
