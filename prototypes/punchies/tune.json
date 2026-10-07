@@ -73,7 +73,10 @@
       "logoPulseScale": 1.025,
       "stampMs": 260,
       "loadingDrift": 15,
-      "crossfadeMs": 180
+      "crossfadeMs": 180,
+      "characterSlideMs": 260,
+      "characterSlideDistance": 34,
+      "characterSlideEase": "Cubic.Out"
     }
   },
   "ring": {

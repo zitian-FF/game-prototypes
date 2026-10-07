@@ -1,4 +1,7 @@
 {
+  "view.menu.characterSlideMs": { "cat": "View", "desc": "Character selection panel and roster slide duration (milliseconds).", "min": 0, "max": 1000, "step": 10 },
+  "view.menu.characterSlideDistance": { "cat": "View", "desc": "Incoming character panel slide distance in logical pixels.", "min": 0, "max": 100, "step": 1 },
+  "view.menu.characterSlideEase": { "cat": "View", "desc": "Phaser easing for character selection slide animation.", "min": null, "max": null, "step": null },
   "ko.slowmo": {
     "cat": "KO",
     "desc": "KO slow-motion speed (1 = normal). Visual only; the match is already over.",
