@@ -1,5 +1,5 @@
 ## Current milestone
-Emergency stamina recovery implemented; release verification pending.
+Emergency stamina recovery implemented and committed locally; publishing awaits explicit user approval.
 
 ## What was implemented
 Zero stamina now triggers emergency recovery until full stamina. The red bar and existing sweat effect show the state. All incoming contact uses the vulnerable/headshot row. Punches remain available without stamina spend and deal half damage with existing multipliers. Guard and dodge attempts flash stamina and are refused. AI avoids illegal defence and can attack during emergency. Tutorial and info text describe the rules.
@@ -14,4 +14,4 @@ None. Normal-state headshot geometry is unchanged; the request changes emergency
 Physical two-device online and phone/controller checks remain pending. Existing Phaser bundle size warning remains.
 
 ## Next proposed step
-Typecheck/build and emergency, shared geometry, series/online-readiness and Canvas/WebGL effects regressions pass. Emergency tests cover all characters, full-only exit, continuous recovery, punch/guard/dodge behavior, exact-zero entry, positive low-stamina refusal, protected incoming hits and half damage with fatigue, buff and counter multipliers. Brave review confirms red bar and recovery pose with clean console. Publish and verify release.
+Typecheck/build and emergency, shared geometry, series/online-readiness and Canvas/WebGL effects regressions pass. Emergency tests cover all characters, full-only exit, continuous recovery, punch/guard/dodge behavior, exact-zero entry, positive low-stamina refusal, protected incoming hits and half damage with fatigue, buff and counter multipliers. Brave review confirms red bar and recovery pose with clean console. Automatic approval review rejected the public GitHub push twice, requiring explicit authorization for this payload/destination. A user approval request is pending for push, PR merge and the existing itch.io deployment. After approval, publish proto/punchies/emergency-stamina and verify the release.
