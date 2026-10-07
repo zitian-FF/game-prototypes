@@ -1,18 +1,18 @@
 ## Current milestone
-Restore the gym floor perspective to the annotated reference, ready for deployment.
+Shared vanishing point for gameplay floor columns and ring side ropes ready for release.
 
 ## What was implemented
-Neutral floor projection preserves the source artwork's converging tile columns. Existing round zoom and steps-inclusive ring framing remain.
+Build a coherent projected tile grid with the gym palette and sampled painted grain; reproject the ring's slight authored taper to a shared screen-space point above center. Preserve round zoom, vertical framing and fixed HUD.
 
 ## Key technical decisions
-Bypass the floor shader at neutral values, avoiding extra overscan and flattening. Reuse existing R2 art.
-Typecheck, build and Brave local gameplay screenshot passed; console errors absent.
+Presentation shaders only; combat geometry unchanged. Overscan protects background sampling edges. Tuning exposes shared vanishing height and source calibration.
+Typecheck and production build passed. Brave final gameplay frame inspected with clean edges and no console errors.
 
 ## Open questions
-None.
+None blocking.
 
 ## Known issues
-Real-device and two-phone online checks remain pending; this change is presentation only.
+Canvas fallback has no projection shader. Real-device and two-phone testing pending.
 
 ## Next proposed step
-Merge and deploy the floor correction, then verify the live framing.
+Inspect final Brave frame, merge and verify deployment.
