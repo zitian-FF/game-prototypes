@@ -1,5 +1,5 @@
 ## Current milestone
-Title floor and ring now share gameplay perspective; independent gym props layer uploaded to R2.
+Title floor/ring perspective and layered props deployed as 071026r0069 via PR #232.
 
 ## What was implemented
 Apply shared projected floor to title. Project its registered ring layers to the same vanishing point. Composite transparent gym_props.png around the perimeter, with menu and ring clear.
@@ -15,4 +15,4 @@ None.
 Canvas fallback retains authored floor perspective. Real-device and two-phone online tests pending.
 
 ## Next proposed step
-Phone and return-to-menu checks passed; merge/deploy and verify live title.
+Publish responsive props fit: contain scaling keeps equipment visible in taller windows. Taller-window Brave title inspected without errors.

@@ -27,7 +27,7 @@ export class MenuScene extends Phaser.Scene {
     const gym=backdrop(this, 0, 'gym_background');
     alignGymFloor(this,gym);
     const props=artImage(this,'gym_props',VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,-8);
-    if(props) props.setScale(Math.max(VIEW.width/props.width,VIEW.height/props.height));
+    if(props) props.setScale(Math.min(VIEW.width/props.width,VIEW.height/props.height));
     const ringW=Math.min(VIEW.width*0.45,VIEW.height*0.93*1299/1211);
     ArenaArt.create(this)?.displayTitle(VIEW.left+VIEW.width*0.665,VIEW.cy,ringW,ringW*1211/1299);
     const menuX = VIEW.left + VIEW.width * 0.26;
