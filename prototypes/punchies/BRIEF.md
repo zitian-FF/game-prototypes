@@ -359,3 +359,7 @@ Move Credits into Settings. Replace its title-screen position with a green Shop 
 
 ### Punch Token and ranked ownership — 2026-10-07
 Show a red-and-blue Punch Token icon and balance inside the main-menu Shop button. Initial display is zero until a real wallet exists. Boxers and skins require ownership in ranked as well as casual. Unlocks are earned through rewarded ads. New boxers should have balanced stat tradeoffs. MMR and leaderboard remain future work; MMR does not replace character balance. Reward rate and prices are still proposals, not approved values.
+
+
+### Match presentation completion — 2026-10-07
+Before the first round of a match (including rematches), selected portraits slide together around a fiery VS, then ROUND 1 and FIGHT. Do not repeat the clash between rounds or in training/tutorial. Keep simulation frozen and match clock untouched during the showcase; online peers share the same deterministic duration. KO lettering uses KNOCK then OUT impact brush styling with the triple bell. Compact final results use animated victory/defeat/draw text, series score and polished buttons, preserving fast pacing. Existing portraits showcase current characters; equipped-skin support remains future work.

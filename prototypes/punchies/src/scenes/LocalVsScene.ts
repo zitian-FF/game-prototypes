@@ -50,7 +50,7 @@ export class LocalVsScene extends Phaser.Scene {
     this.acc = 0;
     this.over = false;
     const chars = data.chars ?? ['marco', 'marco'];
-    this.sim = createSimState({ timed: true, fighters: [{ char: chars[0] }, { char: chars[1] }] });
+    this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: chars[0] }, { char: chars[1] }] });
     const names: [string, string] = [`P1 · ${charName(chars[0])} · ${SOURCE_LABEL[data.p1]}`, `P2 · ${charName(chars[1])} · ${SOURCE_LABEL[data.p2]}`];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
@@ -89,6 +89,6 @@ export class LocalVsScene extends Phaser.Scene {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),
       menu: () => startScreen(this, 'Menu'),
-    });
+    }, outcome.series.wins);
   }
 }

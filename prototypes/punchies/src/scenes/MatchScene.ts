@@ -95,7 +95,7 @@ export class MatchScene extends Phaser.Scene {
       (p) => s.sendInputs(p),
       (p) => s.sendHash(p),
       data.chars,
-      { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0 },
+      { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0, showcase: this.series.roundNumber === 1 },
     );
     s.onInputs = (p) => this.ls.receiveInputs(p);
     s.onHash = (p) => this.ls.receiveHash(p);
@@ -295,7 +295,7 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    });
+    }, outcome.series.wins);
   }
 
   private tryRematch(): void {

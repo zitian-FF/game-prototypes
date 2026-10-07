@@ -3,7 +3,7 @@ import { artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { makeButton } from '../scenes/FightStage';
+import { titleButton } from './titleButton';
 import { getNav } from './menuNav';
 let splashSerial = 0;
 
@@ -56,14 +56,28 @@ export function roundSplash(scene: Phaser.Scene, next: () => void): () => void {
 
 export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   rematch: () => void; changeBoxer: () => void; menu: () => void;
-}): Phaser.GameObjects.Text {
+}, score?: [number, number]): Phaser.GameObjects.Text {
   getNav(scene).engage();
-  scene.add.rectangle(VIEW.cx, VIEW.cy + 22, 380, 182, 0x0b1731, 0.78).setDepth(129);
-  scene.add.text(VIEW.cx, VIEW.cy - 33, headline, { fontFamily: 'Arial, sans-serif', fontSize: '36px',
-    fontStyle: 'bold', color: '#fff1d1', stroke: '#071024', strokeThickness: 5, resolution: PIXEL_RATIO })
+  const before=new Set(scene.children.list);
+  const panel=scene.add.graphics().setDepth(129);
+  panel.fillStyle(0x071326,0.88).fillRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
+  panel.lineStyle(2,0x6886ae,0.85).strokeRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
+  panel.lineStyle(1,0xdceafa,0.24).lineBetween(VIEW.cx-171,VIEW.cy-74,VIEW.cx+171,VIEW.cy-74);
+  const color=headline==='DEFEAT'?'#ff827a':headline==='DRAW'?'#dbe9fa':'#ffe08b';
+  const heading=scene.add.text(VIEW.cx,VIEW.cy-43,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:'40px',
+    fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  const rematch = makeButton(scene, VIEW.cx, VIEW.cy + 27, 220, 'REMATCH', actions.rematch, 34, 14);
-  makeButton(scene, VIEW.cx - 94, VIEW.cy + 75, 172, 'CHANGE BOXER', actions.changeBoxer, 30, 12);
-  makeButton(scene, VIEW.cx + 94, VIEW.cy + 75, 172, 'MAIN MENU', actions.menu, 30, 12);
+  if(score)scene.add.text(VIEW.cx,VIEW.cy-2,score.join('  —  '),{fontFamily:'Arial',fontSize:'18px',fontStyle:'bold',
+    color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
+  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+39,232,34,'REMATCH',actions.rematch,false,150,'green');
+  titleButton(scene,VIEW.cx-94,VIEW.cy+88,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
+  titleButton(scene,VIEW.cx+94,VIEW.cy+88,172,30,'MAIN MENU',actions.menu,false,150);
+  if(!reducedMotion()){
+    const objects=scene.children.list.filter(o=>!before.has(o));
+    objects.forEach(o=>(o as Phaser.GameObjects.Text).setAlpha(0));
+    scene.tweens.add({targets:objects,alpha:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Sine.Out'});
+    heading.setScale(1.12);
+    scene.tweens.add({targets:heading,scale:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Cubic.Out'});
+  }
   return rematch;
 }
