@@ -1,5 +1,5 @@
 ## Current milestone
-Title floor/ring perspective and layered props deployed as 071026r0069 via PR #232.
+Title floor/ring perspective and layered props deployed as 071026r0070 via PR #232 and responsive fit #233.
 
 ## What was implemented
 Apply shared projected floor to title. Project its registered ring layers to the same vanishing point. Composite transparent gym_props.png around the perimeter, with menu and ring clear.
@@ -15,4 +15,4 @@ None.
 Canvas fallback retains authored floor perspective. Real-device and two-phone online tests pending.
 
 ## Next proposed step
-Publish responsive props fit: contain scaling keeps equipment visible in taller windows. Taller-window Brave title inspected without errors.
+Title perspective and responsive props fit complete. Desktop, phone, taller-window and return-to-title checks passed. Deployment run 37587869033 succeeded. Live title inspected with equipment visible and no console errors.
