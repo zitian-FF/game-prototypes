@@ -1,18 +1,17 @@
 ## Current milestone
-Camera/effects synchronisation fix verified locally; preparing release.
+Character-selection portrait and panel corrections verified; preparing release.
 
 ## What was implemented
-Corrected runtime effect adoption to listen for Phaser.Scenes.Events.ADDED_TO_SCENE instead of the nonexistent generic add event. Sparks, guard rings, damage numbers and hit labels now join the existing ring container and inherit its fitted scale, projection and camera movement. Full-screen overlays and HUD retain their existing separate rendering.
+All portraits now fit and anchor using cached visible alpha bounds rather than transparent PNG edges. Bruno shares the same panel baseline as Marco and Mia. Both stat columns and long names have inset room within their panels. Mia's selection portrait has a smoother youthful adult face while retaining her serious expression, outfit, pose and outlined art style.
 
 ## Key technical decisions
-One event-hook correction, with matching shutdown cleanup; no tuned values, art, simulation or network changes. Added scripts/test-punchies-effects-sync.mjs using the real Phaser DisplayList event contract to cover runtime depth adoption, shared opening/mid/end zoom transforms, screen-overlay exclusions, already-parented/destroyed objects and listener cleanup in Canvas/WebGL paths.
-Typecheck and production build passed. WebGL browser review uses the actual FightStage and Effects with repeated uppercut/counter events, opening/reset zoom and impact shake: effects remain in the world container, labels track the dummy, console clean.
+Source registration stays unchanged; visible bounds are measured once per portrait with one canvas readback. Existing inward-facing mirroring and slide transitions are preserved. Only loose/portrait_mia.png changed in the R2 bundle; public-download SHA256 verified as 145184762d72cc6068c9e08d86b865d00973e79b9a2b5cd5386dfa6247d70f51. Built-in imagegen used for Mia's targeted portrait edit; master and prompt saved under outputs/selection-fixes outside Git. Typecheck/build and Brave screenshot reviews passed with clean console; Bruno and Mia reviewed on both sides and Marco baseline checked.
 
 ## Open questions
 None.
 
 ## Known issues
-Two-phone online and physical controller checks remain pending; this change does not alter their inputs or simulation.
+Two-phone online and physical controller checks remain pending; this presentation-only change does not alter their simulation or inputs.
 
 ## Next proposed step
-Canvas and WebGL actual FightStage/Effects browser reviews passed with clean consoles. Merge the focused PR and verify deployment.
+Merge focused PR and verify itch.io deployment.

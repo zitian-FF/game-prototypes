@@ -40,6 +40,7 @@ export class CharacterSelectView {
   private levelButtons: Phaser.GameObjects.Text[];
   private hint: Phaser.GameObjects.Text;
   private previous = '';
+  private portraitBounds = new Map<string, { left: number; top: number; right: number; bottom: number }>();
 
   constructor(private scene: Phaser.Scene, callbacks: {
     card(i: number): void; panel(i: number): void; action(): void; back(): void; level(d: number): void;
@@ -221,7 +222,35 @@ export class CharacterSelectView {
     const key = artKey(this.scene, `portrait_${p.id}`);
     if (key) {
       const portrait = this.scene.add.image(s === 0 ? 108 : 738, 279, key, '__BASE').setOrigin(0.5, 1);
-      portrait.setScale(Math.min(213 / portrait.height, 190 / portrait.width));
+      // Align visible artwork rather than differing transparent PNG margins.
+      let bounds = this.portraitBounds.get(key);
+      if (!bounds) {
+        const canvas = document.createElement('canvas');
+        canvas.width = portrait.width;
+        canvas.height = portrait.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        context.drawImage(this.scene.textures.get(key).getSourceImage() as HTMLImageElement, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        bounds = { left: portrait.width, top: portrait.height, right: 0, bottom: 0 };
+        for (let y = 0; y < portrait.height; y++) {
+          for (let px = 0; px < portrait.width; px++) {
+            if (pixels[(y * canvas.width + px) * 4 + 3] < 16) continue;
+            bounds.left = Math.min(bounds.left, px);
+            bounds.top = Math.min(bounds.top, y);
+            bounds.right = Math.max(bounds.right, px + 1);
+            bounds.bottom = Math.max(bounds.bottom, y + 1);
+          }
+        }
+        if (bounds.right <= bounds.left || bounds.bottom <= bounds.top) {
+          bounds = { left: 0, top: 0, right: portrait.width, bottom: portrait.height };
+        }
+        this.portraitBounds.set(key, bounds);
+      }
+      const scale = Math.min(213 / (bounds.bottom - bounds.top), 190 / (bounds.right - bounds.left));
+      portrait.setScale(scale);
+      const centreOffset = ((bounds.left + bounds.right) / 2 - portrait.width / 2) * scale;
+      portrait.x -= (s === 1 ? -1 : 1) * centreOffset;
+      portrait.y += (portrait.height - bounds.bottom) * scale;
       // Mirror only the right presentation to face the matchup centre.
       portrait.setFlipX(s === 1);
       parent.add(portrait);
@@ -229,26 +258,27 @@ export class CharacterSelectView {
       this.text(parent, s === 0 ? 108 : 738, 207, p.id.toUpperCase(), 22);
     }
     const name = this.text(parent, tx + 65, 133, info.name.toUpperCase(), 23);
-    if (name.width > 188) name.setScale(188 / name.width);
+    if (name.width > 156) name.setScale(156 / name.width);
     this.text(parent, tx + 65, 156, `“${info.nick}”`, 12, '#b9cbe7');
     this.text(parent, tx + 65, 174, p.label, 9, s === 0 ? '#76caff' : '#ff8b99');
     const bars = this.graphics(parent);
     const order = [0, 3, 1, 4, 2, 5];
     order.forEach((index, i) => {
       const [label, value] = p.stats[index];
-      const bx = tx - 12 + (i % 2) * 94;
+      const barWidth = 74;
+      const bx = tx - 12 + (i % 2) * 82;
       const by = 198 + Math.floor(i / 2) * 29;
       this.text(parent, bx, by - 8, label, 8).setOrigin(0, 0.5);
-      bars.fillStyle(0x071326).fillRoundedRect(bx, by, 84, 11, 5);
-      const width = Math.max(0, Math.min(1, value * 0.8)) * 82;
+      bars.fillStyle(0x071326).fillRoundedRect(bx, by, barWidth, 11, 5);
+      const width = Math.max(0, Math.min(1, value * 0.8)) * (barWidth - 2);
       if (width > 0) {
         bars.fillStyle(s === 0 ? 0x27bfff : 0xfa4b67).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(4, width / 2));
         bars.fillStyle(0xffffff, 0.25).fillRoundedRect(bx + 2, by + 2, Math.max(0, width - 2), 3, 1);
       }
-      bars.lineStyle(1, 0x738bad).strokeRoundedRect(bx, by, 84, 11, 5);
+      bars.lineStyle(1, 0x738bad).strokeRoundedRect(bx, by, barWidth, 11, 5);
       // Continuous real stats; subdivisions are presentation, not ratings.
       bars.lineStyle(1, 0x071326, 0.8);
-      for (let n = 1; n < 6; n++) bars.lineBetween(bx + n * 14, by + 1, bx + n * 14, by + 10);
+      for (let n = 1; n < 6; n++) bars.lineBetween(bx + n * barWidth / 6, by + 1, bx + n * barWidth / 6, by + 10);
     });
   }
 }
