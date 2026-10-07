@@ -1,5 +1,5 @@
 ## Current milestone
-Camera/effects synchronisation fix verified locally; preparing release.
+Camera/effects synchronisation fix shipped in 071026r0073 (PR #236).
 
 ## What was implemented
 Corrected runtime effect adoption to listen for Phaser.Scenes.Events.ADDED_TO_SCENE instead of the nonexistent generic add event. Sparks, guard rings, damage numbers and hit labels now join the existing ring container and inherit its fitted scale, projection and camera movement. Full-screen overlays and HUD retain their existing separate rendering.
@@ -15,4 +15,5 @@ None.
 Two-phone online and physical controller checks remain pending; this change does not alter their inputs or simulation.
 
 ## Next proposed step
-Canvas and WebGL actual FightStage/Effects browser reviews passed with clean consoles. Merge the focused PR and verify deployment.
+Canvas and WebGL actual FightStage/Effects browser reviews passed with clean consoles. PR #236 merged; itch.io deployment succeeded. Deployed r0073 training screen booted with clean console. Continue the approved character-selection work.
+
