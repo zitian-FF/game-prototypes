@@ -4,15 +4,15 @@ import { navRegister } from './menuNav';
 import { artImage } from '../render/art';
 
 export function titleButton(scene: Phaser.Scene, x: number, y: number, w: number, h: number,
-  label: string, onTap: () => void, primary = false, depth = 130): Phaser.GameObjects.Text {
+  label: string, onTap: () => void, primary = false, depth = 130, accent: 'default' | 'green' = 'default'): Phaser.GameObjects.Text {
   const g = scene.add.graphics().setDepth(depth);
   const draw = (hover = false) => {
     g.clear();
     g.fillStyle(0x070f21, 0.8).fillRoundedRect(x-w/2-3, y-h/2+4, w+6, h+2, 13);
     g.fillStyle(0x0b142b).fillRoundedRect(x-w/2-3, y-h/2-3, w+6, h+6, 13);
-    g.fillStyle(primary ? (hover ? 0x218dff : 0x0870ec) : (hover ? 0x263f61 : 0x15263f), 0.98)
+    g.fillStyle(accent === 'green' ? (hover ? 0x259b56 : 0x16743d) : primary ? (hover ? 0x218dff : 0x0870ec) : (hover ? 0x263f61 : 0x15263f), 0.98)
       .fillRoundedRect(x-w/2, y-h/2, w, h, 11);
-    g.lineStyle(primary ? 2.5 : 1.5, primary ? 0x64d9ff : 0x8ba4c7, 0.95)
+    g.lineStyle(primary ? 2.5 : 1.5, accent === 'green' ? 0x73e5a0 : primary ? 0x64d9ff : 0x8ba4c7, 0.95)
       .strokeRoundedRect(x-w/2, y-h/2, w, h, 11);
     g.lineStyle(1, 0xe5f3ff, primary ? 0.55 : 0.22).beginPath()
       .moveTo(x-w/2+13,y-h/2+4).lineTo(x+w/2-13,y-h/2+4).strokePath();

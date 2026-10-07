@@ -52,7 +52,7 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX-(half+12)/2,top+243,half,38,'TRAINING',()=>startScreen(this,'Training'));
     titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
     titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openInputPopup());
-    titleButton(this,menuX+(half+12)/2,top+294,half,27,'CREDITS',()=>this.openCredits());
+    titleButton(this,menuX+(half+12)/2,top+294,half,27,'SHOP',()=>this.openShop(),false,130,'green');
     if (debugUnlocked()) {
     const tuneLabel = this.add
       .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
@@ -74,7 +74,7 @@ export class MenuScene extends Phaser.Scene {
     addVersionStamp(this);
   }
 
-  private popup(title: string): { items: Phaser.GameObjects.GameObject[]; close(): void } {
+  private popup(title: string, onBack?: () => void): { items: Phaser.GameObjects.GameObject[]; close(): void } {
     const items: Phaser.GameObjects.GameObject[] = [];
     items.push(this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,0.8).setDepth(300).setInteractive());
     const panel=this.add.graphics().setDepth(301);
@@ -82,15 +82,21 @@ export class MenuScene extends Phaser.Scene {
     panel.lineStyle(2,0x8ba4c7).strokeRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
     items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
     const close=()=>items.forEach(o=>o.destroy());
-    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',close,false,302);
+    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',()=>{close();onBack?.();},false,302);
     items.push(back,back.getData('bg'));
     return {items,close};
   }
 
   private openCredits(): void {
-    const p=this.popup('CREDITS');
+    const p=this.popup('CREDITS',()=>this.openInputPopup());
     p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Created and designed by ZeeTea.\n\nBuilt together with Claudia and G.P. Tea.',
       {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
+  }
+
+  private openShop(): void {
+    const p=this.popup('SHOP');
+    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'COMING SOON\n\nUnlock boxers and skins.',
+      {fontFamily:'Arial',fontSize:'17px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
   }
 
   private openOnlinePopup(): void {
@@ -164,7 +170,12 @@ export class MenuScene extends Phaser.Scene {
       callback: () => pads.setText(`Controllers connected: ${devices.connectedPads()} (press a button to wake one)`),
     });
     padTimer.callback?.();
-    btn(VIEW.cx, VIEW.cy + 108, 120, 'DONE', () => {
+    btn(VIEW.cx - 70, VIEW.cy + 108, 120, 'CREDITS', () => {
+      padTimer.remove();
+      for (const o of items) o.destroy();
+      this.openCredits();
+    });
+    btn(VIEW.cx + 70, VIEW.cy + 108, 120, 'DONE', () => {
       padTimer.remove();
       for (const o of items) o.destroy();
     });

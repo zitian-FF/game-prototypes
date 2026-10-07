@@ -351,3 +351,7 @@ Reduce the base inner core/headshot radius from 15 to 10 (one-third smaller), re
 
 ### Stamina adjustment — 2026-10-07
 Punches may start with insufficient positive stamina, draining the remainder to zero and entering emergency recovery. Dodge affordability remains enforced. Emergency recovery uses the normal standing-still rate (including character regeneration modifiers), continuously regardless of actions. Increase base costs of jab, cross, hook, uppercut, dodge and guard drain by 20%; preserve character modifiers and incoming stamina damage.
+
+
+### Shop menu entry — 2026-10-07
+Move Credits into Settings. Replace its title-screen position with a green Shop button. The shop is a coming-soon entry until the rewards, token and unlock design is approved. Credits returns to Settings.
