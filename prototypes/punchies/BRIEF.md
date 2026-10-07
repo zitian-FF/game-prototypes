@@ -355,3 +355,7 @@ Punches may start with insufficient positive stamina, draining the remainder to 
 
 ### Shop menu entry — 2026-10-07
 Move Credits into Settings. Replace its title-screen position with a green Shop button. The shop is a coming-soon entry until the rewards, token and unlock design is approved. Credits returns to Settings.
+
+
+### Punch Token and ranked ownership — 2026-10-07
+Show a red-and-blue Punch Token icon and balance inside the main-menu Shop button. Initial display is zero until a real wallet exists. Boxers and skins require ownership in ranked as well as casual. Unlocks are earned through rewarded ads. New boxers should have balanced stat tradeoffs. MMR and leaderboard remain future work; MMR does not replace character balance. Reward rate and prices are still proposals, not approved values.

@@ -12,6 +12,7 @@ import { getNav, navRegister } from '../ui/menuNav';
 import { artImage, backdrop } from '../render/art';
 import { pulseLogo, startScreen } from '../ui/presentation';
 import { titleButton } from '../ui/titleButton';
+import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
 
@@ -52,7 +53,16 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX-(half+12)/2,top+243,half,38,'TRAINING',()=>startScreen(this,'Training'));
     titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
     titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openInputPopup());
-    titleButton(this,menuX+(half+12)/2,top+294,half,27,'SHOP',()=>this.openShop(),false,130,'green');
+    const shopX = menuX + (half + 12) / 2;
+    const shop = titleButton(this,shopX,top+294,half,27,'SHOP',()=>this.openShop(),false,130,'green');
+    shop.setX(shopX - half * 0.22);
+    const balanceX = shopX + half * 0.26;
+    this.add.graphics().setDepth(131).fillStyle(0x081b24,0.75)
+      .fillRoundedRect(balanceX-22,top+284,44,20,9);
+    punchToken(this,balanceX-10,top+294,8,132);
+    // Balance starts at zero until the approved wallet/reward system is built.
+    this.add.text(balanceX+9,top+294,'0',{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
+      .setOrigin(0.5).setDepth(132);
     if (debugUnlocked()) {
     const tuneLabel = this.add
       .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
