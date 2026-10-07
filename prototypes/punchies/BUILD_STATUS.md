@@ -1,5 +1,5 @@
 ## Current milestone
-Requested larger ring framing, centered training dummy and gym floor alignment ready for release.
+Requested larger ring framing, centered training dummy and gym floor alignment deployed via PR #228, version 071026r0065.
 
 ## What was implemented
 - Uniform authored-ring enlargement anchored to measured outer red rope centers (master y110 and y927). Top gap 3% below the 59px UI strip; bottom gap 5% above screen bottom. Values exposed in tune metadata.
@@ -19,4 +19,4 @@ None blocking this update.
 Real-device and two-phone online verification pending. Canvas renderer does not support gym projection shader.
 
 ## Next proposed step
-Merge and verify live framing, then continue remaining art direction work.
+Itch deployment succeeded. Continue remaining art direction work.
