@@ -225,7 +225,7 @@ export class CharacterSelectView {
     const tx = s === 0 ? 215 : 480;
     const key = artKey(this.scene, `portrait_${p.id}`);
     if (key) {
-      const portrait = this.scene.add.image(s === 0 ? 108 : 738, 279, key, '__BASE').setOrigin(0.5, 1);
+      const portrait = this.scene.add.image(s === 0 ? 108 : 738, 289, key, '__BASE').setOrigin(0.5, 1);
       // Align visible artwork rather than differing transparent PNG margins.
       let bounds = this.portraitBounds.get(key);
       if (!bounds) {

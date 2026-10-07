@@ -3,6 +3,7 @@ import type { SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
 import { PIXEL_RATIO, VIEW } from './pixelRatio';
 import { tune } from '../sim/tune';
+import { fightWord } from '../ui/fightPresentation';
 
 // Turns sim events into visual and audio feedback: sweet sparks, counter
 // flash, block/perfect-guard rings, callout labels. Presentation only.
@@ -221,7 +222,7 @@ export class Effects {
           sfx.ready();
           break;
         case 'go':
-          this.banner('FIGHT!', 0.6, '#7fe08a', true);
+          fightWord(this.scene);
           sfx.go();
           break;
         case 'ko':
