@@ -1,4 +1,5 @@
 import { isCharId, type CharId } from '../sim/character';
+import { tune } from '../sim/tune';
 
 // How each character is drawn. Render only: size here never touches
 // hurtboxes or reach (those stay in the sim / tune).
@@ -20,7 +21,7 @@ export function lookFor(chars: [string, string], idx: number): Look {
   const id = isCharId(chars[idx]) ? chars[idx] : 'marco';
   const l = LOOKS[id as CharId];
   const mirror = idx === 1 && chars[0] === chars[1];
-  return { color: mirror ? l.alt : l.main, scale: l.scale, ponytail: l.ponytail };
+  return { color: mirror ? l.alt : l.main, scale: l.scale * tune.view.fighterScale, ponytail: l.ponytail };
 }
 
 export function mainLook(id: string): Look {

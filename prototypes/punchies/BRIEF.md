@@ -333,3 +333,8 @@ Align all portraits by their visible artwork baseline, including Bruno, while pr
 
 ## Portrait size hierarchy — 2026-10-07
 Selection portraits must read as Bruno largest, Marco medium, Mia smallest, measured by visible artwork height with a shared bottom baseline on either matchup side.
+
+## Match presentation and best of three — 2026-10-07
+Default competitive play to best of three (first to two round wins), with best of one available on character selection. Apply to solo, local and online matches; the online host chooses the format. Reset combat meters and positions each round, preserving series score. Draws award neither boxer a win and replay; round announcements continue counting. Crossfade through the existing Punchies logo/loading stamp splash between rounds, then announce ROUND N and FIGHT before combat. Only show a compact victory/defeat/draw label and Rematch, Change Boxer and Main Menu controls after the series ends, keeping the arena visible. A rematch clears the series score. Training remains continuous.
+
+Increase all in-game fighter artwork, including the training dummy and KO presentation, to 150% of its previous size while preserving relative character proportions. Reduce combat and KO camera shake strength by 50%. These are visual changes; preserve collision bodies, attack reach and combat timing.

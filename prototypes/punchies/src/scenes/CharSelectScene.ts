@@ -6,7 +6,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
-import { applyTuneJson, snapshotTune, tune } from '../sim/tune';
+import { applyTuneJson, restoreTune, snapshotTune, tune } from '../sim/tune';
 import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
@@ -31,6 +31,8 @@ export interface CharSelectData {
   session?: NetSession; // online
   localIdx?: 0 | 1; // online
   delay?: number; // online, host only (measured in the lobby)
+  restoreTune?: string;
+  nextRound?: number;
 }
 
 // Bar fill per stat: today's base tune sits at 80%.
@@ -84,6 +86,9 @@ export class CharSelectScene extends Phaser.Scene {
     applyCameraPixelRatio(this);
     backdrop(this, 0.14, 'character_select_background');
     this.data0 = data;
+    if (data.mode === 'online' && data.localIdx === 1) {
+      this.data0 = { ...data, restoreTune: data.restoreTune ?? snapshotTune() };
+    }
     this.handedOff = false;
     this.remotePick = null;
     this.peerHere = false;
@@ -116,12 +121,18 @@ export class CharSelectScene extends Phaser.Scene {
 
     this.selectionView = new CharacterSelectView(this, {
       card: (i) => this.tapCard(i), panel: (i) => this.tapPanel(i),
+      format: () => {
+        if (this.data0.mode !== 'online' || this.data0.localIdx === 0) tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
+      },
       action: () => this.fightButton(), back: () => this.back(-1, true),
       level: (d) => this.cycleLevel(d),
     });
     this.bindKeys();
     this.events.once('shutdown', () => {
-      if (data.mode === 'online' && !this.handedOff) data.session?.leave();
+      if (data.mode === 'online' && !this.handedOff) {
+        data.session?.leave();
+        if (this.data0.restoreTune) restoreTune(this.data0.restoreTune);
+      }
     });
     addVersionStamp(this);
   }
@@ -329,6 +340,7 @@ export class CharSelectScene extends Phaser.Scene {
     const s = this.data0.session!;
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
+      if (m.k === 'format' && this.data0.localIdx === 1) tune.match.bestOf = m.bestOf === 1 ? 1 : 3;
       if (m.k === 'pick') {
         this.peerHere = true;
         this.remotePick = isCharId(m.char) ? m.char : null;
@@ -338,7 +350,7 @@ export class CharSelectScene extends Phaser.Scene {
         if (this.data0.localIdx === 0 && this.bothLocked()) this.hostStart();
       }
       if (m.k === 'start' && this.data0.localIdx === 1) {
-        const restore = snapshotTune();
+        const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars });
       }
@@ -353,6 +365,7 @@ export class CharSelectScene extends Phaser.Scene {
   private sendPick(): void {
     const me = this.data0.localIdx ?? 0;
     const side = this.sides[me];
+    if (me === 0) this.data0.session?.send({ k: 'format', bestOf: tune.match.bestOf === 1 ? 1 : 3 });
     this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null });
     if (side.locked) saveCharPrefs({ p1: CHARACTER_IDS[side.sel] });
     if (!this.peerHere) return;
@@ -364,8 +377,9 @@ export class CharSelectScene extends Phaser.Scene {
     const s = this.data0.session!;
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
-    s.send({ k: 'start', round: 1, delay, tune: JSON.stringify(tune), chars });
-    this.handOff({ session: s, localIdx: 0, delay, round: 1, chars });
+    const round = this.data0.nextRound ?? 1;
+    s.send({ k: 'start', round, delay, tune: JSON.stringify(tune), chars });
+    this.handOff({ session: s, localIdx: 0, delay, round, chars });
   }
 
   private handOff(data: MatchData): void {
@@ -384,6 +398,7 @@ export class CharSelectScene extends Phaser.Scene {
     const ready = this.bothLocked();
     const me = this.data0.localIdx ?? 0;
     this.selectionView.render({
+      bestOf: tune.match.bestOf,
       panels: this.sides.map((side, s) => ({
         id: chars[s], label: side.label === 'AI' ? 'OPPONENT' : side.label,
         hidden: side.src === 'remote', locked: side.locked,

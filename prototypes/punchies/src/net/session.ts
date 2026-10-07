@@ -17,7 +17,9 @@ export type CtlMessage =
   | { k: 'pong'; t: number }
   | { k: 'start'; round: number; delay: number; tune: string; chars: [string, string] }
   | { k: 'pick'; char: string | null }
-  | { k: 'rematch'; round: number };
+  | { k: 'rematch'; round: number }
+  | { k: 'reselect'; round: number }
+  | { k: 'format'; bestOf: 1 | 3 };
 
 // Trystero 0.25 actions: `send(data, { target })` and an assignable
 // `onMessage(data, { peerId })`. Payload types are cast because our packet
