@@ -101,6 +101,15 @@ export class RingPerspective {
     });
   }
 
+  // Shared projection for gameplay and the title's registered ring layers.
+  projectAuthored(farY:number,nearY:number): void {
+    if(!this.world || !(this.scene.game.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)) return;
+    state.view=[VIEW.left,VIEW.top,VIEW.width,VIEW.height];
+    state.ring=[VIEW.cx-1,farY,2,nearY-farY];
+    state.sourceTopRatio=tune.view.arena.ringSourceTopRatio;
+    state.warp=[(farY-arenaVanishingY())/(nearY-arenaVanishingY()),1];
+    if(!this.applied) { this.world.setPostPipeline(KEY); this.applied=true; }
+  }
   update(): void {
     const world = this.world;
     if (!world) return;
@@ -137,19 +146,9 @@ export class RingPerspective {
         bg.image.setPosition(VIEW.cx+(bg.x-VIEW.cx)*ratio,
           world.y+(bg.y-startY)*ratio);
       }
-      const renderer=this.scene.game.renderer;
-      if(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
-        const nearY=world.y+(b.top+b.height*875/1211)*scale;
-        const farY=world.y+ropeTop*scale;
-        const authoredTopRatio=tune.view.arena.ringSourceTopRatio;
-        state.view=[VIEW.left,VIEW.top,VIEW.width,VIEW.height];
-        state.ring=[VIEW.cx-1,farY,2,nearY-farY];
-        // Remove the slight authored taper before applying the shared projection.
-        state.sourceTopRatio=authoredTopRatio;
-        state.warp=[(farY-arenaVanishingY())/(nearY-arenaVanishingY()),1];
-        if(!this.applied) { world.setPostPipeline(KEY); this.applied=true; }
-        if(this.backdrop) updateGymProjection(this.backdrop.image);
-      }
+      const nearY=world.y+(b.top+b.height*875/1211)*scale;
+      this.projectAuthored(world.y+ropeTop*scale,nearY);
+      if(this.backdrop) updateGymProjection(this.backdrop.image);
       world.sort('depth');
       return;
     }

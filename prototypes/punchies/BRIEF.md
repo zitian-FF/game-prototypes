@@ -318,3 +318,5 @@ Preserve the gym artwork’s authored converging tile columns as shown in the us
 
 ## Shared arena vanishing point — 2026-10-07
 The floor columns and side ropes must converge toward the same point above the screen, following the annotated guide. Apply a shared presentation projection while retaining the zoom, top rope margin, steps margin and fixed HUD.
+## Title floor and props — 2026-10-07
+Apply the shared gameplay floor projection to the title and its ring. Separate the gym equipment into a transparent edge-props layer so the old floor seams do not reappear; keep the menu and ring clear.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { artImage, artKey } from './art';
+import { RingPerspective } from './perspective';
 
 // Identical full-canvas registration across all five PNGs. The floor
 // anchor describes playable canvas edges, not the transparent image bounds.
@@ -17,6 +18,13 @@ export class ArenaArt {
   // Title uses the same assembled ring without sim-dependent bounds.
   display(x: number,y: number,w: number,h: number): void {
     for(const image of this.images)image.setPosition(x,y).setDisplaySize(w,h);
+  }
+  displayTitle(x:number,y:number,w:number,h:number): void {
+    this.display(x,y,w,h);
+    const perspective=new RingPerspective(this.scene);
+    perspective.take(this.images);
+    perspective.projectAuthored(y-h/2+h*110/SOURCE.height,y-h/2+h*875/SOURCE.height);
+    perspective.world?.sort('depth');
   }
   fitFloor(left:number,top:number,right:number,bottom:number): {left:number;top:number;width:number;height:number;aspect:number} {
     const sx=(right-left)/(SOURCE.right-SOURCE.left);
