@@ -1,28 +1,24 @@
 ## Current milestone
-Launch wrap-up: tutorial, bots and docs match the new combat ranges; debug tools hidden in the public build.
+Approved title screen and shared layered gym/ring ready for deployment; R2 upload hash-verified on 7 October 2026.
 
 ## What was implemented
-- Tutorial texts refreshed for the new ranges, face-only defender stamina loss, the red-orange vulnerable pulse and the punish counter (guard drop and dodge tail).
-- Bot spacing retuned: all hardcoded reach offsets in `src/sim/bot.ts` now come from one `connect()` helper (reach + hitRadius + hurtRadius), so the bots follow tune.json. Over 48 matches: Medium beats Easy 47 of 48, Hard beats Easy 46 of 48, Hard beats Medium 31 of 48.
-- Debug tools are hidden by default: the bug button, the `tune:` label and SYNC TUNE only appear after opening the game once with `?debug=1` (remembered in this browser; `?debug=0` locks them again). All debug code is kept.
-- Hub page `index.html` has a demo notice and the credits.
-- Portrait note: the game is landscape only and has no rotate prompt; in portrait the canvas scales to fit and letterboxes small (documented in BRIEF.md).
-- Verified: typecheck, build, all `scripts/verify-punchies-*.mjs`, rollback simulator (0 mismatches), no console errors on boot, menu and fight screenshots inspected.
+- Primary Single Player button, Versus and Practice groups, Online Host/Join popup, Settings retaining local input setup, dedicated Credits panel; demo notice removed. Debug controls, SYNC TUNE and tune label retain the latest main branch debug-unlock gate; version stamp and fullscreen remain.
+- Gentle logo pulse, stamped loading logo with continuously wrapping background pattern, snapshot crossfades on screen changes. Motion respects prefers-reduced-motion. Feel values have tune entries and metadata.
+- Ring-free gym plus five registered alpha ring layers. Gameplay reassembles native rope and round-pad crops from the same master to fit its fixed camera. Rear rope stays behind boxers; near/side ropes sit in front. Character corner colours retained. Simulation, netcode, perspective shader and existing gameplay tuning untouched.
+- New R2 bundle adds ten loose assets and leaves all prior entries byte-for-byte unchanged. Five-layer recomposition is pixel-identical to the isolated master. Art and zip remain outside Git under workspace outputs/title-screen-v1.
 
 ## Key technical decisions
-- One `connect()` helper for all bot distances instead of per-line magic numbers.
-- Debug unlock stored under `punchies:debug:unlock:v1`, separate from the debug-on state.
+- Runtime Phaser UI over separate artwork; no baked text/buttons in background.
+- Crossfade uses an outgoing still over the live destination with normal scene shutdown, avoiding parallel simulation/network loops. Snapshot textures removed at transition shutdown.
+- Typecheck/build and existing limb/immortal-training regressions passed. Brave inspected desktop/phone title, Credits, Settings, Single Player navigation and training arena; no console errors. Loading preview uses real ArtBootScene with a delayed local test response; completion clears all logo/background layers.
+- No relevant newer shared-package change applies to Punchies.
 
 ## Open questions
-- Hard shares most of Medium's style numbers; does it need its own personality?
-- Jab and uppercut punishes award +2 counter stars; keep?
-- BRIEF.md may need a line on the debug unlock (`?debug=1`) and the public demo wording.
+- None blocking this update.
 
 ## Known issues
-- No rotate-to-landscape prompt for portrait phones.
-- KO and result screenshots were not retaken this pass (KO art verified in earlier passes).
-- Nothing verified on a real phone or with two phones online.
-- SYNC TUNE fetches from GitHub; only reachable in debug builds.
+- Presentation deployment pending merge; latest main tutorial, bot spacing and debug gating preserved.
+- Real-phone/two-phone online checks pending. Settings retains its existing input-picker panel. Character-select redesign, combat cues, KO brush lettering/bells and arena impact shake are separate approved follow-ups recorded in BRIEF.md.
 
 ## Next proposed step
-CrazyGames readiness: SDK (gameplayStart/Stop, ads, mute), download size check, and Codex art and store assets.
+Merge the title-presentation branch, verify deployment in Brave, then review character-select direction. Uploaded bundle SHA256: 161bf9bd30387ab295f70d1b74d05be90d7925570cba11e99dfc1c3bbc701e22.

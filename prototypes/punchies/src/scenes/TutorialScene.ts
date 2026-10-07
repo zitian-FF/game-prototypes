@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -276,7 +277,7 @@ export class TutorialScene extends Phaser.Scene {
     this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0);
     this.stage.hideInfoButton();
     makeButton(this, VIEW.cx - 40, VIEW.top + 46, 64, 'SKIP', () => this.advance());
-    makeButton(this, VIEW.cx + 40, VIEW.top + 46, 64, 'EXIT', () => this.scene.start('Menu'));
+    makeButton(this, VIEW.cx + 40, VIEW.top + 46, 64, 'EXIT', () => startScreen(this, 'Menu'));
 
     const panelY = tune.ring.top + 30;
     this.add.rectangle(VIEW.cx, panelY, 540, 56, 0x000000, 0.72).setStrokeStyle(1, 0x5a6378).setDepth(140);
@@ -351,8 +352,8 @@ export class TutorialScene extends Phaser.Scene {
       .setDepth(291);
     const btn = (x: number, label: string, key: string) => {
       const bg = this.add.rectangle(x, VIEW.cy + 10, 150, 38, 0x2a3140, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(291).setInteractive();
-      bg.on('pointerdown', () => this.scene.start(key));
-      navRegister(this, bg, () => this.scene.start(key));
+      bg.on('pointerdown', () => startScreen(this, key));
+      navRegister(this, bg, () => startScreen(this, key));
       this.add.text(x, VIEW.cy + 10, label, { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(292);
     };
     btn(VIEW.cx - 165, 'TRAINING', 'Training');

@@ -10,6 +10,9 @@ import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
 import { debugUnlocked } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { artImage, backdrop } from '../render/art';
+import { pulseLogo, startScreen } from '../ui/presentation';
+import { titleButton } from '../ui/titleButton';
+import { ArenaArt } from '../render/arenaArt';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -20,42 +23,77 @@ export class MenuScene extends Phaser.Scene {
 
   create(data: { message?: string }): void {
     applyCameraPixelRatio(this);
-    backdrop(this, 0.18);
-    const menuX = VIEW.cx;
-    const logo = artImage(this, 'logo', menuX, VIEW.cy - 135, 250, 71);
+    backdrop(this, 0, 'gym_background');
+    const ringW=Math.min(VIEW.width*0.45,VIEW.height*0.93*1299/1211);
+    ArenaArt.create(this)?.display(VIEW.left+VIEW.width*0.665,VIEW.cy,ringW,ringW*1211/1299);
+    const menuX = VIEW.left + VIEW.width * 0.26;
+    const top = VIEW.cy - 155;
+    const w = Math.min(290, VIEW.width * 0.34);
+    const logo = artImage(this, 'logo', menuX, top + 33, w + 10, 86);
+    if (logo) pulseLogo(this, logo);
     if (!logo) this.add
-      .text(menuX, VIEW.cy - 128, 'PUNCHIES', { fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
+      .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    makeButton(this, menuX, VIEW.cy - 80, 220, 'SINGLE PLAYER', () => this.scene.start('CharSelect', { mode: 'vsai' }), 36, 15);
-    makeButton(this, menuX - 32, VIEW.cy - 38, 156, 'LOCAL VS', () => this.scene.start('CharSelect', { mode: 'localvs', inputs: loadLocalInputs() }), 36, 15);
-    makeButton(this, menuX + 80, VIEW.cy - 38, 60, 'INPUT', () => this.openInputPopup(), 36, 12);
-    makeButton(this, menuX - 40, VIEW.cy + 4, 140, 'TRAINING', () => this.scene.start('Training'), 36, 15);
-    makeButton(this, menuX + 72, VIEW.cy + 4, 76, 'TUTORIAL', () => this.scene.start('Tutorial'), 36, 11);
-    makeButton(this, menuX, VIEW.cy + 46, 220, 'HOST ONLINE', () => this.scene.start('Lobby', { role: 'host' }), 36, 15);
-    makeButton(this, menuX, VIEW.cy + 88, 220, 'JOIN WITH CODE', () => this.join(), 36, 15);
+    titleButton(this, menuX, top + 105, w, 45, 'SINGLE PLAYER', () => startScreen(this, 'CharSelect', { mode: 'vsai' }), true);
+    const category = (y: number, label: string) => {
+      this.add.text(menuX,y,label,{fontFamily:'Arial',fontSize:'11px',fontStyle:'bold',color:'#a6c5e8',resolution:PIXEL_RATIO}).setOrigin(0.5);
+      const g=this.add.graphics().lineStyle(1,0x789ecb,0.65);
+      g.beginPath().moveTo(menuX-w/2+6,y).lineTo(menuX-38,y).moveTo(menuX+38,y).lineTo(menuX+w/2-6,y).strokePath();
+    };
+    const half=(w-12)/2;
+    category(top+147,'VERSUS');
+    titleButton(this,menuX-(half+12)/2,top+177,half,38,'LOCAL VS',()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}));
+    titleButton(this,menuX+(half+12)/2,top+177,half,38,'ONLINE',()=>this.openOnlinePopup());
+    category(top+213,'PRACTICE');
+    titleButton(this,menuX-(half+12)/2,top+243,half,38,'TRAINING',()=>startScreen(this,'Training'));
+    titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
+    titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openInputPopup());
+    titleButton(this,menuX+(half+12)/2,top+294,half,27,'CREDITS',()=>this.openCredits());
     if (debugUnlocked()) {
-      const tuneLabel = this.add
-        .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
-        .setOrigin(1, 0.5);
-      const syncBtn = makeButton(this, VIEW.right - 70, VIEW.bottom - 20, 120, 'SYNC TUNE', () => {
-        if (syncBtn.text === 'SYNCING...') return;
-        syncBtn.setText('SYNCING...');
-        void syncTuneFromGitHub().then((r) => {
-          if (!this.scene.isActive()) return;
-          syncBtn.setText('SYNC TUNE');
-          tuneLabel.setText(r.ok ? `tune: ${tuneSource()} (${r.applied} values)` : `sync failed: ${r.error} (still ${tuneSource()})`);
-        });
+    const tuneLabel = this.add
+      .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
+      .setOrigin(1, 0.5);
+    const syncBtn = makeButton(this, VIEW.right - 70, VIEW.bottom - 20, 120, 'SYNC TUNE', () => {
+      if (syncBtn.text === 'SYNCING...') return;
+      syncBtn.setText('SYNCING...');
+      void syncTuneFromGitHub().then((r) => {
+        if (!this.scene.isActive()) return;
+        syncBtn.setText('SYNC TUNE');
+        tuneLabel.setText(r.ok ? `tune: ${tuneSource()} (${r.applied} values)` : `sync failed: ${r.error} (still ${tuneSource()})`);
       });
+    });
     }
     addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
     this.msg = this.add
-      .text(menuX, VIEW.cy + 122, data?.message ?? '', { fontFamily: 'monospace', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
+      .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    // Demo notice and credit (bottom left, clear of the debug button).
-    const note = { fontFamily: 'monospace', fontSize: '10px', color: '#9fb0c8', resolution: PIXEL_RATIO };
-    const lines = ['DEMO BUILD. Features, balance and art may change.', 'Created and designed by ZeeTea.', 'Built together with Claudia and G.P. Tea.'];
-    lines.forEach((line, i) => this.add.text(VIEW.left + 16, VIEW.bottom - 48 + i * 14, line, note).setOrigin(0, 0.5));
     addVersionStamp(this);
+  }
+
+  private popup(title: string): { items: Phaser.GameObjects.GameObject[]; close(): void } {
+    const items: Phaser.GameObjects.GameObject[] = [];
+    items.push(this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,0.8).setDepth(300).setInteractive());
+    const panel=this.add.graphics().setDepth(301);
+    panel.fillStyle(0x13253e).fillRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
+    panel.lineStyle(2,0x8ba4c7).strokeRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
+    items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
+    const close=()=>items.forEach(o=>o.destroy());
+    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',close,false,302);
+    items.push(back,back.getData('bg'));
+    return {items,close};
+  }
+
+  private openCredits(): void {
+    const p=this.popup('CREDITS');
+    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Created and designed by ZeeTea.\n\nBuilt together with Claudia and G.P. Tea.',
+      {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
+  }
+
+  private openOnlinePopup(): void {
+    const p=this.popup('ONLINE');
+    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,'HOST GAME',()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,302);
+    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,'JOIN WITH CODE',()=>{p.close();this.join();},false,302);
+    p.items.push(host,host.getData('bg'),join,join.getData('bg'));
   }
 
   // Local VS input picker: cycle each player's device. Remembered on this
@@ -81,7 +119,7 @@ export class MenuScene extends Phaser.Scene {
     };
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.75).setDepth(D).setInteractive());
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 440, 280, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
-    txt(VIEW.cx, VIEW.cy - 118, 'LOCAL VS · INPUTS', 15, '#ffd24a');
+    txt(VIEW.cx, VIEW.cy - 118, 'SETTINGS · LOCAL INPUTS', 15, '#ffd24a');
 
     const cycle = (list: InputSource[], cur: InputSource, other: InputSource) => {
       let i = list.indexOf(cur);
@@ -183,7 +221,7 @@ export class MenuScene extends Phaser.Scene {
         return;
       }
       close();
-      this.scene.start('Lobby', { role: 'guest', code: c });
+      startScreen(this, 'Lobby', { role: 'guest', code: c });
     };
     const type = (ch: string) => {
       if (code.length >= 3) return;

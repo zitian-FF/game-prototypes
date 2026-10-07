@@ -17,6 +17,7 @@ import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '..
 import { unlockAudio } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
+import { ArenaArt } from '../render/arenaArt';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
@@ -35,6 +36,7 @@ export class FightStage {
   private ropes: (Phaser.GameObjects.Image | null)[];
   private posts: (Phaser.GameObjects.Image | null)[];
   private persp: RingPerspective;
+  private authoredRing: ArenaArt | null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -44,9 +46,10 @@ export class FightStage {
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
   ) {
-    backdrop(scene, 0.15, 'stage_background');
+    backdrop(scene, 0.15, 'gym_background');
     this.persp = new RingPerspective(scene);
     const before = new Set(scene.children.list);
+    this.authoredRing = ArenaArt.create(scene);
     this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
     this.apron = artImage(scene, 'ring_apron', 422, 382, 326, 16, -1);
     this.turnbuckles = [0, 1, 2, 3].map(() => artImage(scene, 'ring_turnbuckle', 0, 0, 22, 22, 2));
@@ -200,6 +203,12 @@ export class FightStage {
     g.clear();
     const w = r.right - r.left;
     const h = r.bottom - r.top;
+    if (this.authoredRing) {
+      this.authoredRing.fitFloor(r.left,r.top,r.right,r.bottom,c0,c1);
+      this.floor?.setVisible(false); this.apron?.setVisible(false);
+      [...this.ropes,...this.posts,...this.turnbuckles].forEach(o=>o?.setVisible(false));
+      return;
+    }
     this.floor?.setPosition(r.left + w / 2, r.top + h / 2).setDisplaySize(w, h);
     // Keep the skirt inside the flat camera before the post-effect samples it.
     this.apron?.setPosition(r.left + w / 2, r.bottom + 8).setDisplaySize(w + 16, 16);

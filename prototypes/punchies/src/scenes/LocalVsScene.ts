@@ -1,3 +1,4 @@
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -47,7 +48,7 @@ export class LocalVsScene extends Phaser.Scene {
     const names: [string, string] = [`P1 · ${charName(chars[0])} · ${SOURCE_LABEL[data.p1]}`, `P2 · ${charName(chars[1])} · ${SOURCE_LABEL[data.p2]}`];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
-    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => this.scene.start('Menu'));
+    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => startScreen(this, 'Menu'));
     addVersionStamp(this);
   }
 
@@ -87,6 +88,6 @@ export class LocalVsScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(150);
     makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart(this.inputs));
-    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => this.scene.start('Menu'));
+    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => startScreen(this, 'Menu'));
   }
 }
