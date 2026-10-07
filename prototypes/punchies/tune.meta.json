@@ -634,7 +634,7 @@
   },
   "stamina.regenIdlePerSec": {
     "cat": "Stamina",
-    "desc": "Regen per second with no input at all.",
+    "desc": "Regen per second standing still; also the continuous emergency recovery rate.",
     "min": 0,
     "max": 60,
     "step": 1

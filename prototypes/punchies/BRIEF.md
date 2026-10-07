@@ -347,3 +347,7 @@ Replace the old low recovery threshold and exhausted regeneration multiplier. At
 
 ## Smaller normal headshot zone — 2026-10-07
 Reduce the base inner core/headshot radius from 15 to 10 (one-third smaller), retaining the shared fighter scale and character proportions. Keep outer body/vulnerable radii and attack reach unchanged. Normal contacts outside the core should register as bodyshots; emergency recovery and other vulnerable states still use the headshot row. Uppercut retains its existing headshot behavior.
+
+
+### Stamina adjustment — 2026-10-07
+Punches may start with insufficient positive stamina, draining the remainder to zero and entering emergency recovery. Dodge affordability remains enforced. Emergency recovery uses the normal standing-still rate (including character regeneration modifiers), continuously regardless of actions. Increase base costs of jab, cross, hook, uppercut, dodge and guard drain by 20%; preserve character modifiers and incoming stamina damage.

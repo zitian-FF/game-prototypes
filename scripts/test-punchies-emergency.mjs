@@ -34,7 +34,7 @@ for (const char of ['marco', 'mia', 'bruno']) {
   let events = step(s, [{ ...N, guard: true, dodge: true }, N], false);
   assert.ok(f.exhausted && !f.guarding && !f.dodge);
   assert.ok(events.some(e => e.kind === 'staminaRejected'));
-  const rate = tune.stamina.regenActivePerSec * regenMult(f) / TICK_RATE;
+  const rate = tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE;
   near(f.stamina, rate);
   f.stamina = 21;
   step(s, [N, N], false);
@@ -61,10 +61,19 @@ const depleted = state();
 depleted.fighters[0].stamina = punchCfg('marco', 'jab').staminaCost;
 step(depleted, [{ ...N, jab: true }, N], false);
 assert.ok(depleted.fighters[0].exhausted);
-const insufficient = state();
-insufficient.fighters[0].stamina = 1;
-assert.ok(step(insufficient, [{ ...N, jab: true }, N], false).some(e => e.kind === 'staminaRejected'));
-assert.equal(insufficient.fighters[0].exhausted, false, 'positive stamina has no emergency threshold');
+for (const char of ['marco', 'mia', 'bruno']) for (const type of ['jab', 'cross', 'hook', 'uppercut']) {
+  const insufficient = state(char), f = insufficient.fighters[0];
+  f.stamina = 1; f.stars = tune.stars.max;
+  const events = step(insufficient, [{ ...N, [type]: true }, N], false);
+  assert.ok(events.some(e => e.kind === 'throw' && e.punch === type));
+  assert.ok(!events.some(e => e.kind === 'staminaRejected'));
+  assert.ok(f.exhausted, 'unaffordable punch enters emergency');
+}
+const lowDodge = state(); lowDodge.fighters[0].stamina = 1;
+assert.ok(step(lowDodge, [{ ...N, dodge: true }, N], false).some(e => e.kind === 'staminaRejected'));
+assert.equal(lowDodge.fighters[0].dodge, null);
+for (const [type, cost] of Object.entries({ jab: 4.8, cross: 10.8, hook: 8.4, uppercut: 12 })) near(tune.punches[type].staminaCost, cost);
+near(tune.dodge.staminaCost, 17.28); near(tune.guard.staminaDrainPerSec, 7.2);
 
 function hit(type, emergencyAtt, emergencyDef, counter = false, buff = false, fatigued = false) {
   const s = state(); const [a, b] = s.fighters;
@@ -94,7 +103,7 @@ for (const type of ['jab', 'cross', 'hook', 'uppercut']) {
     near(emergency.event.damage, normal.event.damage * 0.5);
     const exposed = hit(type, false, true, counter, buff, fatigued);
     assert.equal(exposed.event.row, 'vulnerable', 'outer body contact is a headshot in emergency');
-    near(exposed.defender.stamina, 20 + exposed.sim.tick * tune.stamina.regenActivePerSec * regenMult(exposed.defender) / TICK_RATE);
+    near(exposed.defender.stamina, 20 + exposed.sim.tick * tune.stamina.regenIdlePerSec * regenMult(exposed.defender) / TICK_RATE);
     assert.ok(exposed.defender.exhausted);
   }
 }

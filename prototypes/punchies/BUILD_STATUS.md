@@ -1,17 +1,17 @@
 ## Current milestone
-Emergency stamina recovery and smaller normal headshot zone implemented locally; publishing authorized; release verification pending.
+Stamina follow-up implemented and tested locally; publication blocked awaiting explicit authorization.
 
 ## What was implemented
-Zero stamina now triggers emergency recovery until full stamina. The red bar and existing sweat effect show the state. All incoming contact uses the vulnerable/headshot row. Punches remain available without stamina spend and deal half damage with existing multipliers. Guard and dodge attempts flash stamina and are refused. Normal headshot core radius is reduced by one-third (15 to 10 before character scale); outer body radius and punch reach remain unchanged. AI avoids illegal defence and can attack during emergency. Tutorial and info text describe the rules.
+Punches no longer require sufficient positive stamina: they spend the remainder and enter emergency at zero. Emergency recovers at standing-still speed instead of walking speed. All four punch costs, dodge cost and guard drain increased by 20%. Tutorial/info text updated.
 
 ## Key technical decisions
-The existing deterministic exhausted flag now denotes emergency recovery. Regeneration uses normal walking rate times the character regeneration modifier and continues during actions, stun and hit-stop. Protected spend/gain helpers prevent attacks, incoming stamina damage or bonuses from altering the meter. Damage uses a pre-contact snapshot of both attackers' emergency states so same-tick trades do not depend on resolution order. Old recovery threshold/speed values were removed; emergencyDamageMult is exposed in tune. Uppercut still requires stars and stun restrictions remain.
+Character cost and regeneration modifiers remain intact. Emergency remains protected until full with half damage and disabled guard/dodge. Positive insufficient stamina still rejects dodge. Incoming stamina damage and hit penalties are unchanged.
 
 ## Open questions
-None. The follow-up headshot request reduces normal-state core size while retaining emergency headshot rules.
+None.
 
 ## Known issues
-Physical two-device online and phone/controller checks remain pending. Existing Phaser bundle size warning remains.
+Physical two-device online and phone/controller tests remain pending. Existing Phaser bundle warning remains.
 
 ## Next proposed step
-Head/body spacing boundary tests pass for all character pairs and all four attacks at 1x/1.5x/2x. Typecheck/build and emergency, shared geometry, series/online-readiness and Canvas/WebGL effects regressions pass. Emergency tests cover all characters, full-only exit, continuous recovery, punch/guard/dodge behavior, exact-zero entry, positive low-stamina refusal, protected incoming hits and half damage with fatigue, buff and counter multipliers. Brave review confirms smaller inner headshot circles inside unchanged outer body hitboxes, plus the emergency red bar/recovery pose, with clean consoles. The user authorized continuing the pending publication. Publish proto/punchies/emergency-stamina and verify the live release.
+Typecheck, production build, all-character emergency/low-stamina punches, exact 20% costs, geometry and series regressions passed. Brave local boot screenshot inspected with no console errors. Automatic approval review rejected pushing the new payload to the public repository; explicit approval was requested. Live remains r0078. After approval, push, merge and verify deployment.

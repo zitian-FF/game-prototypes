@@ -272,8 +272,7 @@ function rejectAction(f: Fighter, idx: number, action: BufferedAction, events: S
     f.bufferFrames = 0;
     return true;
   }
-  const cost = action === 'dodge' ? tune.dodge.staminaCost : punchCfg(f, action).staminaCost;
-  if (!f.infiniteStamina && f.stamina < cost) {
+  if (action === 'dodge' && !f.infiniteStamina && f.stamina < tune.dodge.staminaCost) {
     events.push({ kind: 'staminaRejected', fighter: idx });
     f.buffered = null;
     f.bufferFrames = 0;
@@ -663,10 +662,10 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
     f.stamina = maxStamina(f);
     f.exhausted = false;
   } else if (f.exhausted) {
-    // Protected, continuous recovery at the normal walking rate, even while
+    // Protected, continuous recovery at the normal standing-still rate, even while
     // punching/stunned. Only natural recovery changes this meter until full.
     f.regenWait = 0;
-    gainStamina(f, tune.stamina.regenActivePerSec * regenMult(f) / TICK_RATE, true);
+    gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
   } else if (f.guarding) {
     spendStamina(f, tune.guard.staminaDrainPerSec / TICK_RATE);
   } else if (f.regenWait > 0) {
@@ -745,7 +744,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i];
       if (inputs[i].guard && f.exhausted) events.push({ kind: 'staminaRejected', fighter: i });
-      if (f.exhausted) gainStamina(f, tune.stamina.regenActivePerSec * regenMult(f) / TICK_RATE, true);
+      if (f.exhausted) gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
       const req = requestedAction(inputs[i]);
       if (req && !rejectAction(s.fighters[i], i, req, events)) {
         s.fighters[i].buffered = req;
