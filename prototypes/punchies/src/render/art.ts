@@ -238,10 +238,11 @@ export function artImage(scene: Phaser.Scene, name: string, x: number, y: number
   return scene.textures.exists(key) ? scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth) : null;
 }
 
-export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): void {
+export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): Phaser.GameObjects.Image | null {
   const image = artImage(scene, name, VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, -10);
   if (image && name==='gym_background') image.setScale(Math.max(VIEW.width/image.width,VIEW.height/image.height));
   if (image) scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, dim).setDepth(-9);
+  return image;
 }
 
 export function resultArt(scene: Phaser.Scene): void {
