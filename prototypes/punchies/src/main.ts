@@ -1,5 +1,6 @@
 import { ScreenTransition } from './ui/presentation';
 import Phaser from 'phaser';
+import { ShopScene } from './scenes/ShopScene';
 import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { TrainingScene } from './scenes/TrainingScene';
@@ -36,7 +37,7 @@ setupOrientation(game);
 // keeps running (restarting it would break online play): its ring stays
 // centred and the extra space is simply shown.
 let resizeTimer = 0;
-const MENU_SCENES = ['Menu', 'CharSelect'];
+const MENU_SCENES = ['Menu', 'CharSelect', 'Shop'];
 function onScreenShape(): void {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
@@ -68,6 +69,7 @@ window.addEventListener('orientationchange', onScreenShape);
 document.addEventListener('fullscreenchange', onScreenShape);
 game.scene.add('ScreenTransition', ScreenTransition, false);
 game.scene.add('Menu', MenuScene, false);
+game.scene.add('Shop', ShopScene, false);
 game.scene.add('Training', TrainingScene, false);
 game.scene.add('Lobby', LobbyScene, false);
 game.scene.add('Match', MatchScene, false);

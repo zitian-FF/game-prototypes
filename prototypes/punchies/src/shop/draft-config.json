@@ -1,0 +1,10 @@
+{
+  "fighterPullCost": 100,
+  "skinPullCost": 50,
+  "adRewardTokens": 10,
+  "dailyAdLimit": 5,
+  "welcomeCost": 1,
+  "welcomeGiftTokens": 1,
+  "revealMs": 650,
+  "dayTimezone": "UTC"
+}

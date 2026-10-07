@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { shopPreviewBalance } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
@@ -60,8 +61,8 @@ export class MenuScene extends Phaser.Scene {
     this.add.graphics().setDepth(131).fillStyle(0x081b24,0.75)
       .fillRoundedRect(balanceX-22,top+284,44,20,9);
     punchToken(this,balanceX-10,top+294,8,132);
-    // Balance starts at zero until the approved wallet/reward system is built.
-    this.add.text(balanceX+9,top+294,'0',{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
+      // The unpublished shop branch displays its isolated local preview balance.
+      this.add.text(balanceX+9,top+294,String(shopPreviewBalance()),{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
       .setOrigin(0.5).setDepth(132);
     if (debugUnlocked()) {
     const tuneLabel = this.add
@@ -103,11 +104,7 @@ export class MenuScene extends Phaser.Scene {
       {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
   }
 
-  private openShop(): void {
-    const p=this.popup('SHOP');
-    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'COMING SOON\n\nUnlock boxers and skins.',
-      {fontFamily:'Arial',fontSize:'17px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
-  }
+  private openShop(): void { startScreen(this, 'Shop'); }
 
   private openOnlinePopup(): void {
     const p=this.popup('ONLINE');
