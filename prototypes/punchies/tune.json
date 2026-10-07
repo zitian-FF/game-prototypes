@@ -8,7 +8,7 @@
     "resultDelayMs": 500
   },
   "view": {
-    "arena": { "uiBottom": 59, "topGap": 0.03, "bottomGap": 0.05, "floorTopScale": 0.72, "floorBottomScale": 1.28 },
+    "arena": { "roundZoomMs": 900, "uiBottom": 59, "topGap": 0.03, "bottomGap": 0.05, "floorTopScale": 0.72, "floorBottomScale": 1.28 },
     "perspective": 1,
     "topScale": 0.9,
     "squash": 0.85,

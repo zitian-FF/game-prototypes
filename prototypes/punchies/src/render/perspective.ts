@@ -77,6 +77,12 @@ export class RingPerspective {
   fitArtwork(bounds: {left:number;top:number;width:number;height:number;aspect:number}): void {
     this.artworkBounds = bounds;
   }
+  private roundZoomStart = 0;
+  private backdrop: {image:Phaser.GameObjects.Image;x:number;y:number;scale:number} | null = null;
+  setBackdrop(image: Phaser.GameObjects.Image | null): void {
+    if (image) this.backdrop={image,x:image.x,y:image.y,scale:image.scaleX};
+  }
+  beginRound(time: number): void { this.roundZoomStart=time; }
 
   // Move already-built objects into the ring world.
   take(objects: Phaser.GameObjects.GameObject[]): void {
@@ -102,13 +108,32 @@ export class RingPerspective {
       // remain aligned. The authored perspective needs no second keystone.
       const top=VIEW.top+tune.view.arena.uiBottom+VIEW.height*tune.view.arena.topGap;
       const bottom=VIEW.bottom-VIEW.height*tune.view.arena.bottomGap;
-      // Registered red-rope centre lines in the 1299x1211 master.
+      // Top outer red rope and lowest opaque step pixel in the master.
       const ropeTop=b.top+b.height*110/1211;
-      const ropeBottom=b.top+b.height*927/1211;
-      const scale=(bottom-top)/(ropeBottom-ropeTop);
+      const stepsBottom=b.top+b.height*1131/1211;
+      const finalScale=(bottom-top)/(stepsBottom-ropeTop);
+      const finalY=top-ropeTop*finalScale;
+      // The wider opening matches the reference framing from before the
+      // rope-only enlargement. Ease the presentation during READY/GO.
+      const startTop=VIEW.top+64;
+      const startHeight=VIEW.bottom-startTop-8;
+      const startScale=Math.min(startHeight/b.height,(VIEW.width-32)/(b.width*b.aspect));
+      const startY=startTop+startHeight/2-(b.top+b.height/2)*startScale;
+      const duration=tune.view.arena.roundZoomMs;
+      const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const t=reduced||duration<=0 ? 1 : Phaser.Math.Clamp((this.scene.time.now-this.roundZoomStart)/duration,0,1);
+      const ease=t*t*(3-2*t);
+      const scale=Phaser.Math.Linear(startScale,finalScale,ease);
       world.setScale(scale*b.aspect,scale);
       world.setPosition(VIEW.cx-(b.left+b.width/2)*world.scaleX,
-        top-ropeTop*world.scaleY);
+        Phaser.Math.Linear(startY,finalY,ease));
+      if(this.backdrop) {
+        const bg=this.backdrop;
+        const ratio=scale/startScale;
+        bg.image.setScale(bg.scale*ratio);
+        bg.image.setPosition(VIEW.cx+(bg.x-VIEW.cx)*ratio,
+          world.y+(bg.y-startY)*ratio);
+      }
       if (this.applied) { world.resetPostPipeline(); this.applied=false; }
       world.sort('depth');
       return;

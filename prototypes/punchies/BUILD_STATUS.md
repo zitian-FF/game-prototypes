@@ -1,22 +1,23 @@
 ## Current milestone
-Requested larger ring framing, centered training dummy and gym floor alignment ready for release.
+Round-start zoom from reference view to steps-inclusive framing ready for release.
 
 ## What was implemented
-- Uniform authored-ring enlargement anchored to measured outer red rope centers (master y110 and y927). Top gap 3% below the 59px UI strip; bottom gap 5% above screen bottom. Values exposed in tune metadata.
-- Training dummy starts at the exact simulation ring midpoint after initial entry, Reset and character changes.
-- Gym floor inverse projection reduces baked column convergence to match the authored ring plane. Existing R2 artwork reused; title background unchanged.
+- 900 ms smoothstep camera presentation at first fight draw and training Reset.
+- Final top outer red rope sits 3% below the top UI strip; lowest opaque steps pixel sits 5% above screen bottom. Master anchors y110/y1131 verified from source alpha.
+- Ring-world elements and gym backdrop move together; UI remains fixed. Authored ring aspect preserved.
+- Zoom duration exposed in tune metadata. Reduced-motion jumps to final framing.
 
 ## Key technical decisions
-- Scale all ring-world elements together so fighters, effects and collision positions remain aligned. UI stays fixed.
-- Rope framing can crop lower apron/steps, as required by the specified near-rope screen margin.
-- WebGL gym projection overscans source to avoid blank edges. Canvas fallback retains the original gym artwork.
-- Typecheck/build, diff check and immortal-training regression passed. Brave training preview inspected with no console errors.
+- Presentation-only transform; no simulation timing, combat geometry or networking changes.
+- Restart detection limited to initial draw or tick reset near zero; ordinary corrections do not replay the opening.
+- Source art reused without R2 changes.
+- Typecheck/build passed; Brave final framing inspected without console errors. Reset opening/reference and settled frames inspected.
 
 ## Open questions
 None blocking this update.
 
 ## Known issues
-Real-device and two-phone online verification pending. Canvas renderer does not support gym projection shader.
+Real-device and two-phone online checks pending. Existing Canvas gym shader limitation remains.
 
 ## Next proposed step
-Merge and verify live framing, then continue remaining art direction work.
+Merge and verify the live round-opening zoom, then continue remaining art direction work.

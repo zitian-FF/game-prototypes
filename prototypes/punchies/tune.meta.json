@@ -2624,6 +2624,7 @@
     "max": 600,
     "step": 10
   },
+  "view.arena.roundZoomMs": { "cat": "Arena presentation", "desc": "Round-start camera zoom duration in milliseconds.", "min": 0, "max": 2000, "step": 50 },
   "view.arena.uiBottom": { "cat": "Arena presentation", "desc": "Bottom of the top UI strip in logical pixels.", "min": 40, "max": 100, "step": 1 },
   "view.arena.topGap": { "cat": "Arena presentation", "desc": "Top red rope gap below UI, as screen-height fraction.", "min": 0, "max": 0.15, "step": 0.01 },
   "view.arena.bottomGap": { "cat": "Arena presentation", "desc": "Bottom red rope gap above screen bottom, as screen-height fraction.", "min": 0, "max": 0.15, "step": 0.01 },

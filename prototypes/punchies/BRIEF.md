@@ -304,3 +304,11 @@ is 5% of screen height above the screen bottom. Frame from rope anchors rather
 than the apron/steps bounds. Training dummy spawns at the exact ring center
 and stays there across Reset and character switches. Reproject the gym floor
 columns to match the ring plane; keep the existing artwork and UI layers.
+
+### Round-opening camera (2026-10-07)
+Open each round in the wider matching-ring reference view, then smoothly zoom
+in over 900 ms during the opening. Final framing keeps the lowest step edge
+5% of screen height above screen bottom and the outer top red rope 3% below
+the top UI strip. The master aspect remains uniform. Ring, fighters, effects
+and gym move together; HUD and controls remain fixed. Reduced-motion skips
+the animated interpolation. Training Reset replays the opening.
