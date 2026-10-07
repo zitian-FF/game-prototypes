@@ -1,5 +1,5 @@
 ## Current milestone
-Restore full-window itch launch and match gameplay ring to the approved title master.
+Full-window itch launch restored and matching gameplay ring deployed via PR #227, version 071026r0064.
 
 ## What was implemented
 - Restored itch.io Click to launch in fullscreen and Landscape settings; persisted values checked after reload and Run game checked in Brave.
@@ -20,4 +20,4 @@ None blocking this fix.
 Real-phone/two-phone online checks pending. Character-select and combat/KO presentation follow-ups remain separate.
 
 ## Next proposed step
-Merge and verify the published ring fix, then resume the remaining art direction work.
+Published training ring inspected in Brave with no console errors. Resume the remaining art direction work.
