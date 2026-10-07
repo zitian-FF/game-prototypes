@@ -1,5 +1,5 @@
 ## Current milestone
-Character-selection portrait and panel corrections verified; preparing release.
+Character-selection portrait and panel corrections shipped in 071026r0074 (PR #237).
 
 ## What was implemented
 All portraits now fit and anchor using cached visible alpha bounds rather than transparent PNG edges. Bruno shares the same panel baseline as Marco and Mia. Both stat columns and long names have inset room within their panels. Mia's selection portrait has a smoother youthful adult face while retaining her serious expression, outfit, pose and outlined art style.
@@ -14,4 +14,5 @@ None.
 Two-phone online and physical controller checks remain pending; this presentation-only change does not alter their simulation or inputs.
 
 ## Next proposed step
-Merge focused PR and verify itch.io deployment.
+PR #237 merged; itch.io deployment succeeded. Deployed r0074 selection reviewed with corrected portraits and bars; console clean. Continue remaining approved screen polish.
+
