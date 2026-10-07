@@ -1,5 +1,5 @@
 ## Current milestone
-Punch Token display added to the main-menu Shop button; ranked ownership direction agreed.
+Punch Token display shipped in r0081 via PR #244; ranked ownership direction agreed.
 
 ## What was implemented
 The green Shop button now contains a red-and-blue token badge with a glove symbol and initial zero balance. No wallet or ad grants exist yet.
@@ -14,4 +14,4 @@ Reward amounts, item prices and earning options remain unapproved. Actual reward
 Token count is an initial zero display until a real wallet is implemented. Existing Phaser bundle warning remains.
 
 ## Next proposed step
-Typecheck and production build pass. Verify local and released menu in Brave, then design catalog previews and earning pace.
+Typecheck and production build pass. Brave verifies local and live r0081 token badge/balance with no console errors. Next: discuss catalog previews and earning pace.
