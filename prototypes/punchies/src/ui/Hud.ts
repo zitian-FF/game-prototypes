@@ -77,7 +77,7 @@ export class Hud {
       this.shownHealth[i] = this.shownHealth[i] < 0 ? f.health : Math.max(f.health, this.shownHealth[i] - 0.4);
       const show = (p: string) => this.shown === null || this.shown.has(p);
       if (show('health')) this.bar(x, y + 8, 14, f.health / maxHealth(f), this.shownHealth[i] / maxHealth(f), 0x3ad06a, left);
-      const staminaColor = f.exhausted ? 0xff5a3a : 0x3ab0e0;
+      const staminaColor = f.exhausted ? 0xef3545 : 0x3ab0e0;
       const elapsed = this.scene.time.now - this.staminaRejectedAt[i];
       const flash = elapsed < tune.view.staminaRejectFlashMs
         ? 0.35 + 0.6 * Math.abs(Math.cos(elapsed * tune.view.staminaRejectFlashHz * Math.PI / 1000)) : 0;

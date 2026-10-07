@@ -86,7 +86,7 @@ export interface Fighter {
   guardFrames: number;
   // Vulnerable frames remaining after lowering guard; prevents re-guarding.
   guardPenalty: number;
-  exhausted: boolean;
+  exhausted: boolean; // Emergency recovery: protected meter, exits only at full.
   regenWait: number;
   buffered: BufferedAction | null;
   bufferFrames: number;

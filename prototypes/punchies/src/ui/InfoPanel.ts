@@ -182,7 +182,7 @@ export class InfoPanel {
     ry += 8;
     this.text(rx, ry, 'VULNERABLE WHEN', 11, '#ffd24a', true);
     ry += 16;
-    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', `Stamina hit 0, until ${tune.stamina.exhaustRecoverAt}`, `  (regen x${tune.stamina.exhaustedRegenMult})`]) {
+    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', 'Emergency: 0 → full; walking regen', 'Punches x0.5; no guard/dodge']) {
       this.text(rx, ry, s, 9);
       ry += 12;
     }

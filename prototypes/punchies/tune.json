@@ -97,7 +97,7 @@
   },
   "body": {
     "hurtRadius": 22,
-    "coreRadius": 15,
+    "coreRadius": 10,
     "vulnerableHurtRadius": 28
   },
   "punches": {
@@ -214,8 +214,7 @@
     "regenIdlePerSec": 24,
     "regenActivePerSec": 8,
     "regenDelayFrames": 20,
-    "exhaustRecoverAt": 20,
-    "exhaustedRegenMult": 0.5
+    "emergencyDamageMult": 0.5
   },
   "health": {
     "max": 100
