@@ -13,7 +13,27 @@ import meta from '../../tune.meta.json';
 
 const DEBUG_KEY = 'punchies:debug:v1';
 
+// Debug tools are hidden in the public build. Opening the game once with
+// ?debug=1 unlocks them on this browser (bug button, tune label, SYNC TUNE);
+// ?debug=0 locks them again.
+const UNLOCK_KEY = 'punchies:debug:unlock:v1';
+
+export function debugUnlocked(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get('debug');
+    if (q === '1') localStorage.setItem(UNLOCK_KEY, '1');
+    if (q === '0') {
+      localStorage.removeItem(UNLOCK_KEY);
+      localStorage.removeItem(DEBUG_KEY);
+    }
+    return q === '1' || localStorage.getItem(UNLOCK_KEY) === '1';
+  } catch {
+    return new URLSearchParams(location.search).get('debug') === '1';
+  }
+}
+
 function loadDebug(): boolean {
+  if (!debugUnlocked()) return false;
   if (new URLSearchParams(location.search).get('debug') === '1') return true;
   try {
     return localStorage.getItem(DEBUG_KEY) === '1';
@@ -75,6 +95,7 @@ let bug: HTMLButtonElement | null = null;
 // Always-visible red bug button (internal testing). Bottom centre, clear of
 // the touch controls. A debug aid, so it is a plain DOM button like the panel.
 export function mountDebugPanelIfRequested(): void {
+  if (!debugUnlocked()) return;
   bug = document.createElement('button');
   bug.textContent = '\u{1F41E}';
   bug.title = 'Toggle debug mode';

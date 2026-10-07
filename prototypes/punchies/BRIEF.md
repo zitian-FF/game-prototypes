@@ -284,3 +284,9 @@ and corrected by re-simulation when it arrives. The game only stalls when
 the opponent is further behind than the rollback window; show a small
 "waiting for opponent" indicator during stalls. The netcode lives inside
 this prototype, not a shared package.
+
+## Display and debug
+Landscape only. There is no rotate prompt; in portrait the canvas scales to
+fit and letterboxes. Debug tools (bug button, tune panel, hitboxes, net
+stats, SYNC TUNE) are hidden in public builds and unlocked per browser by
+opening the game once with `?debug=1` (`?debug=0` locks them again).

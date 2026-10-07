@@ -7,6 +7,7 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
 import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
+import { debugUnlocked } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { artImage, backdrop } from '../render/art';
 import { pulseLogo, startScreen } from '../ui/presentation';
@@ -48,6 +49,7 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
     titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openInputPopup());
     titleButton(this,menuX+(half+12)/2,top+294,half,27,'CREDITS',()=>this.openCredits());
+    if (debugUnlocked()) {
     const tuneLabel = this.add
       .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
       .setOrigin(1, 0.5);
@@ -60,6 +62,7 @@ export class MenuScene extends Phaser.Scene {
         tuneLabel.setText(r.ok ? `tune: ${tuneSource()} (${r.applied} values)` : `sync failed: ${r.error} (still ${tuneSource()})`);
       });
     });
+    }
     addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
