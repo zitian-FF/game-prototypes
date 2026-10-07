@@ -100,12 +100,15 @@ export class RingPerspective {
       // Reserve the HUD strip, then fit the registered master below it.
       // Scale the ring, fighters and effects together so collision positions
       // remain aligned. The authored perspective needs no second keystone.
-      const top=VIEW.top+64;
-      const height=VIEW.bottom-top-8;
-      const scale=Math.min(height/b.height,(VIEW.width-32)/(b.width*b.aspect));
+      const top=VIEW.top+tune.view.arena.uiBottom+VIEW.height*tune.view.arena.topGap;
+      const bottom=VIEW.bottom-VIEW.height*tune.view.arena.bottomGap;
+      // Registered red-rope centre lines in the 1299x1211 master.
+      const ropeTop=b.top+b.height*110/1211;
+      const ropeBottom=b.top+b.height*927/1211;
+      const scale=(bottom-top)/(ropeBottom-ropeTop);
       world.setScale(scale*b.aspect,scale);
       world.setPosition(VIEW.cx-(b.left+b.width/2)*world.scaleX,
-        top+height/2-(b.top+b.height/2)*world.scaleY);
+        top-ropeTop*world.scaleY);
       if (this.applied) { world.resetPostPipeline(); this.applied=false; }
       world.sort('depth');
       return;

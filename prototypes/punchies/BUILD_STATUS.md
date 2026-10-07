@@ -1,23 +1,22 @@
 ## Current milestone
-Restore full-window itch launch and match gameplay ring to the approved title master.
+Requested larger ring framing, centered training dummy and gym floor alignment ready for release.
 
 ## What was implemented
-- Restored itch.io Click to launch in fullscreen and Landscape settings; persisted values checked after reload and Run game checked in Brave.
-- Gameplay now uses the same five full registered alpha layers as the title, including red/blue post bases, apron and steps. Removed the gameplay-only rope/cap reconstruction.
-- Fits the whole ring, fighters and effects below the HUD, restoring the artwork aspect without a second perspective warp. Simulation, combat tuning and netcode unchanged.
+- Uniform authored-ring enlargement anchored to measured outer red rope centers (master y110 and y927). Top gap 3% below the 59px UI strip; bottom gap 5% above screen bottom. Values exposed in tune metadata.
+- Training dummy starts at the exact simulation ring midpoint after initial entry, Reset and character changes.
+- Gym floor inverse projection reduces baked column convergence to match the authored ring plane. Existing R2 artwork reused; title background unchanged.
 
 ## Key technical decisions
-- Presentation transform maps the fixed simulation floor to the authored floor, keeping rendered fighters and hit effects aligned.
-- HUD and controls stay at their existing screen positions. Far ropes remain behind fighters, near ropes/apron in front.
-- The complete ring also uses a world container under Canvas renderer; procedural fallback retains the existing WebGL perspective behavior.
-- Typecheck and build passed. Brave phone-layout training screenshot inspected; no console errors. R2 art unchanged.
-- No relevant newer shared-package change applies.
+- Scale all ring-world elements together so fighters, effects and collision positions remain aligned. UI stays fixed.
+- Rope framing can crop lower apron/steps, as required by the specified near-rope screen margin.
+- WebGL gym projection overscans source to avoid blank edges. Canvas fallback retains the original gym artwork.
+- Typecheck/build, diff check and immortal-training regression passed. Brave training preview inspected with no console errors.
 
 ## Open questions
-None blocking this fix.
+None blocking this update.
 
 ## Known issues
-Real-phone/two-phone online checks pending. Character-select and combat/KO presentation follow-ups remain separate.
+Real-device and two-phone online verification pending. Canvas renderer does not support gym projection shader.
 
 ## Next proposed step
-Merge and verify the published ring fix, then resume the remaining art direction work.
+Merge and verify live framing, then continue remaining art direction work.

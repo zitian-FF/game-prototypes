@@ -18,6 +18,7 @@ import { unlockAudio } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { ArenaArt } from '../render/arenaArt';
+import { alignGymFloor } from '../render/gymPerspective';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
@@ -46,7 +47,7 @@ export class FightStage {
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
   ) {
-    backdrop(scene, 0.15, 'gym_background');
+    alignGymFloor(scene,backdrop(scene, 0.15, 'gym_background'));
     this.persp = new RingPerspective(scene);
     const before = new Set(scene.children.list);
     this.authoredRing = ArenaArt.create(scene);

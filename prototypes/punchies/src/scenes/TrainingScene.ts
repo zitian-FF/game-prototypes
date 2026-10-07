@@ -60,6 +60,8 @@ export class TrainingScene extends Phaser.Scene {
       timed: false,
       fighters: [{ char: this.char }, { anchored: true, infiniteStamina: tune.training.dummyInfiniteStamina }],
     });
+    this.sim.fighters[1].x=(tune.ring.left+tune.ring.right)/2;
+    this.sim.fighters[1].y=(tune.ring.top+tune.ring.bottom)/2;
     this.applyStance();
   }
 

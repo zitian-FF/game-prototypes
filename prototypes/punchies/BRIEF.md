@@ -296,3 +296,11 @@ Landscape only. There is no rotate prompt; in portrait the canvas scales to
 fit and letterboxes. Debug tools (bug button, tune panel, hitboxes, net
 stats, SYNC TUNE) are hidden in public builds and unlocked per browser by
 opening the game once with `?debug=1` (`?debug=0` locks them again).
+
+### Arena framing refinement (2026-10-07)
+Scale the complete ring uniformly in its authored aspect. The outer top red
+rope is 3% of screen height below the top UI strip; the outer bottom red rope
+is 5% of screen height above the screen bottom. Frame from rope anchors rather
+than the apron/steps bounds. Training dummy spawns at the exact ring center
+and stays there across Reset and character switches. Reproject the gym floor
+columns to match the ring plane; keep the existing artwork and UI layers.
