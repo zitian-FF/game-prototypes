@@ -47,8 +47,10 @@ export class FightStage {
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
   ) {
-    alignGymFloor(scene,backdrop(scene, 0.15, 'gym_background'));
+    const gym=backdrop(scene, 0.15, 'gym_background');
+    alignGymFloor(scene,gym);
     this.persp = new RingPerspective(scene);
+    this.persp.setBackdrop(gym);
     const before = new Set(scene.children.list);
     this.authoredRing = ArenaArt.create(scene);
     this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
@@ -138,7 +140,10 @@ export class FightStage {
 
   // koAllowed: online passes false until the KO is confirmed, so a
   // predicted KO that gets rolled back never starts the animation.
+  private lastDrawTick: number | null = null;
   draw(s: SimState, time: number, koAllowed = true): void {
+    if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
+    this.lastDrawTick=s.tick;
     // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
     const chars: [string, string] = [s.fighters[0].char, s.fighters[1].char];
     const looks = [lookFor(chars, 0), lookFor(chars, 1)];
