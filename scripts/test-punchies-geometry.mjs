@@ -46,6 +46,22 @@ for (const scale of [1, 1.5, 2]) {
         }
         assert.equal(b.health < health, delta < 0, `${attacker}/${defender} ${type} scale ${scale} boundary ${delta}`);
       }
+      // The smaller inner circle preserves a real body-shot spacing band.
+      for (const delta of [-0.01, 0.01]) {
+        const sim = createSimState({ timed: false, fighters: [{ char: attacker }, { char: defender, anchored: true }] });
+        const [a, b] = sim.fighters;
+        a.x = 310; a.y = b.y = 210;
+        b.x = a.x + cfg.reach + cfg.hitRadius + coreRadius(b) + delta;
+        a.stars = tune.stars.max;
+        let hit;
+        for (let tick = 0; tick < cfg.startup + cfg.sourEarly + cfg.sweet + cfg.sour + 2; tick++) {
+          hit ??= step(sim, [tick === 0 ? { ...NEUTRAL_INPUT, [type]: true } : NEUTRAL_INPUT, NEUTRAL_INPUT])
+            .find(event => event.kind === 'hit');
+        }
+        assert.ok(hit, `${attacker}/${defender} ${type} core boundary must still connect`);
+        assert.equal(hit.row, type === 'uppercut' || delta < 0 ? 'vulnerable' : 'normal',
+          `${attacker}/${defender} ${type} scale ${scale}: head/body spacing boundary`);
+      }
     }
     const sim = createSimState({ timed: false, fighters: [{ char: attacker }, { char: defender, anchored: true }] });
     const [a, b] = sim.fighters;

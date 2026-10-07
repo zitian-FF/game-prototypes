@@ -97,7 +97,7 @@
   },
   "body": {
     "hurtRadius": 22,
-    "coreRadius": 15,
+    "coreRadius": 10,
     "vulnerableHurtRadius": 28
   },
   "punches": {
