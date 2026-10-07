@@ -162,7 +162,7 @@ export class KoAnim {
     this.ground.shadowOnly(p.x, p.y, k, 1);
     if (fly && el >= tune.ko.flyMs && !this.shook) {
       this.shook = true;
-      this.scene.cameras.main.shake(180, 0.006);
+      this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale);
     }
     return true;
   }
@@ -187,7 +187,7 @@ export class KoAnim {
         const rotation = fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx);
         this.sprite.setPosition(p.x, p.y).setScale(look.scale / 2).setRotation(rotation);
         this.ground.draw(`${prefix}_ko`, u, p.x, p.y, rotation, look.scale, 1);
-        if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006); }
+        if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale); }
         return;
       }
     }
@@ -272,7 +272,7 @@ export class KoAnim {
 
     if (!this.shook) {
       this.shook = true;
-      this.scene.cameras.main.shake(180, 0.006);
+      this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale);
     }
     // Rope flash + bulge at the impact point.
     const flash = 1 - clamp01((el - k.flyMs) / 400);

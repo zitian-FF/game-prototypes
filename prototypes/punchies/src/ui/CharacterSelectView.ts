@@ -21,6 +21,7 @@ export interface SelectionState {
   action: string;
   level: string | null;
   hint: string;
+  bestOf: number;
 }
 
 // One authored landscape composition, fitted uniformly into every VIEW.
@@ -40,10 +41,11 @@ export class CharacterSelectView {
   private levelButtons: Phaser.GameObjects.Text[];
   private hint: Phaser.GameObjects.Text;
   private previous = '';
+  private format: Phaser.GameObjects.Text;
   private portraitBounds = new Map<string, { left: number; top: number; right: number; bottom: number }>();
 
   constructor(private scene: Phaser.Scene, callbacks: {
-    card(i: number): void; panel(i: number): void; action(): void; back(): void; level(d: number): void;
+    card(i: number): void; panel(i: number): void; action(): void; back(): void; level(d: number): void; format(): void;
   }) {
     const scale = Math.min(VIEW.width / 844, VIEW.height / 390);
     this.root = scene.add.container(VIEW.cx - 422 * scale, VIEW.cy - 195 * scale).setScale(scale);
@@ -52,6 +54,7 @@ export class CharacterSelectView {
     this.chrome.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);
     this.chrome.lineStyle(5, 0xef3545).lineBetween(422, 51, 586, 51);
     this.button(46, 29, 80, 30, '‹  BACK', callbacks.back);
+    this.format = this.button(90, 76, 136, 27, 'BEST OF 3', callbacks.format);
     [290, 422, 554].forEach((x, i) => {
       this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11));
       if (i < 2) this.text(this.root, x + 66, 76, '›', 22, '#a8bad5');
@@ -148,6 +151,7 @@ export class CharacterSelectView {
     const signature = JSON.stringify(state);
     if (signature === this.previous) return;
     this.previous = signature;
+    this.format.setText(`BEST OF ${state.bestOf}`);
     const g = this.chrome;
     g.clear();
     g.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);

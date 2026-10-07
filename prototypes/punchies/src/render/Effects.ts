@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import type { SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
 import { PIXEL_RATIO, VIEW } from './pixelRatio';
+import { tune } from '../sim/tune';
 
 // Turns sim events into visual and audio feedback: sweet sparks, counter
 // flash, block/perfect-guard rings, callout labels. Presentation only.
 export class Effects {
+  roundNumber = 1;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -50,7 +52,7 @@ export class Effects {
     this.damageNumber(def.x, def.y - 34, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
 
     if (dealt) {
-      cam.shake(big ? 150 : 70, big ? 0.009 : 0.003);
+      cam.shake(big ? 150 : 70, (big ? 0.009 : 0.003) * tune.view.cameraShakeScale);
       if (e.counter) {
         this.shakyLabel(e.x, e.y - 34, 'COUNTER!', '#ffe03a', 22);
         this.screenFlash(0xffffff, 0.3);
@@ -63,7 +65,7 @@ export class Effects {
         sfx.sour();
       }
     } else {
-      cam.shake(big ? 220 : 120, big ? 0.014 : 0.007);
+      cam.shake(big ? 220 : 120, (big ? 0.014 : 0.007) * tune.view.cameraShakeScale);
       this.redEdges(big ? 0.9 : 0.55);
       try {
         navigator.vibrate?.(big ? [60, 40, 60] : 35);
@@ -215,11 +217,11 @@ export class Effects {
           if (e.fighter === localIdx) sfx.starsReady();
           break;
         case 'ready':
-          this.banner('READY', 1.7, '#ffe03a');
+          this.banner(`ROUND ${this.roundNumber}`, Math.max(0.3, tune.match.introSec - 0.3), '#fff1d1');
           sfx.ready();
           break;
         case 'go':
-          this.banner('GO!', 0.6, '#7fe08a', true);
+          this.banner('FIGHT!', 0.6, '#7fe08a', true);
           sfx.go();
           break;
         case 'ko':

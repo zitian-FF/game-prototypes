@@ -19,6 +19,7 @@ export interface MatchData {
   localIdx: 0 | 1;
   delay: number;
   round: number;
+  series?: import('../sim/series').SeriesState;
   // Guest only: its own tune, restored after the match (it plays on the
   // host's values).
   restoreTune?: string;

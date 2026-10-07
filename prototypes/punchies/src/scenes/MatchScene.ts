@@ -4,13 +4,15 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { getNav } from '../ui/menuNav';
-import { fighterGroups, prefetchGroups, resultArt } from '../render/art';
+import { fighterGroups, prefetchGroups } from '../render/art';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
 import { charName } from '../sim/character';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
 import { isDebug } from '../debug/debugPanel';
 import type { SimState } from '../sim/types';
+import { newSeries, finishRound, type SeriesState } from '../sim/series';
+import { roundSplash, matchResult } from '../ui/matchPresentation';
 
 // Online 1v1 over rollback netcode (see net/rollback.ts). Host is fighter 0 (left), guest fighter 1.
 // The sim only advances when both players' inputs for the next tick have
@@ -28,10 +30,14 @@ export class MatchScene extends Phaser.Scene {
   private stalledSince = 0;
   private waiting!: Phaser.GameObjects.Text;
   private info!: Phaser.GameObjects.Text;
-  private endButtons: Phaser.GameObjects.GameObject[] = [];
   private rematchLocal = false;
   private rematchRemote = false;
   private over = false;
+  private series!: SeriesState;
+  private advancing = false;
+  private nextSeries: SeriesState | undefined;
+  private remoteReselect = false;
+  private cancelSplash: (() => void) | undefined;
   // Enhanced netcode (tune.net.enhanced, host authoritative): split input
   // delay, eased corrections and an adaptive punch delay. Off = unchanged.
   private enhanced = false;
@@ -56,12 +62,16 @@ export class MatchScene extends Phaser.Scene {
   create(data: MatchData): void {
     applyCameraPixelRatio(this);
     this.match = data;
+    this.series = data.series ?? newSeries(tune.match.bestOf);
+    this.nextSeries = undefined;
+    this.remoteReselect = false;
+    this.cancelSplash = undefined;
+    this.advancing = false;
     this.acc = 0;
     this.stalledSince = 0;
     this.over = false;
     this.rematchLocal = false;
     this.rematchRemote = false;
-    this.endButtons = [];
     this.enhanced = tune.net.enhanced >= 0.5;
     this.rtt = 0;
     this.nextPing = 0;
@@ -92,6 +102,7 @@ export class MatchScene extends Phaser.Scene {
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
+      if (m.k === 'reselect' && m.round === data.round) { this.remoteReselect = true; this.changeBoxer(); }
       if (m.k === 'rematch' && m.round === data.round + 1) {
         this.rematchRemote = true;
         this.tryRematch();
@@ -105,6 +116,8 @@ export class MatchScene extends Phaser.Scene {
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
     this.stage = new FightStage(this, names, data.localIdx);
+    this.stage.setSeries(this.series);
+
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'LEAVE', () => this.leave());
 
     this.waiting = this.add
@@ -253,44 +266,55 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showResult(): void {
-    resultArt(this);
-    getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
     const r = this.ls.confirmedResult()!;
-    const text = r.winner === null ? 'DRAW' : r.winner === this.match.localIdx ? 'YOU WIN' : 'YOU LOSE';
-    const sub = r.reason === 'ko' ? 'by K.O.' : 'on points (health)';
-    this.endButtons.push(
-      this.add
-        .text(VIEW.cx, VIEW.cy + 40, `${text}\n${sub}`, {
-          fontFamily: 'monospace',
-          fontSize: '22px',
-          fontStyle: 'bold',
-          color: '#ffffff',
-          align: 'center',
-          stroke: '#000000',
-          strokeThickness: 5,
-          resolution: PIXEL_RATIO,
-        })
-        .setOrigin(0.5)
-        .setDepth(150),
-    );
-    const rem = makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => {
-      if (this.rematchLocal) return;
+    const outcome = finishRound(this.series, r.winner);
+    this.stage.setSeries(outcome.series);
+    if (!outcome.complete) {
+      this.nextSeries = outcome.series;
       this.rematchLocal = true;
-      rem.setText('WAITING...');
-      this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
+      const ready = () => this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
+      ready();
+      this.time.addEvent({ delay: 500, loop: true, callback: ready });
       this.tryRematch();
+      return;
+    }
+    const text = r.winner === null ? 'DRAW' : r.winner === this.match.localIdx ? 'VICTORY' : 'DEFEAT';
+    if (this.remoteReselect) { this.changeBoxer(); return; }
+    const rem = matchResult(this, text, {
+      rematch: () => {
+        if (this.rematchLocal) return;
+        this.rematchLocal = true;
+        rem.setText('WAITING...');
+        this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
+        this.tryRematch();
+      },
+      changeBoxer: () => {
+        this.match.session.send({ k: 'reselect', round: this.match.round });
+        this.changeBoxer();
+      },
+      menu: () => this.leave(),
     });
-    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => this.leave());
   }
 
   private tryRematch(): void {
-    if (!this.rematchLocal || !this.rematchRemote) return;
-    this.scene.restart({ ...this.match, round: this.match.round + 1 });
+    if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
+    this.advancing = true;
+    this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
+  }
+
+  private changeBoxer(): void {
+    if (this.advancing || !this.over || this.nextSeries) return;
+    this.advancing = true;
+    startScreen(this, 'CharSelect', { mode: 'online', session: this.match.session,
+      localIdx: this.match.localIdx, delay: this.match.delay, restoreTune: this.match.restoreTune,
+      nextRound: this.match.round + 1 });
   }
 
   private opponentLeft(): void {
+    this.cancelSplash?.();
+    this.cancelSplash = undefined;
     getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
@@ -309,6 +333,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private leave(): void {
+    this.cancelSplash?.();
+    this.cancelSplash = undefined;
     this.match.session.leave();
     if (this.match.restoreTune) restoreTune(this.match.restoreTune);
     startScreen(this, 'Menu');

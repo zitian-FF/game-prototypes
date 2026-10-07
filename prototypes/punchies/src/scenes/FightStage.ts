@@ -19,6 +19,7 @@ import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
+import type { SeriesState } from '../sim/series';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
@@ -38,6 +39,20 @@ export class FightStage {
   private posts: (Phaser.GameObjects.Image | null)[];
   private persp: RingPerspective;
   private authoredRing: ArenaArt | null;
+  private roundScore: Phaser.GameObjects.Graphics | null = null;
+
+  setSeries(series: SeriesState): void {
+    this.fx.roundNumber = series.roundNumber;
+    const g = this.roundScore ??= this.scene.add.graphics().setDepth(95);
+    g.clear();
+    for (let side = 0; side < 2; side++) {
+      for (let i = 0; i < (series.bestOf === 3 ? 2 : 1); i++) {
+        const x = VIEW.cx + (side === 0 ? -27 - i * 14 : 27 + i * 14);
+        g.fillStyle(i < series.wins[side] ? 0xffd458 : 0x253650).fillCircle(x, VIEW.top + 34, 4);
+        g.lineStyle(1, 0x758caf).strokeCircle(x, VIEW.top + 34, 4);
+      }
+    }
+  }
 
   constructor(
     private scene: Phaser.Scene,

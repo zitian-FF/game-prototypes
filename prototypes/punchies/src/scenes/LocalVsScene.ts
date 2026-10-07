@@ -1,10 +1,12 @@
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
-import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
-import { getNav } from '../ui/menuNav';
-import { fighterGroups, resultArt, whenGroupsReady } from '../render/art';
+import { newSeries, finishRound, type SeriesState } from '../sim/series';
+import { roundSplash, matchResult } from '../ui/matchPresentation';
+import { tune } from '../sim/tune';
+import { fighterGroups, whenGroupsReady } from '../render/art';
 import { charName } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
 import { TICK_RATE } from '../sim/tune';
@@ -21,15 +23,19 @@ const MAX_STEPS_PER_FRAME = 5;
 export class LocalVsScene extends Phaser.Scene {
   private sim!: SimState;
   private stage!: FightStage;
-  private inputs!: LocalInputs & { chars?: [string, string] };
+  private inputs!: LocalInputs & { chars?: [string, string]; series?: SeriesState };
   private acc = 0;
   private over = false;
+  private series!: SeriesState;
+
 
   constructor() {
     super('LocalVs');
   }
 
-  create(data: LocalInputs & { chars?: [string, string] }): void {
+  create(data: LocalInputs & { chars?: [string, string]; series?: SeriesState }): void {
+    this.series = data.series ?? newSeries(tune.match.bestOf);
+
     applyCameraPixelRatio(this);
     this.built = false;
     const chars = data.chars ?? ['marco', 'marco'];
@@ -38,7 +44,7 @@ export class LocalVsScene extends Phaser.Scene {
 
   private built = false;
 
-  private build(data: LocalInputs & { chars?: [string, string] }): void {
+  private build(data: LocalInputs & { chars?: [string, string]; series?: SeriesState }): void {
     this.built = true;
     this.inputs = data;
     this.acc = 0;
@@ -49,6 +55,8 @@ export class LocalVsScene extends Phaser.Scene {
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => startScreen(this, 'Menu'));
+    this.stage.setSeries(this.series);
+
     addVersionStamp(this);
   }
 
@@ -68,26 +76,19 @@ export class LocalVsScene extends Phaser.Scene {
   }
 
   private showResult(): void {
-    resultArt(this);
     this.over = true;
-    getNav(this).engage();
+    this.acc = 0;
     const r = this.sim.result!;
-    const text = r.winner === null ? 'DRAW' : `P${r.winner + 1} WINS`;
-    const sub = r.reason === 'ko' ? 'by K.O.' : 'on points (health)';
-    this.add
-      .text(VIEW.cx, VIEW.cy + 40, `${text}\n${sub}`, {
-        fontFamily: 'monospace',
-        fontSize: '22px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        align: 'center',
-        stroke: '#000000',
-        strokeThickness: 5,
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setDepth(150);
-    makeButton(this, VIEW.cx - 60, VIEW.cy + 100, 100, 'REMATCH', () => this.scene.restart(this.inputs));
-    makeButton(this, VIEW.cx + 60, VIEW.cy + 100, 100, 'MENU', () => startScreen(this, 'Menu'));
+    const outcome = finishRound(this.series, r.winner);
+    this.stage.setSeries(outcome.series);
+    if (!outcome.complete) {
+      roundSplash(this, () => this.scene.restart({ ...this.inputs, series: outcome.series }));
+      return;
+    }
+    matchResult(this, r.winner === null ? 'DRAW' : `P${r.winner + 1} VICTORY`, {
+      rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
+      changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),
+      menu: () => startScreen(this, 'Menu'),
+    });
   }
 }
