@@ -172,7 +172,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'STARS & UPPERCUT',
-    text: (b) => `Sweet hits earn stars (dots on UPPER). At 3 you glow yellow and the Uppercut is ready: ${b('upper')}. It can't be blocked. Land one.`,
+    text: (b) => `Sweet hits fill the three star sockets beside STUN. At 3, UPPER pulses and the Uppercut is ready: ${b('upper')}. It can't be blocked. Land one.`,
     adds: ['uppercut'],
     dummy: 'idle',
     goal: 1,
