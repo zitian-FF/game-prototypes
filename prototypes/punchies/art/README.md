@@ -99,9 +99,12 @@ Local dev requires restarting Vite after repacking.
 `arena_rear.png`, `arena_front.png`, `arena_near.png` and `arena_apron.png` are alpha PNGs with identical
 1299x1211 registration; playable floor bounds are (186,163) to (1114,875).
 `ArenaArt` reuses them on Menu and FightStage. Rear ropes draw at depth 1,
-boxers at about 9–11, and side/front ropes at 30 and near ropes/apron at 31–32. The existing perspective
-shader applies to the arena and boxers together. Never trim/re-export these
-five PNGs independently. Gameplay reassembles native rope and round-cap crops (`arena_rope.png`, `arena_cap_neutral.png`, tinted to character colours) from the same master to fit the fixed camera; the title retains the full ring. Their lossless partition reconstructs the isolated
+boxers at about 9–11, and side/front ropes at 30 and near ropes/apron at 31–32.
+Both title and gameplay use the full five-layer assembly, retaining the same
+red/blue posts, apron and steps. Gameplay fits the whole ring world below the
+HUD and restores the master aspect instead of adding a second keystone warp.
+The simulation geometry stays unchanged. Never trim/re-export these
+five PNGs independently. Their lossless partition reconstructs the isolated
 ring master exactly. All pre-existing R2 entries remain byte-for-byte intact.
 
 Built-in imagegen produced the gym and isolated ring from the approved title

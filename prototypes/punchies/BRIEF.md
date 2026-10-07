@@ -286,6 +286,12 @@ the opponent is further behind than the rollback window; show a small
 this prototype, not a shared package.
 
 ## Display and debug
+The itch.io page uses Click to launch in fullscreen with Landscape orientation.
+Keep this launch setting when updating the build. Title and gameplay must use
+the same complete layered ring, including post bases, apron and steps, at the
+master artwork's aspect. Fit the ring and boxers together below the HUD;
+far ropes stay behind boxers and near ropes in front. Simulation bounds stay
+unchanged.
 Landscape only. There is no rotate prompt; in portrait the canvas scales to
 fit and letterboxes. Debug tools (bug button, tune panel, hitboxes, net
 stats, SYNC TUNE) are hidden in public builds and unlocked per browser by
