@@ -328,3 +328,5 @@ Implement the approved character-select-v1 mockup using the existing character p
 
 ## Camera-synchronised hit effects — 2026-10-07
 Runtime hit sparks, guard rings, damage numbers and fighter callouts must remain attached to the same arena transform as the fighters during round-opening zoom, perspective projection and impact shake. Keep full-screen flashes, HUD and controls separate. Cover Phaser's actual scene-added event contract and cleanup with a regression check.
+## Character selection portrait corrections — 2026-10-07
+Align all portraits by their visible artwork baseline, including Bruno, while preserving their source PNG registration. Keep all six stat bars inset within both panels. Mia should look like a youthful adult with smooth cheeks and a serious experienced expression; preserve her established outfit, pose and outlined art style.
