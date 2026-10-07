@@ -1,5 +1,5 @@
 ## Current milestone
-Approved title screen and shared layered gym/ring ready for deployment; R2 upload hash-verified on 7 October 2026.
+Approved title screen and shared layered gym/ring deployed via PR #226 on 7 October 2026; version 071026r0063. R2 bundle hash verified.
 
 ## What was implemented
 - Primary Single Player button, Versus and Practice groups, Online Host/Join popup, Settings retaining local input setup, dedicated Credits panel; demo notice removed. Debug controls, SYNC TUNE and tune label retain the latest main branch debug-unlock gate; version stamp and fullscreen remain.
@@ -17,8 +17,8 @@ Approved title screen and shared layered gym/ring ready for deployment; R2 uploa
 - None blocking this update.
 
 ## Known issues
-- Presentation deployment pending merge; latest main tutorial, bot spacing and debug gating preserved.
+- Itch.io and GitHub Pages workflows succeeded. Published title loaded in Brave without console errors; latest main tutorial, bot spacing and debug gating preserved.
 - Real-phone/two-phone online checks pending. Settings retains its existing input-picker panel. Character-select redesign, combat cues, KO brush lettering/bells and arena impact shake are separate approved follow-ups recorded in BRIEF.md.
 
 ## Next proposed step
-Merge the title-presentation branch, verify deployment in Brave, then review character-select direction. Uploaded bundle SHA256: 161bf9bd30387ab295f70d1b74d05be90d7925570cba11e99dfc1c3bbc701e22.
+Review character-select direction next. Uploaded bundle SHA256: 161bf9bd30387ab295f70d1b74d05be90d7925570cba11e99dfc1c3bbc701e22.
