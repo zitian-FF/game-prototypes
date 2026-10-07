@@ -46,10 +46,10 @@ export class TrainingScene extends Phaser.Scene {
     this.acc = 0;
     this.newSim();
     this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0);
-    this.charLabel = this.stage.button(VIEW.cx - 160, VIEW.top + 46, 80, '', () => this.cycleChar());
-    this.stanceLabel = this.stage.button(VIEW.cx - 58, VIEW.top + 46, 110, '', () => this.cycleStance());
-    this.stage.button(VIEW.cx + 30, VIEW.top + 46, 56, 'RESET', () => this.newSim());
-    this.stage.button(VIEW.cx + 82, VIEW.top + 46, 40, 'MENU', () => startScreen(this, 'Menu'));
+    this.charLabel = this.stage.button(VIEW.left + 105, VIEW.top + 110, 110, '', () => this.cycleChar());
+    this.stanceLabel = this.stage.button(VIEW.left + 105, VIEW.top + 140, 110, '', () => this.cycleStance());
+    this.stage.button(VIEW.left + 105, VIEW.top + 170, 110, 'RESET', () => this.newSim());
+    this.stage.button(VIEW.left + 105, VIEW.top + 200, 110, 'MENU', () => startScreen(this, 'Menu'));
     this.refreshStance();
     this.charLabel.setText(`YOU: ${charName(this.char)}`);
     addVersionStamp(this);
