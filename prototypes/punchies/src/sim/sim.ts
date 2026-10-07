@@ -132,6 +132,7 @@ export function isVulnerable(f: Fighter): boolean {
 }
 
 export function stanceOf(f: Fighter): Stance {
+  if (f.exhausted) return 'vulnerable';
   if (f.dodge && f.dodge.frame < tune.dodge.iFrames) return 'dodging';
   if (f.guarding) return f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
   return isVulnerable(f) ? 'vulnerable' : 'normal';
@@ -165,17 +166,19 @@ function lowerGuard(f: Fighter): void {
 }
 
 function spendStamina(f: Fighter, amount: number): void {
-  if (f.infiniteStamina) return;
+  if (f.infiniteStamina || f.exhausted) return;
   f.stamina = Math.max(0, f.stamina - amount);
   if (f.stamina <= 0) {
     f.exhausted = true;
+    f.regenWait = 0;
     lowerGuard(f);
   }
 }
 
-function gainStamina(f: Fighter, amount: number): void {
+function gainStamina(f: Fighter, amount: number, natural = false): void {
+  if (f.exhausted && !natural) return;
   f.stamina = Math.min(maxStamina(f), f.stamina + amount);
-  if (f.exhausted && f.stamina >= tune.stamina.exhaustRecoverAt) f.exhausted = false;
+  if (f.exhausted && f.stamina >= maxStamina(f)) f.exhausted = false;
 }
 
 function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[]): void {
@@ -257,6 +260,13 @@ function requestedAction(input: FrameInput): BufferedAction | null {
 
 // Refused actions must not start later after stamina regeneration.
 function rejectAction(f: Fighter, idx: number, action: BufferedAction, events: SimEvent[]): boolean {
+  if (f.exhausted) {
+    if (action !== 'dodge') return false;
+    events.push({ kind: 'staminaRejected', fighter: idx });
+    f.buffered = null;
+    f.bufferFrames = 0;
+    return true;
+  }
   if (action === 'dodge' && f.postDodgeVulnerable > 0) {
     f.buffered = null;
     f.bufferFrames = 0;
@@ -288,6 +298,7 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
 
 function processInput(s: SimState, idx: number, input: FrameInput, events: SimEvent[]): void {
   const f = s.fighters[idx];
+  if (input.guard && f.exhausted) events.push({ kind: 'staminaRejected', fighter: idx });
 
   const req = requestedAction(input);
   if (req && !rejectAction(f, idx, req, events)) {
@@ -436,7 +447,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     const dy = def.y - pt.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > hurtRadius(def) + hitR) continue;
-    if (def.dodge && def.dodge.frame < tune.dodge.iFrames) {
+    if (!def.exhausted && def.dodge && def.dodge.frame < tune.dodge.iFrames) {
       p.resolved = true;
       events.push({ kind: 'dodged', attacker: i, x: pt.x, y: pt.y });
       continue;
@@ -479,7 +490,7 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushLock = Math.max(def.pushLock, tune.hit.pushLockFrames);
 }
 
-function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], events: SimEvent[]): void {
+function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
@@ -487,6 +498,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   if (!p) return;
   p.resolved = true;
   const cfg = punchCfg(att, p.type);
+  const damageMult = p.damageMult * (emergencyAttack[c.attacker] ? tune.stamina.emergencyDamageMult : 1);
 
   let stance = stances[defIdx];
   // Uppercut ignores a normal High Guard (taken as a normal hit) but a
@@ -520,7 +532,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     // Hooks wrap around a High Guard: chip damage (anti-turtle).
     let chip = 0;
     if (p.type === 'hook') {
-      const full = punchCfg(att, 'hook').damage * p.damageMult;
+      const full = punchCfg(att, 'hook').damage * damageMult;
       chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * tune.punches.hook.guardChipMult;
       def.health = Math.max(0, def.health - chip);
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
@@ -539,7 +551,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     p.type === 'uppercut'
       ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * cfg.damage
       : cfg.damage;
-  const full = baseDamage * p.damageMult;
+  const full = baseDamage * damageMult;
   const reduced = full * tune.hit.reducedDamageMult;
 
   // Only face hits (the full-damage row) cost the defender stamina; body
@@ -650,6 +662,11 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   if (f.infiniteStamina) {
     f.stamina = maxStamina(f);
     f.exhausted = false;
+  } else if (f.exhausted) {
+    // Protected, continuous recovery at the normal walking rate, even while
+    // punching/stunned. Only natural recovery changes this meter until full.
+    f.regenWait = 0;
+    gainStamina(f, tune.stamina.regenActivePerSec * regenMult(f) / TICK_RATE, true);
   } else if (f.guarding) {
     spendStamina(f, tune.guard.staminaDrainPerSec / TICK_RATE);
   } else if (f.regenWait > 0) {
@@ -658,9 +675,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
     const noInput =
       input.mx === 0 && input.my === 0 && !input.jab && !input.cross && !input.hook && !input.uppercut && !input.dodge && !input.guard;
     let rate = noInput ? tune.stamina.regenIdlePerSec : tune.stamina.regenActivePerSec;
-    // Exhausted (hit 0, Vulnerable): much slower climb back to exhaustRecoverAt.
     rate *= regenMult(f);
-    if (f.exhausted) rate *= tune.stamina.exhaustedRegenMult;
     gainStamina(f, rate / TICK_RATE);
   }
 
@@ -715,11 +730,22 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     return events;
   }
 
+  for (const f of s.fighters) {
+    if (!f.infiniteStamina && f.stamina <= 0) {
+      f.exhausted = true;
+      f.regenWait = 0;
+      lowerGuard(f);
+    }
+  }
+
   // Hit-stop: the fight freezes, but presses are still buffered and the tick
   // (which the netcode keys inputs on) still advances.
   if (s.hitstop > 0) {
     s.hitstop--;
     for (let i = 0; i < 2; i++) {
+      const f = s.fighters[i];
+      if (inputs[i].guard && f.exhausted) events.push({ kind: 'staminaRejected', fighter: i });
+      if (f.exhausted) gainStamina(f, tune.stamina.regenActivePerSec * regenMult(f) / TICK_RATE, true);
       const req = requestedAction(inputs[i]);
       if (req && !rejectAction(s.fighters[i], i, req, events)) {
         s.fighters[i].buffered = req;
@@ -739,8 +765,9 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 
   const stances: Stance[] = [stanceOf(s.fighters[0]), stanceOf(s.fighters[1])];
   const inStartup = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'startup');
+  const emergencyAttack = s.fighters.map((f) => f.exhausted);
   const contacts = detectContacts(s, events);
-  for (const c of contacts) resolveContact(s, c, stances, inStartup, events);
+  for (const c of contacts) resolveContact(s, c, stances, inStartup, emergencyAttack, events);
 
   advanceTimers(s, 0, inputs[0], events);
   advanceTimers(s, 1, inputs[1], events);

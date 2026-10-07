@@ -113,20 +113,21 @@ export class ScriptedBot implements Bot {
     // bot does not flip in and out of the fight at the edge of the threshold.
     if (!this.recovering && (me.exhausted || me.stamina < L.retreatStaminaBelow)) this.recovering = true;
     else if (this.recovering && !me.exhausted && me.stamina >= L.recoverUntil) this.recovering = false;
-    const tired = this.recovering;
+    const tired = this.recovering && !me.exhausted;
+    if (me.exhausted) { this.guardHold = 0; this.holdOffUntil = 0; }
     // Watch the tank: below conserveBelow the bot throws less, and cheaper.
     const reserve = L.retreatStaminaBelow;
-    const careful = me.stamina < L.conserveBelow;
+    const careful = !me.exhausted && me.stamina < L.conserveBelow;
     // Pressure: the foe is running on empty, so close in and make them pay for it.
     const pressing = !tired && L.pressureFoeBelow > 0 && view.stamina < L.pressureFoeBelow && me.stamina > reserve;
     const conserve = careful ? Math.max(0.2, (me.stamina - reserve) / Math.max(1, L.conserveBelow - reserve)) : 1;
 
     // A dodge costs real stamina; a bot that cannot pay it must block instead.
-    const canDodge = me.stamina >= tune.dodge.staminaCost + 2;
+    const canDodge = !me.exhausted && me.stamina >= tune.dodge.staminaCost + 2;
 
     // --- defence --------------------------------------------------------
     const vp = view.punch;
-    if (!busy && vp && !vp.recovering && !vp.active) {
+    if (!me.exhausted && !busy && vp && !vp.recovering && !vp.active) {
       // Frames until that punch connects, corrected for how stale the view is.
       const remaining = vp.startup + vp.sourEarly - vp.frame - delay;
       const foeMax = connect({ reach: vp.reach, hitRadius: punchCfg(foe, vp.type).hitRadius }, me) - 4;
@@ -181,7 +182,7 @@ export class ScriptedBot implements Bot {
         // Never spend into the reserve on a plain attack; a punish may dip
         // into it, but not to nothing.
         const left = pick ? me.stamina - punchCfg(me, pick).staminaCost : 0;
-        if (pick && left >= (open ? reserve * 0.4 : reserve)) {
+        if (pick && (me.exhausted || left >= (open ? reserve * 0.4 : reserve))) {
           input[pick] = true;
           this.cooldown = Math.round(L.attackCooldownFrames);
         }

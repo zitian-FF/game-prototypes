@@ -56,9 +56,10 @@ export class EasyAI {
     const input: FrameInput = { ...NEUTRAL_INPUT };
     if (this.cooldown > 0) this.cooldown--;
     const busy = me.punch !== null || me.dodge !== null;
+    if (me.exhausted) this.guardHold = 0;
 
     // Defense: react (late) to a punch the player started.
-    if (view?.playerStartingPunch && !busy && view.dist < attackRange + 20 * scale) {
+    if (view?.playerStartingPunch && !busy && !me.exhausted && view.dist < attackRange + 20 * scale) {
       if (this.rng() < tune.ai.dodgeChance) {
         input.dodge = true;
         return input;
@@ -74,7 +75,7 @@ export class EasyAI {
     // Movement: close the distance, or back off when tired.
     const nx = dist > 0.001 ? dx / dist : 1;
     const ny = dist > 0.001 ? dy / dist : 0;
-    const tired = me.stamina < tune.ai.retreatStaminaBelow || me.exhausted;
+    const tired = !me.exhausted && me.stamina < tune.ai.retreatStaminaBelow;
     const ideal = attackRange - 8 * scale;
     let mx = 0;
     let my = 0;
