@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 
 const KEY='PunchiesGymFloor';
-// Undo the gym illustration's converging floor columns. The full authored
-// ring has parallel sides, so the surrounding tiles must share that plane.
+// Optional projection adjustment. Neutral values preserve the authored
+// floor convergence approved in the perspective reference.
 class GymFloorPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
   constructor(game: Phaser.Game) {
     super({game,name:KEY,fragShader:`
@@ -23,6 +23,7 @@ void main() {
   }
 }
 export function alignGymFloor(scene: Phaser.Scene,image: Phaser.GameObjects.Image | null): void {
+  if (tune.view.arena.floorTopScale===1 && tune.view.arena.floorBottomScale===1) return;
   const renderer=scene.game.renderer;
   if (!image || !(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)) return;
   if (!renderer.pipelines.getPostPipeline(KEY)) renderer.pipelines.addPostPipeline(KEY,GymFloorPipeline);

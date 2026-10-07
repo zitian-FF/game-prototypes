@@ -1,23 +1,18 @@
 ## Current milestone
-Round-start zoom from reference view to steps-inclusive framing ready for release.
+Restore the gym floor perspective to the annotated reference, ready for deployment.
 
 ## What was implemented
-- 900 ms smoothstep camera presentation at first fight draw and training Reset.
-- Final top outer red rope sits 3% below the top UI strip; lowest opaque steps pixel sits 5% above screen bottom. Master anchors y110/y1131 verified from source alpha.
-- Ring-world elements and gym backdrop move together; UI remains fixed. Authored ring aspect preserved.
-- Zoom duration exposed in tune metadata. Reduced-motion jumps to final framing.
+Neutral floor projection preserves the source artwork's converging tile columns. Existing round zoom and steps-inclusive ring framing remain.
 
 ## Key technical decisions
-- Presentation-only transform; no simulation timing, combat geometry or networking changes.
-- Restart detection limited to initial draw or tick reset near zero; ordinary corrections do not replay the opening.
-- Source art reused without R2 changes.
-- Typecheck/build passed; Brave final framing inspected without console errors. Reset opening/reference and settled frames inspected.
+Bypass the floor shader at neutral values, avoiding extra overscan and flattening. Reuse existing R2 art.
+Typecheck, build and Brave local gameplay screenshot passed; console errors absent.
 
 ## Open questions
-None blocking this update.
+None.
 
 ## Known issues
-Real-device and two-phone online checks pending. Existing Canvas gym shader limitation remains.
+Real-device and two-phone online checks remain pending; this change is presentation only.
 
 ## Next proposed step
-Merge and verify the live round-opening zoom, then continue remaining art direction work.
+Merge and deploy the floor correction, then verify the live framing.

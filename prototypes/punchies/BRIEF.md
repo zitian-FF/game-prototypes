@@ -312,3 +312,6 @@ in over 900 ms during the opening. Final framing keeps the lowest step edge
 the top UI strip. The master aspect remains uniform. Ring, fighters, effects
 and gym move together; HUD and controls remain fixed. Reduced-motion skips
 the animated interpolation. Training Reset replays the opening.
+
+## Floor perspective correction — 2026-10-07
+Preserve the gym artwork’s authored converging tile columns as shown in the user’s annotated reference. Disable the previous flattening correction at neutral projection values. Keep the ring framing and round-opening zoom unchanged.
