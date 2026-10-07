@@ -1,17 +1,17 @@
 ## Current milestone
-Punch Token display added to the main-menu Shop button; ranked ownership direction agreed.
+KO, compact results and first-round portrait clash implemented; release verification pending.
 
 ## What was implemented
-The green Shop button now contains a red-and-blue token badge with a glove symbol and initial zero balance. No wallet or ad grants exist yet.
+First-round selected portraits slide inward around animated fire and VS before ROUND 1 / FIGHT. Showcase lasts 1.8 seconds, freezes combat and leaves round clock untouched; later rounds skip it. KO uses sequential KNOCK / OUT wipe-and-impact lettering with triple bell, gated on confirmed online results. Final victory/defeat/draw screen has rounded panel, animated heading, series score and polished buttons.
 
 ## Key technical decisions
-Draw the badge with Phaser vector graphics for sharp scaling. Ranked requires owned boxers and skins. Character balance must use stat tradeoffs; MMR alone does not remove roster-access differences.
+Showcase timing is deterministic in sim ticks for both peers. Online rollback accepts the same first-round flag on both sides. Training/tutorial use no showcase. Preserve compact result pacing and existing KO body motions. Current portraits are reused; future skin asset selection is not implemented. Reduced motion removes slides, fire movement and impact scaling.
 
 ## Open questions
-Reward amounts, item prices and earning options remain unapproved. Actual rewarded ads, wallet ownership and MMR require subsequent design and implementation.
+None for this task. Shop economy remains under discussion.
 
 ## Known issues
-Token count is an initial zero display until a real wallet is implemented. Existing Phaser bundle warning remains.
+Physical two-device online and phone/controller checks remain pending. Existing Phaser bundle warning remains. Portraits currently represent base characters until skin ownership is built.
 
 ## Next proposed step
-Typecheck and production build pass. Verify local and released menu in Brave, then design catalog previews and earning pace.
+Typecheck/build and series, first-round freeze/timing, peer-hash, KO/result ordering, stamina and Canvas/WebGL effects checks passed. Brave portrait and compact victory/defeat review shows no errors. KO title cleanup is explicitly tested before results to prevent background-tab tween overlap. Publish and verify live.

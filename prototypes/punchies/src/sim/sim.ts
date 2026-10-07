@@ -72,6 +72,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
 
 export function createSimState(opts: {
   timed: boolean;
+  showcase?: boolean;
   fighters: [FighterOptions, FighterOptions];
 }): SimState {
   const r = tune.ring;
@@ -81,7 +82,7 @@ export function createSimState(opts: {
   const f0 = createFighter(cx - half, cy, opts.fighters[0]);
   const f1 = createFighter(cx + half, cy, opts.fighters[1]);
   // Timed rounds open with a READY... GO! countdown (frozen, no input).
-  const fightStartTick = opts.timed ? Math.round(tune.match.introSec * TICK_RATE) : 0;
+  const fightStartTick = opts.timed ? Math.round((tune.match.introSec + (opts.showcase ? tune.view.fightPresentation.showcaseMs / 1000 : 0)) * TICK_RATE) : 0;
   const s: SimState = { tick: 0, fighters: [f0, f1], timed: opts.timed, hitstop: 0, fightStartTick, result: null };
   updateFacing(s);
   return s;
@@ -723,7 +724,8 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
   // READY... GO! countdown: nothing moves; the tick still advances (the netcode
   // keys inputs on it) and the round timer starts at GO.
   if (s.tick < s.fightStartTick) {
-    if (s.tick === 0) events.push({ kind: 'ready' });
+    const showcaseTicks = Math.max(0, s.fightStartTick - Math.round(tune.match.introSec * TICK_RATE));
+    if (s.tick === showcaseTicks) events.push({ kind: 'ready' });
     s.tick++;
     if (s.tick === s.fightStartTick) events.push({ kind: 'go' });
     return events;

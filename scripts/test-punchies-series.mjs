@@ -108,3 +108,35 @@ final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
+
+// First-match showcase runs before the ordinary round countdown, not combat.
+const showcase=createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{char:'bruno'}]});
+const showcaseTicks=Math.round(tune.view.fightPresentation.showcaseMs*TICK_RATE/1000);
+assert.equal(showcase.fightStartTick,intro+showcaseTicks);
+const initial=JSON.stringify(showcase.fighters);
+let readyAt=-1,goAt=-1;
+for(let i=0;i<showcase.fightStartTick;i++){
+ const events=step(showcase,[{...NEUTRAL_INPUT,mx:1,jab:true,dodge:true,guard:true},NEUTRAL_INPUT]);
+ if(events.some(e=>e.kind==='ready'))readyAt=i;
+ if(events.some(e=>e.kind==='go'))goAt=i+1;
+ assert.equal(JSON.stringify(showcase.fighters),initial,'showcase/countdown must freeze all combat resources and motion');
+}
+assert.equal(readyAt,showcaseTicks);assert.equal(goAt,showcase.fightStartTick);
+const {Rollback,hashState}=load(path.resolve(root,'../net/rollback.ts'));
+const peers=[0,1].map(i=>new Rollback(i,3,12,1,()=>{},()=>{},['mia','bruno'],{showcase:true}));
+assert.equal(hashState(peers[0].sim),hashState(peers[1].sim),'both peers use the same frozen intro timing');
+assert.ok(tune.view.fightPresentation.koHoldMs+tune.view.fightPresentation.fadeMs<=Math.min(tune.ko.dropMs,tune.ko.flyMs+tune.ko.sitMs)+tune.ko.resultDelayMs,'KO title finishes before result/round splash');
+console.log('First-round showcase timing, delayed ROUND/FIGHT, full combat freeze, online peer hashes and KO/result ordering passed');
+
+// A delayed tween must never linger behind the result panel.
+const stageExports={};
+const stageCode=ts.transpileModule(fs.readFileSync(path.resolve(root,'../scenes/FightStage.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+vm.runInNewContext(stageCode,{exports:stageExports,require:()=>({})});
+let clears=0,finished=false;
+const stageStub={ko:{finished:()=>finished},clearKoTitle:()=>clears++};
+assert.equal(stageExports.FightStage.prototype.koFinished.call(stageStub,{},0),false);
+assert.equal(clears,0);finished=true;
+assert.equal(stageExports.FightStage.prototype.koFinished.call(stageStub,{},2000),true);
+assert.equal(clears,1);
+assert.equal(stageStub.clearKoTitle,null);
+console.log('Completed KO removes presentation before results, including delayed background-tab tweens');

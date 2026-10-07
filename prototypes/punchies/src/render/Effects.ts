@@ -225,8 +225,7 @@ export class Effects {
           sfx.go();
           break;
         case 'ko':
-          this.banner('K.O.');
-          sfx.ko();
+          // Confirmed knockout presentation is started by FightStage.draw.
           break;
         case 'timeUp':
           this.banner(e.winner === null ? 'DRAW' : 'TIME');

@@ -9,12 +9,14 @@ import { addFullscreenButton } from '../ui/fullscreen';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
+import { MatchIntro, knockoutWords } from '../ui/fightPresentation';
+import { TICK_RATE } from '../sim/tune';
 import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
 import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
-import { unlockAudio } from '../audio/sfx';
+import { unlockAudio, sfx } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { ArenaArt } from '../render/arenaArt';
@@ -39,6 +41,10 @@ export class FightStage {
   private posts: (Phaser.GameObjects.Image | null)[];
   private persp: RingPerspective;
   private authoredRing: ArenaArt | null;
+  private clearKoTitle: (() => void) | null = null;
+  private koTitleUntil = 0;
+  private matchIntro: MatchIntro | null = null;
+  private introChecked = false;
   private roundScore: Phaser.GameObjects.Graphics | null = null;
 
   setSeries(series: SeriesState): void {
@@ -150,7 +156,9 @@ export class FightStage {
 
   // True once any KO animation has played out (the result screen waits).
   koFinished(s: SimState, time: number): boolean {
-    return this.ko.finished(s, time);
+    const finished=this.ko.finished(s,time);
+    if(finished){this.clearKoTitle?.();this.clearKoTitle=null;}
+    return finished;
   }
 
   // koAllowed: online passes false until the KO is confirmed, so a
@@ -159,6 +167,12 @@ export class FightStage {
   draw(s: SimState, time: number, koAllowed = true): void {
     if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
     this.lastDrawTick=s.tick;
+    const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
+    if(!this.introChecked){
+      this.introChecked=true;
+      if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char]);
+    }
+    this.matchIntro?.draw(s.tick*1000/TICK_RATE);
     // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
     const chars: [string, string] = [s.fighters[0].char, s.fighters[1].char];
     const looks = [lookFor(chars, 0), lookFor(chars, 1)];
@@ -171,7 +185,15 @@ export class FightStage {
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
+    const hadKo=this.ko.active;
     this.ko.sync(s, koAllowed, time);
+    if(!hadKo && this.ko.active){
+      this.clearKoTitle=knockoutWords(this.scene);
+      this.koTitleUntil=time+tune.view.fightPresentation.koHoldMs+tune.view.fightPresentation.fadeMs;
+      sfx.ko();
+    }
+    // Browser background throttling can advance the frame clock faster than tweens.
+    if(this.clearKoTitle && time>=this.koTitleUntil){this.clearKoTitle();this.clearKoTitle=null;}
     if (this.ko.active) {
       const loser = this.ko.loser;
       this.views[loser].clear();

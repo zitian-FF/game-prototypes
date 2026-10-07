@@ -11,6 +11,7 @@
     "fighterScale": 1.5,
     "cameraShakeScale": 0.5,
     "roundSplashMs": 900,
+    "fightPresentation": { "showcaseMs": 1800, "portraitSlideMs": 300, "impactMs": 160, "fadeMs": 180, "koWordGapMs": 250, "koHoldMs": 1200, "resultEnterMs": 220 },
     "arena": { "roundZoomMs": 900, "uiBottom": 59, "topGap": 0.03, "bottomGap": 0.05, "floorTopScale": 1, "floorBottomScale": 1, "floorTileWidth": 105, "floorTileDepth": 72, "floorOverscan": 1.25, "vanishingHeight": 5.5, "floorSourceVanishingHeight": 0.9, "ringSourceTopRatio": 0.97 },
     "perspective": 1,
     "topScale": 0.9,
