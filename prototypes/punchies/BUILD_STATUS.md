@@ -1,18 +1,18 @@
 ## Current milestone
-Approved character-selection presentation implemented and verified locally; preparing release.
+Camera/effects synchronisation fix verified locally; preparing release.
 
 ## What was implemented
-Large existing portraits facing the matchup centre, rounded blue/red panels, VS impact burst, bold names and nicknames, six segmented rounded stat bars, bottom portrait roster and staged confirmation. New gym background derived from the approved mockup as a separate raster. Selection changes slide the portrait/name/stat content in with a 260 ms Cubic.Out transition and roster lift. Reduced motion skips the interpolation.
+Corrected runtime effect adoption to listen for Phaser.Scenes.Events.ADDED_TO_SCENE instead of the nonexistent generic add event. Sparks, guard rings, damage numbers and hit labels now join the existing ring container and inherit its fitted scale, projection and camera movement. Full-screen overlays and HUD retain their existing separate rendering.
 
 ## Key technical decisions
-Phaser canvas UI in CharacterSelectView; scene still owns device inputs, selections and online ready state. Uniform 844x390 authored layout fits VIEW. Tapping selects; explicit confirmation advances the single-player steps. Stats remain live tune-derived values. Portrait crops are runtime frames and preserve source PNGs/default texture frame. Slide settings and metadata are in tune.json. New R2 backdrop is the only added archive entry; public bundle SHA256 98af4121b7a6f05a96855a84cd5c5aba080c64f2822dd6d583ed41006ffa9f9d verified. During upload, Remove all was incorrectly treated as clearing the completed queue and removed the previous object; the complete bundle was immediately restored and its public hash verified.
-Typecheck, build and diff checks pass. Desktop and phone composition inspected; phone single-player selection-confirm-opponent-confirm-fight handoff passed. Keyboard selection verified. Fresh boot and selection console contain no errors.
+One event-hook correction, with matching shutdown cleanup; no tuned values, art, simulation or network changes. Added scripts/test-punchies-effects-sync.mjs using the real Phaser DisplayList event contract to cover runtime depth adoption, shared opening/mid/end zoom transforms, screen-overlay exclusions, already-parented/destroyed objects and listener cleanup in Canvas/WebGL paths.
+Typecheck and production build passed. WebGL browser review uses the actual FightStage and Effects with repeated uppercut/counter events, opening/reset zoom and impact shake: effects remain in the world container, labels track the dummy, console clean.
 
 ## Open questions
 None.
 
 ## Known issues
-Real-device gamepad and two-phone online verification remain pending. The existing readiness protocol and device ownership were retained. Fresh-boot browser verification passed after asset packing completed.
+Two-phone online and physical controller checks remain pending; this change does not alter their inputs or simulation.
 
 ## Next proposed step
-Finish fresh-boot verification, merge the focused PR, verify the deployed screen and version.
+Canvas and WebGL actual FightStage/Effects browser reviews passed with clean consoles. Merge the focused PR and verify deployment.
