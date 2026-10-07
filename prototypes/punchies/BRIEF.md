@@ -325,3 +325,6 @@ Redraw the title equipment from its existing shapes and outlines with opaque sol
 
 ## Character selection presentation — 2026-10-07
 Implement the approved character-select-v1 mockup using the existing character portraits: large inward-facing matchup portraits, blue/red rounded panels, a central VS, bold names and nicknames, six rounded stat bars in two columns, and a bottom roster with prominent confirmation. Single-player has explicit Your Boxer, Opponent, Fight steps: tapping a roster card selects without confirming. Keep local-device ownership and online readiness/hidden opponent semantics. When selection changes, the incoming fighter card/panel slides in with an eased alpha transition; the focused roster card lifts and highlights. Respect reduced motion. Use a separately rendered quiet gym backdrop, never bake controls or character artwork into it. Fit the authored landscape composition uniformly on desktop and phone.
+
+## Camera-synchronised hit effects — 2026-10-07
+Runtime hit sparks, guard rings, damage numbers and fighter callouts must remain attached to the same arena transform as the fighters during round-opening zoom, perspective projection and impact shake. Keep full-screen flashes, HUD and controls separate. Cover Phaser's actual scene-added event contract and cleanup with a regression check.

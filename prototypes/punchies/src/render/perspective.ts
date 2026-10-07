@@ -65,8 +65,11 @@ export class RingPerspective {
   constructor(private scene: Phaser.Scene) {
     this.world = scene.add.container(0, 0).setDepth(5);
     // Runtime effects must follow the fitted world in both renderers.
-    scene.children.events.on('add', this.adopt, this);
-    scene.events.once('shutdown', () => scene.children.events.off('add', this.adopt, this));
+    // DisplayList emits ADDED_TO_SCENE, not a generic List "add" event.
+    // Listen before any runtime sparks/text spawn so they share the same
+    // container scale, projection and camera shake as the ring and fighters.
+    scene.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.adopt, this);
+    scene.events.once('shutdown', () => scene.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.adopt, this));
     const renderer = scene.game.renderer;
     if (!(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)) {
       return;
