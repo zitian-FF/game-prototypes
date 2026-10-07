@@ -1,5 +1,5 @@
 ## Current milestone
-Clean gym props redraw uploaded to R2, ready for deployment.
+Clean gym props redraw deployed as 071026r0071 via merged PR #234.
 
 ## What was implemented
 Redrew gym_props.png with existing shapes and outlined style, opaque solid colours and controlled material shading. Registration remains 1844x853 with transparent centre; title layout unchanged.
@@ -15,4 +15,4 @@ None.
 Canvas fallback uses authored floor. Real-device and two-phone online checks remain pending.
 
 ## Next proposed step
-Desktop title inspected with clean material fills and no browser console errors. Merge release notes to trigger deployment and verify live redraw.
+Desktop and phone title compositions inspected with no browser console errors. itch.io deployment succeeded. Live 071026r0071 title redraw visually verified in Brave with no console errors; proof saved in outputs/title-props-v2/title-live.jpg.
