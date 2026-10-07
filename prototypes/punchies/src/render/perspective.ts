@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
+import { VIEW } from './pixelRatio';
 
 // Ring perspective: a presentation-only tilt. The sim arena stays a flat
 // square; everything that belongs to the ring (floor, ropes, boxers, hit
@@ -59,17 +60,22 @@ export class RingPerspective {
   private applied = false;
 
   constructor(private scene: Phaser.Scene) {
+    this.world = scene.add.container(0, 0).setDepth(5);
+    // Runtime effects must follow the fitted world in both renderers.
+    scene.children.events.on('add', this.adopt, this);
+    scene.events.once('shutdown', () => scene.children.events.off('add', this.adopt, this));
     const renderer = scene.game.renderer;
     if (!(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)) {
-      this.world = null; // Canvas renderer: no shaders, the ring simply stays flat.
       return;
     }
     if (!renderer.pipelines.getPostPipeline(KEY)) renderer.pipelines.addPostPipeline(KEY, KeystonePipeline);
-    this.world = scene.add.container(0, 0).setDepth(5);
     // Effects spawn at run time (hit sparks, rings, popups); the ones at the
     // world depths join the container so they tilt with the ring.
-    scene.children.events.on('add', this.adopt, this);
-    scene.events.once('shutdown', () => scene.children.events.off('add', this.adopt, this));
+  }
+
+  private artworkBounds: {left:number;top:number;width:number;height:number;aspect:number} | null = null;
+  fitArtwork(bounds: {left:number;top:number;width:number;height:number;aspect:number}): void {
+    this.artworkBounds = bounds;
   }
 
   // Move already-built objects into the ring world.
@@ -89,7 +95,22 @@ export class RingPerspective {
   update(): void {
     const world = this.world;
     if (!world) return;
-    const on = tune.view.perspective >= 0.5;
+    if (this.artworkBounds) {
+      const b=this.artworkBounds;
+      // Reserve the HUD strip, then fit the registered master below it.
+      // Scale the ring, fighters and effects together so collision positions
+      // remain aligned. The authored perspective needs no second keystone.
+      const top=VIEW.top+64;
+      const height=VIEW.bottom-top-8;
+      const scale=Math.min(height/b.height,(VIEW.width-32)/(b.width*b.aspect));
+      world.setScale(scale*b.aspect,scale);
+      world.setPosition(VIEW.cx-(b.left+b.width/2)*world.scaleX,
+        top+height/2-(b.top+b.height/2)*world.scaleY);
+      if (this.applied) { world.resetPostPipeline(); this.applied=false; }
+      world.sort('depth');
+      return;
+    }
+    const on = tune.view.perspective >= 0.5 && this.scene.game.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
     if (on !== this.applied) {
       if (on) world.setPostPipeline(KEY);
       else world.resetPostPipeline();

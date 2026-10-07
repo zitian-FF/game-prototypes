@@ -1,24 +1,23 @@
 ## Current milestone
-Approved title screen and shared layered gym/ring ready for deployment; R2 upload hash-verified on 7 October 2026.
+Restore full-window itch launch and match gameplay ring to the approved title master.
 
 ## What was implemented
-- Primary Single Player button, Versus and Practice groups, Online Host/Join popup, Settings retaining local input setup, dedicated Credits panel; demo notice removed. Debug controls, SYNC TUNE and tune label retain the latest main branch debug-unlock gate; version stamp and fullscreen remain.
-- Gentle logo pulse, stamped loading logo with continuously wrapping background pattern, snapshot crossfades on screen changes. Motion respects prefers-reduced-motion. Feel values have tune entries and metadata.
-- Ring-free gym plus five registered alpha ring layers. Gameplay reassembles native rope and round-pad crops from the same master to fit its fixed camera. Rear rope stays behind boxers; near/side ropes sit in front. Character corner colours retained. Simulation, netcode, perspective shader and existing gameplay tuning untouched.
-- New R2 bundle adds ten loose assets and leaves all prior entries byte-for-byte unchanged. Five-layer recomposition is pixel-identical to the isolated master. Art and zip remain outside Git under workspace outputs/title-screen-v1.
+- Restored itch.io Click to launch in fullscreen and Landscape settings; persisted values checked after reload and Run game checked in Brave.
+- Gameplay now uses the same five full registered alpha layers as the title, including red/blue post bases, apron and steps. Removed the gameplay-only rope/cap reconstruction.
+- Fits the whole ring, fighters and effects below the HUD, restoring the artwork aspect without a second perspective warp. Simulation, combat tuning and netcode unchanged.
 
 ## Key technical decisions
-- Runtime Phaser UI over separate artwork; no baked text/buttons in background.
-- Crossfade uses an outgoing still over the live destination with normal scene shutdown, avoiding parallel simulation/network loops. Snapshot textures removed at transition shutdown.
-- Typecheck/build and existing limb/immortal-training regressions passed. Brave inspected desktop/phone title, Credits, Settings, Single Player navigation and training arena; no console errors. Loading preview uses real ArtBootScene with a delayed local test response; completion clears all logo/background layers.
-- No relevant newer shared-package change applies to Punchies.
+- Presentation transform maps the fixed simulation floor to the authored floor, keeping rendered fighters and hit effects aligned.
+- HUD and controls stay at their existing screen positions. Far ropes remain behind fighters, near ropes/apron in front.
+- The complete ring also uses a world container under Canvas renderer; procedural fallback retains the existing WebGL perspective behavior.
+- Typecheck and build passed. Brave phone-layout training screenshot inspected; no console errors. R2 art unchanged.
+- No relevant newer shared-package change applies.
 
 ## Open questions
-- None blocking this update.
+None blocking this fix.
 
 ## Known issues
-- Presentation deployment pending merge; latest main tutorial, bot spacing and debug gating preserved.
-- Real-phone/two-phone online checks pending. Settings retains its existing input-picker panel. Character-select redesign, combat cues, KO brush lettering/bells and arena impact shake are separate approved follow-ups recorded in BRIEF.md.
+Real-phone/two-phone online checks pending. Character-select and combat/KO presentation follow-ups remain separate.
 
 ## Next proposed step
-Merge the title-presentation branch, verify deployment in Brave, then review character-select direction. Uploaded bundle SHA256: 161bf9bd30387ab295f70d1b74d05be90d7925570cba11e99dfc1c3bbc701e22.
+Merge and verify the published ring fix, then resume the remaining art direction work.

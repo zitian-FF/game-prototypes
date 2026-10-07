@@ -204,7 +204,7 @@ export class FightStage {
     const w = r.right - r.left;
     const h = r.bottom - r.top;
     if (this.authoredRing) {
-      this.authoredRing.fitFloor(r.left,r.top,r.right,r.bottom,c0,c1);
+      this.persp.fitArtwork(this.authoredRing.fitFloor(r.left,r.top,r.right,r.bottom));
       this.floor?.setVisible(false); this.apron?.setVisible(false);
       [...this.ropes,...this.posts,...this.turnbuckles].forEach(o=>o?.setVisible(false));
       return;
