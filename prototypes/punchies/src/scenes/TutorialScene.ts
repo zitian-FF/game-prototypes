@@ -128,7 +128,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'STAMINA',
-    text: () => 'The blue bar is stamina. Punches, dodges and guarding spend it. At 0, emergency recovery fills the red bar at walking speed. All hits are headshots; punches are free but deal half damage. Guard and dodge are disabled until full. Punch until it is below half.',
+    text: () => 'The blue bar is stamina. Punches, dodges and guarding spend it. At 0, emergency recovery fills the red bar at standing-still speed. All hits are headshots; punches are free but deal half damage. Guard and dodge are disabled until full. Punch until it is below half.',
     adds: ['stamina'],
     dummy: 'idle',
     goal: 1,
