@@ -45,19 +45,11 @@ export class FightStage {
   private koTitleUntil = 0;
   private matchIntro: MatchIntro | null = null;
   private introChecked = false;
-  private roundScore: Phaser.GameObjects.Graphics | null = null;
+
 
   setSeries(series: SeriesState): void {
     this.fx.roundNumber = series.roundNumber;
-    const g = this.roundScore ??= this.scene.add.graphics().setDepth(95);
-    g.clear();
-    for (let side = 0; side < 2; side++) {
-      for (let i = 0; i < (series.bestOf === 3 ? 2 : 1); i++) {
-        const x = VIEW.cx + (side === 0 ? -27 - i * 14 : 27 + i * 14);
-        g.fillStyle(i < series.wins[side] ? 0xffd458 : 0x253650).fillCircle(x, VIEW.top + 34, 4);
-        g.lineStyle(1, 0x758caf).strokeCircle(x, VIEW.top + 34, 4);
-      }
-    }
+    this.hud.setSeries(series);
   }
 
   constructor(
@@ -203,11 +195,8 @@ export class FightStage {
       this.views[0].draw(s.fighters[0], time, show);
       this.views[1].draw(s.fighters[1], time, show);
     }
-    // Star / fatigue row for anyone not using the touch buttons: the local
-    // player on keyboard or controller, or both players in Local VS unless
-    // that player is on touch.
-    const touch = this.touchEnabled && devices.lastDevice === 'touch';
-    this.hud.resourceRow = this.localIdx === -1 ? this.localVsRows : touch ? [] : [this.localIdx];
+    // Both players show uppercut charge sockets beside the stun meters.
+    this.hud.resourceRow = [0, 1];
     this.hud.draw(s);
     this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
   }

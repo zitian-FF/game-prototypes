@@ -65,7 +65,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   panel.lineStyle(1,0xdceafa,0.24).lineBetween(VIEW.cx-171,VIEW.cy-74,VIEW.cx+171,VIEW.cy-74);
   const color=headline==='DEFEAT'?'#ff827a':headline==='DRAW'?'#dbe9fa':'#ffe08b';
   const heading=scene.add.text(VIEW.cx,VIEW.cy-43,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:'40px',
-    fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,resolution:PIXEL_RATIO})
+    fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
   if(score)scene.add.text(VIEW.cx,VIEW.cy-2,score.join('  —  '),{fontFamily:'Arial',fontSize:'18px',fontStyle:'bold',
     color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
