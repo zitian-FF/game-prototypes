@@ -1,5 +1,6 @@
 import { tune } from './tune';
 import { punchCfg } from './character';
+import { normalHurtRadius } from './geometry';
 import { fatigueLevel, phaseOf } from './sim';
 import { EasyAI } from './ai';
 import { NEUTRAL_INPUT, type FrameInput, type PunchType, type SimState } from './types';
@@ -17,8 +18,8 @@ import { NEUTRAL_INPUT, type FrameInput, type PunchType, type SimState } from '.
 // Per-level numbers live in tune.ai.medium / tune.ai.hard.
 
 // Centre distance at which a punch's fist just touches the foe's hurt circle.
-function connect(c: { reach: number; hitRadius: number }): number {
-  return c.reach + c.hitRadius + tune.body.hurtRadius;
+function connect(c: { reach: number; hitRadius: number }, defender: { char: string }): number {
+  return c.reach + c.hitRadius + normalHurtRadius(defender);
 }
 
 export type BotLevel = 'easy' | 'medium' | 'hard';
@@ -128,7 +129,7 @@ export class ScriptedBot implements Bot {
     if (!busy && vp && !vp.recovering && !vp.active) {
       // Frames until that punch connects, corrected for how stale the view is.
       const remaining = vp.startup + vp.sourEarly - vp.frame - delay;
-      const foeMax = connect({ reach: vp.reach, hitRadius: tune.punches[vp.type].hitRadius }) - 4;
+      const foeMax = connect({ reach: vp.reach, hitRadius: punchCfg(foe, vp.type).hitRadius }, me) - 4;
       if (dist < foeMax + 14) {
         if (vp.type === 'uppercut') {
           // Cannot be blocked: dodge it (a Perfect Guard also stops it).
@@ -153,7 +154,7 @@ export class ScriptedBot implements Bot {
           this.guardHold === 0 &&
           vp.type !== 'jab' &&
           remaining > jab.startup + 1 &&
-          dist <= connect(jab) + 3 &&
+          dist <= connect(jab, foe) + 3 &&
           !tired &&
           this.rng() < L.counterChance
         ) {
@@ -165,7 +166,7 @@ export class ScriptedBot implements Bot {
     if (this.guardHold > 0 && !busy) {
       // Dropping guard costs a long vulnerable penalty, so keep it up while
       // the punch it was raised for is still in the air.
-      const incoming = vp !== null && !vp.recovering && dist < connect({ reach: vp.reach, hitRadius: tune.punches[vp.type].hitRadius }) + 8;
+      const incoming = vp !== null && !vp.recovering && dist < connect({ reach: vp.reach, hitRadius: punchCfg(foe, vp.type).hitRadius }, me) + 8;
       if (!(incoming && this.guardHold <= 2)) this.guardHold--;
       input.guard = true;
       return input;
@@ -176,7 +177,7 @@ export class ScriptedBot implements Bot {
       const open = view.open && !view.guarding;
       const want = open ? this.rng() < L.punishChance : this.cooldown === 0 && this.rng() < L.attackChance * (pressing ? L.pressureBoost : conserve);
       if (want) {
-        const pick = this.pickPunch(me, dist, open);
+        const pick = this.pickPunch(me, foe, dist, open);
         // Never spend into the reserve on a plain attack; a punish may dip
         // into it, but not to nothing.
         const left = pick ? me.stamina - punchCfg(me, pick).staminaCost : 0;
@@ -188,7 +189,7 @@ export class ScriptedBot implements Bot {
     }
 
     // --- movement: hold the sweet distance, strafe, stay out of corners ---
-    const ideal = this.idealDistance(me);
+    const ideal = this.idealDistance(me, foe);
     let mx = 0;
     let my = 0;
     if (tired) {
@@ -300,23 +301,23 @@ export class ScriptedBot implements Bot {
 
   // Distance that lands the jab sweet-ish while staying near the edge of
   // the foe's reach.
-  private idealDistance(me: SimState['fighters'][number]): number {
-    return connect(punchCfg(me, 'jab')) - 8;
+  private idealDistance(me: SimState['fighters'][number], foe: SimState['fighters'][number]): number {
+    return connect(punchCfg(me, 'jab'), foe) - 8;
   }
 
   // The best punch for this range, lowest fatigue first. Uppercut when
   // charged. `open` = the foe is exposed: prefer the heaviest hit.
-  private pickPunch(me: SimState['fighters'][number], dist: number, open: boolean): PunchType | null {
+  private pickPunch(me: SimState['fighters'][number], foe: SimState['fighters'][number], dist: number, open: boolean): PunchType | null {
     if (me.stars >= tune.stars.max) {
       const up = punchCfg(me, 'uppercut');
-      if (dist <= connect(up)) return 'uppercut';
+      if (dist <= connect(up, foe)) return 'uppercut';
     }
     let best: PunchType | null = null;
     let bestScore = 0;
     for (const t of ATTACKS) {
       const c = punchCfg(me, t);
-      const hi = connect(c) + (t === 'hook' ? 0 : 5);
-      const lo = connect(c) - (t === 'hook' ? 24 : 14);
+      const hi = connect(c, foe) + (t === 'hook' ? 0 : 5);
+      const lo = connect(c, foe) - (t === 'hook' ? 24 : 14);
       if (dist > hi || dist < lo - 14) continue;
       const inSweet = dist >= lo;
       const tired = Math.pow(0.45, fatigueLevel(me, t));

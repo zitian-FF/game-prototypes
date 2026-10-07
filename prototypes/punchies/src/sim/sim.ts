@@ -1,4 +1,5 @@
 import { tune, TICK_RATE } from './tune';
+import { fighterScale, normalHurtRadius, coreRadius, separation } from './geometry';
 import type {
   BufferedAction,
   Fighter,
@@ -137,7 +138,7 @@ export function stanceOf(f: Fighter): Stance {
 }
 
 export function hurtRadius(f: Fighter): number {
-  return isVulnerable(f) ? tune.body.vulnerableHurtRadius : tune.body.hurtRadius;
+  return isVulnerable(f) ? tune.body.vulnerableHurtRadius * fighterScale(f) : normalHurtRadius(f);
 }
 
 export function fatigueLevel(f: Fighter, type: PunchType): number {
@@ -369,7 +370,7 @@ function separateAndClamp(s: SimState): void {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  const min = tune.movement.minSeparation;
+  const min = separation(a, b);
   if (dist < min) {
     const nx = dist > 0.0001 ? dx / dist : 1;
     const ny = dist > 0.0001 ? dy / dist : 0;
@@ -381,8 +382,8 @@ function separateAndClamp(s: SimState): void {
     b.y += ny * push * (1 - aShare);
   }
   const r = tune.ring;
-  const pad = tune.body.hurtRadius;
   for (const f of s.fighters) {
+    const pad = normalHurtRadius(f);
     f.x = Math.max(r.left + pad, Math.min(r.right - pad, f.x));
     f.y = Math.max(r.top + pad, Math.min(r.bottom - pad, f.y));
   }
@@ -430,7 +431,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     const phase = phaseOf(p);
     if (phase !== 'sweet' && phase !== 'sour') continue;
     const pt = punchPoint(att, p);
-    const hitR = tune.punches[p.type].hitRadius;
+    const hitR = punchCfg(att, p.type).hitRadius;
     const dx = def.x - pt.x;
     const dy = def.y - pt.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -443,7 +444,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     // Touching the outer ring doesn't stop the fist: it keeps travelling and
     // the hit resolves once it reaches the core, or at full extension, or on
     // the last active frame. The resolving frame decides sweet vs sour.
-    const touchingCore = dist <= tune.body.coreRadius + hitR;
+    const touchingCore = dist <= coreRadius(def) + hitR;
     const fullReach = p.frame >= p.startup + p.sourEarly;
     if (!touchingCore && !fullReach) continue;
     contacts.push({

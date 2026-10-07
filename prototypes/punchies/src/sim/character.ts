@@ -1,4 +1,5 @@
 import { tune } from './tune';
+import { fighterScale } from './geometry';
 import type { Fighter, PunchType } from './types';
 
 // Characters: per-fighter overrides on top of the shared tune
@@ -78,8 +79,8 @@ export function punchCfg(f: Fighter | string, type: PunchType): PunchCfg {
     sour: base.sour,
     recovery: Math.max(1, base.recovery + o.recovery),
     whiffRecovery: base.whiffRecovery,
-    reach: base.reach * o.reach,
-    hitRadius: base.hitRadius,
+    reach: base.reach * o.reach * fighterScale(f),
+    hitRadius: base.hitRadius * fighterScale(f),
     damage: (base.damage ?? 1) * o.damage,
     staminaCost: base.staminaCost * o.staminaCost,
     staminaDamage: base.staminaDamage,
