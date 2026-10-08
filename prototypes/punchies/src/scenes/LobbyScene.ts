@@ -25,6 +25,7 @@ export interface MatchData {
   restoreTune?: string;
   // Character ids [host, guest] (see sim/character.ts).
   chars: [string, string];
+  skins?:[string,string];
 }
 
 export class LobbyScene extends Phaser.Scene {

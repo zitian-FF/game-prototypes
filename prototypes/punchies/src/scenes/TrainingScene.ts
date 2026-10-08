@@ -1,5 +1,7 @@
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
+import { availableFighters,equippedSkin } from '../shop/roster';
+import { loadShopDraft } from '../shop/draft';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage } from './FightStage';
@@ -35,7 +37,7 @@ export class TrainingScene extends Phaser.Scene {
   create(): void {
     applyCameraPixelRatio(this);
     this.built = false;
-    this.char = loadCharPrefs().p1;
+    const preferred=loadCharPrefs().p1;this.char=availableFighters(loadShopDraft()).includes(preferred)?preferred:'marco';
     whenGroupsReady(this, trainingGroups(this.char), () => this.build());
   }
 
@@ -45,7 +47,7 @@ export class TrainingScene extends Phaser.Scene {
     this.built = true;
     this.acc = 0;
     this.newSim();
-    this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0);
+    this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0,true,[equippedSkin(loadShopDraft(),this.char,loadCharPrefs().skins.p1?.[this.char]),'default']);
     this.charLabel = this.stage.button(VIEW.left + 105, VIEW.top + 110, 110, '', () => this.cycleChar());
     this.stanceLabel = this.stage.button(VIEW.left + 105, VIEW.top + 140, 110, '', () => this.cycleStance());
     this.stage.button(VIEW.left + 105, VIEW.top + 170, 110, 'RESET', () => this.newSim());
@@ -66,8 +68,9 @@ export class TrainingScene extends Phaser.Scene {
 
   // Swap the player's boxer (fresh sim, like RESET). Remembered as the P1 pick.
   private cycleChar(): void {
-    this.char = CHARACTER_IDS[(CHARACTER_IDS.indexOf(this.char) + 1) % CHARACTER_IDS.length];
+    const ids=availableFighters(loadShopDraft());this.char = ids[(ids.indexOf(this.char) + 1) % ids.length];
     saveCharPrefs({ p1: this.char });
+    this.stage.setSkins([equippedSkin(loadShopDraft(),this.char,loadCharPrefs().skins.p1?.[this.char]),'default']);
     prefetchGroups(trainingGroups(this.char)); // the boxer's art pops in once it arrives
     this.charLabel.setText(`YOU: ${charName(this.char)}`);
     this.newSim();

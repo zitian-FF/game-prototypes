@@ -42,6 +42,7 @@ function ellipse(c: Pt, dx: number, dy: number, a: number, b: number): Pt[] {
 }
 
 export class KoAnim {
+  skins:[string,string]=['default','default'];
   private g: Phaser.GameObjects.Graphics;
   private result: MatchResult | null = null;
   private start = 0;
@@ -141,6 +142,7 @@ export class KoAnim {
     const lf: Fighter = { ...f, x: p.x, y: p.y, fx, fy, punch: null, guarding: false, exhausted: false, stunTimer: 0, dodge: null, lastBlow: null, framesSinceHit: 99 };
     const ok = this.puppet.draw({
       f: lf,
+      skin:this.skins[this.loser],
       now,
       k,
       alt: look.color !== mainLook(f.char).color,

@@ -3,8 +3,8 @@
   "skinPullCost": 5,
   "adRewardTokens": 1,
   "dailyAdLimit": 5,
-  "welcomeCost": 1,
-  "welcomeGiftTokens": 1,
+  "welcomeCost": 0,
+  "welcomeGiftTokens": 0,
   "revealMs": 650,
   "dayTimezone": "UTC"
 }

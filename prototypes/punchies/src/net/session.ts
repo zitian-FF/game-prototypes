@@ -15,8 +15,8 @@ export type CtlMessage =
   | { k: 'full' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
-  | { k: 'start'; round: number; delay: number; tune: string; chars: [string, string] }
-  | { k: 'pick'; char: string | null }
+  | { k: 'start'; round: number; delay: number; tune: string; chars: [string, string];skins?:[string,string] }
+  | { k: 'pick'; char: string | null;hover?:string;skin?:string;available?:string[] }
   | { k: 'rematch'; round: number }
   | { k: 'reselect'; round: number }
   | { k: 'forfeit'; round: number }

@@ -10,10 +10,11 @@ import type { Fighter, PunchType } from './types';
 // fatigue rules) stays global so every character reads the same.
 // Deterministic: the sim only reads tune + the fighter's character id.
 
-export const CHARACTER_IDS = ['marco', 'mia', 'bruno'] as const;
+export const CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee'] as const;
 export type CharId = (typeof CHARACTER_IDS)[number];
 
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
+  tee: { name:'G.P. Tee',nick:'Tee',style:'Explosive power and speed; fragile and low endurance' },
   marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder with a heavy Cross' },
   mia: { name: 'Mia Tanaka', nick: 'Flicker', style: 'Fast hands and feet, shorter reach' },
   bruno: { name: 'Bruno Kowalski', nick: 'Brick', style: 'Tough and heavy-handed, slow' },
@@ -21,6 +22,7 @@ export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style:
 
 // Short display name (first name, upper case).
 export function charName(id: string): string {
+  if(id==='tee')return 'G.P. TEE';
   return CHARACTER_INFO[isCharId(id) ? id : 'marco'].name.split(' ')[0].toUpperCase();
 }
 

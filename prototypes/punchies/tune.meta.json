@@ -2847,5 +2847,397 @@
     "min": 1000,
     "max": 60000,
     "step": 100
+  },
+  "characters.tee.hp": {
+    "cat": "Characters",
+    "desc": "G.P. Tee: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tee.stamina": {
+    "cat": "Characters",
+    "desc": "G.P. Tee: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tee.regen": {
+    "cat": "Characters",
+    "desc": "G.P. Tee: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tee.stun": {
+    "cat": "Characters",
+    "desc": "G.P. Tee: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tee.speed": {
+    "cat": "Characters",
+    "desc": "G.P. Tee: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tee.jab.damage": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.jab.push": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tee.jab.reach": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tee.jab.startup": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.jab.recovery": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "G.P. Tee jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.cross.damage": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.cross.push": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tee.cross.reach": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tee.cross.startup": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.cross.recovery": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "G.P. Tee cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.hook.damage": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.hook.push": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tee.hook.reach": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tee.hook.startup": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.hook.recovery": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "G.P. Tee hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tee.uppercut.push": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tee.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tee.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tee.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "G.P. Tee uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "view.puppet.teeTailSwayMs": {
+    "cat": "View",
+    "desc": "Twin ponytail sway period in milliseconds.",
+    "min": 100,
+    "max": 2000,
+    "step": 10
+  },
+  "view.puppet.teeTailSway": {
+    "cat": "View",
+    "desc": "Twin ponytail movement sway angle in radians.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.teeTailSpread": {
+    "cat": "View",
+    "desc": "Twin ponytail root lateral spacing.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.puppet.teeTailScale": {
+    "cat": "View",
+    "desc": "Twin ponytail size relative to head scale.",
+    "min": 0.2,
+    "max": 2,
+    "step": 0.05
+  },
+  "view.puppet.teeTailIdleSway": {
+    "cat": "View",
+    "desc": "Idle tail sway angle.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.teeTailHitSway": {
+    "cat": "View",
+    "desc": "Tail swing on hit.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.teeTailRestAngle": {
+    "cat": "View",
+    "desc": "Twin tail fan angle.",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  "view.puppet.teeTailBack": {
+    "cat": "View",
+    "desc": "Tail attachment offset behind the head.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.puppet.teeTailWalkCoupling": {
+    "cat": "View",
+    "desc": "Tail sway coupling to the stride.",
+    "min": 0,
+    "max": 2,
+    "step": 0.05
+  },
+  "view.puppet.teeTailPhase": {
+    "cat": "View",
+    "desc": "Offset between the two tail sway phases.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "view.menu.rewardReveal.fadeMs": {
+    "cat": "View",
+    "desc": "Shop reward reveal fadeMs",
+    "min": 0,
+    "max": 8000,
+    "step": 10
+  },
+  "view.menu.rewardReveal.entryMs": {
+    "cat": "View",
+    "desc": "Shop reward reveal entryMs",
+    "min": 0,
+    "max": 8000,
+    "step": 10
+  },
+  "view.menu.rewardReveal.portraitHoldMs": {
+    "cat": "View",
+    "desc": "Shop reward reveal portraitHoldMs",
+    "min": 0,
+    "max": 8000,
+    "step": 10
+  },
+  "view.menu.rewardReveal.nameFadeMs": {
+    "cat": "View",
+    "desc": "Shop reward reveal nameFadeMs",
+    "min": 0,
+    "max": 8000,
+    "step": 10
+  },
+  "view.menu.rewardReveal.ackDelayMs": {
+    "cat": "View",
+    "desc": "Shop reward reveal ackDelayMs",
+    "min": 0,
+    "max": 8000,
+    "step": 10
+  },
+  "view.menu.rewardReveal.darkenAlpha": {
+    "cat": "View",
+    "desc": "Shop reward reveal darkenAlpha",
+    "min": 0.1,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "view.menu.rewardReveal.portraitHeight": {
+    "cat": "View",
+    "desc": "Shop reward reveal portraitHeight",
+    "min": 0.1,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "view.menu.rewardReveal.entryScale": {
+    "cat": "View",
+    "desc": "Shop reward reveal entryScale",
+    "min": 0.1,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "view.menu.rewardReveal.buttonEntryScale": {
+    "cat": "View",
+    "desc": "Shop reward reveal buttonEntryScale",
+    "min": 0.1,
+    "max": 1.5,
+    "step": 0.01
   }
 }

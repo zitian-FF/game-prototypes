@@ -118,7 +118,7 @@ export class MatchScene extends Phaser.Scene {
       data.localIdx === 0 ? [`YOU (host) · ${nm(0)}`, `OPPONENT · ${nm(1)}`] : [`OPPONENT · ${nm(0)}`, `YOU · ${nm(1)}`];
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
-    this.stage = new FightStage(this, names, data.localIdx);
+    this.stage = new FightStage(this, names, data.localIdx,true,data.skins);
     this.stage.setSeries(this.series);
 
     this.events.on('menuReturn',()=>this.leave());
