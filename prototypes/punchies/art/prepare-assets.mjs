@@ -4,9 +4,20 @@
 // This writes small WebP files to assets-src/loose/part_<char>_<part>.webp,
 // and slices Mia's ponytail off her head master (it sways on its own).
 // Nothing here is committed: the zip, the parts and the output stay out of git.
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import { fileURLToPath } from 'node:url';
+
+function applyTorsoOverrides(assetsSrcDir) {
+  const dir = fileURLToPath(new URL('./torso-overrides/', import.meta.url));
+  const loose = path.join(assetsSrcDir, 'loose');
+  mkdirSync(loose, { recursive: true });
+  for (const char of ['marco', 'mia', 'bruno', 'tee']) {
+    const name = `part_${char}_torso.webp`;
+    copyFileSync(path.join(dir, name), path.join(loose, name));
+  }
+}
 
 // Output size per part type, in source pixels (a boxer is about 40 logical px
 // across and renders at up to 3x, so these keep a safe margin).
@@ -36,7 +47,8 @@ async function save(img, out, scale) {
 export default async function prepare({ assetsSrcDir }) {
   const partsDir = path.join(assetsSrcDir, 'parts');
   if (!existsSync(partsDir)) {
-    console.log('prepare-assets: no parts/ folder, skipping boxer parts');
+    applyTorsoOverrides(assetsSrcDir);
+    console.log('prepare-assets: applied torso overrides without parts masters');
     return;
   }
   const looseDir = path.join(assetsSrcDir, 'loose');
@@ -73,5 +85,6 @@ export default async function prepare({ assetsSrcDir }) {
       count++;
     }
   }
+  applyTorsoOverrides(assetsSrcDir);
   console.log(`prepare-assets: wrote ${count} boxer part(s) to ${path.relative(process.cwd(), looseDir)}`);
 }
