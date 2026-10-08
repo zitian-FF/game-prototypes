@@ -5,7 +5,7 @@ style mini game with its own small rule set. It is a separate, self-contained
 prototype: it does not import the main game's `src/sim`, and nothing under
 `prototypes/punchies/` is changed by it.
 
-Status: DRAFT, waiting for user approval (2026-10-08).
+Status: DRAFT, open questions answered 2026-10-08, waiting for explicit approval.
 
 ## Goal
 A phone player can understand and enjoy the game in about 30 seconds with
@@ -16,9 +16,12 @@ total; real network limits to be checked later).
 ## Core loop
 - Portrait, phone first. The player boxer (Marco) stands fixed at the bottom
   centre, facing up. 3 HP.
-- Enemies spawn off the top and walk down the lane toward the player, one at a
-  time (spawn gap 1.5 to 2.0 s, `tune.json`). Enemies use the Bruno or dummy
-  art set, rotated to face down toward the player.
+- Enemies spawn off the top on a fixed timer (gap 1.5 to 2.0 s, `tune.json`)
+  and walk down the lane toward the player. They may overlap on screen: only
+  the front-most (closest) enemy can be hit or attacks the player, the others
+  queue behind it. Enemies use the Bruno art set, rotated to face down toward
+  the player. `guard` is the enemy wind-up pose, `hit_light` is the player
+  taking a punch, `ko` is the knocked off enemy.
 - Only two on-screen buttons: JAB and CROSS (bottom of the screen, thumb
   reachable). Keyboard keys are a bonus (J jab, K cross), still through the
   intent layer.
@@ -52,7 +55,7 @@ the same formula the main sim uses: edge of band = punch reach + target radius
 | Punch | Sour (too close) | Head band | Body band |
 |---|---|---|---|
 | Jab | inside ~44 (min separation) | up to 87 | 87 to 105 |
-| Cross | up to 105 (cross cannot get sweet while the jab still can) | 105 to 109.5 | 109.5 to 127.5 |
+| Cross | up to 105 (cross cannot get sweet while the jab still can) | 105 to 117 (widened by the user, 2026-10-08) | 117 to 127.5 |
 
 These are starting values in `tune.json`, tunable in the debug panel. The
 numbers are copied, not linked, so later main-game balance changes do not
@@ -129,22 +132,12 @@ multiple levels, powerups, guard or dodge, hooks and uppercuts, progression,
 retry flow, analytics, ad network SDK wiring, single file HTML inlining
 (later), deployment.
 
-## Open questions for the user
-1. **Overlap.** "One at a time" with a 1.5 to 2 s gap: should the next enemy
-   spawn only after the current one has left (my proposal, about 8 to 10
-   enemies in a run), or on a fixed timer so two can be on screen at once?
-2. **Cross head band.** With the main game's current core radius (10) the
-   cross head band is only 4.5 px wide (105 to 109.5), so most far cross hits
-   score 1. Keep the derived numbers, or widen it (for example 105 to 117, the
-   old main-game width scaled)?
-3. **Art source.** Resolved: sprite art, trimmed from the existing
-   `punchies_assets.zip` at build time (no new upload).
-5. **mp-console slot.** "Replace mp-console" is taken to mean the playable
-   deploys to mp-console's itch.io project. Should the old
-   `deploy-mp-console-itch.yml` be retired (so it stops overwriting the
-   playable) and the hub's mp-console link removed or relabelled? That deletes
-   the live mp-console build there, so it is a separate, explicitly approved
-   step.
-4. **Enemy set.** Bruno or the dummy as the enemy? And is the `guard` animation
-   used for the enemy's wind-up pose and `hit_light` for the player taking a
-   punch?
+## Decisions (2026-10-08)
+1. mp-console slot: REPLACE. The playable deploys to mp-console's itch.io
+   project. At deploy time (a separate later task) the old
+   `deploy-mp-console-itch.yml` is retired and the hub's mp-console link is
+   removed or relabelled. Not done in this branch.
+2. Enemies can overlap on screen; front-most is the target.
+3. Cross head band widened to 105 to 117.
+4. Enemy is Bruno. Poses as listed above.
+5. Art: sprites, trimmed from the existing `punchies_assets.zip`.

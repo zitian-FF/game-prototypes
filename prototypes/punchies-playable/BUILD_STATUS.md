@@ -9,7 +9,7 @@ Step 1: BRIEF.md drafted, waiting for user approval. No game code yet.
 - Own rule set and tune.json; main game sim is not imported.
 
 ## Open questions
-- Enemy overlap or strictly one at a time, cross head band width, art source (trim existing zip or new zip), enemy set (Bruno or dummy). See BRIEF.md "Open questions for the user".
+- None blocking. Waiting for explicit brief approval.
 
 ## Known issues
 - None yet. Nothing built or verified.
