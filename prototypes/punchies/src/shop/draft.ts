@@ -15,7 +15,7 @@ export const SHOP_ITEMS:ShopItem[]=[
   {id:'skin-bruno-unique',name:'BRUNO · OLD CHAMP',kind:'skins',boxer:'bruno',accent:0x69e7bb,skinType:'unique',portraitKey:'portrait_bruno_old_champ',rigGroup:'bruno_old_champ',description:'Same Bruno stats. Unique portrait and complete rig sprite set pending.'},
 ];
 SHOP_ITEMS.forEach(item=>{if(item.kind==='skins'&&!item.skinType)item.skinType='palette';});
-export interface ShopDraftState {version:1; tokens:number; welcomeClaimed:boolean; owned:string[]; adDay:string; adsToday:number; offerDay?:string; offerIds?:string[];}
+export interface ShopDraftState {version:1; tokens:number; welcomeClaimed:boolean; owned:string[]; adDay:string; adsToday:number; offerDay?:string; offerIds?:string[]; offerSchema?:number; purchasedDay?:string; purchasedChests?:ShopKind[];}
 export type ShopResult={ok:true;state:ShopDraftState;item?:ShopItem}|{ok:false;reason:string;state:ShopDraftState};
 export const shopDay=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
 export function newShopDraft(now=Date.now()):ShopDraftState{return {version:1,tokens:config.welcomeGiftTokens,welcomeClaimed:false,owned:[],adDay:shopDay(now),adsToday:0};}
@@ -26,7 +26,7 @@ export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
   const claimed=s.welcomeClaimed||s.owned.includes(WELCOME_FIGHTER);
   const owned=[...new Set(s.owned.filter(id=>SHOP_ITEMS.some(item=>item.id===id)))];
   if(claimed&&!owned.includes(WELCOME_FIGHTER))owned.push(WELCOME_FIGHTER);
-  return {version:1,tokens:s.tokens!,welcomeClaimed:claimed,owned,adDay:shopDay(now),adsToday:s.adDay===shopDay(now)?Math.min(s.adsToday!,config.dailyAdLimit):0,offerDay:s.offerDay,offerIds:Array.isArray(s.offerIds)?s.offerIds.filter(id=>SHOP_ITEMS.some(item=>item.id===id)):undefined};
+  return {version:1,tokens:s.tokens!,welcomeClaimed:claimed,owned,adDay:shopDay(now),adsToday:s.adDay===shopDay(now)?Math.min(s.adsToday!,config.dailyAdLimit):0,offerDay:s.offerDay,offerIds:Array.isArray(s.offerIds)?s.offerIds.filter(id=>SHOP_ITEMS.some(item=>item.id===id)):undefined,offerSchema:s.offerSchema,purchasedDay:shopDay(now),purchasedChests:s.purchasedDay===shopDay(now)&&Array.isArray(s.purchasedChests)?[...new Set(s.purchasedChests.filter(k=>k==='skins'||k==='fighters'))]:[]};
 }
 export function welcomePull(state:ShopDraftState):ShopResult{
   if(state.welcomeClaimed)return {ok:false,reason:'Welcome fighter already claimed.',state};
@@ -37,20 +37,30 @@ export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{ret
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
-  if(s.offerDay===day&&s.offerIds)return s;
+  if(s.offerDay===day&&s.offerIds&&s.offerSchema===2)return s;
   const seed=Math.floor(now/86400000);
   const pick=(kind:ShopKind,count:number)=>{const pool=availablePool(s,kind);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
-  return {...s,offerDay:day,offerIds:[...pick('skins',3),...pick('fighters',1)]};
+  const skins=availablePool(s,'skins');
+  const pickSkins=(unique:boolean,count:number)=>{const pool=skins.filter(i=>(i.skinType==='unique')===unique);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
+  // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
+  return {...s,offerDay:day,offerSchema:2,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
 }
 export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&i.kind===kind);}
-export function buyDailyOffer(state:ShopDraftState,id:string,now=Date.now()):ShopResult{
-  const s=refreshDailyOffers(state,now),item=SHOP_ITEMS.find(i=>i.id===id);
+export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
+  const pool=dailyOffers(state,kind).filter(i=>!state.owned.includes(i.id));
+  return pool.map(item=>({item,probability:1/pool.length}));
+}
+export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,now=Date.now()):ShopResult{
+  const s=refreshDailyOffers(state,now);
   if(!s.welcomeClaimed)return {ok:false,reason:'Claim the welcome fighter first.',state:s};
-  if(!item||!s.offerIds?.includes(id))return {ok:false,reason:'This item is not offered today.',state:s};
-  if(s.owned.includes(id))return {ok:false,reason:'Already owned.',state:s};
-  const cost=item.kind==='skins'?config.skinPullCost:config.fighterPullCost;
+  if(s.purchasedChests?.includes(kind))return {ok:false,reason:'This chest has already been opened today.',state:s};
+  const pool=chestRewards(s,kind);
+  if(!pool.length)return {ok:false,reason:'All rewards in this chest are owned.',state:s};
+  const cost=kind==='skins'?config.skinPullCost:config.fighterPullCost;
   if(s.tokens<cost)return {ok:false,reason:`Need ${cost-s.tokens} more tokens.`,state:s};
-  return {ok:true,item,state:{...s,tokens:s.tokens-cost,owned:[...s.owned,id]}};
+  const roll=Number.isFinite(random)?Math.max(0,Math.min(.999999,random)):0;
+  const item=pool[Math.floor(roll*pool.length)].item;
+  return {ok:true,item,state:{...s,tokens:s.tokens-cost,owned:[...s.owned,item.id],purchasedChests:[...(s.purchasedChests??[]),kind]}};
 }
 export function previewAdReward(state:ShopDraftState,now=Date.now()):ShopResult{
   const s=normalizeShopDraft(state,now);

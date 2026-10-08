@@ -1,15 +1,11 @@
-# Daily shop draft review
+# Daily chest shop review
 
-Unpublished local branch: proto/punchies/shop-pulls-draft. Open the local game and choose SHOP.
+Unpublished branch: proto/punchies/shop-pulls-draft. Three columns: reward ad gives 1 token; purple skin chest costs 5; gold fighter chest costs 10. Each paid chest can be opened once per UTC day, independently. Left welcome introduction remains one-time.
 
-Three fixed columns replace tabs: left watch an ad for 1 token, middle choose from three skins at 5 tokens each, right one fighter at 10 tokens. These are direct purchases of visible daily offers, not random pulls. The existing one-time gifted token and guaranteed fourth-fighter introduction remains in the left slot before ads.
+The purple chest offers one unique and two palette skins, each with exact one-third probability (display rounded to 33%). Exhausted categories shrink the reward pool rather than introducing extra unique entries: two remaining rewards are 50/50 and one is guaranteed. Owned rewards are excluded. The gold chest grants the single fighter of the day with 100% probability. Purchases and daily flags persist in the local preview save; the next UTC rotation resets both paid chest allowances.
 
-Daily rotation uses the available catalogue excluding already-owned items. Offers are stored for the UTC day and remain fixed after buying; the purchased item shows owned until the next rotation. At midnight new offers are selected from remaining items. A nearly completed collection can show fewer than three skins; a completed collection displays a completion message. The daily ad cap remains a configurable five rewards, using preview buttons with no real video.
+Tap either chest to open a bubble showing rewards, skin types and current probabilities. Purchases use the separate OPEN CHEST button. The chests reference the title-screen metal training case, with reinforced corners, flat lid, handle and crown emblem. Permanent transparent purple and gold PNGs are uploaded and publicly verified on R2.
 
-Palette swaps recolour the same character. Unique skins use the same base fighter and stats but have distinct portrait and rig sprite asset entries. Unique artwork is explicitly pending and shown with placeholders. The current palette previews are studies, not finished equippable skins. Fighter identity, art and tuned stats remain placeholders.
+Unique skins keep the character's stats but require their own portrait and rig sprite assets. Those rewards currently have explicitly pending artwork. Fighter portraits/rigs/stats remain placeholders. Real ads, secure production wallet, ranked entitlements and gameplay equip flow are not connected.
 
-The isolated preview wallet and ownership persist locally. No production unlocks, real ad service, ranked entitlement, secure wallet or equip flow is connected. Pricing and reset configuration live in src/shop/draft-config.json.
-
-Verification: typecheck/build, daily storefront regression checks for 1/5/10 pricing, three skins and one fighter, stable offers after purchasing, ownership exclusion next day, duplicate/unavailable offer rejection, welcome persistence, daily cap/reset, palette and unique metadata. Brave visual check and clean browser console.
-
-Review decisions: fourth fighter identity, palette/unique art direction, daily cap and reset timezone, production wallet/ad service. Physical mobile/controller tests remain pending.
+Verification: typecheck/build; exact skin roll boundaries; one-unique mix; guaranteed fighter; independent one-per-day locks; insufficient funds; stable offers; persistence; next-day resets; exhausted-category odds; completed collection. Browser popup/spacing checks and clean console.
