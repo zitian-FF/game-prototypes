@@ -89,6 +89,6 @@ export class VsAIScene extends Phaser.Scene {
       rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins);
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.chars[r.winner],skin:this.skins[r.winner]});
   }
 }

@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const compile=file=>ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const quotes={};vm.runInNewContext(compile('prototypes/punchies/src/ui/winnerQuotes.ts'),{exports:quotes,require:()=>({isCharId:c=>['marco','mia','bruno','tee'].includes(c),charName:c=>c.toUpperCase()})});
+const seen=new Set();for(const c of ['marco','mia','bruno','tee']){const q=quotes.winnerQuote(c);assert.ok(q.length>15&&q.length<80);seen.add(q);}assert.equal(seen.size,4);
+class Obj{constructor(kind,args){this.kind=kind;this.args=args;this.x=args?.[0]??0;this.width=360;this.height=450;this.visible=true;this.alpha=1;}setDepth(){return this;}setInteractive(){this.interactive=true;return this;}disableInteractive(){this.interactive=false;return this;}setOrigin(x,y){this.origin=[x,y];return this;}setScale(v){this.scale=v;return this;}setX(x){this.x=x;return this;}setAlpha(a){this.alpha=a;return this;}setVisible(v){this.visible=v;return this;}getData(){return this.bg;}fillStyle(){return this;}fillRect(){return this;}fillRoundedRect(){return this;}}
+const objects=[],buttons=[];const make=kind=>(...args)=>{const o=new Obj(kind,args);objects.push(o);return o;};
+let reduced=true;const tweens=[],events=[];
+const scene={children:{list:objects},events:{once:(_event,fn)=>events.push(fn)},add:{rectangle:make('rectangle'),graphics:make('graphics'),text:make('text'),image:make('image')},textures:{exists:()=>true},tweens:{add:t=>tweens.push(t)}};
+const exports={};vm.runInNewContext(compile('prototypes/punchies/src/ui/matchPresentation.ts'),{exports,require:p=>{
+ if(p.includes('sfx'))return{sfx:{victory(){},defeat(){}}};
+ if(p.includes('pixelRatio'))return{VIEW:{cx:422,cy:225,width:844,height:450,left:0,top:0,bottom:450},PIXEL_RATIO:1};
+ if(p.includes('presentation'))return{reducedMotion:()=>reduced};
+ if(p.includes('sim/tune'))return{tune:{view:{fightPresentation:{portraitSlideMs:300,resultEnterMs:220}}}};
+ if(p.includes('menuNav'))return{getNav:()=>({engage(){}})};
+ if(p.includes('titleButton'))return{titleButton:(_s,x,y,w,h,label)=>{buttons.push(label);const t=make('button')(x,y,w,h,label);t.bg=make('buttonHit')(x,y,w,h);t.bg.setInteractive();return t;}};
+ if(p.includes('portraitBounds'))return{portraitBounds:()=>({left:0,right:360,top:0,bottom:440})};
+ if(p.includes('skins'))return{skinTexture:(_s,char,skin)=>`${char}:${skin}`};
+ if(p.includes('winnerQuotes'))return quotes;return{};
+}});
+const actions={rematch(){},changeBoxer(){},menu(){}};
+exports.matchResult(scene,'VICTORY',actions,[2,1],{char:'mia',skin:'skin-mia-violet'});
+const portrait=objects.find(o=>o.kind==='image');assert.equal(portrait.args[2],'mia:skin-mia-violet');assert.deepEqual(portrait.origin,[.5,440/450]);assert.equal(portrait.args[1],450,'visible artwork anchored to screen bottom');
+assert.ok(objects.some(o=>o.kind==='text'&&o.args[2].includes(quotes.winnerQuote('mia'))));assert.deepEqual(buttons,['REMATCH','CHANGE BOXER','MAIN MENU']);
+assert.ok(objects.some(o=>o.kind==='rectangle'&&o.interactive),'darkener shields gameplay input');
+objects.length=0;exports.matchResult(scene,'DEFEAT',actions,[0,2],{char:'bruno'});assert.equal(objects.find(o=>o.kind==='image').args[2],'bruno:default');
+objects.length=0;exports.matchResult(scene,'DRAW',actions,[1,1]);assert.ok(!objects.some(o=>o.kind==='image'));
+objects.length=0;reduced=false;exports.matchResult(scene,'VICTORY',actions,[2,1],{char:'mia'});
+const hits=objects.filter(o=>o.kind==='buttonHit');assert.ok(hits.every(o=>!o.interactive&&!o.visible));
+assert.ok(objects.filter(o=>o.kind==='button').every(o=>o.args[2]===280&&o.args[3]===38),'standard menu button dimensions');
+assert.equal(tweens.length,2,'portrait and heading slide first');assert.ok(objects.find(o=>o.kind==='image').x<0);
+tweens[1].onComplete();assert.equal(tweens.length,3,'details fade only after slide');assert.ok(hits.every(o=>o.visible&&!o.interactive));
+tweens[2].onComplete();assert.ok(hits.every(o=>o.interactive),'buttons enabled after reveal');
+events[0]();hits.forEach(o=>o.disableInteractive());tweens[2].onComplete();assert.ok(hits.every(o=>!o.interactive),'shutdown cannot re-enable input');
+console.log('PASS: winner portrait/quotes, screen-bottom anchor, standard buttons, staged entrance, input gating, reduced motion and shutdown');

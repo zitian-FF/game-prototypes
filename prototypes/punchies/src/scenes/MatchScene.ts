@@ -299,7 +299,7 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    }, outcome.series.wins);
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]});
   }
 
   private tryRematch(): void {
