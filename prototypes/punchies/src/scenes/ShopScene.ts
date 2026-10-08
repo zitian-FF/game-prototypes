@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { portal, showRewardedAd } from '../portal/index';
 import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -17,6 +18,7 @@ export class ShopScene extends Phaser.Scene {
   private root!:Phaser.GameObjects.Container;
   private rays:Phaser.GameObjects.Graphics[]=[];
   private popupKind:ShopKind|null=null;
+  private adBusy=false;
   private notice='Tap a chest to inspect today’s rewards and pull odds.';
   constructor(){super('Shop');}
   create(){sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
@@ -32,6 +34,21 @@ export class ShopScene extends Phaser.Scene {
     this.text(x+w/2,y+16,label,12,enabled?'#fff5de':'#8e9ba9').setOrigin(.5);
     if(enabled)this.hit(x,y,w,32,fn,depth);
   }
+  /** Rewarded ad for a token. The reward is granted only when the portal reports 'rewarded'. */
+  private async watchAd(){
+    if(this.adBusy||this.reveal)return;
+    const check=previewAdReward(this.state);
+    if(!check.ok){this.act(check);return;}
+    this.adBusy=true;this.input.enabled=false;
+    const result=await showRewardedAd('shop_token');
+    this.adBusy=false;
+    if(!this.scene.isActive('Shop'))return;
+    this.input.enabled=true;
+    if(result==='rewarded'){this.act(previewAdReward(this.state));return;}
+    sfx.denied();
+    this.notice=result==='unavailable'?'No ad is available right now. Try again later.':'The ad did not finish, so no token was given.';
+    this.render();
+  }
   private act(result:ShopResult){
     if(this.reveal)return;
     if (result.ok) {
@@ -40,7 +57,7 @@ export class ShopScene extends Phaser.Scene {
       if (result.item) sfx.chestOpen();
     } else sfx.denied();
     this.state=result.state;
-    this.notice=result.ok?(result.item?`UNLOCKED: ${result.item.name}`:'1 preview token added. No advertisement was played.'):result.reason;
+    this.notice=result.ok?(result.item?`UNLOCKED: ${result.item.name}`:portal.ads.kind==='preview'?'1 preview token added. No advertisement was played.':'1 token earned.'):result.reason;
     if(result.ok)this.popupKind=null;
     this.persist();this.render();
     if(result.ok&&result.item){
@@ -104,7 +121,7 @@ export class ShopScene extends Phaser.Scene {
     else this.root.add(punchToken(this,156,165,38,100));
     this.text(156,217,'WATCH AN AD\nGET 1 TOKEN',15,'#ffdc72').setOrigin(.5,0).setAlign('center');
     this.text(156,262,`${this.state.adsToday}/${shopConfig.dailyAdLimit} rewards today`,11,'#a8c1d8').setOrigin(.5,0);
-    this.button(39,291,234,'PREVIEW AD · +1 TOKEN',()=>this.act(previewAdReward(this.state)),this.state.adsToday<shopConfig.dailyAdLimit);
+    this.button(39,291,234,!portal.ads.available?'ADS UNAVAILABLE':portal.ads.kind==='preview'?'PREVIEW AD · +1 TOKEN':'WATCH AD · +1 TOKEN',()=>void this.watchAd(),portal.ads.available&&!this.adBusy&&this.state.adsToday<shopConfig.dailyAdLimit);
     this.chest('skins',422);this.chest('fighters',688);
     this.text(25,346,this.notice,11,'#ffdc8a').setWordWrapWidth(790);
     this.text(25,373,'Purple: one random skin. Gold: guaranteed daily fighter. Unique skin artwork is pending.',10,'#91abc3');

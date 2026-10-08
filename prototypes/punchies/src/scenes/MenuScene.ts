@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
 import { cartoonPanel } from '../ui/cartoonChrome';
 import { shopPreviewBalance } from '../shop/draft';
@@ -24,6 +25,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(data: { message?: string }): void {
+    loadingFinished();
     applyCameraPixelRatio(this);
     const gym=backdrop(this, 0, 'gym_background');
     alignGymFloor(this,gym);

@@ -6,7 +6,10 @@ const store=new Map();
 const storage={getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)};
 const ids=['marco','mia','bruno','tee'];
 const character={CHARACTER_IDS:ids,isCharId:id=>ids.includes(id)};
-function module(file,require) {
+const portalStore={store:{getItem:k=>storage.getItem(k)??null,setItem:(k,v)=>storage.setItem(k,v),removeItem:k=>storage.removeItem?.(k)}};
+const portalKeys={KEYS:{audio:'punchies:audio:v1',shop:'punchies:shop-preview:v1',tutorial:'punchies:tutorial:v1',chars:'punchies:chars:v1',localInputs:'punchies:localInputs:v1'}};
+function module(file,rawRequire) {
+ const require=id=>id.includes('portal/store')?portalStore:id.includes('portal/keys')?portalKeys:id.includes('portal/gameplay')?{setGameplay(){},trackFightScene(){}}:id.includes('portal/index')?{loadingFinished(){},showRewardedAd:async()=>'rewarded',portal:{ads:{available:true,kind:'preview'}}}:rawRequire(id);
  const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require,localStorage:storage,Date,Math,Set,Number,JSON,Object,Array});return exports;
 }
 const palette=module('prototypes/punchies/src/render/skinPalette.ts',()=>({}));

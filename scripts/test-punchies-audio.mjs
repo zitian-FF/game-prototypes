@@ -30,7 +30,7 @@ function loader() {
     if (cache.has(file)) return cache.get(file);
     const exports = {}; cache.set(file, exports);
     const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-    vm.runInNewContext(code, { exports, localStorage: storage, AudioContext: Context, window: { addEventListener() {} },
+    vm.runInNewContext(code, { exports, localStorage: storage, __PUNCHIES_PORTAL__: 'web', __PUNCHIES_PORTAL_ADS__: true, AudioContext: Context, window: { addEventListener() {} },
       require: id => load(path.resolve(path.dirname(file), `${id}.ts`)) });
     return exports;
   };

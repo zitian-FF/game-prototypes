@@ -1,9 +1,11 @@
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
 import { isCharId, type CharId } from './character';
 import { BOT_LEVELS, type BotLevel } from './bot';
 
 // Last character picks, remembered on this device (one versioned
 // localStorage key, see root CLAUDE.md "Persistence").
-const KEY = 'punchies:chars:v1';
+const KEY = KEYS.chars;
 
 export interface CharPrefs {
   p1: CharId;
@@ -18,7 +20,7 @@ const DEFAULTS: CharPrefs = { p1: 'marco', p2: 'marco', ai: 'marco', level: 'eas
 
 export function loadCharPrefs(): CharPrefs {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, unknown>;
+    const v = JSON.parse(store.getItem(KEY) ?? '{}') as Record<string, unknown>;
     return {
       skins: sanitizeSkins(v.skins),
       p1: isCharId(v.p1) ? v.p1 : DEFAULTS.p1,
@@ -33,7 +35,7 @@ export function loadCharPrefs(): CharPrefs {
 
 export function saveCharPrefs(p: Partial<CharPrefs>): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...loadCharPrefs(), ...p }));
+    store.setItem(KEY, JSON.stringify({ ...loadCharPrefs(), ...p }));
   } catch {
     /* storage unavailable: picks just aren't remembered */
   }
