@@ -5,7 +5,6 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { titleButton } from './titleButton';
 import { getNav } from './menuNav';
-import { cartoonPanel } from './cartoonChrome';
 let splashSerial = 0;
 
 // Freeze the round scene while a short logo splash dissolves over the arena.
@@ -62,15 +61,11 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   const before=new Set(scene.children.list);
   const defeat=headline==='DEFEAT';
   const draw=headline==='DRAW';
-  const accent=defeat?0xda4565:draw?0x5a94bc:0xe4aa38;
   const panel=scene.add.graphics().setDepth(129);
   panel.fillStyle(0x050d20,.42).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
-  cartoonPanel(panel,VIEW.cx-198,VIEW.cy-90,396,217,0x294769,18);
-  // Compact enamel result plaque, shared with the shop/menu material language.
-  cartoonPanel(panel,VIEW.cx-180,VIEW.cy-79,360,66,accent,12);
-  panel.fillStyle(0xffffff,.16).fillTriangle(VIEW.cx-166,VIEW.cy-62,VIEW.cx-150,VIEW.cy-62,VIEW.cx-160,VIEW.cy-28);
-  panel.fillStyle(0x071326,.18).fillTriangle(VIEW.cx+166,VIEW.cy-62,VIEW.cx+150,VIEW.cy-62,VIEW.cx+160,VIEW.cy-28);
-  const color=defeat?'#fff1ee':draw?'#edf7ff':'#fff6cd';
+  // Quiet backing for information; raised enamel is reserved for actions.
+  panel.fillStyle(0x102139,.94).fillRoundedRect(VIEW.cx-198,VIEW.cy-90,396,217,18);
+  const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
   const heading=scene.add.text(VIEW.cx,VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'32px':'42px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
