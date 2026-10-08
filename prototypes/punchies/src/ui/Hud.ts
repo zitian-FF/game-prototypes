@@ -60,7 +60,7 @@ export class Hud {
     for(let i=0;i<2;i++){
       const f=s.fighters[i],left=i===0;
       this.shownHealth[i]=this.shownHealth[i]<0?f.health:Math.max(f.health,this.shownHealth[i]-.4);
-      if(show('health'))this.bar(left,34,14,.40,f.health/maxHealth(f),this.shownHealth[i]/maxHealth(f),0x35cc6a);
+      if(show('health'))this.bar(left,34,14,.40,f.health/maxHealth(f),this.shownHealth[i]/maxHealth(f),0xef4db6,0,true);
       const elapsed=this.scene.time.now-this.staminaRejectedAt[i];
       const flash=elapsed<tune.view.staminaRejectFlashMs?.35+.6*Math.abs(Math.cos(elapsed*tune.view.staminaRejectFlashHz*Math.PI/1000)):0;
       if(show('stamina'))this.bar(left,50,12,(29+(VIEW.width*.34-29)*.8)/VIEW.width,f.stamina/maxStamina(f),0,f.exhausted?0xef3545:0x34bfe8,flash);
@@ -94,7 +94,7 @@ export class Hud {
       }
     }
   }
-  private bar(left:boolean,yy:number,h:number,reach:number,frac:number,trail:number,color:number,flash=0):void{
+  private bar(left:boolean,yy:number,h:number,reach:number,frac:number,trail:number,color:number,flash=0,health=false):void{
     const g=this.g,sign=left?-1:1,y=VIEW.top+yy;
     const length=VIEW.width*reach-29;
     // Swept wing: curved clock-side root, parallel rails, sharp diagonal tip.
@@ -109,8 +109,8 @@ export class Hud {
     const project=(p:{x:number;y:number}[])=>p.map(v=>({x:VIEW.cx+sign*(29+v.x),y:y+v.y}));
     const frame=project(shape(0));
     g.fillStyle(0x030817).fillPoints(frame.map(v=>({x:v.x,y:v.y+3})),true);
-    g.fillStyle(0x14243b).fillPoints(frame,true);g.lineStyle(5,0x030817).strokePoints(frame,true);
-    g.lineStyle(1.5,0x8194ae).strokePoints(frame,true);
+    g.fillStyle(health?0x06091b:0x14243b).fillPoints(frame,true);g.lineStyle(health?6:5,0x030817).strokePoints(frame,true);
+    g.lineStyle(1.5,health?0x665077:0x8194ae).strokePoints(frame,true);
     const clip=(p:{x:number;y:number}[],cut:number,inside:(x:number)=>boolean)=>{
       const result:{x:number;y:number}[]=[];
       for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length],ai=inside(a.x),bi=inside(b.x);
@@ -130,6 +130,6 @@ export class Hud {
     if(trail>frac)fill(trail,0xfff1d1,.7);fill(frac,color,1);
     // Small angular slash repeats the reference's lightning-like detail at the root.
     const slash=[{x:18,y:h-3},{x:25,y:3},{x:48,y:3},{x:41,y:6},{x:29,y:6},{x:24,y:h-3}];
-    g.fillStyle(0x071122,.65).fillPoints(project(slash),true);
+    if(!health)g.fillStyle(0x071122,.65).fillPoints(project(slash),true);
   }
 }

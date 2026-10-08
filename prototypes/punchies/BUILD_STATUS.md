@@ -1,17 +1,17 @@
 ## Current milestone
-Approved presentation/HUD QA fixes deployed successfully via PR 248. Unpublished shop draft and ranked proposal ready for review.
+Colourful UI and shared punching logo ready for review on the unpublished shop branch. Earlier QA fixes remain live via PR 248.
 
 ## What was implemented
-Tutorial upper sockets respect reveal stages, long player names fit and tutorial copy matches the new HUD. Local shop draft now uses three columns: ad reward 1 token, a skin chest at 5 tokens and a fighter chest at 10 tokens. Purple and gold paid chests now allow one purchase each per day. Purple selects equally among one unique and two palette skins with depleted pools redistributing odds; gold guarantees the daily fighter. Tapping chests opens reward/probability bubbles. Offers stay fixed after purchasing and exclude owned items at the next UTC rotation. Palette and unique skins have separate metadata, with unique portrait and rig art pending. The gifted-token welcome introduction and persistent isolated preview balance remain. Permanent transparent 5/8 token and chest/TV reward PNGs are integrated and uploaded to R2; public bundle verified byte-for-byte. Purple/gold training-case chest sprites are likewise uploaded and verified.
+Light-blue ad chest, purple skin chest and gold fighter chest use one canonical red glove logo without the star. Token and chest base PNGs are blank; punchMark stamps the same logo asset on all of them. Menu, shop, fight buttons and character selection use bright enamel colours, thick outlines, bevels, lower extrusion and subtle grain. Selection stats and integrated pink HP meter are continuous, without segments. Daily chest limits, odds and reward popups remain functional.
 
 ## Key technical decisions
-Shop remains on proto/punchies/shop-pulls-draft and is not pushed or deployed. Costs and limits live in shop/draft-config.json. Local preview saves are isolated from gameplay saves. No ads, production unlocks or ranked services are connected. Ranked design proposal covers Bo3 outcome ratings, matchmaking, disconnects, settlement authority and leaderboard rules.
+All transparent raster assets are stored in R2; latest public bundle verified byte-for-byte. Existing art preserved. Shared UI chrome is rendered in Phaser. Gameplay, hitboxes, selection slide behaviour, stamina rules and reward pricing are unchanged. Local preview saves remain separate from production saves. Branch proto/punchies/shop-pulls-draft remains unpushed and unpublished.
 
 ## Open questions
-Review daily cap/reset timezone, fourth fighter identity and art/stats, and palette/unique skin art direction.
+Review the new visual direction, fourth fighter identity and final skin portraits/rigs. Daily ad cap and UTC reset remain configurable.
 
 ## Known issues
-Final shop art/equip flow, secure wallet and real ad integration are pending. Physical device/controller and two-device network fault testing remain pending. Existing Phaser bundle warning remains.
+Real ads, secure production wallet, gameplay equip flow and ranked backend remain pending. Reward art/stats are placeholders. Physical device/controller and two-device network tests remain pending. Existing Phaser bundle warning remains.
 
 ## Next proposed step
-Review the shop draft and ranked proposal before implementing production economy or ranked backend.
+Review the shop, character selection and HP screenshots before merging this draft.

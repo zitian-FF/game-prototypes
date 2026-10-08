@@ -9,3 +9,5 @@ Tap either chest to open a bubble showing rewards, skin types and current probab
 Unique skins keep the character's stats but require their own portrait and rig sprite assets. Those rewards currently have explicitly pending artwork. Fighter portraits/rigs/stats remain placeholders. Real ads, secure production wallet, ranked entitlements and gameplay equip flow are not connected.
 
 Verification: typecheck/build; exact skin roll boundaries; one-unique mix; guaranteed fighter; independent one-per-day locks; insufficient funds; stable offers; persistence; next-day resets; exhausted-category odds; completed collection. Browser popup/spacing checks and clean console.
+
+Visual update: all three chests and tokens reuse one star-free red glove via punchMark over blank base layers. Light-blue ad case retains a TV badge. Bright enamel panel/button chrome and continuous pink HP styling are shared with selection and game controls. See outputs/cartoon-ui-v1 for saved master assets, prompts and screenshots.
