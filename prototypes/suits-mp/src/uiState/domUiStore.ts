@@ -1,11 +1,12 @@
 import type { CardId } from '../rules/types';
 
-// Tiny external store bridging the Phaser canvas (which owns `PersistentUIState`
-// / `ui.overlay`, see ui/renderGameView.ts) and the React DOM overlay layer
-// mounted above it. The canvas side calls openRules()/closeRules() and
-// openRedistLog()/closeRedistLog() from its own render pass; each modal's
-// close button calls back into the closure the canvas handed it, which
-// flips `ui.overlay` back to 'none' and re-renders the canvas. Neither side
+// Tiny external store bridging the gameplay canvas (which owns
+// `PersistentUIState` / `ui.overlay`, see ui/renderGameView.ts) and the
+// separate always-on overlay canvas scene that draws this chrome
+// (ui/CanvasUiScene.ts). The gameplay side calls openRules()/closeRules()
+// and openRedistLog()/closeRedistLog() from its own render pass; each
+// modal's close button calls back into the closure the canvas handed it,
+// which flips `ui.overlay` back to 'none' and re-renders. Neither side
 // reads the other's internals directly.
 
 // Display-ready shape for one redistribution-log entry - computed from the
@@ -51,6 +52,7 @@ interface DomUiState {
   victoryTeamHeadline: string;
   victoryTrickNumber: number;
   victoryIdentities: VictoryIdentity[];
+  victoryIsTutorial: boolean;
   onVictoryBackToMenu: () => void;
   endGameConfirmOpen: boolean;
   endGameConfirmIsMultiplayer: boolean;
@@ -77,6 +79,7 @@ function idleState(): DomUiState {
     victoryTeamHeadline: '',
     victoryTrickNumber: 0,
     victoryIdentities: [],
+    victoryIsTutorial: false,
     onVictoryBackToMenu: () => {},
     endGameConfirmOpen: false,
     endGameConfirmIsMultiplayer: false,
@@ -143,14 +146,28 @@ export function closeMenu(): void {
 // canvas-driven close: the only way off this screen is its own Back to
 // Menu button, which navigates away (scene.start('Landing', ...)) rather
 // than closing this overlay in place.
-export function openVictory(teamHeadline: string, trickNumber: number, identities: VictoryIdentity[], onBackToMenu: () => void): void {
-  state = { ...state, victoryOpen: true, victoryTeamHeadline: teamHeadline, victoryTrickNumber: trickNumber, victoryIdentities: identities, onVictoryBackToMenu: onBackToMenu };
+export function openVictory(
+  teamHeadline: string,
+  trickNumber: number,
+  identities: VictoryIdentity[],
+  isTutorial: boolean,
+  onBackToMenu: () => void,
+): void {
+  state = {
+    ...state,
+    victoryOpen: true,
+    victoryTeamHeadline: teamHeadline,
+    victoryTrickNumber: trickNumber,
+    victoryIdentities: identities,
+    victoryIsTutorial: isTutorial,
+    onVictoryBackToMenu: onBackToMenu,
+  };
   emit();
 }
 
 export function closeVictory(): void {
   if (!state.victoryOpen) return;
-  state = { ...state, victoryOpen: false, victoryTeamHeadline: '', victoryTrickNumber: 0, victoryIdentities: [], onVictoryBackToMenu: () => {} };
+  state = { ...state, victoryOpen: false, victoryTeamHeadline: '', victoryTrickNumber: 0, victoryIdentities: [], victoryIsTutorial: false, onVictoryBackToMenu: () => {} };
   emit();
 }
 

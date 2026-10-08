@@ -391,6 +391,7 @@ export class CanvasUiScene extends Phaser.Scene {
     // The victory scene draws the deity art behind this text; keep it visible.
     this.text(m.victoryTeamHeadline, 195, 63, 30, PALE);
     this.text(`After ${m.victoryTrickNumber} tricks`, 195, 98, 12, PALE);
+    if (m.victoryIsTutorial) this.text('Tutorial Complete', 195, 122, 13, GOLD);
     m.victoryIdentities.forEach((identity, i) => this.text(`${identity.label} — ${identity.godDisplayName}`, 195, 634 + i * 23, 13, PALE));
     this.button('Back to Menu', 195, 781, 280, 54, m.onVictoryBackToMenu);
   }

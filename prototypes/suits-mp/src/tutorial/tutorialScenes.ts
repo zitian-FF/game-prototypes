@@ -1,4 +1,5 @@
 import { cardId } from '../rules/cards';
+import type { CardId } from '../rules/types';
 import type { TutorialRedistributeAssignment, TutorialScript } from './tutorialTypes';
 
 // Scene 1 - Winning a trick (suits-mp-tutorial-design.md, Section 3). The
@@ -395,20 +396,132 @@ export const TUTORIAL_SCENE_5: TutorialScript = {
   ],
 };
 
+// Scene 6 - Double, delegate, and winning the game (suits-mp-tutorial-
+// design.md, Section 3, final scene). Unlike every prior scene, this one
+// ties directly into the real win condition (rules/engine.ts's
+// checkSuitCompletion) instead of ending once a single concept is
+// conveyed - `TutorialScene.render()`'s own `if (state.winner)` branch
+// takes over once this scene's last step resolves, showing the real
+// universal Victory Screen (with "Tutorial Complete" appended - see
+// ui/renderGameView.ts's startVictorySequence/showVictoryScreen and
+// uiState/domUiStore.ts's openVictory) rather than this file's own
+// generic end-of-built-content modal.
+//
+// The local player's own god is Cthulhu here (`gods[0]`) - unlike every
+// prior scene's Nyarlathotep, which never mattered since none of them
+// ever checked suit completion. `checkSuitCompletion` only ever asks
+// "does this player's hand hold every card of THEIR OWN god" - Cthulhu
+// matches the familiar Dormant Deity Card flavor every prior scene
+// already used for this player (Scenes 1/2/4's own
+// `cardId('Cthulhu', 'DeityCard')`), just finally paid off for real.
+// `gods[1]` (the ally) stays Cthulhu's real teammate (TEAMMATE_GOD,
+// rules/cards.ts) - Nyarlathotep - so the familiar "your ally" framing
+// holds even though the specific god label flips from prior scenes: each
+// scene is already its own hard-cut ForcedDeal per Section 1.4, never a
+// continuous shared state, so this isn't a continuity break.
+//
+// Local hand (10 cards, matching the design doc's exact "8 of your own
+// suit plus 2 that double" split): 8 of Cthulhu's 10 cards (2,3,4,5,6,7,
+// 8,10 - missing 9 and DeityCard, deliberately held back in the ally's
+// own hand below for the final redistribution) plus ShubNiggurath-9 and
+// YogSothoth-9 - two different suits sharing rank 9, a legal Double
+// pair. Rank 9 specifically: any rank already among the 8 held Cthulhu
+// cards would leave 3 same-rank cards in hand once the pair is added
+// (the Cthulhu one plus the pair), making the real 'partner' highlight
+// ambiguous about which card completes the double - 9 is the one gap in
+// the local player's own Cthulhu ranks, so only the scripted pair shares
+// it.
+//
+// `leaderId: 1` (the ally leads, same turnOrder(1) = [1,2,3,0] shape
+// every prior leaderId:1 scene already used) with the ally's own lead
+// card (YogSothoth-2) chosen so the local player's own position-3
+// required suit (suitAfterSteps(YogSothoth, 3) = Nyarlathotep) is a suit
+// they hold zero of - genuinely off-suit, same mechanism Scene 5 already
+// established, not merely scripted around. `trickNumber: 6` continues
+// the narrative and, same as every prior scene's own non-1
+// trickNumber, sidesteps isForcedTrick1Opener.
+//
+// Seats 2 and 3 hold exactly the one filler card their own single
+// scripted play needs (same minimal-remote-hand precedent every prior
+// scene already used, e.g. Scene 1's own 1-card remote hands) - deck-
+// consistent but otherwise arbitrary, since a double unconditionally
+// beats every non-double play regardless of rank (engine.ts's
+// resolveTrick: `doublePlays.length > 0 ? doublePlays : plays`), so
+// nothing about their own cards can threaten the local player's win.
+//
+// The ally's starting hand is the one that matters: besides their own
+// YogSothoth-2 lead card, it holds exactly the 2 cards the local player
+// is actually missing (Cthulhu-9, Cthulhu-DeityCard) - what the
+// redistribute step below actually gifts back to complete the local
+// player's suit for real, not the local player's own just-played double
+// cards (see BRIEF.md's "Double-win card ownership" fix: the delegate's
+// redistribution draws from THEIR collected hand, not the winner's, so
+// gifting back different cards than were contributed is correct, not a
+// shortcut - redistribute() only checks the gift *count* matches each
+// contributor's own play count, 2 for the local player's double here).
+const SCENE_6_DOUBLE_PAIR: readonly [CardId, CardId] = [cardId('ShubNiggurath', 9), cardId('YogSothoth', 9)];
+
+export const TUTORIAL_SCENE_6: TutorialScript = {
+  deal: {
+    hands: [
+      [
+        cardId('Cthulhu', 2), cardId('Cthulhu', 3), cardId('Cthulhu', 4), cardId('Cthulhu', 5),
+        cardId('Cthulhu', 6), cardId('Cthulhu', 7), cardId('Cthulhu', 8), cardId('Cthulhu', 10),
+        ...SCENE_6_DOUBLE_PAIR,
+      ],
+      [cardId('YogSothoth', 2), cardId('Cthulhu', 9), cardId('Cthulhu', 'DeityCard')],
+      [cardId('Nyarlathotep', 6)],
+      [cardId('YogSothoth', 8)],
+    ],
+    gods: ['Cthulhu', 'Nyarlathotep', 'ShubNiggurath', 'YogSothoth'],
+    leaderId: 1,
+    trickNumber: 6,
+  },
+  steps: [
+    { kind: 'auto', forSlot: 1, action: { action: 'playCard', playType: 'single', cards: [cardId('YogSothoth', 2)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 2, action: { action: 'playCard', playType: 'facedownSingle', cards: [cardId('Nyarlathotep', 6)] }, delayMs: 900 },
+    { kind: 'auto', forSlot: 3, action: { action: 'playCard', playType: 'facedownSingle', cards: [cardId('YogSothoth', 8)] }, delayMs: 900 },
+    {
+      kind: 'wait',
+      allowedAction: { action: 'playCard', playType: 'double', cards: [...SCENE_6_DOUBLE_PAIR] },
+      lock: { kind: 'doubleCards', cardIds: SCENE_6_DOUBLE_PAIR },
+      pointer: { kind: 'doubleCards', cardIds: SCENE_6_DOUBLE_PAIR },
+      lesson: 'You have no card of the Required Suit, but these two share a rank. Play them together as a Double - it always wins the Trick.',
+    },
+    {
+      kind: 'wait',
+      allowedAction: { action: 'selectDelegate', targetPlayer: 'p1' },
+      lock: { kind: 'delegateTo', toPlayer: 'p1' },
+      pointer: { kind: 'seat', slot: 'p1' },
+      lesson: 'Winning with a Double means someone else must redistribute for you. Choose your ally.',
+    },
+    {
+      kind: 'auto',
+      forSlot: 1,
+      action: {
+        action: 'redistribute',
+        assignments: [
+          { toPlayer: 'p0', cards: [cardId('Cthulhu', 9), cardId('Cthulhu', 'DeityCard')] },
+          { toPlayer: 'p2', cards: [cardId('Nyarlathotep', 6)] },
+          { toPlayer: 'p3', cards: [cardId('YogSothoth', 8)] },
+        ],
+      },
+      delayMs: 900,
+    },
+  ],
+};
+
 // The full 6-scene structure from suits-mp-tutorial-design.md's Section 3
-// - `null` for a scene not built yet. Tutorial prep (the task ahead of
-// Scene 2) is what first anticipated this whole array: the scene
-// selector (dom/tutorial/TutorialTopBar.tsx, TutorialScene.ts's own
-// jumpToScene) already renders a marker per array index and locks out
-// tapping any `null` entry, so a later task only ever needs to replace an
-// entry here (and give TutorialScene a real script to run past
-// finishScene() with) - never touch the selector or the jump mechanism
-// itself.
+// - every scene is now built. The scene selector (ui/CanvasUiScene.ts's
+// drawTutorialBar, TutorialScene.ts's own jumpToScene) renders a marker
+// per array index and locks out tapping any `null` entry; nothing left
+// null today, but that guard stays in place unconditionally should a
+// future revision ever need to pull a scene back out temporarily.
 export const TUTORIAL_SCENES: readonly (TutorialScript | null)[] = [
   TUTORIAL_SCENE_1,
   TUTORIAL_SCENE_2,
   TUTORIAL_SCENE_3,
   TUTORIAL_SCENE_4,
   TUTORIAL_SCENE_5,
-  null,
+  TUTORIAL_SCENE_6,
 ];
