@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { t } from '../i18n';
 import { getAudioSettings, setAudioSettings } from '../audio/mixer';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { titleButton } from './titleButton';
@@ -13,13 +14,13 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
     items.push(t); return t;
   };
   const close = () => items.forEach(o => o.destroy());
-  const button = (x: number, y: number, w: number, label: string, action: () => void) => {
-    const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2);
+  const button = (x: number, y: number, w: number, label: string, action: () => void, role: 'back' | 'confirm' = 'confirm') => {
+    const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2, 'default', role);
     items.push(t, t.getData('bg')); return t;
   };
-  text(VIEW.cx, VIEW.cy - 126, 'SETTINGS', 23);
+  text(VIEW.cx, VIEW.cy - 126, t('common.settings'), 23);
   for (const [channel, y] of [['bgm', -80], ['sfx', -35]] as const) {
-    text(VIEW.cx - 130, VIEW.cy + y, channel === 'bgm' ? 'BGM' : 'SFX');
+    text(VIEW.cx - 130, VIEW.cy + y, channel === 'bgm' ? t('settings.bgm') : t('settings.sfx'));
     const value = text(VIEW.cx + 50, VIEW.cy + y, '');
     const refresh = () => value.setText(`${Math.round(getAudioSettings()[channel] * 100)}%`);
     const change = (delta: number) => { setAudioSettings({ [channel]: getAudioSettings()[channel] + delta }); refresh(); };
@@ -29,9 +30,9 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
   const mute = button(VIEW.cx, VIEW.cy + 12, 250, '', () => {
     setAudioSettings({ muted: !getAudioSettings().muted }); refreshMute();
   });
-  const refreshMute = () => mute.setText(`MUTE ALL · ${getAudioSettings().muted ? 'ON' : 'OFF'}`);
+  const refreshMute = () => mute.setText(t('settings.mute_all', { state: getAudioSettings().muted ? t('settings.on') : t('settings.off') }));
   refreshMute();
-  button(VIEW.cx, VIEW.cy + 63, 250, 'INPUT SETUP', () => { close(); inputs(); });
-  button(VIEW.cx - 82, VIEW.cy + 118, 140, 'CREDITS', () => { close(); credits(); });
-  button(VIEW.cx + 82, VIEW.cy + 118, 140, 'BACK', close);
+  button(VIEW.cx, VIEW.cy + 63, 250, t('settings.input_setup'), () => { close(); inputs(); });
+  button(VIEW.cx - 82, VIEW.cy + 118, 140, t('common.credits'), () => { close(); credits(); });
+  button(VIEW.cx + 82, VIEW.cy + 118, 140, t('common.back'), close, 'back');
 }

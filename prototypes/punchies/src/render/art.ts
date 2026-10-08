@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
 
@@ -172,7 +173,7 @@ function loadingBar(scene: Phaser.Scene): { set(v: number): void; refreshLogo():
   scene.events.on('update',drift);
   objs.push(
     scene.add
-      .text(VIEW.cx, VIEW.cy - 18, 'LOADING', { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 18, t('loading.loading'), { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(1001),
   );

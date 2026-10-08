@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { playStinger } from '../audio/stingers';
 import { artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -60,11 +61,11 @@ export function roundSplash(scene: Phaser.Scene, next: () => void): () => void {
 
 export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   rematch: () => void; changeBoxer: () => void; menu: () => void;
-}, score?: [number, number], winner?: ResultWinner): Phaser.GameObjects.Text {
+}, score?: [number, number], winner?: ResultWinner, kind: 'victory' | 'defeat' | 'draw' = 'victory'): Phaser.GameObjects.Text {
   getNav(scene).engage();
   const before=new Set(scene.children.list);
-  const defeat=headline==='DEFEAT';
-  const draw=headline==='DRAW';
+  const defeat=kind==='defeat';
+  const draw=kind==='draw';
   playStinger(scene, 'result');
   const panel=scene.add.graphics().setDepth(129);
   panel.fillStyle(0x050d20,.72).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
@@ -91,9 +92,9 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     scene.add.text(textX,VIEW.top+VIEW.height*.37,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
     scene.add.text(textX,VIEW.top+VIEW.height*.48,`“${winnerQuote(winner!.char)}”`,{fontFamily:'Arial',fontSize:'20px',fontStyle:'italic',color:'#fff1d5',align:'center',wordWrap:{width:width-24},padding:{left:4,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
   }
-  const rematch=titleButton(scene,textX,VIEW.bottom-126,280,38,'REMATCH',actions.rematch,false,150,'green');
-  const change=titleButton(scene,textX,VIEW.bottom-78,280,38,'CHANGE BOXER',actions.changeBoxer,false,150);
-  const menu=titleButton(scene,textX,VIEW.bottom-30,280,38,'MAIN MENU',actions.menu,false,150,'red');
+  const rematch=titleButton(scene,textX,VIEW.bottom-126,280,38,t('match.rematch'),actions.rematch,false,150,'green');
+  const change=titleButton(scene,textX,VIEW.bottom-78,280,38,t('match.change_boxer'),actions.changeBoxer,false,150);
+  const menu=titleButton(scene,textX,VIEW.bottom-30,280,38,t('match.main_menu'),actions.menu,false,150,'red','back');
   if(!reducedMotion()){
     let alive=true;scene.events.once('shutdown',()=>{alive=false;});
     const details=scene.children.list.filter(o=>!before.has(o)&&o!==panel&&o!==shield&&o!==portrait&&o!==heading) as Phaser.GameObjects.Image[];

@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
@@ -53,7 +54,7 @@ export class LocalVsScene extends Phaser.Scene {
     this.over = false;
     const chars = data.chars ?? ['marco', 'marco'];
     this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: chars[0] }, { char: chars[1] }] });
-    const names: [string, string] = [`P1 · ${charName(chars[0])} · ${SOURCE_LABEL[data.p1]}`, `P2 · ${charName(chars[1])} · ${SOURCE_LABEL[data.p2]}`];
+    const names: [string, string] = [t('match.p_name_source', { n: 1, name: charName(chars[0]), source: SOURCE_LABEL[data.p1] }), t('match.p_name_source', { n: 2, name: charName(chars[1]), source: SOURCE_LABEL[data.p2] })];
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch',data.skins);
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     this.stage.setSeries(this.series);
@@ -88,10 +89,10 @@ export class LocalVsScene extends Phaser.Scene {
       return;
     }
     track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished');
-    matchResult(this, r.winner === null ? 'DRAW' : `P${r.winner + 1} VICTORY`, {
+    matchResult(this, r.winner === null ? t('common.draw') : t('match.p_victory', { n: r.winner + 1 }), {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.sim.fighters[r.winner].char,skin:this.inputs.skins?.[r.winner]});
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.sim.fighters[r.winner].char,skin:this.inputs.skins?.[r.winner]}, r.winner===null?'draw':'victory');
   }
 }

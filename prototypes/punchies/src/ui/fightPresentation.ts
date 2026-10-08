@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { skinTexture } from '../render/skins';
 import { artKey, artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -97,11 +98,11 @@ export class MatchIntro {
 }
 
 export function knockoutWords(scene: Phaser.Scene): () => void {
-  return impactWords(scene,['KNOCK','OUT'],tune.view.fightPresentation.koHoldMs);
+  return impactWords(scene,[t('fight.knock'),t('fight.out')],tune.view.fightPresentation.koHoldMs);
 }
 
 export function fightWord(scene: Phaser.Scene): void {
-  impactWords(scene,['FIGHT'],tune.view.fightPresentation.fightHoldMs);
+  impactWords(scene,[t('common.fight')],tune.view.fightPresentation.fightHoldMs);
 }
 
 function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number): () => void {

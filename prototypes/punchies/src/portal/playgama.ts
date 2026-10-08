@@ -8,7 +8,7 @@ import type { Portal, PortalStorage, RewardedResult } from './types';
 // scene; writes update the cache at once and are sent to Bridge.
 interface Bridge {
   initialize(): Promise<void>;
-  platform: { sendMessage(m: string): void };
+  platform: { sendMessage(m: string): void; language?: string };
   advertisement: { showRewarded(placement?: string): void; on(event: string, cb: (state: string) => void): void; off?(event: string, cb: (state: string) => void): void };
   analytics?: { send(name: string, data?: Record<string, string | number | boolean>): void };
   storage: { get(keys: string[]): Promise<(string | null)[]>; set(key: string, value: string): Promise<unknown>; delete(key: string): Promise<unknown> };
@@ -43,6 +43,7 @@ export function playgamaPortal(adsEnabled: boolean): Portal {
       } catch { ready = false; }
     },
     loadingFinished() { if (ready) bridge()!.platform.sendMessage('game_ready'); },
+    locale: () => (ready ? bridge()!.platform.language ?? null : null),
     gameplay(active) {
       if (!ready) return;
       bridge()!.platform.sendMessage(active ? (begun ? 'level_resumed' : 'level_started') : 'level_paused');

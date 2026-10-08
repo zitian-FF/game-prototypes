@@ -8,6 +8,7 @@ interface CgSdk {
   init(): Promise<void>;
   game: { gameplayStart(): void; gameplayStop(): void; loadingStart?(): void; loadingStop?(): void };
   ad: { requestAd(type: 'midgame' | 'rewarded', cb: { adStarted(): void; adFinished(): void; adError(e: unknown): void }): void };
+  user?: { systemInfo?: { locale?: string } };
   data: { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void };
 }
 const sdk = () => (globalThis as unknown as { CrazyGames?: { SDK: CgSdk } }).CrazyGames?.SDK;
@@ -31,6 +32,7 @@ export function crazyGamesPortal(adsEnabled: boolean): Portal {
       } catch { ready = false; }
     },
     loadingFinished() { if (ready) sdk()!.game.loadingStop?.(); },
+    locale: () => (ready ? sdk()!.user?.systemInfo?.locale ?? null : null),
     gameplay(active) { if (ready) (active ? sdk()!.game.gameplayStart() : sdk()!.game.gameplayStop()); },
     ads: {
       get available() { return adsEnabled && ready; },

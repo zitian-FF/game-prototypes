@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
@@ -56,7 +57,7 @@ export class VsAIScene extends Phaser.Scene {
     this.over = false;
     this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
     this.ai = makeBot(this.level, 1);
-    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0,true,this.skins);
+    this.stage = new FightStage(this, [t('match.you_name', { name: charName(this.chars[0]) }), t('match.cpu_name', { level: t(`level.${this.level}`), name: charName(this.chars[1]) })], 0,true,this.skins);
     this.stage.setSeries(this.series);
 
     addVersionStamp(this);
@@ -89,10 +90,10 @@ export class VsAIScene extends Phaser.Scene {
       return;
     }
     track('match', 'VsAI', r.winner === null ? 'draw' : r.winner === 0 ? 'win' : 'lose', { level: this.level, char: this.chars[0] });
-    matchResult(this, r.winner === null ? 'DRAW' : r.winner === 0 ? 'VICTORY' : 'DEFEAT', {
+    matchResult(this, r.winner === null ? t('common.draw') : r.winner === 0 ? t('common.victory') : t('common.defeat'), {
       rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.chars[r.winner],skin:this.skins[r.winner]});
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.chars[r.winner],skin:this.skins[r.winner]}, r.winner===null?'draw':r.winner===0?'victory':'defeat');
   }
 }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { tune } from '../sim/tune';
 import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import type { Fighter, SimState } from '../sim/types';
@@ -25,7 +26,7 @@ export class Hud {
     this.g=scene.add.graphics().setDepth(90);
     const text=(x:number,y:number,s:string,size:number,color:string)=>scene.add.text(x,y,s,{fontFamily:'Arial',fontSize:`${size}px`,fontStyle:'bold',color,stroke:'#061020',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(92);
     this.timer=text(VIEW.cx,VIEW.top+20,'99',29,'#fff1d1').setStroke('#030816',3).setFontFamily('Impact, Arial Black, sans-serif');
-    for(const [label,part,y] of [['HP','health',40],['STM','stamina',56],['STUN','stun',70]] as const){
+    for(const [label,part,y] of [[t('common.hp'),'health',40],[t('hud.stm'),'stamina',56],[t('common.stun'),'stun',70]] as const){
       this.meterLabels.push({text:text(VIEW.cx,VIEW.top+y,label,9,'#f5eedf'),part});
     }
     for(let i=0;i<2;i++){
@@ -33,7 +34,7 @@ export class Hud {
       const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
       name.setScale(Math.min(1,VIEW.width*.18/name.width));
       this.names.push(name);
-      this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,'UPPER',10,'#ffdf55').setVisible(false));
+      this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,t('common.upper'),10,'#ffdf55').setVisible(false));
     }
   }
   setSeries(series:SeriesState):void{this.series=series;}

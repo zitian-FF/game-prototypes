@@ -1,6 +1,7 @@
 import { ScreenTransition } from './ui/presentation';
 import { installMusic } from './audio/music';
 import Phaser from 'phaser';
+import { installTextLocale } from './i18n/textStyle';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { ShopScene } from './scenes/ShopScene';
 import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
@@ -19,6 +20,7 @@ import { setupOrientation } from './orientation/orientation';
 
 
 mountDebugPanelIfRequested();
+installTextLocale(Phaser);
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

@@ -1,4 +1,6 @@
 import { CHARACTER_IDS, type CharId } from '../sim/character';
+import { t } from '../i18n';
+import { itemName } from './itemText';
 import { SHOP_ITEMS, WELCOME_FIGHTER, type ShopDraftState, type ShopItem } from './draft';
 import { STARTER_SKINS } from '../render/skinPalette';
 
@@ -22,5 +24,8 @@ export function equippedSkin(state: ShopDraftState, char: CharId, requested: unk
 }
 
 export function skinName(char: string, skin: string): string {
-  return skinItem(char, skin)?.name.split(' · ')[1] ?? 'DEFAULT';
+  const item = skinItem(char, skin);
+  if (!item) return t('shop.default');
+  const name = itemName(item);
+  return name.split(' · ')[1] ?? name;
 }

@@ -387,3 +387,14 @@ Our own events go through the same portal layer: `track(category, what, action, 
 
 ## Lobby connection line, 2026-10-08
 The online lobby (host and guest) shows one small dim line under the status text: `relays <open>/<pinned> · TURN yes|no · <seconds>s`. It tells a tester why a lobby is stuck (no signalling relay reachable, TURN not fetched) without a debugger. A guest that times out also records `online/guest/failed` with the same numbers, and a lobby that has waited 15 seconds with no relay open records `online/lobby/no_relays`, both visible in the debug analytics copy.
+
+## Localisation, 2026-10-08
+Phase 1 of the translation layer is in `src/i18n/`. Languages for the first pass: English, Japanese (ja), Korean (ko), Chinese Simplified (zh), Spanish (es) and Arabic (ar). Arabic is right-to-left text only: the layout is not mirrored.
+
+- **Game code:** every player-facing string is `t('area.key', { name: value })`. Placeholders are written `{name}`. A missing translation falls back to English, then to the key. Developer-only text stays English: the reference panel (`InfoPanel`), the network stats readout and the lobby diagnostic line.
+- **Files:** `locales/en.json` is the source. `locales/<code>.json` hold translations and are loaded only for the player's language. `locales/index.json` lists how many strings each language has; a language is offered only when it has translations (the debug panel, `?debug=1`, offers all six).
+- **Choosing the language:** the saved choice, then the portal's language (CrazyGames and Playgama adapters, not yet checked against the real SDKs), then the browser language. `?lang=<code>` forces one, and `?lang=pseudo` wraps every translated string in ⟦ ⟧ so any hardcoded English is easy to spot.
+- **Landing page button:** a small button at the top right shows the current language and opens a picker. Choosing a language saves it and reopens the menu.
+- **Translating:** `node scripts/i18n-sheet.mjs export [file.csv] [--formulas]` writes a sheet with one column per language (with `--formulas`, empty cells hold `=GOOGLETRANSLATE`). After review, download the sheet as CSV and run `node scripts/i18n-sheet.mjs import <file.csv>`. Placeholders are repaired (`{ name }` becomes `{name}`) and cells with the wrong placeholders are rejected and listed. `check` validates the files.
+- **Fonts:** Japanese, Korean, Chinese and Arabic use the system font list after the game's own font. Bundled narrow fonts for languages that need more room are the next step (they add download size). Buttons and labels do not yet shrink to fit long translations.
+- **Not translated:** character names, the logo, the version stamp and the `P(COM)` floor marker.

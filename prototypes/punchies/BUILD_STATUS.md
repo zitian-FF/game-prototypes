@@ -14,6 +14,9 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 - Online lobby shows a small `relays n/5 · TURN yes|no · Ns` diagnostic line for host and guest, and failures record the same numbers in the analytics log. Added to find out why an iPhone host never gets joined (iPhone host stuck waiting, Android guest timing out).
 
+- Localisation phase 1: `t()` layer and about 250 extracted strings in `locales/en.json`, language picker on the landing page (hidden until a second language has translations), per-language font lists, Arabic right-to-left via an embedding mark, `?lang=` and `?lang=pseudo`, and a Google Sheets round trip (`scripts/i18n-sheet.mjs`). No translations are written yet. See BRIEF.md under Localisation.
+- Tests: new `test-punchies-i18n.mjs` (keys, placeholders, unused keys, hardcoded text, fallbacks, language choice, sheet round trip); older hand-loaded tests got an English stand-in for the new layer.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.
@@ -21,11 +24,13 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Reward is granted only on an explicit success result from the portal.
 
 ## Open questions
+- Translations: who reviews Japanese, Korean, Spanish and Arabic? (Chinese is reviewed by the owner.) Narrow fonts and text fitting for long languages are the next localisation step.
 - Hosting and exclusivity choice for each portal, and the Gemini music rights question (the account used was a First Fun Workspace account).
 - Whether to drop the connected stingers and loops after the listening review.
 - Hard bot personality, and whether jab and uppercut punishes should award +2 counter stars.
 
 ## Known issues
+- Localisation: no translated strings exist yet; Arabic and CJK rendering was checked with sample strings in headless Chromium only, not on a phone. Labels do not shrink to fit long translations.
 - Online play with an iPhone as host does not pair (reported on a real device; no app switch involved). Cause not yet known. Next step is a retest with the lobby diagnostic line and then a fix based on what it shows.
 - The portal adapters have not been run against the real CrazyGames, Poki or Playgama SDKs, only against mocks. Each portal's QA tool must be run before submission.
 - Gameplay start fires when a fight scene starts, not on the first input (Poki's guidance prefers first input).

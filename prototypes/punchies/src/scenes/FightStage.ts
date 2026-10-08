@@ -356,10 +356,11 @@ export function makeButton(
   onTap: () => void,
   h = 26,
   fontSize = 10,
+  tint = 0x327dc2,
 ): Phaser.GameObjects.Text {
   const bg = scene.add.rectangle(x, y, w, h, 0, 0).setDepth(130);
   const chrome=scene.add.graphics().setDepth(130);
-  cartoonPanel(chrome,x-w/2,y-h/2,w,h,text.includes('REMATCH')?0x24b775:text.includes('MENU')?0xdb4c66:0x327dc2,7);
+  cartoonPanel(chrome,x-w/2,y-h/2,w,h,tint,7);
   bg.on('destroy', () => chrome.destroy());
   bg.setInteractive().on('pointerdown', onTap);
   navRegister(scene, bg, onTap);

@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import Phaser from 'phaser';
 import { availableFighters,equippedSkin } from '../shop/roster';
 import { loadShopDraft } from '../shop/draft';
@@ -20,6 +21,7 @@ const MAX_STEPS_PER_FRAME = 5;
 
 const DUMMY_STANCES = ['NORMAL', 'HIGH GUARD', 'VULNERABLE'] as const;
 type DummyStance = (typeof DUMMY_STANCES)[number];
+const STANCE_KEY: Record<DummyStance, string> = { NORMAL: 'training.stance_normal', 'HIGH GUARD': 'training.stance_high_guard', VULNERABLE: 'training.stance_vulnerable' };
 
 export class TrainingScene extends Phaser.Scene {
   private sim!: SimState;
@@ -47,12 +49,12 @@ export class TrainingScene extends Phaser.Scene {
     this.built = true;
     this.acc = 0;
     this.newSim();
-    this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0,true,[equippedSkin(loadShopDraft(),this.char,loadCharPrefs().skins.p1?.[this.char]),'default']);
+    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0,true,[equippedSkin(loadShopDraft(),this.char,loadCharPrefs().skins.p1?.[this.char]),'default']);
     this.charLabel = this.stage.button(VIEW.left + 105, VIEW.top + 110, 110, '', () => this.cycleChar());
     this.stanceLabel = this.stage.button(VIEW.left + 105, VIEW.top + 140, 110, '', () => this.cycleStance());
-    this.stage.button(VIEW.left + 105, VIEW.top + 170, 110, 'RESET', () => this.newSim());
+    this.stage.button(VIEW.left + 105, VIEW.top + 170, 110, t('training.reset'), () => this.newSim());
     this.refreshStance();
-    this.charLabel.setText(`YOU: ${charName(this.char)}`);
+    this.charLabel.setText(t('training.you_char', { name: charName(this.char) }));
     addVersionStamp(this);
   }
 
@@ -72,7 +74,7 @@ export class TrainingScene extends Phaser.Scene {
     saveCharPrefs({ p1: this.char });
     this.stage.setSkins([equippedSkin(loadShopDraft(),this.char,loadCharPrefs().skins.p1?.[this.char]),'default']);
     prefetchGroups(trainingGroups(this.char)); // the boxer's art pops in once it arrives
-    this.charLabel.setText(`YOU: ${charName(this.char)}`);
+    this.charLabel.setText(t('training.you_char', { name: charName(this.char) }));
     this.newSim();
   }
 
@@ -82,7 +84,7 @@ export class TrainingScene extends Phaser.Scene {
   }
 
   private refreshStance(): void {
-    this.stanceLabel.setText(`DUMMY: ${this.dummyStance}`);
+    this.stanceLabel.setText(t('training.dummy_stance', { stance: t(STANCE_KEY[this.dummyStance]) }));
     this.applyStance();
   }
 

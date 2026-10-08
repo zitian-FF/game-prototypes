@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 
 // Fullscreen button. Android and iPad support the Fullscreen API; iPhone
@@ -59,17 +60,17 @@ export function addFullscreenButton(scene: Phaser.Scene, x: number, y: number): 
 function showHomeScreenHint(scene: Phaser.Scene): void {
   const inFrame = window.top !== window.self;
   const lines = [
-    'iPhone does not allow web games to go fullscreen.',
+    t('fullscreen.iphone_does_not_allow_web'),
     '',
-    'To play without the browser bars:',
-    '1. Tap Share (the square with an arrow)',
-    '2. Tap "Add to Home Screen"',
-    '3. Launch Punchies from your Home Screen',
+    t('fullscreen.to_play_without_the_browser'),
+    t('fullscreen.1_tap_share_the_square'),
+    t('fullscreen.2_tap_add_to_home'),
+    t('fullscreen.3_launch_punchies_from_your'),
   ];
-  if (inFrame) lines.push('', 'Do this from the game-only page:', location.href.split('?')[0]);
-  lines.push('', '(tap to close)');
+  if (inFrame) lines.push('', t('fullscreen.do_this_from_the_game'), location.href.split('?')[0]);
+  lines.push('', t('fullscreen.tap_to_close'));
   const bg = scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.9).setDepth(300).setInteractive();
-  const t = scene.add
+  const label = scene.add
     .text(VIEW.cx, VIEW.cy, lines.join('\n'), {
       fontFamily: 'monospace',
       fontSize: '12px',
@@ -82,6 +83,6 @@ function showHomeScreenHint(scene: Phaser.Scene): void {
     .setDepth(301);
   bg.once('pointerup', () => {
     bg.destroy();
-    t.destroy();
+    label.destroy();
   });
 }

@@ -22,7 +22,7 @@ export const SHOP_ITEMS:ShopItem[]=[
 ];
 SHOP_ITEMS.forEach(item=>{if(item.kind==='skins'&&!item.skinType)item.skinType='palette';});
 export interface ShopDraftState {version:1; tokens:number; welcomeClaimed:boolean; owned:string[]; adDay:string; adsToday:number; offerDay?:string; offerIds?:string[]; offerSchema?:number; purchasedDay?:string; purchasedChests?:ShopKind[];}
-export type ShopResult={ok:true;state:ShopDraftState;item?:ShopItem}|{ok:false;reason:string;state:ShopDraftState};
+export type ShopResult={ok:true;state:ShopDraftState;item?:ShopItem}|{ok:false;reason:string;reasonKey?:string;reasonParams?:Record<string,number>;state:ShopDraftState};
 export const shopDay=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
 export function newShopDraft(now=Date.now()):ShopDraftState{return {version:1,tokens:config.welcomeGiftTokens,welcomeClaimed:false,owned:[],adDay:shopDay(now),adsToday:0};}
 export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
@@ -35,7 +35,7 @@ export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
   return {version:1,tokens:s.tokens!,welcomeClaimed:claimed,owned,adDay:shopDay(now),adsToday:s.adDay===shopDay(now)?Math.min(s.adsToday!,config.dailyAdLimit):0,offerDay:s.offerDay,offerIds:Array.isArray(s.offerIds)?s.offerIds.filter(id=>SHOP_ITEMS.some(item=>item.id===id)):undefined,offerSchema:s.offerSchema,purchasedDay:shopDay(now),purchasedChests:s.purchasedDay===shopDay(now)&&Array.isArray(s.purchasedChests)?[...new Set(s.purchasedChests.filter(k=>k==='skins'||k==='fighters'))]:[]};
 }
 export function welcomePull(state:ShopDraftState):ShopResult{
-  if(state.welcomeClaimed)return {ok:false,reason:'Welcome fighter already claimed.',state};
+  if(state.welcomeClaimed)return {ok:false,reason:'Welcome fighter already claimed.',reasonKey:'shop.err.welcome_claimed',state};
   return {ok:true,item:SHOP_ITEMS[0],state:{...state,tokens:state.tokens,welcomeClaimed:true,owned:[...state.owned,WELCOME_FIGHTER]}};
 }
 export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&!STARTER_SKINS.includes(i.id)&&i.id!==WELCOME_FIGHTER&&!state.owned.includes(i.id));}
@@ -57,18 +57,18 @@ export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;
 }
 export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,now=Date.now()):ShopResult{
   const s=refreshDailyOffers(state,now);
-  if(s.purchasedChests?.includes(kind))return {ok:false,reason:'This chest has already been opened today.',state:s};
+  if(s.purchasedChests?.includes(kind))return {ok:false,reason:'This chest has already been opened today.',reasonKey:'shop.err.chest_opened',state:s};
   const pool=chestRewards(s,kind);
-  if(!pool.length)return {ok:false,reason:'All rewards in this chest are owned.',state:s};
+  if(!pool.length)return {ok:false,reason:'All rewards in this chest are owned.',reasonKey:'shop.err.all_owned',state:s};
   const cost=kind==='skins'?config.skinPullCost:config.fighterPullCost;
-  if(s.tokens<cost)return {ok:false,reason:`Need ${cost-s.tokens} more tokens.`,state:s};
+  if(s.tokens<cost)return {ok:false,reason:`Need ${cost-s.tokens} more tokens.`,reasonKey:'shop.err.need_tokens',reasonParams:{n:cost-s.tokens},state:s};
   const roll=Number.isFinite(random)?Math.max(0,Math.min(.999999,random)):0;
   const item=pool[Math.floor(roll*pool.length)].item;
   return {ok:true,item,state:{...s,tokens:s.tokens-cost,owned:[...s.owned,item.id],purchasedChests:[...(s.purchasedChests??[]),kind]}};
 }
 export function previewAdReward(state:ShopDraftState,now=Date.now()):ShopResult{
   const s=normalizeShopDraft(state,now);
-  if(s.adsToday>=config.dailyAdLimit)return {ok:false,reason:'Daily preview limit reached. Resets at 00:00 UTC.',state:s};
+  if(s.adsToday>=config.dailyAdLimit)return {ok:false,reason:'Daily preview limit reached. Resets at 00:00 UTC.',reasonKey:'shop.err.daily_limit',state:s};
   return {ok:true,state:{...s,tokens:s.tokens+config.adRewardTokens,adsToday:s.adsToday+1}};
 }
 const KEY=KEYS.shop;

@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
@@ -117,7 +118,7 @@ export class MatchScene extends Phaser.Scene {
 
     const nm = (i: 0 | 1) => charName(data.chars[i]);
     const names: [string, string] =
-      data.localIdx === 0 ? [`YOU (host) · ${nm(0)}`, `OPPONENT · ${nm(1)}`] : [`OPPONENT · ${nm(0)}`, `YOU · ${nm(1)}`];
+      data.localIdx === 0 ? [t('match.you_host', { name: nm(0) }), t('match.opponent_name', { name: nm(1) })] : [t('match.opponent_name', { name: nm(0) }), t('match.you_name', { name: nm(1) })];
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
     this.stage = new FightStage(this, names, data.localIdx,true,data.skins);
@@ -127,7 +128,7 @@ export class MatchScene extends Phaser.Scene {
     this.events.once('shutdown',()=>this.events.removeAllListeners('menuReturn'));
 
     this.waiting = this.add
-      .text(VIEW.cx, tune.ring.top + 16, 'waiting for opponent...', {
+      .text(VIEW.cx, tune.ring.top + 16, t('match.waiting_for_opponent'), {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffd24a',
@@ -287,14 +288,14 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
-    const text = r.winner === null ? 'DRAW' : r.winner === this.match.localIdx ? 'VICTORY' : 'DEFEAT';
+    const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     if (this.remoteReselect) { this.changeBoxer(); return; }
     const rem = matchResult(this, text, {
       rematch: () => {
         if (this.rematchLocal) return;
         this.rematchLocal = true;
-        rem.setText('WAITING...');
+        rem.setText(t('match.waiting'));
         this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
         this.tryRematch();
       },
@@ -303,7 +304,7 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]});
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
   }
 
   private tryRematch(): void {
@@ -330,7 +331,7 @@ export class MatchScene extends Phaser.Scene {
     this.over = true;
     this.waiting.setVisible(false);
     this.add
-      .text(VIEW.cx, VIEW.cy, forfeited?'VICTORY · OPPONENT FORFEITED':'VICTORY · OPPONENT DISCONNECTED', {
+      .text(VIEW.cx, VIEW.cy, forfeited?t('match.victory_opponent_forfeited'):t('match.victory_opponent_disconnected'), {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#ffffff',
@@ -340,7 +341,7 @@ export class MatchScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(150);
-    makeButton(this, VIEW.cx, VIEW.cy + 50, 100, 'MENU', () => this.leave());
+    makeButton(this, VIEW.cx, VIEW.cy + 50, 100, t('common.menu'), () => this.leave(), 26, 10, 0xdb4c66);
   }
 
   private async leave(): Promise<void> {

@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
@@ -58,7 +59,7 @@ export class LobbyScene extends Phaser.Scene {
       .text(VIEW.cx, VIEW.bottom - 36, '', { fontFamily: 'monospace', fontSize: '10px', color: '#7f8fa5', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateDiag() });
-    makeButton(this, VIEW.left + 50, VIEW.top + 24, 70, 'BACK', () => this.back());
+    makeButton(this, VIEW.left + 50, VIEW.top + 24, 70, t('common.back'), () => this.back());
     this.events.once('shutdown', () => {
       this.timeout?.remove();
       if (!this.handedOff) this.session?.leave();
@@ -86,7 +87,7 @@ export class LobbyScene extends Phaser.Scene {
 
   private async host(): Promise<void> {
     const code = randomRoomCode();
-    this.status.setText('Creating room...');
+    this.status.setText(t('lobby.creating_room'));
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
@@ -101,17 +102,17 @@ export class LobbyScene extends Phaser.Scene {
       track('online', 'host', 'connected');
       void this.hostHandshake(s);
     };
-    s.onPeerLeft = () => this.status.setText('Opponent left. Waiting for opponent...');
+    s.onPeerLeft = () => this.status.setText(t('lobby.opponent_left_waiting_for_opponent'));
 
     this.add
-      .text(VIEW.cx - 110, VIEW.cy - 70, 'ROOM', { fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa', resolution: PIXEL_RATIO })
+      .text(VIEW.cx - 110, VIEW.cy - 70, t('lobby.room'), { fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     this.add
       .text(VIEW.cx - 110, VIEW.cy - 20, code, { fontFamily: 'monospace', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     const url = roomUrl(code);
     this.add
-      .text(VIEW.cx - 110, VIEW.cy + 30, 'Scan the QR code or\nenter the code in JOIN', { fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa', align: 'center', resolution: PIXEL_RATIO })
+      .text(VIEW.cx - 110, VIEW.cy + 30, t('lobby.scan_the_qr_code_or'), { fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 170 * PIXEL_RATIO });
     if (!this.scene.isActive()) return;
@@ -119,11 +120,11 @@ export class LobbyScene extends Phaser.Scene {
       this.add.image(VIEW.cx + 110, VIEW.cy - 20, 'qr-' + code).setDisplaySize(170, 170);
     });
     this.textures.addBase64('qr-' + code, dataUrl);
-    this.status.setText('Waiting for opponent...');
+    this.status.setText(t('lobby.waiting_for_opponent'));
   }
 
   private async hostHandshake(s: NetSession): Promise<void> {
-    this.status.setText('Opponent found. Measuring ping...');
+    this.status.setText(t('lobby.opponent_found_measuring_ping'));
     const rtts: number[] = [];
     await new Promise<void>((resolve) => {
       let sent = 0;
@@ -159,7 +160,7 @@ export class LobbyScene extends Phaser.Scene {
     this.add
       .text(VIEW.cx, VIEW.cy - 30, code, { fontFamily: 'monospace', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    this.status.setText(`Joining room ${code}...`);
+    this.status.setText(t('lobby.joining_room', { code }));
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
@@ -167,21 +168,21 @@ export class LobbyScene extends Phaser.Scene {
     this.session = s;
     s.onRejected = () => {
       track('online', 'guest', 'failed', { reason: 'room_full' });
-      this.back(`Room ${code} is full`);
+      this.back(t('lobby.room_full', { code }));
     };
     s.onPaired = () => {
       track('online', 'guest', 'connected');
       this.handedOff = true;
       startScreen(this, 'CharSelect', { mode: 'online', session: s, localIdx: 1 });
     };
-    s.onPeerLeft = () => this.back('Host left the room');
+    s.onPeerLeft = () => this.back(t('lobby.host_left_the_room'));
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
     };
     this.timeout = this.time.delayedCall(tune.net.connectTimeoutMs, () => {
       if (!s.peerId) {
         track('online', 'guest', 'failed', { reason: 'no_host', ...this.diagProps() });
-        this.back(`No host found for room ${code}`);
+        this.back(t('lobby.no_host', { code }));
       }
     });
   }

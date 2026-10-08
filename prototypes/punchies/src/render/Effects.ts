@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import type { SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
 import { PIXEL_RATIO, VIEW } from './pixelRatio';
@@ -55,11 +56,11 @@ export class Effects {
     if (dealt) {
       cam.shake(big ? 150 : 70, (big ? 0.009 : 0.003) * tune.view.cameraShakeScale);
       if (e.counter) {
-        this.shakyLabel(e.x, e.y - 34, 'COUNTER!', '#ffe03a', 22);
+        this.shakyLabel(e.x, e.y - 34, t('fx.counter'), '#ffe03a', 22);
         this.screenFlash(0xffffff, 0.3);
         sfx.counter();
       } else if (e.sweet) {
-        this.label(e.x, e.y - 26, e.row === 'vulnerable' ? 'SWEET!' : 'sweet (body)', '#ffe03a', 12);
+        this.label(e.x, e.y - 26, e.row === 'vulnerable' ? t('fx.sweet') : t('fx.sweet_body'), '#ffe03a', 12);
         sfx.sweet();
       } else {
         this.label(e.x, e.y - 22, 'sour', '#bbbbbb', 10);
@@ -74,14 +75,14 @@ export class Effects {
         /* vibration unsupported */
       }
       if (e.counter) {
-        this.shakyLabel(e.x, e.y - 34, 'PUNISHED!', '#ff3a3a', 22);
+        this.shakyLabel(e.x, e.y - 34, t('fx.punished'), '#ff3a3a', 22);
         sfx.hurtBig();
       } else {
         sfx.hurt();
       }
     }
-    if (e.buffed) this.label(e.x, e.y - 48, 'POWER!', '#ff9a3a', 13);
-    if (e.punch === 'uppercut') this.shakyLabel(e.x, e.y - 52, 'UPPERCUT!', '#ffc83a', 18);
+    if (e.buffed) this.label(e.x, e.y - 48, t('fx.power'), '#ff9a3a', 13);
+    if (e.punch === 'uppercut') this.shakyLabel(e.x, e.y - 52, t('fx.uppercut'), '#ffc83a', 18);
   }
 
   // Tekken-style hit spark: a hot core flash plus streaks sprayed forward in
@@ -197,12 +198,12 @@ export class Effects {
           this.hit(e, s, localIdx);
           break;
         case 'block':
-          this.label(e.x, e.y - 22, e.chip > 0 ? `CHIP -${e.chip.toFixed(1)}` : 'BLOCK', e.chip > 0 ? '#ffb03a' : '#3ad0c0', 11);
+          this.label(e.x, e.y - 22, e.chip > 0 ? t('fx.chip', { n: e.chip.toFixed(1) }) : t('fx.block'), e.chip > 0 ? '#ffb03a' : '#3ad0c0', 11);
           sfx.block();
           break;
         case 'perfectGuard':
           this.screenFlash(0xffffff, 0.25);
-          this.label(e.x, e.y - 28, 'PERFECT GUARD', '#ffffff', 14);
+          this.label(e.x, e.y - 28, t('common.perfect_guard'), '#ffffff', 14);
           sfx.perfectGuard();
           break;
         case 'dodged':
@@ -211,12 +212,12 @@ export class Effects {
           break;
         case 'whiff': {
           const f = s.fighters[e.attacker];
-          this.label(f.x, f.y - 30, e.punch === 'uppercut' ? 'WHIFF! (exposed)' : 'whiff', '#888888', 10);
+          this.label(f.x, f.y - 30, e.punch === 'uppercut' ? t('fx.whiff_exposed') : 'whiff', '#888888', 10);
           break;
         }
         case 'stunned': {
           const f = s.fighters[e.fighter];
-          this.label(f.x, f.y - 36, 'STUNNED', '#ffe03a', 16);
+          this.label(f.x, f.y - 36, t('fx.stunned'), '#ffe03a', 16);
           sfx.stun();
           break;
         }
@@ -224,7 +225,7 @@ export class Effects {
           if (e.fighter === localIdx) sfx.starsReady();
           break;
         case 'ready':
-          this.banner(`ROUND ${this.roundNumber}`, Math.max(0.3, tune.match.introSec - 0.3), '#fff1d1');
+          this.banner(t('fx.round', { n: this.roundNumber }), Math.max(0.3, tune.match.introSec - 0.3), '#fff1d1');
           sfx.ready();
           break;
         case 'go':
@@ -235,7 +236,7 @@ export class Effects {
           // Confirmed knockout presentation is started by FightStage.draw.
           break;
         case 'timeUp':
-          this.banner(e.winner === null ? 'DRAW' : 'TIME');
+          this.banner(e.winner === null ? t('common.draw') : t('fx.time'));
           sfx.timeUp();
           break;
       }

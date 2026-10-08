@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import type { IntentLayer, TapIntent } from '../input/intents';
 import { tune } from '../sim/tune';
 import { punchCfg } from '../sim/character';
@@ -25,10 +26,10 @@ interface ArcButton {
 // Anchored to the bottom-right of the visible view (see VIEW).
 const MAIN = { x: VIEW.right - 92, y: VIEW.bottom - 90, r: 58 };
 const ARC_BUTTONS: ArcButton[] = [
-  { id: 'hook', x: MAIN.x - 100, y: MAIN.y + 18, r: 28, label: 'HOOK' },
-  { id: 'guard', x: MAIN.x - 84, y: MAIN.y - 64, r: 28, label: 'GUARD' },
-  { id: 'dodge', x: MAIN.x - 30, y: MAIN.y - 110, r: 26, label: 'DODGE' },
-  { id: 'uppercut', x: MAIN.x + 42, y: MAIN.y - 116, r: 32, label: 'UPPER' },
+  { id: 'hook', x: MAIN.x - 100, y: MAIN.y + 18, r: 28, get label() { return t('common.hook'); } },
+  { id: 'guard', x: MAIN.x - 84, y: MAIN.y - 64, r: 28, get label() { return t('common.guard'); } },
+  { id: 'dodge', x: MAIN.x - 30, y: MAIN.y - 110, r: 26, get label() { return t('common.dodge'); } },
+  { id: 'uppercut', x: MAIN.x + 42, y: MAIN.y - 116, r: 32, get label() { return t('common.upper'); } },
 ];
 const JOYSTICK_ZONE_RIGHT = VIEW.left + VIEW.width * 0.45;
 const JOYSTICK_ZONE_TOP = VIEW.top + 64;
@@ -75,8 +76,8 @@ export class TouchControls {
     const crossIcon = artImage(scene, 'icon_cross', MAIN.x + MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
     if (jabIcon) this.chrome.push({ image: jabIcon, ids: ['jab'] });
     if (crossIcon) this.chrome.push({ image: crossIcon, ids: ['cross'] });
-    txt(MAIN.x - MAIN.r / 2, MAIN.y + (jabIcon ? 18 : -6), 'JAB', 13);
-    txt(MAIN.x + MAIN.r / 2, MAIN.y + (crossIcon ? 18 : -6), 'CROSS', 13);
+    txt(MAIN.x - MAIN.r / 2, MAIN.y + (jabIcon ? 18 : -6), t('common.jab'), 13);
+    txt(MAIN.x + MAIN.r / 2, MAIN.y + (crossIcon ? 18 : -6), t('common.cross'), 13);
     for (const b of ARC_BUTTONS) txt(b.x, b.id === 'uppercut' ? b.y + 2 : b.y, b.label, 10);
 
     scene.input.on('pointerdown', this.onDown, this);

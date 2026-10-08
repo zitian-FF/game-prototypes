@@ -1,4 +1,8 @@
 import Phaser from 'phaser';
+import { availableLanguages, getLanguage, t } from '../i18n';
+import { LANGUAGES } from '../i18n/languages';
+import { chooseLanguage } from '../i18n/init';
+import { isDebug } from '../debug/debugPanel';
 import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
 import { cartoonPanel } from '../ui/cartoonChrome';
@@ -41,22 +45,22 @@ export class MenuScene extends Phaser.Scene {
     if (!logo) this.add
       .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    titleButton(this, menuX, top + 105, w, 45, 'SINGLE PLAYER', () => startScreen(this, 'CharSelect', { mode: 'vsai' }), true);
+    titleButton(this, menuX, top + 105, w, 45, t('common.single_player'), () => startScreen(this, 'CharSelect', { mode: 'vsai' }), true);
     const category = (y: number, label: string) => {
       this.add.text(menuX,y,label,{fontFamily:'Arial',fontSize:'11px',fontStyle:'bold',color:'#a6c5e8',resolution:PIXEL_RATIO}).setOrigin(0.5);
       const g=this.add.graphics().lineStyle(1,0x789ecb,0.65);
       g.beginPath().moveTo(menuX-w/2+6,y).lineTo(menuX-38,y).moveTo(menuX+38,y).lineTo(menuX+w/2-6,y).strokePath();
     };
     const half=(w-12)/2;
-    category(top+147,'VERSUS');
-    titleButton(this,menuX-(half+12)/2,top+177,half,38,'LOCAL VS',()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}));
-    titleButton(this,menuX+(half+12)/2,top+177,half,38,'ONLINE',()=>this.openOnlinePopup());
-    category(top+213,'PRACTICE');
-    titleButton(this,menuX-(half+12)/2,top+243,half,38,'TRAINING',()=>startScreen(this,'Training'));
-    titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
-    titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openSettings());
+    category(top+147,t('common.versus'));
+    titleButton(this,menuX-(half+12)/2,top+177,half,38,t('menu.local_vs'),()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}),false,130,'red');
+    titleButton(this,menuX+(half+12)/2,top+177,half,38,t('common.online'),()=>this.openOnlinePopup(),false,130,'blue');
+    category(top+213,t('menu.practice'));
+    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'Training'),false,130,'purple');
+    titleButton(this,menuX+(half+12)/2,top+243,half,38,t('menu.tutorial'),()=>startScreen(this,'Tutorial'),false,130,'teal');
+    titleButton(this,menuX-(half+12)/2,top+294,half,27,t('common.settings'),()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;
-    const shop = titleButton(this,shopX,top+294,half,27,'SHOP',()=>this.openShop(),false,130,'green');
+    const shop = titleButton(this,shopX,top+294,half,27,t('menu.shop'),()=>this.openShop(),false,130,'green');
     shop.setX(shopX - half * 0.22);
     const balanceX = shopX + half * 0.26;
     this.add.graphics().setDepth(131).fillStyle(0x081b24,0.75)
@@ -70,6 +74,24 @@ export class MenuScene extends Phaser.Scene {
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
+    // Language picker on the landing screen. Only shown once a second language has translations (always in debug, to test).
+    if (availableLanguages(isDebug()).length > 1) {
+      const current = LANGUAGES.find((l) => l.code === getLanguage())?.native ?? getLanguage();
+      titleButton(this, VIEW.right - 62, VIEW.top + 24, 104, 28, current, () => this.openLanguagePopup(), false, 130);
+    }
+  }
+
+  private openLanguagePopup(): void {
+    const p = this.popup(t('menu.language'));
+    availableLanguages(isDebug()).forEach((lang, i) => {
+      const x = VIEW.cx + (i % 2 === 0 ? -90 : 90);
+      const y = VIEW.cy - 45 + Math.floor(i / 2) * 38;
+      const pick = titleButton(this, x, y, 160, 30, lang.native, () => {
+        p.close();
+        void chooseLanguage(lang.code).then(() => startScreen(this, 'Menu'));
+      }, false, 402, lang.code === getLanguage() ? 'green' : 'default');
+      p.items.push(pick, pick.getData('bg'));
+    });
   }
 
   private popup(title: string, onBack?: () => void): { items: Phaser.GameObjects.GameObject[]; close(): void } {
@@ -80,14 +102,14 @@ export class MenuScene extends Phaser.Scene {
     panel.lineStyle(2,0x8ba4c7).strokeRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
     items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
     const close=()=>items.forEach(o=>o.destroy());
-    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',()=>{close();onBack?.();},false,402);
+    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,t('common.back'),()=>{close();onBack?.();},false,402,'default','back');
     items.push(back,back.getData('bg'));
     return {items,close};
   }
 
   private openCredits(): void {
-    const p=this.popup('CREDITS',()=>this.openSettings());
-    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Designed and produced by tiantian\n\nIn collaboration with\nClaudia, G.P. Tee and Gemma',
+    const p=this.popup(t('common.credits'),()=>this.openSettings());
+    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,t('menu.designed_and_produced_by_tiantian'),
       {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
   }
 
@@ -96,9 +118,9 @@ export class MenuScene extends Phaser.Scene {
   protected openSettings(): void { audioSettingsPanel(this, () => this.openInputPopup(), () => this.openCredits()); }
 
   private openOnlinePopup(): void {
-    const p=this.popup('ONLINE');
-    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,'HOST GAME',()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
-    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,'JOIN WITH CODE',()=>{p.close();this.join();},false,402);
+    const p=this.popup(t('common.online'));
+    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,t('menu.host_game'),()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
+    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,t('menu.join_with_code'),()=>{p.close();this.join();},false,402);
     p.items.push(host,host.getData('bg'),join,join.getData('bg'));
   }
 
@@ -126,7 +148,7 @@ export class MenuScene extends Phaser.Scene {
     };
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.75).setDepth(D).setInteractive());
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 440, 280, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
-    txt(VIEW.cx, VIEW.cy - 118, 'SETTINGS · LOCAL INPUTS', 15, '#ffd24a');
+    txt(VIEW.cx, VIEW.cy - 118, t('menu.settings_local_inputs'), 15, '#ffd24a');
 
     const cycle = (list: InputSource[], cur: InputSource, other: InputSource) => {
       let i = list.indexOf(cur);
@@ -136,12 +158,12 @@ export class MenuScene extends Phaser.Scene {
       }
       return cur;
     };
-    txt(VIEW.cx - 130, VIEW.cy - 76, 'PLAYER 1', 12, '#7fb3ff');
+    txt(VIEW.cx - 130, VIEW.cy - 76, t('common.player_1'), 12, '#7fb3ff');
     const p1 = btn(VIEW.cx + 40, VIEW.cy - 76, 220, '', () => {
       v.p1 = cycle(P1_OPTIONS, v.p1, v.p2);
       refresh();
     });
-    txt(VIEW.cx - 130, VIEW.cy - 36, 'PLAYER 2', 12, '#ff8a7a');
+    txt(VIEW.cx - 130, VIEW.cy - 36, t('common.player_2'), 12, '#ff8a7a');
     const p2 = btn(VIEW.cx + 40, VIEW.cy - 36, 220, '', () => {
       v.p2 = cycle(P2_OPTIONS, v.p2, v.p1);
       refresh();
@@ -164,15 +186,15 @@ export class MenuScene extends Phaser.Scene {
     const padTimer = this.time.addEvent({
       delay: 300,
       loop: true,
-      callback: () => pads.setText(`Controllers connected: ${devices.connectedPads()} (press a button to wake one)`),
+      callback: () => pads.setText(t('menu.controllers_connected', { n: devices.connectedPads() })),
     });
     padTimer.callback?.();
-    btn(VIEW.cx - 70, VIEW.cy + 108, 120, 'CREDITS', () => {
+    btn(VIEW.cx - 70, VIEW.cy + 108, 120, t('common.credits'), () => {
       padTimer.remove();
       for (const o of items) o.destroy();
       this.openCredits();
     });
-    btn(VIEW.cx + 70, VIEW.cy + 108, 120, 'DONE', () => {
+    btn(VIEW.cx + 70, VIEW.cy + 108, 120, t('menu.done'), () => {
       padTimer.remove();
       for (const o of items) o.destroy();
       this.openSettings();
@@ -212,7 +234,7 @@ export class MenuScene extends Phaser.Scene {
 
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(D).setInteractive());
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 400, 300, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
-    txt(VIEW.cx, VIEW.cy - 128, 'ENTER ROOM CODE', 14, '#ffd24a');
+    txt(VIEW.cx, VIEW.cy - 128, t('menu.enter_room_code'), 14, '#ffd24a');
 
     const slots: Phaser.GameObjects.Text[] = [];
     for (let i = 0; i < 3; i++) {
@@ -231,7 +253,7 @@ export class MenuScene extends Phaser.Scene {
     const submit = () => {
       const c = normalizeRoomCode(code);
       if (!c) {
-        status.setText('enter all 3 characters');
+        status.setText(t('menu.enter_all_3_characters'));
         return;
       }
       close();
@@ -262,9 +284,9 @@ export class MenuScene extends Phaser.Scene {
       key(x, y, kw, kh, ch, () => type(ch));
     });
     const di = keys.length;
-    key(VIEW.cx + ((di % cols) - (cols - 1) / 2) * (kw + 4), VIEW.cy - 24 + Math.floor(di / cols) * (kh + 4), kw, kh, 'DEL', back, 0x3a2a2a);
-    key(VIEW.cx - 70, VIEW.cy + 124, 120, 30, 'CANCEL', close, 0x3a2a2a);
-    key(VIEW.cx + 70, VIEW.cy + 124, 120, 30, 'JOIN', submit, 0x2a4a34);
+    key(VIEW.cx + ((di % cols) - (cols - 1) / 2) * (kw + 4), VIEW.cy - 24 + Math.floor(di / cols) * (kh + 4), kw, kh, t('menu.del'), back, 0x3a2a2a);
+    key(VIEW.cx - 70, VIEW.cy + 124, 120, 30, t('common.cancel'), close, 0x3a2a2a);
+    key(VIEW.cx + 70, VIEW.cy + 124, 120, 30, t('menu.join'), submit, 0x2a4a34);
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Backspace') back();

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { i18nStub } from './lib-i18n-stub.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -71,6 +72,7 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, req
     matchResult: (_scene, _text, actions) => { resultActions = actions; return { setText() {} }; },
   };
   if (id === '../ui/presentation') return { startScreen: (_scene, key, data) => transitions.push({ key, data }) };
+  if (id === '../i18n') return i18nStub;
   if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
   if (id === '../portal/analytics') return { track() {} };
   return {};
