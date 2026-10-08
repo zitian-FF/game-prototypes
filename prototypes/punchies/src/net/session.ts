@@ -1,4 +1,4 @@
-import { joinRoom, type Room } from 'trystero/nostr';
+import { getRelaySockets, joinRoom, type Room } from 'trystero/nostr';
 import type { HashPacket, InputPacket } from './rollback';
 
 // One Trystero room per 3-char code. The host is whoever created the room;
@@ -9,6 +9,16 @@ const APP_ID = 'punchies';
 const RELAY_URLS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.mostr.pub', 'wss://purplerelay.com', 'wss://nostr.data.haus'];
 
 export type Role = 'host' | 'guest';
+
+/** How many of the pinned signalling relays currently have an open connection (for the lobby's diagnostic line). */
+export function relayStatus(): { open: number; total: number } {
+  try {
+    const sockets = Object.values(getRelaySockets() as Record<string, WebSocket>);
+    return { open: sockets.filter((s) => s.readyState === 1).length, total: RELAY_URLS.length };
+  } catch {
+    return { open: 0, total: RELAY_URLS.length };
+  }
+}
 
 export type CtlMessage =
   | { k: 'hello'; role: Role }
