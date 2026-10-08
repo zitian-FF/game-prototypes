@@ -46,7 +46,9 @@ export class ShopScene extends Phaser.Scene {
     [25,291,557].forEach(x=>this.panel(x,72,262,266));
     this.text(156,89,this.state.welcomeClaimed?'EARN TOKENS':'WELCOME GIFT',19).setOrigin(.5,0);
     this.text(422,89,'SKINS · 5 TOKENS',19).setOrigin(.5,0);this.text(688,89,'FIGHTER · 10 TOKENS',18).setOrigin(.5,0);
-    this.root.add(punchToken(this,156,165,38,100));
+    const rewardKey=artKey(this,'reward_ad');
+    if(this.state.welcomeClaimed&&rewardKey){const icon=this.add.image(156,167,rewardKey);icon.setScale(100/Math.max(icon.width,icon.height));this.root.add(icon);}
+    else this.root.add(punchToken(this,156,165,38,100));
     this.text(156,217,this.state.welcomeClaimed?'WATCH AN AD\nGET 1 TOKEN':'ONE GIFTED TOKEN\nGUARANTEED FOURTH FIGHTER',15,'#ffdc72').setOrigin(.5,0).setAlign('center');
     this.text(156,262,this.state.welcomeClaimed?`${this.state.adsToday}/${shopConfig.dailyAdLimit} rewards today`:'One-time introduction',11,'#a8c1d8').setOrigin(.5,0);
     this.button(39,291,234,this.state.welcomeClaimed?'PREVIEW AD · +1 TOKEN':'WELCOME PULL · 1 TOKEN',()=>this.act(this.state.welcomeClaimed?previewAdReward(this.state):welcomePull(this.state)),!this.state.welcomeClaimed||this.state.adsToday<shopConfig.dailyAdLimit);
