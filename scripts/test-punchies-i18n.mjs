@@ -147,6 +147,22 @@ fs.writeFileSync(csv, bad);
 const report2 = execFileSync('node', ['scripts/i18n-sheet.mjs', 'import', csv], { env }).toString();
 assert.match(report2, /placeholders .* do not match/);
 assert.equal(Object.keys(JSON.parse(fs.readFileSync(path.join(tmp, 'ja.json'), 'utf8'))).length, 0, 'a cell with the wrong placeholders is rejected');
+// pull: the published CSV is downloaded, imported whole, and bad answers are refused.
+const pull = (body, status = 200) => {
+  fs.writeFileSync(path.join(tmp, 'answer.txt'), body);
+  try {
+    return { out: execFileSync('node', ['--import', './scripts/lib-fetch-stub.mjs', 'scripts/i18n-sheet.mjs', 'pull', 'https://docs.google.com/spreadsheets/d/e/x/pub?output=csv'],
+      { env: { ...env, STUB_FETCH_BODY: path.join(tmp, 'answer.txt'), STUB_FETCH_STATUS: String(status) }, stdio: 'pipe' }).toString(), ok: true };
+  } catch (e) { return { out: String(e.stderr), ok: false }; }
+};
+const all = Object.keys(en).map((k) => `${JSON.stringify(k)},${JSON.stringify(en[k])},${JSON.stringify('X' + en[k])}`).join('\n');
+const good = pull(`key,en,ja\n${all}\n`);
+assert.ok(good.ok && /coverage/.test(good.out), 'pull imports a complete sheet');
+assert.equal(Object.keys(JSON.parse(fs.readFileSync(path.join(tmp, 'ja.json'), 'utf8'))).length, Object.keys(en).length);
+assert.ok(!pull('<!doctype html><html>sign in</html>').ok, 'a web page is refused');
+assert.ok(!pull(`key,en,ja\n${first},"${en[first]}","x"\n`).ok, 'a sheet missing most keys is refused');
+assert.ok(!pull('nope', 404).ok, 'an error status is refused');
+assert.equal(Object.keys(JSON.parse(fs.readFileSync(path.join(tmp, 'ja.json'), 'utf8'))).length, Object.keys(en).length, 'refused pulls leave the files untouched');
 fs.rmSync(tmp, { recursive: true, force: true });
 void multi; void rows;
 

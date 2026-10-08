@@ -21,6 +21,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 - Character select stats are now five aggregated bars (Health, Endurance, Speed, Power, Reach) and the nickname line became a playstyle label (Vanilla, Agile, Tank, Glass Cannon). See BRIEF.md.
 
+- Translation sheet pull: `i18n-sheet.mjs pull <csv-url>` and a manual workflow that opens a PR from the published Google Sheet. Needs the sheet created and published by the owner, then the `I18N_SHEET_URL` repository variable set.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.

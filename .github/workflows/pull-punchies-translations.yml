@@ -1,0 +1,47 @@
+name: Pull Punchies translations
+
+# Downloads the reviewed Google Sheet (published to the web as CSV), writes
+# prototypes/punchies/src/i18n/locales/*.json and opens a pull request. The
+# game never reads the sheet at runtime: translations are frozen in the build.
+# The address comes from the repository variable I18N_SHEET_URL, or the input.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Published CSV address (leave empty to use the I18N_SHEET_URL variable)
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pull the sheet
+        env:
+          I18N_SHEET_URL: ${{ inputs.url || vars.I18N_SHEET_URL }}
+        run: |
+          test -n "$I18N_SHEET_URL" || { echo "Set the I18N_SHEET_URL repository variable or pass the url input"; exit 1; }
+          node scripts/i18n-sheet.mjs pull
+          node scripts/i18n-sheet.mjs check
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then echo "No translation changes"; exit 0; fi
+          branch="proto/punchies/translations-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add prototypes/punchies/src/i18n/locales
+          git commit -m "Update Punchies translations from the sheet"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Update Punchies translations from the sheet" \
+            --body "Pulled from the published translation sheet. Machine translations are frozen here; review before merging."
