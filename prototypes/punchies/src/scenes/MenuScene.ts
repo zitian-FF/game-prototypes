@@ -273,18 +273,15 @@ export class MenuScene extends Phaser.Scene {
       slots.forEach((s, i) => s.setText(code[i] ?? ''));
     };
 
-    // 31 characters + DEL on an 8 x 4 grid.
-    const cols = 8;
+    // QWERTY with the digits on top, minus the look-alikes (0/O, 1/I/L) that
+    // room codes never use. Four rows of eight; DEL ends the bottom row.
+    const rows = ['23456789', 'QWERTYUP', 'ASDFGHJK', 'ZXCVBNM'];
     const kw = 42;
     const kh = 30;
-    const keys = [...ROOM_ALPHABET];
-    keys.forEach((ch, i) => {
-      const x = VIEW.cx + ((i % cols) - (cols - 1) / 2) * (kw + 4);
-      const y = VIEW.cy - 24 + Math.floor(i / cols) * (kh + 4);
-      key(x, y, kw, kh, ch, () => type(ch));
-    });
-    const di = keys.length;
-    key(VIEW.cx + ((di % cols) - (cols - 1) / 2) * (kw + 4), VIEW.cy - 24 + Math.floor(di / cols) * (kh + 4), kw, kh, t('menu.del'), back, 0x3a2a2a);
+    const rowY = (r: number) => VIEW.cy - 24 + r * (kh + 4);
+    const colX = (c: number) => VIEW.cx + (c - 3.5) * (kw + 4);
+    rows.forEach((row, r) => [...row].forEach((ch, c) => key(colX(c), rowY(r), kw, kh, ch, () => type(ch))));
+    key(colX(7), rowY(3), kw, kh, t('menu.del'), back, 0x3a2a2a);
     key(VIEW.cx - 70, VIEW.cy + 124, 120, 30, t('common.cancel'), close, 0x3a2a2a);
     key(VIEW.cx + 70, VIEW.cy + 124, 120, 30, t('menu.join'), submit, 0x2a4a34);
 
