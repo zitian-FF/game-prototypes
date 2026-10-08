@@ -370,21 +370,19 @@ export class CharacterSelectView {
     }
     const name = this.text(parent, tx + 65, 133, info.name.toUpperCase(), 23);
     if (name.width > 156) name.setScale(156 / name.width);
-    this.text(parent, tx + 65, 156, `“${t(`char.${p.id}.nick`)}”`, 12, '#b9cbe7');
+    this.text(parent, tx + 65, 156, t(`char.${p.id}.nick`), 12, '#b9cbe7');
     this.text(parent, tx + 65, 174, p.label, 9, s === 0 ? '#76caff' : '#ff8b99');
     const bars = this.graphics(parent);
-    const order = [0, 3, 1, 4, 2, 5];
-    order.forEach((index, i) => {
-      const [label, value] = p.stats[index];
-      const barWidth = 74;
-      const bx = tx - 12 + (i % 2) * 82;
-      const by = 198 + Math.floor(i / 2) * 29;
-      this.text(parent, bx, by - 8, label, 8).setOrigin(0, 0.5);
-      bars.fillStyle(0x050a18).fillRoundedRect(bx-1, by-1, barWidth+2, 13, 4);
+    const colors = [0xf451b8, 0x5ce38b, 0x37d4ee, 0xffc449, 0xb583f5];
+    p.stats.forEach(([label, value], i) => {
+      const barWidth = 100;
+      const bx = tx + 60;
+      const by = 188 + i * 16;
+      this.text(parent, tx - 12, by + 5.5, label, 9).setOrigin(0, 0.5);
+      bars.fillStyle(0x050a18).fillRoundedRect(bx - 1, by - 1, barWidth + 2, 13, 4);
       const width = Math.max(0, Math.min(1, value * 0.8)) * (barWidth - 2);
       if (width > 0) {
-        const colors=[0xf451b8,0x37d4ee,0xffc449,0x5ce38b,0xb583f5,0xfa805d];
-        bars.fillStyle(colors[index]).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(3, width / 2));
+        bars.fillStyle(colors[i]).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(3, width / 2));
         bars.fillStyle(0xffffff, 0.25).fillRoundedRect(bx + 2, by + 2, Math.max(0, width - 2), 3, 1);
       }
       bars.lineStyle(1, 0x8ba0c8).strokeRoundedRect(bx, by, barWidth, 11, 4);

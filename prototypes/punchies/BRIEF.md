@@ -401,3 +401,6 @@ Phase 1 of the translation layer is in `src/i18n/`. Languages for the first pass
 
 ## Roster strip on character select — 2026-10-08
 The roster moves from the bottom to a bright gold-framed strip under the step chips, above the two matchup panels. The strip has no fixed fighter count: it fits when short (centred) and otherwise scrolls sideways by dragging, with pulsing left and right arrows that page four tiles and tiles fading at the edges. Moving the focus to a fighter scrolls it to the centre. Selected tiles get a gold outline. The VS burst is drawn above both panels. Inactive step chips and unfocused panel frames use a quiet neutral so the strip and the focused panel carry the colour.
+
+## Aggregated character stats and playstyle label — 2026-10-08
+Character select shows five bars: Health (HP), Endurance (average of stamina and stun resistance), Speed (average of walk speed and hand speed from jab, cross, hook and uppercut frames), Power (average damage multiplier over the four punches) and Reach (average punch reach including body proportions). Dash distance is identical for every fighter today, so it is not part of Speed until fighters get their own dash. Bars use the existing scale where the base tune sits at 80%. The line under the name is now a playstyle label: Marco Vanilla, Mia Agile, Bruno Tank, Tee Glass Cannon.
