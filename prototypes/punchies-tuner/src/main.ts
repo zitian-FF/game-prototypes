@@ -1,6 +1,9 @@
 import './style.css';
 import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta } from './model';
 import {saveOpened,type TuneFile as Handle} from './fileIO';
+import {detectLocalMode,localRequest,type GitHubLoad,type GitHubSave,type BuildRun} from './githubIO';
+let githubMode=false,github:GitHubLoad|null=null,busy=false;
+let commitLink:string|null=null,buildRuns:BuildRun[]=[];
 type PickerWindow=Window&{showOpenFilePicker?: (options:unknown)=>Promise<Handle[]>};
 let base=defaults(),draft=defaults(),handle:Handle|null=null;
 let selected:typeof characters[number]='mia',section='core',shared=false;
@@ -14,7 +17,20 @@ function remember(){try{localStorage.setItem(storageKey,JSON.stringify({base,dra
 function status(){const target=document.querySelector('#status');if(target)target.textContent=message;const dirty=document.querySelector('#dirty');if(dirty)dirty.textContent=`${changes(base,draft).length} edited values`;}
 const format=(v:number)=>Number.isInteger(v)?String(v):String(Number(v.toFixed(4)));
 const label=(s:string)=>({hp:'HP',stamina:'Stamina',stun:'Stun resistance',speed:'Move speed',regen:'Standing recovery',staminaCost:'Stamina cost',stunBuild:'Stun build',fatigueBars:'Fatigue bars',startup:'Startup',recovery:'Recovery',pushHit:'Hit push',pushBlock:'Block push'} as Record<string,string>)[s]??s.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase());
-async function load(text:string,name:string,fileHandle:Handle|null){const next=parse(text);base=structuredClone(next);draft=next;source=name;handle=fileHandle;message=`Loaded ${name}. Nothing is uploaded to a server.`;remember();render();}
+async function load(text:string,name:string,fileHandle:Handle|null){const next=parse(text);base=structuredClone(next);draft=next;source=name;handle=fileHandle;github=null;commitLink=null;buildRuns=[];message=`Loaded ${name}. Nothing is uploaded to a server.`;remember();render();}
+async function githubAction(action:()=>Promise<void>){
+  if(busy)return;busy=true;render();
+  try{await action();}finally{busy=false;render();}
+}
+async function loadLatest(){
+  if(changes(base,draft).length&&!confirm('Replace your current edits with the latest GitHub file? Download JSON first if you want to keep this draft.'))return;
+  await githubAction(async()=>{const result=await localRequest<GitHubLoad>('load',{});const doc=parse(JSON.stringify(result.doc));github=result;base=structuredClone(doc);draft=doc;handle=null;commitLink=null;buildRuns=[];source=`GitHub ${result.repo} / ${result.branch} · file ${result.sha.slice(0,7)}`;message='Loaded latest from GitHub. Save commits reviewed edits to this branch and triggers normal CI/deployments.';remember();});
+}
+async function saveGitHub(){
+  checkInputs();if(!github)throw Error('Load latest from GitHub before saving. Download your draft first if needed.');
+  await githubAction(async()=>{const result=await localRequest<GitHubSave>('save',{session:github!.session,draft});const doc=parse(JSON.stringify(result.doc));base=structuredClone(doc);draft=doc;github!.doc=doc;github!.sha=result.sha;commitLink=result.commit?.url??null;buildRuns=[];source=`GitHub ${github!.repo} / ${github!.branch} · file ${result.sha.slice(0,7)}`;message=result.commit?`Saved ${result.edited.length} values in commit ${result.commit.sha.slice(0,7)}. CI/deployments may be queued; click Check build status.`:'GitHub already contains these edits. No commit created.';remember();});
+}
+async function checkBuilds(){if(!github)return;await githubAction(async()=>{const result=await localRequest<{runs:BuildRun[]}>('status',{session:github!.session});buildRuns=result.runs;message=buildRuns.length?'Latest workflow status for your saved commit.':'No workflow runs found yet for the saved commit. Check again shortly; deployment is not confirmed.';});}
 async function open(){
   const picker=(window as PickerWindow).showOpenFilePicker;
   if(picker){try{const [fileHandle]=await picker.call(window,{multiple:false,types:[{description:'Punchies tune JSON',accept:{'application/json':['.json']}}]});await load(await (await fileHandle.getFile()).text(),fileHandle.name,fileHandle);}catch(e){if((e as DOMException).name!=='AbortError')throw e;}return;}
@@ -43,13 +59,16 @@ function render(){
   refreshRows=[];
   app.replaceChildren();const header=el('header');const brand=el('div');brand.append(el('p','PUNCHIES / BALANCE WORKSHOP'),el('h1','Tune the next contender.'),el('p','Edit game values. Compare everyone against Marco.'));header.append(brand);
   const actions=el('div');actions.className='actions';actions.append(button('Open tune.json',open,'primary'),button('Save to opened file',save),button('Download JSON',download));header.append(actions);app.append(header);
+  if(githubMode){actions.prepend(button('Load latest',loadLatest,'primary'),button('Save to GitHub',saveGitHub),button('Check build status',checkBuilds));}
   const strip=el('div');strip.className='source';strip.append(el('span',source));const dirty=el('strong');dirty.id='dirty';strip.append(dirty);app.append(strip);
   const note=el('p',message);note.id='status';note.setAttribute('role','status');app.append(note);
+  if(commitLink){const link=el('a','View saved commit');link.href=commitLink;link.target='_blank';link.rel='noopener';app.append(link);}
+  for(const run of buildRuns){const p=el('p'),link=el('a',`${run.name}: ${run.conclusion??run.status}`);link.href=run.url;link.target='_blank';link.rel='noopener';p.append(link);app.append(p);}
   const layout=el('div');layout.className='layout';const sidebar=el('aside');sidebar.append(el('h2','Fighters'));
   for(const char of characters)sidebar.append(button(names[char].name,()=>{selected=char;shared=false;render();},!shared&&selected===char?'selected':''));
   sidebar.append(button('Shared rules',()=>{shared=true;render();},shared?'selected':''));
   sidebar.append(el('p','Plus/minus means numerically higher/lower, not stronger/weaker. Lower startup frames are faster.'));
-  sidebar.append(button('Restore saved draft',()=>{const saved=localStorage.getItem(storageKey);if(!saved)throw Error('No saved draft');const data=JSON.parse(saved);base=parse(JSON.stringify(data.base));draft=parse(JSON.stringify(data.draft));handle=null;source='Restored browser draft';message='Draft restored. Open a file before saving directly, or download this copy.';render();}));
+  sidebar.append(button('Restore saved draft',()=>{const saved=localStorage.getItem(storageKey);if(!saved)throw Error('No saved draft');const data=JSON.parse(saved);base=parse(JSON.stringify(data.base));draft=parse(JSON.stringify(data.draft));handle=null;github=null;commitLink=null;buildRuns=[];source='Restored browser draft';message='Draft restored. Open a file before saving directly, or download this copy. GitHub saves require Load latest first.';render();}));
   sidebar.append(button('Reset all edits',()=>{if(confirm('Reset all edits to the opened file?')){draft=structuredClone(base);remember();render();}}));layout.append(sidebar);
   const main=el('main');const heading=el('div');heading.className='section-heading';heading.append(el('h2',shared?'Shared rules':names[selected].name),el('span',shared?'Applies to every fighter':names[selected].style));main.append(heading);
   const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'guard','dodge'])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
@@ -68,8 +87,10 @@ function render(){
     for(const key of cfgKeys){const override=key==='pushHit'||key==='pushBlock'?'push':key;const path=`characters.${selected}.${section}.${override}`;row(table,key,meta[path]?path:null,effective(draft,selected,section,key),effective(draft,'marco',section,key));}main.append(table);
   }else{main.append(el('p','Block and dodge currently share the same rules for every fighter. Edits here apply to everyone; differences from Marco are therefore 0%.'));globalRows(table,section);main.append(table);}
   const changed=changes(base,draft);if(changed.length){const details=el('details');details.append(el('summary',`Review ${changed.length} edits`));const list=el('ul');for(const path of changed)list.append(el('li',`${path}: ${format(get(base,path))} → ${format(get(draft,path))}`));details.append(list);main.append(details);}
-  layout.append(main);app.append(layout);const footer=el('footer','Files and drafts stay in this browser. No uploads, account access, or automatic GitHub commits. Save checks for conflicting edits.');app.append(footer);status();
+  layout.append(main);app.append(layout);const footer=el('footer',githubMode?'Local GitHub mode: Load latest reads GitHub; Save to GitHub commits edited values using this PC’s GitHub CLI account. Normal CI/deployment follows. Credentials stay on the server.':'Files and drafts stay in this browser. No uploads, account access, or automatic GitHub commits. Save checks for conflicting edits.');app.append(footer);status();
+  if(busy){for(const control of app.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,button'))control.disabled=true;note.textContent='Contacting GitHub…';}
 }
 window.addEventListener('beforeunload',event=>{if(changes(base,draft).length){event.preventDefault();event.returnValue='';}});
 render();
+void detectLocalMode().then(enabled=>{githubMode=enabled;if(enabled){message='Local GitHub mode ready. Load latest before editing. Save to GitHub commits your edits and triggers normal CI/deployments.';render();}});
 

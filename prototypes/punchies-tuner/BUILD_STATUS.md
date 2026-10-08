@@ -1,17 +1,26 @@
 ## Current milestone
-Standalone tuning tool ready for review and GitHub Pages.
+Local-only GitHub load/save companion implemented; implementation PR awaits user review/merge.
 
 ## What was implemented
-Four-character editor grouped into core, four punch types, block and dodge. Stored values, effective values, Marco baselines and signed deltas. Shared rules, per-field reset, changes review, browser draft restoration, JSON download, native local-file open/save and conflict-aware selective merge.
+- Optional local workshop at http://127.0.0.1:5187/ with Windows double-click launcher and npm command.
+- Load latest from GitHub's actual default branch, explicit selective Save, commit link and manual workflow status.
+- Server-side baseline, file SHA compare-and-swap, validation and existing three-way merge.
+- Mock HTTP integration tests and Brave load/edit/save/build-status verification. Real GitHub read verified without tuning writes.
 
 ## Key technical decisions
-Separate prototype folder and automatic Vite entry discovery. Reads existing tune.json/meta and simulation punch formulas. No tuning values, game scenes or localisation files changed. No credentials, remote commits or uploads. Save checks the latest file after obtaining permission and preserves unrelated fields; same-field conflicts abort the writable stream.
+- Reuse model.ts validation/merge; fixed repository and tune.json path, existing OS-authenticated gh CLI, no new dependencies.
+- Loopback only; exact Origin/Host, JSON POST/custom header, session capability, dedicated static build and CSP. Never publish server/credentials.
+- Preserve Pages local-file workflow and unrelated game/localisation work; no real tuned values changed.
+- User explicitly requested review before merging implementation, overriding repository auto-merge default.
 
 ## Open questions
-User was asked whether saving means the local file or direct GitHub commits. Local-file saving is implemented; remote account access remains out of scope pending that preference.
+None.
 
 ## Known issues
-Native Brave permission/picker flow requires a manual test. Model, merge and file transaction logic have automated tests. Percentage signs are numerical, not gameplay desirability. Conflict checks cannot lock out external file writes during the final transaction.
+- Local trusted-PC tool only; other local software/extensions are outside its security boundary.
+- Native file picker permissions remain a manual check; existing file transaction tests pass.
+- Commit success does not guarantee deployment success; check matching workflows manually.
+- Local checkout is not updated by remote saves; restart requires a fresh GitHub load.
 
 ## Next proposed step
-Try the selected-file save flow on a copy of tune.json, then tune and commit balance changes through the usual workflow.
+Review/merge the implementation PR, then launch the companion and use Load latest before real tuning edits.
