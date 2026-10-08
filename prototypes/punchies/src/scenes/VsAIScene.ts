@@ -53,7 +53,6 @@ export class VsAIScene extends Phaser.Scene {
     this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
     this.ai = makeBot(this.level, 1);
     this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0);
-    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'MENU', () => startScreen(this, 'Menu'));
     this.stage.setSeries(this.series);
 
     addVersionStamp(this);

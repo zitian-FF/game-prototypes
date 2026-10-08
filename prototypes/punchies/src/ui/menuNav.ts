@@ -43,7 +43,7 @@ export class MenuNav {
     // Window-level like input/devices.ts, so no key is lost before the
     // canvas has focus.
     const key = (e: KeyboardEvent) => {
-      if (!e.repeat || e.key.startsWith('Arrow')) this.onKey(e);
+      if (!scene.registry.get('gameMenu:'+scene.scene.key) && scene.scene.isActive() && (!e.repeat || e.key.startsWith('Arrow'))) this.onKey(e);
     };
     scene.events.on('update', update);
     scene.input.on('pointerdown', pointer);

@@ -63,20 +63,12 @@ export class TouchControls {
   ) {
     scene.input.addPointer(3);
     this.g = scene.add.graphics().setDepth(100);
-    const main = artImage(scene, 'ui_touch', MAIN.x, MAIN.y, MAIN.r * 2, MAIN.r * 2, 99);
-    if (main) this.chrome.push({ image: main, ids: ['jab', 'cross'] });
-    for (const b of ARC_BUTTONS) {
-      const image = artImage(scene, 'ui_touch', b.x, b.y, b.r * 2, b.r * 2, 99);
-      if (image) this.chrome.push({ image, ids: [b.id] });
-    }
-    this.stickArt = artImage(scene, 'ui_stick', JOYSTICK_HINT.x, JOYSTICK_HINT.y, tune.input.joystickRadius * 2, tune.input.joystickRadius * 2, 99);
-    this.knobArt = artImage(scene, 'ui_knob', JOYSTICK_HINT.x, JOYSTICK_HINT.y, 44, 44, 99);
     const txt = (x: number, y: number, s: string, size: number) =>
       this.labels.push(
         scene.add
-          .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, color: '#ffffff', resolution: PIXEL_RATIO })
+          .text(x, y, s, { fontFamily: 'Arial Black, Arial', fontStyle:'bold', stroke:'#081225', strokeThickness:2, fontSize: `${size}px`, color: '#fff3da', resolution: PIXEL_RATIO })
           .setOrigin(0.5)
-          .setAlpha(0.85)
+          .setAlpha(1)
           .setDepth(101),
       );
     const jabIcon = artImage(scene, 'icon_jab', MAIN.x - MAIN.r / 2, MAIN.y - 14, 38, 38, 101);
@@ -180,6 +172,8 @@ export class TouchControls {
     }
   }
 
+  reset():void {this.owners.clear();this.stick.active=false;this.intents.clearAll();}
+
   isGuardHeld(): boolean {
     for (const o of this.owners.values()) if (o.kind === 'guard') return true;
     return false;
@@ -196,28 +190,29 @@ export class TouchControls {
     this.stickArt?.setPosition(base.ox, base.oy).setDisplaySize(r * 2, r * 2);
     this.knobArt?.setPosition(base.x, base.y);
     if (this.isShown('stick')) {
-      g.lineStyle(2, 0xffffff, this.stick.active ? 0.5 : 0.18);
-      g.strokeCircle(base.ox, base.oy, r);
-      g.fillStyle(0xffffff, this.stick.active ? 0.45 : 0.15);
-      g.fillCircle(base.x, base.y, 22);
+      this.disc(base.ox,base.oy,r,0x29496e);
+      this.disc(base.x,base.y,22,0x6a9bc4);
     }
 
+    if(this.isShown('jab')||this.isShown('cross'))this.disc(MAIN.x,MAIN.y,MAIN.r,0x174ea9);
     // Main split button
     const jabFlash = (this.flash.get('jab') ?? 0) > 0;
     const crossFlash = (this.flash.get('cross') ?? 0) > 0;
     if (this.isShown('jab')) {
-      g.fillStyle(jabFlash ? 0x9fd3ff : 0x3a78c2, jabFlash ? 0.8 : 0.45);
+      g.fillStyle(jabFlash ? 0x9fd3ff : 0x3a78c2, jabFlash ? 1 : .94);
       g.slice(MAIN.x, MAIN.y, MAIN.r, Math.PI / 2, (3 * Math.PI) / 2, false);
       g.fillPath();
     }
     if (this.isShown('cross')) {
-      g.fillStyle(crossFlash ? 0xffb39f : 0xc2503a, crossFlash ? 0.8 : 0.45);
+      g.fillStyle(crossFlash ? 0xffb39f : 0xc2503a, crossFlash ? 1 : .94);
       g.slice(MAIN.x, MAIN.y, MAIN.r, -Math.PI / 2, Math.PI / 2, false);
       g.fillPath();
     }
     if (this.isShown('jab') || this.isShown('cross')) {
-      g.lineStyle(2, 0xffffff, 0.5);
+      g.lineStyle(4, 0x081225, 1);
       g.strokeCircle(MAIN.x, MAIN.y, MAIN.r);
+      g.lineStyle(2,0xffffff,.45).beginPath().arc(MAIN.x,MAIN.y,MAIN.r-4,Math.PI*1.08,Math.PI*1.85).strokePath();
+      g.lineStyle(4,0x081225,1);
       g.lineBetween(MAIN.x, MAIN.y - MAIN.r, MAIN.x, MAIN.y + MAIN.r);
     }
 
@@ -246,6 +241,16 @@ export class TouchControls {
     for (const [k, v] of this.flash) this.flash.set(k, v - 1);
   }
 
+  private disc(x:number,y:number,r:number,color:number):void {
+    const g=this.g;
+    g.fillStyle(0x071226).fillCircle(x,y+4,r+3);
+    g.fillStyle(color).fillCircle(x,y,r);
+    g.lineStyle(4,0x071226).strokeCircle(x,y,r);
+    g.lineStyle(2,0xffffff,.45).beginPath().arc(x,y,r-4,Math.PI*1.08,Math.PI*1.85).strokePath();
+    g.lineStyle(2,0x071226,.25).beginPath().arc(x,y,r-5,.08,Math.PI*.85).strokePath();
+    g.lineStyle(1,0xffffff,.1).lineBetween(x-r*.55,y+r*.35,x-r*.3,y+r*.15);
+  }
+
   private drawFatigue(x: number, y: number, level: number, max: number): void {
     const w = 6;
     const gap = 2;
@@ -264,8 +269,8 @@ export class TouchControls {
     const max = tune.stars.max;
     const ready = stars >= max;
     const pulse = ready ? 0.6 + 0.3 * Math.sin(this.scene.time.now / 120) : 0.3;
-    g.fillStyle(flashing ? 0xffffff : ready ? 0xffc83a : 0x555555, flashing ? 0.8 : pulse);
-    g.fillCircle(b.x, b.y, b.r);
+    this.disc(b.x,b.y,b.r,flashing?0xfff0bc:ready?0xffbc32:0x596b87);
+    if(ready)g.fillStyle(0xffeaa0,pulse*.25).fillCircle(b.x,b.y,b.r-4);
     g.lineStyle(ready ? 3 : 2, ready ? 0xffe08a : 0xffffff, ready ? 0.95 : 0.4);
     g.strokeCircle(b.x, b.y, b.r);
     for (let i = 0; i < max; i++) {

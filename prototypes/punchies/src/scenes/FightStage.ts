@@ -6,7 +6,7 @@ import { devices, mergeInputs, type InputSource } from '../input/devices';
 import { TouchControls } from '../ui/TouchControls';
 import { Hud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
-import { addFullscreenButton } from '../ui/fullscreen';
+import { addGameMenu } from '../ui/gameMenu';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
@@ -93,7 +93,8 @@ export class FightStage {
     this.persp.take(this.tags);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
-    addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
+    this.info.setButtonVisible(false);
+    addGameMenu(scene,()=>this.controls.reset());
     scene.input.on('pointerdown', unlockAudio);
     const clear = () => {
       this.intents.clearAll();
@@ -124,11 +125,13 @@ export class FightStage {
   sampleLocal(): FrameInput {
     // While keyboard / controller are driving the menu highlight, only
     // touch reaches the fighter.
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (getNav(this.scene).capturing) return this.intents.sample();
     return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
   }
 
   sampleSource(src: InputSource): FrameInput {
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (src === 'touch') return this.intents.sample();
     return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src);
   }
@@ -174,7 +177,7 @@ export class FightStage {
     this.ko.looks = looks;
     this.drawRing(looks[0].color, looks[1].color);
     this.drawTags(s, looks.map((l) => l.color));
-    this.controls.enabled = this.touchEnabled && !this.info.open;
+    this.controls.enabled = this.touchEnabled && !this.info.open && !this.scene.registry.get('gameMenu:'+this.scene.scene.key);
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();

@@ -14,7 +14,7 @@ export class ShopScene extends Phaser.Scene {
   private root!:Phaser.GameObjects.Container;
   private rays:Phaser.GameObjects.Graphics[]=[];
   private popupKind:ShopKind|null=null;
-  private notice='Tap [i] to inspect today’s rewards and pull odds.';
+  private notice='Tap a chest to inspect today’s rewards and pull odds.';
   constructor(){super('Shop');}
   create(){applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
   update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
@@ -40,7 +40,6 @@ export class ShopScene extends Phaser.Scene {
     ray.fillStyle(kind==='skins'?0xdcaaff:0xffdb7b,.22);
     for(let i=0;i<10;i++){const a=i*Math.PI/5,b=a+.19;ray.fillTriangle(0,0,Math.cos(a)*78,Math.sin(a)*78,Math.cos(b)*78,Math.sin(b)*78);}
     this.root.add(ray);this.rays.push(ray);
-    this.button(x+94,80,25,'[i]',()=>{this.popupKind=kind;this.render();});
     const key=artKey(this,kind==='skins'?'chest_skin_base':'chest_fighter_base');
     if(key){const icon=this.add.image(x,175,key);icon.setScale(140/Math.max(icon.width,icon.height));this.root.add(icon);}
     else{const g=this.add.graphics();g.fillStyle(kind==='skins'?0x8256be:0xeebf43).fillRoundedRect(x-57,134,114,77,12);g.lineStyle(5,0x081428).strokeRoundedRect(x-57,134,114,77,12);this.root.add(g);}

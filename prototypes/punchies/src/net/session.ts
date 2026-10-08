@@ -19,6 +19,7 @@ export type CtlMessage =
   | { k: 'pick'; char: string | null }
   | { k: 'rematch'; round: number }
   | { k: 'reselect'; round: number }
+  | { k: 'forfeit'; round: number }
   | { k: 'format'; bestOf: 1 | 3 };
 
 // Trystero 0.25 actions: `send(data, { target })` and an assignable
@@ -106,6 +107,10 @@ export class NetSession {
 
   sendHash(p: HashPacket): void {
     if (this.peerId) void this.hsh.send(p, { target: this.peerId });
+  }
+
+  async forfeit(round:number): Promise<void> {
+    if(this.peerId)await this.ctl.send({k:'forfeit',round},{target:this.peerId}).catch(()=>{});
   }
 
   leave(): void {

@@ -5,11 +5,11 @@ import { artImage } from '../render/art';
 import { cartoonPanel } from './cartoonChrome';
 
 export function titleButton(scene: Phaser.Scene, x: number, y: number, w: number, h: number,
-  label: string, onTap: () => void, primary = false, depth = 130, accent: 'default' | 'green' = 'default'): Phaser.GameObjects.Text {
+  label: string, onTap: () => void, primary = false, depth = 130, accent: 'default' | 'green' | 'red' = 'default'): Phaser.GameObjects.Text {
   const g = scene.add.graphics().setDepth(depth);
   const draw = (hover = false) => {
     g.clear();
-    const color=accent==='green'?0x29b765:primary?0x168bf5:label.includes('TRAINING')?0x9460d2:label.includes('TUTORIAL')?0x149eab:label.includes('LOCAL')?0xde4565:label.includes('ONLINE')?0x5372d7:0x47739d;
+    const color=accent==='red'?0xde4565:accent==='green'?0x29b765:primary?0x168bf5:label.includes('TRAINING')?0x9460d2:label.includes('TUTORIAL')?0x149eab:label.includes('LOCAL')?0xde4565:label.includes('ONLINE')?0x5372d7:0x47739d;
     cartoonPanel(g,x-w/2,y-h/2,w,h,color,9);
     if(hover)g.fillStyle(0xffffff,.1).fillRoundedRect(x-w/2,y-h/2,w,h,9);
   };

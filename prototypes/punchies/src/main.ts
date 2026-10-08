@@ -2,7 +2,7 @@ import { ScreenTransition } from './ui/presentation';
 import Phaser from 'phaser';
 import { ShopScene } from './scenes/ShopScene';
 import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
-import { mountDebugPanelIfRequested } from './debug/debugPanel';
+import { GameMenuScene } from './scenes/GameMenuScene';
 import { TrainingScene } from './scenes/TrainingScene';
 import { MenuScene } from './scenes/MenuScene';
 import { LobbyScene } from './scenes/LobbyScene';
@@ -14,7 +14,7 @@ import { CharSelectScene } from './scenes/CharSelectScene';
 import { ArtBootScene } from './render/art';
 import { setupOrientation } from './orientation/orientation';
 
-mountDebugPanelIfRequested();
+
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -69,6 +69,7 @@ window.addEventListener('orientationchange', onScreenShape);
 document.addEventListener('fullscreenchange', onScreenShape);
 game.scene.add('ScreenTransition', ScreenTransition, false);
 game.scene.add('Menu', MenuScene, false);
+game.scene.add('GameMenu', GameMenuScene, false);
 game.scene.add('Shop', ShopScene, false);
 game.scene.add('Training', TrainingScene, false);
 game.scene.add('Lobby', LobbyScene, false);
