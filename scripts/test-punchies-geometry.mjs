@@ -25,7 +25,8 @@ const { punchCfg } = load(root + '/character.ts');
 const { fighterScale, normalHurtRadius, coreRadius, separation } = load(root + '/geometry.ts');
 const { lookFor } = load(root + '/../render/characterLook.ts');
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
-const ids = ['marco', 'mia', 'bruno'];
+const ids = ['marco', 'mia', 'bruno', 'tee'];
+near(fighterScale('tee'),fighterScale('mia'));
 // Isolate reach boundaries from rope clamping at the largest debug scale.
 Object.assign(tune.ring, { left: 0, top: 0, right: 1000, bottom: 600 });
 for (const scale of [1, 1.5, 2]) {

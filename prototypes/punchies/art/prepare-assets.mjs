@@ -61,7 +61,8 @@ export default async function prepare({ assetsSrcDir }) {
         }
         await save(sharp(src), out('head'), scale);
       } else if(name.startsWith('ponytail')) {
-        await save(sharp(src),out(name),HEAD_H/meta.height);
+        // Register slender Tee strands by length, never by their tiny thickness.
+        await save(sharp(src),out(name),char==='tee'?180/meta.width:HEAD_H/meta.height);
       } else if (name === 'torso') {
         await save(sharp(src), out('torso'), TORSO_H / meta.height);
       } else if (name.startsWith('glove')) {

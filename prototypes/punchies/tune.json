@@ -83,7 +83,14 @@
       "teeTailRestAngle": 0.1,
       "teeTailBack": 8,
       "teeTailWalkCoupling": 0.65,
-      "teeTailPhase": 0.8
+      "teeTailPhase": 0.8,
+      "teeHeadScale": 0.9,
+      "teeTorsoScale": 0.86,
+      "teeHandScale": 0.8,
+      "teeGloveAxisDegrees": 0,
+      "teeWalkRate": 1.2,
+      "teeTailOriginX": 0.975,
+      "teeTailOriginY": 0.44
     },
     "trainingDummy": {
       "bodyHeight": 34,
@@ -522,46 +529,46 @@
       "hp": 0.75,
       "stamina": 0.75,
       "regen": 1,
-      "stun": 0.7,
+      "stun": 0.55,
       "speed": 1.2,
       "jab": {
-        "damage": 1.25,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": -1,
-        "recovery": -1,
+        "recovery": -2,
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.25,
+        "damage": 1.0925,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": -1,
-        "recovery": -1,
+        "recovery": 0,
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1.25,
+        "damage": 1.0925,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": -1,
-        "recovery": -1,
+        "recovery": -2,
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1.25,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
-        "startup": -1,
-        "recovery": -1,
+        "startup": 0,
+        "recovery": 0,
         "fatigueBars": 0
       }
     }
