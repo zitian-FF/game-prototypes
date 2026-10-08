@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import { cartoonPanel } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
 import { TouchControls } from '../ui/TouchControls';
 import { Hud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
-import { addFullscreenButton } from '../ui/fullscreen';
+import { addGameMenu } from '../ui/gameMenu';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
@@ -92,7 +93,8 @@ export class FightStage {
     this.persp.take(this.tags);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
-    addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
+    this.info.setButtonVisible(false);
+    addGameMenu(scene,()=>this.controls.reset());
     scene.input.on('pointerdown', unlockAudio);
     const clear = () => {
       this.intents.clearAll();
@@ -123,11 +125,13 @@ export class FightStage {
   sampleLocal(): FrameInput {
     // While keyboard / controller are driving the menu highlight, only
     // touch reaches the fighter.
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (getNav(this.scene).capturing) return this.intents.sample();
     return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
   }
 
   sampleSource(src: InputSource): FrameInput {
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (src === 'touch') return this.intents.sample();
     return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src);
   }
@@ -173,7 +177,7 @@ export class FightStage {
     this.ko.looks = looks;
     this.drawRing(looks[0].color, looks[1].color);
     this.drawTags(s, looks.map((l) => l.color));
-    this.controls.enabled = this.touchEnabled && !this.info.open;
+    this.controls.enabled = this.touchEnabled && !this.info.open && !this.scene.registry.get('gameMenu:'+this.scene.scene.key);
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
@@ -343,14 +347,14 @@ export function makeButton(
   h = 26,
   fontSize = 10,
 ): Phaser.GameObjects.Text {
-  const bg = scene.add.rectangle(x, y, w, h, 0x222222, 0.9).setStrokeStyle(1, 0x888888).setDepth(130);
-  const art = artImage(scene, 'ui_button', x, y, w, h, 130);
-  if (art) bg.setFillStyle(0x222222, 0).setStrokeStyle(0);
-  bg.on('destroy', () => art?.destroy());
+  const bg = scene.add.rectangle(x, y, w, h, 0, 0).setDepth(130);
+  const chrome=scene.add.graphics().setDepth(130);
+  cartoonPanel(chrome,x-w/2,y-h/2,w,h,text.includes('REMATCH')?0x24b775:text.includes('MENU')?0xdb4c66:0x327dc2,7);
+  bg.on('destroy', () => chrome.destroy());
   bg.setInteractive().on('pointerdown', onTap);
   navRegister(scene, bg, onTap);
   const label = scene.add
-    .text(x, y, text, { fontFamily: 'monospace', fontSize: `${fontSize}px`, color: '#dddddd', resolution: PIXEL_RATIO })
+    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',stroke:'#081226',strokeThickness:2, resolution: PIXEL_RATIO })
     .setOrigin(0.5)
     .setDepth(131);
   label.setData('bg', bg);

@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
+import { cartoonPanel } from '../ui/cartoonChrome';
+import { shopPreviewBalance } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
 import { normalizeRoomCode, ROOM_ALPHABET } from '../net/roomCode';
-import { addFullscreenButton } from '../ui/fullscreen';
 import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
-import { syncTuneFromGitHub, tuneSource } from '../sim/tune';
-import { debugUnlocked } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
 import { artImage, backdrop } from '../render/art';
 import { pulseLogo, startScreen } from '../ui/presentation';
@@ -19,8 +18,8 @@ import { alignGymFloor } from '../render/gymPerspective';
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
 
-  constructor() {
-    super('Menu');
+  constructor(key = 'Menu') {
+    super(key);
   }
 
   create(data: { message?: string }): void {
@@ -60,24 +59,10 @@ export class MenuScene extends Phaser.Scene {
     this.add.graphics().setDepth(131).fillStyle(0x081b24,0.75)
       .fillRoundedRect(balanceX-22,top+284,44,20,9);
     punchToken(this,balanceX-10,top+294,8,132);
-    // Balance starts at zero until the approved wallet/reward system is built.
-    this.add.text(balanceX+9,top+294,'0',{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
+      // The unpublished shop branch displays its isolated local preview balance.
+      this.add.text(balanceX+9,top+294,String(shopPreviewBalance()),{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
       .setOrigin(0.5).setDepth(132);
-    if (debugUnlocked()) {
-    const tuneLabel = this.add
-      .text(VIEW.right - 16, VIEW.bottom - 44, `tune: ${tuneSource()}`, { fontFamily: 'monospace', fontSize: '10px', color: '#888888', resolution: PIXEL_RATIO })
-      .setOrigin(1, 0.5);
-    const syncBtn = makeButton(this, VIEW.right - 70, VIEW.bottom - 20, 120, 'SYNC TUNE', () => {
-      if (syncBtn.text === 'SYNCING...') return;
-      syncBtn.setText('SYNCING...');
-      void syncTuneFromGitHub().then((r) => {
-        if (!this.scene.isActive()) return;
-        syncBtn.setText('SYNC TUNE');
-        tuneLabel.setText(r.ok ? `tune: ${tuneSource()} (${r.applied} values)` : `sync failed: ${r.error} (still ${tuneSource()})`);
-      });
-    });
-    }
-    addFullscreenButton(this, VIEW.right - 24, VIEW.top + 24);
+
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
@@ -86,13 +71,13 @@ export class MenuScene extends Phaser.Scene {
 
   private popup(title: string, onBack?: () => void): { items: Phaser.GameObjects.GameObject[]; close(): void } {
     const items: Phaser.GameObjects.GameObject[] = [];
-    items.push(this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,0.8).setDepth(300).setInteractive());
-    const panel=this.add.graphics().setDepth(301);
+    items.push(this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,0.8).setDepth(400).setInteractive());
+    const panel=this.add.graphics().setDepth(401);
     panel.fillStyle(0x13253e).fillRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
     panel.lineStyle(2,0x8ba4c7).strokeRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
-    items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
+    items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
     const close=()=>items.forEach(o=>o.destroy());
-    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',()=>{close();onBack?.();},false,302);
+    const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,'BACK',()=>{close();onBack?.();},false,402);
     items.push(back,back.getData('bg'));
     return {items,close};
   }
@@ -100,28 +85,24 @@ export class MenuScene extends Phaser.Scene {
   private openCredits(): void {
     const p=this.popup('CREDITS',()=>this.openInputPopup());
     p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Created and designed by ZeeTea.\n\nBuilt together with Claudia and G.P. Tea.',
-      {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
+      {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
   }
 
-  private openShop(): void {
-    const p=this.popup('SHOP');
-    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'COMING SOON\n\nUnlock boxers and skins.',
-      {fontFamily:'Arial',fontSize:'17px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(302));
-  }
+  private openShop(): void { startScreen(this, 'Shop'); }
 
   private openOnlinePopup(): void {
     const p=this.popup('ONLINE');
-    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,'HOST GAME',()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,302);
-    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,'JOIN WITH CODE',()=>{p.close();this.join();},false,302);
+    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,'HOST GAME',()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
+    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,'JOIN WITH CODE',()=>{p.close();this.join();},false,402);
     p.items.push(host,host.getData('bg'),join,join.getData('bg'));
   }
 
   // Local VS input picker: cycle each player's device. Remembered on this
   // device. Only P1 can use touch; P1 and P2 can't share a device.
-  private openInputPopup(): void {
+  protected openInputPopup(): void {
     const v = loadLocalInputs();
     const items: Phaser.GameObjects.GameObject[] = [];
-    const D = 300;
+    const D = 400;
     const txt = (x: number, y: number, s: string, size = 12, color = '#dddddd') => {
       const t = this.add
         .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, color, align: 'center', resolution: PIXEL_RATIO })
@@ -131,7 +112,8 @@ export class MenuScene extends Phaser.Scene {
       return t;
     };
     const btn = (x: number, y: number, w: number, label: string, onTap: () => void) => {
-      const bg = this.add.rectangle(x, y, w, 30, 0x2a3140, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(D + 1).setInteractive();
+      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-15,w,30,0x47739d,7);items.push(chrome);
+      const bg = this.add.rectangle(x,y,w,30,0,0).setDepth(D+1).setInteractive();
       bg.on('pointerdown', onTap);
       navRegister(this, bg, onTap);
       items.push(bg);
@@ -209,7 +191,8 @@ export class MenuScene extends Phaser.Scene {
       return t;
     };
     const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x2a3140) => {
-      const bg = this.add.rectangle(x, y, w, h, fill, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(D + 1).setInteractive();
+      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-h/2,w,h,0x47739d,6);items.push(chrome);
+      const bg=this.add.rectangle(x,y,w,h,0,0).setDepth(D+1).setInteractive();
       const tap = () => {
         bg.setFillStyle(0x4a5a78);
         this.time.delayedCall(90, () => bg.active && bg.setFillStyle(fill));

@@ -49,7 +49,6 @@ export class TrainingScene extends Phaser.Scene {
     this.charLabel = this.stage.button(VIEW.left + 105, VIEW.top + 110, 110, '', () => this.cycleChar());
     this.stanceLabel = this.stage.button(VIEW.left + 105, VIEW.top + 140, 110, '', () => this.cycleStance());
     this.stage.button(VIEW.left + 105, VIEW.top + 170, 110, 'RESET', () => this.newSim());
-    this.stage.button(VIEW.left + 105, VIEW.top + 200, 110, 'MENU', () => startScreen(this, 'Menu'));
     this.refreshStance();
     this.charLabel.setText(`YOU: ${charName(this.char)}`);
     addVersionStamp(this);

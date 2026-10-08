@@ -1,7 +1,18 @@
 import Phaser from 'phaser';
+import { artKey } from '../render/art';
+import { punchMark } from './punchMark';
 
 /** Two-tone token badge; UI art stays crisp at any display resolution. */
-export function punchToken(scene: Phaser.Scene, x: number, y: number, radius: number, depth: number): Phaser.GameObjects.Graphics {
+export function punchToken(scene: Phaser.Scene, x: number, y: number, radius: number, depth: number): Phaser.GameObjects.Container | Phaser.GameObjects.Image | Phaser.GameObjects.Graphics {
+  const baseKey=artKey(scene,'punch_token_base');
+  if(baseKey){
+    const token=scene.add.container(x,y).setDepth(depth);
+    const base=scene.add.image(0,0,baseKey);base.setScale(radius*2/Math.max(base.width,base.height));token.add(base);
+    const logo=punchMark(scene,-radius*.12,-radius*.08,radius*1.25);if(logo)token.add(logo);
+    return token;
+  }
+  const key=artKey(scene,'punch_token');
+  if(key){const image=scene.add.image(x,y,key).setDepth(depth);image.setScale(radius*2/Math.max(image.width,image.height));return image;}
   const g = scene.add.graphics().setDepth(depth);
   g.fillStyle(0x071326).fillCircle(x, y + 1, radius + 1.5);
   g.fillStyle(0x1688f4).fillCircle(x, y, radius);

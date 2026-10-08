@@ -1,5 +1,6 @@
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
+import { titleButton } from '../ui/titleButton';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
@@ -350,12 +351,7 @@ export class TutorialScene extends Phaser.Scene {
       .text(VIEW.cx, VIEW.cy - 60, 'TUTORIAL COMPLETE', { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(291);
-    const btn = (x: number, label: string, key: string) => {
-      const bg = this.add.rectangle(x, VIEW.cy + 10, 150, 38, 0x2a3140, 1).setStrokeStyle(1, 0x7fb3ff).setDepth(291).setInteractive();
-      bg.on('pointerdown', () => startScreen(this, key));
-      navRegister(this, bg, () => startScreen(this, key));
-      this.add.text(x, VIEW.cy + 10, label, { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(292);
-    };
+    const btn=(x:number,label:string,key:string)=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key),false,291);
     btn(VIEW.cx - 165, 'TRAINING', 'Training');
     btn(VIEW.cx, 'SINGLE PLAYER', 'VsAI');
     btn(VIEW.cx + 165, 'MENU', 'Menu');

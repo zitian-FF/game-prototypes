@@ -33,6 +33,7 @@ export class MatchScene extends Phaser.Scene {
   private rematchLocal = false;
   private rematchRemote = false;
   private over = false;
+  private departed = false;
   private series!: SeriesState;
   private advancing = false;
   private nextSeries: SeriesState | undefined;
@@ -70,6 +71,7 @@ export class MatchScene extends Phaser.Scene {
     this.acc = 0;
     this.stalledSince = 0;
     this.over = false;
+    this.departed = false;
     this.rematchLocal = false;
     this.rematchRemote = false;
     this.enhanced = tune.net.enhanced >= 0.5;
@@ -100,6 +102,7 @@ export class MatchScene extends Phaser.Scene {
     s.onInputs = (p) => this.ls.receiveInputs(p);
     s.onHash = (p) => this.ls.receiveHash(p);
     s.onCtl = (m) => {
+      if(m.k==='forfeit' && m.round===data.round){this.opponentLeft(true);return;}
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
       if (m.k === 'reselect' && m.round === data.round) { this.remoteReselect = true; this.changeBoxer(); }
@@ -118,7 +121,8 @@ export class MatchScene extends Phaser.Scene {
     this.stage = new FightStage(this, names, data.localIdx);
     this.stage.setSeries(this.series);
 
-    makeButton(this, VIEW.cx + 70, VIEW.top + 46, 56, 'LEAVE', () => this.leave());
+    this.events.on('menuReturn',()=>this.leave());
+    this.events.once('shutdown',()=>this.events.removeAllListeners('menuReturn'));
 
     this.waiting = this.add
       .text(VIEW.cx, tune.ring.top + 16, 'waiting for opponent...', {
@@ -312,14 +316,17 @@ export class MatchScene extends Phaser.Scene {
       nextRound: this.match.round + 1 });
   }
 
-  private opponentLeft(): void {
+  private opponentLeft(forfeited=false): void {
+    if(this.departed)return;
+    this.departed=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;
+    this.time.removeAllEvents();
     this.cancelSplash?.();
     this.cancelSplash = undefined;
     getNav(this).engage();
     this.over = true;
     this.waiting.setVisible(false);
     this.add
-      .text(VIEW.cx, VIEW.cy, 'Opponent disconnected', {
+      .text(VIEW.cx, VIEW.cy, forfeited?'VICTORY · OPPONENT FORFEITED':'VICTORY · OPPONENT DISCONNECTED', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#ffffff',
@@ -332,9 +339,10 @@ export class MatchScene extends Phaser.Scene {
     makeButton(this, VIEW.cx, VIEW.cy + 50, 100, 'MENU', () => this.leave());
   }
 
-  private leave(): void {
+  private async leave(): Promise<void> {
     this.cancelSplash?.();
     this.cancelSplash = undefined;
+    if(!this.over || this.nextSeries)await this.match.session.forfeit(this.match.round);
     this.match.session.leave();
     if (this.match.restoreTune) restoreTune(this.match.restoreTune);
     startScreen(this, 'Menu');

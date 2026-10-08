@@ -2840,5 +2840,12 @@
     "min": 100,
     "max": 3000,
     "step": 10
+  },
+  "view.menu.shopRayRotationMs": {
+    "cat": "Menu presentation",
+    "desc": "Full revolution duration of shop chest rays in milliseconds.",
+    "min": 1000,
+    "max": 60000,
+    "step": 100
   }
 }

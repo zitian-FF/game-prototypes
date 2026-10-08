@@ -4,6 +4,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { CHARACTER_IDS, CHARACTER_INFO, type CharId } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
+import { cartoonPanel, shadeUi } from './cartoonChrome';
 
 interface PanelState {
   id: CharId;
@@ -102,7 +103,7 @@ export class CharacterSelectView {
         card.add(portrait);
       }
       const footer = this.graphics(card);
-      footer.fillStyle(0x101b32).fillRoundedRect(-48, 12, 96, 23, { tl: 0, tr: 0, bl: 9, br: 9 });
+      footer.fillStyle(0x342052).fillRoundedRect(-48, 12, 96, 23, { tl: 0, tr: 0, bl: 9, br: 9 });
       this.text(card, 0, 23, id.toUpperCase(), 13);
       const hit = scene.add.rectangle(0, -4, 100, 84, 0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => callbacks.card(i));
@@ -130,15 +131,13 @@ export class CharacterSelectView {
   }
 
   private frame(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, primary = false): void {
-    g.fillStyle(0x030b1c, 0.85).fillRoundedRect(x - 3, y + 3, w + 6, h + 4, 14);
-    g.fillStyle(primary ? 0x116cf0 : 0x14233e).fillRoundedRect(x, y, w, h, 12);
-    g.lineStyle(3, color).strokeRoundedRect(x, y, w, h, 12);
-    g.lineStyle(1, 0xe1f2ff, 0.35).lineBetween(x + 14, y + 4, x + w - 14, y + 4);
+    cartoonPanel(g,x,y,w,h,primary?0x237deb:shadeUi(color,.55),10);
+    g.lineStyle(2,color).strokeRoundedRect(x,y,w,h,10);
   }
 
   private button(x: number, y: number, w: number, h: number, label: string, tap: () => void, primary = false): Phaser.GameObjects.Text {
     const g = this.graphics(this.root);
-    this.frame(g, x - w / 2, y - h / 2, w, h, primary ? 0x67d9ff : 0x758caf, primary);
+    cartoonPanel(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:label.includes('BEST')?0x8b57c9:0x397dc2,8);
     const hit = this.scene.add.rectangle(x, y, w, h, 0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', tap);
     this.root.add(hit);
@@ -275,16 +274,14 @@ export class CharacterSelectView {
       const bx = tx - 12 + (i % 2) * 82;
       const by = 198 + Math.floor(i / 2) * 29;
       this.text(parent, bx, by - 8, label, 8).setOrigin(0, 0.5);
-      bars.fillStyle(0x071326).fillRoundedRect(bx, by, barWidth, 11, 5);
+      bars.fillStyle(0x050a18).fillRoundedRect(bx-1, by-1, barWidth+2, 13, 4);
       const width = Math.max(0, Math.min(1, value * 0.8)) * (barWidth - 2);
       if (width > 0) {
-        bars.fillStyle(s === 0 ? 0x27bfff : 0xfa4b67).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(4, width / 2));
+        const colors=[0xf451b8,0x37d4ee,0xffc449,0x5ce38b,0xb583f5,0xfa805d];
+        bars.fillStyle(colors[index]).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(3, width / 2));
         bars.fillStyle(0xffffff, 0.25).fillRoundedRect(bx + 2, by + 2, Math.max(0, width - 2), 3, 1);
       }
-      bars.lineStyle(1, 0x738bad).strokeRoundedRect(bx, by, barWidth, 11, 5);
-      // Continuous real stats; subdivisions are presentation, not ratings.
-      bars.lineStyle(1, 0x071326, 0.8);
-      for (let n = 1; n < 6; n++) bars.lineBetween(bx + n * barWidth / 6, by + 1, bx + n * barWidth / 6, by + 10);
+      bars.lineStyle(1, 0x8ba0c8).strokeRoundedRect(bx, by, barWidth, 11, 4);
     });
   }
 }
