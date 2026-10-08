@@ -7,6 +7,7 @@ import { TouchControls } from '../ui/TouchControls';
 import { Hud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
 import { addGameMenu } from '../ui/gameMenu';
+import { trackFightScene } from '../portal/gameplay';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
 import { KoAnim } from '../render/KoAnim';
@@ -99,6 +100,7 @@ export class FightStage {
     this.info = new InfoPanel(scene);
     this.info.setButtonVisible(false);
     addGameMenu(scene,()=>this.controls.reset());
+    trackFightScene(scene);
     scene.input.on('pointerdown', unlockAudio);
     const clear = () => {
       this.intents.clearAll();

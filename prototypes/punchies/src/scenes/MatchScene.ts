@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -270,6 +271,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showResult(): void {
+    setGameplay(false);
     this.over = true;
     this.waiting.setVisible(false);
     const r = this.ls.confirmedResult()!;

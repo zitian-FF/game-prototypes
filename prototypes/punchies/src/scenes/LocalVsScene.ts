@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -75,6 +76,7 @@ export class LocalVsScene extends Phaser.Scene {
   }
 
   private showResult(): void {
+    setGameplay(false);
     this.over = true;
     this.acc = 0;
     const r = this.sim.result!;

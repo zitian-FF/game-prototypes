@@ -1,9 +1,11 @@
 export interface AudioSettings { bgm: number; sfx: number; muted: boolean }
-const KEY = 'punchies:audio:v1';
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
+const KEY = KEYS.audio;
 const defaults: AudioSettings = { bgm: 0.35, sfx: 0.7, muted: false };
 const level = (v: unknown, fallback: number) => typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback;
 function load(): AudioSettings {
-  try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { bgm: level(v.bgm, defaults.bgm), sfx: level(v.sfx, defaults.sfx), muted: v.muted === true }; }
+  try { const v = JSON.parse(store.getItem(KEY) ?? '{}'); return { bgm: level(v.bgm, defaults.bgm), sfx: level(v.sfx, defaults.sfx), muted: v.muted === true }; }
   catch { return { ...defaults }; }
 }
 let settings = load();
@@ -12,14 +14,18 @@ let soundBus: GainNode | null = null;
 let musicBus: GainNode | null = null;
 const listeners = new Set<(settings: AudioSettings) => void>();
 export function getAudioSettings(): AudioSettings { return { ...settings }; }
+let adSuspended = false;
+// While a rewarded ad plays the game is silent. This does not touch the saved settings.
+export function suspendAudioForAd(on: boolean): void { adSuspended = on; apply(); }
 function apply(): void {
   if (!context) return;
-  soundBus?.gain.setTargetAtTime(settings.muted ? 0 : settings.sfx, context.currentTime, 0.01);
-  musicBus?.gain.setTargetAtTime(settings.muted ? 0 : settings.bgm, context.currentTime, 0.01);
+  const silent = settings.muted || adSuspended;
+  soundBus?.gain.setTargetAtTime(silent ? 0 : settings.sfx, context.currentTime, 0.01);
+  musicBus?.gain.setTargetAtTime(silent ? 0 : settings.bgm, context.currentTime, 0.01);
 }
 export function setAudioSettings(next: Partial<AudioSettings>): void {
   settings = { bgm: level(next.bgm, settings.bgm), sfx: level(next.sfx, settings.sfx), muted: next.muted ?? settings.muted };
-  try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* private mode */ }
+  try { store.setItem(KEY, JSON.stringify(settings)); } catch { /* private mode */ }
   apply(); listeners.forEach(fn => fn(getAudioSettings()));
 }
 // Music integration uses this same bus/settings, including global mute.

@@ -1,8 +1,10 @@
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
 import type { InputSource } from './devices';
 
 // Local VS input choice per player, remembered on this device (see
 // "Persistence" in root CLAUDE.md: one versioned localStorage key).
-const KEY = 'punchies:localInputs:v1';
+const KEY = KEYS.localInputs;
 
 export interface LocalInputs {
   p1: InputSource;
@@ -16,7 +18,7 @@ const DEFAULTS: LocalInputs = { p1: 'kb1', p2: 'kb2' };
 
 export function loadLocalInputs(): LocalInputs {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = store.getItem(KEY);
     if (!raw) return { ...DEFAULTS };
     const v = JSON.parse(raw) as Partial<LocalInputs>;
     const p1 = P1_OPTIONS.includes(v.p1 as InputSource) ? (v.p1 as InputSource) : DEFAULTS.p1;
@@ -29,7 +31,7 @@ export function loadLocalInputs(): LocalInputs {
 
 export function saveLocalInputs(v: LocalInputs): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(v));
+    store.setItem(KEY, JSON.stringify(v));
   } catch {
     /* storage unavailable (private mode) */
   }

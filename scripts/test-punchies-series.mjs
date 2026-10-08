@@ -71,11 +71,12 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, req
     matchResult: (_scene, _text, actions) => { resultActions = actions; return { setText() {} }; },
   };
   if (id === '../ui/presentation') return { startScreen: (_scene, key, data) => transitions.push({ key, data }) };
+  if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
   return {};
 } });
 function online(series, winner) {
   const scene = new sceneExports.MatchScene();
-  Object.assign(scene, { series, match: { round: 7, localIdx: 0, session: { send: m => sent.push(m) } },
+  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { send: m => sent.push(m) } },
     ls: { confirmedResult: () => ({ winner }) }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
     scene: { restart: data => transitions.push({ key: 'restart', data }) } });

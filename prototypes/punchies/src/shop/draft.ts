@@ -1,3 +1,5 @@
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
 import { STARTER_SKINS } from '../render/skinPalette';
 import config from './draft-config.json';
 export { config as shopConfig };
@@ -69,7 +71,7 @@ export function previewAdReward(state:ShopDraftState,now=Date.now()):ShopResult{
   if(s.adsToday>=config.dailyAdLimit)return {ok:false,reason:'Daily preview limit reached. Resets at 00:00 UTC.',state:s};
   return {ok:true,state:{...s,tokens:s.tokens+config.adRewardTokens,adsToday:s.adsToday+1}};
 }
-const KEY='punchies:shop-preview:v1';
-export function shopPreviewBalance():number{try{const raw=localStorage.getItem(KEY);return raw?normalizeShopDraft(JSON.parse(raw)).tokens:0;}catch{return 0;}}
-export function loadShopDraft():ShopDraftState{try{return normalizeShopDraft(JSON.parse(localStorage.getItem(KEY)??'null'));}catch{return newShopDraft();}}
-export function saveShopDraft(s:ShopDraftState):boolean{try{localStorage.setItem(KEY,JSON.stringify(s));return true;}catch{return false;}}
+const KEY=KEYS.shop;
+export function shopPreviewBalance():number{try{const raw=store.getItem(KEY);return raw?normalizeShopDraft(JSON.parse(raw)).tokens:0;}catch{return 0;}}
+export function loadShopDraft():ShopDraftState{try{return normalizeShopDraft(JSON.parse(store.getItem(KEY)??'null'));}catch{return newShopDraft();}}
+export function saveShopDraft(s:ShopDraftState):boolean{try{store.setItem(KEY,JSON.stringify(s));return true;}catch{return false;}}

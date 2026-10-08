@@ -1,5 +1,7 @@
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
 import { titleButton } from '../ui/titleButton';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -18,7 +20,7 @@ import { artImage, fighterGroups, whenGroupsReady } from '../render/art';
 
 const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
-const SAVE_KEY = 'punchies:tutorial:v1';
+const SAVE_KEY = KEYS.tutorial;
 
 type DummyMode = 'idle' | 'jabber' | 'crossBait' | 'whiffer';
 type Action = 'move' | 'jab' | 'cross' | 'hook' | 'guard' | 'dodge' | 'upper';
@@ -227,7 +229,7 @@ function binder(): (a: Action) => string {
 
 function loadStep(): number {
   try {
-    const v = JSON.parse(localStorage.getItem(SAVE_KEY) ?? '{}') as { step?: number };
+    const v = JSON.parse(store.getItem(SAVE_KEY) ?? '{}') as { step?: number };
     return typeof v.step === 'number' && v.step >= 0 && v.step < STEPS.length ? v.step : 0;
   } catch {
     return 0;
@@ -236,8 +238,8 @@ function loadStep(): number {
 
 function saveStep(step: number | null): void {
   try {
-    if (step === null) localStorage.removeItem(SAVE_KEY);
-    else localStorage.setItem(SAVE_KEY, JSON.stringify({ step }));
+    if (step === null) store.removeItem(SAVE_KEY);
+    else store.setItem(SAVE_KEY, JSON.stringify({ step }));
   } catch {
     /* storage unavailable */
   }

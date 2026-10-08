@@ -46,6 +46,8 @@ export default defineConfig(({ command }) => ({
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
+    __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
+    __PUNCHIES_PORTAL_ADS__: JSON.stringify(process.env.PORTAL_ADS !== 'off'),
     __PUNCHIES_ASSET_BASE__: JSON.stringify(command === 'serve' ? '/game-prototypes/' : '../../'),
   },
   build: {
