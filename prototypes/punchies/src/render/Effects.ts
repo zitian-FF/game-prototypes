@@ -174,8 +174,16 @@ export class Effects {
   }
 
   handle(events: SimEvent[], s: SimState, localIdx: number): void {
+    const exhausted = localIdx >= 0 ? s.fighters[localIdx].exhausted : null;
+    if (exhausted !== null && this.wasExhausted !== null && exhausted !== this.wasExhausted && !s.result) {
+      if (exhausted) sfx.emergency(); else sfx.recovered();
+    }
+    this.wasExhausted = exhausted;
     for (const e of events) {
       switch (e.kind) {
+        case 'staminaRejected':
+          if (localIdx === -1 || e.fighter === localIdx) sfx.denied();
+          break;
         case 'throw': {
           sfx.whoosh();
           // Subtle cue that this punch type is fatigued (slower, weaker).
@@ -223,17 +231,20 @@ export class Effects {
           break;
         case 'go':
           fightWord(this.scene);
-          sfx.go();
+          sfx.roundBell();
           break;
         case 'ko':
           // Confirmed knockout presentation is started by FightStage.draw.
           break;
         case 'timeUp':
           this.banner(e.winner === null ? 'DRAW' : 'TIME');
+          sfx.timeUp();
           break;
       }
     }
   }
+
+  private wasExhausted: boolean | null = null;
 
   private spark(x: number, y: number, color: number, size: number): void {
     const g = this.scene.add.graphics().setDepth(60);

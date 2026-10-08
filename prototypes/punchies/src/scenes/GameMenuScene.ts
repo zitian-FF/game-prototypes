@@ -35,7 +35,7 @@ export class GameMenuScene extends MenuScene {
         else {this.close();source.scene.start('Menu');}
       },false,302,'red');
     }else{
-      titleButton(this,VIEW.cx,VIEW.cy-28,280,38,'SETTINGS',()=>this.openInputPopup(),false,302);
+      titleButton(this,VIEW.cx,VIEW.cy-28,280,38,'SETTINGS',()=>this.openSettings(),false,302);
       titleButton(this,VIEW.cx,VIEW.cy+22,280,38,'RETURN TO MAIN MENU',()=>this.drawMenu(true),false,302,'red');
       titleButton(this,VIEW.cx,VIEW.cy+78,180,32,'RESUME',()=>this.close(),false,302,'green');
     }

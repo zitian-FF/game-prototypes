@@ -4,6 +4,7 @@ import { skinReady } from '../render/skins';
 import { CharacterSelectView } from '../ui/CharacterSelectView';
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
@@ -234,6 +235,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (!this.editable(s)) return;
     if(side.selected){this.cycleSkin(s,d);return;}
     side.sel = (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length;
+    sfx.uiSelect();
     side.skin=this.preferredSkin(s);this.notice='';
     if(this.data0.mode==='online')this.sendPick();
   }
@@ -245,7 +247,8 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(!this.available(s)){this.notice='Locked fighter · claim G.P. Tee in the shop welcome gift.';return;}
+    if(!this.available(s)){sfx.denied();this.notice='Locked fighter · claim G.P. Tee in the shop welcome gift.';return;}
+    sfx.uiConfirm();
     if(!side.selected){side.selected=true;this.notice='Left / right chooses a skin. Confirm to lock in.';return;}
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
@@ -291,6 +294,7 @@ export class CharSelectScene extends Phaser.Scene {
     const side = this.sides[s];
     if (side.locked) side.locked = false;
     side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?'Left / right chooses a skin. Confirm to lock in.':'Locked fighter · claim the shop welcome gift.';
+    if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
       this.sendPick();
@@ -316,6 +320,7 @@ export class CharSelectScene extends Phaser.Scene {
   private cycleSkin(s:number,d:number):void{
     if(!this.editable(s)||!this.available(s)||!this.sides[s].selected)return;
     const choices=this.skinChoices(s),side=this.sides[s];side.skin=choices[(Math.max(0,choices.indexOf(side.skin??'default'))+d+choices.length)%choices.length];
+    if (choices.length > 1) sfx.uiSelect();
     const prefs=loadCharPrefs(),slot=this.prefSide(s);saveCharPrefs({skins:{...prefs.skins,[slot]:{...prefs.skins[slot],[CHARACTER_IDS[side.sel]]:side.skin}}});
     if(this.data0.mode==='online')this.sendPick();
   }

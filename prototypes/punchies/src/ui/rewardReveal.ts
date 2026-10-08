@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 import { artKey } from '../render/art';
 import { skinTexture } from '../render/skins';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -15,6 +16,7 @@ export class RewardReveal {
   private destroyed = false;
 
   constructor(private scene: Phaser.Scene, item: ShopItem, close: () => void) {
+    sfx.rewardReveal();
     const cfg = tune.view.menu.rewardReveal;
     const motion = !reducedMotion();
     this.root = scene.add.container().setDepth(600);

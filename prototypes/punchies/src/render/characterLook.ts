@@ -15,13 +15,12 @@ const LOOKS: Record<CharId, { main: number; alt: number; ponytail: boolean }> = 
   bruno: { main: 0x3fa34d, alt: 0x9be84a, ponytail: false },
 };
 
-// Fighter `idx` in a match between chars[0] and chars[1]: in a mirror
-// match the second fighter wears the alt colour.
+// Fighter appearance is independent of player slot; matching skins are allowed.
+
 export function lookFor(chars: [string, string], idx: number): Look {
   const id = isCharId(chars[idx]) ? chars[idx] : 'marco';
   const l = LOOKS[id as CharId];
-  const mirror = idx === 1 && chars[0] === chars[1];
-  return { color: mirror ? l.alt : l.main, scale: fighterScale(id), ponytail: l.ponytail };
+  return { color: l.main, scale: fighterScale(id), ponytail: l.ponytail };
 }
 
 export function mainLook(id: string): Look {

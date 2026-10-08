@@ -78,6 +78,7 @@ export class FightStage {
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.views.forEach((v,i)=>v.skin=this.skins[i]);
+    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.ko.skins=this.skins;
     this.fx = new Effects(scene);
@@ -172,7 +173,7 @@ export class FightStage {
       if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins);
     }
     this.matchIntro?.draw(s.tick*1000/TICK_RATE);
-    // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
+    // Character looks are slot-independent; floor indicators identify the players.
     const chars: [string, string] = [s.fighters[0].char, s.fighters[1].char];
     const looks = [lookFor(chars, 0), lookFor(chars, 1)];
     looks.forEach((l, i) => this.views[i].setLook(l.color, l.scale, l.ponytail));
@@ -233,7 +234,7 @@ export class FightStage {
       tag.setPosition(f.x, f.y - 26);
       tag.setColor('#' + colors[i].toString(16).padStart(6, '0'));
       tag.setAlpha(a);
-      tag.setVisible(a > 0);
+      tag.setVisible(false); // Persistent floor indicators replace floating player tags.
     });
   }
 

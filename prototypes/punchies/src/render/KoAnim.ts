@@ -161,6 +161,7 @@ export class KoAnim {
     });
     if (!ok) return false;
     this.sprite.setVisible(false);
+    this.ground.setIndicator(this.loser===0?0x245eb7:0xbb3347,this.loser===0?'P1':['VsAI','Training','Tutorial'].includes(this.scene.scene.key)?'P(COM)':'P2');
     this.ground.shadowOnly(p.x, p.y, k, 1);
     if (fly && el >= tune.ko.flyMs && !this.shook) {
       this.shook = true;

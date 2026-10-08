@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+import assert from 'node:assert/strict';
+const exports={},calls=[];
+const code=ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/Effects.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+vm.runInNewContext(code,{exports,require:p=>p.includes('audio/sfx')?{sfx:{emergency:()=>calls.push('emergency'),recovered:()=>calls.push('recovered'),denied:()=>calls.push('denied')}}:{}});
+const effects=Object.create(exports.Effects.prototype);effects.wasExhausted=null;
+const state={fighters:[{exhausted:false},{exhausted:false}],result:null};
+effects.handle([],state,-1);assert.equal(calls.length,0,'local VS has no local fighter index');
+effects.handle([{kind:'staminaRejected',fighter:1}],state,-1);assert.deepEqual(calls,['denied']);
+effects.handle([],state,0);state.fighters[0].exhausted=true;effects.handle([],state,0);state.fighters[0].exhausted=false;effects.handle([],state,0);assert.deepEqual(calls,['denied','emergency','recovered']);
+effects.handle([{kind:'staminaRejected',fighter:1}],state,0);assert.equal(calls.length,3,'ignore remote rejection');
+console.log('PASS: local VS feedback never indexes fighter -1; local rejection and emergency transitions');
