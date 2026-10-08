@@ -79,6 +79,9 @@ No version stamp (see Exceptions).
   converts to WebP: `marco_{idle,walk,jab,cross,guard,hit_light,ko}` and
   `bruno_{...}` (or `dummy_{...}`). No new R2 object is required unless the
   user prefers one.
+- Sprite art confirmed by the user (2026-10-08). R2 is reachable from the
+  build environment (`punchies_assets.zip`, about 25 MB), so the trimming
+  script can run in CI and locally.
 - Frame animations from the packed atlas, not the main game's code-drawn
   puppet rig (it needs loose part images and 500 lines of code). The hit flash
   idea (short white or red strobe on the struck fighter) is copied in small
@@ -107,9 +110,13 @@ buttons are the primary binding.
   part of the root multi-entry build, so the main Punchies and hub deploys are
   unchanged. Its `index.html` lives in a subfolder the root config does not
   scan.
-- CI only BUILDS it for now (a build-only workflow). No deployment workflow
-  until the user names an itch.io slot. Existing deploy workflows are not
-  touched.
+- CI only BUILDS it for now (a build-only workflow). Existing deploy
+  workflows are not touched in this branch.
+- Deployment target (decided 2026-10-08): the itch.io project currently used
+  by mp-console. The deploy workflow is a later, separate task, following
+  `deploy-wip-itch.yml` / `deploy-mp-console-itch.yml`. What happens to the
+  existing mp-console deploy workflow and hub link is still to be confirmed
+  (see open questions).
 
 ## Exceptions to repo rules (deliberate)
 - No version stamp (it would clutter an ad).
@@ -130,8 +137,14 @@ retry flow, analytics, ad network SDK wiring, single file HTML inlining
    cross head band is only 4.5 px wide (105 to 109.5), so most far cross hits
    score 1. Keep the derived numbers, or widen it (for example 105 to 117, the
    old main-game width scaled)?
-3. **Art source.** OK to trim the existing `punchies_assets.zip` at build time
-   (no new upload), or do you want a dedicated `punchies-playable_assets.zip`?
+3. **Art source.** Resolved: sprite art, trimmed from the existing
+   `punchies_assets.zip` at build time (no new upload).
+5. **mp-console slot.** "Replace mp-console" is taken to mean the playable
+   deploys to mp-console's itch.io project. Should the old
+   `deploy-mp-console-itch.yml` be retired (so it stops overwriting the
+   playable) and the hub's mp-console link removed or relabelled? That deletes
+   the live mp-console build there, so it is a separate, explicitly approved
+   step.
 4. **Enemy set.** Bruno or the dummy as the enemy? And is the `guard` animation
    used for the enemy's wind-up pose and `hit_light` for the player taking a
    punch?
