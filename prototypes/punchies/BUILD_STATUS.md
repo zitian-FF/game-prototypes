@@ -17,6 +17,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Localisation phase 1: `t()` layer and about 250 extracted strings in `locales/en.json`, language picker on the landing page (hidden until a second language has translations), per-language font lists, Arabic right-to-left via an embedding mark, `?lang=` and `?lang=pseudo`, and a Google Sheets round trip (`scripts/i18n-sheet.mjs`). No translations are written yet. See BRIEF.md under Localisation.
 - Tests: new `test-punchies-i18n.mjs` (keys, placeholders, unused keys, hardcoded text, fallbacks, language choice, sheet round trip); older hand-loaded tests got an English stand-in for the new layer.
 
+- Character select: roster moved to a bright framed strip above the matchup panels, scrolls without a fighter limit (drag, pulsing arrows, auto-centre on focus), VS drawn on top, quieter colours for inactive chips and unfocused panels.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.
@@ -34,6 +36,7 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Online play with an iPhone as host does not pair (reported on a real device; no app switch involved). Cause not yet known. Next step is a retest with the lobby diagnostic line and then a fix based on what it shows.
 - The portal adapters have not been run against the real CrazyGames, Poki or Playgama SDKs, only against mocks. Each portal's QA tool must be run before submission.
 - Gameplay start fires when a fight scene starts, not on the first input (Poki's guidance prefers first input).
+- Roster strip scrolling was verified in headless Chromium with a forced overflow only (four fighters exist); touch drag on a real phone is untested.
 - Real two-device online play, a physical controller and a real phone have not been tested this pass.
 - The music files add about 12.5MB in production builds on top of the roughly 12MB game, relevant to the CrazyGames 20MB mobile homepage limit.
 - No external analytics collector exists yet, so itch.io data stays in the browser. Ranked play and midgame ads are not built.

@@ -28,6 +28,9 @@ export interface SelectionState {
   bestOf: number;
 }
 
+const DY = 34;                       // card area sits below the roster strip
+const STRIP = { x: 8, y: 90, w: 828, h: 52, cy: 116, x0: 44, x1: 800, pitch: 62, scale: .55 };
+
 // One authored landscape composition, fitted uniformly into every VIEW.
 // Presentation owns no picks or readiness state; the scene remains authoritative.
 export class CharacterSelectView {
@@ -37,6 +40,10 @@ export class CharacterSelectView {
   private panelIds: (CharId | null)[] = [null, null];
   private panelKeys = ['', ''];
   private cards: Phaser.GameObjects.Container[] = [];
+  private scroll = 0;
+  private drag: { x: number; scroll: number; moved: number } | null = null;
+  private focusKey = '';
+  private arrows: Phaser.GameObjects.Text[] = [];
   private cardFrames: Phaser.GameObjects.Graphics[] = [];
   private progress: Phaser.GameObjects.Text[] = [];
   private status: Phaser.GameObjects.Text[] = [];
@@ -63,16 +70,21 @@ export class CharacterSelectView {
       this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11));
       if (i < 2) this.text(this.root, x + 66, 76, '›', 22, '#a8bad5');
     });
+    const body = scene.add.container(0, DY);
+    this.root.add(body);
     for (let s = 0; s < 2; s++) {
       const x = s === 0 ? 16 : 462;
       const hit = scene.add.rectangle(x + 183, 196, 366, 174, 0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => callbacks.panel(s));
-      this.root.add(hit);
+      body.add(hit);
       this.content.push(scene.add.container());
-      this.root.add(this.content[s]);
-      this.status.push(this.text(this.root, s === 0 ? 200 : 644, 288, '', 10, '#b6d5f8'));
+      body.add(this.content[s]);
+      this.status.push(this.text(body, s === 0 ? 200 : 644, 288, '', 10, '#b6d5f8'));
     }
-    const burst = this.graphics(this.root);
+    // VS burst is added after the panels so it always draws on top of them.
+    const top = scene.add.container(0, DY);
+    this.root.add(top);
+    const burst = this.graphics(top);
     burst.fillStyle(0x075acd).fillPoints([
       {x: 389, y: 148}, {x: 409, y: 169}, {x: 413, y: 141}, {x: 430, y: 175},
       {x: 454, y: 157}, {x: 444, y: 190}, {x: 463, y: 201}, {x: 440, y: 221},
@@ -84,10 +96,20 @@ export class CharacterSelectView {
       {x: 463, y: 229}, {x: 435, y: 224}, {x: 443, y: 264}, {x: 420, y: 243},
       {x: 396, y: 252}, {x: 405, y: 218}, {x: 393, y: 181}, {x: 418, y: 193},
     ], true);
-    this.text(this.root, 422, 209, 'VS', 48).setAngle(-9).setStroke('#050c1d', 7);
+    this.text(top, 422, 209, 'VS', 48).setAngle(-9).setStroke('#050c1d', 7);
+    const stripHit = scene.add.rectangle((STRIP.x0 + STRIP.x1) / 2, STRIP.cy, STRIP.x1 - STRIP.x0, STRIP.h, 0, 0)
+      .setInteractive({ useHandCursor: true });
+    stripHit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startDrag(p));
+    this.root.add(stripHit);
+    scene.input.on('pointermove', this.onDrag, this);
+    scene.input.on('pointerup', this.endDrag, this);
+    scene.events.once('shutdown', () => {
+      scene.input.off('pointermove', this.onDrag, this);
+      scene.input.off('pointerup', this.endDrag, this);
+    });
     CHARACTER_IDS.forEach((id, i) => {
-      const card = scene.add.container(286 + i * 82, 339);
-      card.setScale(.76);
+      const card = scene.add.container(0, STRIP.cy + 2);
+      card.setScale(STRIP.scale);
       this.cards.push(card);
       this.root.add(card);
       this.cardFrames.push(this.graphics(card));
@@ -110,15 +132,78 @@ export class CharacterSelectView {
       footer.fillStyle(0x342052).fillRoundedRect(-48, 12, 96, 23, { tl: 0, tr: 0, bl: 9, br: 9 });
       this.text(card, 0, 23, id.toUpperCase(), 13);
       const hit = scene.add.rectangle(0, -4, 100, 84, 0, 0).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => callbacks.card(i));
+      hit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startDrag(p));
+      hit.on('pointerup', () => { if (!this.drag || this.drag.moved < 8) callbacks.card(i); });
       card.add(hit);
+      card.setData('hit', hit);
     });
+    this.arrows = [-1, 1].map((d) => {
+      const a = this.button(d < 0 ? 22 : 822, STRIP.cy, 26, 44, d < 0 ? '‹' : '›', () => this.page(d), false, 0xc9962b);
+      a.setFontSize(24);
+      return a;
+    });
+    this.layoutStrip();
     this.action = this.button(716, 347, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
     this.level = this.button(744, 65, 105, 27, '', () => callbacks.level(1));
     this.levelButtons = [this.level,
       this.button(672, 65, 27, 27, '‹', () => callbacks.level(-1)),
       this.button(816, 65, 27, 27, '›', () => callbacks.level(1))];
     this.hint = this.text(this.root, 120, 342, '', 10, '#a8bad5').setWordWrapWidth(220).setAlign('center');
+  }
+
+  private maxScroll(): number {
+    return Math.max(0, CHARACTER_IDS.length * STRIP.pitch - (STRIP.x1 - STRIP.x0));
+  }
+
+  private setScroll(v: number, animate = false): void {
+    const target = Phaser.Math.Clamp(v, 0, this.maxScroll());
+    this.scene.tweens.killTweensOf(this);
+    if (!animate || reducedMotion()) { this.scroll = target; this.layoutStrip(); return; }
+    this.scene.tweens.add({ targets: this, scroll: target, duration: 180, ease: 'Sine.easeOut',
+      onUpdate: () => this.layoutStrip(), onComplete: () => this.layoutStrip() });
+  }
+
+  private page(d: number): void { this.setScroll(this.scroll + d * STRIP.pitch * 4, true); }
+
+  private startDrag(p: Phaser.Input.Pointer): void {
+    this.scene.tweens.killTweensOf(this);
+    this.drag = { x: p.worldX, scroll: this.scroll, moved: 0 };
+  }
+
+  private onDrag(p: Phaser.Input.Pointer): void {
+    if (!this.drag || !p.isDown) return;
+    const dx = (p.worldX - this.drag.x) / this.root.scaleX;
+    this.drag.moved = Math.max(this.drag.moved, Math.abs(dx));
+    if (this.drag.moved >= 8) { this.scroll = Phaser.Math.Clamp(this.drag.scroll - dx, 0, this.maxScroll()); this.layoutStrip(); }
+  }
+
+  private endDrag(): void {
+    const d = this.drag;
+    this.drag = null;
+    if (d && d.moved >= 8) this.setScroll(Math.round(this.scroll / STRIP.pitch) * STRIP.pitch, true);
+  }
+
+  private layoutStrip(): void {
+    const max = this.maxScroll();
+    const width = STRIP.x1 - STRIP.x0;
+    const offset = max === 0 ? (width - CHARACTER_IDS.length * STRIP.pitch) / 2 : -this.scroll;
+    this.cards.forEach((card, i) => {
+      card.x = STRIP.x0 + offset + STRIP.pitch * (i + .5);
+      const edge = Math.min(card.x - STRIP.x0, STRIP.x1 - card.x);
+      const alpha = Phaser.Math.Clamp((edge + STRIP.pitch * .25) / (STRIP.pitch * .5), 0, 1);
+      card.setAlpha(alpha).setVisible(alpha > 0);
+      (card.getData('hit') as Phaser.GameObjects.Rectangle).input!.enabled = alpha > .6;
+    });
+    this.arrows.forEach((a, k) => {
+      const more = max > 0 && (k === 0 ? this.scroll > 1 : this.scroll < max - 1);
+      const show = max > 0;
+      a.setVisible(show).setAlpha(more ? 1 : .35);
+      (a.getData('chrome') as Phaser.GameObjects.Graphics).setVisible(show).setAlpha(more ? 1 : .35);
+      (a.getData('hit') as Phaser.GameObjects.Rectangle).setVisible(show).input!.enabled = show && more;
+      this.scene.tweens.killTweensOf(a);
+      a.setScale(1);
+      if (more && !reducedMotion()) this.scene.tweens.add({ targets: a, scale: 1.3, duration: 520, yoyo: true, repeat: -1 });
+    });
   }
 
   private graphics(parent: Phaser.GameObjects.Container): Phaser.GameObjects.Graphics {
@@ -161,13 +246,13 @@ export class CharacterSelectView {
     g.lineStyle(5, 0xef3545).lineBetween(422, 51, 586, 51);
     this.progress.forEach((t, i) => {
       const active = state.step === i;
-      this.frame(g, 232 + i * 132, 63, 116, 27, active ? 0x5bd8ff : 0x425879, active);
+      this.frame(g, 232 + i * 132, 63, 116, 27, active ? 0x5bd8ff : 0x2f3b55, active);
       t.setText(`${i + 1}  ${state.steps[i]}`).setColor(active ? '#fff7e6' : '#9fb0ca');
     });
     state.panels.forEach((p, s) => {
       const x = s === 0 ? 16 : 462;
       const color = s === 0 ? 0x2587ff : 0xec3d52;
-      this.frame(g, x, 109, 366, 174, p.focused ? color : (s === 0 ? 0x345d94 : 0x88434f));
+      this.frame(g, x, 109 + DY, 366, 174, p.focused ? color : 0x2f3b55);
       this.status[s].setText(p.status);
       const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
       if (key !== this.panelKeys[s]) {
@@ -186,11 +271,25 @@ export class CharacterSelectView {
         }
       }
     });
+    // Bright framed roster strip, the main call to action of this screen.
+    cartoonPanel(g, STRIP.x, STRIP.y, STRIP.w, STRIP.h, 0x1b2f63, 12);
+    g.lineStyle(3, 0xf3bc35).strokeRoundedRect(STRIP.x, STRIP.y, STRIP.w, STRIP.h, 12);
+    const focused = state.panels.map((p) => (p.hidden ? '' : p.id)).join('|');
+    if (focused !== this.focusKey) {
+      const first = this.focusKey === '';
+      this.focusKey = focused;
+      const f = state.panels.find((p) => p.focused && !p.hidden) ?? state.panels.find((p) => !p.hidden);
+      if (f && this.maxScroll() > 0) {
+        const i = CHARACTER_IDS.indexOf(f.id);
+        this.setScroll((i + .5) * STRIP.pitch - (STRIP.x1 - STRIP.x0) / 2, !first);
+      }
+    }
     this.cards.forEach((card, i) => {
       const selected = state.panels.findIndex((p) => !p.hidden && CHARACTER_IDS[i] === p.id && p.focused);
       const frame = this.cardFrames[i];
       frame.clear();
       this.frame(frame, -50, -46, 100, 84, selected < 0 ? 0x617ba2 : selected === 0 ? 0x65d9ff : 0xff8593);
+      if (selected >= 0) frame.lineStyle(7, 0xf3bc35).strokeRoundedRect(-53, -49, 106, 90, 12);
       state.panels.forEach((p, side) => {
         if (!p.cursor || p.id !== CHARACTER_IDS[i]) return;
         const cx = side === 0 ? -39 : 39;
@@ -204,13 +303,6 @@ export class CharacterSelectView {
           frame.beginPath().moveTo(cx-5,-38).lineTo(cx-1,-34).lineTo(cx+6,-42).strokePath();
         }
       });
-      const lifted = selected >= 0 ? 333 : 339;
-      if (card.y !== lifted) {
-        this.scene.tweens.killTweensOf(card);
-        if (reducedMotion()) card.y = lifted;
-        else this.scene.tweens.add({ targets: card, y: lifted, duration: tune.view.menu.characterSlideMs,
-          ease: tune.view.menu.characterSlideEase });
-      }
     });
     this.action.setText(state.action);
     this.action.setScale(Math.min(1, 185 / this.action.width));
