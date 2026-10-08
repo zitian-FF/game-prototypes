@@ -37,7 +37,7 @@ export class MatchIntro {
           left=Math.min(left,px);top=Math.min(top,y);right=Math.max(right,px+1);bottom=Math.max(bottom,y+1);
         }
         if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
-        const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83,tee:.85}[id]??0.7);
+        const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83,tee:.83}[id]??0.7);
         const k=Math.min(height/(bottom-top),VIEW.width*0.43/(right-left));
         portrait.setScale(k);
         portrait.x-=(side===1?-1:1)*((left+right)/2-canvas.width/2)*k;

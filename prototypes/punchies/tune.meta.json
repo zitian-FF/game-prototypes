@@ -3239,5 +3239,54 @@
     "min": 0.1,
     "max": 1.5,
     "step": 0.01
+  },
+  "view.puppet.teeHeadScale": {
+    "cat": "View",
+    "desc": "Tee rig teeHeadScale",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.teeTorsoScale": {
+    "cat": "View",
+    "desc": "Tee rig teeTorsoScale",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.teeHandScale": {
+    "cat": "View",
+    "desc": "Tee rig teeHandScale",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.teeGloveAxisDegrees": {
+    "cat": "View",
+    "desc": "Tee rig teeGloveAxisDegrees",
+    "min": -180,
+    "max": 180,
+    "step": 1
+  },
+  "view.puppet.teeWalkRate": {
+    "cat": "View",
+    "desc": "Tee rig teeWalkRate",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.teeTailOriginX": {
+    "cat": "View",
+    "desc": "Tee rig teeTailOriginX",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.teeTailOriginY": {
+    "cat": "View",
+    "desc": "Tee rig teeTailOriginY",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
   }
 }

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
-import { armPose, punchExtension, uppercutFireIntensity } from './punchMotion';
+import { armPose, punchExtension, uppercutFireIntensity, gloveRegistration } from './punchMotion';
 
 // Runtime boxer puppet, true overhead. Replaces the baked animation frames
 // for the three playable characters: head, torso, gloves and boots are static
@@ -236,7 +236,7 @@ export class Puppet {
     this.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5);
     const pony = part('ponytail');
     if (this.scene.textures.exists(pony)) this.ponytail.setTexture(pony).setOrigin(PONYTAIL_PIVOT, 0.5);
-    ['ponytail_left','ponytail_right'].forEach((name,i)=>{if(this.scene.textures.exists(part(name)))this.twinTails[i].setTexture(part(name)).setOrigin(PONYTAIL_PIVOT,.5);});
+    ['ponytail_left','ponytail_right'].forEach((name,i)=>{if(this.scene.textures.exists(part(name)))this.twinTails[i].setTexture(part(name)).setOrigin(tune.view.puppet.teeTailOriginX,tune.view.puppet.teeTailOriginY);});
     for (const g of this.ghosts) {
       g.torso.setTexture(part('torso')).setTintFill(0x7fe9ff);
       g.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5).setTintFill(0x7fe9ff);
@@ -323,13 +323,13 @@ export class Puppet {
     this.torso
       .setPosition(tpos.x, tpos.y)
       .setRotation(th + twist + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
-      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (1 + 0.012 * breathe))
+      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
     const hpos = P(rig.headForward * k - snap, 0, headDy);
     const hrot = th + twist * 0.4 + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
-    const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale;
+    const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale * (f.char==='tee'?rig.teeHeadScale:1);
     this.head.setPosition(hpos.x, hpos.y).setRotation(hrot).setScale(hscale).setAlpha(alpha).setVisible(true);
     if (this.scene.textures.exists(skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}${a.alt&&(a.skin??'default')==='default'?'_alt':''}_ponytail`))) {
       const sway = Math.sin(a.walk * 0.8 + now / 400) * (0.1 + 0.25 * a.stride) + (hitT < 1 ? 0.4 * (1 - hitT) : 0);
@@ -364,11 +364,11 @@ export class Puppet {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
       const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * k * side + v.bodyOffsetY };
-      const gh = rig.gloveHeight * k;
+      const registration=gloveRegistration(f.char,glove.width,glove.height,k);
       const striking = f.punch?.hand === i;
       const straight = striking && (f.punch!.type === 'jab' || f.punch!.type === 'cross') ? punchExtension(f.punch!) : 0;
       const minSegment = striking && f.punch!.type === 'hook' ? Math.max(9 * k, Math.hypot(fist.x - sh.x, fist.y - sh.y) * rig.hookElbowRatio) : 9 * k;
-      const { elbow, wrist } = armPose(sh, fist, gh * 0.4, minSegment, { x: lx * side, y: ly * side }, straight);
+      const { elbow, wrist } = armPose(sh, fist, registration.cuff, minSegment, { x: lx * side, y: ly * side }, straight);
       if (!striking || f.punch!.type !== 'uppercut' || uppercutFireIntensity(f.punch!) < 0.2) {
         limb(this.arms, sh, elbow, wrist, 6 * k, skinNow, alpha);
       }
@@ -376,8 +376,8 @@ export class Puppet {
       const dy = fist.y - elbow.y;
       glove
         .setPosition(fist.x, fist.y)
-        .setRotation(Math.atan2(dy, dx) + Math.PI / 2)
-        .setScale(gh / glove.height)
+        .setRotation(Math.atan2(dy, dx) + registration.axis)
+        .setScale(registration.scale)
         .setAlpha(alpha)
         .setVisible(true)
         // High Guard: the gloves come up over the head.

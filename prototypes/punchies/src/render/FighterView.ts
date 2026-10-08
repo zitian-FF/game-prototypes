@@ -237,7 +237,7 @@ export class FighterView {
     this.lastX = f.x;
     this.lastY = f.y;
     const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
-    if (walking) this.walk += moved * tune.view.puppet.walkPhasePerPixel;
+    if (walking) this.walk += moved * tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1);
     this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
 
     if (f.anchored && this.dummy.draw(f, now, k)) {
