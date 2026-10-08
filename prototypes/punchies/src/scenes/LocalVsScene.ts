@@ -23,7 +23,7 @@ const MAX_STEPS_PER_FRAME = 5;
 export class LocalVsScene extends Phaser.Scene {
   private sim!: SimState;
   private stage!: FightStage;
-  private inputs!: LocalInputs & { chars?: [string, string]; series?: SeriesState };
+  private inputs!: LocalInputs & { chars?: [string, string];skins?:[string,string]; series?: SeriesState };
   private acc = 0;
   private over = false;
   private series!: SeriesState;
@@ -33,7 +33,7 @@ export class LocalVsScene extends Phaser.Scene {
     super('LocalVs');
   }
 
-  create(data: LocalInputs & { chars?: [string, string]; series?: SeriesState }): void {
+  create(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState }): void {
     this.series = data.series ?? newSeries(tune.match.bestOf);
 
     applyCameraPixelRatio(this);
@@ -44,7 +44,7 @@ export class LocalVsScene extends Phaser.Scene {
 
   private built = false;
 
-  private build(data: LocalInputs & { chars?: [string, string]; series?: SeriesState }): void {
+  private build(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState }): void {
     this.built = true;
     this.inputs = data;
     this.acc = 0;
@@ -52,7 +52,7 @@ export class LocalVsScene extends Phaser.Scene {
     const chars = data.chars ?? ['marco', 'marco'];
     this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: chars[0] }, { char: chars[1] }] });
     const names: [string, string] = [`P1 · ${charName(chars[0])} · ${SOURCE_LABEL[data.p1]}`, `P2 · ${charName(chars[1])} · ${SOURCE_LABEL[data.p2]}`];
-    this.stage = new FightStage(this, names, -1, data.p1 === 'touch');
+    this.stage = new FightStage(this, names, -1, data.p1 === 'touch',data.skins);
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     this.stage.setSeries(this.series);
 

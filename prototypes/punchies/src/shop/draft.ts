@@ -1,10 +1,10 @@
 import config from './draft-config.json';
 export { config as shopConfig };
 export type ShopKind = 'fighters' | 'skins';
-export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:'marco'|'mia'|'bruno'|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; }
+export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:'marco'|'mia'|'bruno'|'tee'|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; }
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
-  {id:WELCOME_FIGHTER,name:'THE FOURTH FIGHTER',kind:'fighters',boxer:null,accent:0xffcf45,description:'Guaranteed welcome fighter. Identity, artwork and stats pending.'},
+  {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Welcome fighter: explosive power and speed, low HP, stamina and stun resistance.'},
   {id:'fighter-five',name:'THE ROOKIE',kind:'fighters',boxer:null,accent:0x56c7ef,description:'Fighter pool placeholder. Portrait, rig and balanced stats pending.'},
   {id:'fighter-six',name:'THE SOUTHPAW',kind:'fighters',boxer:null,accent:0xb299fa,description:'Fighter pool placeholder. Portrait, rig and balanced stats pending.'},
   {id:'skin-marco',name:'MARCO · NIGHT SHIFT',kind:'skins',boxer:'marco',accent:0x899df5,description:'Palette study for both portrait and rig. Final skin artwork pending.'},

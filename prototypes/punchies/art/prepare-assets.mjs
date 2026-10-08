@@ -60,6 +60,8 @@ export default async function prepare({ assetsSrcDir }) {
           continue;
         }
         await save(sharp(src), out('head'), scale);
+      } else if(name.startsWith('ponytail')) {
+        await save(sharp(src),out(name),HEAD_H/meta.height);
       } else if (name === 'torso') {
         await save(sharp(src), out('torso'), TORSO_H / meta.height);
       } else if (name.startsWith('glove')) {

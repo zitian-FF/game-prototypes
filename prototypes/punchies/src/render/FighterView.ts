@@ -128,6 +128,7 @@ export class FighterView {
   private ground: GroundLayer;
   // True-overhead puppet (head, torso, gloves, boots + code limbs); first choice.
   private puppet: Puppet;
+  skin='default';
   private dummy: TrainingDummy;
   // Layered art (top to bottom): effects, head, gloves, torso; feet and the
   // shadow sit below in `ground`. Falls back to the single baked body sprite.
@@ -350,6 +351,7 @@ export class FighterView {
     const { fists, colors } = this.fistPoints(f, k, stance);
     const ok = this.puppet.draw({
       f,
+      skin:this.skin,
       now,
       k,
       alt,

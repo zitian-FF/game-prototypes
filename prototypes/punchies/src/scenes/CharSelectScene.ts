@@ -1,3 +1,6 @@
+import { loadShopDraft } from '../shop/draft';
+import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
+import { skinReady } from '../render/skins';
 import { CharacterSelectView } from '../ui/CharacterSelectView';
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
@@ -61,6 +64,8 @@ function stats(id: CharId): [string, number][] {
 interface Side {
   sel: number;
   locked: boolean;
+  selected?:boolean;
+  skin?:string;
   label: string;
   src: InputSource | 'any' | 'remote';
 }
@@ -74,6 +79,8 @@ export class CharSelectScene extends Phaser.Scene {
   private remotePick: CharId | null = null;
   // Online: the opponent has reached this screen (heard from them here).
   private peerHere = false;
+  private remoteAvailable:CharId[]=['marco','mia','bruno'];
+  private notice='';
   private handedOff = false;
   private prevPad: boolean[] = [];
   private stickAt = [0, 0];
@@ -91,7 +98,7 @@ export class CharSelectScene extends Phaser.Scene {
     }
     this.handedOff = false;
     this.remotePick = null;
-    this.peerHere = false;
+    this.peerHere = false;this.notice='';this.remoteAvailable=['marco','mia','bruno'];
     this.active = 0;
     this.prevPad = [];
     const prefs = loadCharPrefs();
@@ -119,7 +126,9 @@ export class CharSelectScene extends Phaser.Scene {
       this.setupNet();
     }
 
+    this.sides.forEach((side,i)=>{side.selected=false;const id=CHARACTER_IDS[side.sel],saved=equippedSkin(loadShopDraft(),id,prefs.skins[this.prefSide(i)]?.[id]);side.skin=skinReady(this,id,saved)?saved:'default';});
     this.selectionView = new CharacterSelectView(this, {
+      skin:(s,d)=>this.cycleSkin(s,d),
       card: (i) => this.tapCard(i), panel: (i) => this.tapPanel(i),
       format: () => {
         if (this.data0.mode !== 'online' || this.data0.localIdx === 0) tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
@@ -222,8 +231,11 @@ export class CharSelectScene extends Phaser.Scene {
 
   private move(s: number, d: number): void {
     const side = this.sides[s];
-    if (!this.editable(s) || side.locked) return;
+    if (!this.editable(s)) return;
+    if(side.selected){this.cycleSkin(s,d);return;}
     side.sel = (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length;
+    side.skin=this.preferredSkin(s);this.notice='';
+    if(this.data0.mode==='online')this.sendPick();
   }
 
   private confirm(s: number): void {
@@ -233,6 +245,8 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
+    if(!this.available(s)){this.notice='Locked fighter · claim G.P. Tee in the shop welcome gift.';return;}
+    if(!side.selected){side.selected=true;this.notice='Left / right chooses a skin. Confirm to lock in.';return;}
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
       if (this.data0.mode === 'vsai') this.active = 1 - s;
@@ -254,13 +268,14 @@ export class CharSelectScene extends Phaser.Scene {
     const side = this.sides[s];
     if (!this.editable(s)) return;
     if (side.locked) {
-      side.locked = false;
+      side.locked = false;side.selected=false;
       if (this.data0.mode === 'vsai') this.active = s;
       if (this.data0.mode === 'online') this.sendPick();
       return;
     }
+    if(side.selected){side.selected=false;return;}
     if (this.data0.mode === 'vsai' && s === 1 && this.sides[0].locked) {
-      this.sides[0].locked = false;
+      this.sides[0].locked = false;this.sides[0].selected=false;
       this.active = 0;
       return;
     }
@@ -275,7 +290,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;
+    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?'Left / right chooses a skin. Confirm to lock in.':'Locked fighter · claim the shop welcome gift.';
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
       this.sendPick();
@@ -286,7 +301,23 @@ export class CharSelectScene extends Phaser.Scene {
   private tapPanel(s: number): void {
     if (this.data0.mode !== 'vsai' || !this.editable(s)) return;
     this.active = s;
-    this.sides[s].locked = false;
+    // Focus a confirmed card without changing its boxer.
+  }
+
+  private prefSide(s:number):string{return this.data0.mode==='online'?'p1':this.data0.mode==='vsai'&&s===1?'ai':s===0?'p1':'p2';}
+  private available(s:number):boolean{return (this.sides[s].src==='remote'?this.remoteAvailable:availableFighters(loadShopDraft())).includes(CHARACTER_IDS[this.sides[s].sel]);}
+  private preferredSkin(s:number):string {
+    const id=CHARACTER_IDS[this.sides[s].sel];
+    const saved=equippedSkin(loadShopDraft(),id,loadCharPrefs().skins[this.prefSide(s)]?.[id]);
+    return skinReady(this,id,saved)?saved:'default';
+  }
+  private skinChoices(s:number):string[]{const id=CHARACTER_IDS[this.sides[s].sel];return ownedSkins(loadShopDraft(),id).filter(skin=>skinReady(this,id,skin));}
+  private skins():[string,string]{return this.sides.map((side,s)=>side.src==='remote'?side.skin??'default':equippedSkin(loadShopDraft(),CHARACTER_IDS[side.sel],side.skin)) as [string,string];}
+  private cycleSkin(s:number,d:number):void{
+    if(!this.editable(s)||!this.available(s)||!this.sides[s].selected)return;
+    const choices=this.skinChoices(s),side=this.sides[s];side.skin=choices[(Math.max(0,choices.indexOf(side.skin??'default'))+d+choices.length)%choices.length];
+    const prefs=loadCharPrefs(),slot=this.prefSide(s);saveCharPrefs({skins:{...prefs.skins,[slot]:{...prefs.skins[slot],[CHARACTER_IDS[side.sel]]:side.skin}}});
+    if(this.data0.mode==='online')this.sendPick();
   }
 
   private bothLocked(): boolean {
@@ -321,14 +352,14 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private fight(): void {
-    if (!this.bothLocked()) return;
+    if (!this.bothLocked() || this.sides.some((_,s)=>!this.available(s))) return;
     const [a, b] = this.picks();
     if (this.data0.mode === 'vsai') {
       saveCharPrefs({ p1: a, ai: b, level: this.level });
-      startScreen(this, 'VsAI', { chars: [a, b], level: this.level });
+      startScreen(this, 'VsAI', { chars: [a, b],skins:this.skins(), level: this.level });
     } else if (this.data0.mode === 'localvs') {
       saveCharPrefs({ p1: a, p2: b });
-      startScreen(this, 'LocalVs', { ...this.data0.inputs!, chars: [a, b] });
+      startScreen(this, 'LocalVs', { ...this.data0.inputs!, chars: [a, b],skins:this.skins() });
     } else if (this.data0.localIdx === 0) {
       this.hostStart();
     }
@@ -343,8 +374,11 @@ export class CharSelectScene extends Phaser.Scene {
       if (m.k === 'format' && this.data0.localIdx === 1) tune.match.bestOf = m.bestOf === 1 ? 1 : 3;
       if (m.k === 'pick') {
         this.peerHere = true;
-        this.remotePick = isCharId(m.char) ? m.char : null;
+        this.remoteAvailable=Array.isArray(m.available)?m.available.filter(isCharId):['marco','mia','bruno'];
+        this.remotePick = isCharId(m.char)&&this.remoteAvailable.includes(m.char) ? m.char : null;
         const other = 1 - (this.data0.localIdx ?? 0);
+        if(isCharId(m.hover))this.sides[other].sel=CHARACTER_IDS.indexOf(m.hover);
+        const id=this.remotePick??CHARACTER_IDS[this.sides[other].sel];this.sides[other].skin=typeof m.skin==='string'&&skinItem(id,m.skin)?m.skin:'default';
         this.sides[other].locked = this.remotePick !== null;
         if (this.remotePick) this.sides[other].sel = CHARACTER_IDS.indexOf(this.remotePick);
         if (this.data0.localIdx === 0 && this.bothLocked()) this.hostStart();
@@ -352,7 +386,7 @@ export class CharSelectScene extends Phaser.Scene {
       if (m.k === 'start' && this.data0.localIdx === 1) {
         const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
-        this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars });
+        this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
     s.onPeerLeft = () => startScreen(this, 'Menu', { message: 'Opponent left' });
@@ -366,7 +400,7 @@ export class CharSelectScene extends Phaser.Scene {
     const me = this.data0.localIdx ?? 0;
     const side = this.sides[me];
     if (me === 0) this.data0.session?.send({ k: 'format', bestOf: tune.match.bestOf === 1 ? 1 : 3 });
-    this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null });
+    this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null,hover:CHARACTER_IDS[side.sel],skin:side.skin,available:availableFighters(loadShopDraft()) });
     if (side.locked) saveCharPrefs({ p1: CHARACTER_IDS[side.sel] });
     if (!this.peerHere) return;
     if (me === 0 && this.bothLocked()) this.hostStart();
@@ -378,8 +412,8 @@ export class CharSelectScene extends Phaser.Scene {
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;
-    s.send({ k: 'start', round, delay, tune: JSON.stringify(tune), chars });
-    this.handOff({ session: s, localIdx: 0, delay, round, chars });
+    s.send({ k: 'start', round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
+    this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }
 
   private handOff(data: MatchData): void {
@@ -401,22 +435,23 @@ export class CharSelectScene extends Phaser.Scene {
       bestOf: tune.match.bestOf,
       panels: this.sides.map((side, s) => ({
         id: chars[s], label: side.label === 'AI' ? 'OPPONENT' : side.label,
+        cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
         hidden: side.src === 'remote', locked: side.locked,
         focused: !ready && (local ? !side.locked : this.active === s),
         status: side.src === 'remote'
           ? (!this.peerHere ? 'Waiting for opponent…' : side.locked ? 'READY' : 'Choosing boxer…')
-          : side.locked ? '✓ LOCKED IN' : '',
+          : !this.available(s)?'LOCKED · SHOP WELCOME GIFT':side.locked ? '✓ LOCKED IN · LEFT / RIGHT: SKINS' : side.selected?'LEFT / RIGHT: SKINS · CONFIRM TO READY':'',
         stats: stats(chars[s]),
       })),
       step: ready ? 2 : online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
       steps: local ? ['PLAYER 1', 'PLAYER 2', 'FIGHT'] : online ? ['YOUR BOXER', 'READY', 'FIGHT'] : ['YOUR BOXER', 'OPPONENT', 'FIGHT'],
-      action: online ? (this.sides[me].locked ? 'UNREADY' : 'READY  ›')
+      action: online ? (this.sides[me].locked ? 'UNREADY' : this.sides[me].selected?'READY  ›':'SELECT BOXER  ›')
         : ready ? 'FIGHT!  ›' : local
           ? (this.sides.some((side) => side.src === 'touch')
             ? (this.sides[0].locked ? 'WAITING FOR P2' : 'CONFIRM BOXER  ›') : 'CONFIRM ON DEVICE')
           : this.active === 0 ? 'CONFIRM BOXER  ›' : 'CONFIRM OPPONENT  ›',
       level: this.data0.mode === 'vsai' ? this.level.toUpperCase() : null,
-      hint: this.hint(),
+      hint:this.notice||this.hint(),
     });
   }
 }

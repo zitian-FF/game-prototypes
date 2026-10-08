@@ -60,6 +60,7 @@ export class FightStage {
     private localIdx: 0 | 1 | -1,
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
+    private skins:[string,string]=['default','default'],
   ) {
     const gym=backdrop(scene, 0.15, 'gym_background');
     alignGymFloor(scene,gym);
@@ -76,7 +77,9 @@ export class FightStage {
     this.ring = scene.add.graphics().setDepth(0);
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
+    this.views.forEach((v,i)=>v.skin=this.skins[i]);
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
+    this.ko.skins=this.skins;
     this.fx = new Effects(scene);
     this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, tune.view.flashMs, zone);
     // Ring, boxers and hit effects tilt together; screen-space overlays
@@ -166,7 +169,7 @@ export class FightStage {
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
     if(!this.introChecked){
       this.introChecked=true;
-      if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char]);
+      if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins);
     }
     this.matchIntro?.draw(s.tick*1000/TICK_RATE);
     // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
@@ -203,6 +206,10 @@ export class FightStage {
     this.hud.resourceRow = [0, 1];
     this.hud.draw(s);
     this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
+  }
+
+  setSkins(skins: [string,string]): void {
+    this.skins=skins; this.views.forEach((v,i)=>v.skin=skins[i]); this.ko.skins=skins;
   }
 
   // Small menu-style button (not a gameplay intent).

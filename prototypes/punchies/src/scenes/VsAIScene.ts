@@ -32,11 +32,13 @@ export class VsAIScene extends Phaser.Scene {
     super('VsAI');
   }
 
+  private skins:[string,string]=['default','default'];
   private chars: [string, string] = ['marco', 'marco'];
 
-  create(data: { chars?: [string, string]; level?: BotLevel; series?: SeriesState }): void {
+  create(data: { chars?: [string, string]; skins?:[string,string]; level?: BotLevel; series?: SeriesState }): void {
     this.series = data?.series ?? newSeries(tune.match.bestOf);
 
+    this.skins=data?.skins??['default','default'];
     this.chars = data?.chars ?? this.chars;
     this.level = data?.level ?? this.level;
     applyCameraPixelRatio(this);
@@ -52,7 +54,7 @@ export class VsAIScene extends Phaser.Scene {
     this.over = false;
     this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
     this.ai = makeBot(this.level, 1);
-    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0);
+    this.stage = new FightStage(this, [`YOU · ${charName(this.chars[0])}`, `CPU (${this.level}) · ${charName(this.chars[1])}`], 0,true,this.skins);
     this.stage.setSeries(this.series);
 
     addVersionStamp(this);
@@ -80,11 +82,11 @@ export class VsAIScene extends Phaser.Scene {
     const outcome = finishRound(this.series, r.winner);
     this.stage.setSeries(outcome.series);
     if (!outcome.complete) {
-      roundSplash(this, () => this.scene.restart({ chars: this.chars, level: this.level, series: outcome.series }));
+      roundSplash(this, () => this.scene.restart({ chars: this.chars,skins:this.skins, level: this.level, series: outcome.series }));
       return;
     }
     matchResult(this, r.winner === null ? 'DRAW' : r.winner === 0 ? 'VICTORY' : 'DEFEAT', {
-      rematch: () => this.scene.restart({ chars: this.chars, level: this.level }),
+      rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),
       menu: () => startScreen(this, 'Menu'),
     }, outcome.series.wins);

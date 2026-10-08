@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { skinTexture } from '../render/skins';
 import { artKey } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { CHARACTER_IDS, CHARACTER_INFO, type CharId } from '../sim/character';
@@ -12,6 +13,7 @@ interface PanelState {
   hidden: boolean;
   locked: boolean;
   focused: boolean;
+  cursor: boolean; available: boolean; selected: boolean; skin: string; skinName: string; skinIndex: number; skinCount: number;
   status: string;
   stats: [string, number][];
 }
@@ -45,8 +47,8 @@ export class CharacterSelectView {
   private format: Phaser.GameObjects.Text;
   private portraitBounds = new Map<string, { left: number; top: number; right: number; bottom: number }>();
 
-  constructor(private scene: Phaser.Scene, callbacks: {
-    card(i: number): void; panel(i: number): void; action(): void; back(): void; level(d: number): void; format(): void;
+  constructor(private scene: Phaser.Scene, private callbacks: {
+    skin(s: number, d: number): void; card(i: number): void; panel(i: number): void; action(): void; back(): void; level(d: number): void; format(): void;
   }) {
     const scale = Math.min(VIEW.width / 844, VIEW.height / 390);
     this.root = scene.add.container(VIEW.cx - 422 * scale, VIEW.cy - 195 * scale).setScale(scale);
@@ -83,7 +85,8 @@ export class CharacterSelectView {
     ], true);
     this.text(this.root, 422, 209, 'VS', 48).setAngle(-9).setStroke('#050c1d', 7);
     CHARACTER_IDS.forEach((id, i) => {
-      const card = scene.add.container(307 + i * 113, 339);
+      const card = scene.add.container(286 + i * 82, 339);
+      card.setScale(.76);
       this.cards.push(card);
       this.root.add(card);
       this.cardFrames.push(this.graphics(card));
@@ -165,9 +168,9 @@ export class CharacterSelectView {
       const color = s === 0 ? 0x2587ff : 0xec3d52;
       this.frame(g, x, 109, 366, 174, p.focused ? color : (s === 0 ? 0x345d94 : 0x88434f));
       this.status[s].setText(p.status);
-      const key = JSON.stringify([p.id, p.hidden, p.stats]);
+      const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
       if (key !== this.panelKeys[s]) {
-        const changed = this.panelIds[s] !== null && this.panelIds[s] !== p.id;
+        const changed = this.panelIds[s] !== null && (this.panelIds[s] !== p.id || this.panelKeys[s] !== key);
         const direction = CHARACTER_IDS.indexOf(p.id) >= CHARACTER_IDS.indexOf(this.panelIds[s] ?? p.id) ? 1 : -1;
         this.panelIds[s] = p.id;
         this.panelKeys[s] = key;
@@ -187,10 +190,19 @@ export class CharacterSelectView {
       const frame = this.cardFrames[i];
       frame.clear();
       this.frame(frame, -50, -46, 100, 84, selected < 0 ? 0x617ba2 : selected === 0 ? 0x65d9ff : 0xff8593);
-      if (selected >= 0) {
-        frame.fillStyle(selected === 0 ? 0x2389ff : 0xf04b63).fillCircle(43, -38, 10);
-        frame.lineStyle(3, 0xffffff).beginPath().moveTo(38, -38).lineTo(42, -34).lineTo(49, -42).strokePath();
-      }
+      state.panels.forEach((p, side) => {
+        if (!p.cursor || p.id !== CHARACTER_IDS[i]) return;
+        const cx = side === 0 ? -39 : 39;
+        frame.fillStyle(side === 0 ? 0x2389ff : 0xf04b63).fillCircle(cx, -38, 12);
+        frame.lineStyle(2, 0xffffff);
+        if (!p.available) {
+          frame.strokeRoundedRect(cx-4,-44,8,8,4);
+          frame.fillStyle(0xffffff).fillRoundedRect(cx-6,-39,12,9,2);
+          frame.fillStyle(0x17233e).fillCircle(cx,-35,1.5);
+        } else {
+          frame.beginPath().moveTo(cx-5,-38).lineTo(cx-1,-34).lineTo(cx+6,-42).strokePath();
+        }
+      });
       const lifted = selected >= 0 ? 333 : 339;
       if (card.y !== lifted) {
         this.scene.tweens.killTweensOf(card);
@@ -222,7 +234,8 @@ export class CharacterSelectView {
     }
     const info = CHARACTER_INFO[p.id];
     const tx = s === 0 ? 215 : 480;
-    const key = artKey(this.scene, `portrait_${p.id}`);
+    const textureKey = skinTexture(this.scene, p.id, p.skin, `portrait_${p.id}`);
+    const key = this.scene.textures.exists(textureKey) ? textureKey : null;
     if (key) {
       const portrait = this.scene.add.image(s === 0 ? 108 : 738, 289, key, '__BASE').setOrigin(0.5, 1);
       // Align visible artwork rather than differing transparent PNG margins.
@@ -250,7 +263,7 @@ export class CharacterSelectView {
         this.portraitBounds.set(key, bounds);
       }
       // Preserve the cast's body-size hierarchy on either side of the matchup.
-      const visibleHeight = { bruno: 189, marco: 174, mia: 159 }[p.id];
+      const visibleHeight = { bruno: 189, marco: 174, mia: 159, tee: 165 }[p.id];
       const scale = Math.min(visibleHeight / (bounds.bottom - bounds.top), 190 / (bounds.right - bounds.left));
       portrait.setScale(scale);
       const centreOffset = ((bounds.left + bounds.right) / 2 - portrait.width / 2) * scale;
@@ -283,5 +296,13 @@ export class CharacterSelectView {
       }
       bars.lineStyle(1, 0x8ba0c8).strokeRoundedRect(bx, by, barWidth, 11, 4);
     });
+    if (p.selected && p.available) {
+      this.text(parent, tx+65, 273, p.skinName+'  '+p.skinIndex+'/'+p.skinCount, 9, '#fff1a8');
+      [-1, 1].forEach(d => {
+        const arrow=this.text(parent, tx+65+d*76, 273, d<0?'‹':'›', 20);
+        arrow.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));
+      });
+    }
+
   }
 }

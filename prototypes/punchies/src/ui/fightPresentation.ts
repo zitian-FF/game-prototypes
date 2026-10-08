@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { skinTexture } from '../render/skins';
 import { artKey, artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { charName } from '../sim/character';
@@ -12,7 +13,7 @@ export class MatchIntro {
   private vs: Phaser.GameObjects.Text;
   private complete = false;
 
-  constructor(private scene: Phaser.Scene, chars: [string, string]) {
+  constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default']) {
     this.cover = scene.add.container().setDepth(320);
     this.cover.add(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x081326, 0.97).setInteractive());
     const gym=artImage(scene,'gym_background',VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0);
@@ -21,8 +22,8 @@ export class MatchIntro {
     chars.forEach((id,side)=>{
       const group=scene.add.container();
       const x=VIEW.cx+(side===0?-1:1)*VIEW.width*0.245;
-      const key=artKey(scene,`portrait_${id}`);
-      if(key){
+      const key=skinTexture(scene,id,skins[side],`portrait_${id}`);
+      if(scene.textures.exists(key)){
         const portrait=scene.add.image(x,VIEW.bottom+2,key).setOrigin(0.5,1).setFlipX(side===1);
         // Loose portraits have different transparent margins: align visible pixels.
         const canvas=document.createElement('canvas');
@@ -36,7 +37,7 @@ export class MatchIntro {
           left=Math.min(left,px);top=Math.min(top,y);right=Math.max(right,px+1);bottom=Math.max(bottom,y+1);
         }
         if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
-        const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83}[id]??0.7);
+        const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83,tee:.85}[id]??0.7);
         const k=Math.min(height/(bottom-top),VIEW.width*0.43/(right-left));
         portrait.setScale(k);
         portrait.x-=(side===1?-1:1)*((left+right)/2-canvas.width/2)*k;
