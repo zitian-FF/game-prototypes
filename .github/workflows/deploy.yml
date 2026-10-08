@@ -77,6 +77,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Verify Punchies tuning tool
+        run: |
+          node scripts/test-punchies-tuner.mjs
+          node scripts/test-punchies-tuner-file.mjs
+
       - name: Build
         run: npm run build
 

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';import {build} from 'esbuild';
+const bundle=await build({stdin:{contents:`export * from './prototypes/punchies-tuner/src/fileIO'; export * from './prototypes/punchies-tuner/src/model';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false});
+const {saveOpened,defaults,set}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const base=defaults(),draft=defaults();set(draft,'characters.mia.hp',.9);
+let latest=defaults(),written='',closed=0,aborted=0;const order=[];
+const file={name:'tune.json',async createWritable(){order.push('permission');return{async write(text){written=text;},async close(){closed++;},async abort(){aborted++;}};},async getFile(){order.push('read');return{text:async()=>JSON.stringify(latest)};}};
+latest.view.headOffsetY=-3;const result=await saveOpened(file,base,draft);assert.equal(result.characters.mia.hp,.9);assert.equal(JSON.parse(written).view.headOffsetY,-3);assert.deepEqual(order,['permission','read']);assert.equal(closed,1);
+latest.characters.mia.hp=.7;await assert.rejects(saveOpened(file,base,draft),/same fields/);assert.equal(closed,1);assert.equal(aborted,1);
+latest=defaults();const failed={...file,async createWritable(){return{async write(){throw Error('Disk failure');},async close(){closed++;},async abort(){aborted++;}};}};await assert.rejects(saveOpened(failed,base,draft),/Disk failure/);assert.equal(aborted,2);assert.equal(closed,1);
+console.log('PASS: file save reads after permission, merges edits, aborts conflict/write failure, and commits only on close');
