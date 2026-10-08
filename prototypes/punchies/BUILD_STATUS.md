@@ -21,6 +21,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 - Character select stats are now five aggregated bars (Health, Endurance, Speed, Power, Reach) and the nickname line became a playstyle label (Vanilla, Agile, Tank, Glass Cannon). See BRIEF.md.
 
+- Online join keypad is now QWERTY with a digit row on top and no look-alike characters.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.

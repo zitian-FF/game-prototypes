@@ -404,3 +404,6 @@ The roster moves from the bottom to a bright gold-framed strip under the step ch
 
 ## Aggregated character stats and playstyle label — 2026-10-08
 Character select shows five bars: Health (HP), Endurance (average of stamina and stun resistance), Speed (average of walk speed and hand speed from jab, cross, hook and uppercut frames), Power (average damage multiplier over the four punches) and Reach (average punch reach including body proportions). Dash distance is identical for every fighter today, so it is not part of Speed until fighters get their own dash. Bars use the existing scale where the base tune sits at 80%. The line under the name is now a playstyle label: Marco Vanilla, Mia Agile, Bruno Tank, Tee Glass Cannon.
+
+## Room code keypad layout — 2026-10-08
+The join keypad is QWERTY-ordered with the digits 2 to 9 as the top row, then Q to P, A to K and Z to M plus DEL. Look-alike characters (0, O, 1, I, L) stay excluded from room codes and from the keypad.
