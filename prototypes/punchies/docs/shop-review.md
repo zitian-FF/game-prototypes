@@ -1,6 +1,6 @@
 # Daily chest shop review
 
-Unpublished branch: proto/punchies/shop-pulls-draft. Three columns: reward ad gives 1 token; purple skin chest costs 5; gold fighter chest costs 10. Each paid chest can be opened once per UTC day, independently. Left welcome introduction remains one-time.
+Release branch: proto/punchies/shop-pulls-draft; user approved merging to live on 2026-10-08. Three columns: reward ad gives 1 token; purple skin chest costs 5; gold fighter chest costs 10. Each paid chest can be opened once per UTC day, independently. Left welcome introduction remains one-time.
 
 The purple chest offers one unique and two palette skins, each with exact one-third probability (display rounded to 33%). Exhausted categories shrink the reward pool rather than introducing extra unique entries: two remaining rewards are 50/50 and one is guaranteed. Owned rewards are excluded. The gold chest grants the single fighter of the day with 100% probability. Purchases and daily flags persist in the local preview save; the next UTC rotation resets both paid chest allowances.
 
