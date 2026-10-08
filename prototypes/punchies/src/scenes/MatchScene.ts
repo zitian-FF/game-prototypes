@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -287,6 +288,7 @@ export class MatchScene extends Phaser.Scene {
       return;
     }
     const text = r.winner === null ? 'DRAW' : r.winner === this.match.localIdx ? 'VICTORY' : 'DEFEAT';
+    track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     if (this.remoteReselect) { this.changeBoxer(); return; }
     const rem = matchResult(this, text, {
       rematch: () => {

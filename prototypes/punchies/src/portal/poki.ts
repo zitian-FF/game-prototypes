@@ -11,6 +11,7 @@ interface PokiSdk {
   gameplayStart(): void;
   gameplayStop(): void;
   rewardedBreak(beforeAd?: () => void): Promise<boolean>;
+  measure?(category: string, what: string, action: string): void;
 }
 const sdk = () => (globalThis as unknown as { PokiSDK?: PokiSdk }).PokiSDK;
 
@@ -29,6 +30,8 @@ export function pokiPortal(adsEnabled: boolean): Portal {
     },
     loadingFinished() { if (ready) sdk()!.gameLoadingFinished(); },
     gameplay(active) { if (ready) (active ? sdk()!.gameplayStart() : sdk()!.gameplayStop()); },
+    // Poki's own measure(category, what, action); extra props stay in the local log.
+    track(category, what, action) { if (ready) sdk()!.measure?.(category, what, action); },
     ads: {
       get available() { return adsEnabled && ready; },
       kind: 'real',

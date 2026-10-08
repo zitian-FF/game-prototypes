@@ -10,6 +10,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Repaired older tests that were already failing or that the portal change touched: game-menu (missing settings stub), series (missing winner context), roster, shop and audio (new portal imports).
 - Earlier this week: tune guard for online play (`validateTuneJson`), debug tools hidden unless opened once with `?debug=1`, credits now say tiantian.
 
+- Analytics: `track(category, what, action, props)` on the portal layer. Poki gets `measure`, Playgama gets `analytics.send`, itch.io and CrazyGames keep a local log (last 300 events, copyable from the debug panel). Events cover rounds, match results, tutorial steps, shop and rewarded ad funnel, chest unlocks, and online connect success or failure. Anonymous, no ids. Listed in BRIEF.md.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.
@@ -26,7 +28,7 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Gameplay start fires when a fight scene starts, not on the first input (Poki's guidance prefers first input).
 - Real two-device online play, a physical controller and a real phone have not been tested this pass.
 - The music files add about 12.5MB in production builds on top of the roughly 12MB game, relevant to the CrazyGames 20MB mobile homepage limit.
-- Analytics, ranked play and midgame ads are not built.
+- No external analytics collector exists yet, so itch.io data stays in the browser. Ranked play and midgame ads are not built.
 
 ## Next proposed step
-Analytics on the portal layer, then real SDK testing in each portal's QA tool once a portal is chosen.
+Decide whether to add a small own collector (for example a Cloudflare Worker) for itch.io, then real SDK testing in each portal's QA tool once a portal is chosen.

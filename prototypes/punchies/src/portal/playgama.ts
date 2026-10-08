@@ -10,6 +10,7 @@ interface Bridge {
   initialize(): Promise<void>;
   platform: { sendMessage(m: string): void };
   advertisement: { showRewarded(placement?: string): void; on(event: string, cb: (state: string) => void): void; off?(event: string, cb: (state: string) => void): void };
+  analytics?: { send(name: string, data?: Record<string, string | number | boolean>): void };
   storage: { get(keys: string[]): Promise<(string | null)[]>; set(key: string, value: string): Promise<unknown>; delete(key: string): Promise<unknown> };
   EVENT_NAME: { REWARDED_STATE_CHANGED: string };
 }
@@ -47,6 +48,8 @@ export function playgamaPortal(adsEnabled: boolean): Portal {
       bridge()!.platform.sendMessage(active ? (begun ? 'level_resumed' : 'level_started') : 'level_paused');
       if (active) begun = true;
     },
+    // Names stay short snake_case; the variable part goes into the data.
+    track(category, what, action, props) { if (ready) bridge()!.analytics?.send(`${category}_${action}`, { what, ...props }); },
     ads: {
       get available() { return adsEnabled && ready; },
       kind: 'real',

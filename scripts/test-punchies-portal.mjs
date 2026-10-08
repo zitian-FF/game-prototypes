@@ -7,7 +7,7 @@ import { join } from 'node:path';
 // that follow the documented APIs; nothing here talks to a real portal.
 const load = async (portalId, ads = true) => {
   const out = await build({
-    stdin: { contents: `export * from './prototypes/punchies/src/portal/index'; export { setGameplay } from './prototypes/punchies/src/portal/gameplay'; export { KEYS } from './prototypes/punchies/src/portal/keys';`, resolveDir: process.cwd(), loader: 'ts' },
+    stdin: { contents: `export * from './prototypes/punchies/src/portal/index'; export { setGameplay } from './prototypes/punchies/src/portal/gameplay'; export { KEYS } from './prototypes/punchies/src/portal/keys'; export { track, getEventLog, clearEventLog } from './prototypes/punchies/src/portal/analytics';`, resolveDir: process.cwd(), loader: 'ts' },
     bundle: true, platform: 'node', format: 'esm', write: false,
     define: { __PUNCHIES_PORTAL__: JSON.stringify(portalId), __PUNCHIES_PORTAL_ADS__: JSON.stringify(ads) },
   });
@@ -125,6 +125,49 @@ globalThis.document = { createElement: () => ({}), head: { appendChild(s) { queu
   delete globalThis.bridge;
 }
 
+// ---- analytics ----
+{
+  const m = await load('web');
+  m.clearEventLog();
+  m.track('shop', 'earn_tokens', 'visible');
+  m.track('match', 'VsAI', 'win', { level: 'hard' });
+  const log = m.getEventLog();
+  assert.deepEqual(log.map((e) => `${e.category}/${e.what}/${e.action}`), ['shop/earn_tokens/visible', 'match/VsAI/win']);
+  assert.deepEqual(log[1].props, { level: 'hard' });
+  for (let i = 0; i < 400; i++) m.track('x', 'y', 'z', { i });
+  assert.equal(m.getEventLog().length, 300, 'the local log is capped');
+  m.clearEventLog();
+  assert.equal(m.getEventLog().length, 0);
+
+  const measured = [];
+  globalThis.PokiSDK = { init: async () => {}, gameLoadingFinished() {}, gameplayStart() {}, gameplayStop() {}, rewardedBreak: async () => true, measure: (...a) => measured.push(a) };
+  const poki = await load('poki');
+  await poki.initPortal();
+  poki.track('rewarded', 'shop_token', 'visible', { extra: 1 });
+  assert.deepEqual(measured, [['rewarded', 'shop_token', 'visible']], 'Poki gets category, what, action');
+  assert.equal(poki.getEventLog()[0].props.extra, 1, 'extra props stay in the local log');
+  globalThis.PokiSDK.measure = () => { throw new Error('sdk down'); };
+  poki.track('a', 'b', 'c');
+  assert.equal(poki.getEventLog().length, 2, 'an SDK error never breaks the game');
+  delete globalThis.PokiSDK;
+
+  const sent = [];
+  globalThis.bridge = { initialize: async () => {}, EVENT_NAME: {}, platform: { sendMessage() {} }, advertisement: { on() {}, showRewarded() {} },
+    storage: { get: async (k) => k.map(() => null), set: async () => {}, delete: async () => {} }, analytics: { send: (...a) => sent.push(a) } };
+  const pg = await load('playgama');
+  await pg.initPortal();
+  pg.track('match', 'VsAI', 'win', { level: 'hard' });
+  assert.deepEqual(sent, [['match_win', { what: 'VsAI', level: 'hard' }]], 'Playgama gets a short snake_case name and flat data');
+  delete globalThis.bridge;
+  // CrazyGames has no custom event module: local log only, nothing thrown
+  globalThis.CrazyGames = { SDK: { init: async () => {}, game: { gameplayStart() {}, gameplayStop() {} }, ad: {}, data: { getItem: () => null, setItem() {}, removeItem() {} } } };
+  const cg = await load('crazygames');
+  await cg.initPortal();
+  cg.track('a', 'b', 'c');
+  assert.equal(cg.getEventLog().length, 1);
+  delete globalThis.CrazyGames;
+}
+
 // ---- a build only carries its own portal SDK address ----
 const sdkAddress = { web: [], crazygames: ['crazygames-sdk'], poki: ['poki-sdk'], playgama: ['playgama-bridge'] };
 for (const [id, text] of Object.entries(bundles)) {
@@ -143,4 +186,4 @@ for (const file of walk('prototypes/punchies/src')) {
   assert.ok(!/localStorage\./.test(code), `${file} must use the portal store, not localStorage`);
   assert.ok(!/['"`]punchies:[a-zA-Z-]+:v\d+['"`]/.test(code), `${file} must take its storage key from portal/keys.ts`);
 }
-console.log('PASS: portal layer: web fallback, CrazyGames/Poki/Playgama adapters against mocks (gameplay de-duplication, rewarded ads grant only on success, save routing and preload, SDK-load failure fallback), and every save uses a registered key.');
+console.log('PASS: portal layer: web fallback, CrazyGames/Poki/Playgama adapters against mocks (gameplay de-duplication, rewarded ads grant only on success, analytics routing and local log, save routing and preload, SDK-load failure fallback), and every save uses a registered key.');

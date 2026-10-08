@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { track } from '../portal/analytics';
 import Phaser from 'phaser';
 import { store } from '../portal/store';
 import { KEYS } from '../portal/keys';
@@ -239,7 +240,7 @@ function loadStep(): number {
 function saveStep(step: number | null): void {
   try {
     if (step === null) store.removeItem(SAVE_KEY);
-    else store.setItem(SAVE_KEY, JSON.stringify({ step }));
+    else { store.setItem(SAVE_KEY, JSON.stringify({ step })); track('tutorial', `step_${step + 1}`, 'reached'); }
   } catch {
     /* storage unavailable */
   }
@@ -345,6 +346,7 @@ export class TutorialScene extends Phaser.Scene {
 
   private finish(): void {
     this.finished = true;
+    track('tutorial', 'all', 'complete');
     saveStep(null);
     this.stage.reveal(null);
     getNav(this).engage();
