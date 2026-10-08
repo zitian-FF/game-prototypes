@@ -142,7 +142,16 @@ export class CanvasUiScene extends Phaser.Scene {
     if (l.visible) this.drawLobby();
     if (g.visible) this.drawGame();
     if (t.topBarOpen) this.drawTutorialBar();
-    if (t.lessonOpen) { this.rect(195, 711, 350, 82, 0x0b2022, 0.96); this.text(t.lessonText, 195, 711, 14, PALE, 320); }
+    // Pinned just below the scene-selector/quit row, not above the hand
+    // fan (the fan's resting cards run from ~y617 to ~y731 - FAN_BASELINE_Y
+    // in ui/renderGameView.ts - so a box centered at the old y711 covered
+    // most of every card's rank numeral and roughly half its height,
+    // silently blocking taps on a real device even though a sliver of each
+    // card stayed visible above the box). This spot overlaps the top
+    // seat's own card-back box instead, which is decorative-only in every
+    // scene this hint ever needs to coexist with (no guided moment ever
+    // asks the player to tap the top seat while a lesson is showing).
+    if (t.lessonOpen) { this.rect(195, 90, 350, 82, 0x0b2022, 0.96); this.text(t.lessonText, 195, 90, 14, PALE, 320); }
     if (t.introOpen) {
       this.scrim();
       this.text('How to Play', 195, 273, 26, PALE);
