@@ -197,12 +197,10 @@ export class Effects {
           this.hit(e, s, localIdx);
           break;
         case 'block':
-          this.ring(e.x, e.y, 0x3ad0c0, 14);
           this.label(e.x, e.y - 22, e.chip > 0 ? `CHIP -${e.chip.toFixed(1)}` : 'BLOCK', e.chip > 0 ? '#ffb03a' : '#3ad0c0', 11);
           sfx.block();
           break;
         case 'perfectGuard':
-          this.ring(e.x, e.y, 0xffffff, 30);
           this.screenFlash(0xffffff, 0.25);
           this.label(e.x, e.y - 28, 'PERFECT GUARD', '#ffffff', 14);
           sfx.perfectGuard();
@@ -269,11 +267,6 @@ export class Effects {
   private puff(x: number, y: number): void {
     const c = this.scene.add.circle(x, y, 7, 0xbbbbbb, 0.7).setDepth(60);
     this.scene.tweens.add({ targets: c, scale: 1.8, alpha: 0, duration: 180, onComplete: () => c.destroy() });
-  }
-
-  private ring(x: number, y: number, color: number, r: number): void {
-    const c = this.scene.add.circle(x, y, r).setStrokeStyle(3, color, 1).setDepth(60);
-    this.scene.tweens.add({ targets: c, scale: 1.6, alpha: 0, duration: 260, onComplete: () => c.destroy() });
   }
 
   private screenFlash(color: number, alpha: number): void {

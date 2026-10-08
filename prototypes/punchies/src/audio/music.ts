@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { preloadStingers } from './stingers';
 import { audioOutput, unlockMixer } from './mixer';
 
 type Track = 'title' | 'charselect' | 'gameplay';
@@ -8,6 +9,7 @@ const root = `${__PUNCHIES_ASSET_BASE__}prototypes/punchies/audio/`;
 
 // Stream long tracks rather than decoding all three into memory on mobile.
 export function installMusic(game: Phaser.Game): void {
+  preloadStingers();
   const players = new Map<Track, { element: HTMLAudioElement; gain: GainNode }>();
   let selected: Track | null = null;
   let unlocked = false;

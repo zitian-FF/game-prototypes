@@ -253,20 +253,12 @@ export class FighterView {
     this.dummy.hide();
 
     if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
-      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-        g.lineStyle(2, 0xffe03a, 0.6);
-        g.strokeCircle(f.x, f.y, BODY_R + 4);
-      }
       this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;
     }
 
     if (this.drawArt(f, now, walking)) {
-      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-        g.lineStyle(2, 0xffe03a, 0.6);
-        g.strokeCircle(f.x, f.y, BODY_R + 4);
-      }
       this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;
@@ -303,15 +295,6 @@ export class FighterView {
       g.fillStyle(this.flashNow(now), 0.75);
       g.fillCircle(f.x, f.y, BODY_R + 2);
     }
-    // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
-    if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-      const pulse = 0.5 + 0.5 * Math.sin(now / (f.dashBuff > 0 ? 45 : 110));
-      g.fillStyle(0xffe03a, 0.1 + 0.18 * pulse);
-      g.fillCircle(f.x, f.y, BODY_R + 1);
-      g.lineStyle(2, 0xffe03a, 0.25 + 0.35 * pulse);
-      g.strokeCircle(f.x, f.y, BODY_R + 4);
-    }
-
     this.drawStun(f, now);
 
     if (showHitboxes) this.drawHitboxes(f);
