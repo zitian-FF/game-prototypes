@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { RewardReveal } from '../ui/rewardReveal';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { artKey, backdrop } from '../render/art';
 import { reducedMotion, startScreen } from '../ui/presentation';
@@ -10,14 +11,15 @@ import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, welcomePull, prev
 
 /** Local storefront draft. No ad provider or production unlocks are connected. */
 export class ShopScene extends Phaser.Scene {
+  private reveal:RewardReveal|null=null;
   private state!:ShopDraftState;
   private root!:Phaser.GameObjects.Container;
   private rays:Phaser.GameObjects.Graphics[]=[];
   private popupKind:ShopKind|null=null;
   private notice='Tap a chest to inspect today’s rewards and pull odds.';
   constructor(){super('Shop');}
-  create(){applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
-  update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
+  create(){this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
+  update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(!this.reveal&&this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
   private persist(){if(!saveShopDraft(this.state))this.notice='Storage unavailable: this preview will not persist after closing.';}
   private text(x:number,y:number,label:string,size=14,color='#fff3da'){
     const t=this.add.text(x,y,label,{fontFamily:'Arial Black, Arial',fontSize:size,fontStyle:'bold',color,stroke:'#081225',strokeThickness:size>=14?3:1,resolution:PIXEL_RATIO});this.root.add(t);return t;
@@ -30,10 +32,15 @@ export class ShopScene extends Phaser.Scene {
     if(enabled)this.hit(x,y,w,32,fn,depth);
   }
   private act(result:ShopResult){
+    if(this.reveal)return;
     this.state=result.state;
     this.notice=result.ok?(result.item?`UNLOCKED: ${result.item.name}`:'1 preview token added. No advertisement was played.'):result.reason;
     if(result.ok)this.popupKind=null;
     this.persist();this.render();
+    if(result.ok&&result.item){
+      for(const child of this.root.list){if((child as Phaser.GameObjects.Rectangle).input)(child as Phaser.GameObjects.Rectangle).input!.enabled=false;}
+      this.reveal=new RewardReveal(this,result.item,()=>{this.reveal=null;this.render();});
+    }
   }
   private chest(kind:ShopKind,x:number){
     const ray=this.add.graphics({x,y:175});

@@ -118,7 +118,18 @@
       "crossfadeMs": 180,
       "characterSlideMs": 260,
       "characterSlideDistance": 34,
-      "characterSlideEase": "Cubic.Out"
+      "characterSlideEase": "Cubic.Out",
+      "rewardReveal": {
+        "fadeMs": 220,
+        "entryMs": 420,
+        "portraitHoldMs": 2200,
+        "nameFadeMs": 260,
+        "ackDelayMs": 650,
+        "darkenAlpha": 0.92,
+        "portraitHeight": 0.96,
+        "entryScale": 0.84,
+        "buttonEntryScale": 0.75
+      }
     }
   },
   "ring": {
