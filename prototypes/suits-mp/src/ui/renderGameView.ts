@@ -876,6 +876,31 @@ function applyTutorialLock(legality: ReturnType<typeof computeHandLegality>, loc
   return { ...legality, states };
 }
 
+// Scene 6's hard-lock target for the Double step: unlike a single-card
+// lock, the correct next tap alternates between the pair's two cards as
+// the player actually selects them - resolved fresh every render from
+// `cardIds` (the scripted pair) plus the real, already-tracked
+// `view.selectedCards`, the same live-resolution precedent
+// nextTutorialRedistributeTarget already established for Scene 2. `null`
+// once both are selected - handLegality's own off-suit branch already
+// locks every other card to 'illegal' at that point (selected.length ===
+// 2), so there's nothing left for a tutorial lock to additionally
+// restrict.
+function nextTutorialDoubleCardId(cardIds: readonly [CardId, CardId], selected: readonly CardId[]): CardId | null {
+  if (selected.length === 0) return cardIds[0];
+  if (selected.length === 1 && selected[0] === cardIds[0]) return cardIds[1];
+  return null;
+}
+
+function applyTutorialDoubleLock(legality: ReturnType<typeof computeHandLegality>, target: CardId | null): ReturnType<typeof computeHandLegality> {
+  if (target === null) return legality;
+  const states = new Map(legality.states);
+  for (const [id, cardState] of states) {
+    if (id !== target && cardState !== 'illegal') states.set(id, 'illegal');
+  }
+  return { ...legality, states };
+}
+
 // Redistribution's own hard-lock target (Scene 2): unlike a play-phase
 // lock, there's no single fixed thing to lock onto for the whole step -
 // the real UI's own tap-a-card-then-tap-a-seat flow (renderRedistributionStack)
@@ -939,8 +964,13 @@ function renderWithView(
   // RedistLog/Menu modals, stalemate/Victory), so it stays reachable at
   // every point within a scene per this task's own requirement, not just
   // during the ordinary hand-fan render path further down. A real
-  // (non-tutorial) render never touches this at all.
-  if (tutorial) {
+  // (non-tutorial) render never touches this at all. `!state.winner`:
+  // Scene 6 is the first tutorial scene that can ever reach a real
+  // suit-completion win - once it does, the universal Victory Screen
+  // (below) takes over the whole screen, and the scene-selector/quit bar
+  // has nothing left to select or quit out of (the Victory Screen's own
+  // Back to Menu is the only way forward from here).
+  if (tutorial && !state.winner) {
     openTutorialTopBar(tutorial.scenes, tutorial.onSelectScene, tutorial.onQuit);
   } else {
     closeTutorialTopBar();
@@ -1126,7 +1156,7 @@ function renderWithView(
     // here.
     if (!ui.victorySequenceStarted) {
       ui.victorySequenceStarted = true;
-      startVictorySequence(scene, container, state, view, ui);
+      startVictorySequence(scene, container, state, view, ui, !!tutorial);
     }
     return;
   }
@@ -1138,6 +1168,8 @@ function renderWithView(
   let legality = state.turnPhase === 'play' ? computeHandLegality(state, view.selectedCards) : null;
   if (legality && tutorial?.lock?.kind === 'handCard') {
     legality = applyTutorialLock(legality, tutorial.lock.cardId);
+  } else if (legality && tutorial?.lock?.kind === 'doubleCards') {
+    legality = applyTutorialDoubleLock(legality, nextTutorialDoubleCardId(tutorial.lock.cardIds, view.selectedCards));
   }
   renderCardFan(scene, container, state, view, ui, legality, rerender, tutorial);
   if (tutorial?.pointer?.kind === 'handCard') {
@@ -1154,6 +1186,13 @@ function renderWithView(
       const pos = seatCenter(seatFor(target.toPlayer, state.yourSlot));
       drawGuidePointer(scene, container, pos.x, pos.y);
     }
+  } else if (tutorial?.pointer?.kind === 'doubleCards') {
+    const target = nextTutorialDoubleCardId(tutorial.pointer.cardIds, view.selectedCards);
+    const pos = target ? ui.lastHandLayoutsByCardId.get(target) : null;
+    if (pos) drawGuidePointer(scene, container, pos.x, pos.y);
+  } else if (tutorial?.pointer?.kind === 'seat') {
+    const pos = seatCenter(seatFor(tutorial.pointer.slot, state.yourSlot));
+    drawGuidePointer(scene, container, pos.x, pos.y);
   }
   if (tutorial?.lesson) {
     openTutorialLesson(tutorial.lesson);
@@ -1183,7 +1222,7 @@ function renderWithView(
       ui.overlay = 'menu';
       rerender();
     },
-    seatDelegate: computeSeatDelegateState(state, view, rerender),
+    seatDelegate: computeSeatDelegateState(state, view, rerender, tutorial),
     seatLabels: hud.seatLabels,
     currentTurnSeat: hud.currentTurnSeat,
     starterSeat: hud.starterSeat,
@@ -1271,18 +1310,28 @@ function renderPlayerCluster(
   }
 }
 
-// Real per-seat delegate-selection state, handed to the DOM name tags
-// (dom/overlay/GameOverlay.tsx) via gameOverlayStore.ts. Tapping another
-// seat's tag during the selectDelegate phase is the only way to choose
-// who performs a redistribution; there is no other UI for it.
-function computeSeatDelegateState(state: MaskedState, view: ViewState, rerender: () => void): Record<SeatPosition, SeatDelegateState> {
+// Real per-seat delegate-selection state, handed to the overlay name tags
+// (ui/CanvasUiScene.ts) via gameOverlayStore.ts. Tapping another seat's
+// tag during the selectDelegate phase is the only way to choose who
+// performs a redistribution; there is no other UI for it. `tutorial`'s
+// own 'delegateTo' lock (Scene 6) narrows the otherwise-2-seat choice
+// down to exactly the one scripted ally, the same hard-lock-everywhere
+// rule every other guided moment already follows.
+function computeSeatDelegateState(
+  state: MaskedState,
+  view: ViewState,
+  rerender: () => void,
+  tutorial?: TutorialHudConfig | null,
+): Record<SeatPosition, SeatDelegateState> {
   const seatMap = buildSeatMap(state.yourSlot);
   const isDelegating = state.delegateChoices !== null;
+  const tutorialAllowedPid = tutorial?.lock?.kind === 'delegateTo' ? tutorial.lock.toPlayer : null;
+  const tutorialGatesSeatTaps = isDelegating && tutorial?.lock?.kind === 'delegateTo';
   const result = {} as Record<SeatPosition, SeatDelegateState>;
   for (const seat of ['top', 'right', 'left', 'bottom'] as const) {
     const pid = seatMap[seat];
     const isYou = seat === 'bottom';
-    const tappable = isDelegating && !isYou;
+    const tappable = isDelegating && !isYou && (!tutorialGatesSeatTaps || pid === tutorialAllowedPid);
     result[seat] = {
       tappable,
       staged: view.delegateChoice === pid,
@@ -2266,6 +2315,7 @@ function startVictorySequence(
   state: MaskedState,
   view: ViewState,
   ui: PersistentUIState,
+  isTutorial: boolean,
 ): void {
   hideGameOverlay();
   sfx.victory();
@@ -2279,7 +2329,7 @@ function startVictorySequence(
     // own container.removeAll(true) already left on screen (nothing,
     // in practice) before the reveal.
     scene.cameras.main.fadeOut(0, 255, 255, 255);
-    showVictoryScreen(scene, container, state);
+    showVictoryScreen(scene, container, state, isTutorial);
     return;
   }
 
@@ -2331,7 +2381,7 @@ function startVictorySequence(
     // explicitly (verified visually, not just assumed from the API).
     scene.cameras.main.fadeOut(tune.victoryFadeMs, 255, 255, 255);
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      showVictoryScreen(scene, container, state);
+      showVictoryScreen(scene, container, state, isTutorial);
     });
   });
 }
@@ -2442,7 +2492,7 @@ function addVictoryDeityGlow(scene: Phaser.Scene, container: Phaser.GameObjects.
 // started. Canvas owns the whole choreography (WebGL glow included, per
 // root CLAUDE.md's canvas/DOM split); the DOM VictoryModal layered on
 // top owns only the static text/button (see dom/VictoryModal.tsx).
-function showVictoryScreen(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState): void {
+function showVictoryScreen(scene: Phaser.Scene, container: Phaser.GameObjects.Container, state: MaskedState, isTutorial: boolean): void {
   container.removeAll(true);
   drawTabletop(scene, container);
 
@@ -2502,7 +2552,7 @@ function showVictoryScreen(scene: Phaser.Scene, container: Phaser.GameObjects.Co
     label: playerLabelFor(state, slot),
     godDisplayName: GOD_DISPLAY_NAME[state.revealedGods[slot]!],
   }));
-  openVictory(`Team ${team} Won`, state.trickNumber, identities, () => {
+  openVictory(`Team ${team} Won`, state.trickNumber, identities, isTutorial, () => {
     closeVictory();
     navigateToLandingMenu(scene);
   });

@@ -38,14 +38,15 @@ const SEAT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4'] as const;
 // (see tutorial/tutorialTypes.ts) instead of real peer input or bot AI -
 // never a separate, simplified game-state representation.
 //
-// Drives TUTORIAL_SCENES generically (tutorial/tutorialScenes.ts) - Scenes
-// 1-2 have real scripts today, the rest are still `null` placeholders the
-// scene selector (dom/tutorial/TutorialTopBar.tsx) locks out of jumping
-// to. Reaching the end of a scene's steps advances to the next scene
-// (see finishScene) when one is actually built, falling back to the
-// completion modal - a TEMPORARY stand-in, not a permanent dead end - once
-// there's no next scene yet (currently past Scene 2, since Scene 3
-// onward are still `null`). See BUILD_STATUS.md.
+// Drives TUTORIAL_SCENES generically (tutorial/tutorialScenes.ts) - all 6
+// scenes from suits-mp-tutorial-design.md's Section 3 now have real
+// scripts. Reaching the end of a scene's steps advances to the next
+// scene (see finishScene) when one exists; Scene 6 (the last one) ends
+// in a real suit-completion win instead, which short-circuits straight
+// to the universal Victory Screen (see render()'s own
+// presentGameView/renderWithView `if (state.winner)` branch) rather than
+// ever reaching finishScene()'s own generic end-of-content fallback -
+// see scheduleNextIfAuto()'s own `state.winner` guard.
 export class TutorialScene extends Phaser.Scene {
   private state!: GameState;
   private container!: Phaser.GameObjects.Container;
@@ -196,7 +197,20 @@ export class TutorialScene extends Phaser.Scene {
   // delay, then finishScene()) or the current step is a genuine 'auto'
   // step (schedule its own scripted-remote delay, then apply it and
   // advance).
+  //
+  // `this.state.winner` guard: Scene 6's own final 'auto' step (the
+  // ally's scripted redistribute) is what actually completes the local
+  // player's suit - by the time this function is called afterward,
+  // `this.render()` (called just before, in the auto-step handler below)
+  // has already dispatched to the real universal Victory Screen via
+  // renderWithView's own `if (state.winner)` branch. Without this guard,
+  // falling through to the exhausted-script branch below would schedule
+  // finishScene()'s own generic "no next scene" completion modal on top
+  // of (or instead of) that real Victory Screen a few seconds later -
+  // there's nothing left to schedule once the game is genuinely won; the
+  // Victory Screen's own Back to Menu is the only way forward from here.
   private scheduleNextIfAuto(): void {
+    if (this.state.winner) return;
     if (this.pendingWait) return;
     if (this.stepIndex >= this.script.steps.length) {
       this.pendingTimer = this.time.delayedCall(tune.tutorialSceneCompleteDelayMs, () => {
