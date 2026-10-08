@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Increments the deploy counter in prototypes/<name>/version.json by one.
-// Called once per successful deploy by that prototype's itch.io workflow
-// (see .github/workflows/deploy-mp-console-itch.yml), which commits the
-// updated file back to main. scripts/generate-versions.js then picks up the
-// new value on the next build.
+// Called once per successful deploy by a versioned prototype's itch.io
+// workflow, which commits the updated file back to main. Prototypes with a
+// documented version-stamp exception do not call this script.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

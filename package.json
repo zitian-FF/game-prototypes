@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "fetch:assets": "node scripts/fetch-assets.js",
     "pack:assets": "node scripts/pack-assets.js",
-    "simulate": "node scripts/run-simulate.mjs"
+    "simulate": "node scripts/run-simulate.mjs",
+    "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts"
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.5",

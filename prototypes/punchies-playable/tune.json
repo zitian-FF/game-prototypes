@@ -1,0 +1,57 @@
+{
+  "run": {
+    "durationSec": 30,
+    "playerHp": 3,
+    "firstSpawnSec": 0.2,
+    "spawnMinSec": 1.5,
+    "spawnMaxSec": 2
+  },
+  "enemy": {
+    "spawnDistance": 520,
+    "walkSpeed": 150,
+    "attackDistance": 80,
+    "minGap": 70,
+    "windupFrames": 20,
+    "strikeFrames": 6,
+    "damage": 1,
+    "leaveFrames": 32,
+    "leaveSpeed": 480,
+    "knockFrames": 36,
+    "knockSpeed": 700
+  },
+  "points": {
+    "head": 2,
+    "body": 1
+  },
+  "punch": {
+    "bufferFrames": 6,
+    "jab": {
+      "startup": 6,
+      "sourEarly": 3,
+      "sweet": 2,
+      "recovery": 8,
+      "whiffRecovery": 4,
+      "sourBelow": 44,
+      "headMax": 87,
+      "bodyMax": 105
+    },
+    "cross": {
+      "startup": 13,
+      "sourEarly": 3,
+      "sweet": 6,
+      "recovery": 20,
+      "whiffRecovery": 12,
+      "sourBelow": 105,
+      "headMax": 117,
+      "bodyMax": 127.5
+    }
+  },
+  "view": {
+    "unitPx": 1.2,
+    "playerY": 480,
+    "spriteSize": 242,
+    "hitFlashFrames": 10,
+    "popupMs": 700,
+    "endDelayMs": 600
+  }
+}
