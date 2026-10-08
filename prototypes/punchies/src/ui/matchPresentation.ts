@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { sfx } from '../audio/sfx';
+import { playStinger } from '../audio/stingers';
 import { artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
@@ -65,7 +65,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   const before=new Set(scene.children.list);
   const defeat=headline==='DEFEAT';
   const draw=headline==='DRAW';
-  if (defeat) sfx.defeat(); else if (!draw) sfx.victory();
+  playStinger(scene, 'result');
   const panel=scene.add.graphics().setDepth(129);
   panel.fillStyle(0x050d20,.72).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
   const shield=scene.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x000000,0).setDepth(130).setInteractive();

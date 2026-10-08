@@ -10,7 +10,7 @@ const objects=[],buttons=[];const make=kind=>(...args)=>{const o=new Obj(kind,ar
 let reduced=true;const tweens=[],events=[];
 const scene={children:{list:objects},events:{once:(_event,fn)=>events.push(fn)},add:{rectangle:make('rectangle'),graphics:make('graphics'),text:make('text'),image:make('image')},textures:{exists:()=>true},tweens:{add:t=>tweens.push(t)}};
 const exports={};vm.runInNewContext(compile('prototypes/punchies/src/ui/matchPresentation.ts'),{exports,require:p=>{
- if(p.includes('sfx'))return{sfx:{victory(){},defeat(){}}};
+ if(p.includes('stingers'))return{playStinger(){return()=>{};}};
  if(p.includes('pixelRatio'))return{VIEW:{cx:422,cy:225,width:844,height:450,left:0,top:0,bottom:450},PIXEL_RATIO:1};
  if(p.includes('presentation'))return{reducedMotion:()=>reduced};
  if(p.includes('sim/tune'))return{tune:{view:{fightPresentation:{portraitSlideMs:300,resultEnterMs:220}}}};

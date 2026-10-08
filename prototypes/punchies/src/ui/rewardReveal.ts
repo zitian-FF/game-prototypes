@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { sfx } from '../audio/sfx';
+import { playStinger } from '../audio/stingers';
 import { artKey } from '../render/art';
 import { skinTexture } from '../render/skins';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -14,9 +14,10 @@ export class RewardReveal {
   private root: Phaser.GameObjects.Container;
   private timers: Phaser.Time.TimerEvent[] = [];
   private destroyed = false;
+  private stopStinger: () => void;
 
   constructor(private scene: Phaser.Scene, item: ShopItem, close: () => void) {
-    sfx.rewardReveal();
+    this.stopStinger = playStinger(scene, 'reward');
     const cfg = tune.view.menu.rewardReveal;
     const motion = !reducedMotion();
     this.root = scene.add.container().setDepth(600);
@@ -88,6 +89,7 @@ export class RewardReveal {
   destroy():void {
     if(this.destroyed)return;
     this.destroyed=true;
+    this.stopStinger();
     this.scene.events.off('shutdown',this.destroy,this);
     this.timers.forEach(t=>t.remove(false));
     this.scene.tweens.killTweensOf([this.root,...this.root.list,...this.root.list.flatMap(o=>o instanceof Phaser.GameObjects.Container?o.list:[])]);
