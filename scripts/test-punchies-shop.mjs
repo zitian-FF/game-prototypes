@@ -5,6 +5,8 @@ import ts from 'typescript';
 const exports={},store=new Map(),config=JSON.parse(fs.readFileSync('prototypes/punchies/src/shop/draft-config.json','utf8'));
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/shop/draft.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,Date,Set,Number,Math,JSON,localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)},require:()=>({default:config})});
 const d=exports,day=Date.parse('2026-10-08T12:00:00Z');
+const empty={...d.newShopDraft(day),tokens:0};const free=d.welcomePull(empty);assert(free.ok);assert.equal(free.state.tokens,0);assert.equal(d.welcomePull(free.state).ok,false);assert(d.previewAdReward(empty,day).ok);
+const funded=d.welcomePull({...empty,tokens:7});assert(funded.ok);assert.equal(funded.state.tokens,7);
 let s=d.refreshDailyOffers(d.newShopDraft(day),day);
 assert.equal(d.buyDailyChest(s,'skins',0,day).ok,false);s=d.welcomePull(s).state;assert.equal(d.welcomePull(s).ok,false);
 const offers=d.dailyOffers(s,'skins');assert.equal(offers.length,3);assert.equal(offers.filter(i=>i.skinType==='unique').length,1);assert(d.chestRewards(s,'skins').every(r=>r.probability===1/3));

@@ -30,8 +30,7 @@ export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
 }
 export function welcomePull(state:ShopDraftState):ShopResult{
   if(state.welcomeClaimed)return {ok:false,reason:'Welcome fighter already claimed.',state};
-  if(state.tokens<config.welcomeCost)return {ok:false,reason:'Not enough tokens.',state};
-  return {ok:true,item:SHOP_ITEMS[0],state:{...state,tokens:state.tokens-config.welcomeCost,welcomeClaimed:true,owned:[...state.owned,WELCOME_FIGHTER]}};
+  return {ok:true,item:SHOP_ITEMS[0],state:{...state,tokens:state.tokens,welcomeClaimed:true,owned:[...state.owned,WELCOME_FIGHTER]}};
 }
 export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&i.id!==WELCOME_FIGHTER&&!state.owned.includes(i.id));}
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
@@ -52,7 +51,6 @@ export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;
 }
 export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,now=Date.now()):ShopResult{
   const s=refreshDailyOffers(state,now);
-  if(!s.welcomeClaimed)return {ok:false,reason:'Claim the welcome fighter first.',state:s};
   if(s.purchasedChests?.includes(kind))return {ok:false,reason:'This chest has already been opened today.',state:s};
   const pool=chestRewards(s,kind);
   if(!pool.length)return {ok:false,reason:'All rewards in this chest are owned.',state:s};
@@ -64,7 +62,6 @@ export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,n
 }
 export function previewAdReward(state:ShopDraftState,now=Date.now()):ShopResult{
   const s=normalizeShopDraft(state,now);
-  if(!s.welcomeClaimed)return {ok:false,reason:'Claim the welcome fighter first.',state:s};
   if(s.adsToday>=config.dailyAdLimit)return {ok:false,reason:'Daily preview limit reached. Resets at 00:00 UTC.',state:s};
   return {ok:true,state:{...s,tokens:s.tokens+config.adRewardTokens,adsToday:s.adsToday+1}};
 }
