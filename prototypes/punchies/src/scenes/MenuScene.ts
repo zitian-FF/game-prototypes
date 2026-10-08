@@ -85,7 +85,7 @@ export class MenuScene extends Phaser.Scene {
 
   private openCredits(): void {
     const p=this.popup('CREDITS',()=>this.openSettings());
-    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Designed and produced by ZeeTea\n\nIn collaboration with\nClaudia, G.P. Tee and Gemma',
+    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Designed and produced by tiantian\n\nIn collaboration with\nClaudia, G.P. Tee and Gemma',
       {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
   }
 
