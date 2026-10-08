@@ -407,3 +407,6 @@ Character select shows five bars: Health (HP), Endurance (average of stamina and
 
 ## Translation sheet pull — 2026-10-08
 `node scripts/i18n-sheet.mjs pull [csv-url]` downloads the sheet published to the web as CSV (File > Share > Publish to web > Sheet > CSV), checks it is CSV with most English keys present, repairs placeholders and writes the locale files. The game never fetches the sheet at runtime (portals restrict outside requests and machine text should be frozen after review). The "Pull Punchies translations" workflow runs the same pull from the `I18N_SHEET_URL` repository variable and opens a pull request without merging it.
+
+## Room code keypad layout — 2026-10-08
+The join keypad is QWERTY-ordered with the digits 2 to 9 as the top row, then Q to P, A to K and Z to M plus DEL. Look-alike characters (0, O, 1, I, L) stay excluded from room codes and from the keypad.
