@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
@@ -87,6 +88,7 @@ export class VsAIScene extends Phaser.Scene {
       roundSplash(this, () => this.scene.restart({ chars: this.chars,skins:this.skins, level: this.level, series: outcome.series }));
       return;
     }
+    track('match', 'VsAI', r.winner === null ? 'draw' : r.winner === 0 ? 'win' : 'lose', { level: this.level, char: this.chars[0] });
     matchResult(this, r.winner === null ? 'DRAW' : r.winner === 0 ? 'VICTORY' : 'DEFEAT', {
       rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),

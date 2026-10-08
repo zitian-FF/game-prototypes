@@ -1,4 +1,5 @@
 import { Pane, type FolderApi } from 'tweakpane';
+import { getEventLog } from '../portal/analytics';
 import { tune, tuneBaseline, tuneSource, onTuneReplaced } from '../sim/tune';
 import meta from '../../tune.meta.json';
 
@@ -125,6 +126,9 @@ function mountPanel(): void {
   pane.addBinding(debugView, 'showHitboxes');
   pane.addButton({ title: 'Copy JSON (paste into tune.json)' }).on('click', () => {
     void navigator.clipboard.writeText(JSON.stringify(tune, null, 2) + '\n');
+  });
+  pane.addButton({ title: 'Copy analytics events (JSON)' }).on('click', () => {
+    void navigator.clipboard.writeText(JSON.stringify(getEventLog(), null, 2) + '\n');
   });
 
   const wasLabels: { path: string; el: HTMLElement }[] = [];

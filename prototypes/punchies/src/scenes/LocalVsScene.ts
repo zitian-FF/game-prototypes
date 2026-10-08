@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, VIEW } from '../render/pixelRatio';
@@ -86,6 +87,7 @@ export class LocalVsScene extends Phaser.Scene {
       roundSplash(this, () => this.scene.restart({ ...this.inputs, series: outcome.series }));
       return;
     }
+    track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished');
     matchResult(this, r.winner === null ? 'DRAW' : `P${r.winner + 1} VICTORY`, {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),

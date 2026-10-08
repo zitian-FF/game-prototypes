@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { track } from '../portal/analytics';
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -73,7 +74,10 @@ export class LobbyScene extends Phaser.Scene {
       s.leave();
       this.scene.restart({ role: 'host' });
     };
-    s.onPaired = () => void this.hostHandshake(s);
+    s.onPaired = () => {
+      track('online', 'host', 'connected');
+      void this.hostHandshake(s);
+    };
     s.onPeerLeft = () => this.status.setText('Opponent left. Waiting for opponent...');
 
     this.add
@@ -137,8 +141,12 @@ export class LobbyScene extends Phaser.Scene {
     if (!this.scene.isActive()) return;
     const s = new NetSession(code, 'guest', ice);
     this.session = s;
-    s.onRejected = () => this.back(`Room ${code} is full`);
+    s.onRejected = () => {
+      track('online', 'guest', 'failed', { reason: 'room_full' });
+      this.back(`Room ${code} is full`);
+    };
     s.onPaired = () => {
+      track('online', 'guest', 'connected');
       this.handedOff = true;
       startScreen(this, 'CharSelect', { mode: 'online', session: s, localIdx: 1 });
     };
@@ -147,7 +155,10 @@ export class LobbyScene extends Phaser.Scene {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
     };
     this.timeout = this.time.delayedCall(tune.net.connectTimeoutMs, () => {
-      if (!s.peerId) this.back(`No host found for room ${code}`);
+      if (!s.peerId) {
+        track('online', 'guest', 'failed', { reason: 'no_host' });
+        this.back(`No host found for room ${code}`);
+      }
     });
   }
 

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { track } from '../portal/analytics';
 import { portal, showRewardedAd } from '../portal/index';
 import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
@@ -19,9 +20,10 @@ export class ShopScene extends Phaser.Scene {
   private rays:Phaser.GameObjects.Graphics[]=[];
   private popupKind:ShopKind|null=null;
   private adBusy=false;
+  private adSeen=false;
   private notice='Tap a chest to inspect today’s rewards and pull odds.';
   constructor(){super('Shop');}
-  create(){sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
+  create(){track('shop','shop','open');this.adSeen=false;sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
   update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(!this.reveal&&this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
   private persist(){if(!saveShopDraft(this.state))this.notice='Storage unavailable: this preview will not persist after closing.';}
   private text(x:number,y:number,label:string,size=14,color='#fff3da'){
@@ -37,10 +39,12 @@ export class ShopScene extends Phaser.Scene {
   /** Rewarded ad for a token. The reward is granted only when the portal reports 'rewarded'. */
   private async watchAd(){
     if(this.adBusy||this.reveal)return;
+    track('rewarded','shop_token','interact');
     const check=previewAdReward(this.state);
     if(!check.ok){this.act(check);return;}
     this.adBusy=true;this.input.enabled=false;
     const result=await showRewardedAd('shop_token');
+    track('rewarded','shop_token',result);
     this.adBusy=false;
     if(!this.scene.isActive('Shop'))return;
     this.input.enabled=true;
@@ -54,7 +58,7 @@ export class ShopScene extends Phaser.Scene {
     if (result.ok) {
       if (result.state.tokens > this.state.tokens) sfx.tokenEarned();
       if (result.state.tokens < this.state.tokens) sfx.tokenSpent();
-      if (result.item) sfx.chestOpen();
+      if (result.item) { sfx.chestOpen(); track('chest', result.item.kind, 'unlock', { item: result.item.id }); }
     } else sfx.denied();
     this.state=result.state;
     this.notice=result.ok?(result.item?`UNLOCKED: ${result.item.name}`:portal.ads.kind==='preview'?'1 preview token added. No advertisement was played.':'1 token earned.'):result.reason;
@@ -121,6 +125,7 @@ export class ShopScene extends Phaser.Scene {
     else this.root.add(punchToken(this,156,165,38,100));
     this.text(156,217,'WATCH AN AD\nGET 1 TOKEN',15,'#ffdc72').setOrigin(.5,0).setAlign('center');
     this.text(156,262,`${this.state.adsToday}/${shopConfig.dailyAdLimit} rewards today`,11,'#a8c1d8').setOrigin(.5,0);
+    if(portal.ads.available&&!this.adSeen){this.adSeen=true;track('rewarded','shop_token','visible');}
     this.button(39,291,234,!portal.ads.available?'ADS UNAVAILABLE':portal.ads.kind==='preview'?'PREVIEW AD · +1 TOKEN':'WATCH AD · +1 TOKEN',()=>void this.watchAd(),portal.ads.available&&!this.adBusy&&this.state.adsToday<shopConfig.dailyAdLimit);
     this.chest('skins',422);this.chest('fighters',688);
     this.text(25,346,this.notice,11,'#ffdc8a').setWordWrapWidth(790);

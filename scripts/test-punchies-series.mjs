@@ -72,6 +72,7 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, req
   };
   if (id === '../ui/presentation') return { startScreen: (_scene, key, data) => transitions.push({ key, data }) };
   if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
+  if (id === '../portal/analytics') return { track() {} };
   return {};
 } });
 function online(series, winner) {

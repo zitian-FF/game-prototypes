@@ -26,6 +26,8 @@ export interface PortalStorage {
   removeItem(key: string): void;
 }
 
+export type AnalyticsProps = Record<string, string | number | boolean>;
+
 export interface Portal {
   readonly id: 'web' | 'crazygames' | 'poki' | 'playgama';
   init(): Promise<void>;
@@ -33,6 +35,8 @@ export interface Portal {
   loadingFinished(): void;
   /** The player is (true) or is not (false) actively playing. Already de-duplicated. */
   gameplay(active: boolean): void;
+  /** Optional: send an event to the portal's own analytics. Local logging always happens too. */
+  track?(category: string, what: string, action: string, props: AnalyticsProps): void;
   readonly ads: PortalAds;
   readonly storage: PortalStorage;
 }
