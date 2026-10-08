@@ -12,6 +12,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 - Analytics: `track(category, what, action, props)` on the portal layer. Poki gets `measure`, Playgama gets `analytics.send`, itch.io and CrazyGames keep a local log (last 300 events, copyable from the debug panel). Events cover rounds, match results, tutorial steps, shop and rewarded ad funnel, chest unlocks, and online connect success or failure. Anonymous, no ids. Listed in BRIEF.md.
 
+- Online lobby shows a small `relays n/5 · TURN yes|no · Ns` diagnostic line for host and guest, and failures record the same numbers in the analytics log. Added to find out why an iPhone host never gets joined (iPhone host stuck waiting, Android guest timing out).
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.
@@ -24,6 +26,7 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 - Hard bot personality, and whether jab and uppercut punishes should award +2 counter stars.
 
 ## Known issues
+- Online play with an iPhone as host does not pair (reported on a real device; no app switch involved). Cause not yet known. Next step is a retest with the lobby diagnostic line and then a fix based on what it shows.
 - The portal adapters have not been run against the real CrazyGames, Poki or Playgama SDKs, only against mocks. Each portal's QA tool must be run before submission.
 - Gameplay start fires when a fight scene starts, not on the first input (Poki's guidance prefers first input).
 - Real two-device online play, a physical controller and a real phone have not been tested this pass.

@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
-import { NetSession, type Role } from '../net/session';
+import { NetSession, relayStatus, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
 import { tune, TICK_RATE } from '../sim/tune';
@@ -34,6 +34,9 @@ export class LobbyScene extends Phaser.Scene {
   private status!: Phaser.GameObjects.Text;
   private timeout?: Phaser.Time.TimerEvent;
   private handedOff = false;
+  private diag!: Phaser.GameObjects.Text;
+  private turnServers = 0;
+  private startedAt = 0;
 
   constructor() {
     super('Lobby');
@@ -48,6 +51,13 @@ export class LobbyScene extends Phaser.Scene {
     this.status = this.add
       .text(VIEW.cx, VIEW.bottom - 60, '', { fontFamily: 'monospace', fontSize: '13px', color: '#cccccc', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
+    // Small connection line (relays reached, TURN fetched, seconds waited): tells us why a lobby is stuck, e.g. on a phone.
+    this.startedAt = this.time.now;
+    this.turnServers = 0;
+    this.diag = this.add
+      .text(VIEW.cx, VIEW.bottom - 36, '', { fontFamily: 'monospace', fontSize: '10px', color: '#7f8fa5', resolution: PIXEL_RATIO })
+      .setOrigin(0.5);
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateDiag() });
     makeButton(this, VIEW.left + 50, VIEW.top + 24, 70, 'BACK', () => this.back());
     this.events.once('shutdown', () => {
       this.timeout?.remove();
@@ -58,6 +68,18 @@ export class LobbyScene extends Phaser.Scene {
     else void this.join(data.code ?? '');
   }
 
+  private diagProps(): { relays_open: number; relays_total: number; turn: number; secs: number } {
+    const r = relayStatus();
+    return { relays_open: r.open, relays_total: r.total, turn: this.turnServers, secs: Math.floor((this.time.now - this.startedAt) / 1000) };
+  }
+
+  private updateDiag(): void {
+    const d = this.diagProps();
+    this.diag.setText(`relays ${d.relays_open}/${d.relays_total} · TURN ${d.turn ? 'yes' : 'no'} · ${d.secs}s`);
+    // One record for the debug log when a lobby has been waiting a while with no relay open.
+    if (d.secs === 15 && d.relays_open === 0) track('online', 'lobby', 'no_relays', d);
+  }
+
   private back(message?: string): void {
     startScreen(this, 'Menu', { message });
   }
@@ -66,6 +88,7 @@ export class LobbyScene extends Phaser.Scene {
     const code = randomRoomCode();
     this.status.setText('Creating room...');
     const ice = await fetchTurnIceServers();
+    this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
     const s = new NetSession(code, 'host', ice);
     this.session = s;
@@ -138,6 +161,7 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.status.setText(`Joining room ${code}...`);
     const ice = await fetchTurnIceServers();
+    this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
     const s = new NetSession(code, 'guest', ice);
     this.session = s;
@@ -156,7 +180,7 @@ export class LobbyScene extends Phaser.Scene {
     };
     this.timeout = this.time.delayedCall(tune.net.connectTimeoutMs, () => {
       if (!s.peerId) {
-        track('online', 'guest', 'failed', { reason: 'no_host' });
+        track('online', 'guest', 'failed', { reason: 'no_host', ...this.diagProps() });
         this.back(`No host found for room ${code}`);
       }
     });
