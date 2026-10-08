@@ -5,7 +5,7 @@ style mini game with its own small rule set. It is a separate, self-contained
 prototype: it does not import the main game's `src/sim`, and nothing under
 `prototypes/punchies/` is changed by it.
 
-Status: DRAFT, open questions answered 2026-10-08, waiting for explicit approval.
+Status: APPROVED by the user (2026-10-08). Built on branch proto/punchies-playable/brief.
 
 ## Goal
 A phone player can understand and enjoy the game in about 30 seconds with

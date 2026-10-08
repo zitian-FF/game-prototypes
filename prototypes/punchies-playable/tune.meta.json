@@ -1,0 +1,289 @@
+{
+  "punch.jab.startup": {
+    "cat": "Punch",
+    "desc": "Jab: Startup frames before the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sourEarly": {
+    "cat": "Punch",
+    "desc": "Jab: Early sour frames while the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sweet": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet frames at full extension.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.recovery": {
+    "cat": "Punch",
+    "desc": "Jab: Recovery frames after the punch.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.whiffRecovery": {
+    "cat": "Punch",
+    "desc": "Jab: Extra recovery frames after a miss.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sourBelow": {
+    "cat": "Punch",
+    "desc": "Jab: Enemy closer than this (lane units) is too close: sour.",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.jab.headMax": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet head hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.jab.bodyMax": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet body hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.startup": {
+    "cat": "Punch",
+    "desc": "Cross: Startup frames before the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sourEarly": {
+    "cat": "Punch",
+    "desc": "Cross: Early sour frames while the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sweet": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet frames at full extension.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.recovery": {
+    "cat": "Punch",
+    "desc": "Cross: Recovery frames after the punch.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.whiffRecovery": {
+    "cat": "Punch",
+    "desc": "Cross: Extra recovery frames after a miss.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sourBelow": {
+    "cat": "Punch",
+    "desc": "Cross: Enemy closer than this (lane units) is too close: sour.",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.headMax": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet head hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.bodyMax": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet body hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "run.durationSec": {
+    "cat": "Run",
+    "desc": "Run length in seconds.",
+    "min": 5,
+    "max": 120,
+    "step": 1
+  },
+  "run.playerHp": {
+    "cat": "Run",
+    "desc": "Player hit points.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "run.firstSpawnSec": {
+    "cat": "Run",
+    "desc": "Delay before the first enemy appears (seconds).",
+    "min": 0,
+    "max": 5,
+    "step": 0.1
+  },
+  "run.spawnMinSec": {
+    "cat": "Run",
+    "desc": "Shortest gap between enemy spawns (seconds).",
+    "min": 0.3,
+    "max": 6,
+    "step": 0.1
+  },
+  "run.spawnMaxSec": {
+    "cat": "Run",
+    "desc": "Longest gap between enemy spawns (seconds).",
+    "min": 0.3,
+    "max": 6,
+    "step": 0.1
+  },
+  "enemy.spawnDistance": {
+    "cat": "Enemy",
+    "desc": "Spawn distance from the player (lane units, off the top of the screen).",
+    "min": 200,
+    "max": 600,
+    "step": 5
+  },
+  "enemy.walkSpeed": {
+    "cat": "Enemy",
+    "desc": "Enemy walk speed (lane units per second).",
+    "min": 20,
+    "max": 300,
+    "step": 5
+  },
+  "enemy.attackDistance": {
+    "cat": "Enemy",
+    "desc": "Distance at which an enemy stops and winds up its punch (lane units).",
+    "min": 50,
+    "max": 140,
+    "step": 1
+  },
+  "enemy.minGap": {
+    "cat": "Enemy",
+    "desc": "Minimum gap between queued enemies (lane units).",
+    "min": 30,
+    "max": 200,
+    "step": 5
+  },
+  "enemy.windupFrames": {
+    "cat": "Enemy",
+    "desc": "Enemy wind-up before the punch (60 Hz frames).",
+    "min": 1,
+    "max": 90,
+    "step": 1
+  },
+  "enemy.strikeFrames": {
+    "cat": "Enemy",
+    "desc": "Frames from wind-up end until the enemy punch lands.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "enemy.damage": {
+    "cat": "Enemy",
+    "desc": "Damage an enemy punch deals to the player.",
+    "min": 1,
+    "max": 5,
+    "step": 1
+  },
+  "enemy.leaveFrames": {
+    "cat": "Enemy",
+    "desc": "Frames an enemy takes to move off to the side after punching.",
+    "min": 4,
+    "max": 90,
+    "step": 1
+  },
+  "enemy.leaveSpeed": {
+    "cat": "Enemy",
+    "desc": "Sideways speed after punching (screen px per second).",
+    "min": 100,
+    "max": 1200,
+    "step": 10
+  },
+  "enemy.knockFrames": {
+    "cat": "Enemy",
+    "desc": "Frames the knocked off animation lasts.",
+    "min": 4,
+    "max": 120,
+    "step": 1
+  },
+  "enemy.knockSpeed": {
+    "cat": "Enemy",
+    "desc": "Speed of the knock off (screen px per second).",
+    "min": 100,
+    "max": 2000,
+    "step": 10
+  },
+  "points.head": {
+    "cat": "Scoring",
+    "desc": "Points for a sweet head hit.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "points.body": {
+    "cat": "Scoring",
+    "desc": "Points for a sweet body hit.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punch.bufferFrames": {
+    "cat": "Punch",
+    "desc": "Frames a press is remembered while a punch is busy.",
+    "min": 0,
+    "max": 20,
+    "step": 1
+  },
+  "view.unitPx": {
+    "cat": "View",
+    "desc": "Screen pixels per lane unit.",
+    "min": 0.5,
+    "max": 3,
+    "step": 0.05
+  },
+  "view.playerY": {
+    "cat": "View",
+    "desc": "Player vertical position (logical px).",
+    "min": 300,
+    "max": 620,
+    "step": 5
+  },
+  "view.spriteSize": {
+    "cat": "View",
+    "desc": "Fighter sprite size (logical px).",
+    "min": 60,
+    "max": 260,
+    "step": 5
+  },
+  "view.hitFlashFrames": {
+    "cat": "View",
+    "desc": "Hit flash length (frames).",
+    "min": 1,
+    "max": 40,
+    "step": 1
+  },
+  "view.popupMs": {
+    "cat": "View",
+    "desc": "Score popup duration (ms).",
+    "min": 100,
+    "max": 2000,
+    "step": 50
+  },
+  "view.endDelayMs": {
+    "cat": "View",
+    "desc": "Pause before the end screen appears (ms).",
+    "min": 0,
+    "max": 3000,
+    "step": 50
+  }
+}
