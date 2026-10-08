@@ -405,5 +405,8 @@ The roster moves from the bottom to a bright gold-framed strip under the step ch
 ## Aggregated character stats and playstyle label — 2026-10-08
 Character select shows five bars: Health (HP), Endurance (average of stamina and stun resistance), Speed (average of walk speed and hand speed from jab, cross, hook and uppercut frames), Power (average damage multiplier over the four punches) and Reach (average punch reach including body proportions). Dash distance is identical for every fighter today, so it is not part of Speed until fighters get their own dash. Bars use the existing scale where the base tune sits at 80%. The line under the name is now a playstyle label: Marco Vanilla, Mia Agile, Bruno Tank, Tee Glass Cannon.
 
+## Translation sheet pull — 2026-10-08
+`node scripts/i18n-sheet.mjs pull [csv-url]` downloads the sheet published to the web as CSV (File > Share > Publish to web > Sheet > CSV), checks it is CSV with most English keys present, repairs placeholders and writes the locale files. The game never fetches the sheet at runtime (portals restrict outside requests and machine text should be frozen after review). The "Pull Punchies translations" workflow runs the same pull from the `I18N_SHEET_URL` repository variable and opens a pull request without merging it.
+
 ## Room code keypad layout — 2026-10-08
 The join keypad is QWERTY-ordered with the digits 2 to 9 as the top row, then Q to P, A to K and Z to M plus DEL. Look-alike characters (0, O, 1, I, L) stay excluded from room codes and from the keypad.
