@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 
 // Keyboard / controller navigation for in-canvas buttons. UI chrome only,
 // never read by the sim.
@@ -84,6 +85,7 @@ export class MenuNav {
     const live = this.live();
     if (!this.focus || !live.includes(this.focus)) {
       this.focus = live[0] ?? null;
+      if (this.focus) sfx.uiSelect();
       return;
     }
     const f = this.focus.bg;
@@ -101,7 +103,7 @@ export class MenuNav {
         best = c;
       }
     }
-    if (best) this.focus = best;
+    if (best) { this.focus = best; sfx.uiSelect(); }
   }
 
   private press(): void {
@@ -200,6 +202,8 @@ export function getNav(scene: Phaser.Scene): MenuNav {
   return n;
 }
 
-export function navRegister(scene: Phaser.Scene, bg: Phaser.GameObjects.Rectangle, onTap: () => void): void {
-  getNav(scene).add(bg, onTap);
+export function navRegister(scene: Phaser.Scene, bg: Phaser.GameObjects.Rectangle, onTap: () => void, cue: 'confirm' | 'back' = 'confirm'): void {
+  const sound = () => cue === 'back' ? sfx.uiBack() : sfx.uiConfirm();
+  bg.on('pointerdown', sound).on('pointerover', sfx.uiSelect);
+  getNav(scene).add(bg, () => { sound(); onTap(); });
 }

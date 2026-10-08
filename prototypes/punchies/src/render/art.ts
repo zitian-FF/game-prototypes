@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
-import { makeAltParts } from './puppet';
+
 import { roomFromUrl } from '../net/roomCode';
 import { tune } from '../sim/tune';
 import { reducedMotion } from '../ui/presentation';
@@ -210,7 +210,7 @@ export class ArtBootScene extends Phaser.Scene {
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;
-    makeAltParts(this); // hue-shifted copies of the boxer parts for mirror matches
+
     if (!grouped) {
       const atlases = index.manifest.filter((f) => /^atlas\/atlas.*\.json$/.test(f.path)).map((f) => textureKey(f.path));
       registerAnimations(this, Object.keys(index.animations), atlases);

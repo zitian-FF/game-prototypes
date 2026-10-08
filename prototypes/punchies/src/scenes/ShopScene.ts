@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { artKey, backdrop } from '../render/art';
@@ -18,7 +19,7 @@ export class ShopScene extends Phaser.Scene {
   private popupKind:ShopKind|null=null;
   private notice='Tap a chest to inspect today’s rewards and pull odds.';
   constructor(){super('Shop');}
-  create(){this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
+  create(){sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
   update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(!this.reveal&&this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
   private persist(){if(!saveShopDraft(this.state))this.notice='Storage unavailable: this preview will not persist after closing.';}
   private text(x:number,y:number,label:string,size=14,color='#fff3da'){
@@ -33,6 +34,11 @@ export class ShopScene extends Phaser.Scene {
   }
   private act(result:ShopResult){
     if(this.reveal)return;
+    if (result.ok) {
+      if (result.state.tokens > this.state.tokens) sfx.tokenEarned();
+      if (result.state.tokens < this.state.tokens) sfx.tokenSpent();
+      if (result.item) sfx.chestOpen();
+    } else sfx.denied();
     this.state=result.state;
     this.notice=result.ok?(result.item?`UNLOCKED: ${result.item.name}`:'1 preview token added. No advertisement was played.'):result.reason;
     if(result.ok)this.popupKind=null;

@@ -1,4 +1,5 @@
 import { ScreenTransition } from './ui/presentation';
+import { installMusic } from './audio/music';
 import Phaser from 'phaser';
 import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { ShopScene } from './scenes/ShopScene';
@@ -33,6 +34,7 @@ const game = new Phaser.Game({
 });
 
 setupOrientation(game);
+installMusic(game);
 
 // Foldables (fold / unfold) and entering fullscreen change the screen's
 // shape after load. Re-measure, resize the canvas to the new aspect so it

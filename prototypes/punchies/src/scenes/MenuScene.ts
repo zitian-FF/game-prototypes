@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audioSettingsPanel } from '../ui/audioSettingsPanel';
 import { cartoonPanel } from '../ui/cartoonChrome';
 import { shopPreviewBalance } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -51,7 +52,7 @@ export class MenuScene extends Phaser.Scene {
     category(top+213,'PRACTICE');
     titleButton(this,menuX-(half+12)/2,top+243,half,38,'TRAINING',()=>startScreen(this,'Training'));
     titleButton(this,menuX+(half+12)/2,top+243,half,38,'TUTORIAL',()=>startScreen(this,'Tutorial'));
-    titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openInputPopup());
+    titleButton(this,menuX-(half+12)/2,top+294,half,27,'SETTINGS',()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;
     const shop = titleButton(this,shopX,top+294,half,27,'SHOP',()=>this.openShop(),false,130,'green');
     shop.setX(shopX - half * 0.22);
@@ -83,12 +84,14 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openCredits(): void {
-    const p=this.popup('CREDITS',()=>this.openInputPopup());
-    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Created and designed by ZeeTea.\n\nBuilt together with Claudia and G.P. Tea.',
+    const p=this.popup('CREDITS',()=>this.openSettings());
+    p.items.push(this.add.text(VIEW.cx,VIEW.cy-5,'Designed and produced by ZeeTea\n\nIn collaboration with\nClaudia, G.P. Tee and Gemma',
       {fontFamily:'Arial',fontSize:'15px',align:'center',color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
   }
 
   private openShop(): void { startScreen(this, 'Shop'); }
+
+  protected openSettings(): void { audioSettingsPanel(this, () => this.openInputPopup(), () => this.openCredits()); }
 
   private openOnlinePopup(): void {
     const p=this.popup('ONLINE');
@@ -170,6 +173,7 @@ export class MenuScene extends Phaser.Scene {
     btn(VIEW.cx + 70, VIEW.cy + 108, 120, 'DONE', () => {
       padTimer.remove();
       for (const o of items) o.destroy();
+      this.openSettings();
     });
     refresh();
   }

@@ -207,6 +207,7 @@ export class FighterView {
   get look(): number {
     return this.color;
   }
+  setIndicator(color:number,label:string):void{this.ground.setIndicator(color,label);}
 
   clear(): void {
     this.g.clear();

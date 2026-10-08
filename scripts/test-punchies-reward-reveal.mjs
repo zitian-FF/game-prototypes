@@ -18,6 +18,7 @@ function run(reduced=false){
  if(p.includes('pixelRatio'))return{PIXEL_RATIO:1,VIEW:{cx:422,cy:195,width:844,height:390,bottom:390}};
  if(p.includes('sim/tune'))return{tune:{view:{menu:{rewardReveal:cfg}}}};
  if(p.includes('presentation'))return{reducedMotion:()=>reduced};
+ if(p.includes('audio/sfx'))return{sfx:{rewardReveal(){}}};
  if(p.includes('cartoonChrome'))return{cartoonPanel(){}};
  if(p.includes('menuNav'))return{navRegister:(_s,bg,fn)=>nav.push({bg,fn})};return{};
  }});

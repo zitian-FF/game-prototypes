@@ -18,7 +18,7 @@ export function titleButton(scene: Phaser.Scene, x: number, y: number, w: number
   const hit = scene.add.rectangle(x,y,w,h,0,0).setDepth(depth).setInteractive({useHandCursor:true});
   hit.on('pointerover',()=>draw(true)).on('pointerout',()=>draw()).on('pointerdown',onTap);
   hit.on('destroy',()=>g.destroy());
-  navRegister(scene,hit,onTap);
+  navRegister(scene,hit,onTap,/BACK|CANCEL|MAIN MENU|RESUME|DONE/.test(label)?'back':'confirm');
   if (primary) {
     artImage(scene,'icon_jab',x-w/2+29,y-1,27,34,depth+1);
     artImage(scene,'icon_cross',x-w/2+45,y+1,27,34,depth+1);

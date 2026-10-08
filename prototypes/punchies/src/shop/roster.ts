@@ -1,5 +1,6 @@
 import { CHARACTER_IDS, type CharId } from '../sim/character';
 import { SHOP_ITEMS, WELCOME_FIGHTER, type ShopDraftState, type ShopItem } from './draft';
+import { STARTER_SKINS } from '../render/skinPalette';
 
 export const DEFAULT_SKIN = 'default';
 
@@ -13,7 +14,7 @@ export function skinItem(char: string, skin: string): ShopItem | undefined {
 
 export function ownedSkins(state: ShopDraftState, char: CharId): string[] {
   return [DEFAULT_SKIN, ...SHOP_ITEMS.filter(item =>
-    item.kind === 'skins' && item.boxer === char && state.owned.includes(item.id)).map(item => item.id)];
+    item.kind === 'skins' && item.boxer === char && (STARTER_SKINS.includes(item.id) || state.owned.includes(item.id))).map(item => item.id)];
 }
 
 export function equippedSkin(state: ShopDraftState, char: CharId, requested: unknown): string {

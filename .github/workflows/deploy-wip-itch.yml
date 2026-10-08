@@ -108,6 +108,21 @@ jobs:
           npm run fetch:assets punchies
           npm run pack:assets punchies
 
+      - name: Fetch verified Punchies music
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        run: node scripts/fetch-punchies-music.mjs
+
+      - name: Verify Punchies audio and roster
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        run: |
+          node scripts/test-punchies-audio.mjs
+          node scripts/test-punchies-music.mjs
+          node scripts/test-punchies-feedback.mjs
+          node scripts/test-punchies-reward-reveal.mjs
+          node scripts/test-punchies-roster.mjs
+          node scripts/test-punchies-shop.mjs
+          node scripts/test-punchies-starter-skins.mjs
+
       # Bumps the target's deploy counter (see "Version stamping" in root
       # CLAUDE.md) without committing yet - committed only after a
       # successful push to itch.io, so a failed deploy doesn't burn a number.

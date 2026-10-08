@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
+import { limbSkin } from './skinPalette';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
 import { armPose, punchExtension, uppercutFireIntensity, gloveRegistration } from './punchMotion';
@@ -249,7 +250,8 @@ export class Puppet {
   // the caller can fall back to the older art.
   draw(a: PuppetArgs): boolean {
     const { f } = a;
-    const look = LOOKS[f.char];
+    const originalLook = LOOKS[f.char];
+    const look = originalLook && { ...originalLook, skin: limbSkin(f.char,a.skin??'default',originalLook.skin) };
     if (!look || f.anchored || !this.bind(f.char, a.alt,a.skin)) {
       this.hide();
       return false;

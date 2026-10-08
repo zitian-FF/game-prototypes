@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/sfx';
 import { artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
@@ -59,19 +60,22 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
 }, score?: [number, number]): Phaser.GameObjects.Text {
   getNav(scene).engage();
   const before=new Set(scene.children.list);
+  const defeat=headline==='DEFEAT';
+  const draw=headline==='DRAW';
+  if (defeat) sfx.defeat(); else if (!draw) sfx.victory();
   const panel=scene.add.graphics().setDepth(129);
-  panel.fillStyle(0x071326,0.88).fillRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
-  panel.lineStyle(2,0x6886ae,0.85).strokeRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
-  panel.lineStyle(1,0xdceafa,0.24).lineBetween(VIEW.cx-171,VIEW.cy-74,VIEW.cx+171,VIEW.cy-74);
-  const color=headline==='DEFEAT'?'#ff827a':headline==='DRAW'?'#dbe9fa':'#ffe08b';
-  const heading=scene.add.text(VIEW.cx,VIEW.cy-43,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:'40px',
+  panel.fillStyle(0x050d20,.42).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
+  // Quiet backing for information; raised enamel is reserved for actions.
+  panel.fillStyle(0x102139,.94).fillRoundedRect(VIEW.cx-198,VIEW.cy-90,396,217,18);
+  const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
+  const heading=scene.add.text(VIEW.cx,VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'32px':'42px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(VIEW.cx,VIEW.cy-2,score.join('  —  '),{fontFamily:'Arial',fontSize:'18px',fontStyle:'bold',
-    color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
-  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+39,232,34,'REMATCH',actions.rematch,false,150,'green');
-  titleButton(scene,VIEW.cx-94,VIEW.cy+88,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
-  titleButton(scene,VIEW.cx+94,VIEW.cy+88,172,30,'MAIN MENU',actions.menu,false,150);
+  if(score)scene.add.text(VIEW.cx,VIEW.cy+5,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'22px',fontStyle:'bold',
+    color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
+  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+49,264,36,'REMATCH',actions.rematch,false,150,'green');
+  titleButton(scene,VIEW.cx-94,VIEW.cy+99,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
+  titleButton(scene,VIEW.cx+94,VIEW.cy+99,172,30,'MAIN MENU',actions.menu,false,150,'red');
   if(!reducedMotion()){
     const objects=scene.children.list.filter(o=>!before.has(o));
     objects.forEach(o=>(o as Phaser.GameObjects.Text).setAlpha(0));
