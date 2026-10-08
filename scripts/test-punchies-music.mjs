@@ -9,7 +9,7 @@ const ctx = { currentTime: 0, createGain() { const n = { gain: { value: 0, cance
 class Audio { constructor(src) { this.src = src; this.paused = true; players.push(this); } play() { this.paused = false; return Promise.resolve(); } pause() { this.paused = true; } removeAttribute() {} load() {} }
 const exports = {};
 const code = ts.transpileModule(fs.readFileSync('prototypes/punchies/src/audio/music.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-vm.runInNewContext(code, { exports, Audio, window, document, __PUNCHIES_ASSET_BASE__: '/', require: () => ({ unlockMixer: () => ctx, audioOutput: () => ({}) }) });
+vm.runInNewContext(code, { exports, Audio, window, document, __PUNCHIES_ASSET_BASE__: '/', require: () => ({ preloadStingers() {}, unlockMixer: () => ctx, audioOutput: () => ({}) }) });
 let active = ['Menu'], paused = [];
 exports.installMusic({ events: { on: (k, fn) => events.set(k, fn), once: (k, fn) => events.set(k, fn), off: k => events.delete(k) }, scene: { getScenes: () => active.map(key => ({ scene: { key } })), isActive: k => active.includes(k), isPaused: k => paused.includes(k) } });
 const step = () => events.get('step')();
