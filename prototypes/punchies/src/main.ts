@@ -1,5 +1,6 @@
 import { ScreenTransition } from './ui/presentation';
 import Phaser from 'phaser';
+import { mountDebugPanelIfRequested } from './debug/debugPanel';
 import { ShopScene } from './scenes/ShopScene';
 import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScale, VIEW } from './render/pixelRatio';
 import { GameMenuScene } from './scenes/GameMenuScene';
@@ -15,6 +16,8 @@ import { ArtBootScene } from './render/art';
 import { setupOrientation } from './orientation/orientation';
 
 
+
+mountDebugPanelIfRequested();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

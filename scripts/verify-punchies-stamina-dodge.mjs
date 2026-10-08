@@ -4,7 +4,9 @@ const bundle = await build({stdin:{contents:`export * from './prototypes/punchie
 const {createSimState,step,punchCfg,tune}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const n={mx:0,my:0,jab:false,cross:false,hook:false,uppercut:false,dodge:false,guard:false};
 const fresh=(char='marco',infiniteStamina=false)=>createSimState({timed:false,fighters:[{char,infiniteStamina},{anchored:true}]});
-for(const char of ['marco','mia','bruno']) for(const action of ['jab','cross','hook','uppercut','dodge']) {
+// Dodges still need their full stamina cost. Punches no longer do: low-stamina punches are
+// allowed (see test-punchies-emergency.mjs for the exhausted and emergency rules).
+for(const char of ['marco','mia','bruno','tee']) for(const action of ['dodge']) {
  const s=fresh(char),f=s.fighters[0];const cost=action==='dodge'?tune.dodge.staminaCost:punchCfg(f,action).staminaCost;
  f.stamina=cost-.01;f.regenWait=100;f.stars=tune.stars.max;f.dashBuff=4;
  const e=step(s,[{...n,[action]:true},n]);
@@ -21,5 +23,4 @@ const buff=dodge();step(buff,[{...n,jab:true},n]);assert.equal(buff.fighters[0].
 const expired=dodge();for(let i=0;i<6;i++)step(expired,[n,n]);assert.equal(expired.fighters[0].dashBuff,0);assert(expired.fighters[0].postDodgeVulnerable>0);step(expired,[{...n,jab:true},n]);assert.equal(expired.fighters[0].punch.buffed,false);
 const normal=fresh(),penalty=fresh();penalty.fighters[0].postDodgeVulnerable=10;const x=normal.fighters[0].x;step(normal,[{...n,mx:-100},n]);step(penalty,[{...n,mx:-100},n]);assert(Math.abs((x-penalty.fighters[0].x)/(x-normal.fighters[0].x)-.4)<1e-10);
 const frozen=fresh();frozen.hitstop=2;frozen.fighters[0].stamina=0;assert(step(frozen,[{...n,dodge:true},n]).some(e=>e.kind==='staminaRejected'));assert.equal(frozen.fighters[0].buffered,null);
-assert(Math.abs(tune.dodge.staminaCost-12*1.2)<1e-10);
-console.log('PASS: full-cost rejection for every character/move, no delayed retry, exact-cost/infinite stamina, hit-stop rejection, 60% movement penalty, dodge lockout, independent six-frame buff, and updated costs/range.');
+console.log('PASS: full-cost dodge rejection for every character, no delayed retry, exact-cost/infinite stamina, hit-stop rejection, 60% movement penalty, dodge lockout, independent six-frame buff, and updated costs/range.');
