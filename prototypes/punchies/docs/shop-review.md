@@ -1,13 +1,15 @@
-# Shop draft review
+# Daily shop draft review
 
 Unpublished local branch: proto/punchies/shop-pulls-draft. Open the local game and choose SHOP.
 
-The first shop visit grants one preview token. Spending it grants the fixed fourth fighter once, then changes the slot to a daily capped preview ad reward. Fighter pulls and skin pulls have separate prices. Collection ownership and preview token balance persist in an isolated localStorage key, with no production save changes.
+Three fixed columns replace tabs: left watch an ad for 1 token, middle choose from three skins at 5 tokens each, right one fighter at 10 tokens. These are direct purchases of visible daily offers, not random pulls. The existing one-time gifted token and guaranteed fourth-fighter introduction remains in the left slot before ads.
 
-Configurable starting values: fighter pull 100, skin pull 50, reward 10, five rewards per UTC day. All are placeholders in src/shop/draft-config.json. The draft uses equal odds among remaining rewards and excludes duplicates; this policy still needs review. The welcome fighter is excluded from the normal pool.
+Daily rotation uses the available catalogue excluding already-owned items. Offers are stored for the UTC day and remain fixed after buying; the purchased item shows owned until the next rotation. At midnight new offers are selected from remaining items. A nearly completed collection can show fewer than three skins; a completed collection displays a completion message. The daily ad cap remains a configurable five rewards, using preview buttons with no real video.
 
-Fourth fighter and additional fighter cards use explicit silhouettes. Identity, portraits, rigs and stats are pending. Skin cards show tinted existing portraits and rigs as palette studies, not finished skin art or gameplay equips. No ad provider, real currency, ranked entitlement or backend is connected.
+Palette swaps recolour the same character. Unique skins use the same base fighter and stats but have distinct portrait and rig sprite asset entries. Unique artwork is explicitly pending and shown with placeholders. The current palette previews are studies, not finished equippable skins. Fighter identity, art and tuned stats remain placeholders.
 
-Verification: typecheck/build, model tests for one-time welcome, costs, insufficient funds, daily cap/reset, unique rewards, persistence, malformed saves. Brave UI checks confirm the welcome slot changes and balances persist across game reloads. Production QA fixes are separately deployed via PR 248.
+The isolated preview wallet and ownership persist locally. No production unlocks, real ad service, ranked entitlement, secure wallet or equip flow is connected. Pricing and reset configuration live in src/shop/draft-config.json.
 
-Review decisions: costs/reward cap, fourth fighter identity, skin direction, duplicate policy, reset timezone, pull reveal presentation. Physical mobile/controller and two-device network QA remain pending.
+Verification: typecheck/build, daily storefront regression checks for 1/5/10 pricing, three skins and one fighter, stable offers after purchasing, ownership exclusion next day, duplicate/unavailable offer rejection, welcome persistence, daily cap/reset, palette and unique metadata. Brave visual check and clean browser console.
+
+Review decisions: fourth fighter identity, palette/unique art direction, daily cap and reset timezone, production wallet/ad service. Physical mobile/controller tests remain pending.

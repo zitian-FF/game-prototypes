@@ -1,7 +1,7 @@
 {
-  "fighterPullCost": 100,
-  "skinPullCost": 50,
-  "adRewardTokens": 10,
+  "fighterPullCost": 10,
+  "skinPullCost": 5,
+  "adRewardTokens": 1,
   "dailyAdLimit": 5,
   "welcomeCost": 1,
   "welcomeGiftTokens": 1,
