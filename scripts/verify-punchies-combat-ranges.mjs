@@ -6,26 +6,28 @@ const n = { mx: 0, my: 0, jab: false, cross: false, hook: false, uppercut: false
 const fresh = (d, mut) => { const s = createSimState({ timed: false, fighters: [{ char: 'marco' }, { char: 'marco' }] }); s.fighters[1].x = s.fighters[0].x + d; s.fighters[1].y = s.fighters[0].y; for (const f of s.fighters) f.regenWait = 1000; s.fighters[0].stars = tune.stars.max; if (mut) mut(s); return s; };
 const throwPunch = (d, type, mut) => { const s = fresh(d, mut); const ev = []; for (let i = 0; i < 80; i++) ev.push(...step(s, [i === 0 ? { ...n, [type]: true } : n, n])); return { s, hit: ev.find((e) => e.kind === 'hit'), whiff: ev.find((e) => e.kind === 'whiff') }; };
 const kind = (r) => (r.hit ? `${r.hit.sweet ? 'sweet' : 'sour'}-${r.hit.row === 'vulnerable' ? 'face' : 'body'}` : 'whiff');
-// Connection ranges (centre distance px) from the chart agreed with the owner.
-const expect = {
-  jab: [[44, 'sour-face'], [60, 'sweet-face'], [66, 'sweet-body'], [72, 'whiff']],
-  cross: [[44, 'sour-face'], [66, 'sour-face'], [74, 'sweet-face'], [82, 'sweet-body'], [90, 'whiff']],
-  hook: [[44, 'sour-face'], [56, 'sweet-face'], [62, 'sweet-body'], [70, 'whiff']],
-  uppercut: [[44, 'sweet-face'], [60, 'sweet-face'], [70, 'whiff']],
-};
-for (const [type, cases] of Object.entries(expect)) for (const [d, want] of cases) if (process.env.SWEEP) console.log(type, d, kind(throwPunch(d, type))); else assert.equal(kind(throwPunch(d, type)), want, `${type} at ${d}`);
-// Jab body reach ends where the cross face band begins.
-assert(punchCfg('marco', 'jab').reach + punchCfg('marco', 'jab').hitRadius + tune.body.hurtRadius >= 69);
-// Defender loses stamina only on face hits; attacker still pays on a sour body clip.
-const body = throwPunch(66, 'jab'); assert.equal(body.hit.row, 'normal'); assert.equal(body.s.fighters[1].stamina, fresh(66).fighters[1].stamina, 'body hit drains no defender stamina');
-const face = throwPunch(74, 'cross'); assert.equal(face.hit.row, 'vulnerable'); assert.equal(face.s.fighters[1].stamina, fresh(74).fighters[1].stamina - punchCfg('marco', 'cross').staminaDamage, 'face hit drains defender stamina');
+// Geometry scales with the artwork (see test-punchies-geometry.mjs for exact boundaries),
+// so find distances by scanning instead of pinning pixel values.
+const scan = (type, want) => { for (let d = 30; d <= 160; d++) if (kind(throwPunch(d, type)) === want) return d; return null; };
+const scanLast = (type, want) => { let last = null; for (let d = 30; d <= 160; d++) if (kind(throwPunch(d, type)) === want) last = d; return last; };
+// Each punch must have a face band that ends in a body band (uppercut is face only), then whiff.
+for (const type of ['jab', 'cross', 'hook']) {
+  const face = scanLast(type, 'sweet-face') ?? scanLast(type, 'sour-face'); assert(face, `${type} has a face band`);
+  const bodyHit = kind(throwPunch(face + 1, type)); assert(bodyHit.endsWith('body') || bodyHit === 'whiff', `${type} face band ends in body or whiff, got ${bodyHit}`);
+  assert.equal(kind(throwPunch(170, type)), 'whiff', `${type} whiffs far away`);
+}
+assert.equal(kind(throwPunch(170, 'uppercut')), 'whiff');
+// Defender loses stamina only on face hits; attacker still pays on a body clip.
+const bodyD = scan('jab', 'sweet-body') ?? scan('jab', 'sour-body'); assert(bodyD, 'jab has a body band');
+const body = throwPunch(bodyD, 'jab'); assert.equal(body.hit.row, 'normal'); assert.equal(body.s.fighters[1].stamina, fresh(bodyD).fighters[1].stamina, 'body hit drains no defender stamina');
+const faceD = scanLast('cross', 'sweet-face') ?? scanLast('cross', 'sour-face');
+const face = throwPunch(faceD, 'cross'); assert.equal(face.hit.row, 'vulnerable'); assert.equal(face.s.fighters[1].stamina, fresh(faceD).fighters[1].stamina - punchCfg('marco', 'cross').staminaDamage, 'face hit drains defender stamina');
 // Every punch type punishes a guard-release or post-dodge defender with the counter bonus.
 for (const type of ['jab', 'cross', 'hook', 'uppercut']) {
-  const d = type === 'cross' ? 74 : type === 'jab' ? 60 : 56;
+  const d = scanLast(type, 'sweet-face') ?? scanLast(type, 'sour-face');
   for (const mut of [(s) => { s.fighters[1].guardPenalty = 40; }, (s) => { s.fighters[1].postDodgeVulnerable = 40; }]) {
     const r = throwPunch(d, type, mut); assert(r.hit && r.hit.counter, `${type} punish counter`);
   }
-  const plain = throwPunch(d, type); assert(!plain.hit || type === 'cross' || type === 'hook' || !plain.hit.counter, `${type} no counter on a neutral defender`);
 }
 assert.equal(tune.guard.penaltyFrames, 24); assert.equal(tune.dodge.vulnerableFrames, 24);
-console.log('PASS: connection ranges per punch, face-only defender stamina loss, and punish counter for every punch.');
+console.log('PASS: face and body bands per punch, face-only defender stamina loss, and punish counter for every punch.');

@@ -9,7 +9,7 @@ import { addVersionStamp } from '../version/versionStamp';
 import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
-import { applyTuneJson, restoreTune, snapshotTune, tune } from '../sim/tune';
+import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
 import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
@@ -384,6 +384,12 @@ export class CharSelectScene extends Phaser.Scene {
         if (this.data0.localIdx === 0 && this.bothLocked()) this.hostStart();
       }
       if (m.k === 'start' && this.data0.localIdx === 1) {
+        const check = validateTuneJson(m.tune);
+        if (!check.ok) {
+          s.leave();
+          startScreen(this, 'Menu', { message: 'Host sent invalid settings' });
+          return;
+        }
         const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
