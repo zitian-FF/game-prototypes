@@ -2,6 +2,8 @@
 Tune guard for online play, restored debug unlock, and refreshed verify scripts. Builds on G.P. Tee's rig and balance correction (PR #251).
 
 ## What was implemented
+Result menu polish prepared on proto/punchies/result-polish: enamel panel/plaque matching current cartoon UI, gold victory and pink-red defeat, clearer score, larger green Rematch and red Main Menu. Existing timing and input navigation retained. Typecheck/build pass; victory and defeat visually checked in Brave using the actual matchResult renderer over an arena screenshot. No new boot errors after correcting the temporary preview import. Edited music stingers are outside the repo in outputs/music-v1/stingers, with preserved original downloads and edit notes. 5/4/3/2 seconds, .65-second fade, MP3 and OGG. Main-track packaging, seamless-loop verification and provenance completion are pending; no audio R2 upload yet.
+
 - Tune guard: `validateTuneJson` in `src/sim/tune.ts` parses the host's tune and checks every known value against its type and the min/max in `tune.meta.json` (468 numeric values, all covered). The guest runs it before adopting the host's tune; on failure it leaves the match and shows "Host sent invalid settings". It never clamps, because a guest that clamped would simulate different numbers from the host and desync. SYNC TUNE uses the same check.
 - Debug unlock restored: PR #249 had dropped the `mountDebugPanelIfRequested()` call from `main.ts`, so `?debug=1` showed nothing. The call is back. The bug button, tune label and SYNC TUNE stay hidden unless the game was opened once with `?debug=1` (remembered per browser; `?debug=0` locks it again).
 - New `scripts/verify-punchies-tune-guard.mjs` (valid tune, out of range, wrong type, null, malformed JSON, infinite number, non-object root, unknown keys ignored, every `tune.json` value inside its range).
@@ -24,3 +26,4 @@ Tune guard for online play, restored debug unlock, and refreshed verify scripts.
 
 ## Next proposed step
 Portal-agnostic layer (platform events, storage adapter, rewarded ads in the shop, analytics), once art work settles.
+

@@ -5,6 +5,7 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { titleButton } from './titleButton';
 import { getNav } from './menuNav';
+import { cartoonPanel } from './cartoonChrome';
 let splashSerial = 0;
 
 // Freeze the round scene while a short logo splash dissolves over the arena.
@@ -59,19 +60,25 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
 }, score?: [number, number]): Phaser.GameObjects.Text {
   getNav(scene).engage();
   const before=new Set(scene.children.list);
+  const defeat=headline==='DEFEAT';
+  const draw=headline==='DRAW';
+  const accent=defeat?0xda4565:draw?0x5a94bc:0xe4aa38;
   const panel=scene.add.graphics().setDepth(129);
-  panel.fillStyle(0x071326,0.88).fillRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
-  panel.lineStyle(2,0x6886ae,0.85).strokeRoundedRect(VIEW.cx-195,VIEW.cy-81,390,203,19);
-  panel.lineStyle(1,0xdceafa,0.24).lineBetween(VIEW.cx-171,VIEW.cy-74,VIEW.cx+171,VIEW.cy-74);
-  const color=headline==='DEFEAT'?'#ff827a':headline==='DRAW'?'#dbe9fa':'#ffe08b';
-  const heading=scene.add.text(VIEW.cx,VIEW.cy-43,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:'40px',
+  panel.fillStyle(0x050d20,.42).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
+  cartoonPanel(panel,VIEW.cx-198,VIEW.cy-90,396,217,0x294769,18);
+  // Compact enamel result plaque, shared with the shop/menu material language.
+  cartoonPanel(panel,VIEW.cx-180,VIEW.cy-79,360,66,accent,12);
+  panel.fillStyle(0xffffff,.16).fillTriangle(VIEW.cx-166,VIEW.cy-62,VIEW.cx-150,VIEW.cy-62,VIEW.cx-160,VIEW.cy-28);
+  panel.fillStyle(0x071326,.18).fillTriangle(VIEW.cx+166,VIEW.cy-62,VIEW.cx+150,VIEW.cy-62,VIEW.cx+160,VIEW.cy-28);
+  const color=defeat?'#fff1ee':draw?'#edf7ff':'#fff6cd';
+  const heading=scene.add.text(VIEW.cx,VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'32px':'42px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(VIEW.cx,VIEW.cy-2,score.join('  —  '),{fontFamily:'Arial',fontSize:'18px',fontStyle:'bold',
-    color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
-  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+39,232,34,'REMATCH',actions.rematch,false,150,'green');
-  titleButton(scene,VIEW.cx-94,VIEW.cy+88,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
-  titleButton(scene,VIEW.cx+94,VIEW.cy+88,172,30,'MAIN MENU',actions.menu,false,150);
+  if(score)scene.add.text(VIEW.cx,VIEW.cy+5,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'22px',fontStyle:'bold',
+    color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
+  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+49,264,36,'REMATCH',actions.rematch,false,150,'green');
+  titleButton(scene,VIEW.cx-94,VIEW.cy+99,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
+  titleButton(scene,VIEW.cx+94,VIEW.cy+99,172,30,'MAIN MENU',actions.menu,false,150,'red');
   if(!reducedMotion()){
     const objects=scene.children.list.filter(o=>!before.has(o));
     objects.forEach(o=>(o as Phaser.GameObjects.Text).setAlpha(0));
