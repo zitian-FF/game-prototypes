@@ -6,6 +6,9 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { titleButton } from './titleButton';
 import { getNav } from './menuNav';
+import { skinTexture } from '../render/skins';
+import { portraitBounds } from '../render/portraitBounds';
+import { winnerName, winnerQuote, type ResultWinner } from './winnerQuotes';
 let splashSerial = 0;
 
 // Freeze the round scene while a short logo splash dissolves over the arena.
@@ -57,31 +60,55 @@ export function roundSplash(scene: Phaser.Scene, next: () => void): () => void {
 
 export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   rematch: () => void; changeBoxer: () => void; menu: () => void;
-}, score?: [number, number]): Phaser.GameObjects.Text {
+}, score?: [number, number], winner?: ResultWinner): Phaser.GameObjects.Text {
   getNav(scene).engage();
   const before=new Set(scene.children.list);
   const defeat=headline==='DEFEAT';
   const draw=headline==='DRAW';
   if (defeat) sfx.defeat(); else if (!draw) sfx.victory();
   const panel=scene.add.graphics().setDepth(129);
-  panel.fillStyle(0x050d20,.42).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
-  // Quiet backing for information; raised enamel is reserved for actions.
-  panel.fillStyle(0x102139,.94).fillRoundedRect(VIEW.cx-198,VIEW.cy-90,396,217,18);
+  panel.fillStyle(0x050d20,.72).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
+  const shield=scene.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x000000,0).setDepth(130).setInteractive();
+  // Portrait and result UI float over the darkened gameplay, without a panel.
+  const portraitKey=winner?skinTexture(scene,winner.char,winner.skin??'default',`portrait_${winner.char}`):null;
+  const hasWinner=!!winner&&!draw;
+  const width=hasWinner?Math.min(360,VIEW.width*.45):396;
+  const textX=hasWinner?VIEW.left+VIEW.width*.70:VIEW.cx;
+  let portrait:Phaser.GameObjects.Image|null=null;
+  if(hasWinner&&portraitKey&&scene.textures.exists(portraitKey)){
+    portrait=scene.add.image(VIEW.left+VIEW.width*.25,VIEW.bottom,portraitKey).setDepth(140);
+    const bounds=portraitBounds(scene,portraitKey);
+    const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top));
+    portrait.setOrigin((bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
+  }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
-  const heading=scene.add.text(VIEW.cx,VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'32px':'42px',
+  const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(VIEW.cx,VIEW.cy+5,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'22px',fontStyle:'bold',
+  if(score)scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.28:VIEW.cy+5,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
     color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
-  const rematch=titleButton(scene,VIEW.cx,VIEW.cy+49,264,36,'REMATCH',actions.rematch,false,150,'green');
-  titleButton(scene,VIEW.cx-94,VIEW.cy+99,172,30,'CHANGE BOXER',actions.changeBoxer,false,150);
-  titleButton(scene,VIEW.cx+94,VIEW.cy+99,172,30,'MAIN MENU',actions.menu,false,150,'red');
+  if(hasWinner){
+    scene.add.text(textX,VIEW.top+VIEW.height*.37,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
+    scene.add.text(textX,VIEW.top+VIEW.height*.48,`“${winnerQuote(winner!.char)}”`,{fontFamily:'Arial',fontSize:'20px',fontStyle:'italic',color:'#fff1d5',align:'center',wordWrap:{width:width-24},padding:{left:4,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
+  }
+  const rematch=titleButton(scene,textX,VIEW.bottom-126,280,38,'REMATCH',actions.rematch,false,150,'green');
+  const change=titleButton(scene,textX,VIEW.bottom-78,280,38,'CHANGE BOXER',actions.changeBoxer,false,150);
+  const menu=titleButton(scene,textX,VIEW.bottom-30,280,38,'MAIN MENU',actions.menu,false,150,'red');
   if(!reducedMotion()){
-    const objects=scene.children.list.filter(o=>!before.has(o));
-    objects.forEach(o=>(o as Phaser.GameObjects.Text).setAlpha(0));
-    scene.tweens.add({targets:objects,alpha:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Sine.Out'});
-    heading.setScale(1.12);
-    scene.tweens.add({targets:heading,scale:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Cubic.Out'});
+    let alive=true;scene.events.once('shutdown',()=>{alive=false;});
+    const details=scene.children.list.filter(o=>!before.has(o)&&o!==panel&&o!==shield&&o!==portrait&&o!==heading) as Phaser.GameObjects.Image[];
+    const hits=[rematch,change,menu].map(t=>t.getData('bg') as Phaser.GameObjects.Rectangle);
+    details.forEach(o=>o.setAlpha(0).setVisible(false));hits.forEach(hit=>hit.disableInteractive());
+    const reveal=()=>{
+      if(!alive)return;
+      details.forEach(o=>o.setVisible(true));
+      scene.tweens.add({targets:details,alpha:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Sine.Out',onComplete:()=>{
+        if(alive)hits.forEach(hit=>hit.setInteractive({useHandCursor:true}));
+      }});
+    };
+    if(portrait){const x=portrait.x;portrait.setX(x-VIEW.width*.65);scene.tweens.add({targets:portrait,x,duration:tune.view.fightPresentation.portraitSlideMs,ease:'Cubic.Out'});}
+    heading.setX(textX+VIEW.width*.65);
+    scene.tweens.add({targets:heading,x:textX,duration:tune.view.fightPresentation.portraitSlideMs,ease:'Cubic.Out',onComplete:reveal});
   }
   return rematch;
 }

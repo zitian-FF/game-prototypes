@@ -88,6 +88,6 @@ export class LocalVsScene extends Phaser.Scene {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins);
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.sim.fighters[r.winner].char,skin:this.inputs.skins?.[r.winner]});
   }
 }
