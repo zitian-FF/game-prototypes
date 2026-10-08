@@ -1,0 +1,84 @@
+name: Deploy punchies-playable to itch.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/punchies-playable/**'
+      - '.github/workflows/deploy-punchies-playable-itch.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: itch-punchies-playable
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Rule tests
+        run: node prototypes/punchies-playable/scripts/test-sim.mjs
+
+      - name: Get Punchies art ETag
+        id: art
+        run: |
+          url="https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_assets.zip"
+          status=$(curl -sS -o /dev/null -D /tmp/art-headers -w '%{http_code}' -I "$url")
+          if [ "$status" = "404" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Punchies art absent; deploying the placeholder version"
+          elif [ "$status" = "200" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            etag=$(awk 'tolower($1)=="etag:" {gsub(/[\r"]/, "", $2); print $2}' /tmp/art-headers)
+            echo "etag=$etag" >> "$GITHUB_OUTPUT"
+          else
+            echo "Art endpoint returned HTTP $status" >&2
+            exit 1
+          fi
+
+      - name: Cache source art by ETag
+        if: steps.art.outputs.available == 'true' && steps.art.outputs.etag != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            prototypes/punchies-playable/assets-src
+            .cache/punchies-playable.etag
+          key: punchies-playable-art-${{ steps.art.outputs.etag }}
+
+      - name: Fetch and prepare art
+        if: steps.art.outputs.available == 'true'
+        run: |
+          node scripts/fetch-assets.js punchies-playable punchies_assets.zip
+          node prototypes/punchies-playable/scripts/prepare-art.mjs
+
+      - name: Build
+        run: npm run build:punchies-playable
+
+      - name: Verify upload root
+        run: test -f prototypes/punchies-playable/dist/index.html
+
+      - name: Set up butler
+        uses: jdno/setup-butler@v1
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push prototypes/punchies-playable/dist zitian-ff/mp-console:web

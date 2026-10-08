@@ -1,5 +1,5 @@
 ## Current milestone
-First playable loop: 30 second portrait run with JAB and CROSS, sprite art, end screen with placeholder CTA, debug panel, build-only CI. Not deployed.
+First playable loop: 30 second portrait run with JAB and CROSS, sprite art, end screen with placeholder CTA, debug panel, build CI, and a prepared itch.io deploy workflow. Not deployed.
 
 ## What was implemented
 - Pure 60 Hz rule sim (`src/sim.ts`): jab and cross timing and bands copied into `tune.json`, head 2 / body 1 sweet hits knock the enemy off, sour or missed or ignored makes the enemy punch for 1 damage then leave sideways, overlapping enemies on a 1.5 to 2.0 s timer with the front one as target, 3 HP, 30 s timer.
@@ -8,7 +8,8 @@ First playable loop: 30 second portrait run with JAB and CROSS, sprite art, end 
 - Art: `scripts/prepare-art.mjs` composites the layered Punchies frames (feet, torso, head, gloves, effects; `ko` is flat) for marco and bruno, only idle, walk, jab, cross, guard, hit_light, ko, into one WebP sheet each. Fetched from the existing `punchies_assets.zip` with `scripts/fetch-assets.js punchies-playable punchies_assets.zip` (ETag cached). Without art the game runs as coloured rectangles.
 - Debug: Tweakpane panel from `tune.meta.json`, only with `?debug=1` (remembered, `?debug=0` clears), Restart and Copy JSON buttons. Tweakpane loads as a separate chunk only when unlocked.
 - `devicePixelRatio` sharpness: buffer sized logical x ratio (capped), camera zoom, Text `resolution`.
-- Build: own `vite.config.ts`, `npm run build:punchies-playable` (output `prototypes/punchies-playable/dist`). Root `npm run build` and the hub are unchanged and do not include it. CI `.github/workflows/build-punchies-playable.yml` only builds (typecheck, rule tests, art, build, size report). No deploy workflow, existing workflows untouched.
+- Build: own `vite.config.ts`, `npm run build:punchies-playable` (output `prototypes/punchies-playable/dist`). Root `npm run build` does not include it. CI `.github/workflows/build-punchies-playable.yml` builds it, and `.github/workflows/deploy-punchies-playable-itch.yml` is prepared to replace the former mp-console itch slot after review and merge.
+- The Vite config resolves its directory with `fileURLToPath`, so the dedicated build works on Windows as well as Linux CI.
 - Built size: 1.90 MB total uncompressed (JS 1.50 MB of which Phaser is almost all, 0.35 MB gzipped; Tweakpane chunk 0.15 MB, only loaded with ?debug=1; art 0.25 MB).
 
 ## Key technical decisions
@@ -28,9 +29,9 @@ First playable loop: 30 second portrait run with JAB and CROSS, sprite art, end 
 - Not tested on a real phone. Headless software rendering runs the loop slowly, so the browser check waits on sim frames, not wall time.
 - The 30 s end is verified by fast-forwarding the sim (`advance(1800)`), not by waiting 30 real seconds.
 - Fonts fall back to Arial (no Arial Black on some systems).
-- The mp-console itch.io deploy replacement and the hub link change are NOT done yet (see next step).
+- The deploy workflow and hub link change are prepared on `proto/punchies-playable/deploy-itch`, but are not merged or live yet.
 
 ## Next proposed step
 1. User playtests and tunes via ?debug=1.
-2. Deployment: new workflow for the mp-console itch.io project following `deploy-wip-itch.yml`, retire `deploy-mp-console-itch.yml`, update the hub link. Needs the user's go-ahead and the itch project's existing butler secret and channel.
-3. Open the PR when the user asks.
+2. Confirm the itch project accepts the portrait build and that its embed or fullscreen settings suit the playable.
+3. Open the PR only after the user approves replacing the live slot.

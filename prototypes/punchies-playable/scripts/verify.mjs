@@ -2,7 +2,7 @@
 // drives the real page with taps on the on-screen buttons, checks scoring,
 // damage, both end conditions and console errors, and writes screenshots.
 //   node prototypes/punchies-playable/scripts/verify.mjs
-// Env: PLAYWRIGHT_MODULE (path to playwright), SCREENSHOT_DIR, EXPECT_NO_ART=1.
+// Env: PLAYWRIGHT_MODULE (path to playwright), BRAVE_PATH, SCREENSHOT_DIR, EXPECT_NO_ART=1.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +18,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.webp': 'image/webp' };
 const server = http.createServer((req, res) => {
+  if (req.url === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   const p = path.join(dist, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/\/$/, '/index.html'));
   if (!p.startsWith(dist) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
@@ -29,7 +30,8 @@ let failed = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${extra}`); if (!ok) failed++; };
 const errors = [];
 
-const browser = await chromium.launch();
+const launchOptions = process.env.BRAVE_PATH ? { executablePath: process.env.BRAVE_PATH } : {};
+const browser = await chromium.launch(launchOptions);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
 const page = await ctx.newPage();
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
