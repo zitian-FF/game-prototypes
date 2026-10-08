@@ -19,6 +19,8 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 - Character select: roster moved to a bright framed strip above the matchup panels, scrolls without a fighter limit (drag, pulsing arrows, auto-centre on focus), VS drawn on top, quieter colours for inactive chips and unfocused panels.
 
+- Character select stats are now five aggregated bars (Health, Endurance, Speed, Power, Reach) and the nickname line became a playstyle label (Vanilla, Agile, Tank, Glass Cannon). See BRIEF.md.
+
 ## Key technical decisions
 - Adapters are thin and the game never touches an SDK. Dead adapters are removed from each build.
 - Saves stay synchronous for the game: portal data is preloaded into a cache before the first scene.
