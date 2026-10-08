@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { i18nStub } from './lib-i18n-stub.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -6,7 +7,7 @@ import ts from 'typescript';
 const cache=new Map();let reduced=false;
 const VIEW={left:0,right:844,top:0,bottom:390,width:844,height:390,cx:422,cy:195};
 const phaser={Math:{Clamp:(v,a,b)=>Math.max(a,Math.min(b,v))}};
-function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);if(file.endsWith('.json'))return {default:JSON.parse(fs.readFileSync(file,'utf8'))};const exports={};cache.set(file,exports);const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;vm.runInNewContext(code,{exports,structuredClone,console,require:id=>id==='phaser'?{default:phaser}:id.endsWith('pixelRatio')?{VIEW,PIXEL_RATIO:1}:id.endsWith('presentation')?{reducedMotion:()=>reduced}:load(path.resolve(path.dirname(file),id.endsWith('.json')?id:id+'.ts'))});return exports;}
+function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);if(file.endsWith('.json'))return {default:JSON.parse(fs.readFileSync(file,'utf8'))};const exports={};cache.set(file,exports);const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;vm.runInNewContext(code,{exports,structuredClone,console,require:id=>id.endsWith('/i18n')?i18nStub:id==='phaser'?{default:phaser}:id.endsWith('pixelRatio')?{VIEW,PIXEL_RATIO:1}:id.endsWith('presentation')?{reducedMotion:()=>reduced}:load(path.resolve(path.dirname(file),id.endsWith('.json')?id:id+'.ts'))});return exports;}
 const {Hud}=load('prototypes/punchies/src/ui/Hud.ts');
 const {createSimState}=load('prototypes/punchies/src/sim/sim.ts');
 const {tune}=load('prototypes/punchies/src/sim/tune.ts');

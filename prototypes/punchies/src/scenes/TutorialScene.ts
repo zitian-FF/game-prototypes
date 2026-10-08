@@ -1,4 +1,5 @@
 import { startScreen } from '../ui/presentation';
+import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import Phaser from 'phaser';
 import { store } from '../portal/store';
@@ -51,8 +52,8 @@ const hits = (c: Ctx, pred: (e: Extract<SimEvent, { kind: 'hit' }>) => boolean) 
 
 const STEPS: Step[] = [
   {
-    title: 'MOVE',
-    text: (b) => `Move toward the dummy with ${b('move')}.`,
+    get title() { return t('tutorial.move'); },
+    text: (b) => t('tutorial.move_text', { btn: b('move') }),
     adds: ['stick'],
     dummy: 'idle',
     goal: 1,
@@ -62,24 +63,24 @@ const STEPS: Step[] = [
     },
   },
   {
-    title: 'JAB',
-    text: (b) => `Jab: your fastest, lightest punch. ${b('jab')} to land 2 jabs.`,
+    get title() { return t('common.jab'); },
+    text: (b) => t('tutorial.jab_text', { btn: b('jab') }),
     adds: ['jab'],
     dummy: 'idle',
     goal: 2,
     track: (c) => hits(c, (e) => e.punch === 'jab'),
   },
   {
-    title: 'CROSS',
-    text: (b) => `Cross: slower but heavier, and the longest reach (about 20% more than the jab). ${b('cross')} to land 2 crosses.`,
+    get title() { return t('common.cross'); },
+    text: (b) => t('tutorial.cross_text', { btn: b('cross') }),
     adds: ['cross'],
     dummy: 'idle',
     goal: 2,
     track: (c) => hits(c, (e) => e.punch === 'cross'),
   },
   {
-    title: 'RANGE: SWEET vs SOUR',
-    text: () => 'Your fist travels out. Too close = SOUR (weak). At full extension = SWEET. Step back a little and land a SWEET hit.',
+    get title() { return t('tutorial.range_sweet_vs_sour'); },
+    text: () => t('tutorial.your_fist_travels_out_too'),
     adds: [],
     dummy: 'idle',
     goal: 1,
@@ -87,32 +88,32 @@ const STEPS: Step[] = [
     track: (c) => hits(c, (e) => e.sweet && e.damage > 0),
   },
   {
-    title: 'HOOK',
-    text: (b) => `Hook: a heavy swing with a shorter reach than the jab. Close in and ${b('hook')} to land a hook.`,
+    get title() { return t('common.hook'); },
+    text: (b) => t('tutorial.hook_text', { btn: b('hook') }),
     adds: ['hook'],
     dummy: 'idle',
     goal: 1,
     track: (c) => hits(c, (e) => e.punch === 'hook'),
   },
   {
-    title: 'GUARD',
-    text: (b) => `The dummy attacks now. Hold ${b('guard')} to block 3 jabs. Blocking costs stamina, never health.`,
+    get title() { return t('common.guard'); },
+    text: (b) => t('tutorial.guard_text', { btn: b('guard') }),
     adds: ['guard'],
     dummy: 'jabber',
     goal: 3,
     track: (c) => c.events.filter((e) => e.kind === 'block' && e.attacker === 1).length,
   },
   {
-    title: 'PERFECT GUARD',
-    text: () => `Every guard raise opens a tight ${tune.guard.perfectFrames}-frame PERFECT GUARD window. Release exposes you for ${tune.guard.penaltyFrames} frames and locks guard; time the next raise after that.`,
+    get title() { return t('common.perfect_guard'); },
+    text: () => t('tutorial.perfect_guard_text', { perfect: tune.guard.perfectFrames, penalty: tune.guard.penaltyFrames }),
     adds: [],
     dummy: 'jabber',
     goal: 1,
     track: (c) => c.events.filter((e) => e.kind === 'perfectGuard' && e.attacker === 1).length,
   },
   {
-    title: 'DODGE',
-    text: (b) => `${b('dodge')} to slip punches. The stick picks the direction; no direction = step back. Avoid 2 punches.`,
+    get title() { return t('common.dodge'); },
+    text: (b) => t('tutorial.dodge_text', { btn: b('dodge') }),
     adds: ['dodge'],
     dummy: 'jabber',
     goal: 2,
@@ -123,24 +124,24 @@ const STEPS: Step[] = [
     },
   },
   {
-    title: 'DODGE POWER-UP',
-    text: () => 'Right after a dodge you glow yellow: your next punch does 1.5x damage. Dodge toward the dummy and punch straight away for a POWER! hit.',
+    get title() { return t('tutorial.dodge_power_up'); },
+    text: () => t('tutorial.right_after_a_dodge_you'),
     adds: [],
     dummy: 'idle',
     goal: 1,
     track: (c) => hits(c, (e) => e.buffed),
   },
   {
-    title: 'STAMINA',
-    text: () => 'The blue bar is stamina. Punches, dodges and guarding spend it. At 0, emergency recovery fills the red bar at standing-still speed. All hits are headshots; punches are free but deal half damage. Guard and dodge are disabled until full. Punch until it is below half.',
+    get title() { return t('common.stamina'); },
+    text: () => t('tutorial.the_blue_bar_is_stamina'),
     adds: ['stamina'],
     dummy: 'idle',
     goal: 1,
     track: (c) => (c.sim.fighters[0].stamina < maxStamina(c.sim.fighters[0]) * 0.5 ? 1 : 0),
   },
   {
-    title: 'HEALTH: FACE vs BODY',
-    text: () => 'Green is health. Hits that reach the FACE (inner circle) do full damage and cost the defender stamina; body hits do half damage and no stamina loss. Land one face hit and one body hit (from max range).',
+    get title() { return t('tutorial.health_face_vs_body'); },
+    text: () => t('tutorial.green_is_health_hits_that'),
     adds: ['health'],
     dummy: 'idle',
     goal: 2,
@@ -159,32 +160,32 @@ const STEPS: Step[] = [
     },
   },
   {
-    title: 'PUNISH',
-    text: () => 'Anyone recovering from a punch, especially a miss, is Vulnerable and pulses red-orange. The dummy will whiff: step in and hit it while it recovers.',
+    get title() { return t('tutorial.punish'); },
+    text: () => t('tutorial.anyone_recovering_from_a_punch'),
     adds: [],
     dummy: 'whiffer',
     goal: 1,
     track: (c) => (c.dummyWasRecovering ? hits(c, (e) => e.damage > 0) : 0),
   },
   {
-    title: 'COUNTER',
-    text: () => 'Hit someone while they are STARTING a punch, or right after they drop guard or dodge = COUNTER (x1.5 damage). The dummy throws slow crosses: beat one with a Cross or Hook.',
+    get title() { return t('tutorial.counter'); },
+    text: () => t('tutorial.hit_someone_while_they_are'),
     adds: [],
     dummy: 'crossBait',
     goal: 1,
     track: (c) => hits(c, (e) => e.counter),
   },
   {
-    title: 'STARS & UPPERCUT',
-    text: (b) => `Sweet hits fill the three star sockets beside STUN. At 3, UPPER pulses and the Uppercut is ready: ${b('upper')}. It can't be blocked. Land one.`,
+    get title() { return t('tutorial.stars_uppercut'); },
+    text: (b) => t('tutorial.stars_text', { btn: b('upper') }),
     adds: ['uppercut'],
     dummy: 'idle',
     goal: 1,
     track: (c) => hits(c, (e) => e.punch === 'uppercut'),
   },
   {
-    title: 'STUN',
-    text: () => 'Taking hits fills the stun meter (thin bar). Full = stunned: open to anything. The dummy is nearly there. Finish it!',
+    get title() { return t('common.stun'); },
+    text: () => t('tutorial.taking_hits_fills_the_stun'),
     adds: ['stun'],
     dummy: 'idle',
     goal: 1,
@@ -194,8 +195,8 @@ const STEPS: Step[] = [
     track: (c) => c.events.filter((e) => e.kind === 'stunned' && e.fighter === 1).length,
   },
   {
-    title: 'FATIGUE',
-    text: () => 'Repeating one punch tires it: red bars fill, it gets slower and weaker ("tired"). Mix it up! Throw the same punch until 2 bars light up.',
+    get title() { return t('tutorial.fatigue'); },
+    text: () => t('tutorial.repeating_one_punch_tires_it'),
     adds: ['fatigue'],
     dummy: 'idle',
     goal: 1,
@@ -205,8 +206,8 @@ const STEPS: Step[] = [
     },
   },
   {
-    title: 'PUT IT TOGETHER',
-    text: () => 'Everything is on. Knock the dummy out!',
+    get title() { return t('tutorial.put_it_together'); },
+    text: () => t('tutorial.everything_is_on_knock_the'),
     adds: ['timer'],
     dummy: 'jabber',
     goal: 1,
@@ -220,10 +221,12 @@ const STEPS: Step[] = [
 // Button names for the device the player is using right now.
 function binder(): (a: Action) => string {
   const d = devices.lastDevice;
+  const press = (key: string) => t('tutorial.press_key', { key });
+  const tap = (name: string) => t('tutorial.tap_button', { button: name });
   const names: Record<'touch' | 'keyboard' | 'gamepad', Record<Action, string>> = {
-    touch: { move: 'the joystick (left side)', jab: 'Tap JAB', cross: 'Tap CROSS', hook: 'Tap HOOK', guard: 'GUARD', dodge: 'Tap DODGE', upper: 'tap UPPER' },
-    keyboard: { move: 'W A S D', jab: 'Press J', cross: 'Press K', hook: 'Press L', guard: 'Shift', dodge: 'Press Space', upper: 'press I' },
-    gamepad: { move: 'the left stick', jab: 'Press X', cross: 'Press Y', hook: 'Press B', guard: 'RB', dodge: 'Press A', upper: 'press LB' },
+    touch: { move: t('tutorial.the_joystick_left_side'), jab: tap(t('common.jab')), cross: tap(t('common.cross')), hook: tap(t('common.hook')), guard: t('common.guard'), dodge: tap(t('common.dodge')), upper: tap(t('common.upper')) },
+    keyboard: { move: 'W A S D', jab: press('J'), cross: press('K'), hook: press('L'), guard: 'Shift', dodge: press('Space'), upper: press('I') },
+    gamepad: { move: t('tutorial.the_left_stick'), jab: press('X'), cross: press('Y'), hook: press('B'), guard: 'RB', dodge: press('A'), upper: press('LB') },
   };
   return (a) => names[d][a];
 }
@@ -278,10 +281,10 @@ export class TutorialScene extends Phaser.Scene {
     this.acc = 0;
     this.finished = false;
     this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
-    this.stage = new FightStage(this, ['YOU', 'DUMMY'], 0);
+    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
     this.stage.hideInfoButton();
-    makeButton(this, VIEW.cx - 40, VIEW.top + 46, 64, 'SKIP', () => this.advance());
-    makeButton(this, VIEW.cx + 40, VIEW.top + 46, 64, 'EXIT', () => startScreen(this, 'Menu'));
+    makeButton(this, VIEW.cx - 40, VIEW.top + 46, 64, t('tutorial.skip'), () => this.advance());
+    makeButton(this, VIEW.cx + 40, VIEW.top + 46, 64, t('tutorial.exit'), () => startScreen(this, 'Menu'));
 
     const panelY = tune.ring.top + 30;
     this.add.rectangle(VIEW.cx, panelY, 540, 56, 0x000000, 0.72).setStrokeStyle(1, 0x5a6378).setDepth(140);
@@ -302,7 +305,7 @@ export class TutorialScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(141);
     this.tick = this.add
-      .text(VIEW.cx, VIEW.cy + 10, 'NICE!', { fontFamily: 'monospace', fontSize: '28px', fontStyle: 'bold', color: '#7fe08a', stroke: '#000000', strokeThickness: 5, resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy + 10, t('tutorial.nice'), { fontFamily: 'monospace', fontSize: '28px', fontStyle: 'bold', color: '#7fe08a', stroke: '#000000', strokeThickness: 5, resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(145)
       .setVisible(false);
@@ -352,13 +355,13 @@ export class TutorialScene extends Phaser.Scene {
     getNav(this).engage();
     this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(290).setInteractive();
     this.add
-      .text(VIEW.cx, VIEW.cy - 60, 'TUTORIAL COMPLETE', { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 60, t('tutorial.tutorial_complete'), { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(291);
-    const btn=(x:number,label:string,key:string)=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key),false,291);
-    btn(VIEW.cx - 165, 'TRAINING', 'Training');
-    btn(VIEW.cx, 'SINGLE PLAYER', 'VsAI');
-    btn(VIEW.cx + 165, 'MENU', 'Menu');
+    const btn=(x:number,label:string,key:string,accent:'default'|'purple'='default')=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key),false,291,accent);
+    btn(VIEW.cx - 165, t('common.training'), 'Training', 'purple');
+    btn(VIEW.cx, t('common.single_player'), 'VsAI');
+    btn(VIEW.cx + 165, t('common.menu'), 'Menu');
   }
 
   // Scripted dummy for the current step.
@@ -404,7 +407,7 @@ export class TutorialScene extends Phaser.Scene {
     if (!this.built) return;
     this.stage.pollDevices();
     const st = STEPS[this.idx];
-    this.title.setText(`STEP ${this.idx + 1}/${STEPS.length} · ${st.title}${st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''}`);
+    this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: STEPS.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
     this.body.setText(st.text(binder()));
 
     if (!this.finished) {

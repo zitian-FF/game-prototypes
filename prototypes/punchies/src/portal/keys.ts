@@ -7,4 +7,5 @@ export const KEYS = {
   tutorial: 'punchies:tutorial:v1',
   chars: 'punchies:chars:v1',
   localInputs: 'punchies:localInputs:v1',
+  language: 'punchies:language:v1',
 } as const;

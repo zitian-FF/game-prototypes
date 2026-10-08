@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
 import { skinTexture } from '../render/skins';
 import { artKey } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -53,11 +54,11 @@ export class CharacterSelectView {
     const scale = Math.min(VIEW.width / 844, VIEW.height / 390);
     this.root = scene.add.container(VIEW.cx - 422 * scale, VIEW.cy - 195 * scale).setScale(scale);
     this.chrome = this.graphics(this.root);
-    this.text(this.root, 422, 27, 'CHOOSE YOUR BOXER', 33).setStroke('#071024', 6);
+    this.text(this.root, 422, 27, t('charselect.choose_your_boxer'), 33).setStroke('#071024', 6);
     this.chrome.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);
     this.chrome.lineStyle(5, 0xef3545).lineBetween(422, 51, 586, 51);
-    this.button(46, 29, 80, 30, '‹  BACK', callbacks.back);
-    this.format = this.button(90, 76, 136, 27, 'BEST OF 3', callbacks.format);
+    this.button(46, 29, 80, 30, t('charselect.back'), callbacks.back);
+    this.format = this.button(90, 76, 136, 27, t('charselect.best_of_3'), callbacks.format, false, 0x8b57c9);
     [290, 422, 554].forEach((x, i) => {
       this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11));
       if (i < 2) this.text(this.root, x + 66, 76, '›', 22, '#a8bad5');
@@ -112,7 +113,7 @@ export class CharacterSelectView {
       hit.on('pointerdown', () => callbacks.card(i));
       card.add(hit);
     });
-    this.action = this.button(716, 347, 205, 48, 'CONFIRM BOXER  ›', callbacks.action, true);
+    this.action = this.button(716, 347, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
     this.level = this.button(744, 65, 105, 27, '', () => callbacks.level(1));
     this.levelButtons = [this.level,
       this.button(672, 65, 27, 27, '‹', () => callbacks.level(-1)),
@@ -138,9 +139,9 @@ export class CharacterSelectView {
     g.lineStyle(2,color).strokeRoundedRect(x,y,w,h,10);
   }
 
-  private button(x: number, y: number, w: number, h: number, label: string, tap: () => void, primary = false): Phaser.GameObjects.Text {
+  private button(x: number, y: number, w: number, h: number, label: string, tap: () => void, primary = false, tint = 0x397dc2): Phaser.GameObjects.Text {
     const g = this.graphics(this.root);
-    cartoonPanel(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:label.includes('BEST')?0x8b57c9:0x397dc2,8);
+    cartoonPanel(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:tint,8);
     const hit = this.scene.add.rectangle(x, y, w, h, 0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', tap);
     this.root.add(hit);
@@ -153,7 +154,7 @@ export class CharacterSelectView {
     const signature = JSON.stringify(state);
     if (signature === this.previous) return;
     this.previous = signature;
-    this.format.setText(`BEST OF ${state.bestOf}`);
+    this.format.setText(t('charselect.best_of', { n: state.bestOf }));
     const g = this.chrome;
     g.clear();
     g.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);
@@ -213,7 +214,7 @@ export class CharacterSelectView {
     });
     this.action.setText(state.action);
     this.action.setScale(Math.min(1, 185 / this.action.width));
-    this.level.setText(state.level ?? 'VERSUS');
+    this.level.setText(state.level ?? t('common.versus'));
     const showLevel = state.level !== null;
     this.levelButtons.forEach((button) => {
       button.setVisible(showLevel);
@@ -277,7 +278,7 @@ export class CharacterSelectView {
     }
     const name = this.text(parent, tx + 65, 133, info.name.toUpperCase(), 23);
     if (name.width > 156) name.setScale(156 / name.width);
-    this.text(parent, tx + 65, 156, `“${info.nick}”`, 12, '#b9cbe7');
+    this.text(parent, tx + 65, 156, `“${t(`char.${p.id}.nick`)}”`, 12, '#b9cbe7');
     this.text(parent, tx + 65, 174, p.label, 9, s === 0 ? '#76caff' : '#ff8b99');
     const bars = this.graphics(parent);
     const order = [0, 3, 1, 4, 2, 5];

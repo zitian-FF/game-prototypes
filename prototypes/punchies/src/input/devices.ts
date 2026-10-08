@@ -1,4 +1,5 @@
 import type { FrameInput } from '../sim/types';
+import { t } from '../i18n';
 import { NEUTRAL_INPUT } from '../sim/types';
 
 // Keyboard and gamepad bindings for the intent layer. Game logic never reads
@@ -224,9 +225,9 @@ export function mergeInputs(inputs: FrameInput[]): FrameInput {
 }
 
 export const SOURCE_LABEL: Record<InputSource, string> = {
-  touch: 'TOUCH',
-  kb1: 'KEYS WASD',
-  kb2: 'KEYS ARROWS',
-  pad1: 'CONTROLLER 1',
-  pad2: 'CONTROLLER 2',
+  get touch() { return t('input.touch'); },
+  get kb1() { return t('input.keys_wasd'); },
+  get kb2() { return t('input.keys_arrows'); },
+  get pad1() { return t('input.controller_1'); },
+  get pad2() { return t('input.controller_2'); },
 };

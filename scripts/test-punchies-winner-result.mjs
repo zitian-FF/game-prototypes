@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict';
+import { i18nStub } from './lib-i18n-stub.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 const compile=file=>ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const quotes={};vm.runInNewContext(compile('prototypes/punchies/src/ui/winnerQuotes.ts'),{exports:quotes,require:()=>({isCharId:c=>['marco','mia','bruno','tee'].includes(c),charName:c=>c.toUpperCase()})});
+const quotes={};vm.runInNewContext(compile('prototypes/punchies/src/ui/winnerQuotes.ts'),{exports:quotes,require:p=>p.includes('i18n')?i18nStub:({isCharId:c=>['marco','mia','bruno','tee'].includes(c),charName:c=>c.toUpperCase()})});
 const seen=new Set();for(const c of ['marco','mia','bruno','tee']){const q=quotes.winnerQuote(c);assert.ok(q.length>15&&q.length<80);seen.add(q);}assert.equal(seen.size,4);
 class Obj{constructor(kind,args){this.kind=kind;this.args=args;this.x=args?.[0]??0;this.width=360;this.height=450;this.visible=true;this.alpha=1;}setDepth(){return this;}setInteractive(){this.interactive=true;return this;}disableInteractive(){this.interactive=false;return this;}setOrigin(x,y){this.origin=[x,y];return this;}setScale(v){this.scale=v;return this;}setX(x){this.x=x;return this;}setAlpha(a){this.alpha=a;return this;}setVisible(v){this.visible=v;return this;}getData(){return this.bg;}fillStyle(){return this;}fillRect(){return this;}fillRoundedRect(){return this;}}
 const objects=[],buttons=[];const make=kind=>(...args)=>{const o=new Obj(kind,args);objects.push(o);return o;};
 let reduced=true;const tweens=[],events=[];
 const scene={children:{list:objects},events:{once:(_event,fn)=>events.push(fn)},add:{rectangle:make('rectangle'),graphics:make('graphics'),text:make('text'),image:make('image')},textures:{exists:()=>true},tweens:{add:t=>tweens.push(t)}};
 const exports={};vm.runInNewContext(compile('prototypes/punchies/src/ui/matchPresentation.ts'),{exports,require:p=>{
+ if(p.includes('i18n'))return i18nStub;
  if(p.includes('stingers'))return{playStinger(){return()=>{};}};
  if(p.includes('pixelRatio'))return{VIEW:{cx:422,cy:225,width:844,height:450,left:0,top:0,bottom:450},PIXEL_RATIO:1};
  if(p.includes('presentation'))return{reducedMotion:()=>reduced};

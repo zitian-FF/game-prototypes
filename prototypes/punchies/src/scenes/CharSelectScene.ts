@@ -1,4 +1,5 @@
 import { loadShopDraft } from '../shop/draft';
+import { t } from '../i18n';
 import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
 import { skinReady } from '../render/skins';
 import { CharacterSelectView } from '../ui/CharacterSelectView';
@@ -53,12 +54,12 @@ function stats(id: CharId): [string, number][] {
     frames += Math.max(1, p.startup + c[t].startup) + Math.max(1, p.recovery + c[t].recovery);
   }
   return [
-    ['HP', c.hp],
-    ['STAMINA', c.stamina],
-    ['STUN RESIST', c.stun],
-    ['SPEED', c.speed],
-    ['POWER', power],
-    ['HAND SPEED', base / frames],
+    [t('common.hp'), c.hp],
+    [t('common.stamina'), c.stamina],
+    [t('charselect.stun_resist'), c.stun],
+    [t('charselect.speed'), c.speed],
+    [t('charselect.power'), power],
+    [t('charselect.hand_speed'), base / frames],
   ];
 }
 
@@ -107,7 +108,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.level = prefs.level;
     if (data.mode === 'vsai') {
       this.sides = [
-        { sel: idx(prefs.p1), locked: false, label: 'YOU', src: 'any' },
+        { sel: idx(prefs.p1), locked: false, label: t('common.you'), src: 'any' },
         { sel: idx(prefs.ai), locked: false, label: 'AI', src: 'any' },
       ];
     } else if (data.mode === 'localvs') {
@@ -120,8 +121,8 @@ export class CharSelectScene extends Phaser.Scene {
       const me = data.localIdx ?? 0;
       this.sides = [0, 1].map((i) =>
         i === me
-          ? { sel: idx(prefs.p1), locked: false, label: 'YOU', src: 'any' as const }
-          : { sel: 0, locked: false, label: 'OPPONENT', src: 'remote' as const },
+          ? { sel: idx(prefs.p1), locked: false, label: t('common.you'), src: 'any' as const }
+          : { sel: 0, locked: false, label: t('common.opponent'), src: 'remote' as const },
       );
       this.active = me;
       this.setupNet();
@@ -148,9 +149,9 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private hint(): string {
-    if (this.data0.mode === 'localvs') return 'Each player picks and confirms.\nEsc / B to change';
-    if (this.data0.mode === 'online') return 'Pick your boxer, then READY.\nStarts when both are ready.';
-    return 'Pick a boxer, then confirm.\nArrows + Enter / D-pad + A';
+    if (this.data0.mode === 'localvs') return t('charselect.each_player_picks_and_confirms');
+    if (this.data0.mode === 'online') return t('charselect.pick_your_boxer_then_ready');
+    return t('charselect.pick_a_boxer_then_confirm');
   }
 
   // ---- input --------------------------------------------------------------
@@ -247,9 +248,9 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(!this.available(s)){sfx.denied();this.notice='Locked fighter · claim G.P. Tee in the shop welcome gift.';return;}
+    if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_claim_g_p');return;}
     sfx.uiConfirm();
-    if(!side.selected){side.selected=true;this.notice='Left / right chooses a skin. Confirm to lock in.';return;}
+    if(!side.selected){side.selected=true;this.notice=t('common.left_right_chooses_a_skin');return;}
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
       if (this.data0.mode === 'vsai') this.active = 1 - s;
@@ -293,7 +294,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?'Left / right chooses a skin. Confirm to lock in.':'Locked fighter · claim the shop welcome gift.';
+    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):t('charselect.locked_fighter_claim_the_shop');
     if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
@@ -392,7 +393,7 @@ export class CharSelectScene extends Phaser.Scene {
         const check = validateTuneJson(m.tune);
         if (!check.ok) {
           s.leave();
-          startScreen(this, 'Menu', { message: 'Host sent invalid settings' });
+          startScreen(this, 'Menu', { message: t('charselect.host_sent_invalid_settings') });
           return;
         }
         const restore = this.data0.restoreTune ?? snapshotTune();
@@ -400,7 +401,7 @@ export class CharSelectScene extends Phaser.Scene {
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
-    s.onPeerLeft = () => startScreen(this, 'Menu', { message: 'Opponent left' });
+    s.onPeerLeft = () => startScreen(this, 'Menu', { message: t('charselect.opponent_left') });
     // Heartbeat: keep re-sending our status, so a message sent while the
     // other phone was still in the lobby (measuring ping) is never lost.
     this.time.addEvent({ delay: 500, loop: true, callback: () => this.sendPick() });
@@ -445,23 +446,23 @@ export class CharSelectScene extends Phaser.Scene {
     this.selectionView.render({
       bestOf: tune.match.bestOf,
       panels: this.sides.map((side, s) => ({
-        id: chars[s], label: side.label === 'AI' ? 'OPPONENT' : side.label,
+        id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
         cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
         hidden: side.src === 'remote', locked: side.locked,
         focused: !ready && (local ? !side.locked : this.active === s),
         status: side.src === 'remote'
-          ? (!this.peerHere ? 'Waiting for opponent…' : side.locked ? 'READY' : 'Choosing boxer…')
-          : !this.available(s)?'LOCKED · SHOP WELCOME GIFT':side.locked ? '✓ LOCKED IN · LEFT / RIGHT: SKINS' : side.selected?'LEFT / RIGHT: SKINS · CONFIRM TO READY':'',
+          ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
+          : !this.available(s)?t('charselect.locked_shop_welcome_gift'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
       })),
       step: ready ? 2 : online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
-      steps: local ? ['PLAYER 1', 'PLAYER 2', 'FIGHT'] : online ? ['YOUR BOXER', 'READY', 'FIGHT'] : ['YOUR BOXER', 'OPPONENT', 'FIGHT'],
-      action: online ? (this.sides[me].locked ? 'UNREADY' : this.sides[me].selected?'READY  ›':'SELECT BOXER  ›')
-        : ready ? 'FIGHT!  ›' : local
+      steps: local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
+      action: online ? (this.sides[me].locked ? t('charselect.unready') : this.sides[me].selected?t('charselect.ready'):t('charselect.select_boxer'))
+        : ready ? t('charselect.fight') : local
           ? (this.sides.some((side) => side.src === 'touch')
-            ? (this.sides[0].locked ? 'WAITING FOR P2' : 'CONFIRM BOXER  ›') : 'CONFIRM ON DEVICE')
-          : this.active === 0 ? 'CONFIRM BOXER  ›' : 'CONFIRM OPPONENT  ›',
-      level: this.data0.mode === 'vsai' ? this.level.toUpperCase() : null,
+            ? (this.sides[0].locked ? t('charselect.waiting_for_p2') : t('common.confirm_boxer')) : t('charselect.confirm_on_device'))
+          : this.active === 0 ? t('common.confirm_boxer') : t('charselect.confirm_opponent'),
+      level: this.data0.mode === 'vsai' ? t(`level.${this.level}`).toUpperCase() : null,
       hint:this.notice||this.hint(),
     });
   }

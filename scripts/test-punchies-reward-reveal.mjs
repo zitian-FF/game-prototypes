@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { i18nStub } from './lib-i18n-stub.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
@@ -13,6 +14,8 @@ function run(reduced=false){
  const scene={add:{container:make('container'),rectangle:make('rectangle'),text:make('text'),image:make('image'),graphics:make('graphics')},
  textures:{exists:()=>false},time:{delayedCall:(delay,fn)=>{const t={delay,fn,remove(){this.removed=true;}};timers.push(t);return t;}},tweens:{add:t=>tweens.push(t),killTweensOf:()=>{}},events:{once(){},off(){}}};
  const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/rewardReveal.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:p=>{
+ if(p.includes('i18n'))return i18nStub;
+ if(p.includes('itemText'))return{itemName:i=>i.name};
  if(p==='phaser')return{default:{GameObjects:{Container:Obj}}};
  if(p.includes('render/art'))return{artKey:()=>null};
  if(p.includes('pixelRatio'))return{PIXEL_RATIO:1,VIEW:{cx:422,cy:195,width:844,height:390,bottom:390}};

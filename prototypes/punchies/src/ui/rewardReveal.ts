@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { t } from '../i18n';
+import { itemName } from '../shop/itemText';
 import { playStinger } from '../audio/stingers';
 import { artKey } from '../render/art';
 import { skinTexture } from '../render/skins';
@@ -52,7 +54,7 @@ export class RewardReveal {
       // Draft rewards without final art must not impersonate a unique portrait.
       const chest=artKey(scene,item.kind==='skins'?'chest_skin_base':'chest_fighter_base');
       if(chest)this.root.add(scene.add.image(VIEW.cx,VIEW.cy-30,chest).setDisplaySize(200,180));
-      this.label(VIEW.cx,VIEW.cy+80,'PORTRAIT ART PENDING',18,'#b7c5e0');
+      this.label(VIEW.cx,VIEW.cy+80,t('reveal.portrait_art_pending'),18,'#b7c5e0');
     }
 
     const titleAt=cfg.entryMs+cfg.portraitHoldMs;
@@ -60,8 +62,8 @@ export class RewardReveal {
       if(this.destroyed)return;
       const band=scene.add.rectangle(VIEW.cx,VIEW.bottom-70,VIEW.width,140,0x030711,.85);
       this.root.add(band);
-      const title=this.label(VIEW.cx,VIEW.bottom-103,item.kind==='skins'?'NEW SKIN':'NEW FIGHTER',14,'#ffd261');
-      const name=this.label(VIEW.cx,VIEW.bottom-75,item.name,32,'#fff3db');
+      const title=this.label(VIEW.cx,VIEW.bottom-103,item.kind==='skins'?t('reveal.new_skin'):t('reveal.new_fighter'),14,'#ffd261');
+      const name=this.label(VIEW.cx,VIEW.bottom-75,itemName(item),32,'#fff3db');
       name.setScale(Math.min(1,VIEW.width*.9/name.width));
       title.setAlpha(0);name.setAlpha(0);
       scene.tweens.add({targets:[title,name],alpha:1,duration:motion?cfg.nameFadeMs:0});
@@ -70,7 +72,7 @@ export class RewardReveal {
       if(this.destroyed)return;
       const button=scene.add.container(VIEW.cx,VIEW.bottom-29);
       const g=scene.add.graphics();cartoonPanel(g,-105,-19,210,38,0x28af70,8);button.add(g);
-      const text=scene.add.text(0,0,'AWESOME!  ›',{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',stroke:'#081225',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
+      const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',stroke:'#081225',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
       const acknowledge=()=>{if(this.destroyed)return;this.destroy();close();};
       const hit=scene.add.rectangle(0,0,210,38,0,0).setDepth(610).setInteractive({useHandCursor:true})
         .on('pointerdown',acknowledge);button.add(hit);navRegister(scene,hit,acknowledge);

@@ -125,6 +125,7 @@ jobs:
           node scripts/test-punchies-starter-skins.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
+          node scripts/test-punchies-i18n.mjs
 
       # Bumps the target's deploy counter (see "Version stamping" in root
       # CLAUDE.md) without committing yet - committed only after a
