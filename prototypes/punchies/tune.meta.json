@@ -2840,5 +2840,13 @@
     "min": 100,
     "max": 3000,
     "step": 10
+  },
+  "view.menu.shopRayRotationMs": {
+    "cat": "Menu presentation",
+    "desc": "Title logo pulse half-cycle duration in milliseconds.",
+    "min": 300,
+    "max": 4000,
+    "step": 50,
+    "description": "Duration of a full revolution of the shop chest rays."
   }
 }

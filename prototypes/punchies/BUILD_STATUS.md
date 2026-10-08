@@ -2,6 +2,8 @@
 Colourful UI and shared punching logo ready for review on the unpublished shop branch. Earlier QA fixes remain live via PR 248.
 
 ## What was implemented
+
+Latest shop polish: removed glove overlays from all three chests (tokens retain the shared glove), added explicit [i] buttons for skin/fighter pull-odds bubbles, and slow rotating rays behind paid chests. Reduced motion keeps rays static. Pink continuous HP remains in this unpublished draft. Typecheck, build, shop model checks and Brave popup/visual checks pass; no console errors.
 Light-blue ad chest, purple skin chest and gold fighter chest use one canonical red glove logo without the star. Token and chest base PNGs are blank; punchMark stamps the same logo asset on all of them. Menu, shop, fight buttons and character selection use bright enamel colours, thick outlines, bevels, lower extrusion and subtle grain. Selection stats and integrated pink HP meter are continuous, without segments. Daily chest limits, odds and reward popups remain functional.
 
 ## Key technical decisions

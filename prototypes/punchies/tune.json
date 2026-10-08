@@ -74,6 +74,7 @@
     "flashStrobeMs": 50,
     "menu": {
       "logoPulseMs": 1500,
+      "shopRayRotationMs": 18000,
       "logoPulseScale": 1.025,
       "stampMs": 260,
       "loadingDrift": 15,
