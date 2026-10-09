@@ -14,6 +14,9 @@ Status words: `done`, `in progress`, `planned`, `blocked`, `?` (unknown, needs a
 | First-run fighter | Marco, best of 1, jab and cross only | 2026-10-09 |
 | First-run gift | Marco "Rising Star" unique skin | 2026-10-09 |
 | Starter alternate skins (Cyan Rush, Violet Resolve, Golden Veteran) | Removed as free starters. They become normal pull items | 2026-10-09 |
+| First chest | The player's first skin chest is free (no token gift) | 2026-10-09 |
+| Sparring partner | Bruno | 2026-10-09 |
+| G.P. Tee | No longer a free claim. He joins the fighter chest pool | 2026-10-09 |
 | Currency | One token currency, used to unlock fighters and skins | earlier |
 | Ads | Rewarded only, in the shop only, never during or between fights | earlier |
 | Analytics | Anonymous events on the portal layer, no external collector yet | earlier |
@@ -29,7 +32,7 @@ Flow:
 1. Language choice, only when more than one language has translations.
 2. The easy fight. Marco against a sparring partner, best of 1.
 3. "Welcome to the Ring" card with the reward reveal (Marco "Rising Star", plus the token gift below).
-4. Main menu. The Shop button shows a badge while a free claim (G.P. Tee) is waiting.
+4. Main menu. The Shop button shows a badge while the free first skin chest is waiting.
 
 Skip: ends the flow at step 3 (same gift, so skipping never costs anything). Marks `firstRun` done.
 
@@ -37,17 +40,20 @@ The easy fight:
 - Visible controls: move, jab, cross. Hidden on touch and keyboard hints: guard, dodge, hook, uppercut.
 - Visible HUD: health bars only. Hidden: stamina, stun, stars.
 - Coach text in order: "Tap JAB", "Now CROSS", "Mix them". Repeats after about 10 seconds of no punches.
-- Sparring partner: slow, weak jabs on a long cooldown. Cannot KO the player (player health floors above zero). Falls to a clean KO after about six hits.
+- Sparring partner: Bruno. Slow, weak jabs on a long cooldown. Cannot KO the player (player health floors above zero). Falls to a clean KO after about six hits.
 - All its numbers live in their own tune section (for example `firstFight`). No existing tuned value changes.
 - Reports gameplay start and stop to the portal. Funnel events: `firstrun/start`, `firstrun/jab`, `firstrun/cross`, `firstrun/win`, `firstrun/skip`.
 - The full tutorial stays in Practice for players who want the rest.
 
-Gift (proposal, owner to confirm): Marco "Rising Star" plus 5 tokens, so the player can open one skin chest right away and see how pulls work. Today `welcomeGiftTokens` is 0.
+Gift: Marco "Rising Star" on the reveal, and the first skin chest is free. The player opens it from
+the Shop (the Shop button badge points there), so they learn how pulls work without spending.
+`welcomeGiftTokens` stays 0. The free chest is a one-time flag in the save, separate from the daily
+chest limit.
 
 Open questions:
-- Sparring partner: Bruno (big and slow, easy to hit) or the existing dummy rig? `?`
-- Is the 5 token gift right, or should the first chest be free instead? `?`
-- Should the welcome card also point at the free G.P. Tee claim? Proposed yes. `?`
+- Is it only the first skin chest that is free, or the first fighter chest too? Assumed skin chest only. `?`
+- Where does Tee come from now? Assumed the fighter chest (10 tokens) with the two placeholder fighters. `?`
+- Existing testers who already claimed Tee keep him. Assumed yes. `?`
 
 ## 3. Economy snapshot (from `src/shop/draft-config.json`)
 
@@ -58,7 +64,7 @@ Open questions:
 | Rewarded ad reward | 1 token |
 | Daily ad limit | 5 (so at most 5 tokens a day from ads) |
 | Chests per day | 1 skin chest, 1 fighter chest |
-| Welcome gift tokens | 0 (proposal above: 5) |
+| Welcome gift tokens | 0. The first skin chest is free instead |
 | Day boundary | 00:00 UTC |
 
 Reading: a daily ad-only player earns one skin chest a day, or one fighter chest every second day.
@@ -98,7 +104,7 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Marco Reyes | `marco` | Vanilla | Owned from the start | done | done | Tutorial and first fight fighter |
 | Mia Tanaka | `mia` | Agile | Owned from the start | done | done | |
 | Bruno Kowalski | `bruno` | Tank | Owned from the start | done | done | |
-| G.P. Tee | `tee` | Glass Cannon | Free welcome claim in the Shop | `?` | `?` | Hidden in roster until claimed |
+| G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | `?` | `?` | Hidden in roster until owned |
 | The Rookie | `fighter-five` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
 | The Southpaw | `fighter-six` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
 
@@ -121,7 +127,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | Old Gold | `skin-bruno` | Bruno | palette | Skin chest | `?` | |
 | (none yet) | | Tee | | | | Tee has no skins listed |
 
-Totals today: 4 playable fighters (3 owned, 1 free claim), 2 placeholder fighters, 9 skins in
+Totals today: 4 playable fighters (3 owned, Tee from the fighter chest), 2 placeholder fighters, 9 skins in
 the pool plus the gift.
 
 ### Content roadmap targets (owner to set)
@@ -141,7 +147,8 @@ table entry and no new art. See section 6.
 
 | Task | Owner | Status |
 | --- | --- | --- |
-| First-time experience (flow, easy fight, skip, gift, welcome card, badge on Shop) | Claude | planned |
+| First-time experience (flow, easy fight vs Bruno, skip, Rising Star reveal, free first skin chest, welcome card, Shop badge) | Claude | planned |
+| Remove the free Tee claim: Tee joins the fighter chest pool, welcome claim UI and `WELCOME_FIGHTER` special cases removed, existing owners keep him | Claude | planned |
 | Remove the three starter skins from `STARTER_SKINS` so they join the chest pool; players who equipped one fall back to Default | Claude | planned |
 | Data-driven palette swaps (table per skin) so new palette skins need no code | Claude with Codex | planned |
 | Unique skin art and rigs (Rising Star, Ring Captain, Old Champ) | Codex | `?` |
@@ -163,4 +170,5 @@ table entry and no new art. See section 6.
 
 ## 8. Update log
 
+- 2026-10-09: owner decisions: first skin chest free, sparring partner Bruno, Tee no longer a free claim (Claude).
 - 2026-10-09: created (Claude). Decisions from the owner: easy first fight, skippable, Rising Star gift, starter skins removed.
