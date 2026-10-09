@@ -1,12 +1,12 @@
 ## Current milestone
-Implement completed outsource artwork, stacked on runtime palette PR #279.
+Standardize Tyke and Longan portrait waist framing, stacked on outsource content PR #280.
 ## What was implemented
-Longan joins the locked fighter pool with a cleaned portrait and layered wrapped-fist rig. McClassic joins Marco's unique skin pool with a helmet-free portrait and green/black rig. Existing training dummy portrait remains integrated. Updated roster portrait size, victory quote, English labels and tuner metadata.
+Crop Tyke below his champion belt and Longan below his waistband at asset packing time. Reduce their selection portrait heights to 189 and 174 logical pixels respectively. All portrait consumers receive the same waist crop.
 ## Key technical decisions
-Longan uses Marco's current stats provisionally; McClassic remains cosmetic. Register Longan overhead head/torso/feet facing right. Use the cleaned preferred Longan left foot and McClassic right boot, generating opposite parts through exact mirrors; shipped opposites derive at runtime. R2 archive adds 26 entries and preserves every previous entry byte for byte. Verified public SHA256 cb2f8cd3ca36c34d1b6ee2cbf6846ca2dbf163006fb97d991b66b8db031a9b73.
+Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
-Longan's final stats await user tuning.
+None.
 ## Known issues
-Not merged or deployed. Minute original matte RGB may remain within preserved antialiased boundaries. Existing Vite locale/chunk warnings remain.
+Not merged or deployed. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review and merge the stacked changes. Typecheck/build, roster/palette/asset regressions and Brave production rig/portrait checks pass.
+Review and merge the stacked changes. Brave selection review has no console errors; typecheck/build and pixel-preservation regression pass.
