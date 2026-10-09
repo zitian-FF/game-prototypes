@@ -10,6 +10,21 @@ import { loadTs } from './lib-punchies-data.mjs';
 const src = 'prototypes/punchies/src';
 const localesDir = `${src}/i18n/locales`;
 const en = JSON.parse(fs.readFileSync(`${localesDir}/en.json`, 'utf8'));
+// Check decoded strings too: an escaped replacement character is equally broken.
+for (const file of fs.readdirSync(localesDir).filter(f => f.endsWith('.json'))) {
+  const locale = JSON.parse(fs.readFileSync(`${localesDir}/${file}`, 'utf8'));
+  for (const [key, value] of Object.entries(locale)) {
+    assert.ok(!key.includes('\uFFFD') && !(typeof value === 'string' && value.includes('\uFFFD')),
+      `${file}: ${key} contains a Unicode replacement character`);
+  }
+}
+for (const key of ['input.keyboard_left', 'input.keyboard_right', 'input.controller']) {
+  assert.equal(en[key].split('\u00b7').length - 1, 3, `${key}: expected three middle-dot separators`);
+}
+if (process.argv.includes('--encoding-only')) {
+  console.log('PASS: every decoded locale key/string excludes U+FFFD; input instructions use middle-dot separators.');
+  process.exit(0);
+}
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 const walk = (d) => fs.readdirSync(d).flatMap((f) => { const p = path.join(d, f); return fs.statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : []; });
 const files = walk(src).map(f => f.split(path.sep).join('/')).filter((f) => !f.replaceAll('\\','/').includes('/i18n/'));

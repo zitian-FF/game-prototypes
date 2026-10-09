@@ -12,7 +12,7 @@ import { skinTexture } from '../render/skins';
 import { reducedMotion, startScreen } from '../ui/presentation';
 import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
-import { navRegister } from '../ui/menuNav';
+import { getNav, navRegister } from '../ui/menuNav';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
 
@@ -90,11 +90,12 @@ export class ShopScene extends Phaser.Scene {
     this.button(x-117,291,234,purchased?t('shop.come_back_tomorrow'):freeChest?t('shop.open_chest_free'):t('shop.open_chest_tokens',{cost}),()=>this.act(buyDailyChest(this.state,kind,Math.random())),!purchased&&pool.length>0&&(freeChest||this.state.tokens>=cost),0,kind==='skins'?'purple':'gold');
   }
   private bubble(kind:ShopKind){
-    const shade=this.add.rectangle(422,195,844,390,0x050e1b,.74).setInteractive().on('pointerdown',()=>{this.popupKind=null;this.render();});this.root.add(shade);
+    const shade=this.add.rectangle(422,195,844,390,0x050e1b,.74).setDepth(298).setInteractive().on('pointerdown',()=>{this.popupKind=null;this.render();});this.root.add(shade);getNav(this).modalBack(shade,()=>{this.popupKind=null;this.render();});
     const x=kind==='skins'?270:490,w=324,color=kind==='skins'?0x693da0:0x967022;
     const tail=this.add.graphics().fillStyle(color).fillTriangle(x+140,342,x+168,342,x+154,357);this.root.add(tail);this.panel(x,70,w,277,color);
     this.root.add(this.add.rectangle(x+w/2,208,w,277,0,0).setInteractive());
     this.text(x+15,82,kind==='skins'?t('shop.today_s_skins'):t('shop.today_s_fighter'),16);this.button(x+w-84,79,70,t('shop.close'),()=>{this.popupKind=null;this.render();},true,300,'blue');
+    this.text(x+w-15,330,t('ui.back_hint'),11,'#dbe9fa').setOrigin(1,0);
     const rewards=chestRewards(this.state,kind),offers=dailyOffers(this.state,kind);
     offers.forEach((item,i)=>{
       const y=kind==='skins'?120+i*62:123;this.panel(x+12,y,w-24,57,0x102034);

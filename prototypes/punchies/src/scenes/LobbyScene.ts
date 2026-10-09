@@ -2,6 +2,8 @@ import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import Phaser from 'phaser';
+import { isDebug } from '../debug/debugPanel';
+import { cartoonPanel } from '../ui/cartoonChrome';
 import QRCode from 'qrcode';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -10,7 +12,7 @@ import { NetSession, relayStatus, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
 import { tune, TICK_RATE } from '../sim/tune';
-import { artImage, backdrop } from '../render/art';
+import { backdrop } from '../render/art';
 
 // Host: create a room code, show it big with a QR code + link, wait for a
 // guest, measure ping, pick the input delay, start the match.
@@ -46,18 +48,18 @@ export class LobbyScene extends Phaser.Scene {
   create(data: { role: Role; code?: string }): void {
     applyCameraPixelRatio(this);
     backdrop(this);
-    artImage(this, 'ui_panel', VIEW.cx, VIEW.cy, 470, 286, -1);
+    cartoonPanel(this.add.graphics().setDepth(-1),VIEW.cx-235,VIEW.cy-143,470,286,0x28517d,15);
     this.handedOff = false;
     this.session = null;
     this.status = this.add
-      .text(VIEW.cx, VIEW.bottom - 60, '', { fontFamily: 'monospace', fontSize: '13px', color: '#cccccc', align: 'center', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.bottom - 60, '', { fontFamily: 'Arial', fontSize: '17px', color: '#fff1d1', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     // Small connection line (relays reached, TURN fetched, seconds waited): tells us why a lobby is stuck, e.g. on a phone.
     this.startedAt = this.time.now;
     this.turnServers = 0;
     this.diag = this.add
-      .text(VIEW.cx, VIEW.bottom - 36, '', { fontFamily: 'monospace', fontSize: '10px', color: '#7f8fa5', resolution: PIXEL_RATIO })
-      .setOrigin(0.5);
+      .text(VIEW.cx, VIEW.bottom - 36, '', { fontFamily: 'Arial', fontSize: '10px', color: '#7f8fa5', resolution: PIXEL_RATIO })
+      .setOrigin(0.5).setVisible(isDebug());
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateDiag() });
     makeButton(this, VIEW.left + 50, VIEW.top + 24, 70, t('common.back'), () => this.back());
     this.events.once('shutdown', () => {
@@ -76,7 +78,7 @@ export class LobbyScene extends Phaser.Scene {
 
   private updateDiag(): void {
     const d = this.diagProps();
-    this.diag.setText(`relays ${d.relays_open}/${d.relays_total} · TURN ${d.turn ? 'yes' : 'no'} · ${d.secs}s`);
+    this.diag.setVisible(isDebug()).setText(`relays ${d.relays_open}/${d.relays_total} · TURN ${d.turn ? 'yes' : 'no'} · ${d.secs}s`);
     // One record for the debug log when a lobby has been waiting a while with no relay open.
     if (d.secs === 15 && d.relays_open === 0) track('online', 'lobby', 'no_relays', d);
   }
@@ -105,14 +107,14 @@ export class LobbyScene extends Phaser.Scene {
     s.onPeerLeft = () => this.status.setText(t('lobby.opponent_left_waiting_for_opponent'));
 
     this.add
-      .text(VIEW.cx - 110, VIEW.cy - 70, t('lobby.room'), { fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa', resolution: PIXEL_RATIO })
+      .text(VIEW.cx - 110, VIEW.cy - 70, t('lobby.room'), { fontFamily: 'Arial', fontSize: '18px', fontStyle:'bold', color: '#dbe9fa', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     this.add
-      .text(VIEW.cx - 110, VIEW.cy - 20, code, { fontFamily: 'monospace', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
+      .text(VIEW.cx - 110, VIEW.cy - 20, code, { fontFamily: 'Arial', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     const url = roomUrl(code);
     this.add
-      .text(VIEW.cx - 110, VIEW.cy + 30, t('lobby.scan_the_qr_code_or'), { fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa', align: 'center', resolution: PIXEL_RATIO })
+      .text(VIEW.cx - 110, VIEW.cy + 30, t('lobby.scan_the_qr_code_or'), { fontFamily: 'Arial', fontSize: '15px', color: '#dbe9fa', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 170 * PIXEL_RATIO });
     if (!this.scene.isActive()) return;
@@ -158,7 +160,7 @@ export class LobbyScene extends Phaser.Scene {
 
   private async join(code: string): Promise<void> {
     this.add
-      .text(VIEW.cx, VIEW.cy - 30, code, { fontFamily: 'monospace', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 30, code, { fontFamily: 'Arial', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     this.status.setText(t('lobby.joining_room', { code }));
     const ice = await fetchTurnIceServers();

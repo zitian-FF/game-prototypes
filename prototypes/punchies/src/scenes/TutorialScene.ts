@@ -14,7 +14,8 @@ import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { devices } from '../input/devices';
 import { getNav, navRegister } from '../ui/menuNav';
-import { artImage, fighterGroups, whenGroupsReady } from '../render/art';
+import { cartoonPanel } from '../ui/cartoonChrome';
+import { fighterGroups, whenGroupsReady } from '../render/art';
 
 // Step-by-step tutorial vs a scripted dummy. Each step reveals only the
 // controls/HUD it needs, shows one instruction, and completes when the
@@ -259,6 +260,7 @@ export class TutorialScene extends Phaser.Scene {
   private doneAt = 0;
   private finished = false;
   private dummyCooldown = 0;
+  private lessonPanel!: Phaser.GameObjects.Graphics;
   private title!: Phaser.GameObjects.Text;
   private body!: Phaser.GameObjects.Text;
   private tick!: Phaser.GameObjects.Text;
@@ -283,29 +285,21 @@ export class TutorialScene extends Phaser.Scene {
     this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
     this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
     this.stage.hideInfoButton();
-    makeButton(this, VIEW.cx - 40, VIEW.top + 46, 64, t('tutorial.skip'), () => this.advance());
-    makeButton(this, VIEW.cx + 40, VIEW.top + 46, 64, t('tutorial.exit'), () => startScreen(this, 'Menu'));
-
-    const panelY = tune.ring.top + 30;
-    this.add.rectangle(VIEW.cx, panelY, 540, 56, 0x000000, 0.72).setStrokeStyle(1, 0x5a6378).setDepth(140);
-    artImage(this, 'ui_prompt', VIEW.cx, panelY, 540, 56, 140);
-    this.title = this.add
-      .text(VIEW.cx, panelY - 18, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
-      .setOrigin(0.5)
-      .setDepth(141);
-    this.body = this.add
-      .text(VIEW.cx, panelY + 6, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: 520 },
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setDepth(141);
+    // Keep the full HUD above the lesson; actions share its heading row.
+    const panelTop = VIEW.top + 92;
+    this.lessonPanel = this.add.graphics().setDepth(129);
+    titleButton(this,VIEW.cx+173,panelTop+18,66,30,t('tutorial.skip'),()=>this.advance());
+    titleButton(this,VIEW.cx+247,panelTop+18,66,30,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
+    this.title = this.add.text(VIEW.cx-270,panelTop+18,'',{
+      fontFamily:'Arial',fontSize:15,fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO,
+      wordWrap:{width:395},
+    }).setOrigin(0,.5).setDepth(131);
+    this.body = this.add.text(VIEW.cx,panelTop+42,'',{
+      fontFamily:'Arial',fontSize:15,color:'#ffffff',align:'center',
+      wordWrap:{width:550},resolution:PIXEL_RATIO,
+    }).setOrigin(.5,0).setDepth(131);
     this.tick = this.add
-      .text(VIEW.cx, VIEW.cy + 10, t('tutorial.nice'), { fontFamily: 'monospace', fontSize: '28px', fontStyle: 'bold', color: '#7fe08a', stroke: '#000000', strokeThickness: 5, resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy + 10, t('tutorial.nice'), { fontFamily: 'Arial', fontSize: '28px', fontStyle: 'bold', color: '#7fe08a', stroke: '#000000', strokeThickness: 5, resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(145)
       .setVisible(false);
@@ -355,7 +349,7 @@ export class TutorialScene extends Phaser.Scene {
     getNav(this).engage();
     this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(290).setInteractive();
     this.add
-      .text(VIEW.cx, VIEW.cy - 60, t('tutorial.tutorial_complete'), { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 60, t('tutorial.tutorial_complete'), { fontFamily: 'Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(291);
     const btn=(x:number,label:string,key:string,accent:'default'|'purple'='default',data?:object)=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key,data),false,291,accent);
@@ -409,6 +403,8 @@ export class TutorialScene extends Phaser.Scene {
     const st = STEPS[this.idx];
     this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: STEPS.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
     this.body.setText(st.text(binder()));
+    this.lessonPanel.clear();
+    cartoonPanel(this.lessonPanel,VIEW.cx-290,VIEW.top+92,580,Math.max(85,54+this.body.height),0x28517d,12);
 
     if (!this.finished) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
