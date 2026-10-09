@@ -33,7 +33,7 @@ export class RewardReveal {
         : skinTexture(scene,item.boxer,item.kind==='skins'?item.id:'default',`portrait_${item.boxer}`))
       : null;
     if (key && scene.textures.exists(key)) {
-      const portrait=scene.add.image(VIEW.cx,VIEW.bottom,key,'__BASE').setOrigin(.5,1);
+      const portrait=scene.add.image(VIEW.cx,VIEW.bottom,key,'__BASE').setOrigin(.5,1).setFlipX(item.boxer==='tyke');
       const source=scene.textures.get(key).getSourceImage() as HTMLImageElement;
       const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;
       const context=canvas.getContext('2d',{willReadFrequently:true})!;
@@ -46,7 +46,7 @@ export class RewardReveal {
       }
       if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
       const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left));
-      portrait.x-=((left+right)/2-canvas.width/2)*scale;
+      portrait.x-=(item.boxer==='tyke'?-1:1)*((left+right)/2-canvas.width/2)*scale;
       portrait.y+=(canvas.height-bottom)*scale;
       this.root.add(portrait.setScale(scale*(motion?cfg.entryScale:1)).setAlpha(motion?0:1));
       scene.tweens.add({targets:portrait,scale,alpha:1,duration:motion?cfg.entryMs:0,ease:'Back.Out'});

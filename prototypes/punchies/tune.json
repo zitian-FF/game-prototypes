@@ -123,9 +123,9 @@
       "stampMs": 260,
       "loadingDrift": 15,
       "crossfadeMs": 180,
-      "characterSlideMs": 260,
-      "characterSlideDistance": 34,
-      "characterSlideEase": "Cubic.Out",
+      "characterSlideMs": 300,
+      "characterSlideDistance": 220,
+      "characterSlideEase": "Back.Out",
       "rewardReveal": {
         "fadeMs": 220,
         "entryMs": 420,
@@ -136,7 +136,9 @@
         "portraitHeight": 0.96,
         "entryScale": 0.84,
         "buttonEntryScale": 0.75
-      }
+      },
+      "characterImpactMs": 110,
+      "characterImpactPixels": 3
     }
   },
   "ring": {

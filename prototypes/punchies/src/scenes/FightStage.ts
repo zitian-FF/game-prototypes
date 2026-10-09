@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cartoonButton } from '../ui/cartoonChrome';
+import { cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
@@ -362,7 +362,9 @@ export function makeButton(
   const chrome=scene.add.graphics().setDepth(130);
   cartoonButton(chrome,x-w/2,y-h/2,w,h,tint,7);
   bg.on('destroy', () => chrome.destroy());
-  bg.setInteractive().on('pointerdown', onTap);
+  bg.setInteractive();
+  bindButtonFeedback(bg,state=>{chrome.clear();cartoonButton(chrome,x-w/2,y-h/2+(state==='pressed'?2:0),w,h,tint,7);chrome.setAlpha(state==='disabled'?.45:1);if(state==='hover')chrome.fillStyle(0xffffff,.12).fillRoundedRect(x-w/2,y-h/2,w,h,7);});
+  bg.on('pointerup',()=>{if(bg.getData('buttonReleasedInside'))onTap();});
   navRegister(scene, bg, onTap);
   const label = scene.add
     .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true}, resolution: PIXEL_RATIO })

@@ -26,3 +26,14 @@ export function cartoonButton(g:Phaser.GameObjects.Graphics,x:number,y:number,w:
  g.fillStyle(0xffffff,.18).fillRoundedRect(x+3,y+2,w-6,h*.38,Math.max(2,r-2));
  g.lineStyle(1,shadeUi(color,.55),.65).strokeRoundedRect(x,y,w,h,r);
 }
+
+export type ButtonState='idle'|'hover'|'pressed'|'disabled';
+/** Pointer/touch states share the same affordance; disabled hits never activate. */
+export function bindButtonFeedback(hit:Phaser.GameObjects.Rectangle,draw:(state:ButtonState)=>void):void{
+ let hover=false,pressed=false,current:ButtonState|null=null;
+ const update=()=>{const state:ButtonState=!hit.input?.enabled?'disabled':pressed?'pressed':hover?'hover':'idle';if(state!==current){current=state;draw(state);}};
+ hit.on('pointerover',()=>{hover=true;update();}).on('pointerout',()=>{hover=false;pressed=false;update();})
+  .on('pointerdown',()=>{pressed=true;update();}).on('pointerup',()=>{hit.setData('buttonReleasedInside',pressed);pressed=false;update();})
+  .on('pointerupoutside',()=>{pressed=false;hover=false;update();});
+ const events=hit.scene.events;events.on('update',update);hit.once('destroy',()=>events.off('update',update));update();
+}
