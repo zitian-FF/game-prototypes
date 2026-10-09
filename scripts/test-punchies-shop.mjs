@@ -42,4 +42,14 @@ assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portrai
   assert(d.grantSkin(fv,'skin-mia-unique').owned.includes('skin-mia-unique'));
   assert.equal(d.grantSkin(d.grantSkin(fv,'skin-mia-unique'),'skin-mia-unique'),null,'an owned skin is not granted twice');
 }
+// Earn-only items never enter a chest or the daily offers, but can still be granted by the level track.
+{
+  const item={id:'skin-test-veteran',name:'TEST',kind:'skins',boxer:'marco',accent:0,skinType:'palette',earnOnly:true,description:''};
+  d.SHOP_ITEMS.push(item);
+  const st=d.refreshDailyOffers(d.newShopDraft(day),day);
+  assert(!d.availablePool(st,'skins').some(i=>i.id===item.id),'earn-only skins are not in the chest pool');
+  assert(!d.dailyOffers(st,'skins').some(i=>i.id===item.id),'earn-only skins are not in the daily offers');
+  assert(d.grantSkin(st,item.id).owned.includes(item.id),'the level track can still grant an earn-only skin');
+  d.SHOP_ITEMS.pop();
+}
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');

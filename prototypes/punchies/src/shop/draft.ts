@@ -5,7 +5,7 @@ import type { CharId } from '../sim/character';
 import config from './draft-config.json';
 export { config as shopConfig };
 export type ShopKind = 'fighters' | 'skins';
-export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; }
+export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; /** Earned on the level track only: never in a chest or the daily offers. */ earnOnly?:boolean; }
 // G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
@@ -52,7 +52,7 @@ export function grantSkin(state:ShopDraftState,id:string):ShopDraftState|null{
   return {...state,owned:[...state.owned,id]};
 }
 export function freeChests(state:ShopDraftState,kind:ShopKind):number{return (kind==='skins'?state.freeSkinChests:state.freeFighterChests)??0;}
-export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&!state.owned.includes(i.id));}
+export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!state.owned.includes(i.id));}
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
