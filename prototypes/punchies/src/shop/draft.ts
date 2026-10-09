@@ -52,19 +52,28 @@ export function grantSkin(state:ShopDraftState,id:string):ShopDraftState|null{
   return {...state,owned:[...state.owned,id]};
 }
 export function freeChests(state:ShopDraftState,kind:ShopKind):number{return (kind==='skins'?state.freeSkinChests:state.freeFighterChests)??0;}
-export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!state.owned.includes(i.id));}
+/** The three starting boxers plus every fighter the player has pulled. */
+export const STARTING_BOXERS:string[]=['marco','mia','bruno'];
+export function ownedBoxers(state:ShopDraftState):string[]{
+  return [...STARTING_BOXERS,...SHOP_ITEMS.filter(i=>i.kind==='fighters'&&i.boxer&&state.owned.includes(i.id)).map(i=>i.boxer as string)];
+}
+/** Skins only appear for fighters the player owns; fighters and skins already owned never repeat; earn-only items never appear. */
+export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{
+  const boxers=ownedBoxers(state);
+  return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!state.owned.includes(i.id)&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));
+}
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
-  if(s.offerDay===day&&s.offerIds&&s.offerSchema===6)return s;
+  if(s.offerDay===day&&s.offerIds&&s.offerSchema===7)return s;
   const seed=Math.floor(now/86400000);
   const pick=(kind:ShopKind,count:number)=>{const pool=availablePool(s,kind);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   const skins=availablePool(s,'skins');
   const pickSkins=(unique:boolean,count:number)=>{const pool=skins.filter(i=>(i.skinType==='unique')===unique);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
-  return {...s,offerDay:day,offerSchema:6,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
+  return {...s,offerDay:day,offerSchema:7,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
 }
-export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&i.kind===kind);}
+export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
 export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
   const pool=dailyOffers(state,kind).filter(i=>!state.owned.includes(i.id));
   return pool.map(item=>({item,probability:1/pool.length}));

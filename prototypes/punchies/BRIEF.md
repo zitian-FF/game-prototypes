@@ -431,3 +431,6 @@ Boxer Level (1 to 50) from XP, saved under `punchies:progress:v1`. XP per finish
 
 ## Alias and online profile — 2026-10-09
 The player has an alias: the one they typed (3 to 12 characters, letters, marks and digits in any script, single spaces, no emoji or symbols, reserved names like admin and punchies refused, offensive list hook), else the portal's player name when an adapter provides one, else a generated "Boxer 1234". Invisible and bidirectional control characters are stripped. The online hello message carries `{ alias, title, level }`; the receiver validates all of it and shows safe defaults for anything invalid. Aliases are never sent to analytics. `PORTAL_FIXED_ALIAS=on` disables editing for portals that forbid user-generated text.
+
+## Skin chests follow owned fighters — 2026-10-09
+The skin chest and the daily skin offers only include skins for fighters the player owns: the three starting boxers (Marco, Mia, Bruno) plus every fighter pulled from the fighter chest. Owning a new fighter adds its skins to the pool from the next daily refresh (the offer schema was bumped so today's offers regenerate once). Skins already owned never repeat, and earn-only skins never appear.
