@@ -23,3 +23,7 @@ Training roster flow and dummy portrait complete; verified locally and ready for
 
 ## Next proposed step
 Review the training preview and merge after earlier changes. Typecheck/build, roster/training ownership handoff, localisation and pixel/alpha optimization checks pass. Brave confirmed the dummy cannot take focus, selected Mia enters Training, character button is absent and portrait placement is correct, with no console errors.
+
+## 2026-10-09 — Soft button finish
+Menu, shop, selection, reward, settings and fight buttons use a single quiet edge, gloss and lower bevel while preserving colours. Combat discs use the same softened finish. Typecheck and production build pass; Brave menu/selection/training inspection reports no console errors. Awaiting visual approval; not deployed.
+

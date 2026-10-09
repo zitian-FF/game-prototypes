@@ -6,7 +6,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { CHARACTER_IDS, CHARACTER_INFO, type CharId } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { cartoonPanel, shadeUi } from './cartoonChrome';
+import { cartoonPanel, cartoonButton, shadeUi } from './cartoonChrome';
 
 interface PanelState {
   dummy?: boolean;
@@ -230,11 +230,12 @@ export class CharacterSelectView {
 
   private button(x: number, y: number, w: number, h: number, label: string, tap: () => void, primary = false, tint = 0x397dc2): Phaser.GameObjects.Text {
     const g = this.graphics(this.root);
-    cartoonPanel(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:tint,8);
+    cartoonButton(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:tint,8);
     const hit = this.scene.add.rectangle(x, y, w, h, 0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', tap);
     this.root.add(hit);
     const text = this.text(this.root, x, y, label, primary ? 19 : 12);
+    text.setStroke('#23415a',0).setShadow(0,2,'#23415a',1,true,true);
     text.setData('chrome', g).setData('hit', hit);
     return text;
   }

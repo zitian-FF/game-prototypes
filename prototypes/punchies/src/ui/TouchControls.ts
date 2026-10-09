@@ -210,10 +210,10 @@ export class TouchControls {
       g.fillPath();
     }
     if (this.isShown('jab') || this.isShown('cross')) {
-      g.lineStyle(4, 0x081225, 1);
+      g.lineStyle(1, 0x081225, .6);
       g.strokeCircle(MAIN.x, MAIN.y, MAIN.r);
       g.lineStyle(2,0xffffff,.45).beginPath().arc(MAIN.x,MAIN.y,MAIN.r-4,Math.PI*1.08,Math.PI*1.85).strokePath();
-      g.lineStyle(4,0x081225,1);
+      g.lineStyle(1,0x081225,.6);
       g.lineBetween(MAIN.x, MAIN.y - MAIN.r, MAIN.x, MAIN.y + MAIN.r);
     }
 
@@ -233,10 +233,7 @@ export class TouchControls {
         continue;
       }
       const color = b.id === 'guard' ? 0x3ab0a0 : b.id === 'dodge' ? 0x8a6ad0 : 0xc28a3a;
-      g.fillStyle(flashing ? 0xffffff : color, flashing ? 0.7 : 0.45);
-      g.fillCircle(b.x, b.y, b.r);
-      g.lineStyle(2, 0xffffff, 0.5);
-      g.strokeCircle(b.x, b.y, b.r);
+      this.disc(b.x,b.y,b.r,flashing ? 0xffffff : color);
     }
 
     for (const [k, v] of this.flash) this.flash.set(k, v - 1);
@@ -244,12 +241,11 @@ export class TouchControls {
 
   private disc(x:number,y:number,r:number,color:number):void {
     const g=this.g;
-    g.fillStyle(0x071226).fillCircle(x,y+4,r+3);
+    g.fillStyle(0x071226,.28).fillCircle(x,y+3,r);
     g.fillStyle(color).fillCircle(x,y,r);
-    g.lineStyle(4,0x071226).strokeCircle(x,y,r);
-    g.lineStyle(2,0xffffff,.45).beginPath().arc(x,y,r-4,Math.PI*1.08,Math.PI*1.85).strokePath();
-    g.lineStyle(2,0x071226,.25).beginPath().arc(x,y,r-5,.08,Math.PI*.85).strokePath();
-    g.lineStyle(1,0xffffff,.1).lineBetween(x-r*.55,y+r*.35,x-r*.3,y+r*.15);
+    g.fillStyle(0xffffff,.17).fillEllipse(x,y-r*.35,r*1.65,r*.9);
+    g.lineStyle(1,0x071226,.55).strokeCircle(x,y,r);
+    g.lineStyle(3,0x071226,.18).beginPath().arc(x,y,r-2,.15,Math.PI-.15).strokePath();
   }
 
   private drawFatigue(x: number, y: number, level: number, max: number): void {
@@ -273,7 +269,7 @@ export class TouchControls {
     this.disc(b.x,b.y,b.r,flashing?0xfff0bc:ready?0xffbc32:0x596b87);
     if(ready)g.fillStyle(0xffeaa0,pulse*.25).fillCircle(b.x,b.y,b.r-4);
     g.lineStyle(ready ? 3 : 2, ready ? 0xffe08a : 0xffffff, ready ? 0.95 : 0.4);
-    g.strokeCircle(b.x, b.y, b.r);
+    if(ready)g.strokeCircle(b.x, b.y, b.r);
     for (let i = 0; i < max; i++) {
       const px = b.x + (i - (max - 1) / 2) * 12;
       const py = b.y - 12;
