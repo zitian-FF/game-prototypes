@@ -50,4 +50,3 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 ## Next proposed step
 Decide whether to add a small own collector (for example a Cloudflare Worker) for itch.io, then real SDK testing in each portal's QA tool once a portal is chosen.
-
