@@ -28,7 +28,7 @@ import { backdrop, fighterGroups, prefetchGroups } from '../render/art';
 //   online:  each phone picks only its own side; the opponent's pick shows
 //            as READY until the host starts the match.
 
-type Mode = 'vsai' | 'localvs' | 'online';
+type Mode = 'training' | 'vsai' | 'localvs' | 'online';
 
 export interface CharSelectData {
   mode: Mode;
@@ -109,7 +109,12 @@ export class CharSelectScene extends Phaser.Scene {
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
     this.level = prefs.level;
-    if (data.mode === 'vsai') {
+    if (data.mode === 'training') {
+      this.sides = [
+        {sel:idx(prefs.p1),locked:false,label:t('common.you'),src:'any'},
+        {sel:0,locked:true,label:t('common.dummy'),src:'remote'},
+      ];
+    } else if (data.mode === 'vsai') {
       this.sides = [
         { sel: idx(prefs.p1), locked: false, label: t('common.you'), src: 'any' },
         { sel: idx(prefs.ai), locked: false, label: 'AI', src: 'any' },
@@ -231,7 +236,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private editable(s: number): boolean {
-    return this.sides[s].src !== 'remote';
+    return this.sides[s].src !== 'remote' && !(this.data0.mode==='training' && s===1);
   }
 
   private move(s: number, d: number): void {
@@ -251,7 +256,7 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_claim_g_p');return;}
+    if(!this.available(s)){sfx.denied();this.notice=(CHARACTER_IDS[this.sides[s].sel]==='tee'?t('charselect.locked_fighter_claim_g_p'):t('charselect.locked_fighter_daily_chest'));return;}
     sfx.uiConfirm();
     if(!side.selected){side.selected=true;this.notice=t('common.left_right_chooses_a_skin');return;}
     if (side.locked) {
@@ -297,7 +302,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):t('charselect.locked_fighter_claim_the_shop');
+    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):(CHARACTER_IDS[this.sides[s].sel]==='tee'?t('charselect.locked_fighter_claim_the_shop'):t('charselect.locked_fighter_daily_chest'));
     if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
@@ -361,6 +366,13 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private fight(): void {
+    if (this.data0.mode==='training') {
+      if (!this.bothLocked() || !this.available(0)) return;
+      const char=this.picks()[0],skin=this.skins()[0],prefs=loadCharPrefs();
+      saveCharPrefs({p1:char,skins:{...prefs.skins,p1:{...prefs.skins.p1,[char]:skin}}});
+      startScreen(this,'Training',{char,skin});
+      return;
+    }
     if (!this.bothLocked() || this.sides.some((_,s)=>!this.available(s))) return;
     const [a, b] = this.picks();
     if (this.data0.mode === 'vsai') {
@@ -447,21 +459,23 @@ export class CharSelectScene extends Phaser.Scene {
     const ready = this.bothLocked();
     const me = this.data0.localIdx ?? 0;
     this.selectionView.render({
+      training:this.data0.mode==='training',
       bestOf: tune.match.bestOf,
       panels: this.sides.map((side, s) => ({
+        dummy:this.data0.mode==='training'&&s===1,
         id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
         cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
         hidden: side.src === 'remote', locked: side.locked,
         focused: !ready && (local ? !side.locked : this.active === s),
-        status: side.src === 'remote'
+        status: this.data0.mode==='training'&&s===1?'':side.src === 'remote'
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
-          : !this.available(s)?t('charselect.locked_shop_welcome_gift'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
+          : !this.available(s)?(CHARACTER_IDS[side.sel]==='tee'?t('charselect.locked_shop_welcome_gift'):t('charselect.locked_shop_daily_chest')):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
       })),
-      step: ready ? 2 : online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
-      steps: local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
+      step: ready ? 2 : this.data0.mode==='training'?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
+      steps: this.data0.mode==='training'?[t('common.your_boxer'),t('common.ready'),t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
       action: online ? (this.sides[me].locked ? t('charselect.unready') : this.sides[me].selected?t('charselect.ready'):t('charselect.select_boxer'))
-        : ready ? t('charselect.fight') : local
+        : ready ? (this.data0.mode==='training'?t('training.start'):t('charselect.fight')) : local
           ? (this.sides.some((side) => side.src === 'touch')
             ? (this.sides[0].locked ? t('charselect.waiting_for_p2') : t('common.confirm_boxer')) : t('charselect.confirm_on_device'))
           : this.active === 0 ? t('common.confirm_boxer') : t('charselect.confirm_opponent'),

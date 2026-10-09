@@ -8,7 +8,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
 import type { ShopItem } from '../shop/draft';
 import { reducedMotion } from './presentation';
-import { cartoonPanel } from './cartoonChrome';
+import { cartoonButton } from './cartoonChrome';
 import { navRegister } from './menuNav';
 
 /** Reward is already saved before this presentation starts. */
@@ -71,8 +71,8 @@ export class RewardReveal {
     this.timers.push(scene.time.delayedCall(titleAt+cfg.ackDelayMs,()=>{
       if(this.destroyed)return;
       const button=scene.add.container(VIEW.cx,VIEW.bottom-29);
-      const g=scene.add.graphics();cartoonPanel(g,-105,-19,210,38,0x28af70,8);button.add(g);
-      const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',stroke:'#081225',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
+      const g=scene.add.graphics();cartoonButton(g,-105,-19,210,38,0x28af70,8);button.add(g);
+      const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true},resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
       const acknowledge=()=>{if(this.destroyed)return;this.destroy();close();};
       const hit=scene.add.rectangle(0,0,210,38,0,0).setDepth(610).setInteractive({useHandCursor:true})
         .on('pointerdown',acknowledge);button.add(hit);navRegister(scene,hit,acknowledge);

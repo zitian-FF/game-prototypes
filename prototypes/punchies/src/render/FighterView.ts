@@ -377,7 +377,7 @@ export class FighterView {
 
   private drawArt(f: Fighter, now: number, walking: boolean): boolean {
     const stance = stanceOf(f);
-    const prefix = f.anchored ? 'dummy' : `${f.char}${this.color !== mainLook(f.char).color ? '_alt' : ''}`;
+    const prefix = f.anchored ? 'dummy' : f.char;
     let action = walking ? 'walk' : 'idle';
     let progress = ((now / 1000) * (walking ? tune.view.puppet.walkPhasePerPixel / 0.35 : 1)) % 1;
     if (f.punch) {

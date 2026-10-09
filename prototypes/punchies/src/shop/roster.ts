@@ -7,7 +7,7 @@ import { STARTER_SKINS } from '../render/skinPalette';
 export const DEFAULT_SKIN = 'default';
 
 export function availableFighters(state: ShopDraftState): CharId[] {
-  return CHARACTER_IDS.filter(id => id !== 'tee' || state.owned.includes(WELCOME_FIGHTER));
+  return CHARACTER_IDS.filter(id => ['marco','mia','bruno'].includes(id) || SHOP_ITEMS.some(item => item.kind === 'fighters' && item.boxer === id && state.owned.includes(item.id)));
 }
 
 export function skinItem(char: string, skin: string): ShopItem | undefined {
@@ -16,7 +16,7 @@ export function skinItem(char: string, skin: string): ShopItem | undefined {
 
 export function ownedSkins(state: ShopDraftState, char: CharId): string[] {
   return [DEFAULT_SKIN, ...SHOP_ITEMS.filter(item =>
-    item.kind === 'skins' && item.boxer === char && (STARTER_SKINS.includes(item.id) || state.owned.includes(item.id))).map(item => item.id)];
+    item.kind === 'skins' && item.boxer === char && state.owned.includes(item.id)).map(item => item.id)];
 }
 
 export function equippedSkin(state: ShopDraftState, char: CharId, requested: unknown): string {

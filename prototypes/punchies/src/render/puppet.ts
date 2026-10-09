@@ -18,7 +18,6 @@ import { armPose, punchExtension, uppercutFireIntensity, gloveRegistration } fro
 type Pt = { x: number; y: number };
 
 const NAVY = 0x101b32;
-const key = (name: string) => `punchies:${name}`;
 
 interface CharLook {
   skin: number;
@@ -26,15 +25,16 @@ interface CharLook {
   headOrigin: number;
   headScale: number;
   torsoScale: number;
-  // Recolour for the mirror-match "alt" look: hue range (deg) and shift.
-  alt: { from: [number, number]; shift: number };
 }
 
 const LOOKS: Record<string, CharLook> = {
-  tee: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1,alt:{from:[335,380],shift:70}},
-  marco: { skin: 0xf0a060, headOrigin: 0.49, headScale: 1, torsoScale: 1, alt: { from: [190, 265], shift: -36 } },
-  mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1, alt: { from: [338, 375], shift: -28 } },
-  bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1, alt: { from: [85, 175], shift: -38 } },
+  longan: {skin:0xe9a26b,headOrigin:.5,headScale:1,torsoScale:1},
+  tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1},
+  dragon: {skin:0xf0ae72,headOrigin:.5,headScale:1,torsoScale:1},
+  tee: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
+  marco: { skin: 0xf0a060, headOrigin: 0.49, headScale: 1, torsoScale: 1 },
+  mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1 },
+  bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1 },
 };
 
 // Art registration follows prepare-assets.mjs; runtime sizes are in tune.view.puppet.
@@ -42,83 +42,9 @@ const PONYTAIL_PIVOT = 0.915;
 
 const PARTS = ['head', 'torso', 'glove_left', 'glove_right', 'boot_left', 'boot_right'];
 
-const partKey = (char: string, alt: boolean, name: string) => key(`part_${char}${alt ? '_alt' : ''}_${name}`);
-
-// Every character with parts gets an alt (hue shifted) copy of each part,
-// made once in a canvas, so a mirror match needs no extra download.
-export function makeAltParts(scene: Phaser.Scene): void {
-  for (const [char, look] of Object.entries(LOOKS)) {
-    for (const name of [...PARTS, 'ponytail', 'ponytail_left', 'ponytail_right']) {
-      const src = partKey(char, false, name);
-      const dst = partKey(char, true, name);
-      if (!scene.textures.exists(src) || scene.textures.exists(dst)) continue;
-      const img = scene.textures.get(src).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
-      const w = img.width;
-      const h = img.height;
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
-      ctx.drawImage(img, 0, 0);
-      const data = ctx.getImageData(0, 0, w, h);
-      const px = data.data;
-      for (let i = 0; i < px.length; i += 4) {
-        if (px[i + 3] === 0) continue;
-        const [hh, s, v] = rgbToHsv(px[i], px[i + 1], px[i + 2]);
-        if (s < 0.35 || v < 0.2) continue; // skin is orange, outlines are dark
-        let deg = hh;
-        if (look.alt.from[1] > 360 && deg < look.alt.from[1] - 360) deg += 360;
-        if (deg < look.alt.from[0] || deg > look.alt.from[1]) continue;
-        const [r, g, b] = hsvToRgb(deg + look.alt.shift, s, v);
-        px[i] = r;
-        px[i + 1] = g;
-        px[i + 2] = b;
-      }
-      ctx.putImageData(data, 0, 0);
-      scene.textures.addCanvas(dst, canvas);
-    }
-  }
-}
-
 function lerpRgb(a: number, b: number, t: number): number {
   const ch = (shift: number) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t);
   return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
-
-function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
-  const rr = r / 255;
-  const gg = g / 255;
-  const bb = b / 255;
-  const max = Math.max(rr, gg, bb);
-  const min = Math.min(rr, gg, bb);
-  const d = max - min;
-  let h = 0;
-  if (d > 0) {
-    if (max === rr) h = ((gg - bb) / d) % 6;
-    else if (max === gg) h = (bb - rr) / d + 2;
-    else h = (rr - gg) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  return [h, max === 0 ? 0 : d / max, max];
-}
-
-function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
-  const hh = (((h % 360) + 360) % 360) / 60;
-  const c = v * s;
-  const x = c * (1 - Math.abs((hh % 2) - 1));
-  const m = v - c;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (hh < 1) [r, g, b] = [c, x, 0];
-  else if (hh < 2) [r, g, b] = [x, c, 0];
-  else if (hh < 3) [r, g, b] = [0, c, x];
-  else if (hh < 4) [r, g, b] = [0, x, c];
-  else if (hh < 5) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }
 
 // Elbow (or knee) of a two-segment limb from `s` to `w`, bent toward `outward`.
@@ -221,9 +147,9 @@ export class Puppet {
   }
 
   // True when this character's parts are loaded.
-  private bind(char: string, alt: boolean, skin='default'): boolean {
-    const id = `${char}${alt ? '_alt' : ''}:${skin}`;
-    const part=(name:string)=>skinTexture(this.scene,char,skin,`part_${char}${alt&&skin==='default'?'_alt':''}_${name}`);
+  private bind(char: string, skin='default'): boolean {
+    const id = `${char}:${skin}`;
+    const part=(name:string)=>skinTexture(this.scene,char,skin,`part_${char}_${name}`);
     if (this.bound === id) return true;
     const look = LOOKS[char];
     if (!look) return false;
@@ -252,7 +178,7 @@ export class Puppet {
     const { f } = a;
     const originalLook = LOOKS[f.char];
     const look = originalLook && { ...originalLook, skin: limbSkin(f.char,a.skin??'default',originalLook.skin) };
-    if (!look || f.anchored || !this.bind(f.char, a.alt,a.skin)) {
+    if (!look || f.anchored || !this.bind(f.char,a.skin)) {
       this.hide();
       return false;
     }
@@ -333,7 +259,7 @@ export class Puppet {
     const hrot = th + twist * 0.4 + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
     const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale * (f.char==='tee'?rig.teeHeadScale:1);
     this.head.setPosition(hpos.x, hpos.y).setRotation(hrot).setScale(hscale).setAlpha(alpha).setVisible(true);
-    if (this.scene.textures.exists(skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}${a.alt&&(a.skin??'default')==='default'?'_alt':''}_ponytail`))) {
+    if (this.scene.textures.exists(skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}_ponytail`))) {
       const sway = Math.sin(a.walk * 0.8 + now / 400) * (0.1 + 0.25 * a.stride) + (hitT < 1 ? 0.4 * (1 - hitT) : 0);
       const ppos = P(rig.headForward * k - snap - 11 * k, 0, headDy);
       this.ponytail.setPosition(ppos.x, ppos.y).setRotation(hrot + sway).setScale(hscale).setAlpha(alpha).setVisible(true);
@@ -341,7 +267,7 @@ export class Puppet {
 
     this.twinTails.forEach((tail,i)=>{
       const name='ponytail_'+(i===0?'left':'right');
-      const texture=skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}${a.alt&&(a.skin??'default')==='default'?'_alt':''}_${name}`);
+      const texture=skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}_${name}`);
       if(!this.scene.textures.exists(texture)){tail.setVisible(false);return;}
       const side=i===0?1:-1,root=P(rig.headForward*k-snap-rig.teeTailBack*k,side*rig.teeTailSpread*k,headDy);
       const sway=Math.sin(now/rig.teeTailSwayMs+a.walk*rig.teeTailWalkCoupling+i*rig.teeTailPhase)*(rig.teeTailIdleSway+rig.teeTailSway*a.stride)+(hitT<1?side*rig.teeTailHitSway*(1-hitT):0);

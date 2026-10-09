@@ -2,7 +2,7 @@ import { tune } from './tune';
 
 // One scale for artwork and simulation geometry. Character proportions are
 // preserved; damage, speed and frame timings are independent of body size.
-const PROPORTIONS: Record<string, number> = { marco: 1, mia: 0.88, bruno: 1.12, tee: 0.88 };
+const PROPORTIONS: Record<string, number> = { marco: 1, mia: 0.88, bruno: 1.12, tee: 0.88, tyke: 1.18, dragon: 1 };
 export function fighterScale(f: string | { char: string }): number {
   return tune.view.fighterScale * (PROPORTIONS[typeof f === 'string' ? f : f.char] ?? 1);
 }

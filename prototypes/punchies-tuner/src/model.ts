@@ -1,12 +1,12 @@
 import initial from '../../punchies/tune.json';
 import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
-import { punchCfg, CHARACTER_INFO, type CharId } from '../../punchies/src/sim/character';
+import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punchies/src/sim/character';
 
 export type Doc = typeof initial;
 const template = structuredClone(initial);
 export const defaults = () => structuredClone(template);
-export const characters = Object.keys(initial.characters) as CharId[];
+export const characters = [...CHARACTER_IDS];
 export const names = CHARACTER_INFO;
 export const punches = ['jab','cross','hook','uppercut'] as const;
 export const meta = metadata as unknown as Record<string,{min:number;max:number;step:number;desc:string}>;

@@ -358,8 +358,8 @@ export class TutorialScene extends Phaser.Scene {
       .text(VIEW.cx, VIEW.cy - 60, t('tutorial.tutorial_complete'), { fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(291);
-    const btn=(x:number,label:string,key:string,accent:'default'|'purple'='default')=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key),false,291,accent);
-    btn(VIEW.cx - 165, t('common.training'), 'Training', 'purple');
+    const btn=(x:number,label:string,key:string,accent:'default'|'purple'='default',data?:object)=>titleButton(this,x,VIEW.cy+10,150,38,label,()=>startScreen(this,key,data),false,291,accent);
+    btn(VIEW.cx - 165, t('common.training'), 'CharSelect', 'purple',{mode:'training'});
     btn(VIEW.cx, t('common.single_player'), 'VsAI');
     btn(VIEW.cx + 165, t('common.menu'), 'Menu');
   }

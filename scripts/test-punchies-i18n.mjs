@@ -12,7 +12,7 @@ const localesDir = `${src}/i18n/locales`;
 const en = JSON.parse(fs.readFileSync(`${localesDir}/en.json`, 'utf8'));
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 const walk = (d) => fs.readdirSync(d).flatMap((f) => { const p = path.join(d, f); return fs.statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : []; });
-const files = walk(src).filter((f) => !f.includes('/i18n/'));
+const files = walk(src).map(f => f.split(path.sep).join('/')).filter((f) => !f.replaceAll('\\','/').includes('/i18n/'));
 
 // ---- 1. every t() key exists, with the right placeholders; no unused keys ----
 const used = new Set();
@@ -40,7 +40,8 @@ for (const file of files) {
   visit(sf);
 }
 // Dynamic keys are limited to a few groups, each checked for completeness below.
-const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': ['marco', 'mia', 'bruno', 'tee'], 'char.': ['marco', 'mia', 'bruno', 'tee'] };
+const { CHARACTER_IDS } = await loadTs('./prototypes/punchies/src/sim/character', ['CHARACTER_IDS']);
+const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS };
 for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
 for (const m of fs.readFileSync(`${src}/shop/draft.ts`, 'utf8').matchAll(/reasonKey:'([^']+)'/g)) { assert.ok(m[1] in en, `missing shop error key ${m[1]}`); used.add(m[1]); }
 for (const [prefix, ids] of Object.entries(groups)) for (const id of ids) {
