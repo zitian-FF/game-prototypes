@@ -3288,5 +3288,523 @@
     "min": 0,
     "max": 2,
     "step": 0.01
+  },
+  "characters.tyke.hp": {
+    "cat": "Characters",
+    "desc": "Marco: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.dragon.hp": {
+    "cat": "Characters",
+    "desc": "Marco: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tyke.stamina": {
+    "cat": "Characters",
+    "desc": "Marco: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.dragon.stamina": {
+    "cat": "Characters",
+    "desc": "Marco: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tyke.regen": {
+    "cat": "Characters",
+    "desc": "Marco: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.dragon.regen": {
+    "cat": "Characters",
+    "desc": "Marco: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tyke.stun": {
+    "cat": "Characters",
+    "desc": "Marco: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.dragon.stun": {
+    "cat": "Characters",
+    "desc": "Marco: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tyke.speed": {
+    "cat": "Characters",
+    "desc": "Marco: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.dragon.speed": {
+    "cat": "Characters",
+    "desc": "Marco: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.tyke.jab.damage": {
+    "cat": "Characters",
+    "desc": "Marco jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.jab.damage": {
+    "cat": "Characters",
+    "desc": "Marco jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.jab.push": {
+    "cat": "Characters",
+    "desc": "Marco jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.dragon.jab.push": {
+    "cat": "Characters",
+    "desc": "Marco jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tyke.jab.reach": {
+    "cat": "Characters",
+    "desc": "Marco jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.dragon.jab.reach": {
+    "cat": "Characters",
+    "desc": "Marco jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tyke.jab.startup": {
+    "cat": "Characters",
+    "desc": "Marco jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.jab.startup": {
+    "cat": "Characters",
+    "desc": "Marco jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Marco jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Marco jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.cross.damage": {
+    "cat": "Characters",
+    "desc": "Marco cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.cross.damage": {
+    "cat": "Characters",
+    "desc": "Marco cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.cross.push": {
+    "cat": "Characters",
+    "desc": "Marco cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.dragon.cross.push": {
+    "cat": "Characters",
+    "desc": "Marco cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tyke.cross.reach": {
+    "cat": "Characters",
+    "desc": "Marco cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.dragon.cross.reach": {
+    "cat": "Characters",
+    "desc": "Marco cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tyke.cross.startup": {
+    "cat": "Characters",
+    "desc": "Marco cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.cross.startup": {
+    "cat": "Characters",
+    "desc": "Marco cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Marco cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Marco cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.hook.damage": {
+    "cat": "Characters",
+    "desc": "Marco hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.hook.damage": {
+    "cat": "Characters",
+    "desc": "Marco hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.hook.push": {
+    "cat": "Characters",
+    "desc": "Marco hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.dragon.hook.push": {
+    "cat": "Characters",
+    "desc": "Marco hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tyke.hook.reach": {
+    "cat": "Characters",
+    "desc": "Marco hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.dragon.hook.reach": {
+    "cat": "Characters",
+    "desc": "Marco hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tyke.hook.startup": {
+    "cat": "Characters",
+    "desc": "Marco hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.hook.startup": {
+    "cat": "Characters",
+    "desc": "Marco hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Marco hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Marco hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.dragon.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.tyke.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.dragon.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.tyke.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.dragon.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.tyke.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.tyke.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.dragon.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
   }
 }

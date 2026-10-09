@@ -176,9 +176,7 @@
   "shop.g_p_tee_free": "G.P. TEE · FREE",
   "shop.g_p_tee_free_welcome": "G.P. Tee · FREE welcome fighter.\nPower and speed, with low HP, stamina and stun resistance.",
   "shop.guaranteed_fighter_of_the_day": "Guaranteed fighter of the day.\nPortrait, rig and stats are draft placeholders.",
-  "shop.item.fighter-five.name": "THE ROOKIE",
   "shop.item.fighter-four.name": "G.P. TEE",
-  "shop.item.fighter-six.name": "THE SOUTHPAW",
   "shop.item.skin-bruno-gold.name": "BRUNO · GOLDEN VETERAN",
   "shop.item.skin-bruno-unique.name": "BRUNO · OLD CHAMP",
   "shop.item.skin-bruno.name": "BRUNO · OLD GOLD",
@@ -252,5 +250,12 @@
   "tutorial.the_joystick_left_side": "the joystick (left side)",
   "tutorial.the_left_stick": "the left stick",
   "tutorial.tutorial_complete": "TUTORIAL COMPLETE",
-  "tutorial.your_fist_travels_out_too": "Your fist travels out. Too close = SOUR (weak). At full extension = SWEET. Step back a little and land a SWEET hit."
+  "tutorial.your_fist_travels_out_too": "Your fist travels out. Too close = SOUR (weak). At full extension = SWEET. Step back a little and land a SWEET hit.",
+  "char.tyke.nick": "Thunder",
+  "char.dragon.nick": "The Blind Fist",
+  "shop.item.fighter-tyke.name": "TYKE MAISON",
+  "shop.item.fighter-dragon.name": "DRAGON",
+  "shop.item.skin-mia-flaming-kunoichi.name": "MIA · FLAMING KUNOICHI",
+  "quote.tyke": "You brought fists. I brought thunder.",
+  "quote.dragon": "I do not need eyes to see your openings."
 }

@@ -31,6 +31,8 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1,alt:{from:[35,65],shift:0}},
+  dragon: {skin:0xf0ae72,headOrigin:.5,headScale:1,torsoScale:1,alt:{from:[335,380],shift:0}},
   tee: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1,alt:{from:[335,380],shift:70}},
   marco: { skin: 0xf0a060, headOrigin: 0.49, headScale: 1, torsoScale: 1, alt: { from: [190, 265], shift: -36 } },
   mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1, alt: { from: [338, 375], shift: -28 } },

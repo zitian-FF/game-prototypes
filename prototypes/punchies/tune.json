@@ -571,6 +571,100 @@
         "recovery": 0,
         "fatigueBars": 0
       }
+    },
+    "tyke": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "dragon": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
     }
   }
 }

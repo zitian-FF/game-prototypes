@@ -410,3 +410,7 @@ Character select shows five bars: Health (HP), Endurance (average of stamina and
 
 ## Room code keypad layout — 2026-10-08
 The join keypad is QWERTY-ordered with the digits 2 to 9 as the top row, then Q to P, A to K and Z to M plus DEL. Look-alike characters (0, O, 1, I, L) stay excluded from room codes and from the keypad.
+
+## Roster expansion — 2026-10-09
+Tyke Maison and Dragon replace fighter pool placeholders and begin locked until pulled. Tyke is a bald, huge African American heavyweight with white eyes, lightning facial ink, gold gloves and a championship belt. Dragon is a medium-weight karate fighter in a white gi, red padded fingerless gloves, bare feet and a red 滅 blindfold with two independently animated cloth tails. Each starts with a separate copy of Marco's tune entry; user will tune later. Tyke's render/hit geometry proportion is 1.18, Dragon 1.0, compared with Marco 1.0.
+Mia's Flaming Kunoichi unique skin retains Mia stats and blonde identity, with red/white ninja robes, slim half gloves and separate ponytail. The skin uses its own portrait and rig parts. Cyan Rush, Violet Resolve and Golden Veteran are no longer automatically available; all three are locked palette skin pool rewards and require explicit ownership, including on existing saves where they were previously implicit. Explicit owned records remain owned. Daily offers schema advances to refresh cached offers once. Welcome G.P. Tee remains unchanged.

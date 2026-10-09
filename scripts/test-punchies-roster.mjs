@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 const store=new Map();
 const storage={getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)};
-const ids=['marco','mia','bruno','tee'];
+const ids=['marco','mia','bruno','tee','tyke','dragon'];
 const character={CHARACTER_IDS:ids,isCharId:id=>ids.includes(id)};
 const portalStore={store:{getItem:k=>storage.getItem(k)??null,setItem:(k,v)=>storage.setItem(k,v),removeItem:k=>storage.removeItem?.(k)}};
 const portalKeys={KEYS:{audio:'punchies:audio:v1',shop:'punchies:shop-preview:v1',tutorial:'punchies:tutorial:v1',chars:'punchies:chars:v1',localInputs:'punchies:localInputs:v1'}};
@@ -21,7 +21,7 @@ let state=draft.newShopDraft();
 assert.deepEqual(Array.from(roster.availableFighters(state)),ids.slice(0,3));
 const welcome=draft.welcomePull(state);assert(welcome.ok);state=welcome.state;assert.equal(welcome.item.boxer,'tee');assert(roster.availableFighters(state).includes('tee'));assert.equal(draft.welcomePull(state).ok,false);
 state={...state,owned:[...state.owned,'skin-mia','skin-marco-unique']};draft.saveShopDraft(state);
-assert.deepEqual(Array.from(roster.ownedSkins(state,'mia')),['default','skin-mia-violet','skin-mia']);assert.equal(roster.equippedSkin(state,'marco','skin-mia'),'default');assert.equal(roster.equippedSkin(state,'mia','missing'),'default');
+assert.deepEqual(Array.from(roster.ownedSkins(state,'mia')),['default','skin-mia']);assert.equal(roster.equippedSkin(state,'marco','skin-mia'),'default');assert.equal(roster.equippedSkin(state,'mia','missing'),'default');
 prefs.saveCharPrefs({skins:{p1:{mia:'skin-mia'},p2:{mia:'default'}}});assert.equal(prefs.loadCharPrefs().skins.p1.mia,'skin-mia');assert.equal(prefs.loadCharPrefs().skins.p2.mia,'default');
 let started=null;
 const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
@@ -36,7 +36,7 @@ const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
 const s=new Scene();s.data0={mode:'vsai'};s.sides=[{sel:3,src:'any',locked:false},{sel:0,src:'any',locked:false}];
 draft.saveShopDraft(draft.newShopDraft());s.confirm(0);assert.equal(s.sides[0].locked,false);assert(!s.sides[0].selected);assert.match(s.notice,/locked/i);
 draft.saveShopDraft(state);s.confirm(0);assert(s.sides[0].selected);assert.equal(s.sides[0].locked,false);s.confirm(0);assert(s.sides[0].locked);assert.equal(s.active,1);
-s.sides[1].sel=1;s.confirm(1);s.cycleSkin(1,1);s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia');s.move(1,1);assert.equal(s.sides[1].sel,1);assert.equal(s.sides[1].skin,'default');s.cycleSkin(1,1);s.cycleSkin(1,1);s.confirm(1);s.fight();assert.equal(started.name,'VsAI');assert.deepEqual(Array.from(started.data.chars),['tee','mia']);assert.deepEqual(Array.from(started.data.skins),['default','skin-mia']);
+s.sides[1].sel=1;s.confirm(1);s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia');s.move(1,1);assert.equal(s.sides[1].sel,1);assert.equal(s.sides[1].skin,'default');s.cycleSkin(1,1);s.confirm(1);s.fight();assert.equal(started.name,'VsAI');assert.deepEqual(Array.from(started.data.chars),['tee','mia']);assert.deepEqual(Array.from(started.data.skins),['default','skin-mia']);
 s.back(1);assert(!s.sides[1].selected);s.move(1,1);assert.equal(s.sides[1].sel,2);
 s.data0={mode:'online',localIdx:1};assert.equal(s.prefSide(1),'p1');
 console.log('Roster: welcome lock/unlock, one-time claim, per-player skin persistence, ownership isolation, select/skin/ready/back flow, skin handoff, missing unique art exclusion, and guest preference slot passed');
@@ -57,6 +57,13 @@ console.log('Online roster: independent peer collection, unavailable-pick reject
 draft.saveShopDraft(state);s.data0={mode:'vsai'};s.sides[1].sel=1;assert.equal(s.preferredSkin(1),'skin-mia');s.sides[0].sel=0;assert.equal(s.preferredSkin(0),'default');
 console.log("Returning to an owned fighter restores that player's equipped skin");
 
-// Matching starter skins are legal for both players, independent of ownership.
+// Matching skins are legal for both players after acquisition.
+draft.saveShopDraft({...state,owned:[...state.owned,"skin-marco-cyan"]});
 const mirror=new Scene();mirror.data0={mode:'vsai'};mirror.sides=[{sel:0,src:'any',locked:true,skin:'skin-marco-cyan'},{sel:0,src:'any',locked:true,skin:'skin-marco-cyan'}];mirror.fight();assert.deepEqual(Array.from(started.data.chars),['marco','marco']);assert.deepEqual(Array.from(started.data.skins),['skin-marco-cyan','skin-marco-cyan']);
 console.log('Matching starter skins are selectable and handed off unchanged');
+
+const fresh=draft.newShopDraft();
+for(const id of palette.STARTER_SKINS){assert(draft.availablePool(fresh,"skins").some(i=>i.id===id));assert(!roster.ownedSkins(fresh,id.split("-")[1]).includes(id));}
+for(const id of ["tyke","dragon"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}
+assert(draft.availablePool(fresh,"skins").some(i=>i.id==="skin-mia-flaming-kunoichi"&&i.skinType==="unique"));
+console.log("New fighters and alternate skins locked until acquired; unique Kunoichi reward in pool passed");
