@@ -4,6 +4,8 @@ Dual-profile builds and an authoritative art production/compression standard.
 ## What was implemented
 Standard and compact builds share one codebase and support web, CrazyGames, Poki and Playgama with separate verified assets and root entry points. Both profiles and their parity checks passed CI; standard WIP deployed successfully. Art production now has a single standard in art/PRODUCTION_STANDARD.md, linked from the art README and repository agent instructions. It covers lossless masters, source lineage, stable registration, palette reuse, encoder settings, regeneration, byte budgets and review evidence.
 
+- Release plan section 8 specifies progression (Boxer Level, daily XP cap, milestone chest vouchers, earn-only Veteran skins, titles), the profile screen and alias, and titles shown in online fights. Not built yet.
+
 ## Key technical decisions
 Standard portraits fit within 1280px at WebP Q90; compact portraits fit within 768px at Q78, with backgrounds/ring layers within 960px at Q72. Fighter parts remain byte-identical and atlases preserve geometry. Both profiles retain all fighters, unique skins and 21 palette skins. Standard music is 128 kbps MP3; compact music is full-length 64 kbps AAC stereo 44.1kHz. Hard package budgets are 20 MB / 10 MB; portrait production targets are 200 KB / 100 KB with an existing hard limit below 1 MB. Isolated builds measure about 16.15 MB / 9.44 MB. New approved art must update the lossless archive and both prepared profiles, with SHA-256 inventories and current source identity.
 
