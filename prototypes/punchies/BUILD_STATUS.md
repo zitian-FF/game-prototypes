@@ -1,25 +1,12 @@
 ## Current milestone
-Training roster flow and dummy portrait complete; verified locally and ready for review.
-
+Standardize Tyke and Longan portrait waist framing, stacked on outsource content PR #280.
 ## What was implemented
-- Main-menu and tutorial Training entries open player-only roster selection.
-- Player selects an owned boxer and skin; the opponent is a fixed noninteractive dummy with a dedicated portrait.
-- Training hides match format/difficulty controls and starts with the selected boxer/skin.
-- Removed the in-training character selector; stance and reset remain.
-- Dummy portrait created through CODEX Outsource's separate CLI workflow, inspected, alpha verified and uploaded to R2. Public bundle SHA matches and unrelated entries are unchanged.
-
+Crop Tyke below his champion belt and Longan below his waistband at asset packing time. Reduce their selection portrait heights to 189 and 174 logical pixels respectively. All portrait consumers receive the same waist crop.
 ## Key technical decisions
-- Reuse the existing roster flow and ownership checks. The dummy never becomes a playable roster ID.
-- Training selection persists P1 boxer/skin. Training validates ownership on entry.
-- Portrait remains outside Git at loose/portrait_training_dummy.png in R2; build uses lossless optimization.
-- Separate training-selection branch stacks above the earlier selection-chrome work.
-
+Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
-- Pending user review and merge approval for stacked changes.
-
+None.
 ## Known issues
-- Existing Phaser chunk size and locale import build warnings remain.
-- Code is not deployed live. Tutorial route was inspected and compiled; browser testing exercised the main-menu route.
-
+Not merged or deployed. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review the training preview and merge after earlier changes. Typecheck/build, roster/training ownership handoff, localisation and pixel/alpha optimization checks pass. Brave confirmed the dummy cannot take focus, selected Mia enters Training, character button is absent and portrait placement is correct, with no console errors.
+Review and merge the stacked changes. Brave selection review has no console errors; typecheck/build and pixel-preservation regression pass.

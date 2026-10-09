@@ -17,7 +17,10 @@ for (const file of fs.readdirSync(path.join(root, 'loose')).filter(f => f.endsWi
   const target = path.join(out, `${path.parse(file).name}.webp`);
   if (!fs.existsSync(target)) continue;
   const original = path.join(root, 'loose', file);
-  const a = await sharp(original).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let source = sharp(original);
+  const keepTop = {portrait_tyke:.86,portrait_longan:.75}[path.parse(file).name];
+  if(keepTop){const meta=await source.metadata();source=source.extract({left:0,top:0,width:meta.width,height:Math.round(meta.height*keepTop)});}
+  const a = await source.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const b = await sharp(target).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.deepEqual(a.info, b.info, `${file}: dimensions and channels preserved`);
   for (let i = 0; i < a.data.length; i += 4) {
@@ -27,4 +30,4 @@ for (const file of fs.readdirSync(path.join(root, 'loose')).filter(f => f.endsWi
   assert.ok(fs.statSync(target).size < fs.statSync(original).size, 'conversion saves bytes');
   converted++;
 }
-console.log(`PASS: ${Object.keys(aliases).length} verified mirror aliases; ${converted} smaller images preserve dimensions, visible pixels and alpha`);
+console.log(`PASS: ${Object.keys(aliases).length} verified mirror aliases; ${converted} smaller images preserve retained dimensions, visible pixels and alpha (including waist crops)`);

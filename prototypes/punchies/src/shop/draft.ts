@@ -8,6 +8,8 @@ export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
   {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Welcome fighter: explosive power and speed, low HP, stamina and stun resistance.'},
+  {id:'fighter-longan',name:'LONGAN',kind:'fighters',boxer:'longan',accent:0x628958,description:'Tall Southeast Asian fighter with ivory handwraps and longan motifs. Provisional stats.'},
+  {id:'skin-marco-mcclassic',name:'MARCO · McCLASSIC',kind:'skins',boxer:'marco',accent:0x35ba39,skinType:'unique',portraitKey:'portrait_marco_mcclassic',rigGroup:'marco_mcclassic',description:'Helmet-free Marco in a black top, green kit and gloves. Same Marco stats.'},
   {id:'fighter-tyke',name:'TYKE MAISON',kind:'fighters',boxer:'tyke',accent:0xf4c832,description:'Heavyweight champion with gold gloves and lightning ink. Stats are provisional.'},
   {id:'fighter-dragon',name:'DRAGON',kind:'fighters',boxer:'dragon',accent:0xef3340,description:'Blindfolded karate fighter with padded fingerless gloves. Stats are provisional.'},
   {id:'skin-marco-cyan',name:'MARCO · CYAN RUSH',kind:'skins',boxer:'marco',accent:0x16cde3,description:'Alternate skin: black hair, cyan kit, original skin tone.'},
@@ -43,13 +45,13 @@ export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{ret
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
-  if(s.offerDay===day&&s.offerIds&&s.offerSchema===4)return s;
+  if(s.offerDay===day&&s.offerIds&&s.offerSchema===5)return s;
   const seed=Math.floor(now/86400000);
   const pick=(kind:ShopKind,count:number)=>{const pool=availablePool(s,kind);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   const skins=availablePool(s,'skins');
   const pickSkins=(unique:boolean,count:number)=>{const pool=skins.filter(i=>(i.skinType==='unique')===unique);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
-  return {...s,offerDay:day,offerSchema:4,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
+  return {...s,offerDay:day,offerSchema:5,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
 }
 export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&i.kind===kind);}
 export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
