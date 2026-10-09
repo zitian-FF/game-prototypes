@@ -253,6 +253,8 @@ Pacing: level 50 needs about 34,300 XP in total, so about 114 days at the 300 XP
 
 `src/progress/alias.ts` (pure rules), `alias.json` (limits, reserved names, offensive list) and `profile.ts` (save and wiring). `getAlias()` returns the typed alias, else the portal's player name, else a generated "Boxer 1234" kept for good. `setAlias(raw)` returns `{ ok: true, alias }` or `{ ok: false, reason }` with reason `short`, `long`, `chars`, `reserved` or `blocked` (Codex maps these to `t()` texts for the editor). The alias is never sent to analytics. `localWireProfile()` is `{ alias, title, level }`. The online `hello` message now carries it; `NetSession.peer` holds the opponent's profile after validation (alias re-sanitised, title id checked against the list, level clamped), with safe defaults for older clients. `sideProfiles(localIdx, peer)` returns the per-side profiles for the VS intro, the area under the health bar and the victory screen; offline, pass `null` for the bot. `PORTAL_FIXED_ALIAS=on` at build time makes the alias non-editable for portals that forbid user text. The portal `playerName()` hook exists but no adapter implements it yet.
 
+Shop items can carry `earnOnly: true`: they never enter a chest or the daily offers, and are granted only by the level track. Use it for the Veteran skins.
+
 Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled for the six launch languages by the owner or through the translation sheet process before any portal submission.
 
 ### Open questions
@@ -273,3 +275,4 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - 2026-10-09: added section 8, progression, profile and titles (Claude). Ranked pushed past launch.
 - 2026-10-09: progression logic built, PR 1 of 2 (Claude): rules, daily cap, vouchers, titles, wiring into match ends. Profile and alias logic is PR 2.
 - 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.
+- 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
