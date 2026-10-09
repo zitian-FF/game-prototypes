@@ -19,6 +19,9 @@ interface Item {
 }
 
 const FIGHT_BUTTON_DEPTH = 130; // makeButton's depth; anything above is a modal
+// The always-present pause button sits above that depth but is not a modal: it must not
+// take keyboard / controller control away from the fighter.
+export const PAUSE_BUTTON_DEPTH = 220;
 const STICK = 0.6;
 const REPEAT_MS = 220;
 
@@ -77,7 +80,7 @@ export class MenuNav {
   }
 
   private hasModal(): boolean {
-    return this.items.some((i) => i.bg.active && i.bg.visible && i.bg.depth > FIGHT_BUTTON_DEPTH);
+    return this.items.some((i) => i.bg.active && i.bg.visible && i.bg.depth > FIGHT_BUTTON_DEPTH && i.bg.depth !== PAUSE_BUTTON_DEPTH);
   }
 
   private move(dx: number, dy: number): void {

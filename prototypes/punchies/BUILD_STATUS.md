@@ -6,6 +6,8 @@ Crop Tyke below his champion belt and Longan below his waistband at asset packin
 Release-plan decisions remain documented in docs/release-plan.md; this release implements the approved roster/art/UI updates.
 - G.P. Tee moved from a free Shop claim into the daily fighter chest pool; the welcome claim panel, its strings and its test cases are gone.
 
+- Fixed keyboard and controller fighting: the pause button (depth 220) counted as an open modal, so every fight scene ignored keyboard and controller fight input and only touch worked. The pause button is now excluded from the modal check (`PAUSE_BUTTON_DEPTH` in `ui/menuNav.ts`).
+
 ## Key technical decisions
 Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
