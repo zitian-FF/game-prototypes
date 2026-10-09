@@ -5,9 +5,10 @@ import config from './draft-config.json';
 export { config as shopConfig };
 export type ShopKind = 'fighters' | 'skins';
 export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; }
+// G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
-  {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Welcome fighter: explosive power and speed, low HP, stamina and stun resistance.'},
+  {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Explosive power and speed, low HP, stamina and stun resistance.'},
   {id:'fighter-longan',name:'LONGAN',kind:'fighters',boxer:'longan',accent:0x628958,description:'Tall Southeast Asian fighter with ivory handwraps and longan motifs. Provisional stats.'},
   {id:'skin-marco-mcclassic',name:'MARCO · McCLASSIC',kind:'skins',boxer:'marco',accent:0x35ba39,skinType:'unique',portraitKey:'portrait_marco_mcclassic',rigGroup:'marco_mcclassic',description:'Helmet-free Marco in a black top, green kit and gloves. Same Marco stats.'},
   {id:'fighter-tyke',name:'TYKE MAISON',kind:'fighters',boxer:'tyke',accent:0xf4c832,description:'Heavyweight champion with gold gloves and lightning ink. Stats are provisional.'},
@@ -37,11 +38,7 @@ export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
   if(claimed&&!owned.includes(WELCOME_FIGHTER))owned.push(WELCOME_FIGHTER);
   return {version:1,tokens:s.tokens!,welcomeClaimed:claimed,owned,adDay:shopDay(now),adsToday:s.adDay===shopDay(now)?Math.min(s.adsToday!,config.dailyAdLimit):0,offerDay:s.offerDay,offerIds:Array.isArray(s.offerIds)?s.offerIds.filter(id=>SHOP_ITEMS.some(item=>item.id===id)):undefined,offerSchema:s.offerSchema,purchasedDay:shopDay(now),purchasedChests:s.purchasedDay===shopDay(now)&&Array.isArray(s.purchasedChests)?[...new Set(s.purchasedChests.filter(k=>k==='skins'||k==='fighters'))]:[]};
 }
-export function welcomePull(state:ShopDraftState):ShopResult{
-  if(state.welcomeClaimed)return {ok:false,reason:'Welcome fighter already claimed.',reasonKey:'shop.err.welcome_claimed',state};
-  return {ok:true,item:SHOP_ITEMS[0],state:{...state,tokens:state.tokens,welcomeClaimed:true,owned:[...state.owned,WELCOME_FIGHTER]}};
-}
-export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&i.id!==WELCOME_FIGHTER&&!state.owned.includes(i.id));}
+export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{return SHOP_ITEMS.filter(i=>i.kind===kind&&!state.owned.includes(i.id));}
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
