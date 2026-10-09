@@ -39,6 +39,10 @@ you did so.
 
 ## Stack
 
+For Punchies artwork, asset preparation or compression, read
+`prototypes/punchies/art/PRODUCTION_STANDARD.md` before making changes.
+It defines the standard and compact delivery contracts and their required checks.
+
 Fixed. Do not add, swap, or upgrade any of these without asking first.
 
 - Engine: Phaser 3

@@ -1,17 +1,17 @@
 ## Current milestone
-Independent standard and compact asset profiles for Punchies portal builds.
+Dual-profile builds and an authoritative art production/compression standard.
 
 ## What was implemented
-One codebase builds either profile for web, CrazyGames, Poki or Playgama. Separate staging folders, prepared R2 archives, SHA-256 checks and output directories prevent profile mixing. Standard retains current art and MP3 music; compact uses smaller portraits/backgrounds and full-length AAC music. A CI matrix saves both builds and verifies content parity. Existing 21 palette skins, unique skins, fighters and gameplay are retained.
+Standard and compact builds share one codebase and support web, CrazyGames, Poki and Playgama with separate verified assets and root entry points. Both profiles and their parity checks passed CI; standard WIP deployed successfully. Art production now has a single standard in art/PRODUCTION_STANDARD.md, linked from the art README and repository agent instructions. It covers lossless masters, source lineage, stable registration, palette reuse, encoder settings, regeneration, byte budgets and review evidence.
 
 ## Key technical decisions
-Compact portraits fit within 768px at WebP Q78; backgrounds and all ring layers fit within 960px at Q72. Already-small fighter parts remain byte-identical for registration and palette masks. Atlases keep frame geometry; lossy output is used only when smaller. Music is AAC 64kbps stereo 44.1kHz, with the original full duration. Budgets are 20 MB standard and 10 MB compact. Isolated builds measure about 16.15 MB / 9.44 MB. The standard WIP workflow remains standard. Portal selection is separate from asset profile. Compact fails if its recorded standard-source art ETag or music hash becomes outdated.
+Standard portraits fit within 1280px at WebP Q90; compact portraits fit within 768px at Q78, with backgrounds/ring layers within 960px at Q72. Fighter parts remain byte-identical and atlases preserve geometry. Both profiles retain all fighters, unique skins and 21 palette skins. Standard music is 128 kbps MP3; compact music is full-length 64 kbps AAC stereo 44.1kHz. Hard package budgets are 20 MB / 10 MB; portrait production targets are 200 KB / 100 KB with an existing hard limit below 1 MB. Isolated builds measure about 16.15 MB / 9.44 MB. New approved art must update the lossless archive and both prepared profiles, with SHA-256 inventories and current source identity.
 
 ## Open questions
-No new creative or gameplay decisions. Four forthcoming portrait-only designs remain outside these builds pending approval and integration.
+No new creative decisions. Four forthcoming portrait-only designs remain outside the current runtime builds pending approval and integration. Pixel-art conversion is not part of the compression standard.
 
 ## Known issues
-Compact textures deliberately lose fine detail. Browser playback and rendering were checked in Brave; other portal integrations use existing mock checks, without a live portal submission or multiplayer peer. Existing pending unique reward artwork is unchanged. Normal Vite locale/chunk warnings remain.
+Compact deliberately loses fine detail. Brave rendering/playback and mock portal checks passed; other browser engines, live portal submission and multiplayer peers were not tested. Decoder success does not replace a listening review for new audio. Existing pending unique reward artwork and Vite locale/chunk warnings remain.
 
 ## Next proposed step
-Use the compact CI artifact for portal submission after listening/visual review. Regenerate compact archives from original masters whenever approved standard assets change, then update source identity and archive checksums together.
+Apply the production standard to the next approved art delivery: archive masters, regenerate both profiles, verify source hashes, check visuals and report category sizes and remaining budget headroom.
