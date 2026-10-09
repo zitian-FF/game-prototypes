@@ -105,6 +105,9 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Mia Tanaka | `mia` | Agile | Owned from the start | done | done | |
 | Bruno Kowalski | `bruno` | Tank | Owned from the start | done | done | |
 | G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | `?` | `?` | Hidden in roster until owned |
+| Longan | `fighter-longan` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
+| Tyke Maison | `fighter-tyke` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
+| Dragon | `fighter-dragon` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
 | The Rookie | `fighter-five` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
 | The Southpaw | `fighter-six` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
 
@@ -148,8 +151,8 @@ table entry and no new art. See section 6.
 | Task | Owner | Status |
 | --- | --- | --- |
 | First-time experience (flow, easy fight vs Bruno, skip, Rising Star reveal, free first skin chest, welcome card, Shop badge) | Claude | planned |
-| Remove the free Tee claim: Tee joins the fighter chest pool, welcome claim UI and `WELCOME_FIGHTER` special cases removed, existing owners keep him | Claude | planned |
-| Remove the three starter skins from `STARTER_SKINS` so they join the chest pool; players who equipped one fall back to Default | Claude | planned |
+| Remove the free Tee claim: Tee joins the fighter chest pool, welcome claim UI removed, existing owners keep him | Claude | done |
+| Starter alternate skins join the chest pool; nobody gets them free | Codex (#274) | done |
 | Data-driven palette swaps (table per skin) so new palette skins need no code | Claude with Codex | planned |
 | Unique skin art and rigs (Rising Star, Ring Captain, Old Champ) | Codex | `?` |
 | Tee portrait and rig confirmed final | Codex | `?` |
@@ -170,5 +173,6 @@ table entry and no new art. See section 6.
 
 ## 8. Update log
 
+- 2026-10-09: Tee moved into the fighter chest pool, welcome claim removed (Claude). The code in #274 already moved the starter skins into the chest pool and added Longan, Tyke, Dragon, McClassic and Flaming Kunoichi; Codex to fold them into section 5.
 - 2026-10-09: owner decisions: first skin chest free, sparring partner Bruno, Tee no longer a free claim (Claude).
 - 2026-10-09: created (Claude). Decisions from the owner: easy first fight, skippable, Rising Star gift, starter skins removed.

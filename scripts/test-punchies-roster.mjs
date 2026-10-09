@@ -19,7 +19,7 @@ const roster=module('prototypes/punchies/src/shop/roster.ts',p=>p.includes('skin
 const prefs=module('prototypes/punchies/src/sim/charPrefs.ts',p=>p.includes('character')?character:{BOT_LEVELS:['easy','normal','hard']});
 let state=draft.newShopDraft();
 assert.deepEqual(Array.from(roster.availableFighters(state)),ids.slice(0,3));
-const welcome=draft.welcomePull(state);assert(welcome.ok);state=welcome.state;assert.equal(welcome.item.boxer,'tee');assert(roster.availableFighters(state).includes('tee'));assert.equal(draft.welcomePull(state).ok,false);
+assert(!roster.availableFighters(state).includes('tee'),'Tee is locked until pulled');state={...state,owned:[...state.owned,draft.WELCOME_FIGHTER]};assert(roster.availableFighters(state).includes('tee'));
 state={...state,owned:[...state.owned,'skin-mia','skin-marco-unique']};draft.saveShopDraft(state);
 assert.deepEqual(Array.from(roster.ownedSkins(state,'mia')),['default','skin-mia']);assert.equal(roster.equippedSkin(state,'marco','skin-mia'),'default');assert.equal(roster.equippedSkin(state,'mia','missing'),'default');
 prefs.saveCharPrefs({skins:{p1:{mia:'skin-mia'},p2:{mia:'default'}}});assert.equal(prefs.loadCharPrefs().skins.p1.mia,'skin-mia');assert.equal(prefs.loadCharPrefs().skins.p2.mia,'default');
@@ -39,7 +39,7 @@ draft.saveShopDraft(state);s.confirm(0);assert(s.sides[0].selected);assert.equal
 s.sides[1].sel=1;s.confirm(1);s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia');s.move(1,1);assert.equal(s.sides[1].sel,1);assert.equal(s.sides[1].skin,'default');s.cycleSkin(1,1);s.confirm(1);s.fight();assert.equal(started.name,'VsAI');assert.deepEqual(Array.from(started.data.chars),['tee','mia']);assert.deepEqual(Array.from(started.data.skins),['default','skin-mia']);
 s.back(1);assert(!s.sides[1].selected);s.move(1,1);assert.equal(s.sides[1].sel,2);
 s.data0={mode:'online',localIdx:1};assert.equal(s.prefSide(1),'p1');
-console.log('Roster: welcome lock/unlock, one-time claim, per-player skin persistence, ownership isolation, select/skin/ready/back flow, skin handoff, missing unique art exclusion, and guest preference slot passed');
+console.log('Roster: Tee lock/unlock, per-player skin persistence, ownership isolation, select/skin/ready/back flow, skin handoff, missing unique art exclusion, and guest preference slot passed');
 
 // A peer's locked fighter is independent of the local collection. Invalid or
 // unavailable peer picks cannot make the host start; cosmetic IDs match the boxer.
