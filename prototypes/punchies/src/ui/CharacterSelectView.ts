@@ -81,22 +81,22 @@ export class CharacterSelectView {
       body.add(this.content[s]);
       this.status.push(this.text(body, s === 0 ? 200 : 644, 288, '', 10, '#b6d5f8'));
     }
-    // VS burst is added after the panels so it always draws on top of them.
-    const top = scene.add.container(0, DY);
+    // Painted enamel matchup emblem, distinct from interactive button chrome.
+    const top = scene.add.container(422, DY + 209);
     this.root.add(top);
     const burst = this.graphics(top);
-    burst.fillStyle(0x075acd).fillPoints([
-      {x: 389, y: 148}, {x: 409, y: 169}, {x: 413, y: 141}, {x: 430, y: 175},
-      {x: 454, y: 157}, {x: 444, y: 190}, {x: 463, y: 201}, {x: 440, y: 221},
-      {x: 451, y: 256}, {x: 424, y: 240}, {x: 409, y: 267}, {x: 403, y: 241},
-      {x: 380, y: 251}, {x: 396, y: 219}, {x: 382, y: 201}, {x: 401, y: 186},
-    ], true);
-    burst.fillStyle(0xd92843).fillPoints([
-      {x: 429, y: 147}, {x: 431, y: 184}, {x: 457, y: 175}, {x: 444, y: 205},
-      {x: 463, y: 229}, {x: 435, y: 224}, {x: 443, y: 264}, {x: 420, y: 243},
-      {x: 396, y: 252}, {x: 405, y: 218}, {x: 393, y: 181}, {x: 418, y: 193},
-    ], true);
-    this.text(top, 422, 209, 'VS', 48).setAngle(-9).setStroke('#050c1d', 7);
+    burst.fillStyle(0x050d20,.65).fillCircle(0,5,35);
+    burst.fillStyle(0x101b32).fillCircle(0,0,33);
+    burst.lineStyle(4,0x2587ff).beginPath().arc(0,0,29,Math.PI/2,Math.PI*1.5).strokePath();
+    burst.lineStyle(4,0xec3d52).beginPath().arc(0,0,29,-Math.PI/2,Math.PI/2).strokePath();
+    burst.lineStyle(1,0xdceaff,.4).strokeCircle(0,0,25);
+    burst.fillStyle(0xffffff,.10).fillEllipse(-5,-15,38,12);
+    burst.lineStyle(2,0x2587ff,.6).lineBetween(-36,-7,-30,-7);
+    burst.lineStyle(2,0xec3d52,.6).lineBetween(30,7,36,7);
+    this.text(top,0,1,'VS',31).setAngle(-7).setStroke('#050c1d',4);
+    if (!reducedMotion()) scene.tweens.add({targets:top,scale:tune.view.menu.logoPulseScale,
+      duration:tune.view.menu.logoPulseMs,yoyo:true,repeat:-1,ease:'Sine.InOut'});
+    scene.events.once('shutdown',()=>scene.tweens.killTweensOf(top));
     const stripHit = scene.add.rectangle((STRIP.x0 + STRIP.x1) / 2, STRIP.cy, STRIP.x1 - STRIP.x0, STRIP.h, 0, 0)
       .setInteractive({ useHandCursor: true });
     stripHit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startDrag(p));
@@ -129,7 +129,7 @@ export class CharacterSelectView {
         card.add(portrait);
       }
       const footer = this.graphics(card);
-      footer.fillStyle(0x342052).fillRoundedRect(-48, 12, 96, 23, { tl: 0, tr: 0, bl: 9, br: 9 });
+      footer.fillStyle(0x17243e).fillRoundedRect(-48, 12, 96, 23, { tl: 0, tr: 0, bl: 9, br: 9 });
       this.text(card, 0, 23, id.toUpperCase(), 13);
       const hit = scene.add.rectangle(0, -4, 100, 84, 0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', (p: Phaser.Input.Pointer) => this.startDrag(p));
@@ -271,9 +271,15 @@ export class CharacterSelectView {
         }
       }
     });
-    // Bright framed roster strip, the main call to action of this screen.
-    cartoonPanel(g, STRIP.x, STRIP.y, STRIP.w, STRIP.h, 0x1b2f63, 12);
-    g.lineStyle(3, 0xf3bc35).strokeRoundedRect(STRIP.x, STRIP.y, STRIP.w, STRIP.h, 12);
+    // Recessed roster shelf hugs short rosters; longer rosters retain the scrolling row.
+    const shelfWidth=Math.min(STRIP.w,CHARACTER_IDS.length*STRIP.pitch+28);
+    const shelfX=422-shelfWidth/2;
+    g.fillStyle(0x050d20,.7).fillRoundedRect(shelfX-2,STRIP.y+4,shelfWidth+4,STRIP.h,12);
+    g.fillStyle(0x111d34,.94).fillRoundedRect(shelfX,STRIP.y,shelfWidth,STRIP.h,10);
+    g.lineStyle(2,0x435c7c).strokeRoundedRect(shelfX,STRIP.y,shelfWidth,STRIP.h,10);
+    g.lineStyle(1,0x9eb6d7,.25).lineBetween(shelfX+12,STRIP.y+3,shelfX+shelfWidth-12,STRIP.y+3);
+    g.fillStyle(0x2587ff,.6).fillRoundedRect(shelfX+4,STRIP.y+15,3,22,1);
+    g.fillStyle(0xec3d52,.6).fillRoundedRect(shelfX+shelfWidth-7,STRIP.y+15,3,22,1);
     const focused = state.panels.map((p) => (p.hidden ? '' : p.id)).join('|');
     if (focused !== this.focusKey) {
       const first = this.focusKey === '';
@@ -289,7 +295,10 @@ export class CharacterSelectView {
       const frame = this.cardFrames[i];
       frame.clear();
       this.frame(frame, -50, -46, 100, 84, selected < 0 ? 0x617ba2 : selected === 0 ? 0x65d9ff : 0xff8593);
-      if (selected >= 0) frame.lineStyle(7, 0xf3bc35).strokeRoundedRect(-53, -49, 106, 90, 12);
+      if (selected >= 0) {
+        frame.lineStyle(5,selected===0?0x65d9ff:0xff8593).strokeRoundedRect(-52,-48,104,88,12);
+        frame.lineStyle(1,0xffffff,.7).strokeRoundedRect(-49,-45,98,82,10);
+      }
       state.panels.forEach((p, side) => {
         if (!p.cursor || p.id !== CHARACTER_IDS[i]) return;
         const cx = side === 0 ? -39 : 39;
