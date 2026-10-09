@@ -57,6 +57,11 @@ try{
   assert.equal((await request('save',{session:baseLoaded.session,draft:baseDraft})).code,409);assert.equal(model.baseVersion(remote),1,'Rejected write does not persist a revision');race=false;
   const baseSecond=await request('save',{session:baseLoaded.session,draft:baseDraft});assert.equal(baseSecond.code,200);assert.equal(model.baseVersion(remote),2);
   assert.equal((await request('save',{session:baseLoaded.session,draft:baseSecond.data.doc})).data.commit,null);assert.equal(model.baseVersion(remote),2);
+  const textLoaded=(await request('load')).data,textDraft=structuredClone(textLoaded.doc);model.setArchetype(textDraft,'char.mia.nick','Counter Specialist');
+  const textSaved=await request('save',{session:textLoaded.session,draft:textDraft});assert.equal(textSaved.code,200);assert.deepEqual(textSaved.data.edited,['char.mia.nick']);assert.equal(model.baseVersion(remote),2);
+  assert.equal(model.archetypeValue((await request('load')).data.doc,'char.mia.nick'),'Counter Specialist');
+  model.setArchetype(textDraft,'char.mia.nick','Fast Counter');model.setArchetype(remote,'char.mia.nick','Brawler');
+  assert.equal((await request('save',{session:textLoaded.session,draft:textDraft})).code,409);assert.equal(model.archetypeValue(remote,'char.mia.nick'),'Brawler');
   console.log('PASS: HTTP load/edit/save, actual default branch, selective merge, unknown-field preservation, conflict/SHA race, failed-write retry, no-op, build status, origin/header/host guards and static isolation');
 }finally{if(!process.argv.includes('--serve'))await new Promise(resolve=>server.close(resolve));}
 if(process.argv.includes('--serve')){

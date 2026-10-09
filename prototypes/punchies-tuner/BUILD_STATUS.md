@@ -1,7 +1,9 @@
 ## Current milestone
-Base raw-stat editor and versioned previous-value history implemented in the local GitHub workshop; PR remains open for review.
+Base raw-stat editor, version history, game-equivalent perceived stat preview and localised archetype editing implemented; PR remains open for review.
 
 ## What was implemented
+- Five live coloured stat bars with Base at 80%, shared game formulas and a 100% cap.
+- Archetype textbox with fixed localisation keys, persistent selective saves, conflict detection and English translation-sheet export.
 - Base entry before the fighters, exposing raw core/punch/block/dodge stats without percentage comparisons.
 - History tab and numbered timestamped revisions: initial v0 snapshot, then old/new values for every saved Base change.
 - History persists in tune.json through local-file saves, exports and GitHub saves. No-op and fighter-only saves do not add Base versions.

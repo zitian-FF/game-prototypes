@@ -13,7 +13,15 @@ import path from 'node:path';
 const dir = process.env.I18N_DIR ?? 'prototypes/punchies/src/i18n/locales';
 const LANGS = ['ja', 'ko', 'zh', 'es', 'ar'];
 const GT = { ja: 'ja', ko: 'ko', zh: 'zh-CN', es: 'es', ar: 'ar' };
-const read = (code) => JSON.parse(fs.readFileSync(path.join(dir, `${code}.json`), 'utf8'));
+const read = (code) => {
+  const table=JSON.parse(fs.readFileSync(path.join(dir, `${code}.json`), 'utf8'));
+  const tuneFile=process.env.I18N_TUNE??(process.env.I18N_DIR?null:'prototypes/punchies/tune.json');
+  if(code==='en'&&tuneFile&&fs.existsSync(tuneFile)){
+    const texts=JSON.parse(fs.readFileSync(tuneFile,'utf8')).balanceWorkshop?.archetypes??{};
+    for(const [key,value] of Object.entries(texts))if(/^char\.(base|marco|mia|bruno|tee)\.nick$/.test(key)&&key in table&&typeof value==='string')table[key]=value;
+  }
+  return table;
+};
 const write = (code, obj) => fs.writeFileSync(path.join(dir, `${code}.json`), JSON.stringify(Object.fromEntries(Object.entries(obj).sort()), null, 2) + '\n');
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 // Sheets' translator sometimes writes "{ name }" with spaces: repair before validating.

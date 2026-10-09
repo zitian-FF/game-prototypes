@@ -70,7 +70,7 @@ export function createCompanion({api,model,staticDir}) {
           let draft;try{draft=model.parse(JSON.stringify(body.draft));}catch(error){throw fail(error.message);}
           const file=await latest(branch);
           let merged;try{merged=model.mergeSave(baseline.doc,draft,file.doc);}catch(error){throw fail(error.message,409);}
-          const edited=model.changes(file.doc,merged);
+          const edited=model.saveChanges(file.doc,merged);
           if(!edited.length){baseline.doc=file.doc;baseline.sha=file.sha;return json(200,{doc:file.doc,sha:file.sha,commit:null,edited:[]});}
           const result=await api(`contents/${TUNE_PATH}`,{message:`Tune Punchies balance (${edited.length} values)`,branch,sha:file.sha,content:Buffer.from(JSON.stringify(merged,null,2)+'\n').toString('base64')});
           baseline.doc=merged;baseline.sha=result.content.sha;baseline.commit=result.commit.sha;

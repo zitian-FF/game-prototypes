@@ -21,7 +21,8 @@
     "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts",
     "tuner:github": "node scripts/start-punchies-github.mjs",
     "test:tuner:github": "node scripts/test-punchies-github.mjs",
-    "test:tuner:base": "node scripts/test-punchies-base-history.mjs"
+    "test:tuner:base": "node scripts/test-punchies-base-history.mjs",
+    "test:tuner:preview": "node scripts/test-punchies-perceived-stats.mjs"
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.5",

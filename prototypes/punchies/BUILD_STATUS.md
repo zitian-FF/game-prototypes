@@ -2,6 +2,7 @@
 Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Main game otherwise at the post-#261 state: audio and settings, starter skins, winner results, G.P. Tee.
 
 ## What was implemented
+- Shared perceived-stat formulas with the workshop; saved archetypes update English localisation fallbacks, survive tune snapshots and refresh character panels. Numeric balance values remain unchanged.
 - Balance Workshop compatibility: exclude balanceWorkshop history metadata from live simulation/debug tune fields, including after a history-bearing tune.json is bundled. Base/history tests cover rebuild validation and legacy-file compatibility; no tuning values changed.
 - Portal layer, `src/portal/`: one interface for gameplay events, saves and rewarded ads, with a web adapter and CrazyGames, Poki and Playgama adapters chosen at build time (`PORTAL=...`, `PORTAL_ADS=off`). Details are in BRIEF.md under "Portal layer".
 - Saves: every persisted value now goes through the portal `store`; keys are listed in `src/portal/keys.ts`. `main.ts` initialises the portal and loads saved data first, then loads the game (`boot.ts`).

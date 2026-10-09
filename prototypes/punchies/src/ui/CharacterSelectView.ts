@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { t } from '../i18n';
+import {statBarFill} from '../sim/perceivedStats';
 import { skinTexture } from '../render/skins';
 import { artKey } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -254,7 +255,7 @@ export class CharacterSelectView {
       const color = s === 0 ? 0x2587ff : 0xec3d52;
       this.frame(g, x, 109 + DY, 366, 174, p.focused ? color : 0x2f3b55);
       this.status[s].setText(p.status);
-      const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
+      const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount, t(`char.${p.id}.nick`)]);
       if (key !== this.panelKeys[s]) {
         const changed = this.panelIds[s] !== null && (this.panelIds[s] !== p.id || this.panelKeys[s] !== key);
         const direction = CHARACTER_IDS.indexOf(p.id) >= CHARACTER_IDS.indexOf(this.panelIds[s] ?? p.id) ? 1 : -1;
@@ -370,7 +371,8 @@ export class CharacterSelectView {
     }
     const name = this.text(parent, tx + 65, 133, info.name.toUpperCase(), 23);
     if (name.width > 156) name.setScale(156 / name.width);
-    this.text(parent, tx + 65, 156, t(`char.${p.id}.nick`), 12, '#b9cbe7');
+    const archetype = this.text(parent, tx + 65, 156, t(`char.${p.id}.nick`), 12, '#b9cbe7');
+    archetype.setScale(Math.min(1, 156 / archetype.width));
     this.text(parent, tx + 65, 174, p.label, 9, s === 0 ? '#76caff' : '#ff8b99');
     const bars = this.graphics(parent);
     const colors = [0xf451b8, 0x5ce38b, 0x37d4ee, 0xffc449, 0xb583f5];
@@ -380,7 +382,7 @@ export class CharacterSelectView {
       const by = 188 + i * 16;
       this.text(parent, tx - 12, by + 5.5, label, 9).setOrigin(0, 0.5);
       bars.fillStyle(0x050a18).fillRoundedRect(bx - 1, by - 1, barWidth + 2, 13, 4);
-      const width = Math.max(0, Math.min(1, value * 0.8)) * (barWidth - 2);
+      const width = statBarFill(value) * (barWidth - 2);
       if (width > 0) {
         bars.fillStyle(colors[i]).fillRoundedRect(bx + 1, by + 1, width, 9, Math.min(3, width / 2));
         bars.fillStyle(0xffffff, 0.25).fillRoundedRect(bx + 2, by + 2, Math.max(0, width - 2), 3, 1);

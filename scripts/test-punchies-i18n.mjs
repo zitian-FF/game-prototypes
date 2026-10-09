@@ -12,7 +12,7 @@ const localesDir = `${src}/i18n/locales`;
 const en = JSON.parse(fs.readFileSync(`${localesDir}/en.json`, 'utf8'));
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 const walk = (d) => fs.readdirSync(d).flatMap((f) => { const p = path.join(d, f); return fs.statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : []; });
-const files = walk(src).filter((f) => !f.includes('/i18n/'));
+const files = walk(src).map(f=>f.replaceAll('\\','/')).filter((f) => !f.includes('/i18n/'));
 
 // ---- 1. every t() key exists, with the right placeholders; no unused keys ----
 const used = new Set();

@@ -2,10 +2,19 @@ import initial from '../../punchies/tune.json';
 import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
 import { punchCfg, CHARACTER_INFO, type CharId } from '../../punchies/src/sim/character';
+import {archetypeKeys,defaultArchetypes,readArchetypes} from '../../punchies/src/sim/workshopText';
 
 export interface BaseRevision {version:number;savedAt:string;changes:{path:string;before:number;after:number}[]}
 export interface BaseHistory {format:1;initial:Record<string,number>;versions:BaseRevision[]}
-export type Doc = Omit<typeof initial,'balanceWorkshop'> & {balanceWorkshop?:{baseHistory:BaseHistory}};
+export type Doc = Omit<typeof initial,'balanceWorkshop'> & {balanceWorkshop?:{baseHistory?:BaseHistory;archetypes?:Record<string,string>}};
+export {archetypeKeys};
+export const archetypeValue=(doc:Doc,key:string):string=>readArchetypes(doc)[key]??defaultArchetypes[key]??'';
+export function setArchetype(doc:Doc,key:string,value:string):void{
+  const texts={...readArchetypes(doc),[key]:value.trim()};readArchetypes({balanceWorkshop:{archetypes:texts}});
+  doc.balanceWorkshop={...doc.balanceWorkshop,archetypes:texts};
+}
+export const archetypeChanges=(base:Doc,draft:Doc):string[]=>archetypeKeys.filter(key=>archetypeValue(base,key)!==archetypeValue(draft,key));
+export const saveChanges=(base:Doc,draft:Doc):string[]=>[...changes(base,draft),...archetypeChanges(base,draft)];
 const bundled:Doc = structuredClone(initial);
 const template:Doc = structuredClone(bundled);
 delete template.balanceWorkshop;
@@ -17,10 +26,12 @@ export const meta = metadata as unknown as Record<string,{min:number;max:number;
 export const baseGroups=['health','stamina','stun','movement','body','hit','fatigue','stars','punches','guard','dodge'] as const;
 export const basePaths=Object.keys(meta).filter(path=>baseGroups.some(group=>path.startsWith(`${group}.`)));
 export function baseSnapshot(doc:Doc):Record<string,number>{return Object.fromEntries(basePaths.filter(path=>typeof getSafe(doc,path)==='number').map(path=>[path,get(doc,path)]));}
-export function baseVersion(doc:Doc):number{const versions=doc.balanceWorkshop?.baseHistory.versions;return versions?.[versions.length-1]?.version??0;}
+export function baseVersion(doc:Doc):number{const versions=doc.balanceWorkshop?.baseHistory?.versions;return versions?.[versions.length-1]?.version??0;}
 function validateHistory(doc:Doc):void{
   if(doc.balanceWorkshop===undefined)return;
+  if(!doc.balanceWorkshop||typeof doc.balanceWorkshop!=='object'||Array.isArray(doc.balanceWorkshop))throw Error('Invalid workshop metadata');
   const history=doc.balanceWorkshop?.baseHistory;
+  if(history===undefined)return;
   if(!history||history.format!==1||!history.initial||typeof history.initial!=='object'||Array.isArray(history.initial)||!Array.isArray(history.versions))throw Error('Invalid Base history');
   const numeric=(record:Record<string,number>)=>Object.entries(record).every(([key,value])=>basePaths.includes(key)&&typeof value==='number'&&Number.isFinite(value));
   if(!numeric(history.initial))throw Error('Invalid initial Base values');
@@ -66,8 +77,10 @@ function getSafe(doc:Doc,path:string):unknown {return path.split('.').reduce<unk
 export function mergeSave(base:Doc,draft:Doc,latest:Doc):Doc {
   const merged=structuredClone(latest);
   const conflicting=changes(base,draft).filter(path=>get(latest,path)!==get(base,path)&&get(latest,path)!==get(draft,path));
+  conflicting.push(...archetypeChanges(base,draft).filter(key=>archetypeValue(latest,key)!==archetypeValue(base,key)&&archetypeValue(latest,key)!==archetypeValue(draft,key)));
   if(conflicting.length)throw Error(`File changed in the same fields: ${conflicting.join(', ')}. Reopen the file before saving; your draft remains available to download.`);
   for(const path of changes(base,draft))set(merged,path,get(draft,path));
+  for(const key of archetypeChanges(base,draft))setArchetype(merged,key,archetypeValue(draft,key));
   // History is generated from the actual latest saved file, never from client metadata.
   recordBaseRevision(latest,merged);
   return parse(JSON.stringify(merged));
