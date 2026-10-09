@@ -3806,5 +3806,264 @@
     "min": -2,
     "max": 2,
     "step": 1
+  },
+  "characters.longan.hp": {
+    "cat": "Characters",
+    "desc": "Longan (provisional): max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.longan.stamina": {
+    "cat": "Characters",
+    "desc": "Longan (provisional): max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.longan.regen": {
+    "cat": "Characters",
+    "desc": "Longan (provisional): stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.longan.stun": {
+    "cat": "Characters",
+    "desc": "Longan (provisional): stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.longan.speed": {
+    "cat": "Characters",
+    "desc": "Longan (provisional): walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.longan.jab.damage": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.jab.push": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.longan.jab.reach": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.longan.jab.startup": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.cross.damage": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.cross.push": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.longan.cross.reach": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.longan.cross.startup": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.hook.damage": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.hook.push": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.longan.hook.reach": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.longan.hook.startup": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.longan.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.longan.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.longan.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.longan.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Longan (provisional) uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
   }
 }

@@ -139,3 +139,5 @@ comic book texture. LEFT half is dark navy negative space, quiet and
 uncluttered for separate UI buttons and title. Absolutely no text, no letters,
 no logos, no people, no UI controls. Crisp professional arcade visual,
 readable at mobile size.
+
+Palette skins use render/skins.ts and skinPalette.ts to recolour base portraits and rig parts on demand, cached by base texture and skin ID. No palette PNGs or alternate atlases are shipped. pack-assets filters legacy starter _alt animation folders and duplicate loose textures; unique skins retain their separate artwork. Matching fighters share the base art group and can equip identical skins.
