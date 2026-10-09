@@ -1,17 +1,17 @@
 ## Current milestone
-First-play UI and Rising Star reward artwork complete.
+UI/input polish completed through an outsource CLI implementation pass, root review, Brave production-preview QA, and a second outsource cleanup pass.
 
 ## What was implemented
-Rising Star Marco has a waist-framed portrait and complete top-down puppet in standard and compact R2 art. The welcome card shows bottom-anchored Marco and the purple free chest. Coach prompts advance upon entering punch range; Skip moves to the upper right. HP-only onboarding retains fighter names and identifies Bruno as P(COM). Returning through the pause menu completes onboarding and preserves its gift. The first fight uses gameplay music, while its reward and welcome use title music. Reward acknowledgement has shared hover/pressed/disabled feedback. Initial language choice appears only when multiple translated languages are available. Removed obsolete shop artwork-pending copy, labelled the welcome voucher FREE CHEST READY and excluded unfinished Old Champ/Ring Captain art from daily offers. Restored the P logo red foot backing with transparent bottom padding and preserved artwork registration.
+Tutorial actions sit below the full HUD in a readable lesson panel. Input Setup, room entry and lobby use shared cartoon styling and larger text. Settings, Credits, Input Setup, room entry and shop odds support scoped keyboard/controller Back; reset confirmations own Cancel. Pause chrome no longer captures result/practice navigation. Match format supports F / controller Y with visible hints and host authority. Training return confirmation uses practice wording. Transport diagnostics appear only in existing debug mode.
 
 ## Key technical decisions
-Gift ownership, free chest vouchers, economy, XP rules and combat tuning stay with Claude's existing implementation. Rising Star uses one canonical glove and boot with runtime mirror aliases; its wrist registration faces right and connects at the cuff. Both profiles share identical rig pixels and geometry. Lossless originals, registration, package backups and verified R2 receipts are retained outside Git in outputs/first-play-polish. No generated art binaries committed.
+Preserved tiantian, tune values, combat controls and balance, roster layout, asset registration and progression/shop rules. Modal closure consumes one controller action and restores focus. Disabled scene input blocks menu shortcuts while controller edges continue sampling, preventing held-input activation after ads. Keypad presses retain rounded chrome and activate once on release inside. Localization rejects replacement characters. No new artwork or dependencies.
 
 ## Open questions
-Progress/profile/Veteran skin screens and Ring Captain/Old Champ art remain separate pending handoffs.
+Portrait waist-crop consistency remains held for approved per-asset framing review. Real online pairing/background timeout and physical controller validation remain separate checks. Profile/progression screens and Veteran skins remain pending under release-plan section 8; this polish pass does not implement them.
 
 ## Known issues
-Existing Vite locale/chunk warnings persist. Brave inspected first-fight controls, skin reveal, acknowledgement, welcome framing and pause-menu return; full win and skip/replay invariants are also covered by automated tests. Physical-phone play remains a manual check. Development reloads during atlas packing can briefly request incomplete files; production builds use verified immutable assets.
+Typecheck, production build, localization, navigation/keypad, game-menu, roster/grid, series, winner-result, onboarding, shop and reward regressions pass. Standard/web 16,354,182 bytes and compact/web 9,541,811 bytes pass their caps; asset keys, geometry, aliases and fighter pixels match. Brave verifies full-HUD tutorial action separation, Settings/Input Setup Back, room typing/deletion, F changing Best of 3 to Best of 1, readable control text and no browser error logs at 1280x720. Physical gamepads and real peer connectivity were not tested. Existing Vite chunk-size/import warnings remain.
 
 ## Next proposed step
-Review the deployed first-play presentation, then take the separately specified profile and progression UI work.
+Publish the validated polish and hand its checklist to Claude. Review held art framing and progression screen designs with the owner separately; verify online connectivity and physical controllers before launch.

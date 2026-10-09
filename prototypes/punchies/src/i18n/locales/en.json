@@ -1,4 +1,11 @@
 {
+  "ui.back_hint": "Esc / B: Back",
+  "input.keyboard_left": "WASD: Move \u00b7 J/K/L: Jab/Cross/Hook\nI: Uppercut \u00b7 Space: Dodge \u00b7 Shift: Guard",
+  "input.keyboard_right": "Arrows: Move \u00b7 Num 1/2/3: Jab/Cross/Hook\nNum 5: Uppercut \u00b7 Num 0: Dodge \u00b7 Num Enter: Guard",
+  "input.controller": "Stick / D-pad: Move \u00b7 X/Y/B: Jab/Cross/Hook\nA: Dodge \u00b7 RB/RT: Guard \u00b7 LB/LT: Uppercut",
+  "charselect.format_hint": "F / Y: Match format",
+  "charselect.host_sets_format": "Host sets match format",
+  "pause.your_practice_session_will_end": "Your practice session will end.",
   "char.bruno.nick": "Tank",
   "char.dragon.nick": "The Blind Fist",
   "char.longan.nick": "Still Waters",

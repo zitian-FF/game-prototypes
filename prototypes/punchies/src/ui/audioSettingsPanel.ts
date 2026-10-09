@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { t } from '../i18n';
 import { getAudioSettings, setAudioSettings } from '../audio/mixer';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { getNav } from './menuNav';
 import { titleButton } from './titleButton';
 import { resetSavePanel } from './resetSavePanel';
 
@@ -15,10 +16,12 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
     items.push(t); return t;
   };
   const close = () => items.forEach(o => o.destroy());
+  getNav(scene).modalBack(items[0] as Phaser.GameObjects.Rectangle, close);
   const button = (x: number, y: number, w: number, label: string, action: () => void, role: 'back' | 'confirm' = 'confirm', accent: 'default' | 'red' = 'default') => {
     const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2, accent, role);
     items.push(t, t.getData('bg')); return t;
   };
+  text(VIEW.cx, VIEW.cy + 151, t('ui.back_hint'), 12);
   text(VIEW.cx, VIEW.cy - 126, t('common.settings'), 23);
   for (const [channel, y] of [['bgm', -80], ['sfx', -35]] as const) {
     text(VIEW.cx - 130, VIEW.cy + y, channel === 'bgm' ? t('settings.bgm') : t('settings.sfx'));

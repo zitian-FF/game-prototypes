@@ -10,7 +10,7 @@ import { cartoonPanel, cartoonButton, bindButtonFeedback } from './cartoonChrome
 interface PanelState {
  dummy?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number][];
 }
-export interface SelectionState {training?:boolean;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;}
+export interface SelectionState {training?:boolean;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 import { rosterSlots } from './rosterLayout';
 export class CharacterSelectView {
  private root:Phaser.GameObjects.Container;
@@ -22,6 +22,7 @@ export class CharacterSelectView {
  private progress:Phaser.GameObjects.Text[]=[];
  private action:Phaser.GameObjects.Text;
  private format:Phaser.GameObjects.Text;
+ private formatHint:Phaser.GameObjects.Text;
  private level:Phaser.GameObjects.Text;
  private levelButtons:Phaser.GameObjects.Text[];
  private hint:Phaser.GameObjects.Text;
@@ -34,6 +35,7 @@ export class CharacterSelectView {
   this.text(this.root,422,27,t('charselect.choose_your_boxer'),31).setStroke('#071024',5);
   this.button(45,29,80,30,t('charselect.back'),callbacks.back);
   this.format=this.button(80,75,136,27,t('charselect.best_of_3'),callbacks.format,false,0x8b57c9);
+  this.formatHint=this.text(this.root,80,97,'',11,'#dbe9fa').setWordWrapWidth(155);
   [290,422,554].forEach((x,i)=>{this.progress.push(this.text(this.root,x,76,'',11));if(i<2)this.text(this.root,x+66,76,'›',20,'#a8bad5');});
   for(let s=0;s<2;s++){
    const hit=scene.add.rectangle(s===0?111:733,237,214,224,0,0).setInteractive({useHandCursor:true});
@@ -59,7 +61,7 @@ export class CharacterSelectView {
   this.action=this.button(422,366,238,36,t('common.confirm_boxer'),callbacks.action,true);
   this.level=this.button(744,75,105,27,'',()=>callbacks.level(1));
   this.levelButtons=[this.level,this.button(672,75,27,27,'‹',()=>callbacks.level(-1)),this.button(816,75,27,27,'›',()=>callbacks.level(1))];
-  this.hint=this.text(this.root,422,343,'',9,'#bbcce3').setWordWrapWidth(392);
+  this.hint=this.text(this.root,422,334,'',11,'#bbcce3').setWordWrapWidth(408);
  }
  private graphics(parent:Phaser.GameObjects.Container):Phaser.GameObjects.Graphics{const g=this.scene.add.graphics();parent.add(g);return g;}
  private text(parent:Phaser.GameObjects.Container,x:number,y:number,value:string,size:number,color='#fff7e6'):Phaser.GameObjects.Text{
@@ -77,6 +79,9 @@ export class CharacterSelectView {
   const g=this.chrome;g.clear();g.lineStyle(5,0x167cff).lineBetween(260,51,422,51);g.lineStyle(5,0xef3545).lineBetween(422,51,586,51);
   this.progress.forEach((text,i)=>{const active=state.step===i,complete=i<state.step;g.lineStyle(active?3:1,active?0x5bd8ff:complete?0x6bcba5:0x526078).lineBetween(242+i*132,89,338+i*132,89);text.setText((complete?'✓':i+1)+'  '+state.steps[i]).setColor(active?'#77ddff':complete?'#9dddc3':'#9fb0ca');});
   this.format.setText(t('charselect.best_of',{n:state.bestOf}));this.setButtonVisible(this.format,!state.training);
+  const editable=state.formatEditable!==false;
+  (this.format.getData('hit') as Phaser.GameObjects.Rectangle).input!.enabled=!state.training&&editable;
+  this.formatHint.setVisible(!state.training).setText(editable?t('charselect.format_hint'):t('charselect.host_sets_format'));
   // Dark central well gives future slots room without competing with the portraits.
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
@@ -117,7 +122,7 @@ export class CharacterSelectView {
   }
   const title=p.dummy?t('common.dummy'):CHARACTER_INFO[p.id].name.toUpperCase();const text=this.text(parent,centre,321,title,16);if(text.width>186)text.setScale(186/text.width);
   this.text(parent,centre,338,p.dummy?t('training.practice_target'):t('char.'+p.id+'.nick')+' · '+p.label,9,s===0?'#8ddaff':'#ff9eae');
-  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,8).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value*.8))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
+  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,10).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value*.8))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
   if(p.selected&&p.available&&!p.dummy){this.text(parent,centre,356,p.skinName+' '+p.skinIndex+'/'+p.skinCount,8,'#fff1a8');[-1,1].forEach(d=>{const a=this.text(parent,centre+d*89,356,d<0?'‹':'›',19);a.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));});}
  }
 }

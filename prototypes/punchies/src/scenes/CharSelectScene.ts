@@ -141,9 +141,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.selectionView = new CharacterSelectView(this, {
       skin:(s,d)=>this.cycleSkin(s,d),
       card: (i) => this.tapCard(i), panel: (i) => this.tapPanel(i),
-      format: () => {
-        if (this.data0.mode !== 'online' || this.data0.localIdx === 0) tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
-      },
+      format: () => this.cycleFormat(),
       action: () => this.fightButton(), back: () => this.back(-1, true),
       level: (d) => this.cycleLevel(d),
     });
@@ -155,6 +153,12 @@ export class CharSelectScene extends Phaser.Scene {
       }
     });
     addVersionStamp(this);
+  }
+
+  private cycleFormat(): void {
+    if (this.data0.mode === 'training' || (this.data0.mode === 'online' && this.data0.localIdx !== 0)) return;
+    tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
+    sfx.uiSelect();
   }
 
   private hint(): string {
@@ -184,7 +188,10 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private onKey(e: KeyboardEvent): void {
+    if(e.repeat && e.code==='KeyF')return;
     const c = e.code;
+    // Format belongs to the shared match, independent of keyboard half.
+    if(c==='KeyF') { this.cycleFormat(); return; }
     const s = this.keySide(c);
     if (s < 0) return;
     if (c === 'ArrowUp' || c === 'KeyW') this.moveVertical(s, -1);
@@ -216,6 +223,7 @@ export class CharSelectScene extends Phaser.Scene {
         this.prevPad[k] = now;
         return now && !was;
       };
+      if (edge(3)) this.cycleFormat();
       if (edge(12)) this.moveVertical(s,-1);
       if (edge(13)) this.moveVertical(s,1);
       if(edge(4))this.cycleLevel(-1);if(edge(5))this.cycleLevel(1);
@@ -475,6 +483,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.selectionView.render({
       training:this.data0.mode==='training',
       bestOf: tune.match.bestOf,
+      formatEditable: this.data0.mode !== 'online' || this.data0.localIdx === 0,
       panels: this.sides.map((side, s) => ({
         dummy:this.data0.mode==='training'&&s===1,
         id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
