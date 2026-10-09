@@ -30,7 +30,7 @@ export interface SelectionState {
   bestOf: number;
 }
 
-const DY = 34;                       // card area sits below the roster strip
+const DY = 42;                       // card area sits below the roster strip
 const STRIP = { x: 8, y: 90, w: 828, h: 52, cy: 116, x0: 44, x1: 800, pitch: 62, scale: .55 };
 
 // One authored landscape composition, fitted uniformly into every VIEW.
@@ -147,12 +147,12 @@ export class CharacterSelectView {
       return a;
     });
     this.layoutStrip();
-    this.action = this.button(716, 347, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
+    this.action = this.button(716, 355, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
     this.level = this.button(744, 65, 105, 27, '', () => callbacks.level(1));
     this.levelButtons = [this.level,
       this.button(672, 65, 27, 27, '‹', () => callbacks.level(-1)),
       this.button(816, 65, 27, 27, '›', () => callbacks.level(1))];
-    this.hint = this.text(this.root, 120, 342, '', 10, '#a8bad5').setWordWrapWidth(220).setAlign('center');
+    this.hint = this.text(this.root, 120, 350, '', 10, '#a8bad5').setWordWrapWidth(220).setAlign('center');
   }
 
   private maxScroll(): number {
