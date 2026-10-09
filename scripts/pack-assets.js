@@ -136,7 +136,8 @@ const animKeysPresent = existsSync(packedSrcDir)
   : [];
 
 if (animKeysPresent.length > 0) {
-  const animKeys = animKeysPresent.sort();
+  // Selected skins are generated from base textures; obsolete mirror-match art is not shipped.
+  const animKeys = animKeysPresent.filter(key => name !== 'punchies' || !/^(marco|mia|bruno)_alt_/.test(key)).sort();
 
   const folders = [];
   for (const key of animKeys) {
@@ -335,6 +336,7 @@ if (existsSync(looseSrcDir)) {
   let totalBefore = 0;
   let totalAfter = 0;
   for (const file of looseFiles) {
+    if (name === 'punchies' && /^(portrait|part)_(marco|mia|bruno)_alt(?:_|$)/.test(path.parse(file).name)) continue;
     if (mirrors[path.parse(file).name]) {
       totalBefore += statSync(path.join(looseSrcDir, file)).size;
       continue;

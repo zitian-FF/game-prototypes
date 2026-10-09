@@ -1,29 +1,12 @@
 ## Current milestone
-Training roster flow and dummy portrait complete; verified locally and ready for review.
-
+Runtime palettes and obsolete asset removal, stacked on UI PR #278.
 ## What was implemented
-- Main-menu and tutorial Training entries open player-only roster selection.
-- Player selects an owned boxer and skin; the opponent is a fixed noninteractive dummy with a dedicated portrait.
-- Training hides match format/difficulty controls and starts with the selected boxer/skin.
-- Removed the in-training character selector; stance and reset remain.
-- Dummy portrait created through CODEX Outsource's separate CLI workflow, inspected, alpha verified and uploaded to R2. Public bundle SHA matches and unrelated entries are unchanged.
-
+Palette portraits and rigs keep their existing cached recolouring. Removed unused mirror-match part generation; base atlas groups now serve same-character matches. Excluded legacy starter alternate animation folders and duplicate loose palette textures from builds. Saved 4,688,226 bytes (12 files) from the packed bundle.
 ## Key technical decisions
-- Reuse the existing roster flow and ownership checks. The dummy never becomes a playable roster ID.
-- Training selection persists P1 boxer/skin. Training validates ownership on entry.
-- Portrait remains outside Git at loose/portrait_training_dummy.png in R2; build uses lossless optimization.
-- Separate training-selection branch stacks above the earlier selection-chrome work.
-
+Base and unique artwork remains in R2 as source masters; no R2 overwrite required. Palette ownership, skin IDs, colours and stats remain unchanged. Builds omit redundant palette assets. Unique skins retain separate art.
 ## Open questions
-- Pending user review and merge approval for stacked changes.
-
+None.
 ## Known issues
-- Existing Phaser chunk size and locale import build warnings remain.
-- Code is not deployed live. Tutorial route was inspected and compiled; browser testing exercised the main-menu route.
-
+Not merged or deployed. Existing Vite locale/chunk warnings remain. Legacy baked animation fallback uses base colours; current palette presentation uses the live layered rig.
 ## Next proposed step
-Review the training preview and merge after earlier changes. Typecheck/build, roster/training ownership handoff, localisation and pixel/alpha optimization checks pass. Brave confirmed the dummy cannot take focus, selected Mia enters Training, character button is absent and portrait placement is correct, with no console errors.
-
-## 2026-10-09 — Soft button finish
-Menu, shop, selection, reward, settings and fight buttons use a single quiet edge, gloss and lower bevel while preserving colours. Combat discs use the same softened finish. Typecheck and production build pass; Brave menu/selection/training inspection reports no console errors. Awaiting visual approval; not deployed.
-
+Review and merge the stacked changes. Typecheck/build, starter recolours, roster, caching and asset optimization regressions pass. Brave palette comparison and Scarlet Spark selection/training rig checked with no console errors.

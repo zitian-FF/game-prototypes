@@ -88,12 +88,11 @@ function requestGroup(group: string): void {
   if (!load.isLoading()) load.start();
 }
 
-// Groups a fight needs. Fighter 0 wears the main look, fighter 1 the alt
-// look in a mirror match (see lookFor), and the training dummy has its own.
+// Palette skins share base art groups, including same-character matches.
 export function fighterGroups(chars: [string, string]): string[] {
   const id = (c: string) => (isCharId(c) ? c : 'marco');
   const [a, b] = [id(chars[0]), id(chars[1])];
-  return [a, a === b ? `${b}_alt` : b];
+  return [...new Set([a, b])];
 }
 export function trainingGroups(char: string): string[] {
   return [isCharId(char) ? char : 'marco', 'dummy'];
