@@ -35,6 +35,9 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // tabletop background below).
 const IMAGE_OPTIMIZATION_RULES = {
   punchies: [
+    // Waist-framed portraits; retain full-resolution R2 design masters.
+    { match: name => name === 'portrait_tyke', keepTop: .86, format: 'webp', lossless: true },
+    { match: name => name === 'portrait_longan', keepTop: .75, format: 'webp', lossless: true },
     // Preserve full registration, resolution and pixels; shrink PNG transfer only.
     { match: () => true, format: 'webp', lossless: true },
   ],
@@ -136,7 +139,8 @@ const animKeysPresent = existsSync(packedSrcDir)
   : [];
 
 if (animKeysPresent.length > 0) {
-  const animKeys = animKeysPresent.sort();
+  // Selected skins are generated from base textures; obsolete mirror-match art is not shipped.
+  const animKeys = animKeysPresent.filter(key => name !== 'punchies' || !/^(marco|mia|bruno)_alt_/.test(key)).sort();
 
   const folders = [];
   for (const key of animKeys) {
@@ -288,13 +292,17 @@ async function processLooseFile(file, rules) {
 
   const rule = IMAGE_EXTENSIONS.has(ext) ? rules?.find((r) => r.match(baseName)) : undefined;
 
-  if (!rule || (!rule.maxDimension && !rule.format) || (rule.lossless && ext !== '.png')) {
+  if (!rule || (!rule.maxDimension && !rule.format) || (rule.lossless && ext !== '.png' && !rule.keepTop)) {
     const dest = path.join(looseOutDir, file);
     copyFileSync(src, dest);
     return { outputFile: file, originalSize, outputSize: originalSize };
   }
 
   let pipeline = sharp(src);
+  if (rule.keepTop) {
+    const meta = await pipeline.metadata();
+    pipeline = pipeline.extract({left:0,top:0,width:meta.width,height:Math.round(meta.height * rule.keepTop)});
+  }
   if (rule.maxDimension) {
     pipeline = pipeline.resize({
       width: rule.maxDimension,
@@ -312,8 +320,8 @@ async function processLooseFile(file, rules) {
   const outputFile = rule.format === 'webp' ? `${baseName}.webp` : file;
   const dest = path.join(looseOutDir, outputFile);
   const encoded = await pipeline.toBuffer();
-  // Lossless optimization must never increase transfer size or recompress lossy sources.
-  if (rule.lossless && (ext !== '.png' || encoded.length >= originalSize)) {
+  // Pure lossless optimization must not grow files; explicit framing crops must always apply.
+  if (rule.lossless && !rule.keepTop && (ext !== '.png' || encoded.length >= originalSize)) {
     copyFileSync(src, path.join(looseOutDir, file));
     return { outputFile: file, originalSize, outputSize: originalSize };
   }
@@ -335,6 +343,7 @@ if (existsSync(looseSrcDir)) {
   let totalBefore = 0;
   let totalAfter = 0;
   for (const file of looseFiles) {
+    if (name === 'punchies' && /^(portrait|part)_(marco|mia|bruno)_alt(?:_|$)/.test(path.parse(file).name)) continue;
     if (mirrors[path.parse(file).name]) {
       totalBefore += statSync(path.join(looseSrcDir, file)).size;
       continue;

@@ -6,9 +6,10 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { CHARACTER_IDS, CHARACTER_INFO, type CharId } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { cartoonPanel, shadeUi } from './cartoonChrome';
+import { cartoonPanel, cartoonButton, shadeUi } from './cartoonChrome';
 
 interface PanelState {
+  dummy?: boolean;
   id: CharId;
   label: string;
   hidden: boolean;
@@ -19,6 +20,7 @@ interface PanelState {
   stats: [string, number][];
 }
 export interface SelectionState {
+  training?: boolean;
   panels: PanelState[];
   step: number;
   steps: string[];
@@ -28,7 +30,7 @@ export interface SelectionState {
   bestOf: number;
 }
 
-const DY = 34;                       // card area sits below the roster strip
+const DY = 42;                       // card area sits below the roster strip
 const STRIP = { x: 8, y: 90, w: 828, h: 52, cy: 116, x0: 44, x1: 800, pitch: 62, scale: .55 };
 
 // One authored landscape composition, fitted uniformly into every VIEW.
@@ -37,6 +39,7 @@ export class CharacterSelectView {
   private root: Phaser.GameObjects.Container;
   private chrome: Phaser.GameObjects.Graphics;
   private content: Phaser.GameObjects.Container[] = [];
+  private panelHits: Phaser.GameObjects.Rectangle[] = [];
   private panelIds: (CharId | null)[] = [null, null];
   private panelKeys = ['', ''];
   private cards: Phaser.GameObjects.Container[] = [];
@@ -67,7 +70,7 @@ export class CharacterSelectView {
     this.button(46, 29, 80, 30, t('charselect.back'), callbacks.back);
     this.format = this.button(90, 76, 136, 27, t('charselect.best_of_3'), callbacks.format, false, 0x8b57c9);
     [290, 422, 554].forEach((x, i) => {
-      this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11));
+      this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11).setStroke('#071024', 0));
       if (i < 2) this.text(this.root, x + 66, 76, '›', 22, '#a8bad5');
     });
     const body = scene.add.container(0, DY);
@@ -76,6 +79,7 @@ export class CharacterSelectView {
       const x = s === 0 ? 16 : 462;
       const hit = scene.add.rectangle(x + 183, 196, 366, 174, 0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => callbacks.panel(s));
+      this.panelHits.push(hit);
       body.add(hit);
       this.content.push(scene.add.container());
       body.add(this.content[s]);
@@ -143,12 +147,12 @@ export class CharacterSelectView {
       return a;
     });
     this.layoutStrip();
-    this.action = this.button(716, 347, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
+    this.action = this.button(716, 355, 205, 48, t('common.confirm_boxer'), callbacks.action, true);
     this.level = this.button(744, 65, 105, 27, '', () => callbacks.level(1));
     this.levelButtons = [this.level,
       this.button(672, 65, 27, 27, '‹', () => callbacks.level(-1)),
       this.button(816, 65, 27, 27, '›', () => callbacks.level(1))];
-    this.hint = this.text(this.root, 120, 342, '', 10, '#a8bad5').setWordWrapWidth(220).setAlign('center');
+    this.hint = this.text(this.root, 120, 350, '', 10, '#a8bad5').setWordWrapWidth(220).setAlign('center');
   }
 
   private maxScroll(): number {
@@ -226,11 +230,12 @@ export class CharacterSelectView {
 
   private button(x: number, y: number, w: number, h: number, label: string, tap: () => void, primary = false, tint = 0x397dc2): Phaser.GameObjects.Text {
     const g = this.graphics(this.root);
-    cartoonPanel(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:tint,8);
+    cartoonButton(g,x-w/2,y-h/2,w,h,primary?0xf3bc35:tint,8);
     const hit = this.scene.add.rectangle(x, y, w, h, 0, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', tap);
     this.root.add(hit);
     const text = this.text(this.root, x, y, label, primary ? 19 : 12);
+    text.setStroke('#23415a',0).setShadow(0,2,'#23415a',1,true,true);
     text.setData('chrome', g).setData('hit', hit);
     return text;
   }
@@ -240,21 +245,27 @@ export class CharacterSelectView {
     if (signature === this.previous) return;
     this.previous = signature;
     this.format.setText(t('charselect.best_of', { n: state.bestOf }));
+    this.format.setVisible(!state.training);
+    (this.format.getData('chrome') as Phaser.GameObjects.Graphics).setVisible(!state.training);
+    (this.format.getData('hit') as Phaser.GameObjects.Rectangle).setVisible(!state.training).input!.enabled=!state.training;
     const g = this.chrome;
     g.clear();
     g.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);
     g.lineStyle(5, 0xef3545).lineBetween(422, 51, 586, 51);
     this.progress.forEach((t, i) => {
       const active = state.step === i;
-      this.frame(g, 232 + i * 132, 63, 116, 27, active ? 0x5bd8ff : 0x2f3b55, active);
-      t.setText(`${i + 1}  ${state.steps[i]}`).setColor(active ? '#fff7e6' : '#9fb0ca');
+      const complete = i < state.step;
+      g.lineStyle(active ? 3 : 1, active ? 0x5bd8ff : complete ? 0x6bcba5 : 0x526078, active ? 1 : .65)
+        .lineBetween(242 + i * 132, 89, 338 + i * 132, 89);
+      t.setText(`${complete ? '✓' : i + 1}  ${state.steps[i]}`).setColor(active ? '#77ddff' : complete ? '#9dddc3' : '#9fb0ca');
     });
     state.panels.forEach((p, s) => {
+      this.panelHits[s].input!.enabled=!p.dummy;
       const x = s === 0 ? 16 : 462;
       const color = s === 0 ? 0x2587ff : 0xec3d52;
       this.frame(g, x, 109 + DY, 366, 174, p.focused ? color : 0x2f3b55);
       this.status[s].setText(p.status);
-      const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
+      const key = JSON.stringify([p.dummy,p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
       if (key !== this.panelKeys[s]) {
         const changed = this.panelIds[s] !== null && (this.panelIds[s] !== p.id || this.panelKeys[s] !== key);
         const direction = CHARACTER_IDS.indexOf(p.id) >= CHARACTER_IDS.indexOf(this.panelIds[s] ?? p.id) ? 1 : -1;
@@ -280,7 +291,7 @@ export class CharacterSelectView {
     g.lineStyle(1,0x9eb6d7,.25).lineBetween(shelfX+12,STRIP.y+3,shelfX+shelfWidth-12,STRIP.y+3);
     g.fillStyle(0x2587ff,.6).fillRoundedRect(shelfX+4,STRIP.y+15,3,22,1);
     g.fillStyle(0xec3d52,.6).fillRoundedRect(shelfX+shelfWidth-7,STRIP.y+15,3,22,1);
-    const focused = state.panels.map((p) => (p.hidden ? '' : p.id)).join('|');
+    const focused = state.panels.map((p) => (p.hidden || p.dummy ? '' : p.id)).join('|');
     if (focused !== this.focusKey) {
       const first = this.focusKey === '';
       this.focusKey = focused;
@@ -291,7 +302,7 @@ export class CharacterSelectView {
       }
     }
     this.cards.forEach((card, i) => {
-      const selected = state.panels.findIndex((p) => !p.hidden && CHARACTER_IDS[i] === p.id && p.focused);
+      const selected = state.panels.findIndex((p) => !p.dummy && !p.hidden && CHARACTER_IDS[i] === p.id && p.focused);
       const frame = this.cardFrames[i];
       frame.clear();
       this.frame(frame, -50, -46, 100, 84, selected < 0 ? 0x617ba2 : selected === 0 ? 0x65d9ff : 0xff8593);
@@ -300,7 +311,7 @@ export class CharacterSelectView {
         frame.lineStyle(1,0xffffff,.7).strokeRoundedRect(-49,-45,98,82,10);
       }
       state.panels.forEach((p, side) => {
-        if (!p.cursor || p.id !== CHARACTER_IDS[i]) return;
+        if (p.dummy || !p.cursor || p.id !== CHARACTER_IDS[i]) return;
         const cx = side === 0 ? -39 : 39;
         frame.fillStyle(side === 0 ? 0x2389ff : 0xf04b63).fillCircle(cx, -38, 12);
         frame.lineStyle(2, 0xffffff);
@@ -329,6 +340,17 @@ export class CharacterSelectView {
     const parent = this.content[s];
     parent.removeAll(true);
     const x = s === 0 ? 16 : 462;
+    if (p.dummy) {
+      this.text(parent,x+183,133,t('common.dummy'),23);
+      this.text(parent,x+183,155,t('training.practice_target'),11,'#b9cbe7');
+      const key=artKey(this.scene,'portrait_training_dummy');
+      if(key){
+        const portrait=this.scene.add.image(x+183,289,key).setOrigin(.5,1);
+        portrait.setScale(Math.min(210/portrait.width,145/portrait.height));
+        parent.add(portrait);
+      }
+      return;
+    }
     if (p.hidden) {
       this.text(parent, x + 183, 167, p.label, 25);
       this.text(parent, x + 183, 214, p.status, 14, '#9fb0ca');
@@ -365,7 +387,7 @@ export class CharacterSelectView {
         this.portraitBounds.set(key, bounds);
       }
       // Preserve the cast's body-size hierarchy on either side of the matchup.
-      const visibleHeight = { bruno: 189, marco: 174, mia: 159, tee: 159, tyke: 198, dragon: 174 }[p.id];
+      const visibleHeight = { bruno: 189, marco: 174, mia: 159, tee: 159, tyke: 189, dragon: 174, longan: 174 }[p.id];
       const scale = Math.min(visibleHeight / (bounds.bottom - bounds.top), 190 / (bounds.right - bounds.left));
       portrait.setScale(scale);
       const centreOffset = ((bounds.left + bounds.right) / 2 - portrait.width / 2) * scale;

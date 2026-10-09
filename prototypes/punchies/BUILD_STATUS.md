@@ -1,23 +1,12 @@
 ## Current milestone
-Character selection chrome refreshed and verified locally; awaiting review.
-
+Standardize Tyke and Longan portrait waist framing, stacked on outsource content PR #280.
 ## What was implemented
-- Replaced full-width gold roster border with a compact recessed navy shelf that hugs short rosters and retains the long scrolling row for larger rosters.
-- Player selection borders use blue/red highlights; roster labels use matching navy material.
-- Replaced spiky VS burst with an enamel matchup emblem, subtle blue/red rim, bevel and soft shadow.
-- Added gentle 2.5% VS pulse using existing menu timing, disabled for reduced motion and cleaned up on scene shutdown.
-
+Crop Tyke below his champion belt and Longan below his waistband at asset packing time. Reduce their selection portrait heights to 189 and 174 logical pixels respectively. All portrait consumers receive the same waist crop.
 ## Key technical decisions
-- Native Phaser graphics keep the emblem sharp without additional image downloads.
-- Selection state, ownership, skin controls and game balance remain unchanged.
-- Separate selection-chrome branch stacks above the asset optimization branch.
-
+Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
-- Pending user review and merge approval for the stacked changes.
-
+None.
 ## Known issues
-- Existing build warnings for Phaser chunk size and locale imports remain.
-- Changes are not deployed live.
-
+Not merged or deployed. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review the saved preview and merge after earlier roster/optimization changes. Typecheck, production build, roster and localisation tests pass. Brave landscape phone and default viewport screenshots inspected; selection highlights and controls work, with no console errors.
+Review and merge the stacked changes. Brave selection review has no console errors; typecheck/build and pixel-preservation regression pass.
