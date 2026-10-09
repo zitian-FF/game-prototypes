@@ -40,7 +40,7 @@ export class MenuScene extends Phaser.Scene {
     const menuX = VIEW.left + VIEW.width * 0.26;
     const top = VIEW.cy - 155;
     const w = Math.min(290, VIEW.width * 0.34);
-    const logo = artImage(this, 'logo', menuX, top + 33, w + 10, 86);
+    const logo = artImage(this, 'logo', menuX, top + 25, w + 10, 86);
     if (logo) pulseLogo(this, logo);
     if (!logo) this.add
       .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })

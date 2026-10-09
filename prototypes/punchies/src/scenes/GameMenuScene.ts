@@ -33,6 +33,7 @@ export class GameMenuScene extends MenuScene {
       titleButton(this,VIEW.cx+86,VIEW.cy+62,155,38,t('pause.return'),()=>{
         this.leaving=true;const source=this.scene.get(this.source);
         if(this.source==='Match'){source.events.emit('menuReturn');this.close();}
+        else if(this.source==='FirstFight'){this.close();source.events.emit('menuReturn');}
         else {this.close();source.scene.start('Menu');}
       },false,302,'red');
     }else{

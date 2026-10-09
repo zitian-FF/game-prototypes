@@ -85,7 +85,7 @@ export class ShopScene extends Phaser.Scene {
     const freeChest=freeChests(this.state,kind)>0;
     const pool=chestRewards(this.state,kind),purchased=!freeChest&&this.state.purchasedChests?.includes(kind);
     this.text(x,247,purchased?t('shop.opened_today'):pool.length?t('shop.tap_to_see_rewards'):t('common.collection_complete'),12,purchased?'#91dbb4':'#a8c1d8').setOrigin(.5,0);
-    this.text(x,268,t('shop.one_chest_per_day'),10,'#a8c1d8').setOrigin(.5,0);
+    this.text(x,268,freeChest?t('shop.free_chest_ready'):t('shop.one_chest_per_day'),10,freeChest?'#fff3a8':'#a8c1d8').setOrigin(.5,0);
     const cost=kind==='skins'?shopConfig.skinPullCost:shopConfig.fighterPullCost;
     this.button(x-117,291,234,purchased?t('shop.come_back_tomorrow'):freeChest?t('shop.open_chest_free'):t('shop.open_chest_tokens',{cost}),()=>this.act(buyDailyChest(this.state,kind,Math.random())),!purchased&&pool.length>0&&(freeChest||this.state.tokens>=cost),0,kind==='skins'?'purple':'gold');
   }

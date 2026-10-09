@@ -39,6 +39,10 @@ for(const char of ['marco','mia','bruno','tee','tyke','dragon'])for(const angle 
  near(fist.y+local.x*Math.sin(rot)+local.y*Math.cos(rot),wrist.y);
 }
 assert.equal(gloveRegistration('tee',120,96,1).axis,0);
+const rising = gloveRegistration('marco',120,96,1,'skin-marco-unique');
+assert.equal(rising.axis,0,'Rising Star glove knuckles face right');
+near(rising.cuff,tune.view.puppet.gloveHeight*120/96*.4);
+assert.equal(gloveRegistration('marco',120,96,1).axis,Math.PI/2,'base Marco registration is retained');
 for(const kind of ['jab','cross','hook','uppercut']){
  assert.equal(tune.characters.tee[kind].startup,tune.characters.mia[kind].startup);
  assert.equal(tune.characters.tee[kind].recovery,tune.characters.mia[kind].recovery);

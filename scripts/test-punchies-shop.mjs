@@ -67,4 +67,6 @@ assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portrai
   assert(!d.availablePool({...withLongan,owned:[...withLongan.owned,'skin-longan-test']},'skins').some(i=>i.id==='skin-longan-test'),'an owned skin never repeats');
   d.SHOP_ITEMS.pop();
 }
+assert(!d.availablePool(d.newShopDraft(day),'skins').some(i=>i.artPending),'unfinished art cannot be pulled');
+assert.equal(d.dailyOffers({...d.newShopDraft(day),offerIds:['skin-bruno-unique']},'skins').length,0,'stale unfinished offers are hidden');
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');

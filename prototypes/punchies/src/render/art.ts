@@ -252,7 +252,14 @@ export function pose(image: Phaser.GameObjects.Image, key: string, progress: num
 
 export function artImage(scene: Phaser.Scene, name: string, x: number, y: number, w: number, h: number, depth = 0): Phaser.GameObjects.Image | null {
   const key = textureKey(name);
-  return scene.textures.exists(key) ? scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth) : null;
+  if (!scene.textures.exists(key)) return null;
+  const image = scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth);
+  // Logo v4 adds bottom padding for the restored red extrusion. Preserve the
+  // old 462x131 artwork scale and pixel pivot in every loading/title consumer.
+  if (name === 'logo' && image.width === 462 && image.height >= 131) {
+    image.setDisplaySize(w, h * image.height / 131).setOrigin(.5, 65.5 / image.height);
+  }
+  return image;
 }
 
 export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): Phaser.GameObjects.Image | null {

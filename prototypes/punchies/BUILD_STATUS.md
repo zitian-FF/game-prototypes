@@ -1,17 +1,17 @@
 ## Current milestone
-Roster selection composition and shared button feedback polished.
+First-play UI and Rising Star reward artwork complete.
 
 ## What was implemented
-Thirty-slot stepped roster with seven live fighters and non-selectable black future silhouettes; side portraits/stats/names/skin controls; conventional Back, format, difficulty and confirmation positions. Opposing card entry and impact settle, reduced-motion support, keyboard/D-pad/stick grid navigation. Selection VS removed; fiery match intro retained. Tyke portrait flipped in selection, intro, rewards and victory. Shared buttons show hover/pressed/disabled feedback and cancel release outside. Full P stem/base logo repair published to standard and compact R2 packages.
+Rising Star Marco has a waist-framed portrait and complete top-down puppet in standard and compact R2 art. The welcome card shows bottom-anchored Marco and the purple free chest. Coach prompts advance upon entering punch range; Skip moves to the upper right. HP-only onboarding retains fighter names and identifies Bruno as P(COM). Returning through the pause menu completes onboarding and preserves its gift. The first fight uses gameplay music, while its reward and welcome use title music. Reward acknowledgement has shared hover/pressed/disabled feedback. Initial language choice appears only when multiple translated languages are available. Removed obsolete shop artwork-pending copy, labelled the welcome voucher FREE CHEST READY and excluded unfinished Old Champ/Ring Captain art from daily offers. Restored the P logo red foot backing with transparent bottom padding and preserved artwork registration.
 
 ## Key technical decisions
-No future fighters added to acquisition pools. Ownership and skin persistence remain existing logic. Motion values live in tune.view.menu; no combat stats changed. Original 462x131 logo registration preserved; unrelated image pixels and bundle entries preserved. Corrected master and recoverable bundle backups are in outputs/roster-grid-v1 outside Git. Both quality profiles keep identical rig keys/geometry/parts.
+Gift ownership, free chest vouchers, economy, XP rules and combat tuning stay with Claude's existing implementation. Rising Star uses one canonical glove and boot with runtime mirror aliases; its wrist registration faces right and connects at the cuff. Both profiles share identical rig pixels and geometry. Lossless originals, registration, package backups and verified R2 receipts are retained outside Git in outputs/first-play-polish. No generated art binaries committed.
 
 ## Open questions
-Progress/profile/Veteran skin UI handoffs remain separate pending work.
+Progress/profile/Veteran skin screens and Ring Captain/Old Champ art remain separate pending handoffs.
 
 ## Known issues
-Existing Vite locale/chunk warnings persist. Brave single-player and training were inspected, including Tyke and fixed dummy. Automated roster tests cover local/online ownership and training; no two-device multiplayer match tested.
+Existing Vite locale/chunk warnings persist. Brave inspected first-fight controls, skin reveal, acknowledgement, welcome framing and pause-menu return; full win and skip/replay invariants are also covered by automated tests. Physical-phone play remains a manual check. Development reloads during atlas packing can briefly request incomplete files; production builds use verified immutable assets.
 
 ## Next proposed step
-Review deployed roster motion and proceed with the separately specified progression/profile screens.
+Review the deployed first-play presentation, then take the separately specified profile and progression UI work.
