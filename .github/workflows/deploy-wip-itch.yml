@@ -123,6 +123,7 @@ jobs:
           node scripts/test-punchies-roster.mjs
           node scripts/test-punchies-shop.mjs
           node scripts/test-punchies-progress.mjs
+          node scripts/test-punchies-alias.mjs
           node scripts/test-punchies-starter-skins.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs

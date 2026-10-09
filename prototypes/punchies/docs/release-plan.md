@@ -179,7 +179,7 @@ table entry and no new art. See section 6.
 | Translation sheet created, published, pulled, reviewed | Codex, owner (Chinese) | in progress |
 | iPhone online play fix | Claude, with owner retest | blocked on owner retest |
 | Progression logic: XP rules, levels, daily cap, milestone chest vouchers, title ids, tests | Claude | done (PR 1 of 2) |
-| Profile and alias logic, online handshake fields, sanitising | Claude | planned |
+| Profile and alias logic, online handshake fields, sanitising | Claude | done (PR 2 of 2) |
 | Progression and profile art and screens (section 8) | Codex | planned |
 | Veteran earn-only skin colourways, one per fighter | Codex | planned |
 | Real portal SDK QA | Claude | planned |
@@ -249,6 +249,12 @@ Sample first 20 levels (placeholders): 2 Rookie title, 5 skin chest, 8 title, 10
 
 Pacing: level 50 needs about 34,300 XP in total, so about 114 days at the 300 XP daily cap.
 
+### Built so far, profile and alias (logic only)
+
+`src/progress/alias.ts` (pure rules), `alias.json` (limits, reserved names, offensive list) and `profile.ts` (save and wiring). `getAlias()` returns the typed alias, else the portal's player name, else a generated "Boxer 1234" kept for good. `setAlias(raw)` returns `{ ok: true, alias }` or `{ ok: false, reason }` with reason `short`, `long`, `chars`, `reserved` or `blocked` (Codex maps these to `t()` texts for the editor). The alias is never sent to analytics. `localWireProfile()` is `{ alias, title, level }`. The online `hello` message now carries it; `NetSession.peer` holds the opponent's profile after validation (alias re-sanitised, title id checked against the list, level clamped), with safe defaults for older clients. `sideProfiles(localIdx, peer)` returns the per-side profiles for the VS intro, the area under the health bar and the victory screen; offline, pass `null` for the bot. `PORTAL_FIXED_ALIAS=on` at build time makes the alias non-editable for portals that forbid user text. The portal `playerName()` hook exists but no adapter implements it yet.
+
+Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled for the six launch languages by the owner or through the translation sheet process before any portal submission.
+
 ### Open questions
 
 - Daily cap of 300 XP: is that the right size? `?`
@@ -266,3 +272,4 @@ Pacing: level 50 needs about 34,300 XP in total, so about 114 days at the 300 XP
 - 2026-10-09: Added the approved three runtime palettes per existing fighter (21 total), retained saved skin IDs, and reconciled shipped fighter/unique art inventory. Four future fighter portraits remain approval-only.
 - 2026-10-09: added section 8, progression, profile and titles (Claude). Ranked pushed past launch.
 - 2026-10-09: progression logic built, PR 1 of 2 (Claude): rules, daily cap, vouchers, titles, wiring into match ends. Profile and alias logic is PR 2.
+- 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.

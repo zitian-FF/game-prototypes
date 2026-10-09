@@ -58,6 +58,8 @@ export default defineConfig(({ command }) => ({
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),
     __PUNCHIES_PORTAL_ADS__: JSON.stringify(process.env.PORTAL_ADS !== 'off'),
+    // PORTAL_FIXED_ALIAS=on: a portal that forbids user-generated text gets generated or platform names only.
+    __PUNCHIES_FIXED_ALIAS__: JSON.stringify(process.env.PORTAL_FIXED_ALIAS === 'on'),
     __PUNCHIES_ASSET_BASE__: JSON.stringify(assetProfile ? './' : command === 'serve' ? '/game-prototypes/' : '../../'),
   },
   build: {
