@@ -141,3 +141,53 @@ no logos, no people, no UI controls. Crisp professional arcade visual,
 readable at mobile size.
 
 Palette skins use render/skins.ts and skinPalette.ts to recolour base portraits and rig parts on demand, cached by base texture and skin ID. No palette PNGs or alternate atlases are shipped. pack-assets filters legacy starter _alt animation folders and duplicate loose textures; unique skins retain their separate artwork. Matching fighters share the base art group and can equip identical skins.
+
+## Active asset cleanup (2026-10-09)
+
+Full-quality art, original music and the historical parts ZIP are recoverable in
+[Punchies asset archive](https://drive.google.com/drive/folders/14OJLKjyM0pDSUxsb_vDDkFtMYRqZuj02).
+The folder includes inventories with original/active paths, reasons, byte sizes
+and SHA-256 hashes. Upload sizes and full streamed downloads were verified before
+the R2 replacements. Never delete this backup to make a runtime package smaller.
+
+The active R2 art ZIP contains prepared loose parts, 10 persisted mirror aliases
+in root `part-mirrors.json`, and `active-assets.json` marking prepared sources.
+It contains no `parts/` design masters, obsolete starter `_alt` frames, or 13
+audited superseded loose textures. Registered base/dummy animation, layered
+effect and feet frames remain available as fallbacks and for the playable
+consumer. Ring fallbacks, token fallback and both approved unique skin rigs stay.
+The packer reads persisted aliases when source mirror masters are absent.
+
+Prepared loose files copy exactly. Tyke/Longan sources retain full canvases and
+receive their existing .86/.75 waist framing once in the packer. Portraits fit
+within 1280 pixels at WebP quality 90; gym/select backgrounds use quality 90.
+Registered arena layers stay lossless at 1299x1211. Atlas sheets now use lossless
+WebP without changing trim offsets, frame geometry or the 2048px sheet limit.
+
+Music remains three full stereo 44.1kHz MP3 tracks; 128kbps replaces 192kbps.
+Duration differences are checked within 0.1 seconds; scene mapping, looping,
+gesture unlock, stingers, pause and visibility behavior remain unchanged.
+The fetcher verifies the new audio ZIP SHA-256 in `music-manifest.json`.
+
+Offline, deterministic cleanup commands (no cloud writes):
+
+```sh
+npm run pack:assets punchies
+node scripts/clean-punchies-assets.mjs original-art.zip output-directory
+node scripts/optimize-punchies-audio.mjs original-audio.zip output-directory /path/to/ffmpeg
+node scripts/test-punchies-asset-optimization.mjs
+node scripts/check-punchies-budget.mjs
+```
+
+Run the art cleanup against freshly packed original sources. It preserves its
+input ZIP and inventories every decision. Audio cleanup also requires ffprobe
+beside ffmpeg; neither is needed by normal CI builds or asset fetching.
+
+The conservative WIP package fell from 30.28 MB to 16.50 MB, counting all shared
+build files, Punchies art, music, stingers, HTML and provenance. The build budget
+check rejects packages above 20,000,000 bytes, above 1500 files, or portraits at
+or above 1,000,000 bytes. This intentionally counts all dynamic content: the
+[CrazyGames mobile rule](https://docs.crazygames.com/requirements/technical/)
+measures initial download through the first Gameplay start event with SDK
+integration and otherwise uses the total package. Its separate total package
+limit is 250 MB with SDK integration, and its mobile homepage threshold is 20 MB.

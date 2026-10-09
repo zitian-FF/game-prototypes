@@ -1,9 +1,18 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 
 // Only collapse verified pixel-exact mirrors. Distinct lighting/anatomy stays authored.
 export default async function mirroredParts(assetsSrcDir) {
+  const saved = path.join(assetsSrcDir, 'part-mirrors.json');
+  if (existsSync(saved)) {
+    const aliases = JSON.parse(readFileSync(saved, 'utf8'));
+    for (const [target, alias] of Object.entries(aliases)) {
+      if (!/^part_[a-z_]+$/.test(target) || !/^part_[a-z_]+$/.test(alias.source) || !['x', 'y'].includes(alias.axis)
+        || !existsSync(path.join(assetsSrcDir, 'loose', `${alias.source}.webp`))) throw new Error(`Invalid mirror alias: ${target}`);
+    }
+    return aliases;
+  }
   const root = path.join(assetsSrcDir, 'parts');
   const result = {};
   if (!existsSync(root)) return result;
