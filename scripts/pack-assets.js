@@ -35,9 +35,12 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // tabletop background below).
 const IMAGE_OPTIMIZATION_RULES = {
   punchies: [
-    // Waist-framed portraits; retain full-resolution R2 design masters.
-    { match: name => name === 'portrait_tyke', keepTop: .86, format: 'webp', lossless: true },
-    { match: name => name === 'portrait_longan', keepTop: .75, format: 'webp', lossless: true },
+    // Waist-framed portraits; retain full-resolution design masters in Drive.
+    { match: name => name === 'portrait_tyke', keepTop: .86, maxDimension: 1280, format: 'webp', quality: 90 },
+    { match: name => name === 'portrait_longan', keepTop: .75, maxDimension: 1280, format: 'webp', quality: 90 },
+    // Victory/reveal portraits reach about 360 logical pixels at up to 3x.
+    { match: name => name.startsWith('portrait_'), maxDimension: 1280, format: 'webp', quality: 90 },
+    { match: name => ['gym_background', 'character_select_background'].includes(name), format: 'webp', quality: 90 },
     // Preserve full registration, resolution and pixels; shrink PNG transfer only.
     { match: () => true, format: 'webp', lossless: true },
   ],
@@ -219,7 +222,16 @@ if (animKeysPresent.length > 0) {
     // "<atlasName>-<n>.json|png" when it spills. Anchoring keeps "atlas-marco"
     // from claiming "atlas-marco_alt".
     const own = new RegExp(`^${atlasName}(-\\d+)?\\.(png|json)$`);
-    const atlasFiles = readdirSync(atlasOutDir).filter((f) => own.test(f));
+    let atlasFiles = readdirSync(atlasOutDir).filter((f) => own.test(f));
+    if (name === 'punchies') {
+      // Lossless WebP preserves packed pixels, registration and frame geometry.
+      for (const file of atlasFiles.filter(f => f.endsWith('.png'))) {
+        const dest = file.replace(/\.png$/, '.webp');
+        await sharp(path.join(atlasOutDir,file)).webp({lossless:true,effort:6}).toFile(path.join(atlasOutDir,dest));
+        rmSync(path.join(atlasOutDir,file));
+      }
+      atlasFiles = atlasFiles.map(f => f.replace(/\.png$/, '.webp'));
+    }
     if (atlasFiles.length === 0) {
       fail(`free-tex-packer-cli did not produce any output for ${atlasName}`);
     }
@@ -229,6 +241,7 @@ if (animKeysPresent.length > 0) {
         // frame keys matching animations.json without altering trim offsets.
         const atlasPath = path.join(atlasOutDir, file);
         const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
+        if (name === 'punchies') for (const texture of atlas.textures ?? []) texture.image = texture.image.replace(/\.png$/, '.webp');
         const prefix = packedSrcDir.replaceAll('\\', '/') + '/';
         for (const texture of atlas.textures ?? []) {
           for (const frame of texture.frames ?? []) {
@@ -289,6 +302,13 @@ async function processLooseFile(file, rules) {
   const originalSize = statSync(src).size;
   const ext = path.extname(file).toLowerCase();
   const baseName = path.basename(file, ext);
+
+  // Cleaned R2 sources already contain the final framed/encoded loose art.
+  // Copy it exactly: repeated lossy encoding and waist cropping must not occur.
+  if (name === 'punchies' && existsSync(path.join(assetsSrcDir, 'active-assets.json')) && !['portrait_tyke','portrait_longan'].includes(baseName)) {
+    copyFileSync(src, path.join(looseOutDir, file));
+    return { outputFile: file, originalSize, outputSize: originalSize };
+  }
 
   const rule = IMAGE_EXTENSIONS.has(ext) ? rules?.find((r) => r.match(baseName)) : undefined;
 
