@@ -10,7 +10,7 @@
     "cat": "View",
     "desc": "Incoming character panel slide distance in logical pixels.",
     "min": 0,
-    "max": 100,
+    "max": 400,
     "step": 1
   },
   "view.menu.characterSlideEase": {
@@ -4065,5 +4065,19 @@
     "min": -2,
     "max": 2,
     "step": 1
+  },
+  "view.menu.characterImpactMs": {
+    "min": 0,
+    "max": 500,
+    "step": 1,
+    "cat": "View",
+    "desc": "Selection card landing flash and settle duration in milliseconds."
+  },
+  "view.menu.characterImpactPixels": {
+    "min": 0,
+    "max": 20,
+    "step": 0.5,
+    "cat": "View",
+    "desc": "Selection card landing displacement in logical pixels."
   }
 }

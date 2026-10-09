@@ -1,3 +1,4 @@
+import { verticalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
 import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
@@ -186,8 +187,10 @@ export class CharSelectScene extends Phaser.Scene {
     const c = e.code;
     const s = this.keySide(c);
     if (s < 0) return;
-    if (c === 'ArrowUp' || c === 'KeyW') this.cycleLevel(-1);
-    else if (c === 'ArrowDown' || c === 'KeyS') this.cycleLevel(1);
+    if (c === 'ArrowUp' || c === 'KeyW') this.moveVertical(s, -1);
+    else if (c === 'ArrowDown' || c === 'KeyS') this.moveVertical(s, 1);
+    else if(c==='KeyQ')this.cycleLevel(-1);
+    else if(c==='KeyE')this.cycleLevel(1);
     else if (c === 'ArrowLeft' || c === 'KeyA') this.move(s, -1);
     else if (c === 'ArrowRight' || c === 'KeyD') this.move(s, 1);
     else if (['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'Numpad1'].includes(c)) this.confirm(s);
@@ -213,19 +216,30 @@ export class CharSelectScene extends Phaser.Scene {
         this.prevPad[k] = now;
         return now && !was;
       };
-      if (edge(12)) this.cycleLevel(-1);
-      if (edge(13)) this.cycleLevel(1);
+      if (edge(12)) this.moveVertical(s,-1);
+      if (edge(13)) this.moveVertical(s,1);
+      if(edge(4))this.cycleLevel(-1);if(edge(5))this.cycleLevel(1);
       if (edge(14)) this.move(s, -1);
       if (edge(15)) this.move(s, 1);
       const ax = p.axes[0] ?? 0;
+      const ay = p.axes[1] ?? 0;
       if (Math.abs(ax) > 0.6 && this.time.now - this.stickAt[i] > 220) {
         this.stickAt[i] = this.time.now;
         this.move(s, Math.sign(ax));
+      } else if(Math.abs(ay)>0.6 && this.time.now-this.stickAt[i]>220){
+        this.stickAt[i]=this.time.now;
+        this.moveVertical(s,Math.sign(ay));
       }
       if (edge(0) || edge(2)) this.confirm(s);
       if (edge(1)) this.back(s);
       if (edge(9)) this.confirm(s);
     });
+  }
+
+  private moveVertical(s:number,d:number):void {
+    if(!this.editable(s)||this.sides[s].selected)return;
+    const current=this.sides[s].sel,next=verticalRosterPick(current,d,CHARACTER_IDS.length);
+    if(next!==current)this.move(s,next-current);
   }
 
   private cycleLevel(d: number): void {

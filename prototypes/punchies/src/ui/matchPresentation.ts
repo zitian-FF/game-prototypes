@@ -80,7 +80,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     portrait=scene.add.image(VIEW.left+VIEW.width*.25,VIEW.bottom,portraitKey).setDepth(140);
     const bounds=portraitBounds(scene,portraitKey);
     const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top));
-    portrait.setOrigin((bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
+    portrait.setFlipX(winner!.char==='tyke').setOrigin(winner!.char==='tyke'?1-(bounds.left+bounds.right)/2/portrait.width:(bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
   }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
   const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',

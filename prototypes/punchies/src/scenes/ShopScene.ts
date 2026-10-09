@@ -13,7 +13,7 @@ import { reducedMotion, startScreen } from '../ui/presentation';
 import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
 import { navRegister } from '../ui/menuNav';
-import { cartoonPanel, cartoonButton } from '../ui/cartoonChrome';
+import { cartoonPanel, cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
 
 /** Local storefront draft. No ad provider or production unlocks are connected. */
@@ -34,11 +34,11 @@ export class ShopScene extends Phaser.Scene {
     const t=this.add.text(x,y,label,{fontFamily:'Arial Black, Arial',fontSize:size,fontStyle:'bold',color,stroke:'#081225',strokeThickness:size>=14?3:1,resolution:PIXEL_RATIO});this.root.add(t);return t;
   }
   private panel(x:number,y:number,w:number,h:number,color=0x28517d){const g=this.add.graphics();cartoonPanel(g,x,y,w,h,color,11);this.root.add(g);}
-  private hit(x:number,y:number,w:number,h:number,fn:()=>void,depth=0){const hit=this.add.rectangle(x+w/2,y+h/2,w,h,0,0).setDepth(depth).setInteractive({useHandCursor:true}).on('pointerdown',fn);this.root.add(hit);navRegister(this,hit,fn);}
+  private hit(x:number,y:number,w:number,h:number,fn:()=>void,depth=0){const hit=this.add.rectangle(x+w/2,y+h/2,w,h,0,0).setDepth(depth).setInteractive({useHandCursor:true}).on('pointerdown',fn);this.root.add(hit);navRegister(this,hit,fn);return hit;}
   private button(x:number,y:number,w:number,label:string,fn:()=>void,enabled=true,depth=0,tone:'green'|'purple'|'gold'|'blue'='green'){
     const g=this.add.graphics();const color=!enabled?0x435271:tone==='purple'?0x9c4edf:tone==='gold'?0xe8a72d:tone==='blue'?0x268eda:0x28af70;cartoonButton(g,x,y,w,32,color,9);this.root.add(g);
     this.text(x+w/2,y+16,label,12,enabled?'#fff5de':'#8e9ba9').setOrigin(.5).setStroke('#23415a',0).setShadow(0,2,'#23415a',1,true,true);
-    if(enabled)this.hit(x,y,w,32,fn,depth);
+    if(enabled){const hit=this.hit(x,y,w,32,fn,depth);hit.off('pointerdown',fn);bindButtonFeedback(hit,state=>{g.clear();cartoonButton(g,x,y+(state==='pressed'?2:0),w,32,color,9);if(state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(x,y,w,32,9);});hit.on('pointerup',()=>{if(hit.getData('buttonReleasedInside'))fn();});}
   }
   /** Rewarded ad for a token. The reward is granted only when the portal reports 'rewarded'. */
   private async watchAd(){
