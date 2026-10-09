@@ -1,17 +1,12 @@
 ## Current milestone
-Standalone tuning tool ready for review and GitHub Pages.
-
+Update live tuning workshop to the seven-fighter game roster.
 ## What was implemented
-Four-character editor grouped into core, four punch types, block and dodge. Stored values, effective values, Marco baselines and signed deltas. Shared rules, per-field reset, changes review, browser draft restoration, JSON download, native local-file open/save and conflict-aware selective merge.
-
+Workshop roster uses the game's canonical fighter list: Marco, Mia, Bruno, G.P. Tee, Tyke, Dragon and Longan. Existing categories and Marco comparisons remain available for all fighters. Added roster, metadata and editable Longan baseline regression.
 ## Key technical decisions
-Separate prototype folder and automatic Vite entry discovery. Reads existing tune.json/meta and simulation punch formulas. No tuning values, game scenes or localisation files changed. No credentials, remote commits or uploads. Save checks the latest file after obtaining permission and preserves unrelated fields; same-field conflicts abort the writable stream.
-
+Unique and palette skins are cosmetic and share their fighter's stats. Longan's starting stats are provisional Marco values. No tuning values changed in this update.
 ## Open questions
-User was asked whether saving means the local file or direct GitHub commits. Local-file saving is implemented; remote account access remains out of scope pending that preference.
-
+None.
 ## Known issues
-Native Brave permission/picker flow requires a manual test. Model, merge and file transaction logic have automated tests. Percentage signs are numerical, not gameplay desirability. Conflict checks cannot lock out external file writes during the final transaction.
-
+Native local-file picker/permission flow still needs manual testing. Drafts based on older schemas may require reloading the current tune file.
 ## Next proposed step
-Try the selected-file save flow on a copy of tune.json, then tune and commit balance changes through the usual workflow.
+Deploy the approved game stack and workshop to live; verify both deployment workflows and seven-fighter sidebar.
