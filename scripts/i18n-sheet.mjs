@@ -2,6 +2,7 @@
 // Punchies translations <-> Google Sheets.
 //   node scripts/i18n-sheet.mjs export [out.csv] [--formulas]   English + every language column
 //   node scripts/i18n-sheet.mjs import <downloaded.csv>          write locales/*.json from the sheet
+//   node scripts/i18n-sheet.mjs pull <csv-url>                   download the published sheet, then import (also reads I18N_SHEET_URL)
 //   node scripts/i18n-sheet.mjs check                            validate all locale files
 // In Sheets: File > Import the CSV. With --formulas the empty cells hold
 // =GOOGLETRANSLATE(...) so Sheets fills them; review them (Chinese is reviewed by the owner),
@@ -51,12 +52,29 @@ function exportSheet(out, formulas) {
   console.log(`exported ${Object.keys(en).length} strings to ${out}`);
 }
 
-function importSheet(file) {
-  const rows = parseCsv(fs.readFileSync(file, 'utf8'));
+function importSheet(file) { importText(fs.readFileSync(file, 'utf8')); }
+
+// File > Share > Publish to web > Sheet > CSV gives a URL anyone can read. The
+// game never fetches it: translations are frozen into locales/*.json at pull time.
+async function pullSheet(url) {
+  if (!/^https:\/\/docs\.google\.com\//.test(url ?? '')) throw new Error('give the published Google Sheets CSV address (https://docs.google.com/...)');
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) throw new Error(`the sheet answered ${res.status}`);
+  const text = await res.text();
+  // A sign-in or error page comes back as HTML: never import that.
+  if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('the address returned a web page, not CSV (is the sheet published to the web as CSV?)');
+  importText(text, true);
+}
+
+function importText(text, whole = false) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) throw new Error('the sheet is empty');
   const header = rows[0];
   const col = Object.fromEntries(header.map((h, i) => [h.trim(), i]));
   if (col.key === undefined || col.en === undefined) throw new Error('the sheet needs "key" and "en" columns');
   const en = read('en');
+  const known = rows.slice(1).filter((r) => r[col.key] in en).length;
+  if (whole && known < Object.keys(en).length / 2) throw new Error(`only ${known} of ${Object.keys(en).length} English keys are in the sheet, refusing to import`);
   const issues = [];
   const result = Object.fromEntries(LANGS.map((c) => [c, {}]));
   for (const r of rows.slice(1)) {
@@ -101,7 +119,8 @@ function check() {
 }
 
 const [cmd, arg] = process.argv.slice(2);
-if (cmd === 'export') exportSheet(arg && !arg.startsWith('--') ? arg : 'punchies-translations.csv', process.argv.includes('--formulas'));
+if (cmd === 'pull') pullSheet(arg ?? process.env.I18N_SHEET_URL).catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'export') exportSheet(arg && !arg.startsWith('--') ? arg : 'punchies-translations.csv', process.argv.includes('--formulas'));
 else if (cmd === 'import' && arg) importSheet(arg);
 else if (cmd === 'check') check();
-else { console.error('usage: i18n-sheet.mjs export [out.csv] [--formulas] | import <csv> | check'); process.exit(2); }
+else { console.error('usage: i18n-sheet.mjs export [out.csv] [--formulas] | import <csv> | pull <csv-url> | check'); process.exit(2); }
