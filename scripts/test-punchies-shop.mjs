@@ -52,4 +52,19 @@ assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portrai
   assert(d.grantSkin(st,item.id).owned.includes(item.id),'the level track can still grant an earn-only skin');
   d.SHOP_ITEMS.pop();
 }
+// Skin chests only offer skins for fighters the player owns.
+{
+  const longanSkin={id:'skin-longan-test',name:'LONGAN TEST',kind:'skins',boxer:'longan',accent:0,skinType:'palette',description:''};
+  d.SHOP_ITEMS.push(longanSkin);
+  const fresh=d.newShopDraft(day);
+  assert(!d.availablePool(fresh,'skins').some(i=>i.boxer==='longan'),'no skins for a fighter that is not owned');
+  assert(d.availablePool(fresh,'skins').every(i=>['marco','mia','bruno'].includes(i.boxer)),'a new player only sees skins for the starting boxers');
+  const stale={...d.refreshDailyOffers(fresh,day),offerIds:['skin-longan-test']};
+  assert.equal(d.dailyOffers(stale,'skins').length,0,'a cached offer for a fighter that is not owned is dropped');
+  const withLongan={...fresh,owned:[...fresh.owned,'fighter-longan']};
+  assert(d.ownedBoxers(withLongan).includes('longan'));
+  assert(d.availablePool(withLongan,'skins').some(i=>i.id==='skin-longan-test'),'owning the fighter opens its skins');
+  assert(!d.availablePool({...withLongan,owned:[...withLongan.owned,'skin-longan-test']},'skins').some(i=>i.id==='skin-longan-test'),'an owned skin never repeats');
+  d.SHOP_ITEMS.pop();
+}
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');

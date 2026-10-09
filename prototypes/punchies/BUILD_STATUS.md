@@ -10,6 +10,8 @@ Standard and compact commands now default to CrazyGames; explicit portal overrid
 
 - Profile and alias logic (PR 2): alias rules and storage, generated default, platform name hook, `localWireProfile`, validated peer profile on the online hello (`NetSession.peer`), `sideProfiles`. No screens yet. Offensive word list is empty. The online hello was not exercised between two real devices.
 
+- Skin chest pool is limited to skins for fighters the player owns (`ownedBoxers`, `availablePool` in `shop/draft.ts`); the daily offer cache was bumped to schema 7.
+
 ## Key technical decisions
 Standard portraits fit within 1280px at WebP Q90; compact portraits fit within 768px at Q78, with backgrounds/ring layers within 960px at Q72. Fighter parts remain byte-identical and atlases preserve geometry. Both profiles retain all fighters, unique skins and 21 palette skins. Standard music is 128 kbps MP3; compact music is full-length 64 kbps AAC stereo 44.1kHz. Hard package budgets are 20 MB / 10 MB; portrait production targets are 200 KB / 100 KB with an existing hard limit below 1 MB. Isolated builds measure about 16.15 MB / 9.44 MB. New approved art must update the lossless archive and both prepared profiles, with SHA-256 inventories and current source identity.
 

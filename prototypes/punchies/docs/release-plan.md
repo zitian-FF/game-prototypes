@@ -276,3 +276,4 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - 2026-10-09: progression logic built, PR 1 of 2 (Claude): rules, daily cap, vouchers, titles, wiring into match ends. Profile and alias logic is PR 2.
 - 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
+- 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
