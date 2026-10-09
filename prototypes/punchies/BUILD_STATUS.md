@@ -10,6 +10,8 @@ Release-plan decisions remain documented in docs/release-plan.md; this release i
 
 - First launch flow: easy fight (Marco vs Bruno, jab and cross only, best of one, cannot lose, skippable), then the Rising Star reveal, one free skin chest (Shop button badge) and "Welcome to the Ring". See BRIEF.md.
 
+- Settings has RESET SAVE (two confirmations, wipes all saved keys, reloads); with ?debug=1 the Shop has a DEBUG: 99 TOKENS button.
+
 ## Key technical decisions
 Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
