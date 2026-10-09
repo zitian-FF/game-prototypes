@@ -79,7 +79,7 @@ export class FightStage {
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.views.forEach((v,i)=>v.skin=this.skins[i]);
-    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
+    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['FirstFight','VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.ko.skins=this.skins;
     this.fx = new Effects(scene);

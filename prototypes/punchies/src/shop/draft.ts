@@ -5,7 +5,7 @@ import type { CharId } from '../sim/character';
 import config from './draft-config.json';
 export { config as shopConfig };
 export type ShopKind = 'fighters' | 'skins';
-export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; /** Earned on the level track only: never in a chest or the daily offers. */ earnOnly?:boolean; }
+export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|null; accent:number; description:string; skinType?:'palette'|'unique'; portraitKey?:string; rigGroup?:string; artPending?:boolean; /** Earned on the level track only: never in a chest or the daily offers. */ earnOnly?:boolean; }
 // G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
@@ -14,10 +14,10 @@ export const SHOP_ITEMS:ShopItem[]=[
   {id:'skin-marco-mcclassic',name:'MARCO · McCLASSIC',kind:'skins',boxer:'marco',accent:0x35ba39,skinType:'unique',portraitKey:'portrait_marco_mcclassic',rigGroup:'marco_mcclassic',description:'Helmet-free Marco in a black top, green kit and gloves. Same Marco stats.'},
   {id:'fighter-tyke',name:'TYKE MAISON',kind:'fighters',boxer:'tyke',accent:0xf4c832,description:'Heavyweight champion with gold gloves and lightning ink. Stats are provisional.'},
   {id:'fighter-dragon',name:'DRAGON',kind:'fighters',boxer:'dragon',accent:0xef3340,description:'Blindfolded karate fighter with padded fingerless gloves. Stats are provisional.'},
-  {id:'skin-marco-unique',name:'MARCO · RISING STAR',kind:'skins',boxer:'marco',accent:0xffcf45,skinType:'unique',portraitKey:'portrait_marco_rising_star',rigGroup:'marco_rising_star',description:'Same Marco stats. Unique portrait and complete rig sprite set pending.'},
+  {id:'skin-marco-unique',name:'MARCO · RISING STAR',kind:'skins',boxer:'marco',accent:0xffcf45,skinType:'unique',portraitKey:'portrait_marco_rising_star',rigGroup:'marco_rising_star',description:'Blue and gold, ready for the spotlight. Same Marco stats.'},
   {id:'skin-mia-flaming-kunoichi',name:'MIA · FLAMING KUNOICHI',kind:'skins',boxer:'mia',accent:0xef3340,skinType:'unique',portraitKey:'portrait_mia_flaming_kunoichi',rigGroup:'mia_flaming_kunoichi',description:'Mia in red ninja robes with simple half gloves. Same Mia stats.'},
-  {id:'skin-mia-unique',name:'MIA · RING CAPTAIN',kind:'skins',boxer:'mia',accent:0xc19ffa,skinType:'unique',portraitKey:'portrait_mia_ring_captain',rigGroup:'mia_ring_captain',description:'Same Mia stats. Unique portrait and complete rig sprite set pending.'},
-  {id:'skin-bruno-unique',name:'BRUNO · OLD CHAMP',kind:'skins',boxer:'bruno',accent:0x69e7bb,skinType:'unique',portraitKey:'portrait_bruno_old_champ',rigGroup:'bruno_old_champ',description:'Same Bruno stats. Unique portrait and complete rig sprite set pending.'},
+  {id:'skin-mia-unique',name:'MIA · RING CAPTAIN',kind:'skins',boxer:'mia',accent:0xc19ffa,skinType:'unique',portraitKey:'portrait_mia_ring_captain',rigGroup:'mia_ring_captain',artPending:true,description:'Same Mia stats. Unique portrait and complete rig sprite set pending.'},
+  {id:'skin-bruno-unique',name:'BRUNO · OLD CHAMP',kind:'skins',boxer:'bruno',accent:0x69e7bb,skinType:'unique',portraitKey:'portrait_bruno_old_champ',rigGroup:'bruno_old_champ',artPending:true,description:'Same Bruno stats. Unique portrait and complete rig sprite set pending.'},
 ];
 SHOP_ITEMS.push(...Object.entries(PALETTES).map(([id, p]): ShopItem => ({ id, name: p.boxer.toUpperCase() + ' · ' + p.name.toUpperCase(), kind: 'skins', boxer: p.boxer as CharId, accent: p.gloves, skinType: 'palette', description: 'Cosmetic palette for portrait and rig. Original fighter stats.' })));
 SHOP_ITEMS.forEach(item=>{if(item.kind==='skins'&&!item.skinType)item.skinType='palette';});
@@ -60,20 +60,20 @@ export function ownedBoxers(state:ShopDraftState):string[]{
 /** Skins only appear for fighters the player owns; fighters and skins already owned never repeat; earn-only items never appear. */
 export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{
   const boxers=ownedBoxers(state);
-  return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!state.owned.includes(i.id)&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));
+  return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!i.artPending&&!state.owned.includes(i.id)&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));
 }
 /** Freeze today's offers so buying an item cannot reroll the storefront. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
   const s=normalizeShopDraft(state,now),day=shopDay(now);
-  if(s.offerDay===day&&s.offerIds&&s.offerSchema===7)return s;
+  if(s.offerDay===day&&s.offerIds&&s.offerSchema===8)return s;
   const seed=Math.floor(now/86400000);
   const pick=(kind:ShopKind,count:number)=>{const pool=availablePool(s,kind);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   const skins=availablePool(s,'skins');
   const pickSkins=(unique:boolean,count:number)=>{const pool=skins.filter(i=>(i.skinType==='unique')===unique);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
   // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
-  return {...s,offerDay:day,offerSchema:7,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
+  return {...s,offerDay:day,offerSchema:8,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
 }
-export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
+export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&!i.artPending&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
 export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
   const pool=dailyOffers(state,kind).filter(i=>!state.owned.includes(i.id));
   return pool.map(item=>({item,probability:1/pool.length}));

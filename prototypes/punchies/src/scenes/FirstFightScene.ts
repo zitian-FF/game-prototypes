@@ -1,14 +1,19 @@
 import Phaser from 'phaser';
-import { t } from '../i18n';
+import { availableLanguages, t } from '../i18n';
+import { chooseLanguage } from '../i18n/init';
+import { store } from '../portal/store';
+import { KEYS } from '../portal/keys';
 import { track } from '../portal/analytics';
 import { loadingFinished } from '../portal/index';
 import { setGameplay } from '../portal/gameplay';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
-import { fighterGroups, whenGroupsReady } from '../render/art';
+import { artImage, artKey, fighterGroups, whenGroupsReady } from '../render/art';
+import { portraitBounds } from '../render/portraitBounds';
 import { addVersionStamp } from '../version/versionStamp';
 import { FightStage, makeButton } from './FightStage';
 import { startScreen } from '../ui/presentation';
 import { titleButton } from '../ui/titleButton';
+import { cartoonPanel } from '../ui/cartoonChrome';
 import { RewardReveal } from '../ui/rewardReveal';
 import { charName, maxHealth } from '../sim/character';
 import { createSimState, step } from '../sim/sim';
@@ -50,7 +55,38 @@ export class FirstFightScene extends Phaser.Scene {
     applyCameraPixelRatio(this);
     this.built = false;
     this.ending = false;
-    whenGroupsReady(this, fighterGroups(['marco', 'bruno']), () => this.build());
+    this.registry.set('firstFightComplete', false);
+    this.events.on('menuReturn', this.skipFromMenu, this);
+    this.events.once('shutdown', () => {
+      this.events.off('menuReturn', this.skipFromMenu, this);
+      this.registry.remove('firstFightComplete');
+    });
+    whenGroupsReady(this, fighterGroups(['marco', 'bruno']), () => this.chooseFirstLanguage());
+  }
+
+  private chooseFirstLanguage(): void {
+    const languages = availableLanguages();
+    if (languages.length < 2 || store.getItem(KEYS.language)) { this.build(); return; }
+    const panel = this.add.container().setDepth(500);
+    panel.add(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x071020).setInteractive());
+    const logo = artImage(this, 'logo', VIEW.cx, VIEW.cy - 114, 280, 80);
+    if (logo) panel.add(logo);
+    panel.add(this.add.text(VIEW.cx, VIEW.cy - 46, t('menu.language'), {fontFamily:'Arial',fontSize:22,fontStyle:'bold',color:'#fff3da',resolution:PIXEL_RATIO}).setOrigin(.5));
+    let choosing = false;
+    const buttons: Phaser.GameObjects.Text[] = [];
+    languages.forEach((language, i) => {
+      const button = titleButton(this, VIEW.cx + (i % 2 ? 90 : -90), VIEW.cy + 6 + Math.floor(i / 2) * 46, 166, 36, language.native, () => {
+        if (choosing) return;
+        choosing = true;
+        void chooseLanguage(language.code).then(() => {
+          panel.destroy(true);
+          buttons.forEach(label => { label.getData('bg').destroy(); label.destroy(); });
+          this.build();
+        }).catch(() => { choosing = false; });
+      }, false, 501, 'blue');
+      // Keep the label above titleButton's independently drawn graphics.
+      buttons.push(button);
+    });
   }
 
   private build(): void {
@@ -67,10 +103,12 @@ export class FirstFightScene extends Phaser.Scene {
     this.stage.hideInfoButton();
     // Only what a newcomer needs: the stick, jab, cross and the health bars.
     this.stage.reveal(new Set(['stick', 'jab', 'cross', 'health']));
-    makeButton(this, VIEW.cx, VIEW.top + 46, 64, t('firstfight.skip'), () => this.finish('skip'));
+    makeButton(this, VIEW.right - 52, VIEW.top + 24, 76, t('firstfight.skip'), () => this.finish('skip'));
 
     const panelY = tune.ring.top + 30;
-    this.add.rectangle(VIEW.cx, panelY, 540, 44, 0x000000, 0.72).setStrokeStyle(1, 0x5a6378).setDepth(140);
+    const coachPanel = this.add.graphics().setDepth(140);
+    coachPanel.fillStyle(0x10243b, .92).fillRoundedRect(VIEW.cx - 270, panelY - 22, 540, 44, 9);
+    coachPanel.fillStyle(0xffd24a).fillRoundedRect(VIEW.cx - 270, panelY - 22, 5, 44, 2);
     this.coach = this.add
       .text(VIEW.cx, panelY, '', { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', align: 'center', wordWrap: { width: 520 }, resolution: PIXEL_RATIO })
       .setOrigin(0.5)
@@ -103,6 +141,11 @@ export class FirstFightScene extends Phaser.Scene {
     return { ...i, hook: false, uppercut: false, dodge: false, guard: false };
   }
 
+  private skipFromMenu(): void {
+    this.scene.resume();
+    this.finish('skip');
+  }
+
   private coachText(): string {
     if (this.phase === 'jab') return t('firstfight.coach_jab');
     if (this.phase === 'cross') return t('firstfight.coach_cross');
@@ -124,6 +167,8 @@ export class FirstFightScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (!this.built) return;
     this.stage.pollDevices();
+    const [player, opponent] = this.sim.fighters;
+    if (this.phase === 'move' && Math.hypot(player.x - opponent.x, player.y - opponent.y) <= cfg.opponentJabRange) this.phase = 'jab';
     this.coach.setText(this.coachText() + (time - this.lastPunchAt > cfg.idleHintMs && this.phase !== 'mix' && this.phase !== 'move' ? '\n' + t('firstfight.coach_move') : ''));
     if (!this.ending) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
@@ -147,6 +192,7 @@ export class FirstFightScene extends Phaser.Scene {
   private finish(how: 'win' | 'skip'): void {
     if (this.ending) return;
     this.ending = true;
+    this.registry.set('firstFightComplete', true);
     setGameplay(false);
     track('firstrun', how, 'done');
     markFirstRunDone();
@@ -159,9 +205,22 @@ export class FirstFightScene extends Phaser.Scene {
 
   private welcome(): void {
     const D = 700;
-    this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x030711, 0.97).setDepth(D).setInteractive();
-    this.add.text(VIEW.cx, VIEW.cy - 50, t('firstfight.welcome_title'), { fontFamily: 'Arial', fontSize: '34px', fontStyle: 'bold', color: '#ffd24a', stroke: '#071024', strokeThickness: 6, resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(D + 1);
-    this.add.text(VIEW.cx, VIEW.cy, t('firstfight.welcome_body'), { fontFamily: 'Arial', fontSize: '15px', color: '#e6eefc', align: 'center', wordWrap: { width: 520 }, resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(D + 1);
-    titleButton(this, VIEW.cx, VIEW.cy + 62, 240, 44, t('firstfight.enter_ring'), () => startScreen(this, 'Menu'), false, D + 1, 'green');
+    this.coach.setVisible(false);
+    this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x071020, .94).setDepth(D).setInteractive();
+    const key = artKey(this, 'portrait_marco_rising_star') ?? artKey(this, 'portrait_marco');
+    if (key) {
+      const portrait = this.add.image(VIEW.cx - 235, VIEW.bottom, key).setOrigin(.5, 1).setDepth(D + 1);
+      const source = this.textures.get(key).getSourceImage() as HTMLImageElement;
+      const bounds = portraitBounds(this, key);
+      portrait.setOrigin((bounds.left + bounds.right) / 2 / source.width, bounds.bottom / source.height);
+      portrait.setScale(Math.min(VIEW.height * .92 / (bounds.bottom - bounds.top), 330 / (bounds.right - bounds.left)));
+    }
+    const x = VIEW.cx + 125;
+    const graphics = this.add.graphics().setDepth(D + 2);
+    cartoonPanel(graphics, x - 190, VIEW.cy - 145, 380, 290, 0x244368, 14);
+    this.add.text(x, VIEW.cy - 115, t('firstfight.welcome_title'), { fontFamily: 'Arial', fontSize: '25px', fontStyle: 'bold', color: '#ffd24a', stroke: '#071024', strokeThickness: 3, padding:{left:8,right:8}, resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(D + 3);
+    artImage(this, 'chest_skin_base', x, VIEW.cy - 35, 140, 110, D + 3);
+    this.add.text(x, VIEW.cy + 37, t('firstfight.welcome_body'), { fontFamily: 'Arial', fontSize: '15px', color: '#e6eefc', align: 'center', wordWrap: { width: 330 }, resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(D + 3);
+    titleButton(this, x, VIEW.cy + 103, 260, 42, t('firstfight.enter_ring'), () => startScreen(this, 'Menu'), false, D + 3, 'green');
   }
 }

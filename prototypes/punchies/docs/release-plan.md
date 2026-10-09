@@ -122,7 +122,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | Skin | id | Fighter | Type | Launch source | Art status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Default | `default` | all | n/a | Always owned | done | |
-| Rising Star | `skin-marco-unique` | Marco | unique | First-run gift | pending art | Portrait key `portrait_marco_rising_star`, rig `marco_rising_star` |
+| Rising Star | `skin-marco-unique` | Marco | unique | First-run gift | implemented | Blue/gold portrait and complete rig; glove/boot mirrors generated in code. Portrait key `portrait_marco_rising_star`, rig `marco_rising_star` |
 | Ring Captain | `skin-mia-unique` | Mia | unique | Skin chest | pending art | Portrait key `portrait_mia_ring_captain`, rig `mia_ring_captain` |
 | Old Champ | `skin-bruno-unique` | Bruno | unique | Skin chest | pending art | Portrait key `portrait_bruno_old_champ`, rig `bruno_old_champ` |
 | Cool Current | `skin-marco-cyan` | marco | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
@@ -150,7 +150,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | McClassic | `skin-marco-mcclassic` | Marco | unique | Skin chest | done | Portrait and complete rig shipped |
 | Flaming Kunoichi | `skin-mia-flaming-kunoichi` | Mia | unique | Skin chest | done | Portrait and complete rig shipped |
 
-Inventory: 7 existing fighters, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Rising Star, Ring Captain and Old Champ remain pending artwork; ready unique skins are McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
+Inventory: 7 existing fighters, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
 
 ### Content roadmap targets (owner to set)
 
@@ -265,6 +265,8 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - Do online opponents' aliases need a report or hide option? Without chat the risk is lower, but portal review may ask. `?`
 
 ## 9. Update log
+
+- 2026-10-09: Codex polished first-play UI and integrated Rising Star portrait/rig in both R2 profiles. Coach advances on approach, Skip sits at upper right, HP-only HUD retains names, returning through pause menu preserves the welcome gift, gameplay music maps to the first fight and title music to its reward/welcome. Welcome card uses bottom-anchored Marco and the purple chest; reward acknowledgement has standard button feedback. Language choice precedes the fight only when multiple translated languages are available. Profile/progression screens remain separate pending work.
 
 - 2026-10-09: first-time experience built (Claude): easy fight vs Bruno, skip, Rising Star gift, free first skin chest, Shop badge.
 - 2026-10-09: Tee moved into the fighter chest pool, welcome claim removed (Claude). The code in #274 already moved the starter skins into the chest pool and added Longan, Tyke, Dragon, McClassic and Flaming Kunoichi; Codex to fold them into section 5.
