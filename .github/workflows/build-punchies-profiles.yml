@@ -1,0 +1,65 @@
+name: Build Punchies asset profiles
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/punchies/**'
+      - 'scripts/build-punchies-profile.mjs'
+      - 'scripts/test-punchies-profiles.mjs'
+      - 'scripts/test-punchies-profile-parity.mjs'
+      - 'scripts/check-punchies-budget.mjs'
+      - 'vite.config.ts'
+      - 'package.json'
+      - '.github/workflows/build-punchies-profiles.yml'
+  workflow_dispatch:
+    inputs:
+      portal:
+        description: Portal integration (independent of asset profile)
+        type: choice
+        options: [web, crazygames, poki, playgama]
+        default: crazygames
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        profile: [standard, compact]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build selected profile and portal
+        env:
+          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+        run: npm run build:punchies:${{ matrix.profile }} -- --portal "$TARGET_PORTAL"
+      - name: Verify profile isolation and inventory
+        env:
+          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+        run: node scripts/test-punchies-profiles.mjs "dist/punchies-${{ matrix.profile }}-$TARGET_PORTAL" ${{ matrix.profile }}
+      - name: Verify music behavior
+        run: node scripts/test-punchies-music.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: punchies-${{ matrix.profile }}-${{ inputs.portal || 'web' }}
+          path: dist/punchies-${{ matrix.profile }}-${{ inputs.portal || 'web' }}/
+  parity:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          path: profiles
+      - name: Verify identical content keys and rig registration
+        env:
+          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+        run: node scripts/test-punchies-profile-parity.mjs "profiles/punchies-standard-$TARGET_PORTAL" "profiles/punchies-compact-$TARGET_PORTAL"
