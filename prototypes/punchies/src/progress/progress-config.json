@@ -1,0 +1,38 @@
+{
+  "maxLevel": 50,
+  "levelBaseXp": 100,
+  "levelStepXp": 25,
+  "dailyXpCap": 300,
+  "xp": {
+    "vsaiFinish": 10,
+    "vsaiWin": 20,
+    "onlineFinish": 15,
+    "onlineWin": 25,
+    "localFinish": 10,
+    "firstFightWin": 60
+  },
+  "botMultiplier": { "easy": 0.5, "medium": 1, "hard": 1.5 },
+  "skinChestEvery": 5,
+  "fighterChestEvery": 10,
+  "titles": [
+    { "id": "rookie", "level": 1 },
+    { "id": "scrapper", "level": 4 },
+    { "id": "brawler", "level": 8 },
+    { "id": "contender", "level": 12 },
+    { "id": "challenger", "level": 16 },
+    { "id": "veteran", "level": 20 },
+    { "id": "slugger", "level": 25 },
+    { "id": "ringmaster", "level": 30 },
+    { "id": "champion", "level": 40 },
+    { "id": "legend", "level": 50 }
+  ],
+  "skinRewards": {
+    "12": "skin-marco-veteran",
+    "18": "skin-mia-veteran",
+    "24": "skin-bruno-veteran",
+    "30": "skin-tee-veteran",
+    "36": "skin-longan-veteran",
+    "42": "skin-tyke-veteran",
+    "48": "skin-dragon-veteran"
+  }
+}

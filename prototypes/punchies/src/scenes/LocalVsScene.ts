@@ -1,3 +1,4 @@
+import { awardMatch } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -89,6 +90,7 @@ export class LocalVsScene extends Phaser.Scene {
       return;
     }
     track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished');
+    this.registry.set('lastAward', awardMatch({ kind: 'localvs', win: false }));
     matchResult(this, r.winner === null ? t('common.draw') : t('match.p_victory', { n: r.winner + 1 }), {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),

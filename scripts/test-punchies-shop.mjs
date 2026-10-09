@@ -24,13 +24,22 @@ assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portrai
 {
   const day2=Date.parse('2026-10-09T12:00:00Z');
   const g=d.grantFirstGift(d.newShopDraft(day2));
-  assert.equal(g.item.id,'skin-marco-unique');assert(g.state.owned.includes('skin-marco-unique'));assert.equal(g.state.freeSkinChest,true);
+  assert.equal(g.item.id,'skin-marco-unique');assert(g.state.owned.includes('skin-marco-unique'));assert.equal(g.state.freeSkinChests,1);
   assert.equal(d.grantFirstGift(g.state).item,undefined,'the gift is granted only once');
   const ownedBefore=g.state.owned.length;
   const free=d.buyDailyChest(g.state,'skins',0,day2);
-  assert(free.ok&&free.state.tokens===0&&free.state.freeSkinChest===false&&free.state.owned.length===ownedBefore+1,'the free chest costs nothing and is used once');
+  assert(free.ok&&free.state.tokens===0&&free.state.freeSkinChests===0&&free.state.owned.length===ownedBefore+1,'the free chest costs nothing and is used once');
   assert(!(free.state.purchasedChests??[]).includes('skins'),'the free chest does not use the daily chest');
   assert.equal(d.buyDailyChest(free.state,'skins',0,day2).ok,false,'the next skin chest costs tokens again');
-  assert.equal(d.normalizeShopDraft(JSON.parse(JSON.stringify(g.state)),day2).freeSkinChest,true,'the flag survives a save and load');
+  assert.equal(d.normalizeShopDraft(JSON.parse(JSON.stringify(g.state)),day2).freeSkinChests,1,'the voucher survives a save and load');
+  assert.equal(d.normalizeShopDraft({...JSON.parse(JSON.stringify(g.state)),freeSkinChests:undefined,freeSkinChest:true},day2).freeSkinChests,1,'the old boolean flag migrates to a count');
+  // Milestone vouchers: a fighter voucher opens a fighter chest for free and does not use the daily chest.
+  const fv=d.grantVoucher(d.refreshDailyOffers({...d.newShopDraft(day2),tokens:0},day2),'fighters');
+  assert.equal(d.freeChests(fv,'fighters'),1);
+  const fo=d.buyDailyChest(fv,'fighters',0,day2);
+  assert(fo.ok&&fo.state.tokens===0&&d.freeChests(fo.state,'fighters')===0&&!(fo.state.purchasedChests??[]).includes('fighters'));
+  assert.equal(d.grantSkin(fv,'skin-not-there'),null,'a reward skin without art yet is skipped');
+  assert(d.grantSkin(fv,'skin-mia-unique').owned.includes('skin-mia-unique'));
+  assert.equal(d.grantSkin(d.grantSkin(fv,'skin-mia-unique'),'skin-mia-unique'),null,'an owned skin is not granted twice');
 }
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');

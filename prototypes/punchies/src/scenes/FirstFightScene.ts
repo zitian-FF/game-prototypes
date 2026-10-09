@@ -15,6 +15,7 @@ import { createSimState, step } from '../sim/sim';
 import { TICK_RATE, tune } from '../sim/tune';
 import { NEUTRAL_INPUT, type FrameInput, type SimState } from '../sim/types';
 import { grantFirstGift, loadShopDraft, saveShopDraft } from '../shop/draft';
+import { awardMatch } from '../progress/progress';
 import { markFirstRunDone } from '../firstrun/state';
 import cfg from '../firstrun/firstfight.json';
 
@@ -149,6 +150,7 @@ export class FirstFightScene extends Phaser.Scene {
     setGameplay(false);
     track('firstrun', how, 'done');
     markFirstRunDone();
+    if (how === 'win') this.registry.set('lastAward', awardMatch({ kind: 'firstfight', win: true }));
     const gift = grantFirstGift(loadShopDraft());
     saveShopDraft(gift.state);
     if (gift.item) new RewardReveal(this, gift.item, () => this.welcome());

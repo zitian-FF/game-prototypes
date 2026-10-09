@@ -425,3 +425,6 @@ A SKIP button is always visible. Finishing or skipping saves the flag, grants th
 
 ## Reset save and debug tokens — 2026-10-09
 Settings has a RESET SAVE button. It asks twice ("DELETE LOCAL SAVE?" then "ARE YOU REALLY SURE?"), then removes every saved key on this device (audio, shop, tutorial progress, characters, local inputs, language, first launch flag) and reloads, so the game starts like a brand new install including the language choice and the easy first fight. With `?debug=1` the Shop shows a DEBUG: 99 TOKENS button that sets the balance to 99 to test the chests.
+
+## Progression logic — 2026-10-09
+Boxer Level (1 to 50) from XP, saved under `punchies:progress:v1`. XP per finished match: vs AI 10 plus 20 for a win, times 0.5 / 1 / 1.5 for easy / medium / hard; online 15 plus 25 for a win; local VS 10; first launch fight win 60; training and tutorial 0. A hard cap of 300 XP per UTC day. XP to the next level is 100 plus 25 per level. Rewards only at milestones: a free skin chest every 5 levels, a free fighter chest every 10, titles by level, and earn-only Veteran skins. Chest rewards are vouchers, not tokens. Config is in `src/progress/progress-config.json`. See docs/release-plan.md section 8.

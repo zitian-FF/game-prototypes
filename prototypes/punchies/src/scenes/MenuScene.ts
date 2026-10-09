@@ -6,7 +6,7 @@ import { isDebug } from '../debug/debugPanel';
 import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
 import { cartoonButton } from '../ui/cartoonChrome';
-import { shopPreviewBalance, loadShopDraft } from '../shop/draft';
+import { shopPreviewBalance, loadShopDraft, freeChests } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
@@ -70,7 +70,8 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(balanceX+9,top+294,String(shopPreviewBalance()),{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
       .setOrigin(0.5).setDepth(132);
 
-    if (loadShopDraft().freeSkinChest) {
+    const shopState = loadShopDraft();
+    if (freeChests(shopState, 'skins') + freeChests(shopState, 'fighters') > 0) {
       // A free chest is waiting in the Shop: a small red badge on the button corner.
       const bx = shopX + half / 2 - 2, by = top + 283;
       this.add.graphics().setDepth(133).fillStyle(0xe8283c).fillCircle(bx, by, 8).lineStyle(2, 0xffffff).strokeCircle(bx, by, 8);

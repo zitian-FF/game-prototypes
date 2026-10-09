@@ -41,8 +41,9 @@ for (const file of files) {
 }
 // Dynamic keys are limited to a few groups, each checked for completeness below.
 const { CHARACTER_IDS } = await loadTs('./prototypes/punchies/src/sim/character', ['CHARACTER_IDS']);
-const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS };
-for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
+const progressCfg = JSON.parse(fs.readFileSync(`${src}/progress/progress-config.json`, 'utf8'));
+const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS, 'title.': progressCfg.titles.map((x) => x.id) };
+for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|title\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
 for (const m of fs.readFileSync(`${src}/shop/draft.ts`, 'utf8').matchAll(/reasonKey:'([^']+)'/g)) { assert.ok(m[1] in en, `missing shop error key ${m[1]}`); used.add(m[1]); }
 for (const [prefix, ids] of Object.entries(groups)) for (const id of ids) {
   const key = prefix === 'char.' ? `char.${id}.nick` : `${prefix}${id}`;

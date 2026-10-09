@@ -9,4 +9,5 @@ export const KEYS = {
   localInputs: 'punchies:localInputs:v1',
   language: 'punchies:language:v1',
   firstRun: 'punchies:firstrun:v1',
+  progress: 'punchies:progress:v1',
 } as const;

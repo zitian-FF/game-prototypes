@@ -14,7 +14,7 @@ import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
 import { navRegister } from '../ui/menuNav';
 import { cartoonPanel, cartoonButton } from '../ui/cartoonChrome';
-import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
+import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
 
 /** Local storefront draft. No ad provider or production unlocks are connected. */
 export class ShopScene extends Phaser.Scene {
@@ -82,7 +82,7 @@ export class ShopScene extends Phaser.Scene {
     if(key){const icon=this.add.image(x,175,key);icon.setScale(140/Math.max(icon.width,icon.height));this.root.add(icon);}
     else{const g=this.add.graphics();g.fillStyle(kind==='skins'?0x8256be:0xeebf43).fillRoundedRect(x-57,134,114,77,12);g.lineStyle(5,0x081428).strokeRoundedRect(x-57,134,114,77,12);this.root.add(g);}
     this.hit(x-88,116,176,122,()=>{this.popupKind=kind;this.render();});
-    const freeChest=kind==='skins'&&this.state.freeSkinChest===true;
+    const freeChest=freeChests(this.state,kind)>0;
     const pool=chestRewards(this.state,kind),purchased=!freeChest&&this.state.purchasedChests?.includes(kind);
     this.text(x,247,purchased?t('shop.opened_today'):pool.length?t('shop.tap_to_see_rewards'):t('common.collection_complete'),12,purchased?'#91dbb4':'#a8c1d8').setOrigin(.5,0);
     this.text(x,268,t('shop.one_chest_per_day'),10,'#a8c1d8').setOrigin(.5,0);
