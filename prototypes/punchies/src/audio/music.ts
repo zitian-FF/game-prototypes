@@ -4,6 +4,7 @@ import { audioOutput, unlockMixer } from './mixer';
 
 type Track = 'title' | 'charselect' | 'gameplay';
 declare const __PUNCHIES_ASSET_BASE__: string;
+declare const __PUNCHIES_MUSIC_EXTENSION__: 'mp3' | 'm4a';
 const fights = new Set(['Training', 'Tutorial', 'VsAI', 'LocalVs', 'Match']);
 const root = `${__PUNCHIES_ASSET_BASE__}prototypes/punchies/audio/`;
 
@@ -20,7 +21,7 @@ export function installMusic(game: Phaser.Game): void {
     if (!ctx || !bus) return;
     let player = players.get(selected);
     if (!player) {
-      const element = new Audio(`${root}${selected}.mp3`);
+      const element = new Audio(`${root}${selected}.${__PUNCHIES_MUSIC_EXTENSION__}`);
       element.loop = true;
       element.preload = 'none';
       const gain = ctx.createGain();

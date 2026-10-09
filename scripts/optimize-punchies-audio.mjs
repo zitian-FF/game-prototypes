@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import AdmZip from 'adm-zip';
 const [input,out,ffmpeg='ffmpeg']=process.argv.slice(2);
+const compact=process.argv.includes('--compact');
 if(!input||!out)throw Error('Expected original audio ZIP and output directory');
 fs.mkdirSync(out,{recursive:true});
 const original=new AdmZip(input),active=new AdmZip(),files=[];
@@ -17,18 +18,19 @@ for(const entry of original.getEntries().filter(e=>!e.isDirectory)){
   let bytes=source,metadata;
   if(name.endsWith('.mp3')){
     if(!['title.mp3','charselect.mp3','gameplay.mp3'].includes(name))throw Error(`Unexpected music file ${name}`);
-    const before=path.join(out,`original-${name}`),after=path.join(out,name);
+    const before=path.join(out,`original-${name}`),after=path.join(out,compact?name.replace(/\.mp3$/,'.m4a'):name);
     fs.writeFileSync(before,source);
-    execFileSync(ffmpeg,['-hide_banner','-loglevel','error','-y','-i',before,'-map_metadata','-1','-codec:a','libmp3lame','-b:a','128k','-ar','44100','-ac','2',after]);
+    execFileSync(ffmpeg,['-hide_banner','-loglevel','error','-y','-i',before,'-map_metadata','-1','-codec:a',compact?'aac':'libmp3lame','-b:a',compact?'64k':'128k','-ar','44100','-ac','2',...(compact?['-movflags','+faststart']:[]),after]);
     const a=inspect(before),b=inspect(after);
     if(Math.abs(Number(a.format.duration)-Number(b.format.duration))>.1||b.streams[0].channels!==a.streams[0].channels||b.streams[0].sample_rate!==a.streams[0].sample_rate)throw Error(`Audio contract changed: ${name}`);
     metadata={before:a,after:b};bytes=fs.readFileSync(after);
   }
-  active.addFile(entry.entryName,bytes);
-  files.push({path:entry.entryName,originalBytes:source.length,originalSha256:hash(source),activeBytes:bytes.length,activeSha256:hash(bytes),reason:metadata?'128 kbps MP3; full stereo track and duration retained':'Provenance retained byte-for-byte',metadata});
+  const destination=compact?entry.entryName.replace(/\.mp3$/,'.m4a'):entry.entryName;
+  active.addFile(destination,bytes);
+  files.push({path:entry.entryName,destination,originalBytes:source.length,originalSha256:hash(source),activeBytes:bytes.length,activeSha256:hash(bytes),reason:metadata?`${compact?'64 kbps AAC':'128 kbps MP3'}; full stereo track and duration retained`:'Provenance retained byte-for-byte',metadata});
 }
 for(const entry of active.getEntries())entry.header.time=new Date(2000,0,1);
 const bytes=active.toBuffer(),report={originalSha256:hash(fs.readFileSync(input)),activeSha256:hash(bytes),originalBytes:fs.statSync(input).size,activeBytes:bytes.length,files};
-fs.writeFileSync(path.join(out,'punchies-audio-active.zip'),bytes);
-fs.writeFileSync(path.join(out,'audio-cleanup-manifest.json'),JSON.stringify(report,null,2));
+fs.writeFileSync(path.join(out,compact?'punchies_compact_audio.zip':'punchies-audio-active.zip'),bytes);
+fs.writeFileSync(path.join(out,compact?'compact-audio-inventory.json':'audio-cleanup-manifest.json'),JSON.stringify(report,null,2));
 console.log(JSON.stringify({bytes:bytes.length,sha256:report.activeSha256}));

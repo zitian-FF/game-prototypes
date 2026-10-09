@@ -1,0 +1,12 @@
+{
+  "standard": {"musicExtension":"mp3"},
+  "compact": {
+    "standardArtEtag":"\"a7913a74cd08e63f1bfc92013de22d63\"",
+    "standardMusicSha256":"9e5543284b149e6d2c155dc21cf29951e48b0c214ef4185a887600ae344bbbc7",
+    "artUrl":"https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_compact_assets.zip",
+    "artSha256":"b0c1c63bee18200d5328b70b2b29baeed8928de6ada4b47cd5c3fc1e85aa26fe",
+    "audioUrl":"https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_compact_audio.zip",
+    "audioSha256":"c90e5ff163a2f8dea12ba568dffe1b8661b87385e8f542fb14e2255204860b74",
+    "musicExtension":"m4a"
+  }
+}

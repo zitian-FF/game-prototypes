@@ -1,17 +1,17 @@
 ## Current milestone
-Three runtime palette skins for every existing fighter, prepared for review.
+Independent standard and compact asset profiles for Punchies portal builds.
 
 ## What was implemented
-21 named palette skins across Marco, Mia, Bruno, G.P. Tee, Tyke, Dragon and Longan. Existing six palette IDs retain saved ownership with approved new names. Skin chest pool and selection use the expanded catalog; offer schema refreshed. Shared palette table recolours portraits and rig parts at runtime with cached textures. Updated the release-plan content inventory and English names.
+One codebase builds either profile for web, CrazyGames, Poki or Playgama. Separate staging folders, prepared R2 archives, SHA-256 checks and output directories prevent profile mixing. Standard retains current art and MP3 music; compact uses smaller portraits/backgrounds and full-length AAC music. A CI matrix saves both builds and verifies content parity. Existing 21 palette skins, unique skins, fighters and gameplay are retained.
 
 ## Key technical decisions
-No new image downloads or R2 writes. Preserve source alpha, dimensions, registration, dark outlines and fighter stats. Material islands prevent rectangular colour seams. Retain the three original alternate recolour functions for their hair/skin details. Four upcoming fighter portraits are approval-only and excluded from this pool.
+Compact portraits fit within 768px at WebP Q78; backgrounds and all ring layers fit within 960px at Q72. Already-small fighter parts remain byte-identical for registration and palette masks. Atlases keep frame geometry; lossy output is used only when smaller. Music is AAC 64kbps stereo 44.1kHz, with the original full duration. Budgets are 20 MB standard and 10 MB compact. Isolated builds measure about 16.15 MB / 9.44 MB. The standard WIP workflow remains standard. Portal selection is separate from asset profile. Compact fails if its recorded standard-source art ETag or music hash becomes outdated.
 
 ## Open questions
-Rising Star, Ring Captain and Old Champ remain catalogued but artwork is pending; Claude has been notified.
+No new creative or gameplay decisions. Four forthcoming portrait-only designs remain outside these builds pending approval and integration.
 
 ## Known issues
-Palette masks depend on existing source artwork and should be reviewed if that artwork changes. Existing Vite chunk and locale warnings remain. Changes have not been published live.
+Compact textures deliberately lose fine detail. Browser playback and rendering were checked in Brave; other portal integrations use existing mock checks, without a live portal submission or multiplayer peer. Existing pending unique reward artwork is unchanged. Normal Vite locale/chunk warnings remain.
 
 ## Next proposed step
-Review and merge the palette catalog; continue the four new fighter portrait design approvals separately.
+Use the compact CI artifact for portal submission after listening/visual review. Regenerate compact archives from original masters whenever approved standard assets change, then update source identity and archive checksums together.

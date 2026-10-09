@@ -191,3 +191,50 @@ or above 1,000,000 bytes. This intentionally counts all dynamic content: the
 measures initial download through the first Gameplay start event with SDK
 integration and otherwise uses the total package. Its separate total package
 limit is 250 MB with SDK integration, and its mobile homepage threshold is 20 MB.
+
+## Standard and compact profiles
+
+The WIP deployment keeps its existing standard art and MP3 music. Profile builds
+use the same game code and texture keys, and separate staging/output folders:
+
+```sh
+npm run build:punchies:standard -- --portal web
+npm run build:punchies:compact -- --portal crazygames
+npm run build:punchies:compact -- --portal poki
+npm run build:punchies:compact -- --portal playgama
+```
+
+Portal integration and asset profile are independent: either profile accepts
+`web`, `crazygames`, `poki` or `playgama`. Outputs are
+`dist/punchies-<profile>-<portal>/`. The portal-ready game entry is
+`index.html` at the package root. Each build contains only its chosen profile.
+CI's **Build Punchies asset profiles** workflow builds both profiles, verifies
+inventory and parity, and saves downloadable artifacts; manual runs select the
+portal. It does not publish a game to a portal account.
+
+Compact portraits use original masters, existing waist framing, maximum 768px
+and WebP Q78. Backgrounds and every registered ring layer fit within 960px at
+Q72; other loose art uses Q72. Fighter parts remain byte-identical because they
+are already small and their pixels drive palette masks. Atlas registration stays
+identical; a lossy Q65 atlas is used only when smaller than the lossless standard
+sheet. Transparent alpha remains preserved. Music is full-length AAC 64kbps in
+M4A, stereo 44.1kHz; stingers, scene mapping and looping remain unchanged.
+
+Prepared compact R2 archives and SHA-256 pins live in `asset-profiles.json`.
+Cache folders are isolated by profile and archive hash. `--fresh` verifies new
+downloads; `--offline` explicitly uses existing verified local inputs. The
+compact build checks its recorded standard-art ETag and standard-music hash,
+and refuses to silently ship outdated art when standard content changes.
+
+To regenerate compact art, first pack current standard sources, then run
+`node scripts/prepare-punchies-compact.mjs original-art.zip public/prototypes/punchies/assets output-directory`.
+For music use the existing offline audio optimizer with `--compact`. Upload the
+separate `punchies_compact_assets.zip` and `punchies_compact_audio.zip`, update
+their hashes and standard-source identity in `asset-profiles.json`, and build
+both profiles. The preparation scripts never write cloud objects or alter input
+masters. Inventories retain source lineage and encoding decisions.
+
+Budgets are 20 MB standard and 10 MB compact, including code, art, audio and
+provenance. Current isolated builds are about 16.15 MB standard / 9.44 MB
+compact. The compact profile is deliberately lower quality and should receive
+visual/listening review for new artwork or music before portal submission.

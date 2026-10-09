@@ -18,7 +18,9 @@
     "fetch:assets": "node scripts/fetch-assets.js",
     "pack:assets": "node scripts/pack-assets.js",
     "simulate": "node scripts/run-simulate.mjs",
-    "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts"
+    "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts",
+    "build:punchies:standard": "npm run build:packages && node scripts/build-punchies-profile.mjs standard",
+    "build:punchies:compact": "npm run build:packages && node scripts/build-punchies-profile.mjs compact"
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.5",
