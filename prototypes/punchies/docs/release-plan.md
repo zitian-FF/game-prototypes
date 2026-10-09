@@ -104,7 +104,7 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Marco Reyes | `marco` | Vanilla | Owned from the start | done | done | Tutorial and first fight fighter |
 | Mia Tanaka | `mia` | Agile | Owned from the start | done | done | |
 | Bruno Kowalski | `bruno` | Tank | Owned from the start | done | done | |
-| G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | `?` | `?` | Hidden in roster until owned |
+| G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | done | done | Hidden in roster until owned |
 | Longan | `fighter-longan` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
 | Tyke Maison | `fighter-tyke` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
 | Dragon | `fighter-dragon` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
@@ -119,19 +119,35 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | Skin | id | Fighter | Type | Launch source | Art status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Default | `default` | all | n/a | Always owned | done | |
-| Rising Star | `skin-marco-unique` | Marco | unique | First-run gift | `?` | Portrait key `portrait_marco_rising_star`, rig `marco_rising_star` |
-| Ring Captain | `skin-mia-unique` | Mia | unique | Skin chest | `?` | Portrait key `portrait_mia_ring_captain`, rig `mia_ring_captain` |
-| Old Champ | `skin-bruno-unique` | Bruno | unique | Skin chest | `?` | Portrait key `portrait_bruno_old_champ`, rig `bruno_old_champ` |
-| Cyan Rush | `skin-marco-cyan` | Marco | palette | Skin chest (was free starter) | done | |
-| Violet Resolve | `skin-mia-violet` | Mia | palette | Skin chest (was free starter) | done | |
-| Golden Veteran | `skin-bruno-gold` | Bruno | palette | Skin chest (was free starter) | done | |
-| Night Shift | `skin-marco` | Marco | palette | Skin chest | `?` | |
-| Scarlet Spark | `skin-mia` | Mia | palette | Skin chest | `?` | |
-| Old Gold | `skin-bruno` | Bruno | palette | Skin chest | `?` | |
-| (none yet) | | Tee | | | | Tee has no skins listed |
+| Rising Star | `skin-marco-unique` | Marco | unique | First-run gift | pending art | Portrait key `portrait_marco_rising_star`, rig `marco_rising_star` |
+| Ring Captain | `skin-mia-unique` | Mia | unique | Skin chest | pending art | Portrait key `portrait_mia_ring_captain`, rig `mia_ring_captain` |
+| Old Champ | `skin-bruno-unique` | Bruno | unique | Skin chest | pending art | Portrait key `portrait_bruno_old_champ`, rig `bruno_old_champ` |
+| Cool Current | `skin-marco-cyan` | marco | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| After Hours | `skin-marco` | marco | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Hotshot | `skin-marco-hotshot` | marco | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Violet Discipline | `skin-mia-violet` | mia | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| White Lotus | `skin-mia-white-lotus` | mia | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Midnight Rose | `skin-mia` | mia | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Golden Hour | `skin-bruno-gold` | bruno | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Old Iron | `skin-bruno` | bruno | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Sunday Best | `skin-bruno-sunday-best` | bruno | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Redline | `skin-tee-redline` | tee | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Ghost Signal | `skin-tee-ghost-signal` | tee | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Ultraviolet | `skin-tee-ultraviolet` | tee | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Black Gold | `skin-tyke-black-gold` | tyke | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Platinum Storm | `skin-tyke-platinum-storm` | tyke | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Crimson Crown | `skin-tyke-crimson-crown` | tyke | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Night Dojo | `skin-dragon-night-dojo` | dragon | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Jade Temple | `skin-dragon-jade-temple` | dragon | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Autumn Ember | `skin-dragon-autumn-ember` | dragon | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Green Tea | `skin-longan-green-tea` | longan | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Plum Wine | `skin-longan-plum-wine` | longan | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
+| Blue Hour | `skin-longan-blue-hour` | longan | palette | Skin chest | implemented | Runtime recolour; no additional image downloads |
 
-Totals today: 4 playable fighters (3 owned, Tee from the fighter chest), 2 placeholder fighters, 9 skins in
-the pool plus the gift.
+| McClassic | `skin-marco-mcclassic` | Marco | unique | Skin chest | done | Portrait and complete rig shipped |
+| Flaming Kunoichi | `skin-mia-flaming-kunoichi` | Mia | unique | Skin chest | done | Portrait and complete rig shipped |
+
+Inventory: 7 existing fighters, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Rising Star, Ring Captain and Old Champ remain pending artwork; ready unique skins are McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
 
 ### Content roadmap targets (owner to set)
 
@@ -153,7 +169,7 @@ table entry and no new art. See section 6.
 | First-time experience (flow, easy fight vs Bruno, skip, Rising Star reveal, free first skin chest, welcome card, Shop badge) | Claude | built, needs phone test |
 | Remove the free Tee claim: Tee joins the fighter chest pool, welcome claim UI removed, existing owners keep him | Claude | done |
 | Starter alternate skins join the chest pool; nobody gets them free | Codex (#274) | done |
-| Data-driven palette swaps (table per skin) so new palette skins need no code | Claude with Codex | planned |
+| Data-driven palette swaps (table per skin) so new palette skins need no code | Codex | implemented; review branch |
 | Unique skin art and rigs (Rising Star, Ring Captain, Old Champ) | Codex | `?` |
 | Tee portrait and rig confirmed final | Codex | `?` |
 | Fighters five and six: design, stats, art | Owner, Codex | `?` |
@@ -177,3 +193,5 @@ table entry and no new art. See section 6.
 - 2026-10-09: Tee moved into the fighter chest pool, welcome claim removed (Claude). The code in #274 already moved the starter skins into the chest pool and added Longan, Tyke, Dragon, McClassic and Flaming Kunoichi; Codex to fold them into section 5.
 - 2026-10-09: owner decisions: first skin chest free, sparring partner Bruno, Tee no longer a free claim (Claude).
 - 2026-10-09: created (Claude). Decisions from the owner: easy first fight, skippable, Rising Star gift, starter skins removed.
+
+- 2026-10-09: Added the approved three runtime palettes per existing fighter (21 total), retained saved skin IDs, and reconciled shipped fighter/unique art inventory. Four future fighter portraits remain approval-only.
