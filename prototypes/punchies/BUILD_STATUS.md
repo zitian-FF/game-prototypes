@@ -1,12 +1,12 @@
 ## Current milestone
-Runtime palettes and obsolete asset removal, stacked on UI PR #278.
+Standardize Tyke and Longan portrait waist framing, stacked on outsource content PR #280.
 ## What was implemented
-Palette portraits and rigs keep their existing cached recolouring. Removed unused mirror-match part generation; base atlas groups now serve same-character matches. Excluded legacy starter alternate animation folders and duplicate loose palette textures from builds. Saved 4,688,226 bytes (12 files) from the packed bundle.
+Crop Tyke below his champion belt and Longan below his waistband at asset packing time. Reduce their selection portrait heights to 189 and 174 logical pixels respectively. All portrait consumers receive the same waist crop.
 ## Key technical decisions
-Base and unique artwork remains in R2 as source masters; no R2 overwrite required. Palette ownership, skin IDs, colours and stats remain unchanged. Builds omit redundant palette assets. Unique skins retain separate art.
+Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
 ## Open questions
 None.
 ## Known issues
-Not merged or deployed. Existing Vite locale/chunk warnings remain. Legacy baked animation fallback uses base colours; current palette presentation uses the live layered rig.
+Not merged or deployed. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review and merge the stacked changes. Typecheck/build, starter recolours, roster, caching and asset optimization regressions pass. Brave palette comparison and Scarlet Spark selection/training rig checked with no console errors.
+Review and merge the stacked changes. Brave selection review has no console errors; typecheck/build and pixel-preservation regression pass.
