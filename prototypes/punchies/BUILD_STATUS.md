@@ -1,14 +1,12 @@
 ## Current milestone
-Standardize Tyke and Longan portrait waist framing, stacked on outsource content PR #280.
+Approved Punchies roster, art and UI update is live on itch.io.
 ## What was implemented
-Crop Tyke below his champion belt and Longan below his waistband at asset packing time. Reduce their selection portrait heights to 189 and 174 logical pixels respectively. All portrait consumers receive the same waist crop.
-
-Release-plan decisions remain documented in docs/release-plan.md; this release implements the approved roster/art/UI updates.
+Published Tyke, Dragon and Longan fighters, Flaming Kunoichi and McClassic unique skins, locked starter palette rewards, runtime recolouring and mirrored asset optimization, selection/VS polish, softer buttons and player-only training selection. Tyke and Longan portraits are waist-framed. Seven-fighter tuning workshop is live on GitHub Pages. Concurrent release-plan notes are retained in docs/release-plan.md.
 ## Key technical decisions
-Keep original full-resolution R2 masters untouched. Pack the top 86% of Tyke and 75% of Longan, preserving retained pixels and alpha exactly with lossless WebP. Existing fighters and rigs are unchanged.
+R2 masters remain intact; packed portraits crop below belt/waistband. Cosmetic skins share fighter stats. Longan remains a provisional Marco baseline. Consolidated release commit 72420ca; itch build stamp 091026r0105. Fixed outdated deployment test stubs, shop test clock, canonical localization roster checks and Windows test path handling.
 ## Open questions
-None.
+Longan's final stats await user tuning.
 ## Known issues
-Not merged or deployed. Existing Vite locale/chunk warnings remain.
+Minute original matte RGB may remain in preserved antialiased edges. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review and merge the stacked changes. Brave selection review has no console errors; typecheck/build and pixel-preservation regression pass.
+User playtest the live release. Both game and Pages deployment workflows succeeded; live seven-fighter roster, cropped Longan portrait and workshop core values verified in Brave with no console errors.

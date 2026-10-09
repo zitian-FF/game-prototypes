@@ -1,5 +1,5 @@
 ## Current milestone
-Update live tuning workshop to the seven-fighter game roster.
+Seven-fighter tuning workshop deployed and verified live.
 ## What was implemented
 Workshop roster uses the game's canonical fighter list: Marco, Mia, Bruno, G.P. Tee, Tyke, Dragon and Longan. Existing categories and Marco comparisons remain available for all fighters. Added roster, metadata and editable Longan baseline regression.
 ## Key technical decisions
@@ -9,4 +9,4 @@ None.
 ## Known issues
 Native local-file picker/permission flow still needs manual testing. Drafts based on older schemas may require reloading the current tune file.
 ## Next proposed step
-Deploy the approved game stack and workshop to live; verify both deployment workflows and seven-fighter sidebar.
+Tune the live seven-fighter roster. GitHub Pages deployment succeeded; Brave verified all seven fighter buttons and Longan core values/Marco comparisons with no console errors.
