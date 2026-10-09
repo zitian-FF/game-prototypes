@@ -119,6 +119,8 @@ jobs:
           node scripts/test-punchies-music.mjs
           node scripts/test-punchies-stingers.mjs
           node scripts/test-punchies-feedback.mjs
+          node scripts/test-punchies-ui-input.mjs
+          node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
           node scripts/test-punchies-roster.mjs
           node scripts/test-punchies-shop.mjs
