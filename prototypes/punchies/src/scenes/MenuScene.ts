@@ -5,7 +5,7 @@ import { chooseLanguage } from '../i18n/init';
 import { isDebug } from '../debug/debugPanel';
 import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
-import { cartoonPanel } from '../ui/cartoonChrome';
+import { cartoonButton } from '../ui/cartoonChrome';
 import { shopPreviewBalance } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -56,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX-(half+12)/2,top+177,half,38,t('menu.local_vs'),()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}),false,130,'red');
     titleButton(this,menuX+(half+12)/2,top+177,half,38,t('common.online'),()=>this.openOnlinePopup(),false,130,'blue');
     category(top+213,t('menu.practice'));
-    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'Training'),false,130,'purple');
+    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'CharSelect',{mode:'training'}),false,130,'purple');
     titleButton(this,menuX+(half+12)/2,top+243,half,38,t('menu.tutorial'),()=>startScreen(this,'Tutorial'),false,130,'teal');
     titleButton(this,menuX-(half+12)/2,top+294,half,27,t('common.settings'),()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;
@@ -139,7 +139,7 @@ export class MenuScene extends Phaser.Scene {
       return t;
     };
     const btn = (x: number, y: number, w: number, label: string, onTap: () => void) => {
-      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-15,w,30,0x47739d,7);items.push(chrome);
+      const chrome=this.add.graphics().setDepth(D+1);cartoonButton(chrome,x-w/2,y-15,w,30,0x47739d,7);items.push(chrome);
       const bg = this.add.rectangle(x,y,w,30,0,0).setDepth(D+1).setInteractive();
       bg.on('pointerdown', onTap);
       navRegister(this, bg, onTap);
@@ -219,7 +219,7 @@ export class MenuScene extends Phaser.Scene {
       return t;
     };
     const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x2a3140) => {
-      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-h/2,w,h,0x47739d,6);items.push(chrome);
+      const chrome=this.add.graphics().setDepth(D+1);cartoonButton(chrome,x-w/2,y-h/2,w,h,0x47739d,6);items.push(chrome);
       const bg=this.add.rectangle(x,y,w,h,0,0).setDepth(D+1).setInteractive();
       const tap = () => {
         bg.setFillStyle(0x4a5a78);

@@ -217,7 +217,8 @@
   "training.stance_high_guard": "HIGH GUARD",
   "training.stance_normal": "NORMAL",
   "training.stance_vulnerable": "VULNERABLE",
-  "training.you_char": "YOU: {name}",
+  "training.start": "START TRAINING  ›",
+  "training.practice_target": "Fixed practice target",
   "tutorial.anyone_recovering_from_a_punch": "Anyone recovering from a punch, especially a miss, is Vulnerable and pulses red-orange. The dummy will whiff: step in and hit it while it recovers.",
   "tutorial.counter": "COUNTER",
   "tutorial.cross_text": "Cross: slower but heavier, and the longest reach (about 20% more than the jab). {btn} to land 2 crosses.",
@@ -259,5 +260,9 @@
   "shop.item.fighter-dragon.name": "DRAGON",
   "shop.item.skin-mia-flaming-kunoichi.name": "MIA · FLAMING KUNOICHI",
   "quote.tyke": "You brought fists. I brought thunder.",
-  "quote.dragon": "I do not need eyes to see your openings."
+  "quote.dragon": "I do not need eyes to see your openings.",
+  "char.longan.nick": "Still Waters",
+  "shop.item.fighter-longan.name": "LONGAN",
+  "shop.item.skin-marco-mcclassic.name": "MARCO · McCLASSIC",
+  "quote.longan": "Quiet hands. Loud results."
 }

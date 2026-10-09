@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cartoonPanel } from '../ui/cartoonChrome';
+import { cartoonButton } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
@@ -360,12 +360,12 @@ export function makeButton(
 ): Phaser.GameObjects.Text {
   const bg = scene.add.rectangle(x, y, w, h, 0, 0).setDepth(130);
   const chrome=scene.add.graphics().setDepth(130);
-  cartoonPanel(chrome,x-w/2,y-h/2,w,h,tint,7);
+  cartoonButton(chrome,x-w/2,y-h/2,w,h,tint,7);
   bg.on('destroy', () => chrome.destroy());
   bg.setInteractive().on('pointerdown', onTap);
   navRegister(scene, bg, onTap);
   const label = scene.add
-    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',stroke:'#081226',strokeThickness:2, resolution: PIXEL_RATIO })
+    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true}, resolution: PIXEL_RATIO })
     .setOrigin(0.5)
     .setDepth(131);
   label.setData('bg', bg);
