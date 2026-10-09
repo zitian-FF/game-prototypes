@@ -2,7 +2,7 @@
 
 Live document. Claude owns the plan sections. Codex keeps the inventory tables
 (section 5) up to date as art lands. The owner decides. Change this file by pull
-request and add a line to the update log (section 8) every time.
+request and add a line to the update log (section 9) every time.
 
 Status words: `done`, `in progress`, `planned`, `blocked`, `?` (unknown, needs an answer).
 
@@ -17,6 +17,9 @@ Status words: `done`, `in progress`, `planned`, `blocked`, `?` (unknown, needs a
 | First chest | The player's first skin chest is free (no token gift) | 2026-10-09 |
 | Sparring partner | Bruno | 2026-10-09 |
 | G.P. Tee | No longer a free claim. He joins the fighter chest pool | 2026-10-09 |
+| Ranked / MMR | Pushed back past launch. Log anonymous match results meanwhile | 2026-10-09 |
+| Progression | Boxer Level from XP. Tokens only at milestones. Earn-only skins, titles, frames. Hard daily XP cap | 2026-10-09 |
+| Profile | Dedicated profile screen with alias, level, title. Title shows in online fights | 2026-10-09 |
 | Currency | One token currency, used to unlock fighters and skins | earlier |
 | Ads | Rewarded only, in the shop only, never during or between fights | earlier |
 | Analytics | Anonymous events on the portal layer, no external collector yet | earlier |
@@ -175,6 +178,10 @@ table entry and no new art. See section 6.
 | Fighters five and six: design, stats, art | Owner, Codex | `?` |
 | Translation sheet created, published, pulled, reviewed | Codex, owner (Chinese) | in progress |
 | iPhone online play fix | Claude, with owner retest | blocked on owner retest |
+| Progression logic: XP rules, levels, daily cap, milestone chest vouchers, title ids, tests | Claude | planned |
+| Profile and alias logic, online handshake fields, sanitising | Claude | planned |
+| Progression and profile art and screens (section 8) | Codex | planned |
+| Veteran earn-only skin colourways, one per fighter | Codex | planned |
 | Real portal SDK QA | Claude | planned |
 | Music size and streaming decision | Claude | `?` |
 | Balance sign-off | Owner | `?` |
@@ -187,7 +194,63 @@ table entry and no new art. See section 6.
 - Portal terms differ (exclusivity, external requests). Read each before submitting.
 - iPhone online play is unresolved.
 
-## 8. Update log
+## 8. Progression, profile and titles (spec)
+
+Decided by the owner: one Boxer Level per device; XP from finished matches (vs AI, online and local VS all count); tokens only at milestone levels, never every level; earn-only skins; titles; a hard daily XP cap; a profile area; the title shown in online fights. No daily missions. Ranked is out of launch scope.
+
+### XP and levels (numbers are proposals, tune with data)
+
+| Source | XP |
+| --- | --- |
+| Finish a match vs AI | 10, plus 20 for a win. Easy x0.5, Normal x1, Hard x1.5 |
+| Online match | 15 for finishing, plus 25 for a win |
+| Local VS | 10 each, no win bonus |
+| Training, tutorial | 0 |
+| First launch fight | one fixed chunk, set in config |
+| Daily hard cap | 300 XP per day (UTC day, same boundary as the shop). XP past the cap is lost, and the result screen says so |
+
+XP to the next level = 100 + 25 x (level - 1). Level cap 50 for now (shows MAX).
+Config lives in `src/progress/progress-config.json`, not in `tune.json` (it is not combat feel).
+
+### Rewards on the track
+
+| Kind | Rule |
+| --- | --- |
+| Tokens | Only as milestone chests: a free skin chest every 5 levels, a free fighter chest every 10 levels. These are chest vouchers, not loose tokens |
+| Earn-only skins | One "Veteran" colourway per fighter, unlocked only by level, never in a chest. Cheap palette swaps |
+| Titles | Text label from a fixed list, unlocked by level. Network and save store the title id, never free text |
+| Frames and badges | Later. Frames are phase 2 |
+
+Sample first 20 levels (placeholders): 2 Rookie title, 5 skin chest, 8 title, 10 fighter chest, 12 Veteran skin (Marco), 15 skin chest + title, 18 Veteran skin (Mia), 20 fighter chest + title.
+
+### Profile and alias
+
+- Profile screen (from the main menu): alias, level and XP bar, current title (changeable among unlocked), reward track with what is next, simple stats (matches, wins).
+- Alias: use the portal's player name when the portal provides one (CrazyGames, Playgama). Otherwise a typed alias with a small in-canvas keyboard like the join keypad. Default is a generated "Boxer" + number.
+- Alias rules (proposal): 3 to 12 characters, letters and digits only (any script), single spaces, no leading or trailing space, a small blocklist. Always sanitised again on the receiving side.
+- Online: the alias and the title id are sent in the connection handshake. The receiver validates length, characters and that the title id exists, otherwise shows a default. No free text beyond the alias.
+- The title shows under the character name in the VS intro, under the health bar, and on the victory screen (online matches; offline shows only your own).
+- Poki and some portals restrict user-generated text. A build flag may force "generated alias only" on a portal that requires it.
+
+### Work split
+
+- Claude: save format, XP rules, level and reward logic, tests, alias validation, the handshake fields, analytics events, wiring tokens and chests into the shop state, the title ids. Interfaces below.
+- Codex: all art and screen layouts (profile screen, XP bar, result XP fill, level-up reveal, title chip, frames, Veteran skin colourways).
+
+### Interfaces Claude will provide (names may change; Codex builds against them)
+
+`src/progress/progress.ts`: `loadProgress()`, `progressView()` returns `{ level, xp, xpToNext, capToday, xpToday, maxed, title, unlockedTitles, nextRewards }`, `awardMatch(result)` returns `{ xpGained, capped, levelUps: [{ level, rewards }] }`.
+`src/progress/profile.ts`: `getAlias()`, `setAlias(raw)` returns `{ ok, alias } | { ok: false, reason }`, `getTitle()`, `setTitle(id)`, `sanitizeAlias(raw)`, `peerProfile(handshake)`.
+`src/progress/titles.ts`: the title id list with `titleName(id)` going through `t()`.
+
+### Open questions
+
+- Daily cap of 300 XP: is that the right size? `?`
+- Typed alias, generated alias or platform name only, per portal? `?`
+- Title list and level for each title (owner to write; Claude proposes). `?`
+- Do online opponents' aliases need a report or hide option? Without chat the risk is lower, but portal review may ask. `?`
+
+## 9. Update log
 
 - 2026-10-09: first-time experience built (Claude): easy fight vs Bruno, skip, Rising Star gift, free first skin chest, Shop badge.
 - 2026-10-09: Tee moved into the fighter chest pool, welcome claim removed (Claude). The code in #274 already moved the starter skins into the chest pool and added Longan, Tyke, Dragon, McClassic and Flaming Kunoichi; Codex to fold them into section 5.
@@ -195,3 +258,4 @@ table entry and no new art. See section 6.
 - 2026-10-09: created (Claude). Decisions from the owner: easy first fight, skippable, Rising Star gift, starter skins removed.
 
 - 2026-10-09: Added the approved three runtime palettes per existing fighter (21 total), retained saved skin IDs, and reconciled shipped fighter/unique art inventory. Four future fighter portraits remain approval-only.
+- 2026-10-09: added section 8, progression, profile and titles (Claude). Ranked pushed past launch.
