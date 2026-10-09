@@ -203,13 +203,14 @@ The WIP deployment keeps its existing standard art and MP3 music. Profile builds
 use the same game code and texture keys, and separate staging/output folders:
 
 ```sh
-npm run build:punchies:standard -- --portal web
-npm run build:punchies:compact -- --portal crazygames
+npm run build:punchies:standard
+npm run build:punchies:compact
 npm run build:punchies:compact -- --portal poki
 npm run build:punchies:compact -- --portal playgama
 ```
 
-Portal integration and asset profile are independent: either profile accepts
+Both profile commands and CI default to CrazyGames. Pass `--portal web` to
+produce a standalone web build. Portal integration and asset profile are independent: either profile accepts
 `web`, `crazygames`, `poki` or `playgama`. Outputs are
 `dist/punchies-<profile>-<portal>/`. The portal-ready game entry is
 `index.html` at the package root. Each build contains only its chosen profile.

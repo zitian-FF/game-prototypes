@@ -1,8 +1,8 @@
 ## Current milestone
-Dual-profile builds and an authoritative art production/compression standard.
+CrazyGames is the default portal for both asset-profile commands and CI.
 
 ## What was implemented
-Standard and compact builds share one codebase and support web, CrazyGames, Poki and Playgama with separate verified assets and root entry points. Both profiles and their parity checks passed CI; standard WIP deployed successfully. Art production now has a single standard in art/PRODUCTION_STANDARD.md, linked from the art README and repository agent instructions. It covers lossless masters, source lineage, stable registration, palette reuse, encoder settings, regeneration, byte budgets and review evidence.
+Standard and compact commands now default to CrazyGames; explicit portal overrides remain available. Push-triggered CI uses CrazyGames too. Standard and compact builds share one codebase and support web, CrazyGames, Poki and Playgama with separate verified assets and root entry points. Both profiles and their parity checks passed CI; standard WIP deployed successfully. Art production now has a single standard in art/PRODUCTION_STANDARD.md, linked from the art README and repository agent instructions. It covers lossless masters, source lineage, stable registration, palette reuse, encoder settings, regeneration, byte budgets and review evidence.
 
 - Release plan section 8 specifies progression (Boxer Level, daily XP cap, milestone chest vouchers, earn-only Veteran skins, titles), the profile screen and alias, and titles shown in online fights. Not built yet.
 

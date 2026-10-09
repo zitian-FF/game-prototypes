@@ -8,7 +8,7 @@ import AdmZip from 'adm-zip';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
 const args=process.argv.slice(2),value=key=>args[args.indexOf(key)+1];
-const profile=args[0],portal=args.includes('--portal')?value('--portal'):profile==='compact'?'crazygames':'web';
+const profile=args[0],portal=args.includes('--portal')?value('--portal'):'crazygames';
 if(!['standard','compact'].includes(profile)||!['web','crazygames','poki','playgama'].includes(portal))throw Error('Expected standard|compact and --portal web|crazygames|poki|playgama');
 const settings=JSON.parse(fs.readFileSync('prototypes/punchies/asset-profiles.json'))[profile];
 const staging=path.join(root,'.cache/punchies-profiles',profile),publicDir=path.join(staging,'public');
