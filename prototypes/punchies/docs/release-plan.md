@@ -178,7 +178,7 @@ table entry and no new art. See section 6.
 | Fighters five and six: design, stats, art | Owner, Codex | `?` |
 | Translation sheet created, published, pulled, reviewed | Codex, owner (Chinese) | in progress |
 | iPhone online play fix | Claude, with owner retest | blocked on owner retest |
-| Progression logic: XP rules, levels, daily cap, milestone chest vouchers, title ids, tests | Claude | planned |
+| Progression logic: XP rules, levels, daily cap, milestone chest vouchers, title ids, tests | Claude | done (PR 1 of 2) |
 | Profile and alias logic, online handshake fields, sanitising | Claude | planned |
 | Progression and profile art and screens (section 8) | Codex | planned |
 | Veteran earn-only skin colourways, one per fighter | Codex | planned |
@@ -243,6 +243,12 @@ Sample first 20 levels (placeholders): 2 Rookie title, 5 skin chest, 8 title, 10
 `src/progress/profile.ts`: `getAlias()`, `setAlias(raw)` returns `{ ok, alias } | { ok: false, reason }`, `getTitle()`, `setTitle(id)`, `sanitizeAlias(raw)`, `peerProfile(handshake)`.
 `src/progress/titles.ts`: the title id list with `titleName(id)` going through `t()`.
 
+### Built so far (logic only)
+
+`src/progress/` holds `rules.ts` (pure rules), `progress.ts` (save and wiring), `titles.ts` and `progress-config.json`. XP is awarded once when a match finishes in vs AI, online, local VS and the first launch fight. The result is stored in the scene registry under `lastAward` for the result screen: `{ xpGained, capped, levelUps, grantedRewards }`. Milestone chests are saved as vouchers (`freeSkinChests`, `freeFighterChests`) and open for free in the Shop; the Shop button shows its badge while any voucher is waiting. Titles use placeholder ids (rookie, scrapper, brawler, contender, challenger, veteran, slugger, ringmaster, champion, legend) in `progress-config.json`; names are `title.<id>` keys. Veteran skin rewards point at `skin-<fighter>-veteran` ids at levels 12, 18, 24, 30, 36, 42 and 48; an id that does not exist yet is skipped until Codex adds the item (rename the ids in the config if Codex chooses others).
+
+Pacing: level 50 needs about 34,300 XP in total, so about 114 days at the 300 XP daily cap.
+
 ### Open questions
 
 - Daily cap of 300 XP: is that the right size? `?`
@@ -259,3 +265,4 @@ Sample first 20 levels (placeholders): 2 Rookie title, 5 skin chest, 8 title, 10
 
 - 2026-10-09: Added the approved three runtime palettes per existing fighter (21 total), retained saved skin IDs, and reconciled shipped fighter/unique art inventory. Four future fighter portraits remain approval-only.
 - 2026-10-09: added section 8, progression, profile and titles (Claude). Ranked pushed past launch.
+- 2026-10-09: progression logic built, PR 1 of 2 (Claude): rules, daily cap, vouchers, titles, wiring into match ends. Profile and alias logic is PR 2.
