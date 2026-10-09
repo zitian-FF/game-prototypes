@@ -1,25 +1,24 @@
 ## Current milestone
-Roster expansion QA complete; PR274 ready for review, unmerged.
+Asset optimization complete and verified on a separate branch above PR274; awaiting review.
 
 ## What was implemented
-- Tyke Maison and Dragon replace daily fighter placeholders. Flaming Kunoichi adds a unique Mia portrait and rig.
-- Starter alternate palettes begin locked in the skin pool; explicit acquisitions remain owned.
-- Re-exported contaminated component slices from approved art, preserving outlines and removing neighbouring fragments. Corrected Dragon ribbon scale by length.
-- Palette reward previews use actual recoloured portraits. Locked fighter instructions distinguish the welcome gift from daily purchases.
-- Corrected R2 bundle uploaded and public-download SHA verified; unrelated assets remain byte-identical.
+- Six pixel-exact mirrored glove/boot pairs download one canonical image; ArtBoot generates the counterpart with a code flip before scene launch.
+- Lossless PNG-to-WebP build optimization reduces loose assets from 10,789,108 to approximately 6,696,000 bytes (38%). Forty-six converted images preserve dimensions, visible RGB and alpha exactly.
+- Added regression validation and updated palette checks for derived textures.
+- Recorded the future art rule: generate one image for a mirrored glove or boot pair.
 
 ## Key technical decisions
-- New fighter stats remain provisional Marco copies for user tuning; existing balance is unchanged.
-- Art remains outside Git in R2. Sources, receipts and screenshots are in workspace outputs/roster-expansion-v1.
-- Visual checks use production scenes and deterministic frame stepping for pose/reveal inspection, not a performance benchmark. Temporary QA controls were removed.
+- Only source pixel-exact mirrors collapse. Distinct anatomy/shading stays separate.
+- No resizing, extra lossy encoding, balance changes or R2 master modifications. Original files remain available; build output carries the optimization.
+- Separate branch proto/punchies/asset-optimization is based on the unmerged roster expansion branch.
 
 ## Open questions
-- User will tune Tyke and Dragon stats later.
-- PR merge awaits user approval.
+- User merge approval remains pending for roster and optimization changes.
+- Tyke and Dragon stats remain provisional for later user tuning.
 
 ## Known issues
-- Build retains existing large Phaser chunk and locale import warnings.
-- No live code deployment performed by this handoff.
+- Existing large Phaser chunk and locale import build warnings remain.
+- This change is not deployed live. McClassic remains review art with boot cleanup pending.
 
 ## Next proposed step
-Review and approve PR274. Typecheck, production build and seven focused shop, roster, localisation, limb, geometry, palette and reward reveal checks pass. Brave checks covered eight-direction poses, actual combat, Kunoichi selection, reward reveals, daily chest locks and landscape phone layouts without console errors.
+Review the optimization after PR274. Packing, pixel/alpha checks, limb/skin/roster tests, typecheck and production build pass. Brave boot and training screenshot inspection confirmed assembled Marco mirrored gloves with no console errors.

@@ -199,7 +199,9 @@ export class ArtBootScene extends Phaser.Scene {
       this.bar?.refreshLogo();
     });
     for (const file of index.manifest) {
-      if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
+      if (file.path === 'loose/part-mirrors.json') {
+        this.load.json('punchies:part-mirrors', `${assetRoot}${file.path}?v=${file.hash}`);
+      } else if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
         const name = file.path.slice(6).replace(/\.[^.]+$/, '');
         this.load.image(textureKey(name), `${assetRoot}${file.path}?v=${file.hash}`);
       } else if (!grouped && /^atlas\/atlas.*\.json$/.test(file.path)) {
@@ -208,6 +210,20 @@ export class ArtBootScene extends Phaser.Scene {
     }
   }
   create(): void {
+    const mirrors = this.cache.json.get('punchies:part-mirrors') as Record<string, { source: string; axis: 'x' | 'y' }> | undefined;
+    for (const [name, mirror] of Object.entries(mirrors ?? {})) {
+      if (!this.textures.exists(textureKey(mirror.source))) continue;
+      const source = this.textures.get(textureKey(mirror.source)).getSourceImage() as HTMLImageElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+      ctx.translate(mirror.axis === 'x' ? source.width : 0, mirror.axis === 'y' ? source.height : 0);
+      ctx.scale(mirror.axis === 'x' ? -1 : 1, mirror.axis === 'y' ? -1 : 1);
+      ctx.drawImage(source, 0, 0);
+      this.textures.addCanvas(textureKey(name), canvas);
+    }
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;

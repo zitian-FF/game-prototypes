@@ -34,6 +34,10 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // asset was considered and intentionally left alone (see suits-mp's
 // tabletop background below).
 const IMAGE_OPTIMIZATION_RULES = {
+  punchies: [
+    // Preserve full registration, resolution and pixels; shrink PNG transfer only.
+    { match: () => true, format: 'webp', lossless: true },
+  ],
   'suits-mp': [
     // The tabletop background is placed via an anchor-and-cover fit (see
     // ui/renderGameView.ts's drawTabletop(), which can require MORE than
@@ -284,7 +288,7 @@ async function processLooseFile(file, rules) {
 
   const rule = IMAGE_EXTENSIONS.has(ext) ? rules?.find((r) => r.match(baseName)) : undefined;
 
-  if (!rule || (!rule.maxDimension && !rule.format)) {
+  if (!rule || (!rule.maxDimension && !rule.format) || (rule.lossless && ext !== '.png')) {
     const dest = path.join(looseOutDir, file);
     copyFileSync(src, dest);
     return { outputFile: file, originalSize, outputSize: originalSize };
@@ -300,14 +304,20 @@ async function processLooseFile(file, rules) {
     });
   }
   if (rule.format === 'webp') {
-    pipeline = pipeline.webp({ quality: rule.quality ?? 85 });
+    pipeline = pipeline.webp({ quality: rule.quality ?? 85, lossless: rule.lossless ?? false, effort: rule.lossless ? 6 : 4 });
   } else if (rule.format) {
     fail(`unknown image optimization format "${rule.format}" for ${file}`);
   }
 
   const outputFile = rule.format === 'webp' ? `${baseName}.webp` : file;
   const dest = path.join(looseOutDir, outputFile);
-  await pipeline.toFile(dest);
+  const encoded = await pipeline.toBuffer();
+  // Lossless optimization must never increase transfer size or recompress lossy sources.
+  if (rule.lossless && (ext !== '.png' || encoded.length >= originalSize)) {
+    copyFileSync(src, path.join(looseOutDir, file));
+    return { outputFile: file, originalSize, outputSize: originalSize };
+  }
+  writeFileSync(dest, encoded);
   const outputSize = statSync(dest).size;
   return { outputFile, originalSize, outputSize };
 }
@@ -318,14 +328,27 @@ if (existsSync(looseSrcDir)) {
     statSync(path.join(looseSrcDir, f)).isFile()
   );
   const rules = IMAGE_OPTIMIZATION_RULES[name];
+  const mirrors = name === 'punchies'
+    ? await (await import('../prototypes/punchies/art/mirror-parts.mjs')).default(assetsSrcDir)
+    : {};
 
   let totalBefore = 0;
   let totalAfter = 0;
   for (const file of looseFiles) {
+    if (mirrors[path.parse(file).name]) {
+      totalBefore += statSync(path.join(looseSrcDir, file)).size;
+      continue;
+    }
     const { outputFile, originalSize, outputSize } = await processLooseFile(file, rules);
     totalBefore += originalSize;
     totalAfter += outputSize;
     addToManifest(`loose/${outputFile}`, path.join(looseOutDir, outputFile));
+  }
+  if (Object.keys(mirrors).length) {
+    const file = path.join(looseOutDir, 'part-mirrors.json');
+    writeFileSync(file, JSON.stringify(mirrors));
+    addToManifest('loose/part-mirrors.json', file);
+    console.log(`pack-assets: derive ${Object.keys(mirrors).length} mirrored parts in code`);
   }
 
   if (rules) {
