@@ -8,6 +8,8 @@ Standard and compact builds share one codebase and support web, CrazyGames, Poki
 
 - Progression logic (PR 1): Boxer Level, XP rules with a hard daily cap, milestone chest vouchers (free skin chest every 5 levels, free fighter chest every 10), titles by level, earn-only Veteran skin rewards (skipped until the items exist). Awarded at the end of vs AI, online, local VS and the first fight; the result is placed in the scene registry as `lastAward` for the result screen. No screens yet (Codex builds them). The Shop's free chest flag became counts (`freeSkinChests`, `freeFighterChests`, old save migrates).
 
+- Profile and alias logic (PR 2): alias rules and storage, generated default, platform name hook, `localWireProfile`, validated peer profile on the online hello (`NetSession.peer`), `sideProfiles`. No screens yet. Offensive word list is empty. The online hello was not exercised between two real devices.
+
 ## Key technical decisions
 Standard portraits fit within 1280px at WebP Q90; compact portraits fit within 768px at Q78, with backgrounds/ring layers within 960px at Q72. Fighter parts remain byte-identical and atlases preserve geometry. Both profiles retain all fighters, unique skins and 21 palette skins. Standard music is 128 kbps MP3; compact music is full-length 64 kbps AAC stereo 44.1kHz. Hard package budgets are 20 MB / 10 MB; portrait production targets are 200 KB / 100 KB with an existing hard limit below 1 MB. Isolated builds measure about 16.15 MB / 9.44 MB. New approved art must update the lossless archive and both prepared profiles, with SHA-256 inventories and current source identity.
 
