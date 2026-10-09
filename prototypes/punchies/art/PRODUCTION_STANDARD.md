@@ -114,7 +114,8 @@ original audio and attribution in the archive.
    standard-art ETag and standard-music hash. An art change requires compact art
    regeneration; unchanged audio can retain its existing verified archive.
    Notify the owner of standard-object overwrites. Keep credentials out of Git.
-5. Build both profiles with the same portal choice. Use `--fresh` for compact
+5. Both profile commands and CI default to CrazyGames. Build both profiles with
+   the same portal choice; pass `--portal web` for standalone web output. Use `--fresh` for compact
    release validation so uploaded objects are downloaded and verified again.
    Portal integration is independent of quality. Each output has root
    `index.html`; no opposite-profile assets or unrelated games belong in it.

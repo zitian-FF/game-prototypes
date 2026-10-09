@@ -36,18 +36,18 @@ jobs:
       - run: npm run typecheck
       - name: Build selected profile and portal
         env:
-          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+          TARGET_PORTAL: ${{ inputs.portal || 'crazygames' }}
         run: npm run build:punchies:${{ matrix.profile }} -- --portal "$TARGET_PORTAL"
       - name: Verify profile isolation and inventory
         env:
-          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+          TARGET_PORTAL: ${{ inputs.portal || 'crazygames' }}
         run: node scripts/test-punchies-profiles.mjs "dist/punchies-${{ matrix.profile }}-$TARGET_PORTAL" ${{ matrix.profile }}
       - name: Verify music behavior
         run: node scripts/test-punchies-music.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: punchies-${{ matrix.profile }}-${{ inputs.portal || 'web' }}
-          path: dist/punchies-${{ matrix.profile }}-${{ inputs.portal || 'web' }}/
+          name: punchies-${{ matrix.profile }}-${{ inputs.portal || 'crazygames' }}
+          path: dist/punchies-${{ matrix.profile }}-${{ inputs.portal || 'crazygames' }}/
   parity:
     needs: build
     runs-on: ubuntu-latest
@@ -61,5 +61,5 @@ jobs:
           path: profiles
       - name: Verify identical content keys and rig registration
         env:
-          TARGET_PORTAL: ${{ inputs.portal || 'web' }}
+          TARGET_PORTAL: ${{ inputs.portal || 'crazygames' }}
         run: node scripts/test-punchies-profile-parity.mjs "profiles/punchies-standard-$TARGET_PORTAL" "profiles/punchies-compact-$TARGET_PORTAL"
