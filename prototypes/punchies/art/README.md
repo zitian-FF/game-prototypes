@@ -1,5 +1,10 @@
 # Punchies art
 
+For all new artwork and asset deliveries, follow the authoritative
+[art production and compression standard](PRODUCTION_STANDARD.md).
+The export notes below include historical milestones; the standard defines
+current master preservation, registration, both quality profiles and release checks.
+
 Bold navy outlines and flat cel shading. Navy `#101b32`, slate `#253650`,
 cream `#fff1d1`, gold `#ffc84a`; existing player colors remain authoritative.
 Marco wears blue/cyan; Mia red/pink with a gold ponytail; Bruno green/lime.
