@@ -1,27 +1,25 @@
 ## Current milestone
-Roster expansion implemented in isolated branch; draft awaiting browser verification before merge.
+Roster expansion QA complete; PR274 ready for review, unmerged.
 
 ## What was implemented
-- Tyke Maison and Dragon replace daily fighter placeholders; ownership unlocks selection.
-- Flaming Kunoichi added as unique Mia skin with separate portrait and full parts.
-- Cyan Rush, Violet Resolve and Golden Veteran start locked and enter palette chest pool. Existing explicit acquisitions preserved; implicit free availability removed.
-- New fighter tune entries and metadata use Marco values provisionally, with no existing balance changes. New fighter names/quotes have English fallback keys.
-- Daily offers schema 4 refreshes stale offers once.
-- Neckless torso parts, corrected Dragon portrait and glove backs, split cloth tails, normalized feet exported into R2. Additive upload preserved existing entries; public download SHA verified.
-- Regression tests updated for acquisition, mirror skins and new character limb math. Windows paths normalized in localisation audit.
+- Tyke Maison and Dragon replace daily fighter placeholders. Flaming Kunoichi adds a unique Mia portrait and rig.
+- Starter alternate palettes begin locked in the skin pool; explicit acquisitions remain owned.
+- Re-exported contaminated component slices from approved art, preserving outlines and removing neighbouring fragments. Corrected Dragon ribbon scale by length.
+- Palette reward previews use actual recoloured portraits. Locked fighter instructions distinguish the welcome gift from daily purchases.
+- Corrected R2 bundle uploaded and public-download SHA verified; unrelated assets remain byte-identical.
 
 ## Key technical decisions
-- Reuse fighter-five/six placeholder positions with new stable fighter-tyke/fighter-dragon reward IDs.
-- Skin palette rendering remains cosmetic; STARTER_SKINS list now identifies palette recipes only, never free ownership.
-- Tyke body proportion 1.18, Dragon 1.0; shared render/simulation scaling preserved.
-- No PNG or zip assets committed. Art is in existing R2 punchies_assets.zip; exported sources and receipt in workspace outputs/roster-expansion-v1.
+- New fighter stats remain provisional Marco copies for user tuning; existing balance is unchanged.
+- Art remains outside Git in R2. Sources, receipts and screenshots are in workspace outputs/roster-expansion-v1.
+- Visual checks use production scenes and deterministic frame stepping for pose/reveal inspection, not a performance benchmark. Temporary QA controls were removed.
 
 ## Open questions
-- User will tune Tyke and Dragon stats later; current values are placeholders copied from Marco.
+- User will tune Tyke and Dragon stats later.
+- PR merge awaits user approval.
 
 ## Known issues
-- Browser automation kernel fails at startup with Windows sandbox helper refresh error for both Brave and user-authorized Chrome. No browser screenshots, console boot check or live assembled-rig verification completed.
-- Do not merge until visual checks confirm head/torso overlap, hands, feet and cloth animation at game scale.
+- Build retains existing large Phaser chunk and locale import warnings.
+- No live code deployment performed by this handoff.
 
 ## Next proposed step
-Restore desktop browser automation, verify character selection / shop acquisition / actual combat rigs, then finalize PR and merge on approval.
+Review and approve PR274. Typecheck, production build and seven focused shop, roster, localisation, limb, geometry, palette and reward reveal checks pass. Brave checks covered eight-direction poses, actual combat, Kunoichi selection, reward reveals, daily chest locks and landscape phone layouts without console errors.

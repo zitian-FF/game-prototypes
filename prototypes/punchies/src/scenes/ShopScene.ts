@@ -7,6 +7,7 @@ import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { artKey, backdrop } from '../render/art';
+import { skinTexture } from '../render/skins';
 import { reducedMotion, startScreen } from '../ui/presentation';
 import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
@@ -103,8 +104,8 @@ export class ShopScene extends Phaser.Scene {
     const rewards=welcome?[{item:SHOP_ITEMS[0],probability:1}]:chestRewards(this.state,kind),offers=welcome?[SHOP_ITEMS[0]]:dailyOffers(this.state,kind);
     offers.forEach((item,i)=>{
       const y=kind==='skins'?120+i*62:123;this.panel(x+12,y,w-24,57,0x102034);
-      const unique=item.skinType==='unique',key=item.boxer?artKey(this,unique?item.portraitKey!:`portrait_${item.boxer}`):null;
-      if(key){const image=this.add.image(x+40,y+53,key).setOrigin(.5,1);image.setScale(Math.min(43/image.width,49/image.height));if(item.kind==='skins'&&!unique)image.setTint(item.accent);this.root.add(image);}
+      const unique=item.skinType==='unique',key=item.boxer?(unique?artKey(this,item.portraitKey!):skinTexture(this,item.boxer,item.kind==='skins'?item.id:'default',`portrait_${item.boxer}`)):null;
+      if(key&&this.textures.exists(key)){const image=this.add.image(x+40,y+53,key).setOrigin(.5,1);image.setScale(Math.min(43/image.width,49/image.height));this.root.add(image);}
       else {const g=this.add.graphics().fillStyle(item.accent,.6).fillCircle(x+40,y+17,8).fillRoundedRect(x+27,y+28,26,23,7);this.root.add(g);}
       this.text(x+70,y+7,itemName(item),11).setWordWrapWidth(225);
       const probability=rewards.find(r=>r.item.id===item.id)?.probability??0;

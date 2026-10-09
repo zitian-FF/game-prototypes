@@ -251,7 +251,7 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_claim_g_p');return;}
+    if(!this.available(s)){sfx.denied();this.notice=(CHARACTER_IDS[this.sides[s].sel]==='tee'?t('charselect.locked_fighter_claim_g_p'):t('charselect.locked_fighter_daily_chest'));return;}
     sfx.uiConfirm();
     if(!side.selected){side.selected=true;this.notice=t('common.left_right_chooses_a_skin');return;}
     if (side.locked) {
@@ -297,7 +297,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):t('charselect.locked_fighter_claim_the_shop');
+    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):(CHARACTER_IDS[this.sides[s].sel]==='tee'?t('charselect.locked_fighter_claim_the_shop'):t('charselect.locked_fighter_daily_chest'));
     if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
@@ -455,7 +455,7 @@ export class CharSelectScene extends Phaser.Scene {
         focused: !ready && (local ? !side.locked : this.active === s),
         status: side.src === 'remote'
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
-          : !this.available(s)?t('charselect.locked_shop_welcome_gift'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
+          : !this.available(s)?(CHARACTER_IDS[side.sel]==='tee'?t('charselect.locked_shop_welcome_gift'):t('charselect.locked_shop_daily_chest')):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
       })),
       step: ready ? 2 : online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
