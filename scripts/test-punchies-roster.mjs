@@ -62,6 +62,24 @@ draft.saveShopDraft({...state,owned:[...state.owned,"skin-marco-cyan"]});
 const mirror=new Scene();mirror.data0={mode:'vsai'};mirror.sides=[{sel:0,src:'any',locked:true,skin:'skin-marco-cyan'},{sel:0,src:'any',locked:true,skin:'skin-marco-cyan'}];mirror.fight();assert.deepEqual(Array.from(started.data.chars),['marco','marco']);assert.deepEqual(Array.from(started.data.skins),['skin-marco-cyan','skin-marco-cyan']);
 console.log('Matching starter skins are selectable and handed off unchanged');
 
+// Training owns only the player pick. The fixed dummy cannot be changed by
+// roster movement, skin input, tapping its panel or confirmation.
+const training=new Scene();training.data0={mode:'training'};
+training.sides=[{sel:0,src:'any',locked:false,skin:'skin-marco-cyan'},
+ {sel:0,src:'remote',locked:true,skin:'default'}];
+const dummyBefore=JSON.stringify(training.sides[1]);
+training.move(1,1);training.cycleSkin(1,1);training.tapPanel(1);training.confirm(1);
+assert.equal(JSON.stringify(training.sides[1]),dummyBefore);
+assert.equal(training.active,0);
+training.confirm(0);training.confirm(0);training.fightButton();
+assert.equal(started.name,'Training');assert.equal(started.data.char,'marco');
+assert.equal(started.data.skin,'skin-marco-cyan');
+assert.equal(prefs.loadCharPrefs().p1,'marco');
+assert.equal(prefs.loadCharPrefs().skins.p1.marco,'skin-marco-cyan');
+training.back(0);assert.equal(training.sides[0].locked,false);
+assert.equal(training.sides[1].locked,true);
+console.log('Training: fixed dummy ignores opponent input; selected owned boxer/skin handed off and persisted');
+
 const fresh=draft.newShopDraft();
 for(const id of palette.STARTER_SKINS){assert(draft.availablePool(fresh,"skins").some(i=>i.id===id));assert(!roster.ownedSkins(fresh,id.split("-")[1]).includes(id));}
 for(const id of ["tyke","dragon"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}

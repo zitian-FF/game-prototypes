@@ -56,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX-(half+12)/2,top+177,half,38,t('menu.local_vs'),()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}),false,130,'red');
     titleButton(this,menuX+(half+12)/2,top+177,half,38,t('common.online'),()=>this.openOnlinePopup(),false,130,'blue');
     category(top+213,t('menu.practice'));
-    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'Training'),false,130,'purple');
+    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'CharSelect',{mode:'training'}),false,130,'purple');
     titleButton(this,menuX+(half+12)/2,top+243,half,38,t('menu.tutorial'),()=>startScreen(this,'Tutorial'),false,130,'teal');
     titleButton(this,menuX-(half+12)/2,top+294,half,27,t('common.settings'),()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;

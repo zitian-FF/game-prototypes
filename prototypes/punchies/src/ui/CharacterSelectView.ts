@@ -9,6 +9,7 @@ import { reducedMotion } from './presentation';
 import { cartoonPanel, shadeUi } from './cartoonChrome';
 
 interface PanelState {
+  dummy?: boolean;
   id: CharId;
   label: string;
   hidden: boolean;
@@ -19,6 +20,7 @@ interface PanelState {
   stats: [string, number][];
 }
 export interface SelectionState {
+  training?: boolean;
   panels: PanelState[];
   step: number;
   steps: string[];
@@ -37,6 +39,7 @@ export class CharacterSelectView {
   private root: Phaser.GameObjects.Container;
   private chrome: Phaser.GameObjects.Graphics;
   private content: Phaser.GameObjects.Container[] = [];
+  private panelHits: Phaser.GameObjects.Rectangle[] = [];
   private panelIds: (CharId | null)[] = [null, null];
   private panelKeys = ['', ''];
   private cards: Phaser.GameObjects.Container[] = [];
@@ -76,6 +79,7 @@ export class CharacterSelectView {
       const x = s === 0 ? 16 : 462;
       const hit = scene.add.rectangle(x + 183, 196, 366, 174, 0, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => callbacks.panel(s));
+      this.panelHits.push(hit);
       body.add(hit);
       this.content.push(scene.add.container());
       body.add(this.content[s]);
@@ -240,6 +244,9 @@ export class CharacterSelectView {
     if (signature === this.previous) return;
     this.previous = signature;
     this.format.setText(t('charselect.best_of', { n: state.bestOf }));
+    this.format.setVisible(!state.training);
+    (this.format.getData('chrome') as Phaser.GameObjects.Graphics).setVisible(!state.training);
+    (this.format.getData('hit') as Phaser.GameObjects.Rectangle).setVisible(!state.training).input!.enabled=!state.training;
     const g = this.chrome;
     g.clear();
     g.lineStyle(5, 0x167cff).lineBetween(260, 51, 422, 51);
@@ -250,11 +257,12 @@ export class CharacterSelectView {
       t.setText(`${i + 1}  ${state.steps[i]}`).setColor(active ? '#fff7e6' : '#9fb0ca');
     });
     state.panels.forEach((p, s) => {
+      this.panelHits[s].input!.enabled=!p.dummy;
       const x = s === 0 ? 16 : 462;
       const color = s === 0 ? 0x2587ff : 0xec3d52;
       this.frame(g, x, 109 + DY, 366, 174, p.focused ? color : 0x2f3b55);
       this.status[s].setText(p.status);
-      const key = JSON.stringify([p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
+      const key = JSON.stringify([p.dummy,p.id, p.hidden, p.stats, p.skin, p.selected, p.skinIndex, p.skinCount]);
       if (key !== this.panelKeys[s]) {
         const changed = this.panelIds[s] !== null && (this.panelIds[s] !== p.id || this.panelKeys[s] !== key);
         const direction = CHARACTER_IDS.indexOf(p.id) >= CHARACTER_IDS.indexOf(this.panelIds[s] ?? p.id) ? 1 : -1;
@@ -280,7 +288,7 @@ export class CharacterSelectView {
     g.lineStyle(1,0x9eb6d7,.25).lineBetween(shelfX+12,STRIP.y+3,shelfX+shelfWidth-12,STRIP.y+3);
     g.fillStyle(0x2587ff,.6).fillRoundedRect(shelfX+4,STRIP.y+15,3,22,1);
     g.fillStyle(0xec3d52,.6).fillRoundedRect(shelfX+shelfWidth-7,STRIP.y+15,3,22,1);
-    const focused = state.panels.map((p) => (p.hidden ? '' : p.id)).join('|');
+    const focused = state.panels.map((p) => (p.hidden || p.dummy ? '' : p.id)).join('|');
     if (focused !== this.focusKey) {
       const first = this.focusKey === '';
       this.focusKey = focused;
@@ -291,7 +299,7 @@ export class CharacterSelectView {
       }
     }
     this.cards.forEach((card, i) => {
-      const selected = state.panels.findIndex((p) => !p.hidden && CHARACTER_IDS[i] === p.id && p.focused);
+      const selected = state.panels.findIndex((p) => !p.dummy && !p.hidden && CHARACTER_IDS[i] === p.id && p.focused);
       const frame = this.cardFrames[i];
       frame.clear();
       this.frame(frame, -50, -46, 100, 84, selected < 0 ? 0x617ba2 : selected === 0 ? 0x65d9ff : 0xff8593);
@@ -300,7 +308,7 @@ export class CharacterSelectView {
         frame.lineStyle(1,0xffffff,.7).strokeRoundedRect(-49,-45,98,82,10);
       }
       state.panels.forEach((p, side) => {
-        if (!p.cursor || p.id !== CHARACTER_IDS[i]) return;
+        if (p.dummy || !p.cursor || p.id !== CHARACTER_IDS[i]) return;
         const cx = side === 0 ? -39 : 39;
         frame.fillStyle(side === 0 ? 0x2389ff : 0xf04b63).fillCircle(cx, -38, 12);
         frame.lineStyle(2, 0xffffff);
@@ -329,6 +337,17 @@ export class CharacterSelectView {
     const parent = this.content[s];
     parent.removeAll(true);
     const x = s === 0 ? 16 : 462;
+    if (p.dummy) {
+      this.text(parent,x+183,133,t('common.dummy'),23);
+      this.text(parent,x+183,155,t('training.practice_target'),11,'#b9cbe7');
+      const key=artKey(this.scene,'portrait_training_dummy');
+      if(key){
+        const portrait=this.scene.add.image(x+183,289,key).setOrigin(.5,1);
+        portrait.setScale(Math.min(210/portrait.width,145/portrait.height));
+        parent.add(portrait);
+      }
+      return;
+    }
     if (p.hidden) {
       this.text(parent, x + 183, 167, p.label, 25);
       this.text(parent, x + 183, 214, p.status, 14, '#9fb0ca');
