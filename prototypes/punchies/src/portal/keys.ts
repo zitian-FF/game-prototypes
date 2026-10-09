@@ -8,4 +8,5 @@ export const KEYS = {
   chars: 'punchies:chars:v1',
   localInputs: 'punchies:localInputs:v1',
   language: 'punchies:language:v1',
+  firstRun: 'punchies:firstrun:v1',
 } as const;

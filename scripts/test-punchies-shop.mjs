@@ -20,4 +20,17 @@ for(const type of ['palette','unique']){const owned=d.SHOP_ITEMS.filter(i=>i.kin
 const done=d.refreshDailyOffers({...s,owned:d.SHOP_ITEMS.map(i=>i.id)},day+86400000);assert.equal(done.offerIds.length,0);assert.equal(d.buyDailyChest({...done,tokens:100},'skins',0,day+86400000).ok,false);
 d.saveShopDraft(fighter.state);assert(d.loadShopDraft().owned.includes(fighter.item.id));assert(d.normalizeShopDraft(JSON.parse(store.get("punchies:shop-preview:v1")),day).purchasedChests.includes("skins"));
 assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portraitKey&&i.rigGroup));
+// First launch gift: Rising Star once, plus one free skin chest that does not use the daily chest.
+{
+  const day2=Date.parse('2026-10-09T12:00:00Z');
+  const g=d.grantFirstGift(d.newShopDraft(day2));
+  assert.equal(g.item.id,'skin-marco-unique');assert(g.state.owned.includes('skin-marco-unique'));assert.equal(g.state.freeSkinChest,true);
+  assert.equal(d.grantFirstGift(g.state).item,undefined,'the gift is granted only once');
+  const ownedBefore=g.state.owned.length;
+  const free=d.buyDailyChest(g.state,'skins',0,day2);
+  assert(free.ok&&free.state.tokens===0&&free.state.freeSkinChest===false&&free.state.owned.length===ownedBefore+1,'the free chest costs nothing and is used once');
+  assert(!(free.state.purchasedChests??[]).includes('skins'),'the free chest does not use the daily chest');
+  assert.equal(d.buyDailyChest(free.state,'skins',0,day2).ok,false,'the next skin chest costs tokens again');
+  assert.equal(d.normalizeShopDraft(JSON.parse(JSON.stringify(g.state)),day2).freeSkinChest,true,'the flag survives a save and load');
+}
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');

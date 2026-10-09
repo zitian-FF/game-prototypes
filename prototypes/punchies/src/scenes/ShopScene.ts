@@ -81,11 +81,12 @@ export class ShopScene extends Phaser.Scene {
     if(key){const icon=this.add.image(x,175,key);icon.setScale(140/Math.max(icon.width,icon.height));this.root.add(icon);}
     else{const g=this.add.graphics();g.fillStyle(kind==='skins'?0x8256be:0xeebf43).fillRoundedRect(x-57,134,114,77,12);g.lineStyle(5,0x081428).strokeRoundedRect(x-57,134,114,77,12);this.root.add(g);}
     this.hit(x-88,116,176,122,()=>{this.popupKind=kind;this.render();});
-    const pool=chestRewards(this.state,kind),purchased=this.state.purchasedChests?.includes(kind);
+    const freeChest=kind==='skins'&&this.state.freeSkinChest===true;
+    const pool=chestRewards(this.state,kind),purchased=!freeChest&&this.state.purchasedChests?.includes(kind);
     this.text(x,247,purchased?t('shop.opened_today'):pool.length?t('shop.tap_to_see_rewards'):t('common.collection_complete'),12,purchased?'#91dbb4':'#a8c1d8').setOrigin(.5,0);
     this.text(x,268,t('shop.one_chest_per_day'),10,'#a8c1d8').setOrigin(.5,0);
     const cost=kind==='skins'?shopConfig.skinPullCost:shopConfig.fighterPullCost;
-    this.button(x-117,291,234,purchased?t('shop.come_back_tomorrow'):t('shop.open_chest_tokens',{cost}),()=>this.act(buyDailyChest(this.state,kind,Math.random())),!purchased&&pool.length>0&&this.state.tokens>=cost,0,kind==='skins'?'purple':'gold');
+    this.button(x-117,291,234,purchased?t('shop.come_back_tomorrow'):freeChest?t('shop.open_chest_free'):t('shop.open_chest_tokens',{cost}),()=>this.act(buyDailyChest(this.state,kind,Math.random())),!purchased&&pool.length>0&&(freeChest||this.state.tokens>=cost),0,kind==='skins'?'purple':'gold');
   }
   private bubble(kind:ShopKind){
     const shade=this.add.rectangle(422,195,844,390,0x050e1b,.74).setInteractive().on('pointerdown',()=>{this.popupKind=null;this.render();});this.root.add(shade);

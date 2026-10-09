@@ -417,3 +417,8 @@ Mia's Flaming Kunoichi unique skin retains Mia stats and blonde identity, with r
 
 ## Tee is a chest fighter — 2026-10-09
 G.P. Tee is no longer a free one-time claim in the Shop. He is a normal reward in the daily fighter chest. Players who already claimed him keep him (the old welcome item id is kept so saves stay valid). Locked-fighter messages on character select now point at the daily chest for every locked fighter.
+
+## First launch: the easy fight — 2026-10-09
+A new save (no `punchies:firstrun:v1` flag) opens straight into a gentle bout instead of the main menu: Marco against Bruno, best of one, no timer. Only the stick, JAB and CROSS are shown and usable, and only the health bars show. Coach text moves through walking up, jabs, crosses and "mix them". Bruno walks up and throws slow jabs, never blocks or dodges, and the player cannot lose (health refills below 50%). Each landed hit drains an even share of Bruno's health, so six hits end the fight. The fight's own numbers are in `src/firstrun/firstfight.json`; no existing tuned value changes.
+
+A SKIP button is always visible. Finishing or skipping saves the flag, grants the gift once (Marco "Rising Star" and one free skin chest), shows the reward reveal, then "WELCOME TO THE RING" and the main menu. The Shop button shows a red badge while the free chest is waiting; it opens without tokens and does not use the daily skin chest. `?room=` links skip the flow. `?debug=1&firstrun=1` replays it. Analytics: `firstrun/fight/start`, `firstrun/<punch>/hit`, `firstrun/win|skip/done`.
