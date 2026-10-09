@@ -1,12 +1,12 @@
 ## Current milestone
-Runtime palettes and obsolete asset removal, stacked on UI PR #278.
+Implement completed outsource artwork, stacked on runtime palette PR #279.
 ## What was implemented
-Palette portraits and rigs keep their existing cached recolouring. Removed unused mirror-match part generation; base atlas groups now serve same-character matches. Excluded legacy starter alternate animation folders and duplicate loose palette textures from builds. Saved 4,688,226 bytes (12 files) from the packed bundle.
+Longan joins the locked fighter pool with a cleaned portrait and layered wrapped-fist rig. McClassic joins Marco's unique skin pool with a helmet-free portrait and green/black rig. Existing training dummy portrait remains integrated. Updated roster portrait size, victory quote, English labels and tuner metadata.
 ## Key technical decisions
-Base and unique artwork remains in R2 as source masters; no R2 overwrite required. Palette ownership, skin IDs, colours and stats remain unchanged. Builds omit redundant palette assets. Unique skins retain separate art.
+Longan uses Marco's current stats provisionally; McClassic remains cosmetic. Register Longan overhead head/torso/feet facing right. Use the cleaned preferred Longan left foot and McClassic right boot, generating opposite parts through exact mirrors; shipped opposites derive at runtime. R2 archive adds 26 entries and preserves every previous entry byte for byte. Verified public SHA256 cb2f8cd3ca36c34d1b6ee2cbf6846ca2dbf163006fb97d991b66b8db031a9b73.
 ## Open questions
-None.
+Longan's final stats await user tuning.
 ## Known issues
-Not merged or deployed. Existing Vite locale/chunk warnings remain. Legacy baked animation fallback uses base colours; current palette presentation uses the live layered rig.
+Not merged or deployed. Minute original matte RGB may remain within preserved antialiased boundaries. Existing Vite locale/chunk warnings remain.
 ## Next proposed step
-Review and merge the stacked changes. Typecheck/build, starter recolours, roster, caching and asset optimization regressions pass. Brave palette comparison and Scarlet Spark selection/training rig checked with no console errors.
+Review and merge the stacked changes. Typecheck/build, roster/palette/asset regressions and Brave production rig/portrait checks pass.

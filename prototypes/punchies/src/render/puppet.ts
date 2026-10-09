@@ -28,6 +28,7 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  longan: {skin:0xe9a26b,headOrigin:.5,headScale:1,torsoScale:1},
   tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1},
   dragon: {skin:0xf0ae72,headOrigin:.5,headScale:1,torsoScale:1},
   tee: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
