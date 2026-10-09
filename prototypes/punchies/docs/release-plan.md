@@ -150,7 +150,7 @@ table entry and no new art. See section 6.
 
 | Task | Owner | Status |
 | --- | --- | --- |
-| First-time experience (flow, easy fight vs Bruno, skip, Rising Star reveal, free first skin chest, welcome card, Shop badge) | Claude | planned |
+| First-time experience (flow, easy fight vs Bruno, skip, Rising Star reveal, free first skin chest, welcome card, Shop badge) | Claude | built, needs phone test |
 | Remove the free Tee claim: Tee joins the fighter chest pool, welcome claim UI removed, existing owners keep him | Claude | done |
 | Starter alternate skins join the chest pool; nobody gets them free | Codex (#274) | done |
 | Data-driven palette swaps (table per skin) so new palette skins need no code | Claude with Codex | planned |
@@ -173,6 +173,7 @@ table entry and no new art. See section 6.
 
 ## 8. Update log
 
+- 2026-10-09: first-time experience built (Claude): easy fight vs Bruno, skip, Rising Star gift, free first skin chest, Shop badge.
 - 2026-10-09: Tee moved into the fighter chest pool, welcome claim removed (Claude). The code in #274 already moved the starter skins into the chest pool and added Longan, Tyke, Dragon, McClassic and Flaming Kunoichi; Codex to fold them into section 5.
 - 2026-10-09: owner decisions: first skin chest free, sparring partner Bruno, Tee no longer a free claim (Claude).
 - 2026-10-09: created (Claude). Decisions from the owner: easy first fight, skippable, Rising Star gift, starter skins removed.

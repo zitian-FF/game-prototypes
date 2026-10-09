@@ -6,7 +6,7 @@ import { isDebug } from '../debug/debugPanel';
 import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
 import { cartoonButton } from '../ui/cartoonChrome';
-import { shopPreviewBalance } from '../shop/draft';
+import { shopPreviewBalance, loadShopDraft } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
 import { makeButton } from './FightStage';
@@ -69,6 +69,13 @@ export class MenuScene extends Phaser.Scene {
       // The unpublished shop branch displays its isolated local preview balance.
       this.add.text(balanceX+9,top+294,String(shopPreviewBalance()),{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
       .setOrigin(0.5).setDepth(132);
+
+    if (loadShopDraft().freeSkinChest) {
+      // A free chest is waiting in the Shop: a small red badge on the button corner.
+      const bx = shopX + half / 2 - 2, by = top + 283;
+      this.add.graphics().setDepth(133).fillStyle(0xe8283c).fillCircle(bx, by, 8).lineStyle(2, 0xffffff).strokeCircle(bx, by, 8);
+      this.add.text(bx, by, '!', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(134);
+    }
 
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })

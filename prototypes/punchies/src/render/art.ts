@@ -4,6 +4,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
 
 import { roomFromUrl } from '../net/roomCode';
+import { needsFirstRun } from '../firstrun/state';
 import { tune } from '../sim/tune';
 import { reducedMotion } from '../ui/presentation';
 
@@ -234,7 +235,7 @@ export class ArtBootScene extends Phaser.Scene {
     const room = roomFromUrl();
     // launch (not start): this scene keeps running as the background loader.
     if (room) this.scene.launch('Lobby', { role: 'guest', code: room });
-    else this.scene.launch('Menu');
+    else this.scene.launch(needsFirstRun() ? 'FirstFight' : 'Menu');
   }
 }
 
