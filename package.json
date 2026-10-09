@@ -20,7 +20,8 @@
     "simulate": "node scripts/run-simulate.mjs",
     "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts",
     "tuner:github": "node scripts/start-punchies-github.mjs",
-    "test:tuner:github": "node scripts/test-punchies-github.mjs"
+    "test:tuner:github": "node scripts/test-punchies-github.mjs",
+    "test:tuner:base": "node scripts/test-punchies-base-history.mjs"
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.5",

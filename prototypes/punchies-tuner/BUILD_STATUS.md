@@ -1,26 +1,26 @@
 ## Current milestone
-Local-only GitHub load/save companion implemented; implementation PR awaits user review/merge.
+Base raw-stat editor and versioned previous-value history implemented in the local GitHub workshop; PR remains open for review.
 
 ## What was implemented
-- Optional local workshop at http://127.0.0.1:5187/ with Windows double-click launcher and npm command.
-- Load latest from GitHub's actual default branch, explicit selective Save, commit link and manual workflow status.
-- Server-side baseline, file SHA compare-and-swap, validation and existing three-way merge.
-- Mock HTTP integration tests and Brave load/edit/save/build-status verification. Real GitHub read verified without tuning writes.
+- Base entry before the fighters, exposing raw core/punch/block/dodge stats without percentage comparisons.
+- History tab and numbered timestamped revisions: initial v0 snapshot, then old/new values for every saved Base change.
+- History persists in tune.json through local-file saves, exports and GitHub saves. No-op and fighter-only saves do not add Base versions.
+- Tests for inheritance, history persistence, concurrent merges, failed saves, client history rewrite protection and future history-bearing game builds.
+- Brave mock verification: v1 save, reload, v2 save, both revisions visibly retained, no console errors.
 
 ## Key technical decisions
-- Reuse model.ts validation/merge; fixed repository and tune.json path, existing OS-authenticated gh CLI, no new dependencies.
-- Loopback only; exact Origin/Host, JSON POST/custom header, session capability, dedicated static build and CSP. Never publish server/credentials.
-- Preserve Pages local-file workflow and unrelated game/localisation work; no real tuned values changed.
-- User explicitly requested review before merging implementation, overriding repository auto-merge default.
+- Base edits existing shared tune fields; every fighter continues to use its current multipliers/offsets. Base is not a playable fighter.
+- Save generates history from actual latest file values after merge checks. GitHub retains its saved log rather than trusting client metadata.
+- Exclude workshop metadata from simulation tune so future game rebuilds remain compatible.
+- Existing loopback/credential protections remain; no live tune changes during development. PR auto-merge remains disabled.
 
 ## Open questions
 None.
 
 ## Known issues
-- Local trusted-PC tool only; other local software/extensions are outside its security boundary.
-- Native file picker permissions remain a manual check; existing file transaction tests pass.
-- Commit success does not guarantee deployment success; check matching workflows manually.
-- Local checkout is not updated by remote saves; restart requires a fresh GitHub load.
+- External direct tune edits are not retroactively logged; GitHub still retains its separate commit audit trail.
+- Native file picker permissions remain a manual check. File-save transactions are covered with mocks.
+- Local companion is for a trusted PC only. Saved versions start with the first Base edit saved using the new workshop.
 
 ## Next proposed step
-Review/merge the implementation PR, then launch the companion and use Load latest before real tuning edits.
+Review/merge the updated workshop PR, then use Base and History for real tuning saves.

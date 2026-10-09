@@ -2,6 +2,7 @@
 Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Main game otherwise at the post-#261 state: audio and settings, starter skins, winner results, G.P. Tee.
 
 ## What was implemented
+- Balance Workshop compatibility: exclude balanceWorkshop history metadata from live simulation/debug tune fields, including after a history-bearing tune.json is bundled. Base/history tests cover rebuild validation and legacy-file compatibility; no tuning values changed.
 - Portal layer, `src/portal/`: one interface for gameplay events, saves and rewarded ads, with a web adapter and CrazyGames, Poki and Playgama adapters chosen at build time (`PORTAL=...`, `PORTAL_ADS=off`). Details are in BRIEF.md under "Portal layer".
 - Saves: every persisted value now goes through the portal `store`; keys are listed in `src/portal/keys.ts`. `main.ts` initialises the portal and loads saved data first, then loads the game (`boot.ts`).
 - Shop: the ad button calls the portal. The default build keeps the preview behaviour; portal builds grant a token only on a completed rewarded ad and show ADS UNAVAILABLE when ads are off or the SDK did not load.
@@ -49,3 +50,4 @@ Portal layer in place (itch.io default, CrazyGames, Poki, Playgama adapters). Ma
 
 ## Next proposed step
 Decide whether to add a small own collector (for example a Cloudflare Worker) for itch.io, then real SDK testing in each portal's QA tool once a portal is chosen.
+

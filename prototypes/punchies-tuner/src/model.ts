@@ -3,13 +3,40 @@ import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
 import { punchCfg, CHARACTER_INFO, type CharId } from '../../punchies/src/sim/character';
 
-export type Doc = typeof initial;
-const template = structuredClone(initial);
-export const defaults = () => structuredClone(template);
+export interface BaseRevision {version:number;savedAt:string;changes:{path:string;before:number;after:number}[]}
+export interface BaseHistory {format:1;initial:Record<string,number>;versions:BaseRevision[]}
+export type Doc = Omit<typeof initial,'balanceWorkshop'> & {balanceWorkshop?:{baseHistory:BaseHistory}};
+const bundled:Doc = structuredClone(initial);
+const template:Doc = structuredClone(bundled);
+delete template.balanceWorkshop;
+export const defaults = ():Doc => structuredClone(bundled);
 export const characters = Object.keys(initial.characters) as CharId[];
 export const names = CHARACTER_INFO;
 export const punches = ['jab','cross','hook','uppercut'] as const;
 export const meta = metadata as unknown as Record<string,{min:number;max:number;step:number;desc:string}>;
+export const baseGroups=['health','stamina','stun','movement','body','hit','fatigue','stars','punches','guard','dodge'] as const;
+export const basePaths=Object.keys(meta).filter(path=>baseGroups.some(group=>path.startsWith(`${group}.`)));
+export function baseSnapshot(doc:Doc):Record<string,number>{return Object.fromEntries(basePaths.filter(path=>typeof getSafe(doc,path)==='number').map(path=>[path,get(doc,path)]));}
+export function baseVersion(doc:Doc):number{const versions=doc.balanceWorkshop?.baseHistory.versions;return versions?.[versions.length-1]?.version??0;}
+function validateHistory(doc:Doc):void{
+  if(doc.balanceWorkshop===undefined)return;
+  const history=doc.balanceWorkshop?.baseHistory;
+  if(!history||history.format!==1||!history.initial||typeof history.initial!=='object'||Array.isArray(history.initial)||!Array.isArray(history.versions))throw Error('Invalid Base history');
+  const numeric=(record:Record<string,number>)=>Object.entries(record).every(([key,value])=>basePaths.includes(key)&&typeof value==='number'&&Number.isFinite(value));
+  if(!numeric(history.initial))throw Error('Invalid initial Base values');
+  history.versions.forEach((revision,index)=>{
+    if(!revision||revision.version!==index+1||typeof revision.savedAt!=='string'||!Number.isFinite(Date.parse(revision.savedAt))||!Array.isArray(revision.changes)||!revision.changes.length)throw Error('Invalid Base revision');
+    const paths=new Set<string>();
+    for(const change of revision.changes){if(!change||!basePaths.includes(change.path)||paths.has(change.path)||typeof change.before!=='number'||typeof change.after!=='number'||!Number.isFinite(change.before)||!Number.isFinite(change.after)||change.before===change.after)throw Error('Invalid Base revision values');paths.add(change.path);}
+  });
+}
+function recordBaseRevision(previous:Doc,next:Doc):void{
+  const edited=changes(previous,next).filter(path=>basePaths.includes(path));
+  if(!edited.length)return;
+  const history=next.balanceWorkshop?.baseHistory??{format:1 as const,initial:baseSnapshot(previous),versions:[]};
+  history.versions.push({version:history.versions.length+1,savedAt:new Date().toISOString(),changes:edited.map(path=>({path,before:get(previous,path),after:get(next,path)}))});
+  next.balanceWorkshop={...next.balanceWorkshop,baseHistory:history};
+}
 export const get = (doc:Doc,path:string):number => path.split('.').reduce<unknown>((o,k)=>(o as Record<string,unknown>)[k],doc) as number;
 export function set(doc:Doc,path:string,value:number):void {
   const range=meta[path];
@@ -29,7 +56,7 @@ export function parse(text:string):Doc {
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }
   }
-  walk(template,candidate,'');return candidate;
+  walk(template,candidate,'');validateHistory(candidate);return candidate;
 }
 export function changes(base:Doc,draft:Doc):string[] {
   return Object.keys(meta).filter(path=>typeof getSafe(base,path)==='number'&&getSafe(base,path)!==getSafe(draft,path));
@@ -41,6 +68,8 @@ export function mergeSave(base:Doc,draft:Doc,latest:Doc):Doc {
   const conflicting=changes(base,draft).filter(path=>get(latest,path)!==get(base,path)&&get(latest,path)!==get(draft,path));
   if(conflicting.length)throw Error(`File changed in the same fields: ${conflicting.join(', ')}. Reopen the file before saving; your draft remains available to download.`);
   for(const path of changes(base,draft))set(merged,path,get(draft,path));
+  // History is generated from the actual latest saved file, never from client metadata.
+  recordBaseRevision(latest,merged);
   return parse(JSON.stringify(merged));
 }
 export function effective(doc:Doc,char:CharId,section:string,key:string):number {

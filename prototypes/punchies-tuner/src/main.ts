@@ -1,5 +1,5 @@
 import './style.css';
-import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta } from './model';
+import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta,mergeSave,baseVersion } from './model';
 import {saveOpened,type TuneFile as Handle} from './fileIO';
 import {detectLocalMode,localRequest,type GitHubLoad,type GitHubSave,type BuildRun} from './githubIO';
 let githubMode=false,github:GitHubLoad|null=null,busy=false;
@@ -28,7 +28,7 @@ async function loadLatest(){
 }
 async function saveGitHub(){
   checkInputs();if(!github)throw Error('Load latest from GitHub before saving. Download your draft first if needed.');
-  await githubAction(async()=>{const result=await localRequest<GitHubSave>('save',{session:github!.session,draft});const doc=parse(JSON.stringify(result.doc));base=structuredClone(doc);draft=doc;github!.doc=doc;github!.sha=result.sha;commitLink=result.commit?.url??null;buildRuns=[];source=`GitHub ${github!.repo} / ${github!.branch} · file ${result.sha.slice(0,7)}`;message=result.commit?`Saved ${result.edited.length} values in commit ${result.commit.sha.slice(0,7)}. CI/deployments may be queued; click Check build status.`:'GitHub already contains these edits. No commit created.';remember();});
+  await githubAction(async()=>{const {balanceWorkshop:_history,...values}=draft;const result=await localRequest<GitHubSave>('save',{session:github!.session,draft:values});const doc=parse(JSON.stringify(result.doc));base=structuredClone(doc);draft=doc;github!.doc=doc;github!.sha=result.sha;commitLink=result.commit?.url??null;buildRuns=[];source=`GitHub ${github!.repo} / ${github!.branch} · file ${result.sha.slice(0,7)}`;message=result.commit?`Saved ${result.edited.length} values in commit ${result.commit.sha.slice(0,7)}. CI/deployments may be queued; click Check build status.`:'GitHub already contains these edits. No commit created.';remember();});
 }
 async function checkBuilds(){if(!github)return;await githubAction(async()=>{const result=await localRequest<{runs:BuildRun[]}>('status',{session:github!.session});buildRuns=result.runs;message=buildRuns.length?'Latest workflow status for your saved commit.':'No workflow runs found yet for the saved commit. Check again shortly; deployment is not confirmed.';});}
 async function open(){
@@ -37,7 +37,7 @@ async function open(){
   const input=el('input');input.type='file';input.accept='.json,application/json';input.onchange=()=>{const file=input.files?.[0];if(file)void file.text().then(text=>load(text,file.name,null)).catch(e=>{message=String(e);status();});};input.click();
 }
 function checkInputs(){for(const input of document.querySelectorAll<HTMLInputElement>('input'))if(input.validity.customError||input.validity.badInput||input.validity.rangeOverflow||input.validity.rangeUnderflow){input.reportValidity();throw Error('Correct the highlighted value before saving.');}}
-function download(){checkInputs();const blob=new Blob([JSON.stringify(draft,null,2)+'\n'],{type:'application/json'});const url=URL.createObjectURL(blob);const a=el('a');a.href=url;a.download='tune.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message='Downloaded tune.json. The repository file changes only when you replace it or use Save to opened file.';status();}
+function download(){checkInputs();const exported=mergeSave(base,draft,base);const blob=new Blob([JSON.stringify(exported,null,2)+'\n'],{type:'application/json'});const url=URL.createObjectURL(blob);const a=el('a');a.href=url;a.download='tune.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message='Downloaded tune.json, including a Base revision if its values changed. The repository file changes only when you replace it or use Save.';status();}
 async function save(){
   checkInputs();
   if(!handle){message='Open your local tune.json first. You can also download the current draft.';status();return;}
@@ -50,10 +50,23 @@ function row(table:HTMLTableElement,key:string,path:string|null,current:number,m
     input.oninput=()=>{try{if(input.value==='')throw Error('Enter a number');set(draft,path,Number(input.value));input.setCustomValidity('');remember();refreshRows.forEach(fn=>fn());status();}catch(e){input.setCustomValidity(String(e));message=String(e);status();}};input.onchange=()=>{if(input.validationMessage)input.reportValidity();};edit.append(input);
     const reset=button('↶',()=>{set(draft,path,get(base,path));remember();render();},'reset');reset.title='Reset this value to the opened file';reset.setAttribute('aria-label',`Reset ${label(key)}`);edit.append(reset);
   }else edit.append(el('span','Shared'));
+  if(shared){tr.append(edit);table.append(tr);return;}
   const currentCell=el('td',format(current)),marcoCell=el('td',format(marco));tr.append(edit,currentCell,marcoCell);const diff=el('td',delta(current,marco));diff.className=current===marco?'neutral':current>marco?'positive':'negative';tr.append(diff);table.append(tr);
   refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?effective(draft,'marco',section,key):value;currentCell.textContent=format(value);marcoCell.textContent=format(baseline);diff.textContent=delta(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
 }
-function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of ['Property','Tune value','In game','Marco','Difference'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
+function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of shared?['Property','Raw value']:['Property','Tune value','In game','Marco','Difference'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
+function renderBaseHistory(main:HTMLElement){
+  const history=draft.balanceWorkshop?.baseHistory;
+  main.append(el('h3',`Base history · v${baseVersion(draft)}`));
+  if(!history){main.append(el('p','No Base revisions recorded yet. The first Base save stores the previous values as v0 and records v1.'));return;}
+  main.append(el('p','Each saved Base change records its previous and new raw values. Fighter-only edits do not create a Base version.'));
+  for(const revision of [...history.versions].reverse()){
+    const details=el('details');details.append(el('summary',`v${revision.version-1} → v${revision.version} · ${new Date(revision.savedAt).toLocaleString()} · ${revision.changes.length} changes`));
+    const table=el('table'),head=el('tr');for(const title of ['Property','Previous raw value','New raw value'])head.append(el('th',title));table.append(head);
+    for(const change of revision.changes){const tr=el('tr');tr.append(el('th',change.path),el('td',format(change.before)),el('td',format(change.after)));table.append(tr);}details.append(table);main.append(details);
+  }
+  const initial=el('details');initial.append(el('summary','v0 · Initial Base values'));const list=el('ul');for(const [path,value] of Object.entries(history.initial))list.append(el('li',`${path}: ${format(value)}`));initial.append(list);main.append(initial);
+}
 function globalRows(table:HTMLTableElement,group:string,prefix=''){for(const key of Object.keys((draft as unknown as Record<string,Record<string,unknown>>)[group])){const path=`${group}.${key}`;if(typeof get(draft,path)==='number'&&meta[path])row(table,prefix+key,path,get(draft,path),get(draft,path));}}
 function render(){
   refreshRows=[];
@@ -65,19 +78,21 @@ function render(){
   if(commitLink){const link=el('a','View saved commit');link.href=commitLink;link.target='_blank';link.rel='noopener';app.append(link);}
   for(const run of buildRuns){const p=el('p'),link=el('a',`${run.name}: ${run.conclusion??run.status}`);link.href=run.url;link.target='_blank';link.rel='noopener';p.append(link);app.append(p);}
   const layout=el('div');layout.className='layout';const sidebar=el('aside');sidebar.append(el('h2','Fighters'));
-  for(const char of characters)sidebar.append(button(names[char].name,()=>{selected=char;shared=false;render();},!shared&&selected===char?'selected':''));
-  sidebar.append(button('Shared rules',()=>{shared=true;render();},shared?'selected':''));
+  sidebar.append(button('Base',()=>{shared=true;render();},shared?'selected':''));
+  for(const char of characters)sidebar.append(button(names[char].name,()=>{selected=char;shared=false;if(section==='history')section='core';render();},!shared&&selected===char?'selected':''));
   sidebar.append(el('p','Plus/minus means numerically higher/lower, not stronger/weaker. Lower startup frames are faster.'));
   sidebar.append(button('Restore saved draft',()=>{const saved=localStorage.getItem(storageKey);if(!saved)throw Error('No saved draft');const data=JSON.parse(saved);base=parse(JSON.stringify(data.base));draft=parse(JSON.stringify(data.draft));handle=null;github=null;commitLink=null;buildRuns=[];source='Restored browser draft';message='Draft restored. Open a file before saving directly, or download this copy. GitHub saves require Load latest first.';render();}));
   sidebar.append(button('Reset all edits',()=>{if(confirm('Reset all edits to the opened file?')){draft=structuredClone(base);remember();render();}}));layout.append(sidebar);
-  const main=el('main');const heading=el('div');heading.className='section-heading';heading.append(el('h2',shared?'Shared rules':names[selected].name),el('span',shared?'Applies to every fighter':names[selected].style));main.append(heading);
-  const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'guard','dodge'])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
+  const main=el('main');const heading=el('div');heading.className='section-heading';heading.append(el('h2',shared?`Base · v${baseVersion(draft)}`:names[selected].name),el('span',shared?'Raw starting values for every fighter':names[selected].style));main.append(heading);
+  const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'guard','dodge',...(shared?['history']:[])])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
   const table=makeTable();
-  if(shared){
-    main.append(el('p','Shared values affect all fighters. Character multipliers and frame offsets are applied on top.'));
-    if(section==='core')for(const group of ['health','stamina','stun','movement','fatigue','stars']){main.append(el('h3',label(group)));const t=makeTable();globalRows(t,group);main.append(t);}
+  if(shared&&section==='history'){renderBaseHistory(main);}
+  else if(shared){
+    main.append(el('p','Base contains the shared raw game values. Every fighter applies its multipliers and frame offsets to these values. Ratios are shown as their stored decimals; no percentage comparison is used here.'));
+    if(section==='core')for(const group of ['health','stamina','stun','movement','body','hit','fatigue','stars']){main.append(el('h3',label(group)));const t=makeTable();globalRows(t,group);main.append(t);}
     else if((punches as readonly string[]).includes(section)){for(const key of Object.keys(draft.punches[section as typeof punches[number]])){const path=`punches.${section}.${key}`;row(table,key,path,get(draft,path),get(draft,path));}main.append(table);}
     else{globalRows(table,section);main.append(table);}
+    renderBaseHistory(main);
   }else if(section==='core'){
     main.append(el('p','Tune values are character multipliers. In-game values include the shared base.'));
     for(const key of ['hp','stamina','stun','speed','regen'])row(table,key,`characters.${selected}.${key}`,effective(draft,selected,'core',key),effective(draft,'marco','core',key));main.append(table);

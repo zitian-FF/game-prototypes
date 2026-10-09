@@ -49,6 +49,14 @@ try{
   failWrite=true;assert.equal((await request('save',{session:reload.session,draft:nextDraft})).code,502);assert.equal(writes,1);failWrite=false;
   branch='new-default';assert.equal((await request('save',{session:reload.session,draft:nextDraft})).code,409);assert.equal(writes,1);
   branch='trunk';assert.equal((await request('save',{session:reload.session,draft:nextDraft})).code,200);assert.equal(writes,2);
+  const baseLoaded=(await request('load')).data,baseDraft=structuredClone(baseLoaded.doc);model.set(baseDraft,'health.max',110);
+  const baseSaved=await request('save',{session:baseLoaded.session,draft:baseDraft});assert.equal(baseSaved.code,200);assert.equal(model.baseVersion(remote),1);
+  assert.equal(remote.balanceWorkshop.baseHistory.versions[0].changes[0].before,100);assert.equal(remote.balanceWorkshop.baseHistory.versions[0].changes[0].after,110);
+  assert.equal(model.baseVersion((await request('load')).data.doc),1,'GitHub reload preserves Base history');
+  model.set(baseDraft,'health.max',120);race=true;
+  assert.equal((await request('save',{session:baseLoaded.session,draft:baseDraft})).code,409);assert.equal(model.baseVersion(remote),1,'Rejected write does not persist a revision');race=false;
+  const baseSecond=await request('save',{session:baseLoaded.session,draft:baseDraft});assert.equal(baseSecond.code,200);assert.equal(model.baseVersion(remote),2);
+  assert.equal((await request('save',{session:baseLoaded.session,draft:baseSecond.data.doc})).data.commit,null);assert.equal(model.baseVersion(remote),2);
   console.log('PASS: HTTP load/edit/save, actual default branch, selective merge, unknown-field preservation, conflict/SHA race, failed-write retry, no-op, build status, origin/header/host guards and static isolation');
 }finally{if(!process.argv.includes('--serve'))await new Promise(resolve=>server.close(resolve));}
 if(process.argv.includes('--serve')){
