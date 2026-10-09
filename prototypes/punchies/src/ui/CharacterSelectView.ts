@@ -70,7 +70,7 @@ export class CharacterSelectView {
     this.button(46, 29, 80, 30, t('charselect.back'), callbacks.back);
     this.format = this.button(90, 76, 136, 27, t('charselect.best_of_3'), callbacks.format, false, 0x8b57c9);
     [290, 422, 554].forEach((x, i) => {
-      this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11));
+      this.progress.push(this.text(this.root, x, 76, `${i + 1}`, 11).setStroke('#071024', 0));
       if (i < 2) this.text(this.root, x + 66, 76, '›', 22, '#a8bad5');
     });
     const body = scene.add.container(0, DY);
@@ -254,8 +254,10 @@ export class CharacterSelectView {
     g.lineStyle(5, 0xef3545).lineBetween(422, 51, 586, 51);
     this.progress.forEach((t, i) => {
       const active = state.step === i;
-      this.frame(g, 232 + i * 132, 63, 116, 27, active ? 0x5bd8ff : 0x2f3b55, active);
-      t.setText(`${i + 1}  ${state.steps[i]}`).setColor(active ? '#fff7e6' : '#9fb0ca');
+      const complete = i < state.step;
+      g.lineStyle(active ? 3 : 1, active ? 0x5bd8ff : complete ? 0x6bcba5 : 0x526078, active ? 1 : .65)
+        .lineBetween(242 + i * 132, 89, 338 + i * 132, 89);
+      t.setText(`${complete ? '✓' : i + 1}  ${state.steps[i]}`).setColor(active ? '#77ddff' : complete ? '#9dddc3' : '#9fb0ca');
     });
     state.panels.forEach((p, s) => {
       this.panelHits[s].input!.enabled=!p.dummy;
