@@ -64,14 +64,14 @@
   },
   "punches.jab.counterStartup": {
     "cat": "Attack",
-    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.jab.counterRecovery": {
+  "punches.jab.counterWhiff": {
     "cat": "Attack",
-    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
     "step": 1
@@ -190,14 +190,14 @@
   },
   "punches.cross.counterStartup": {
     "cat": "Attack",
-    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.cross.counterRecovery": {
+  "punches.cross.counterWhiff": {
     "cat": "Attack",
-    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
     "step": 1
@@ -316,14 +316,14 @@
   },
   "punches.hook.counterStartup": {
     "cat": "Attack",
-    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.hook.counterRecovery": {
+  "punches.hook.counterWhiff": {
     "cat": "Attack",
-    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
     "step": 1
@@ -442,14 +442,14 @@
   },
   "punches.uppercut.counterStartup": {
     "cat": "Attack",
-    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.uppercut.counterRecovery": {
+  "punches.uppercut.counterWhiff": {
     "cat": "Attack",
-    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
     "step": 1
@@ -589,7 +589,7 @@
   },
   "hit.counterDamageMult": {
     "cat": "Attack",
-    "desc": "Damage multiplier for Cross/Hook counters on the opponent's startup.",
+    "desc": "Counter hit: damage and stun-meter multiplier when a punch catches the defender in punch startup or the whiff tail of recovery (per-punch flags).",
     "min": 1,
     "max": 3,
     "step": 0.1
