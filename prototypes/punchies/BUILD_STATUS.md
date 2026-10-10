@@ -1,12 +1,12 @@
 ## Current milestone
-Approved pending art release: public R2 bundles verified; merge and deployment in progress.
+Previous pending art release deployed as r0126. Nadia redesign and Roxy rig drafts prepared for review.
 ## What was implemented
-Captain Eagle portrait and complete rig with anchored scarf, covered limbs and canonical mirrored gloves/boots. Approved Bruno portrait repair, locked-roster icon and ten overhead torso replacements. Captain is in the fighter chest pool and tuner. Tee retains her existing live torso.
+PR311 integrated Captain Eagle, approved Bruno portrait repair, locked-roster icon and ten overhead torsos. PR312 corrected asset validation to support either canonical mirror side. Both R2 profiles verified and fresh builds checked. Nadia portrait redesigned with compact braided bun and petite build. Roxy approved portrait retained; four separate canonical rig parts prepared and checked in runtime Puppet idle/cross fixtures.
 ## Key technical decisions
-Captain uses provisional Marco stats; existing tuning is unchanged. Lossless originals archived to Drive 1bH0muAJAID4VUQAiAYW_25yKhyjJLjZo. Both public R2 downloads match prepared SHA-256 hashes. Standard ETag updated to f3f637072d769d7f2929fa8a55ca1bc8. Fresh standard and compact builds pass integrity and parity checks at 16,804,365 and 9,809,654 bytes.
+Captain uses provisional Marco stats; existing tuning unchanged. Standard 16.80 MB; compact 9.81 MB. Roxy glove normalized to existing upright runtime registration; left glove and boot derive from canonical right sources. New Nadia/Roxy art is local only, not in the live pool. Standard portraits below 200 KB; compact below 100 KB.
 ## Open questions
-Nadia redesign needs portrait approval before rig production. Her hair will be a compact braided bun, distinct from Mia's ponytail. Roxy's approved portrait is retained for rig preparation.
+Nadia portrait approval before rig production. Roxy draft rig needs design review and character integration/tuning after approval.
 ## Known issues
-Tee collar correction remains unfinished after image tool rejection. Captain tuning is provisional. Profile/progression screens remain separate work.
+Tee collar correction unfinished after image tool rejection; previous torso retained. Roxy fixture uses Marco registration baseline and is not a full combat validation. Profile/progression screens remain separate work.
 ## Next proposed step
-Verify deployment, then review Nadia portrait and prepare Roxy's rig using the approved portrait.
+Review Nadia portrait and Roxy assembled rig; then prepare approved character content and both production profiles.
