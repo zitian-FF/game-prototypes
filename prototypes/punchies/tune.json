@@ -8,7 +8,7 @@
     "resultDelayMs": 500
   },
   "view": {
-    "fighterScale": 1.5,
+    "fighterScale": 1.25,
     "cameraShakeScale": 0.5,
     "roundSplashMs": 900,
     "fightPresentation": {
@@ -161,7 +161,7 @@
   },
   "punches": {
     "jab": {
-      "startup": 6,
+      "startup": 4,
       "sourEarly": 3,
       "sweet": 2,
       "sour": 0,
