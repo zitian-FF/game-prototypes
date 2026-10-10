@@ -23,9 +23,11 @@ assert(!roster.availableFighters(state).includes('tee'),'Tee is locked until pul
 state={...state,owned:[...state.owned,'skin-mia','skin-marco-unique']};draft.saveShopDraft(state);
 assert.deepEqual(Array.from(roster.ownedSkins(state,'mia')),['default','skin-mia']);assert.equal(roster.equippedSkin(state,'marco','skin-mia'),'default');assert.equal(roster.equippedSkin(state,'mia','missing'),'default');
 prefs.saveCharPrefs({skins:{p1:{mia:'skin-mia'},p2:{mia:'default'}}});assert.equal(prefs.loadCharPrefs().skins.p1.mia,'skin-mia');assert.equal(prefs.loadCharPrefs().skins.p2.mia,'default');
+const rosterLayout=module('prototypes/punchies/src/ui/rosterLayout.ts',()=>character);
 let started=null;
 const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
  if(p==='phaser')return{default:{Scene:class{}}};
+ if(p.includes('rosterLayout'))return rosterLayout;
  if(p.includes('shop/roster'))return roster;if(p.includes('shop/draft'))return draft;
  if(p.includes('sim/character'))return character;if(p.includes('charPrefs'))return prefs;
  if(p.includes('render/skins'))return{skinReady:(_s,_c,skin)=>!skin.endsWith('-unique')};
