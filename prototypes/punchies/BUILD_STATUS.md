@@ -9,4 +9,4 @@ Nadia redesign needs portrait approval before rig production. Her hair will be a
 ## Known issues
 Tee collar correction remains unfinished after image tool rejection. Captain tuning is provisional. Profile/progression screens remain separate work.
 ## Next proposed step
-Verify deployment, then review Nadia portrait and prepare Roxy's rig using the approved portrait.
+Verify deployment, then review Nadia portrait and prepare Roxy's rig using the approved portrait. Test-build scaffold (owner request): src/testBuild.ts exports TEST_BUILD (true) and TEST_TOKENS (999); the Shop shows a "TEST: 999 TOKENS" button in the itch test build without ?debug=1. Removal list in docs/release-plan.md section 8b. The test scaffold must be switched off (TEST_BUILD false) before the final build.
