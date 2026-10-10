@@ -157,10 +157,10 @@
   "movement": {
     "speed": 130,
     "punchMoveMult": 0.35,
-    "guardMoveMult": 0.5,
+    "guardMoveMult": 0.6,
     "stunMoveMult": 0.6,
     "lockMoveMult": 0.6,
-    "minSeparation": 44
+    "minSeparation": 40
   },
   "body": {
     "hurtRadius": 22,
@@ -209,20 +209,20 @@
       "hitStun": 23,
       "blockStun": 17,
       "sourStun": 18,
-      "startup": 15,
+      "startup": 12,
       "sourEarly": 3,
       "sweet": 4,
       "sour": 0,
-      "recovery": 20,
-      "whiffRecovery": 12,
-      "reach": 48,
+      "recovery": 15,
+      "whiffRecovery": 10,
+      "reach": 52,
       "hitRadius": 10,
       "damage": 10,
-      "staminaCost": 10.8,
-      "staminaDamage": 16,
-      "stunBuild": 22.5,
+      "staminaCost": 10,
+      "staminaDamage": 15,
+      "stunBuild": 20,
       "startReachFrac": 0.4,
-      "fatigueBars": 2,
+      "fatigueBars": 3,
       "fatigueSpeedPerBar": 0.24,
       "fatigueDamagePerBar": 0.2,
       "pushHit": 19.5,
@@ -321,9 +321,9 @@
   "stun": {
     "threshold": 100,
     "decayPerSec": 8,
-    "decayDelayFrames": 60,
+    "decayDelayFrames": 20,
     "baseFrames": 90,
-    "overflowFramesPerPoint": 1.5
+    "overflowFramesPerPoint": 1
   },
   "stars": {
     "max": 3,
@@ -334,7 +334,7 @@
     "decayPerSec": 0.8,
     "freeUses": 2,
     "minDamageMult": 0.5,
-    "decayDelayFrames": 60
+    "decayDelayFrames": 20
   },
   "input": {
     "bufferFrames": 6,
@@ -801,6 +801,229 @@
         "recovery": 0,
         "fatigueBars": 0
       }
+    }
+  },
+  "balanceWorkshop": {
+    "baseHistory": {
+      "format": 1,
+      "initial": {
+        "punches.jab.counterStartup": 0,
+        "punches.jab.counterWhiff": 0,
+        "punches.jab.hitStun": 10,
+        "punches.jab.blockStun": 8,
+        "punches.jab.sourStun": 8,
+        "punches.jab.startup": 4,
+        "punches.jab.sourEarly": 3,
+        "punches.jab.sweet": 2,
+        "punches.jab.sour": 0,
+        "punches.jab.recovery": 8,
+        "punches.jab.whiffRecovery": 4,
+        "punches.jab.reach": 42,
+        "punches.jab.hitRadius": 9,
+        "punches.jab.damage": 4,
+        "punches.jab.staminaCost": 4.8,
+        "punches.jab.staminaDamage": 5,
+        "punches.jab.stunBuild": 10,
+        "punches.jab.startReachFrac": 0.4,
+        "punches.cross.counterStartup": 1,
+        "punches.cross.counterWhiff": 1,
+        "punches.cross.hitStun": 23,
+        "punches.cross.blockStun": 17,
+        "punches.cross.sourStun": 18,
+        "punches.cross.startup": 15,
+        "punches.cross.sourEarly": 3,
+        "punches.cross.sweet": 4,
+        "punches.cross.sour": 0,
+        "punches.cross.recovery": 20,
+        "punches.cross.whiffRecovery": 12,
+        "punches.cross.reach": 48,
+        "punches.cross.hitRadius": 10,
+        "punches.cross.damage": 10,
+        "punches.cross.staminaCost": 10.8,
+        "punches.cross.staminaDamage": 16,
+        "punches.cross.stunBuild": 22.5,
+        "punches.cross.startReachFrac": 0.4,
+        "punches.hook.counterStartup": 1,
+        "punches.hook.counterWhiff": 1,
+        "punches.hook.hitStun": 14,
+        "punches.hook.blockStun": 11,
+        "punches.hook.sourStun": 10,
+        "punches.hook.startup": 10,
+        "punches.hook.sourEarly": 1,
+        "punches.hook.sweet": 3,
+        "punches.hook.sour": 0,
+        "punches.hook.recovery": 12,
+        "punches.hook.whiffRecovery": 8,
+        "punches.hook.reach": 31,
+        "punches.hook.hitRadius": 10,
+        "punches.hook.damage": 7,
+        "punches.hook.staminaCost": 8.4,
+        "punches.hook.staminaDamage": 12,
+        "punches.hook.stunBuild": 17.5,
+        "punches.hook.startReachFrac": 0.75,
+        "punches.uppercut.counterStartup": 0,
+        "punches.uppercut.counterWhiff": 1,
+        "punches.uppercut.hitStun": 20,
+        "punches.uppercut.blockStun": 0,
+        "punches.uppercut.sourStun": 12,
+        "punches.uppercut.startup": 2,
+        "punches.uppercut.sourEarly": 0,
+        "punches.uppercut.sweet": 3,
+        "punches.uppercut.sour": 0,
+        "punches.uppercut.recovery": 16,
+        "punches.uppercut.whiffRecovery": 45,
+        "punches.uppercut.reach": 31,
+        "punches.uppercut.hitRadius": 10,
+        "punches.uppercut.staminaCost": 12,
+        "punches.uppercut.staminaDamage": 24,
+        "punches.uppercut.stunBuild": 37.5,
+        "punches.uppercut.startReachFrac": 0.4,
+        "punches.hook.guardChipMult": 0.4,
+        "punches.uppercut.crossDamageMult": 2,
+        "hit.reducedDamageMult": 0.5,
+        "hit.attackerStaminaPenalty": 6,
+        "hit.counterDamageMult": 1.2,
+        "hit.sourStunMult": 0.5,
+        "stars.max": 3,
+        "fatigue.perUse": 1,
+        "fatigue.decayPerSec": 0.8,
+        "fatigue.freeUses": 2,
+        "fatigue.minDamageMult": 0.5,
+        "guard.perfectFrames": 3,
+        "guard.exhaustedChipMult": 0.5,
+        "guard.staminaDrainPerSec": 7.2,
+        "guard.perfectGuardStaminaGain": 12,
+        "guard.perfectGuardAttackerStunFrames": 56,
+        "guard.perfectGuardStunBuild": 31.25,
+        "dodge.frames": 14,
+        "dodge.iFrames": 10,
+        "dodge.exhaustedEfficacy": 0.5,
+        "dodge.speed": 337.5,
+        "dodge.vulnerableFrames": 24,
+        "dodge.stunnedVulnerableMult": 2,
+        "dodge.staminaCost": 17.28,
+        "dodge.neutralDeadzone": 0.3,
+        "body.hurtRadius": 22,
+        "body.coreRadius": 10,
+        "body.vulnerableHurtRadius": 28,
+        "health.max": 100,
+        "stun.threshold": 100,
+        "stun.decayPerSec": 8,
+        "stun.decayDelayFrames": 60,
+        "stun.baseFrames": 90,
+        "stun.overflowFramesPerPoint": 1.5,
+        "stamina.max": 100,
+        "stamina.regenIdlePerSec": 24,
+        "stamina.regenActivePerSec": 8,
+        "stamina.regenDelayFrames": 20,
+        "stamina.emergencyDamageMult": 0.5,
+        "movement.speed": 130,
+        "movement.punchMoveMult": 0.35,
+        "movement.guardMoveMult": 0.5,
+        "movement.stunMoveMult": 0.6,
+        "movement.lockMoveMult": 0.6,
+        "movement.minSeparation": 44,
+        "dodge.buffWindowFrames": 6,
+        "dodge.buffDamageMult": 1.5,
+        "hit.hitstopFrames": 3,
+        "punches.jab.fatigueBars": 4,
+        "punches.jab.fatigueSpeedPerBar": 0.12,
+        "punches.jab.fatigueDamagePerBar": 0.1,
+        "punches.hook.fatigueBars": 3,
+        "punches.hook.fatigueSpeedPerBar": 0.16,
+        "punches.hook.fatigueDamagePerBar": 0.133,
+        "punches.cross.fatigueBars": 2,
+        "punches.cross.fatigueSpeedPerBar": 0.24,
+        "punches.cross.fatigueDamagePerBar": 0.2,
+        "fatigue.decayDelayFrames": 60,
+        "hit.pushFrames": 6,
+        "punches.jab.pushHit": 3.9,
+        "punches.jab.pushBlock": 0,
+        "punches.cross.pushHit": 19.5,
+        "punches.cross.pushBlock": 9.75,
+        "punches.hook.pushHit": 15.6,
+        "punches.hook.pushBlock": 7.8,
+        "punches.uppercut.pushHit": 31.2,
+        "punches.uppercut.pushBlock": 0,
+        "stars.counterGain": 1,
+        "hit.counterStunMult": 1.2,
+        "dodge.penaltyMoveMult": 0.4,
+        "guard.penaltyFrames": 24,
+        "view.fighterScale": 1.25
+      },
+      "versions": [
+        {
+          "version": 1,
+          "savedAt": "2026-10-10T14:22:38.027Z",
+          "changes": [
+            {
+              "path": "punches.cross.startup",
+              "before": 15,
+              "after": 12
+            },
+            {
+              "path": "punches.cross.recovery",
+              "before": 20,
+              "after": 15
+            },
+            {
+              "path": "punches.cross.whiffRecovery",
+              "before": 12,
+              "after": 10
+            },
+            {
+              "path": "punches.cross.reach",
+              "before": 48,
+              "after": 52
+            },
+            {
+              "path": "punches.cross.staminaCost",
+              "before": 10.8,
+              "after": 10
+            },
+            {
+              "path": "punches.cross.staminaDamage",
+              "before": 16,
+              "after": 15
+            },
+            {
+              "path": "punches.cross.stunBuild",
+              "before": 22.5,
+              "after": 20
+            },
+            {
+              "path": "stun.decayDelayFrames",
+              "before": 60,
+              "after": 20
+            },
+            {
+              "path": "stun.overflowFramesPerPoint",
+              "before": 1.5,
+              "after": 1
+            },
+            {
+              "path": "movement.guardMoveMult",
+              "before": 0.5,
+              "after": 0.6
+            },
+            {
+              "path": "movement.minSeparation",
+              "before": 44,
+              "after": 40
+            },
+            {
+              "path": "punches.cross.fatigueBars",
+              "before": 2,
+              "after": 3
+            },
+            {
+              "path": "fatigue.decayDelayFrames",
+              "before": 60,
+              "after": 20
+            }
+          ]
+        }
+      ]
     }
   }
 }
