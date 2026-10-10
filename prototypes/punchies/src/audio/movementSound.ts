@@ -18,7 +18,7 @@ export class MovementSound {
         if (f.guarding && !old.guard) sfx.guardRaise();
         if (f.dodge && !old.dodge) sfx.dodge();
         const moved = Math.hypot(f.x - old.x, f.y - old.y);
-        if (!f.anchored && !f.dodge && !f.stunTimer && !f.pushFrames && !f.pushLock && !s.hitstop && moved > 0.1 && moved < 12) {
+        if (!f.anchored && !f.dodge && !f.stunTimer && !f.pushFrames && !f.lock && !s.hitstop && moved > 0.1 && moved < 12) {
           distance += moved;
           if (distance >= 24 && s.tick - stepTick >= 14) { sfx.step(alternate); alternate = !alternate; distance %= 24; stepTick = s.tick; }
         } else distance = 0;

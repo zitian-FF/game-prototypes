@@ -33,7 +33,7 @@ function row(table:HTMLTableElement,key:string,path:string|null,current:number,m
   const edit=el('td');if(path){const range=meta[path],input=el('input');input.type='number';input.value=format(get(draft,path));input.min=String(range.min);input.max=String(range.max);input.step=String(range.step||'any');input.setAttribute('aria-label',`${section} ${label(key)} tune value`);
     input.oninput=()=>{try{if(input.value==='')throw Error('Enter a number');set(draft,path,Number(input.value));input.setCustomValidity('');remember();refreshRows.forEach(fn=>fn());status();}catch(e){input.setCustomValidity(String(e));message=String(e);status();}};input.onchange=()=>{if(input.validationMessage)input.reportValidity();};edit.append(input);
     const reset=button('↶',()=>{set(draft,path,get(base,path));remember();render();},'reset');reset.title='Reset this value to the opened file';reset.setAttribute('aria-label',`Reset ${label(key)}`);edit.append(reset);
-  }else edit.append(el('span','Shared'));
+  }else edit.append(el('span',['hitStun','blockStun','sourStun'].includes(key)?'Derived from push':'Shared'));
   const currentCell=el('td',format(current)),marcoCell=el('td',format(marco));tr.append(edit,currentCell,marcoCell);const diff=el('td',delta(current,marco));diff.className=current===marco?'neutral':current>marco?'positive':'negative';tr.append(diff);table.append(tr);
   refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?effective(draft,'marco',section,key):value;currentCell.textContent=format(value);marcoCell.textContent=format(baseline);diff.textContent=delta(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
 }
@@ -57,14 +57,14 @@ function render(){
   if(shared){
     main.append(el('p','Shared values affect all fighters. Character multipliers and frame offsets are applied on top.'));
     if(section==='core')for(const group of ['health','stamina','stun','movement','fatigue','stars']){main.append(el('h3',label(group)));const t=makeTable();globalRows(t,group);main.append(t);}
-    else if((punches as readonly string[]).includes(section)){for(const key of Object.keys(draft.punches[section as typeof punches[number]])){const path=`punches.${section}.${key}`;row(table,key,path,get(draft,path),get(draft,path));}main.append(table);}
+    else if((punches as readonly string[]).includes(section)){main.append(el('p','Counters apply only to enabled punch startup or the late recovery of a missed punch. Guard release and dodge exposure are vulnerable, without a counter bonus.'));const hit=makeTable();globalRows(hit,'hit');main.append(hit);for(const key of Object.keys(draft.punches[section as typeof punches[number]])){const path=`punches.${section}.${key}`;row(table,key,path,get(draft,path),get(draft,path));}main.append(table);}
     else{globalRows(table,section);main.append(table);}
   }else if(section==='core'){
     main.append(el('p','Tune values are character multipliers. In-game values include the shared base.'));
     for(const key of ['hp','stamina','stun','speed','regen'])row(table,key,`characters.${selected}.${key}`,effective(draft,selected,'core',key),effective(draft,'marco','core',key));main.append(table);
   }else if((punches as readonly string[]).includes(section)){
     main.append(el('p','Tune values are multipliers, except startup/recovery (added frames) and fatigue bars (added bars). Reach includes actual character size. Uppercut damage uses Cross base damage × uppercut factor × character uppercut multiplier.'));
-    const cfgKeys=['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'];
+    const cfgKeys=['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','hitStun','blockStun','sourStun','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'];
     for(const key of cfgKeys){const override=key==='pushHit'||key==='pushBlock'?'push':key;const path=`characters.${selected}.${section}.${override}`;row(table,key,meta[path]?path:null,effective(draft,selected,section,key),effective(draft,'marco',section,key));}main.append(table);
   }else{main.append(el('p','Block and dodge currently share the same rules for every fighter. Edits here apply to everyone; differences from Marco are therefore 0%.'));globalRows(table,section);main.append(table);}
   const changed=changes(base,draft);if(changed.length){const details=el('details');details.append(el('summary',`Review ${changed.length} edits`));const list=el('ul');for(const path of changed)list.append(el('li',`${path}: ${format(get(base,path))} → ${format(get(draft,path))}`));details.append(list);main.append(details);}
