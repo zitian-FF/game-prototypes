@@ -266,6 +266,27 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - Title list and level for each title (owner to write; Claude proposes). `?`
 - Do online opponents' aliases need a report or hide option? Without chat the risk is lower, but portal review may ask. `?`
 
+## 8b. Test scaffold to remove for the final build
+
+The itch.io Current WIP slot is a test build. Testing aids that a real player must not see are gated behind one flag, `TEST_BUILD` in `src/testBuild.ts`. For the final build set it to `false` (or delete the file and its imports) and check this list.
+
+| Scaffold | Where | Visible when |
+|---|---|---|
+| "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | test build, or `?debug=1` |
+| Debug and tuning panel, hitboxes | `src/debug/debugPanel.ts` | `?debug=1` only (also fine to keep hidden in the final build) |
+| Reset save panel | `src/ui/resetSavePanel.ts` | Settings; decide whether the final build keeps it |
+
+Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
+
+### Translations reach the build at build time
+
+Translations are built into the game and never fetched at runtime. The Google Sheet (English plus GOOGLETRANSLATE formulas for ja, ko, zh, es, ar) is the working copy; the game ships frozen `locales/*.json`.
+
+- A release build (`TEST_BUILD` is `false` in `src/testBuild.ts`) or a deploy started with the `pull_translations` input downloads the sheet as CSV (`scripts/i18n-sheet.mjs pull`, address in the `I18N_SHEET_URL` repository variable), validates it and packs it into that build. A release build stops if the download fails.
+- The "Pull Punchies translations" workflow, or `node scripts/i18n-sheet.mjs import <downloaded.csv>` after downloading the CSV in Brave, freezes the same files into the repository through a pull request.
+- The sheet must be readable by the CI download (link sharing or publish to the web). While the sheet is private, use the Brave download route.
+- Placeholders such as `{name}` must survive: the import keeps English for any cell that changes them. Reviewers fix the machine translations in the sheet.
+
 ## 9. Update log
 
 - 2026-10-09: Codex polished first-play UI and integrated Rising Star portrait/rig in both R2 profiles. Coach advances on approach, Skip sits at upper right, HP-only HUD retains names, returning through pause menu preserves the welcome gift, gameplay music maps to the first fight and title music to its reward/welcome. Welcome card uses bottom-anchored Marco and the purple chest; reward acknowledgement has standard button feedback. Language choice precedes the fight only when multiple translated languages are available. Profile/progression screens remain separate pending work.
@@ -281,3 +302,5 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
 - 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
+- 2026-10-10: test-build scaffold flag added (Claude): `TEST_BUILD` shows a 999 token shop button on itch without `?debug=1`; removal list in section 8b.
+- 2026-10-10: translations are packed into the build from the sheet's CSV on release builds or on request (Claude). A runtime live-sheet loader was tried and reverted: the game never reads the sheet at runtime.
