@@ -1,12 +1,12 @@
 ## Current milestone
-Release tested material, hand, gait and combat-audio polish against Claude's PR309 combat rules.
+Approved pending art release: public R2 bundles verified; merge and deployment in progress.
 ## What was implemented
-Semantic palette masks; Rising Star handedness; distance-driven leg gait; procedural swing and sweet/sour contact audio; movement/defense cues; removal of result stinger. Tuner displays derived per-character hit/block/sour stun, current counterWhiff flags, hit rules and exhausted settings.
+Captain Eagle portrait and complete rig with anchored scarf, covered limbs and canonical mirrored gloves/boots. Approved Bruno portrait repair, locked-roster icon and ten overhead torso replacements. Captain is in the fighter chest pool and tuner. Tee retains her existing live torso.
 ## Key technical decisions
-Preserve latest tune.json and tune.meta.json unchanged. Use lock instead of retired pushLock. Art drafts are excluded.
+Captain uses provisional Marco stats; existing tuning is unchanged. Lossless originals archived to Drive 1bH0muAJAID4VUQAiAYW_25yKhyjJLjZo. Both public R2 downloads match prepared SHA-256 hashes. Standard ETag updated to f3f637072d769d7f2929fa8a55ca1bc8. Fresh standard and compact builds pass integrity and parity checks at 16,804,365 and 9,809,654 bytes.
 ## Open questions
-None for this code release.
+Nadia redesign needs portrait approval before rig production. Her hair will be a compact braided bun, distinct from Mia's ponytail. Roxy's approved portrait is retained for rig preparation.
 ## Known issues
-Approved Bruno portrait repair, Captain Eagle integration, new lock artwork and torso overhaul remain separate pending art work. Profile/progression UI remains pending. Frame-advantage preview is not yet implemented.
+Tee collar correction remains unfinished after image tool rejection. Captain tuning is provisional. Profile/progression screens remain separate work.
 ## Next proposed step
-Verify deployed build, then finish approved art integration and progression UI.
+Verify deployment, then review Nadia portrait and prepare Roxy's rig using the approved portrait.

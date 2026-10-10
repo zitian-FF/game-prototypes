@@ -108,11 +108,13 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Mia Tanaka | `mia` | Agile | Owned from the start | done | done | |
 | Bruno Kowalski | `bruno` | Tank | Owned from the start | done | done | |
 | G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | done | done | Hidden in roster until owned |
-| Longan | `fighter-longan` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
-| Tyke Maison | `fighter-tyke` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
-| Dragon | `fighter-dragon` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
+| Longan | `fighter-longan` | All-rounder | Fighter chest | done | done | Provisional stats. Added in #274 |
+| Tyke Maison | `fighter-tyke` | Heavyweight | Fighter chest | done | done | Provisional stats. Added in #274 |
+| Dragon | `fighter-dragon` | Karate | Fighter chest | done | done | Provisional stats. Added in #274 |
 | The Rookie | `fighter-five` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
 | The Southpaw | `fighter-six` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
+
+| Captain Eagle | `fighter-captain` | Racer | Fighter chest | prepared | integrated locally | Pending R2 publication; provisional Marco baseline. Gold scarf, visor, single shoulder armour. |
 
 ### Skins
 
@@ -150,7 +152,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | McClassic | `skin-marco-mcclassic` | Marco | unique | Skin chest | done | Portrait and complete rig shipped |
 | Flaming Kunoichi | `skin-mia-flaming-kunoichi` | Mia | unique | Skin chest | done | Portrait and complete rig shipped |
 
-Inventory: 7 existing fighters, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
+Inventory: 7 live fighters plus Captain Eagle integrated locally pending release, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
 
 ### Content roadmap targets (owner to set)
 

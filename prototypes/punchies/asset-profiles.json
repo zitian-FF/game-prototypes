@@ -3,10 +3,10 @@
     "musicExtension": "mp3"
   },
   "compact": {
-    "standardArtEtag": "\"657de4ebbc0e615f437bc57fc0d1434c\"",
+    "standardArtEtag": "\"f3f637072d769d7f2929fa8a55ca1bc8\"",
     "standardMusicSha256": "9e5543284b149e6d2c155dc21cf29951e48b0c214ef4185a887600ae344bbbc7",
     "artUrl": "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_compact_assets.zip",
-    "artSha256": "efa416f9875908c18bca9a522b2639a3c39ebe08706c2cb3672e197fb6ba784b",
+    "artSha256": "82a196f255fd9d24a60d9db78e0705f2973d610fe2881d2dd8a005a4112faa5e",
     "audioUrl": "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_compact_audio.zip",
     "audioSha256": "c90e5ff163a2f8dea12ba568dffe1b8661b87385e8f542fb14e2255204860b74",
     "musicExtension": "m4a"

@@ -9,6 +9,7 @@ export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|
 // G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
+  {id:'fighter-captain',name:'CAPTAIN EAGLE',kind:'fighters',boxer:'captain',accent:0xffce54,description:'Visored racer with eagle helmet, gold scarf and asymmetric armour. Provisional stats.'},
   {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Explosive power and speed, low HP, stamina and stun resistance.'},
   {id:'fighter-longan',name:'LONGAN',kind:'fighters',boxer:'longan',accent:0x628958,description:'Tall Southeast Asian fighter with ivory handwraps and longan motifs. Provisional stats.'},
   {id:'skin-marco-mcclassic',name:'MARCO · McCLASSIC',kind:'skins',boxer:'marco',accent:0x35ba39,skinType:'unique',portraitKey:'portrait_marco_mcclassic',rigGroup:'marco_mcclassic',description:'Helmet-free Marco in a black top, green kit and gloves. Same Marco stats.'},

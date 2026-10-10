@@ -90,7 +90,14 @@
       "teeGloveAxisDegrees": 0,
       "teeWalkRate": 1.2,
       "teeTailOriginX": 0.975,
-      "teeTailOriginY": 0.44
+      "teeTailOriginY": 0.44,
+      "captainScarfOriginX": 0.8908272859216255,
+      "captainScarfOriginY": 0.5886317222600409,
+      "captainScarfBack": 11,
+      "captainScarfScale": 0.75,
+      "captainScarfSwayMs": 360,
+      "captainScarfIdleSway": 0.04,
+      "captainScarfWalkSway": 0.22
     },
     "trainingDummy": {
       "bodyHeight": 34,
@@ -166,7 +173,8 @@
       "tee": 0.88,
       "tyke": 1.18,
       "dragon": 1,
-      "longan": 1
+      "longan": 1,
+      "captain": 1
     }
   },
   "punches": {
@@ -701,6 +709,53 @@
       }
     },
     "longan": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "captain": {
       "hp": 1,
       "stamina": 1.1,
       "regen": 1.1,

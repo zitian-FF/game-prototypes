@@ -21,7 +21,7 @@ assert.deepEqual(defaults(),base,'source tune is unchanged');
 console.log('PASS: effective stats, actual punch formulas, signed Marco deltas, validation, selective merging, same-field conflicts and preserved unknown fields');
 
 
-assert.deepEqual(characters,['marco','mia','bruno','tee','tyke','dragon','longan']);
+assert.deepEqual(characters,['marco','mia','bruno','tee','tyke','dragon','longan','captain']);
 for(const id of characters){assert(names[id]?.name);for(const key of ['hp','stamina','stun','speed','regen']){assert(meta['characters.'+id+'.'+key]);assert(Number.isFinite(effective(base,id,'core',key)));}}
 const longan=defaults();set(longan,'characters.longan.hp',.9);assert.equal(effective(longan,'longan','core','hp'),90);assert.equal(effective(base,'longan','core','hp'),100);
 console.log('PASS: seven-fighter roster matches game; metadata and editable Longan baseline available');
