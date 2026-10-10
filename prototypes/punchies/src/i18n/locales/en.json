@@ -371,5 +371,8 @@
   "layouts.dpad_12": "D Up",
   "layouts.dpad_13": "D Down",
   "layouts.dpad_14": "D Left",
-  "layouts.dpad_15": "D Right"
+  "layouts.dpad_15": "D Right",
+  "char.captain.nick": "Full Throttle",
+  "quote.captain": "You saw the visor. You missed the finish line.",
+  "shop.item.fighter-captain.name": "CAPTAIN EAGLE"
 }

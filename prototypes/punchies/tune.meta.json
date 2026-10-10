@@ -4289,5 +4289,320 @@
     "step": 0.5,
     "cat": "View",
     "desc": "Selection card landing displacement in logical pixels."
+  },
+  "characters.captain.hp": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.stamina": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.regen": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.stun": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.speed": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.jab.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.jab.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.jab.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.cross.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.cross.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.hook.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.hook.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "body.proportions.captain": {
+    "cat": "Defense",
+    "desc": "Captain Eagle visual and hitbox scale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfOriginX": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf OriginX.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfOriginY": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf OriginY.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfBack": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf Back.",
+    "min": 0,
+    "max": 30,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfScale": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf Scale.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfSwayMs": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf SwayMs.",
+    "min": 0,
+    "max": 2000,
+    "step": 10
+  },
+  "view.puppet.captainScarfIdleSway": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf IdleSway.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfWalkSway": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf WalkSway.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
   }
 }

@@ -9,6 +9,7 @@ export interface Look {
 }
 
 const LOOKS: Record<CharId, { main: number; alt: number; ponytail: boolean }> = {
+  captain: { main:0x173b79,alt:0x173b79,ponytail:false },
   longan: {main:0x628958,alt:0x628958,ponytail:false},
   tyke: {main:0xf4c832,alt:0xf4c832,ponytail:false},
   dragon: {main:0xf5f1e8,alt:0xf5f1e8,ponytail:true},

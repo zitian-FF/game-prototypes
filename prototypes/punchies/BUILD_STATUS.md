@@ -1,12 +1,12 @@
 ## Current milestone
-Release tested material, hand, gait and combat-audio polish against Claude's PR309 combat rules.
+Pending art production integration, locally validated; publication blocked awaiting explicit R2 approval.
 ## What was implemented
-Semantic palette masks; Rising Star handedness; distance-driven leg gait; procedural swing and sweet/sour contact audio; movement/defense cues; removal of result stinger. Tuner displays derived per-character hit/block/sour stun, current counterWhiff flags, hit rules and exhausted settings.
+Captain Eagle portrait and complete rig, scarf motion, navy-covered limbs, mirrored canonical glove/boot, fighter chest and tuner entry. Approved Bruno portrait repair, lock selector icon and ten overhead torso replacements prepared in both profiles. Tee retains her existing live torso.
 ## Key technical decisions
-Preserve latest tune.json and tune.meta.json unchanged. Use lock instead of retired pushLock. Art drafts are excluded.
+Captain uses provisional Marco stats. Existing fighter tune values are unchanged. Lossless masters archived in Drive 1bH0muAJAID4VUQAiAYW_25yKhyjJLjZo. Previous R2 art downloaded and SHA-verified before attempted replacement. Standard 16,804,365 bytes; compact 9,809,654 bytes. Compact source/art hash prepared locally; standard ETag remains old until publication.
 ## Open questions
-None for this code release.
+Approval to overwrite public R2 standard and compact art bundles is required after automatic review rejected publication authorization.
 ## Known issues
-Approved Bruno portrait repair, Captain Eagle integration, new lock artwork and torso overhaul remain separate pending art work. Profile/progression UI remains pending. Frame-advantage preview is not yet implemented.
+Tee collar recolour rejected by image tool; her replacement is excluded. R2 upload, fresh-download verification, merge and live deploy have not occurred. Profile/progression UI remains outside this art pass.
 ## Next proposed step
-Verify deployed build, then finish approved art integration and progression UI.
+Approve R2 publication, verify downloaded bytes and ETag, rebuild both profiles with fresh compact download, then merge and verify live.

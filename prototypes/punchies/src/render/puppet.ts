@@ -29,6 +29,7 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  captain: {skin:0x173b79,headOrigin:.49,headScale:1,torsoScale:1},
   longan: {skin:0xe9a26b,headOrigin:.5,headScale:1,torsoScale:1},
   tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1},
   dragon: {skin:0xf0ae72,headOrigin:.5,headScale:1,torsoScale:1},
@@ -107,6 +108,7 @@ export class Puppet {
   private bootL: Phaser.GameObjects.Image;
   private bootR: Phaser.GameObjects.Image;
   private torso: Phaser.GameObjects.Image;
+  private scarf: Phaser.GameObjects.Image;
   private ponytail: Phaser.GameObjects.Image;
   private twinTails:Phaser.GameObjects.Image[];
   private gloveL: Phaser.GameObjects.Image;
@@ -127,6 +129,7 @@ export class Puppet {
     this.gloveL = img(10.1);
     this.gloveR = img(10.1);
     this.ponytail = img(10.12);
+    this.scarf = img(10.12);
     this.twinTails=[img(10.12),img(10.12)];
     this.head = img(10.2);
     this.fx = scene.add.graphics().setDepth(10.4);
@@ -140,7 +143,7 @@ export class Puppet {
     this.legs.clear();
     this.arms.clear();
     this.fx.clear();
-    for (const o of [...this.twinTails,this.bootL, this.bootR, this.torso, this.ponytail, this.gloveL, this.gloveR, this.head]) o.setVisible(false);
+    for (const o of [...this.twinTails,this.bootL, this.bootR, this.torso, this.ponytail, this.scarf, this.gloveL, this.gloveR, this.head]) o.setVisible(false);
     for (const g of this.ghosts) {
       g.torso.setVisible(false);
       g.head.setVisible(false);
@@ -166,6 +169,7 @@ export class Puppet {
     this.gloveL.setTexture(part(swapGloves ? 'glove_right' : 'glove_left'));
     this.gloveR.setTexture(part(swapGloves ? 'glove_left' : 'glove_right'));
     this.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5);
+    if (this.scene.textures.exists(part('scarf'))) this.scarf.setTexture(part('scarf')).setOrigin(tune.view.puppet.captainScarfOriginX,tune.view.puppet.captainScarfOriginY);
     const pony = part('ponytail');
     if (this.scene.textures.exists(pony)) this.ponytail.setTexture(pony).setOrigin(PONYTAIL_PIVOT, 0.5);
     ['ponytail_left','ponytail_right'].forEach((name,i)=>{if(this.scene.textures.exists(part(name)))this.twinTails[i].setTexture(part(name)).setOrigin(tune.view.puppet.teeTailOriginX,tune.view.puppet.teeTailOriginY);});
@@ -274,6 +278,7 @@ export class Puppet {
       this.ponytail.setPosition(ppos.x, ppos.y).setRotation(hrot + sway).setScale(hscale).setAlpha(alpha).setVisible(true);
     } else this.ponytail.setVisible(false);
 
+    if(f.char==='captain'){const root=P(rig.headForward*k-snap-rig.captainScarfBack*k,0,headDy);const sway=Math.sin(now/rig.captainScarfSwayMs+a.walk)*(rig.captainScarfIdleSway+rig.captainScarfWalkSway*a.stride);this.scarf.setPosition(root.x,root.y).setRotation(hrot+sway).setScale(hscale*rig.captainScarfScale).setAlpha(alpha).setVisible(true);}else this.scarf.setVisible(false);
     this.twinTails.forEach((tail,i)=>{
       const name='ponytail_'+(i===0?'left':'right');
       const texture=skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}_${name}`);
@@ -340,6 +345,7 @@ export class Puppet {
     };
     tintOf(this.head, head);
     tintOf(this.ponytail, head);
+    tintOf(this.scarf, head);
     this.twinTails.forEach(t=>tintOf(t,head));
     tintOf(this.torso, body);
     for (const o of [this.gloveL, this.gloveR, this.bootL, this.bootR]) tintOf(o, false);
@@ -395,7 +401,7 @@ export class Puppet {
     }
     if (a.reviewLegsOnly) {
       this.arms.clear(); this.fx.clear();
-      for (const image of [this.head,this.torso,this.gloveL,this.gloveR,this.ponytail,...this.twinTails]) image.setVisible(false);
+      for (const image of [this.head,this.torso,this.gloveL,this.gloveR,this.ponytail,this.scarf,...this.twinTails]) image.setVisible(false);
       for (const ghost of this.ghosts) { ghost.head.setVisible(false); ghost.torso.setVisible(false); }
     }
     return true;

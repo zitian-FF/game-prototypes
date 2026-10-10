@@ -19,6 +19,7 @@ export class CharacterSelectView {
  private panelHits:Phaser.GameObjects.Rectangle[]=[];
  private panelKeys=['',''];
  private cards:Phaser.GameObjects.Graphics[]=[];
+ private locks:Phaser.GameObjects.Image[][]=[];
  private progress:Phaser.GameObjects.Text[]=[];
  private action:Phaser.GameObjects.Text;
  private format:Phaser.GameObjects.Text;
@@ -44,6 +45,7 @@ export class CharacterSelectView {
   }
   rosterSlots().forEach((pos,i)=>{
    const card=scene.add.container(pos.x,pos.y);this.root.add(card);const frame=this.graphics(card);this.cards.push(frame);
+   this.locks.push([0,1].map(side=>{const lock=scene.add.image(side===0?-18:18,-13,artKey(scene,'locked_icon')??'__DEFAULT').setDisplaySize(13,15).setVisible(false);card.add(lock);return lock;}));
    const id=CHARACTER_IDS[i];
    if(id){const key=artKey(scene,'portrait_'+id);if(key){
     const texture=scene.textures.get(key),source=texture.getSourceImage(),name='roster-grid';
@@ -98,11 +100,11 @@ export class CharacterSelectView {
     }
    }
   });
-  this.cards.forEach((frame,i)=>{frame.clear();const real=i<CHARACTER_IDS.length;cartoonPanel(frame,-25,-17,50,34,real?0x354665:0x161d2b,5);
+  this.cards.forEach((frame,i)=>{frame.clear();this.locks[i].forEach(lock=>lock.setVisible(false));const real=i<CHARACTER_IDS.length;cartoonPanel(frame,-25,-17,50,34,real?0x354665:0x161d2b,5);
    state.panels.forEach((p,side)=>{if(!real||p.dummy||p.hidden||!p.cursor||p.id!==CHARACTER_IDS[i])return;
     const color=side===0?0x65d9ff:0xff8593;frame.lineStyle(2,color).strokeRoundedRect(-26,-18,52,36,6);
     const x=side===0?-18:18;frame.fillStyle(color).fillCircle(x,-13,6);frame.lineStyle(1,0xffffff);
-    if(!p.available){frame.strokeRoundedRect(x-2,-17,4,5,2);frame.fillStyle(0xffffff).fillRoundedRect(x-3,-13,6,5,1);}else frame.beginPath().moveTo(x-3,-13).lineTo(x-1,-11).lineTo(x+3,-15).strokePath();
+    if(!p.available){this.locks[i][side].setVisible(true);}else frame.beginPath().moveTo(x-3,-13).lineTo(x-1,-11).lineTo(x+3,-15).strokePath();
    });
   });
   this.action.setText(state.action).setScale(Math.min(1,218/this.action.width));this.level.setText(state.level??t('common.versus'));this.levelButtons.forEach(b=>this.setButtonVisible(b,state.level!==null));this.hint.setText(state.hint);
@@ -117,7 +119,7 @@ export class CharacterSelectView {
   if(texture&&this.scene.textures.exists(texture)){
    const image=this.scene.add.image(centre,315,texture).setOrigin(.5,1);let b=this.bounds.get(texture);
    if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(texture,b);}
-   const visibleHeight=p.dummy?130:({bruno:134,marco:125,mia:115,tee:115,tyke:134,dragon:125,longan:125}[p.id]);
+   const visibleHeight=p.dummy?130:({bruno:134,marco:125,mia:115,tee:115,tyke:134,dragon:125,longan:125,captain:125}[p.id]);
    const scale=Math.min(visibleHeight/(b.bottom-b.top),198/(b.right-b.left));const flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;parent.add(image);
   }
   const title=p.dummy?t('common.dummy'):CHARACTER_INFO[p.id].name.toUpperCase();const text=this.text(parent,centre,321,title,16);if(text.width>186)text.setScale(186/text.width);
