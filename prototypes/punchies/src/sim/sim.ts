@@ -333,9 +333,8 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
 function move(s: SimState, idx: number, input: FrameInput): void {
   const f = s.fighters[idx];
   const dt = 1 / TICK_RATE;
-  // Being shoved: the push replaces the player's own walking for its
-  // duration, so holding forward can't cancel it (dodging still works).
-  const shoved = f.lock > 0;
+  // Hit and block stun lock actions but not walking: a locked fighter can still
+  // step away, slowly, which is the escape from a pressing attacker.
   if (f.lock > 0) f.lock--;
   if (f.pushFrames > 0) {
     f.pushFrames--;
@@ -350,7 +349,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     f.y += f.dodge.dy * speed * dt;
     return;
   }
-  if (f.anchored || shoved) return;
+  if (f.anchored) return;
   let mx = input.mx / 100;
   let my = input.my / 100;
   const mag = Math.sqrt(mx * mx + my * my);
@@ -362,6 +361,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   if (f.punch) speed *= tune.movement.punchMoveMult;
   else if (f.guarding) speed *= tune.movement.guardMoveMult;
   if (f.stunTimer > 0) speed *= tune.movement.stunMoveMult;
+  if (f.lock > 0 && !f.guarding) speed *= tune.movement.lockMoveMult;
   if (f.postDodgeVulnerable > 0) speed *= tune.dodge.penaltyMoveMult;
   f.x += mx * speed * dt;
   f.y += my * speed * dt;

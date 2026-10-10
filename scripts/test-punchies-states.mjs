@@ -140,16 +140,25 @@ function advantage(type, mode) {
 for (const type of ['jab', 'cross', 'hook']) {
   const sweet = advantage(type, 'hit'), block = advantage(type, 'block'), sour = advantage(type, 'sour');
   assert.equal(sweet.hit.kind, 'hit'); assert.equal(sweet.hit.sweet, true);
-  assert.ok(sweet.advantage > 0, `${type} sweet hit favours the attacker (${sweet.advantage})`);
+  assert.ok(sweet.advantage >= 0 && sweet.advantage <= 4, `${type} sweet hit is a small attacker advantage (${sweet.advantage})`);
   assert.equal(block.hit.kind, 'block');
   assert.ok(block.advantage < 0, `${type} block favours the defender (${block.advantage})`);
   assert.equal(sour.hit.kind, 'hit'); assert.equal(sour.hit.sweet, false);
   assert.ok(sour.advantage < 0, `${type} sour hit favours the defender (${sour.advantage})`);
   assert.equal(sweet.locked, punchCfg('marco', type).hitStun, `${type} lock equals its hit stun`);
   assert.equal(block.locked, punchCfg('marco', type).blockStun, `${type} lock equals its block stun`);
-  assert.ok(sweet.advantage <= 8, `${type}: no guaranteed combos from a plain hit`);
+  // A counter widens the window but never guarantees a jab follow-up (contact needs startup + early frames after the attacker is free).
+  const jab = punchCfg('marco', 'jab');
+  const counterAdvantage = sweet.advantage + Math.round(punchCfg('marco', type).hitStun * tune.hit.counterStunMult) - punchCfg('marco', type).hitStun;
+  assert.ok(counterAdvantage > sweet.advantage, `${type} counter gives a bigger window`);
+  assert.ok(counterAdvantage < jab.startup + jab.sourEarly, `${type} counter (${counterAdvantage}) does not guarantee a jab follow-up`);
 }
-assert.ok(advantage('uppercut', 'hit').advantage > 0);
+{
+  const up = advantage('uppercut', 'hit').advantage;
+  const jab = punchCfg('marco', 'jab');
+  const counterUp = up + Math.round(punchCfg('marco', 'uppercut').hitStun * tune.hit.counterStunMult) - punchCfg('marco', 'uppercut').hitStun;
+  assert.ok(up > 0 && counterUp < jab.startup + jab.sourEarly, `uppercut advantage ${up}, counter ${counterUp}`);
+}
 // Character push scales the stun along with the shove.
 near(punchCfg('bruno', 'cross').hitStun, Math.round(tune.punches.cross.hitStun * tune.characters.bruno.cross.push));
 assert.ok(punchCfg('bruno', 'cross').hitStun > punchCfg('marco', 'cross').hitStun);
@@ -161,10 +170,10 @@ assert.ok(punchCfg('bruno', 'cross').hitStun > punchCfg('marco', 'cross').hitStu
   const x0 = b.x;
   step(sim, [N, { ...N, jab: true, mx: 100 }], false);
   assert.equal(b.punch, null, 'cannot punch while locked');
-  b.anchored = false;
+  b.anchored = false; b.pushFrames = 0; b.pushX = b.pushY = 0;
   const bx = b.x;
   step(sim, [N, { ...N, mx: -100 }], false);
-  assert.ok(Math.abs(b.x - bx) < 1e-9, 'cannot walk while locked');
+  near(bx - b.x, tune.movement.speed * tune.movement.lockMoveMult / 60, 'a locked fighter walks at the lock multiplier');
   b.anchored = true;
   const g = advantage('cross', 'block');
   assert.ok(g.b.guardPenalty === 0, 'blocking never starts a release penalty');
@@ -192,4 +201,4 @@ assert.ok(punchCfg('bruno', 'cross').hitStun > punchCfg('marco', 'cross').hitStu
   assert.equal(counter, Math.round(punchCfg('marco', 'jab').hitStun * tune.hit.counterStunMult));
   assert.ok(counter > normal.locked);
 }
-console.log('Hit and block stun: locks actions and walking, scales with push, advantage signs, guard held through block stun, counter window passed');
+console.log('Hit and block stun: locks actions, slows walking, scales with push, advantage signs, guard held through block stun, counter window passed');

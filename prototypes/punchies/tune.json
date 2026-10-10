@@ -152,6 +152,7 @@
     "punchMoveMult": 0.35,
     "guardMoveMult": 0.5,
     "stunMoveMult": 0.6,
+    "lockMoveMult": 0.6,
     "minSeparation": 44
   },
   "body": {
@@ -172,7 +173,7 @@
     "jab": {
       "counterStartup": 0,
       "counterRecovery": 0,
-      "hitStun": 12,
+      "hitStun": 10,
       "blockStun": 8,
       "sourStun": 8,
       "startup": 4,
@@ -197,7 +198,7 @@
     "cross": {
       "counterStartup": 1,
       "counterRecovery": 1,
-      "hitStun": 25,
+      "hitStun": 23,
       "blockStun": 17,
       "sourStun": 18,
       "startup": 15,
@@ -222,7 +223,7 @@
     "hook": {
       "counterStartup": 1,
       "counterRecovery": 1,
-      "hitStun": 16,
+      "hitStun": 14,
       "blockStun": 11,
       "sourStun": 10,
       "startup": 10,
@@ -248,7 +249,7 @@
     "uppercut": {
       "counterStartup": 0,
       "counterRecovery": 1,
-      "hitStun": 23,
+      "hitStun": 20,
       "blockStun": 0,
       "sourStun": 12,
       "startup": 2,
@@ -275,7 +276,7 @@
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
     "pushFrames": 6,
-    "counterStunMult": 1.5
+    "counterStunMult": 1.2
   },
   "guard": {
     "perfectFrames": 3,
