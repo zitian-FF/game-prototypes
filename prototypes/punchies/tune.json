@@ -8,7 +8,7 @@
     "resultDelayMs": 500
   },
   "view": {
-    "fighterScale": 1.5,
+    "fighterScale": 1.25,
     "cameraShakeScale": 0.5,
     "roundSplashMs": 900,
     "fightPresentation": {
@@ -123,9 +123,9 @@
       "stampMs": 260,
       "loadingDrift": 15,
       "crossfadeMs": 180,
-      "characterSlideMs": 260,
-      "characterSlideDistance": 34,
-      "characterSlideEase": "Cubic.Out",
+      "characterSlideMs": 300,
+      "characterSlideDistance": 220,
+      "characterSlideEase": "Back.Out",
       "rewardReveal": {
         "fadeMs": 220,
         "entryMs": 420,
@@ -136,7 +136,9 @@
         "portraitHeight": 0.96,
         "entryScale": 0.84,
         "buttonEntryScale": 0.75
-      }
+      },
+      "characterImpactMs": 110,
+      "characterImpactPixels": 3
     }
   },
   "ring": {
@@ -155,18 +157,27 @@
   "body": {
     "hurtRadius": 22,
     "coreRadius": 10,
-    "vulnerableHurtRadius": 28
+    "vulnerableHurtRadius": 28,
+    "proportions": {
+      "marco": 1,
+      "mia": 0.88,
+      "bruno": 1.12,
+      "tee": 0.88,
+      "tyke": 1.18,
+      "dragon": 1,
+      "longan": 1
+    }
   },
   "punches": {
     "jab": {
-      "startup": 6,
+      "startup": 4,
       "sourEarly": 3,
       "sweet": 2,
       "sour": 0,
       "recovery": 8,
       "whiffRecovery": 4,
       "reach": 42,
-      "hitRadius": 6,
+      "hitRadius": 9,
       "damage": 4,
       "staminaCost": 4.8,
       "staminaDamage": 5,
@@ -179,14 +190,14 @@
       "pushBlock": 0
     },
     "cross": {
-      "startup": 13,
+      "startup": 15,
       "sourEarly": 3,
-      "sweet": 6,
+      "sweet": 4,
       "sour": 0,
       "recovery": 20,
       "whiffRecovery": 12,
-      "reach": 56,
-      "hitRadius": 7,
+      "reach": 48,
+      "hitRadius": 10,
       "damage": 10,
       "staminaCost": 10.8,
       "staminaDamage": 16,
@@ -206,7 +217,7 @@
       "recovery": 12,
       "whiffRecovery": 8,
       "reach": 31,
-      "hitRadius": 12,
+      "hitRadius": 10,
       "damage": 7,
       "staminaCost": 8.4,
       "staminaDamage": 12,
@@ -227,7 +238,7 @@
       "recovery": 16,
       "whiffRecovery": 45,
       "reach": 31,
-      "hitRadius": 12,
+      "hitRadius": 10,
       "crossDamageMult": 2,
       "staminaCost": 12,
       "staminaDamage": 24,
@@ -563,6 +574,147 @@
       },
       "uppercut": {
         "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "tyke": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "dragon": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "longan": {
+      "hp": 1,
+      "stamina": 1.1,
+      "regen": 1.1,
+      "stun": 1.05,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,

@@ -119,13 +119,20 @@ jobs:
           node scripts/test-punchies-music.mjs
           node scripts/test-punchies-stingers.mjs
           node scripts/test-punchies-feedback.mjs
+          node scripts/test-punchies-ui-input.mjs
+          node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
           node scripts/test-punchies-roster.mjs
           node scripts/test-punchies-shop.mjs
+          node scripts/test-punchies-progress.mjs
+          node scripts/test-punchies-alias.mjs
           node scripts/test-punchies-starter-skins.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
           node scripts/test-punchies-i18n.mjs
+          if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
+            node scripts/test-punchies-asset-optimization.mjs
+          fi
 
       # Bumps the target's deploy counter (see "Version stamping" in root
       # CLAUDE.md) without committing yet - committed only after a
@@ -150,6 +157,10 @@ jobs:
             [ "$(basename "$d")" = "$TARGET" ] || rm -rf "$d"
           done
           ls dist/prototypes
+
+      - name: Enforce Punchies package budget
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        run: node scripts/check-punchies-budget.mjs
 
       - name: Set up butler
         if: steps.relevant.outputs.run == 'true'

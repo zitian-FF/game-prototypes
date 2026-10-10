@@ -57,7 +57,7 @@ export class Hud {
       }
     }
     this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)));
-    this.names.forEach(t=>t.setVisible(show('stamina')));
+    this.names.forEach(t=>t.setVisible(show('health')));
     for(let i=0;i<2;i++){
       const f=s.fighters[i],left=i===0;
       this.shownHealth[i]=this.shownHealth[i]<0?f.health:Math.max(f.health,this.shownHealth[i]-.4);

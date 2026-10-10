@@ -2,7 +2,9 @@ import type Phaser from 'phaser';
 import { t } from '../i18n';
 import { getAudioSettings, setAudioSettings } from '../audio/mixer';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { getNav } from './menuNav';
 import { titleButton } from './titleButton';
+import { resetSavePanel } from './resetSavePanel';
 
 export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, credits: () => void): void {
   const items: Phaser.GameObjects.GameObject[] = [];
@@ -14,10 +16,12 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
     items.push(t); return t;
   };
   const close = () => items.forEach(o => o.destroy());
-  const button = (x: number, y: number, w: number, label: string, action: () => void, role: 'back' | 'confirm' = 'confirm') => {
-    const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2, 'default', role);
+  getNav(scene).modalBack(items[0] as Phaser.GameObjects.Rectangle, close);
+  const button = (x: number, y: number, w: number, label: string, action: () => void, role: 'back' | 'confirm' = 'confirm', accent: 'default' | 'red' = 'default') => {
+    const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2, accent, role);
     items.push(t, t.getData('bg')); return t;
   };
+  text(VIEW.cx, VIEW.cy + 151, t('ui.back_hint'), 12);
   text(VIEW.cx, VIEW.cy - 126, t('common.settings'), 23);
   for (const [channel, y] of [['bgm', -80], ['sfx', -35]] as const) {
     text(VIEW.cx - 130, VIEW.cy + y, channel === 'bgm' ? t('settings.bgm') : t('settings.sfx'));
@@ -33,6 +37,7 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
   const refreshMute = () => mute.setText(t('settings.mute_all', { state: getAudioSettings().muted ? t('settings.on') : t('settings.off') }));
   refreshMute();
   button(VIEW.cx, VIEW.cy + 63, 250, t('settings.input_setup'), () => { close(); inputs(); });
-  button(VIEW.cx - 82, VIEW.cy + 118, 140, t('common.credits'), () => { close(); credits(); });
-  button(VIEW.cx + 82, VIEW.cy + 118, 140, t('common.back'), close, 'back');
+  button(VIEW.cx - 120, VIEW.cy + 118, 112, t('common.credits'), () => { close(); credits(); });
+  button(VIEW.cx, VIEW.cy + 118, 112, t('settings.reset_save'), () => resetSavePanel(scene), 'confirm', 'red');
+  button(VIEW.cx + 120, VIEW.cy + 118, 112, t('common.back'), close, 'back');
 }

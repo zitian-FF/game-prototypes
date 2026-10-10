@@ -180,7 +180,7 @@ const KEYS = readFileSync('prototypes/punchies/src/portal/keys.ts', 'utf8');
 const keyValues = [...KEYS.matchAll(/'(punchies:[^']+)'/g)].map((x) => x[1]);
 assert.equal(new Set(keyValues).size, keyValues.length, 'storage keys are unique');
 for (const file of walk('prototypes/punchies/src')) {
-  if (file.includes('/portal/') || file.includes('/debug/')) continue; // debug tools keep their own local flag on purpose
+  if (file.replaceAll('\\','/').includes('/portal/') || file.replaceAll('\\','/').includes('/debug/')) continue; // debug tools keep their own local flag on purpose
   const text = readFileSync(file, 'utf8');
   const code = text.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   assert.ok(!/localStorage\./.test(code), `${file} must use the portal store, not localStorage`);

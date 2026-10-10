@@ -5,11 +5,10 @@ import { chooseLanguage } from '../i18n/init';
 import { isDebug } from '../debug/debugPanel';
 import { loadingFinished } from '../portal/index';
 import { audioSettingsPanel } from '../ui/audioSettingsPanel';
-import { cartoonPanel } from '../ui/cartoonChrome';
-import { shopPreviewBalance } from '../shop/draft';
+import { bindButtonFeedback, cartoonButton, cartoonPanel } from '../ui/cartoonChrome';
+import { shopPreviewBalance, loadShopDraft, freeChests } from '../shop/draft';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { makeButton } from './FightStage';
 import { normalizeRoomCode, ROOM_ALPHABET } from '../net/roomCode';
 import { devices, SOURCE_LABEL, type InputSource } from '../input/devices';
 import { loadLocalInputs, P1_OPTIONS, P2_OPTIONS, saveLocalInputs } from '../input/localSetup';
@@ -40,7 +39,7 @@ export class MenuScene extends Phaser.Scene {
     const menuX = VIEW.left + VIEW.width * 0.26;
     const top = VIEW.cy - 155;
     const w = Math.min(290, VIEW.width * 0.34);
-    const logo = artImage(this, 'logo', menuX, top + 33, w + 10, 86);
+    const logo = artImage(this, 'logo', menuX, top + 25, w + 10, 86);
     if (logo) pulseLogo(this, logo);
     if (!logo) this.add
       .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
@@ -56,7 +55,7 @@ export class MenuScene extends Phaser.Scene {
     titleButton(this,menuX-(half+12)/2,top+177,half,38,t('menu.local_vs'),()=>startScreen(this,'CharSelect',{mode:'localvs',inputs:loadLocalInputs()}),false,130,'red');
     titleButton(this,menuX+(half+12)/2,top+177,half,38,t('common.online'),()=>this.openOnlinePopup(),false,130,'blue');
     category(top+213,t('menu.practice'));
-    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'Training'),false,130,'purple');
+    titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'CharSelect',{mode:'training'}),false,130,'purple');
     titleButton(this,menuX+(half+12)/2,top+243,half,38,t('menu.tutorial'),()=>startScreen(this,'Tutorial'),false,130,'teal');
     titleButton(this,menuX-(half+12)/2,top+294,half,27,t('common.settings'),()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;
@@ -69,6 +68,14 @@ export class MenuScene extends Phaser.Scene {
       // The unpublished shop branch displays its isolated local preview balance.
       this.add.text(balanceX+9,top+294,String(shopPreviewBalance()),{fontFamily:'Arial',fontSize:'12px',fontStyle:'bold',color:'#fff7e6',resolution:PIXEL_RATIO})
       .setOrigin(0.5).setDepth(132);
+
+    const shopState = loadShopDraft();
+    if (freeChests(shopState, 'skins') + freeChests(shopState, 'fighters') > 0) {
+      // A free chest is waiting in the Shop: a small red badge on the button corner.
+      const bx = shopX + half / 2 - 2, by = top + 283;
+      this.add.graphics().setDepth(133).fillStyle(0xe8283c).fillCircle(bx, by, 8).lineStyle(2, 0xffffff).strokeCircle(bx, by, 8);
+      this.add.text(bx, by, '!', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(134);
+    }
 
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
@@ -102,6 +109,8 @@ export class MenuScene extends Phaser.Scene {
     panel.lineStyle(2,0x8ba4c7).strokeRoundedRect(VIEW.cx-190,VIEW.cy-115,380,230,18);
     items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
     const close=()=>items.forEach(o=>o.destroy());
+    getNav(this).modalBack(items[0] as Phaser.GameObjects.Rectangle, ()=>{close();onBack?.();});
+    items.push(this.add.text(VIEW.cx,VIEW.cy+105,t('ui.back_hint'),{fontFamily:'Arial',fontSize:12,color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(402));
     const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,t('common.back'),()=>{close();onBack?.();},false,402,'default','back');
     items.push(back,back.getData('bg'));
     return {items,close};
@@ -130,25 +139,17 @@ export class MenuScene extends Phaser.Scene {
     const v = loadLocalInputs();
     const items: Phaser.GameObjects.GameObject[] = [];
     const D = 400;
-    const txt = (x: number, y: number, s: string, size = 12, color = '#dddddd') => {
-      const t = this.add
-        .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, color, align: 'center', resolution: PIXEL_RATIO })
-        .setOrigin(0.5)
-        .setDepth(D + 2);
-      items.push(t);
-      return t;
+    const txt = (x: number, y: number, label: string, size = 15, color = '#dbe9fa') => {
+      const text = this.add.text(x,y,label,{fontFamily:'Arial',fontSize:size,fontStyle:'bold',color,align:'center',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(D+2);
+      items.push(text);return text;
     };
     const btn = (x: number, y: number, w: number, label: string, onTap: () => void) => {
-      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-15,w,30,0x47739d,7);items.push(chrome);
-      const bg = this.add.rectangle(x,y,w,30,0,0).setDepth(D+1).setInteractive();
-      bg.on('pointerdown', onTap);
-      navRegister(this, bg, onTap);
-      items.push(bg);
-      return txt(x, y, label, 12, '#ffffff');
+      const text=titleButton(this,x,y,w,32,label,onTap,false,D+1);
+      items.push(text,text.getData('bg'));return text;
     };
-    items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.75).setDepth(D).setInteractive());
-    items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 440, 280, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
-    txt(VIEW.cx, VIEW.cy - 118, t('menu.settings_local_inputs'), 15, '#ffd24a');
+    items.push(this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,.85).setDepth(D).setInteractive());
+    const panel=this.add.graphics().setDepth(D+1);cartoonPanel(panel,VIEW.cx-300,VIEW.cy-180,600,360,0x28517d,15);items.push(panel);
+    txt(VIEW.cx,VIEW.cy-155,t('menu.settings_local_inputs'),22,'#fff1d1');
 
     const cycle = (list: InputSource[], cur: InputSource, other: InputSource) => {
       let i = list.indexOf(cur);
@@ -158,26 +159,21 @@ export class MenuScene extends Phaser.Scene {
       }
       return cur;
     };
-    txt(VIEW.cx - 130, VIEW.cy - 76, t('common.player_1'), 12, '#7fb3ff');
-    const p1 = btn(VIEW.cx + 40, VIEW.cy - 76, 220, '', () => {
+    txt(VIEW.cx - 130, VIEW.cy - 116, t('common.player_1'), 12, '#7fb3ff');
+    const p1 = btn(VIEW.cx + 40, VIEW.cy - 116, 220, '', () => {
       v.p1 = cycle(P1_OPTIONS, v.p1, v.p2);
       refresh();
     });
-    txt(VIEW.cx - 130, VIEW.cy - 36, t('common.player_2'), 12, '#ff8a7a');
-    const p2 = btn(VIEW.cx + 40, VIEW.cy - 36, 220, '', () => {
+    txt(VIEW.cx - 130, VIEW.cy - 76, t('common.player_2'), 12, '#ff8a7a');
+    const p2 = btn(VIEW.cx + 40, VIEW.cy - 76, 220, '', () => {
       v.p2 = cycle(P2_OPTIONS, v.p2, v.p1);
       refresh();
     });
-    const pads = txt(VIEW.cx, VIEW.cy + 2, '', 11, '#8a90a0');
-    txt(
-      VIEW.cx,
-      VIEW.cy + 50,
-      'WASD: move  J/K/L jab/cross/hook  I upper  Space dodge  Shift guard\n' +
-        'ARROWS: move  Num1/2/3 jab/cross/hook  Num5 upper  Num0 dodge  NumEnter guard\n' +
-        'CONTROLLER: stick  X/Y/B jab/cross/hook  A dodge  RB/RT guard  LB/LT upper',
-      9,
-      '#aab0bc',
-    );
+    const pads = txt(VIEW.cx, VIEW.cy - 43, '', 14, '#dbe9fa');
+    txt(VIEW.cx, VIEW.cy - 9, t('input.keyboard_left'), 14);
+    txt(VIEW.cx, VIEW.cy + 29, t('input.keyboard_right'), 14);
+    txt(VIEW.cx, VIEW.cy + 67, t('input.controller'), 14);
+    txt(VIEW.cx, VIEW.cy + 155, t('ui.back_hint'), 12);
     const refresh = () => {
       p1.setText(`< ${SOURCE_LABEL[v.p1]} >`);
       p2.setText(`< ${SOURCE_LABEL[v.p2]} >`);
@@ -189,16 +185,11 @@ export class MenuScene extends Phaser.Scene {
       callback: () => pads.setText(t('menu.controllers_connected', { n: devices.connectedPads() })),
     });
     padTimer.callback?.();
-    btn(VIEW.cx - 70, VIEW.cy + 108, 120, t('common.credits'), () => {
-      padTimer.remove();
-      for (const o of items) o.destroy();
-      this.openCredits();
-    });
-    btn(VIEW.cx + 70, VIEW.cy + 108, 120, t('menu.done'), () => {
-      padTimer.remove();
-      for (const o of items) o.destroy();
-      this.openSettings();
-    });
+    const close = () => { padTimer.remove();items.forEach(o=>o.destroy()); };
+    const done = () => { close();this.openSettings(); };
+    getNav(this).modalBack(items[0] as Phaser.GameObjects.Rectangle, done);
+    btn(VIEW.cx - 70,VIEW.cy + 120,120,t('common.credits'),()=>{close();this.openCredits();});
+    btn(VIEW.cx + 70,VIEW.cy + 120,120,t('menu.done'),done);
     refresh();
   }
 
@@ -212,29 +203,31 @@ export class MenuScene extends Phaser.Scene {
     let code = '';
     const txt = (x: number, y: number, s: string, size: number, color: string) => {
       const t = this.add
-        .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, fontStyle: 'bold', color, resolution: PIXEL_RATIO })
+        .text(x, y, s, { fontFamily: 'Arial', fontSize: `${size}px`, fontStyle: 'bold', color, resolution: PIXEL_RATIO })
         .setOrigin(0.5)
         .setDepth(D + 2);
       items.push(t);
       return t;
     };
-    const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x2a3140) => {
-      const chrome=this.add.graphics().setDepth(D+1);cartoonPanel(chrome,x-w/2,y-h/2,w,h,0x47739d,6);items.push(chrome);
+    const key = (x: number, y: number, w: number, h: number, label: string, onTap: () => void, fill = 0x47739d) => {
+      const chrome=this.add.graphics().setDepth(D+1);items.push(chrome);
       const bg=this.add.rectangle(x,y,w,h,0,0).setDepth(D+1).setInteractive();
-      const tap = () => {
-        bg.setFillStyle(0x4a5a78);
-        this.time.delayedCall(90, () => bg.active && bg.setFillStyle(fill));
-        onTap();
-      };
-      bg.on('pointerdown', tap);
-      navRegister(this, bg, tap);
+      const text = txt(x, y, label, 16, '#ffffff');
+      bindButtonFeedback(bg, state => {
+        chrome.clear();
+        cartoonButton(chrome,x-w/2,y-h/2+(state==='pressed'?2:0),w,h,fill,6);
+        if(state==='hover')chrome.fillStyle(0xffffff,.1).fillRoundedRect(x-w/2,y-h/2,w,h,6);
+        text.y=y+(state==='pressed'?2:0);
+      });
+      bg.on('pointerup', () => { if(bg.getData('buttonReleasedInside'))onTap(); });
+      navRegister(this, bg, onTap);
       items.push(bg);
-      return txt(x, y, label, 13, '#ffffff');
+      return text;
     };
 
     items.push(this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(D).setInteractive());
-    items.push(this.add.rectangle(VIEW.cx, VIEW.cy, 400, 300, 0x151922, 1).setStrokeStyle(2, 0x5a6378).setDepth(D));
-    txt(VIEW.cx, VIEW.cy - 128, t('menu.enter_room_code'), 14, '#ffd24a');
+    const panel=this.add.graphics().setDepth(D);cartoonPanel(panel,VIEW.cx-205,VIEW.cy-165,410,330,0x28517d,15);items.push(panel);
+    txt(VIEW.cx, VIEW.cy - 128, t('menu.enter_room_code'), 22, '#ffd24a');
 
     const slots: Phaser.GameObjects.Text[] = [];
     for (let i = 0; i < 3; i++) {
@@ -242,14 +235,21 @@ export class MenuScene extends Phaser.Scene {
       items.push(this.add.rectangle(x, VIEW.cy - 92, 38, 44, 0x0c0f15, 1).setStrokeStyle(2, 0x5a6378).setDepth(D + 1));
       slots.push(txt(x, VIEW.cy - 92, '', 26, '#ffffff'));
     }
-    const status = txt(VIEW.cx, VIEW.cy - 60, '', 10, '#ff8a7a');
+    const status = txt(VIEW.cx, VIEW.cy - 60, '', 14, '#ff8a7a');
 
-    getNav(this).textEntry = true;
+    const nav = getNav(this);
+    nav.textEntry = true;
+    let closed = false;
     const close = () => {
-      getNav(this).textEntry = false;
+      if (closed) return;
+      closed = true;
+      nav.textEntry = false;
       window.removeEventListener('keydown', onKey);
+      this.events.off('shutdown', close);
       for (const o of items) o.destroy();
     };
+    nav.modalBack(items[0] as Phaser.GameObjects.Rectangle, close);
+    txt(VIEW.cx,VIEW.cy+152,t('ui.back_hint'),12,'#dbe9fa');
     const submit = () => {
       const c = normalizeRoomCode(code);
       if (!c) {
@@ -286,6 +286,7 @@ export class MenuScene extends Phaser.Scene {
     key(VIEW.cx + 70, VIEW.cy + 124, 120, 30, t('menu.join'), submit, 0x2a4a34);
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || this.input.enabled === false) return;
       if (e.key === 'Backspace') back();
       else if (e.key === 'Enter') submit();
       else if (e.key === 'Escape') close();
@@ -295,6 +296,6 @@ export class MenuScene extends Phaser.Scene {
       }
     };
     window.addEventListener('keydown', onKey);
-    this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
+    this.events.once('shutdown', close);
   }
 }

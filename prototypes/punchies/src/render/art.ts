@@ -4,6 +4,7 @@ import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
 
 import { roomFromUrl } from '../net/roomCode';
+import { needsFirstRun } from '../firstrun/state';
 import { tune } from '../sim/tune';
 import { reducedMotion } from '../ui/presentation';
 
@@ -88,12 +89,11 @@ function requestGroup(group: string): void {
   if (!load.isLoading()) load.start();
 }
 
-// Groups a fight needs. Fighter 0 wears the main look, fighter 1 the alt
-// look in a mirror match (see lookFor), and the training dummy has its own.
+// Palette skins share base art groups, including same-character matches.
 export function fighterGroups(chars: [string, string]): string[] {
   const id = (c: string) => (isCharId(c) ? c : 'marco');
   const [a, b] = [id(chars[0]), id(chars[1])];
-  return [a, a === b ? `${b}_alt` : b];
+  return [...new Set([a, b])];
 }
 export function trainingGroups(char: string): string[] {
   return [isCharId(char) ? char : 'marco', 'dummy'];
@@ -199,7 +199,9 @@ export class ArtBootScene extends Phaser.Scene {
       this.bar?.refreshLogo();
     });
     for (const file of index.manifest) {
-      if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
+      if (file.path === 'loose/part-mirrors.json') {
+        this.load.json('punchies:part-mirrors', `${assetRoot}${file.path}?v=${file.hash}`);
+      } else if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
         const name = file.path.slice(6).replace(/\.[^.]+$/, '');
         this.load.image(textureKey(name), `${assetRoot}${file.path}?v=${file.hash}`);
       } else if (!grouped && /^atlas\/atlas.*\.json$/.test(file.path)) {
@@ -208,6 +210,20 @@ export class ArtBootScene extends Phaser.Scene {
     }
   }
   create(): void {
+    const mirrors = this.cache.json.get('punchies:part-mirrors') as Record<string, { source: string; axis: 'x' | 'y' }> | undefined;
+    for (const [name, mirror] of Object.entries(mirrors ?? {})) {
+      if (!this.textures.exists(textureKey(mirror.source))) continue;
+      const source = this.textures.get(textureKey(mirror.source)).getSourceImage() as HTMLImageElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+      ctx.translate(mirror.axis === 'x' ? source.width : 0, mirror.axis === 'y' ? source.height : 0);
+      ctx.scale(mirror.axis === 'x' ? -1 : 1, mirror.axis === 'y' ? -1 : 1);
+      ctx.drawImage(source, 0, 0);
+      this.textures.addCanvas(textureKey(name), canvas);
+    }
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;
@@ -219,7 +235,7 @@ export class ArtBootScene extends Phaser.Scene {
     const room = roomFromUrl();
     // launch (not start): this scene keeps running as the background loader.
     if (room) this.scene.launch('Lobby', { role: 'guest', code: room });
-    else this.scene.launch('Menu');
+    else this.scene.launch(needsFirstRun() ? 'FirstFight' : 'Menu');
   }
 }
 
@@ -236,7 +252,14 @@ export function pose(image: Phaser.GameObjects.Image, key: string, progress: num
 
 export function artImage(scene: Phaser.Scene, name: string, x: number, y: number, w: number, h: number, depth = 0): Phaser.GameObjects.Image | null {
   const key = textureKey(name);
-  return scene.textures.exists(key) ? scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth) : null;
+  if (!scene.textures.exists(key)) return null;
+  const image = scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth);
+  // Logo v4 adds bottom padding for the restored red extrusion. Preserve the
+  // old 462x131 artwork scale and pixel pivot in every loading/title consumer.
+  if (name === 'logo' && image.width === 462 && image.height >= 131) {
+    image.setDisplaySize(w, h * image.height / 131).setOrigin(.5, 65.5 / image.height);
+  }
+  return image;
 }
 
 export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): Phaser.GameObjects.Image | null {

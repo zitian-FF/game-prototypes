@@ -7,6 +7,7 @@ const root = path.resolve('prototypes/punchies/src/sim');
 const cache = new Map();
 function load(file) {
   file = path.resolve(file);
+  if (file.replaceAll('\\','/').endsWith('/i18n.ts')) return {setEnglishOverrides() {}};
   if (cache.has(file)) return cache.get(file);
   if (file.endsWith('.json')) return { default: JSON.parse(fs.readFileSync(file, 'utf8')) };
   const exports = {};

@@ -34,6 +34,16 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // asset was considered and intentionally left alone (see suits-mp's
 // tabletop background below).
 const IMAGE_OPTIMIZATION_RULES = {
+  punchies: [
+    // Waist-framed portraits; retain full-resolution design masters in Drive.
+    { match: name => name === 'portrait_tyke', keepTop: .86, maxDimension: 1280, format: 'webp', quality: 90 },
+    { match: name => name === 'portrait_longan', keepTop: .75, maxDimension: 1280, format: 'webp', quality: 90 },
+    // Victory/reveal portraits reach about 360 logical pixels at up to 3x.
+    { match: name => name.startsWith('portrait_'), maxDimension: 1280, format: 'webp', quality: 90 },
+    { match: name => ['gym_background', 'character_select_background'].includes(name), format: 'webp', quality: 90 },
+    // Preserve full registration, resolution and pixels; shrink PNG transfer only.
+    { match: () => true, format: 'webp', lossless: true },
+  ],
   'suits-mp': [
     // The tabletop background is placed via an anchor-and-cover fit (see
     // ui/renderGameView.ts's drawTabletop(), which can require MORE than
@@ -132,7 +142,8 @@ const animKeysPresent = existsSync(packedSrcDir)
   : [];
 
 if (animKeysPresent.length > 0) {
-  const animKeys = animKeysPresent.sort();
+  // Selected skins are generated from base textures; obsolete mirror-match art is not shipped.
+  const animKeys = animKeysPresent.filter(key => name !== 'punchies' || !/^(marco|mia|bruno)_alt_/.test(key)).sort();
 
   const folders = [];
   for (const key of animKeys) {
@@ -211,7 +222,16 @@ if (animKeysPresent.length > 0) {
     // "<atlasName>-<n>.json|png" when it spills. Anchoring keeps "atlas-marco"
     // from claiming "atlas-marco_alt".
     const own = new RegExp(`^${atlasName}(-\\d+)?\\.(png|json)$`);
-    const atlasFiles = readdirSync(atlasOutDir).filter((f) => own.test(f));
+    let atlasFiles = readdirSync(atlasOutDir).filter((f) => own.test(f));
+    if (name === 'punchies') {
+      // Lossless WebP preserves packed pixels, registration and frame geometry.
+      for (const file of atlasFiles.filter(f => f.endsWith('.png'))) {
+        const dest = file.replace(/\.png$/, '.webp');
+        await sharp(path.join(atlasOutDir,file)).webp({lossless:true,effort:6}).toFile(path.join(atlasOutDir,dest));
+        rmSync(path.join(atlasOutDir,file));
+      }
+      atlasFiles = atlasFiles.map(f => f.replace(/\.png$/, '.webp'));
+    }
     if (atlasFiles.length === 0) {
       fail(`free-tex-packer-cli did not produce any output for ${atlasName}`);
     }
@@ -221,6 +241,7 @@ if (animKeysPresent.length > 0) {
         // frame keys matching animations.json without altering trim offsets.
         const atlasPath = path.join(atlasOutDir, file);
         const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
+        if (name === 'punchies') for (const texture of atlas.textures ?? []) texture.image = texture.image.replace(/\.png$/, '.webp');
         const prefix = packedSrcDir.replaceAll('\\', '/') + '/';
         for (const texture of atlas.textures ?? []) {
           for (const frame of texture.frames ?? []) {
@@ -282,15 +303,26 @@ async function processLooseFile(file, rules) {
   const ext = path.extname(file).toLowerCase();
   const baseName = path.basename(file, ext);
 
+  // Cleaned R2 sources already contain the final framed/encoded loose art.
+  // Copy it exactly: repeated lossy encoding and waist cropping must not occur.
+  if (name === 'punchies' && existsSync(path.join(assetsSrcDir, 'active-assets.json')) && !['portrait_tyke','portrait_longan'].includes(baseName)) {
+    copyFileSync(src, path.join(looseOutDir, file));
+    return { outputFile: file, originalSize, outputSize: originalSize };
+  }
+
   const rule = IMAGE_EXTENSIONS.has(ext) ? rules?.find((r) => r.match(baseName)) : undefined;
 
-  if (!rule || (!rule.maxDimension && !rule.format)) {
+  if (!rule || (!rule.maxDimension && !rule.format) || (rule.lossless && ext !== '.png' && !rule.keepTop)) {
     const dest = path.join(looseOutDir, file);
     copyFileSync(src, dest);
     return { outputFile: file, originalSize, outputSize: originalSize };
   }
 
   let pipeline = sharp(src);
+  if (rule.keepTop) {
+    const meta = await pipeline.metadata();
+    pipeline = pipeline.extract({left:0,top:0,width:meta.width,height:Math.round(meta.height * rule.keepTop)});
+  }
   if (rule.maxDimension) {
     pipeline = pipeline.resize({
       width: rule.maxDimension,
@@ -300,14 +332,20 @@ async function processLooseFile(file, rules) {
     });
   }
   if (rule.format === 'webp') {
-    pipeline = pipeline.webp({ quality: rule.quality ?? 85 });
+    pipeline = pipeline.webp({ quality: rule.quality ?? 85, lossless: rule.lossless ?? false, effort: rule.lossless ? 6 : 4 });
   } else if (rule.format) {
     fail(`unknown image optimization format "${rule.format}" for ${file}`);
   }
 
   const outputFile = rule.format === 'webp' ? `${baseName}.webp` : file;
   const dest = path.join(looseOutDir, outputFile);
-  await pipeline.toFile(dest);
+  const encoded = await pipeline.toBuffer();
+  // Pure lossless optimization must not grow files; explicit framing crops must always apply.
+  if (rule.lossless && !rule.keepTop && (ext !== '.png' || encoded.length >= originalSize)) {
+    copyFileSync(src, path.join(looseOutDir, file));
+    return { outputFile: file, originalSize, outputSize: originalSize };
+  }
+  writeFileSync(dest, encoded);
   const outputSize = statSync(dest).size;
   return { outputFile, originalSize, outputSize };
 }
@@ -318,14 +356,28 @@ if (existsSync(looseSrcDir)) {
     statSync(path.join(looseSrcDir, f)).isFile()
   );
   const rules = IMAGE_OPTIMIZATION_RULES[name];
+  const mirrors = name === 'punchies'
+    ? await (await import('../prototypes/punchies/art/mirror-parts.mjs')).default(assetsSrcDir)
+    : {};
 
   let totalBefore = 0;
   let totalAfter = 0;
   for (const file of looseFiles) {
+    if (name === 'punchies' && /^(portrait|part)_(marco|mia|bruno)_alt(?:_|$)/.test(path.parse(file).name)) continue;
+    if (mirrors[path.parse(file).name]) {
+      totalBefore += statSync(path.join(looseSrcDir, file)).size;
+      continue;
+    }
     const { outputFile, originalSize, outputSize } = await processLooseFile(file, rules);
     totalBefore += originalSize;
     totalAfter += outputSize;
     addToManifest(`loose/${outputFile}`, path.join(looseOutDir, outputFile));
+  }
+  if (Object.keys(mirrors).length) {
+    const file = path.join(looseOutDir, 'part-mirrors.json');
+    writeFileSync(file, JSON.stringify(mirrors));
+    addToManifest('loose/part-mirrors.json', file);
+    console.log(`pack-assets: derive ${Object.keys(mirrors).length} mirrored parts in code`);
   }
 
   if (rules) {

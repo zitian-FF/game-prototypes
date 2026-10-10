@@ -1,5 +1,7 @@
 import { getRelaySockets, joinRoom, type Room } from 'trystero/nostr';
 import type { HashPacket, InputPacket } from './rollback';
+import { localWireProfile, peerProfile } from '../progress/profile';
+import type { WireProfile } from '../progress/alias';
 
 // One Trystero room per 3-char code. The host is whoever created the room;
 // it pairs with the first peer that says hello and turns any later peer
@@ -21,7 +23,7 @@ export function relayStatus(): { open: number; total: number } {
 }
 
 export type CtlMessage =
-  | { k: 'hello'; role: Role }
+  | { k: 'hello'; role: Role; profile?: WireProfile }
   | { k: 'full' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
@@ -46,6 +48,8 @@ export class NetSession {
   private inp: Channel<InputPacket>;
   private hsh: Channel<HashPacket>;
   peerId: string | null = null;
+  /** The opponent's alias, title and level, validated. Safe defaults until their hello arrives (older clients send none). */
+  peer: WireProfile = peerProfile(null);
 
   onPaired: () => void = () => {};
   onPeerLeft: () => void = () => {};
@@ -73,7 +77,7 @@ export class NetSession {
     };
 
     this.room.onPeerJoin = (id: string) => {
-      void this.ctl.send({ k: 'hello', role: this.role }, { target: id });
+      void this.ctl.send({ k: 'hello', role: this.role, profile: localWireProfile() }, { target: id });
     };
     this.room.onPeerLeave = (id: string) => {
       if (id === this.peerId) {
@@ -96,6 +100,7 @@ export class NetSession {
       }
       if (!this.peerId) {
         this.peerId = from;
+        this.peer = peerProfile(m.profile);
         this.onPaired();
       }
       return;

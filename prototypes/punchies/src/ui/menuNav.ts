@@ -19,12 +19,16 @@ interface Item {
 }
 
 const FIGHT_BUTTON_DEPTH = 130; // makeButton's depth; anything above is a modal
+// The always-present pause button sits above that depth but is not a modal: it must not
+// take keyboard / controller control away from the fighter.
+export const PAUSE_BUTTON_DEPTH = 220;
 const STICK = 0.6;
 const REPEAT_MS = 220;
 
 export class MenuNav {
   private items: Item[] = [];
   private focus: Item | null = null;
+  private modals: { anchor: Phaser.GameObjects.Rectangle; back: () => void }[] = [];
   private g: Phaser.GameObjects.Graphics;
   private highlight = false;
   private prevPad: boolean[] = [];
@@ -60,6 +64,28 @@ export class MenuNav {
     this.items.push({ bg, onTap });
   }
 
+  // Explicit Back ownership: closing a nested panel restores its previous focus.
+  modalBack(anchor: Phaser.GameObjects.Rectangle, back: () => void): void {
+    const previous = this.focus;
+    const modal = { anchor, back };
+    this.modals.push(modal);
+    anchor.once('destroy', () => {
+      this.modals = this.modals.filter(m => m !== modal);
+      this.focus = previous;
+    });
+  }
+
+  private back(): boolean {
+    const modal = this.modals.filter(m => m.anchor.active && m.anchor.visible)
+      .sort((a, b) => b.anchor.depth - a.anchor.depth)[0];
+    const top = this.live()[0]?.bg.depth ?? -Infinity;
+    // A deeper panel without a Back handler must never dismiss one underneath.
+    if (!modal || top > modal.anchor.depth + 2) return false;
+    sfx.uiBack();
+    modal.back();
+    return true;
+  }
+
   // Scenes show their result screen with this so the buttons are reachable.
   engage(): void {
     this.engaged = true;
@@ -71,13 +97,13 @@ export class MenuNav {
   }
 
   private live(): Item[] {
-    const all = this.items.filter((i) => i.bg.active && i.bg.visible && i.bg.input?.enabled);
+    const all = this.items.filter((i) => i.bg.active && i.bg.visible && i.bg.input?.enabled && i.bg.depth !== PAUSE_BUTTON_DEPTH);
     const top = Math.max(-Infinity, ...all.map((i) => i.bg.depth));
     return all.filter((i) => i.bg.depth === top);
   }
 
   private hasModal(): boolean {
-    return this.items.some((i) => i.bg.active && i.bg.visible && i.bg.depth > FIGHT_BUTTON_DEPTH);
+    return this.items.some((i) => i.bg.active && i.bg.visible && i.bg.depth > FIGHT_BUTTON_DEPTH && i.bg.depth !== PAUSE_BUTTON_DEPTH);
   }
 
   private move(dx: number, dy: number): void {
@@ -127,7 +153,15 @@ export class MenuNav {
   }
 
   private onKey(e: KeyboardEvent): void {
-    if (e.key === 'Escape' && !this.textEntry) return this.toggle();
+    if (this.scene.input.enabled === false) {
+      this.highlight = false;
+      this.g.clear();
+      return;
+    }
+    if (e.key === 'Escape' && !this.textEntry) {
+      if (!this.back() && !this.hasModal()) this.toggle();
+      return;
+    }
     if (!this.capturing) return;
     const k = e.key;
     const letters = !this.textEntry;
@@ -139,9 +173,14 @@ export class MenuNav {
   }
 
   private update(): void {
-    this.pollPads();
+    const blocked = this.scene.input.enabled === false || this.scene.registry.get('gameMenu:' + this.scene.scene.key) || !this.scene.scene.isActive();
+    this.pollPads(!blocked);
     const g = this.g;
     g.clear();
+    if (blocked || this.scene.input.enabled === false) {
+      this.highlight = false;
+      return;
+    }
     if (!this.capturing || !this.highlight) return;
     const live = this.live();
     if (!this.focus || !live.includes(this.focus)) this.focus = live[0] ?? null;
@@ -154,8 +193,8 @@ export class MenuNav {
   }
 
   // Controller: D-pad / left stick to move (with repeat), A press,
-  // B / Start toggle in fights.
-  private pollPads(): void {
+  // B closes an explicitly owned modal; Start toggles navigation in fights.
+  private pollPads(allowActions = true): void {
     let pads: (Gamepad | null)[] = [];
     try {
       pads = navigator.getGamepads ? Array.from(navigator.getGamepads()) : [];
@@ -163,17 +202,25 @@ export class MenuNav {
       return;
     }
     const now = this.scene.time.now;
-    pads.forEach((p, i) => {
-      if (!p) return;
-      const btn = (n: number) => !!p.buttons[n]?.pressed;
-      const edge = (n: number) => {
-        const key = i * 32 + n;
-        const was = this.prevPad[key];
-        this.prevPad[key] = btn(n);
-        return btn(n) && !was;
-      };
-      if (edge(9) || (edge(1) && this.engaged)) this.toggle();
-      if (!this.capturing) return;
+    // Snapshot all pads before actions: one Back dismisses at most one panel,
+    // even if two controllers press it together.
+    const edgesByPad = pads.map((p, i) => p?.buttons.map((button, n) => {
+      const key = i * 32 + n, was = this.prevPad[key];
+      this.prevPad[key] = button.pressed;
+      return button.pressed && !was;
+    }) ?? []);
+    // Keep consuming edges during ads / overlays so held buttons cannot fire
+    // against the restored scene. Pointer suppression also owns global input.
+    if (!allowActions || this.scene.input.enabled === false) {
+      this.stickAt = now;
+      return;
+    }
+    for (const [i, p] of pads.entries()) {
+      if (!p) continue;
+      const edge = (n: number) => !!edgesByPad[i][n];
+      if (edge(1) && this.back()) return;
+      if (edge(9) && !this.hasModal()) this.toggle();
+      if (!this.capturing) continue;
       if (edge(12)) this.move(0, -1);
       if (edge(13)) this.move(0, 1);
       if (edge(14)) this.move(-1, 0);
@@ -185,8 +232,8 @@ export class MenuNav {
         if (Math.abs(ax) > Math.abs(ay)) this.move(Math.sign(ax), 0);
         else this.move(0, Math.sign(ay));
       }
-      if (edge(0)) this.press();
-    });
+      if (edge(0)) { this.press(); return; }
+    }
   }
 }
 

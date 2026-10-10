@@ -1,7 +1,7 @@
 import initial from '../../punchies/tune.json';
 import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
-import { punchCfg, CHARACTER_INFO, type CharId } from '../../punchies/src/sim/character';
+import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punchies/src/sim/character';
 import {archetypeKeys,defaultArchetypes,readArchetypes} from '../../punchies/src/sim/workshopText';
 
 export interface BaseRevision {version:number;savedAt:string;changes:{path:string;before:number;after:number}[]}
@@ -19,12 +19,12 @@ const bundled:Doc = structuredClone(initial);
 const template:Doc = structuredClone(bundled);
 delete template.balanceWorkshop;
 export const defaults = ():Doc => structuredClone(bundled);
-export const characters = Object.keys(initial.characters) as CharId[];
+export const characters = [...CHARACTER_IDS];
 export const names = CHARACTER_INFO;
 export const punches = ['jab','cross','hook','uppercut'] as const;
 export const meta = metadata as unknown as Record<string,{min:number;max:number;step:number;desc:string}>;
 export const baseGroups=['health','stamina','stun','movement','body','hit','fatigue','stars','punches','guard','dodge'] as const;
-export const basePaths=Object.keys(meta).filter(path=>baseGroups.some(group=>path.startsWith(`${group}.`)));
+export const basePaths=Object.keys(meta).filter(path=>path==='view.fighterScale'||baseGroups.some(group=>path.startsWith(`${group}.`)));
 export function baseSnapshot(doc:Doc):Record<string,number>{return Object.fromEntries(basePaths.filter(path=>typeof getSafe(doc,path)==='number').map(path=>[path,get(doc,path)]));}
 export function baseVersion(doc:Doc):number{const versions=doc.balanceWorkshop?.baseHistory?.versions;return versions?.[versions.length-1]?.version??0;}
 function validateHistory(doc:Doc):void{
@@ -90,6 +90,12 @@ export function effective(doc:Doc,char:CharId,section:string,key:string):number 
   if(section==='core'){
     const values={hp:doc.health.max*c.hp,stamina:doc.stamina.max*c.stamina,stun:doc.stun.threshold*c.stun,speed:doc.movement.speed*c.speed,regen:doc.stamina.regenIdlePerSec*c.regen};
     return values[key as keyof typeof values];
+  }
+  if(section==='defense'){
+    const proportion=doc.body.proportions[char],scale=doc.view.fighterScale*proportion;
+    if(key==='proportion')return proportion;
+    if(key==='fighterScale')return scale;
+    return doc.body[key as 'hurtRadius'|'coreRadius'|'vulnerableHurtRadius']*scale;
   }
   if((punches as readonly string[]).includes(section)){
     applyTuneJson(JSON.stringify(doc));

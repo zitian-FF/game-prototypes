@@ -18,7 +18,7 @@ const read = (code) => {
   const tuneFile=process.env.I18N_TUNE??(process.env.I18N_DIR?null:'prototypes/punchies/tune.json');
   if(code==='en'&&tuneFile&&fs.existsSync(tuneFile)){
     const texts=JSON.parse(fs.readFileSync(tuneFile,'utf8')).balanceWorkshop?.archetypes??{};
-    for(const [key,value] of Object.entries(texts))if(/^char\.(base|marco|mia|bruno|tee)\.nick$/.test(key)&&key in table&&typeof value==='string')table[key]=value;
+    for(const [key,value] of Object.entries(texts))if(/^char\.[a-z]+\.nick$/.test(key)&&key in table&&typeof value==='string')table[key]=value;
   }
   return table;
 };

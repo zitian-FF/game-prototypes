@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cartoonPanel } from '../ui/cartoonChrome';
+import { cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
@@ -79,7 +79,7 @@ export class FightStage {
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
     this.views.forEach((v,i)=>v.skin=this.skins[i]);
-    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
+    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['FirstFight','VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.ko.skins=this.skins;
     this.fx = new Effects(scene);
@@ -360,12 +360,14 @@ export function makeButton(
 ): Phaser.GameObjects.Text {
   const bg = scene.add.rectangle(x, y, w, h, 0, 0).setDepth(130);
   const chrome=scene.add.graphics().setDepth(130);
-  cartoonPanel(chrome,x-w/2,y-h/2,w,h,tint,7);
+  cartoonButton(chrome,x-w/2,y-h/2,w,h,tint,7);
   bg.on('destroy', () => chrome.destroy());
-  bg.setInteractive().on('pointerdown', onTap);
+  bg.setInteractive();
+  bindButtonFeedback(bg,state=>{chrome.clear();cartoonButton(chrome,x-w/2,y-h/2+(state==='pressed'?2:0),w,h,tint,7);chrome.setAlpha(state==='disabled'?.45:1);if(state==='hover')chrome.fillStyle(0xffffff,.12).fillRoundedRect(x-w/2,y-h/2,w,h,7);});
+  bg.on('pointerup',()=>{if(bg.getData('buttonReleasedInside'))onTap();});
   navRegister(scene, bg, onTap);
   const label = scene.add
-    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',stroke:'#081226',strokeThickness:2, resolution: PIXEL_RATIO })
+    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true}, resolution: PIXEL_RATIO })
     .setOrigin(0.5)
     .setDepth(131);
   label.setData('bg', bg);

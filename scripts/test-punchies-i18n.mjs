@@ -10,9 +10,24 @@ import { loadTs } from './lib-punchies-data.mjs';
 const src = 'prototypes/punchies/src';
 const localesDir = `${src}/i18n/locales`;
 const en = JSON.parse(fs.readFileSync(`${localesDir}/en.json`, 'utf8'));
+// Check decoded strings too: an escaped replacement character is equally broken.
+for (const file of fs.readdirSync(localesDir).filter(f => f.endsWith('.json'))) {
+  const locale = JSON.parse(fs.readFileSync(`${localesDir}/${file}`, 'utf8'));
+  for (const [key, value] of Object.entries(locale)) {
+    assert.ok(!key.includes('\uFFFD') && !(typeof value === 'string' && value.includes('\uFFFD')),
+      `${file}: ${key} contains a Unicode replacement character`);
+  }
+}
+for (const key of ['input.keyboard_left', 'input.keyboard_right', 'input.controller']) {
+  assert.equal(en[key].split('\u00b7').length - 1, 3, `${key}: expected three middle-dot separators`);
+}
+if (process.argv.includes('--encoding-only')) {
+  console.log('PASS: every decoded locale key/string excludes U+FFFD; input instructions use middle-dot separators.');
+  process.exit(0);
+}
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 const walk = (d) => fs.readdirSync(d).flatMap((f) => { const p = path.join(d, f); return fs.statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : []; });
-const files = walk(src).map(f=>f.replaceAll('\\','/')).filter((f) => !f.includes('/i18n/'));
+const files = walk(src).map(f => f.split(path.sep).join('/')).filter((f) => !f.replaceAll('\\','/').includes('/i18n/'));
 
 // ---- 1. every t() key exists, with the right placeholders; no unused keys ----
 const used = new Set();
@@ -40,8 +55,10 @@ for (const file of files) {
   visit(sf);
 }
 // Dynamic keys are limited to a few groups, each checked for completeness below.
-const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': ['marco', 'mia', 'bruno', 'tee'], 'char.': ['marco', 'mia', 'bruno', 'tee'] };
-for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
+const { CHARACTER_IDS } = await loadTs('./prototypes/punchies/src/sim/character', ['CHARACTER_IDS']);
+const progressCfg = JSON.parse(fs.readFileSync(`${src}/progress/progress-config.json`, 'utf8'));
+const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS, 'title.': progressCfg.titles.map((x) => x.id) };
+for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|title\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
 for (const m of fs.readFileSync(`${src}/shop/draft.ts`, 'utf8').matchAll(/reasonKey:'([^']+)'/g)) { assert.ok(m[1] in en, `missing shop error key ${m[1]}`); used.add(m[1]); }
 for (const [prefix, ids] of Object.entries(groups)) for (const id of ids) {
   const key = prefix === 'char.' ? `char.${id}.nick` : `${prefix}${id}`;

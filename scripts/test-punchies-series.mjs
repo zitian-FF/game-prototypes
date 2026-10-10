@@ -75,6 +75,7 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, req
   if (id === '../i18n') return i18nStub;
   if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
   if (id === '../portal/analytics') return { track() {} };
+  if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }) };
   return {};
 } });
 function online(series, winner) {
@@ -82,7 +83,7 @@ function online(series, winner) {
   Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { send: m => sent.push(m) } },
     ls: { confirmedResult: () => ({ winner }) }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
-    scene: { restart: data => transitions.push({ key: 'restart', data }) } });
+    registry: { set() {} }, scene: { restart: data => transitions.push({ key: 'restart', data }) } });
   return scene;
 }
 const early = online(newSeries(3), 0);

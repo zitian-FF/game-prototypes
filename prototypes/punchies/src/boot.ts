@@ -13,6 +13,7 @@ import { MatchScene } from './scenes/MatchScene';
 import { VsAIScene } from './scenes/VsAIScene';
 import { LocalVsScene } from './scenes/LocalVsScene';
 import { TutorialScene } from './scenes/TutorialScene';
+import { FirstFightScene } from './scenes/FirstFightScene';
 import { CharSelectScene } from './scenes/CharSelectScene';
 import { ArtBootScene } from './render/art';
 import { setupOrientation } from './orientation/orientation';
@@ -84,6 +85,7 @@ game.scene.add('Match', MatchScene, false);
 game.scene.add('VsAI', VsAIScene, false);
 game.scene.add('LocalVs', LocalVsScene, false);
 game.scene.add('Tutorial', TutorialScene, false);
+game.scene.add('FirstFight', FirstFightScene, false);
 game.scene.add('CharSelect', CharSelectScene, false);
 
 // ?room=ABC (from the host's QR code / link) skips straight to joining.

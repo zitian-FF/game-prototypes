@@ -4,7 +4,8 @@ import { audioOutput, unlockMixer } from './mixer';
 
 type Track = 'title' | 'charselect' | 'gameplay';
 declare const __PUNCHIES_ASSET_BASE__: string;
-const fights = new Set(['Training', 'Tutorial', 'VsAI', 'LocalVs', 'Match']);
+declare const __PUNCHIES_MUSIC_EXTENSION__: 'mp3' | 'm4a';
+const fights = new Set(['FirstFight', 'Training', 'Tutorial', 'VsAI', 'LocalVs', 'Match']);
 const root = `${__PUNCHIES_ASSET_BASE__}prototypes/punchies/audio/`;
 
 // Stream long tracks rather than decoding all three into memory on mobile.
@@ -20,7 +21,7 @@ export function installMusic(game: Phaser.Game): void {
     if (!ctx || !bus) return;
     let player = players.get(selected);
     if (!player) {
-      const element = new Audio(`${root}${selected}.mp3`);
+      const element = new Audio(`${root}${selected}.${__PUNCHIES_MUSIC_EXTENSION__}`);
       element.loop = true;
       element.preload = 'none';
       const gain = ctx.createGain();
@@ -38,7 +39,7 @@ export function installMusic(game: Phaser.Game): void {
   function update(): void {
     const scenes = game.scene.getScenes(true).map(s => s.scene.key);
     // A paused single-player fight remains the music owner beneath Settings.
-    const fighting = [...fights].some(key => game.scene.isActive(key) || game.scene.isPaused(key));
+    const fighting = [...fights].some(key => (key !== 'FirstFight' || !game.registry.get('firstFightComplete')) && (game.scene.isActive(key) || game.scene.isPaused(key)));
     const next: Track = fighting ? 'gameplay' : scenes.includes('CharSelect') ? 'charselect' : 'title';
     if (next !== selected) { selected = next; play(); }
     const ctx = unlockContextIfReady();

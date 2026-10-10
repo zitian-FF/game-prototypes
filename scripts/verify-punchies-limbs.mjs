@@ -4,7 +4,7 @@ const bundle = await build({stdin:{contents:`export * from './prototypes/punchie
 const {createSimState,step,punchCfg,punchFist,punchExtension,armPose,gloveRegistration,uppercutFireIntensity,tune,activeEnd,punchPoint}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const neutral={mx:0,my:0,jab:false,cross:false,hook:false,uppercut:false,dodge:false,guard:false};
 const near=(a,b)=>assert(Math.abs(a-b)<1e-9);
-for(const char of ['marco','mia','bruno','tee']) for(const type of ['jab','cross','hook','uppercut']) {
+for(const char of ['marco','mia','bruno','tee','tyke','dragon']) for(const type of ['jab','cross','hook','uppercut']) {
  const s=createSimState({timed:false,fighters:[{char},{anchored:true}]});const f=s.fighters[0];f.stars=tune.stars.max;step(s,[{...neutral,[type]:true},neutral]);const p=f.punch;
  for(let frame=0;frame<activeEnd(p)+p.recovery;frame++) {
   p.frame=frame;const before=JSON.stringify(s);const v=punchFist(f,p,1);assert(Number.isFinite(v.x)&&Number.isFinite(v.y));assert.equal(JSON.stringify(s),before,'presentation math must never mutate simulation');
@@ -29,7 +29,7 @@ for(const char of ['marco','mia','bruno','tee']) for(const type of ['jab','cross
 near(tune.view.puppet.walkPhasePerPixel/.35,.6);
 console.log('PASS: straight jab/cross arms and cuff alignment, mirrored hook arc/continuous recovery, contact alignment, fire coverage/expiry, 40% slower gait, and read-only presentation math for all characters.');
 
-for(const char of ['marco','mia','bruno','tee'])for(const angle of [0,Math.PI/2,Math.PI,-Math.PI/2,.7])for(const side of [-1,1]) {
+for(const char of ['marco','mia','bruno','tee','tyke','dragon'])for(const angle of [0,Math.PI/2,Math.PI,-Math.PI/2,.7])for(const side of [-1,1]) {
  const r=gloveRegistration(char,120,96,1.32),fist={x:60*Math.cos(angle),y:60*Math.sin(angle)};
  const shoulder={x:-Math.sin(angle)*13*side,y:Math.cos(angle)*13*side};
  const {elbow,wrist}=armPose(shoulder,fist,r.cuff,9,{x:-Math.sin(angle)*side,y:Math.cos(angle)*side},0);
@@ -39,6 +39,10 @@ for(const char of ['marco','mia','bruno','tee'])for(const angle of [0,Math.PI/2,
  near(fist.y+local.x*Math.sin(rot)+local.y*Math.cos(rot),wrist.y);
 }
 assert.equal(gloveRegistration('tee',120,96,1).axis,0);
+const rising = gloveRegistration('marco',120,96,1,'skin-marco-unique');
+assert.equal(rising.axis,0,'Rising Star glove knuckles face right');
+near(rising.cuff,tune.view.puppet.gloveHeight*120/96*.4);
+assert.equal(gloveRegistration('marco',120,96,1).axis,Math.PI/2,'base Marco registration is retained');
 for(const kind of ['jab','cross','hook','uppercut']){
  assert.equal(tune.characters.tee[kind].startup,tune.characters.mia[kind].startup);
  assert.equal(tune.characters.tee[kind].recovery,tune.characters.mia[kind].recovery);

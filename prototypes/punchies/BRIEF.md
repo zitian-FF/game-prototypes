@@ -410,3 +410,30 @@ Character select shows five bars: Health (HP), Endurance (average of stamina and
 
 ## Room code keypad layout — 2026-10-08
 The join keypad is QWERTY-ordered with the digits 2 to 9 as the top row, then Q to P, A to K and Z to M plus DEL. Look-alike characters (0, O, 1, I, L) stay excluded from room codes and from the keypad.
+
+## Roster expansion — 2026-10-09
+Tyke Maison and Dragon replace fighter pool placeholders and begin locked until pulled. Tyke is a bald, huge African American heavyweight with white eyes, lightning facial ink, gold gloves and a championship belt. Dragon is a medium-weight karate fighter in a white gi, red padded fingerless gloves, bare feet and a red 滅 blindfold with two independently animated cloth tails. Each starts with a separate copy of Marco's tune entry; user will tune later. Tyke's render/hit geometry proportion is 1.18, Dragon 1.0, compared with Marco 1.0.
+Mia's Flaming Kunoichi unique skin retains Mia stats and blonde identity, with red/white ninja robes, slim half gloves and separate ponytail. The skin uses its own portrait and rig parts. Cyan Rush, Violet Resolve and Golden Veteran are no longer automatically available; all three are locked palette skin pool rewards and require explicit ownership, including on existing saves where they were previously implicit. Explicit owned records remain owned. Daily offers schema advances to refresh cached offers once. Welcome G.P. Tee remains unchanged.
+
+## Tee is a chest fighter — 2026-10-09
+G.P. Tee is no longer a free one-time claim in the Shop. He is a normal reward in the daily fighter chest. Players who already claimed him keep him (the old welcome item id is kept so saves stay valid). Locked-fighter messages on character select now point at the daily chest for every locked fighter.
+
+## First launch: the easy fight — 2026-10-09
+A new save (no `punchies:firstrun:v1` flag) opens straight into a gentle bout instead of the main menu: Marco against Bruno, best of one, no timer. Only the stick, JAB and CROSS are shown and usable, and only the health bars show. Coach text moves through walking up, jabs, crosses and "mix them". Bruno walks up and throws slow jabs, never blocks or dodges, and the player cannot lose (health refills below 50%). Each landed hit drains an even share of Bruno's health, so six hits end the fight. The fight's own numbers are in `src/firstrun/firstfight.json`; no existing tuned value changes.
+
+A SKIP button is always visible. Finishing or skipping saves the flag, grants the gift once (Marco "Rising Star" and one free skin chest), shows the reward reveal, then "WELCOME TO THE RING" and the main menu. The Shop button shows a red badge while the free chest is waiting; it opens without tokens and does not use the daily skin chest. `?room=` links skip the flow. `?debug=1&firstrun=1` replays it. Analytics: `firstrun/fight/start`, `firstrun/<punch>/hit`, `firstrun/win|skip/done`.
+
+## Reset save and debug tokens — 2026-10-09
+Settings has a RESET SAVE button. It asks twice ("DELETE LOCAL SAVE?" then "ARE YOU REALLY SURE?"), then removes every saved key on this device (audio, shop, tutorial progress, characters, local inputs, language, first launch flag) and reloads, so the game starts like a brand new install including the language choice and the easy first fight. With `?debug=1` the Shop shows a DEBUG: 99 TOKENS button that sets the balance to 99 to test the chests.
+
+## Progression logic — 2026-10-09
+Boxer Level (1 to 50) from XP, saved under `punchies:progress:v1`. XP per finished match: vs AI 10 plus 20 for a win, times 0.5 / 1 / 1.5 for easy / medium / hard; online 15 plus 25 for a win; local VS 10; first launch fight win 60; training and tutorial 0. A hard cap of 300 XP per UTC day. XP to the next level is 100 plus 25 per level. Rewards only at milestones: a free skin chest every 5 levels, a free fighter chest every 10, titles by level, and earn-only Veteran skins. Chest rewards are vouchers, not tokens. Config is in `src/progress/progress-config.json`. See docs/release-plan.md section 8.
+
+## Alias and online profile — 2026-10-09
+The player has an alias: the one they typed (3 to 12 characters, letters, marks and digits in any script, single spaces, no emoji or symbols, reserved names like admin and punchies refused, offensive list hook), else the portal's player name when an adapter provides one, else a generated "Boxer 1234". Invisible and bidirectional control characters are stripped. The online hello message carries `{ alias, title, level }`; the receiver validates all of it and shows safe defaults for anything invalid. Aliases are never sent to analytics. `PORTAL_FIXED_ALIAS=on` disables editing for portals that forbid user-generated text.
+
+## Skin chests follow owned fighters — 2026-10-09
+The skin chest and the daily skin offers only include skins for fighters the player owns: the three starting boxers (Marco, Mia, Bruno) plus every fighter pulled from the fighter chest. Owning a new fighter adds its skins to the pool from the next daily refresh (the offer schema was bumped so today's offers regenerate once). Skins already owned never repeat, and earn-only skins never appear.
+
+## Roster composition and button feedback — 2026-10-09
+All boxer selection modes use a large central stepped grid (rows 3, 5, 7, 7, 5, 3), with player portraits on the sides, stats above them and names/skin controls below. Empty future slots show generic black silhouettes and cannot be selected or acquired. Progress steps are status text. Back is upper-left, match format below it, AI difficulty upper-right and confirmation bottom-center. Selection cards enter from opposite sides with a brief impact settle; reduced motion skips this. The VS emblem belongs only in the subsequent fiery match intro. Tyke's portrait is flipped in all presentation contexts, independently of his rig. Buttons provide hover, pressed and disabled feedback, with release-inside activation for shared menu controls. Repair the existing logo's P stem without altering the rest of its artwork.

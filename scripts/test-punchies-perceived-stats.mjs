@@ -19,6 +19,14 @@ for(const id of m.characters){
 assert.equal(m.statBarFill(2),1);assert.equal(m.statBarFill(-1),0);
 const tune=m.defaults();m.set(tune,'characters.mia.hp',1.1);assert(Math.abs(m.statBarFill(m.perceivedStats(tune,'mia').health)-.88)<1e-12);
 m.set(tune,'punches.jab.startup',2);assert.notEqual(m.perceivedStats(tune,'mia').speed,m.perceivedStats(base,'mia').speed,'Base frames affect relative hand speed');
+const sized=m.defaults();m.set(sized,'body.proportions.mia',1.1);
+assert(Math.abs(m.perceivedStats(sized,'mia').reach-m.perceivedStats(base,'mia').reach*1.1/.88)<1e-12,'Draft size changes preview without mutating live tune');
+assert(Math.abs(m.effective(sized,'mia','jab','reach')-sized.punches.jab.reach*sized.characters.mia.jab.reach*sized.view.fighterScale*1.1)<1e-12);
+assert(Math.abs(m.effective(sized,'mia','defense','hurtRadius')-sized.body.hurtRadius*sized.view.fighterScale*1.1)<1e-12);
+assert.equal(m.effective(sized,'mia','defense','proportion'),1.1);
+const sizedSave=m.mergeSave(base,sized,base);assert.equal(m.baseVersion(sizedSave),1);assert.equal(sizedSave.balanceWorkshop.baseHistory.versions[0].changes[0].path,'body.proportions.mia');
+const scaled=m.defaults();m.set(scaled,'view.fighterScale',1.4);assert.equal(m.baseVersion(m.mergeSave(base,scaled,base)),1);
+for(const id of ['tyke','dragon','longan']){const d=m.defaults();m.setArchetype(d,`char.${id}.nick`,'New Style');assert.equal(m.archetypeValue(m.mergeSave(base,d,base),`char.${id}.nick`),'New Style');}
 const draft=m.defaults();m.setArchetype(draft,'char.mia.nick','Counter Specialist');
 const saved=m.mergeSave(base,draft,base);assert.equal(m.archetypeValue(saved,'char.mia.nick'),'Counter Specialist');assert.equal(m.baseVersion(saved),0);
 assert.deepEqual(m.saveChanges(base,saved),['char.mia.nick']);assert.equal(m.archetypeValue(m.parse(JSON.stringify(saved)),'char.mia.nick'),'Counter Specialist');
@@ -30,5 +38,5 @@ m.applyTuneJson(JSON.stringify(base));assert.equal(m.t('char.mia.nick'),'Agile')
 m.setLocaleLoader(async()=>({'char.mia.nick':'カウンター型'}),{ja:1});await m.setLanguage('ja');assert.equal(m.t('char.mia.nick'),'カウンター型');
 await m.setLanguage('pseudo');assert.equal(m.t('char.mia.nick'),'⟦Counter Specialist⟧');await m.setLanguage('en');
 const dir=await mkdtemp(path.join(tmpdir(),'punchies-archetype-'));
-try{const file=path.join(dir,'tune.json'),csv=path.join(dir,'strings.csv');await writeFile(file,JSON.stringify(saved));execFileSync(process.execPath,['scripts/i18n-sheet.mjs','export',csv],{env:{...process.env,I18N_TUNE:file}});assert((await readFile(csv,'utf8')).includes('char.mia.nick,Counter Specialist,'),'Export uses tuned archetype under its localisation key');}finally{assert(path.resolve(dir).startsWith(path.resolve(tmpdir())+path.sep));await rm(dir,{recursive:true,force:true});}
+try{const file=path.join(dir,'tune.json'),csv=path.join(dir,'strings.csv');const exportDoc=structuredClone(saved);m.setArchetype(exportDoc,'char.longan.nick','Tuned Longan');await writeFile(file,JSON.stringify(exportDoc));execFileSync(process.execPath,['scripts/i18n-sheet.mjs','export',csv],{env:{...process.env,I18N_TUNE:file}});assert((await readFile(csv,'utf8')).includes('char.mia.nick,Counter Specialist,'),'Export uses tuned archetype under its localisation key');assert((await readFile(csv,'utf8')).includes('char.longan.nick,Tuned Longan,'),'New roster archetypes export');}finally{assert(path.resolve(dir).startsWith(path.resolve(tmpdir())+path.sep));await rm(dir,{recursive:true,force:true});}
 console.log('PASS: Base 80% benchmark, parity with all game display formulas, live tuning, caps, text-only saves, conflicts, localisation/sync/snapshot and sheet export');

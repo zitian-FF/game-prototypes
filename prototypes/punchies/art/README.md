@@ -1,5 +1,10 @@
 # Punchies art
 
+For all new artwork and asset deliveries, follow the authoritative
+[art production and compression standard](PRODUCTION_STANDARD.md).
+The export notes below include historical milestones; the standard defines
+current master preservation, registration, both quality profiles and release checks.
+
 Bold navy outlines and flat cel shading. Navy `#101b32`, slate `#253650`,
 cream `#fff1d1`, gold `#ffc84a`; existing player colors remain authoritative.
 Marco wears blue/cyan; Mia red/pink with a gold ponytail; Bruno green/lime.
@@ -139,3 +144,103 @@ comic book texture. LEFT half is dark navy negative space, quiet and
 uncluttered for separate UI buttons and title. Absolutely no text, no letters,
 no logos, no people, no UI controls. Crisp professional arcade visual,
 readable at mobile size.
+
+Palette skins use render/skins.ts and skinPalette.ts to recolour base portraits and rig parts on demand, cached by base texture and skin ID. No palette PNGs or alternate atlases are shipped. pack-assets filters legacy starter _alt animation folders and duplicate loose textures; unique skins retain their separate artwork. Matching fighters share the base art group and can equip identical skins.
+
+## Active asset cleanup (2026-10-09)
+
+Full-quality art, original music and the historical parts ZIP are recoverable in
+[Punchies asset archive](https://drive.google.com/drive/folders/14OJLKjyM0pDSUxsb_vDDkFtMYRqZuj02).
+The folder includes inventories with original/active paths, reasons, byte sizes
+and SHA-256 hashes. Upload sizes and full streamed downloads were verified before
+the R2 replacements. Never delete this backup to make a runtime package smaller.
+
+The active R2 art ZIP contains prepared loose parts, 10 persisted mirror aliases
+in root `part-mirrors.json`, and `active-assets.json` marking prepared sources.
+It contains no `parts/` design masters, obsolete starter `_alt` frames, or 13
+audited superseded loose textures. Registered base/dummy animation, layered
+effect and feet frames remain available as fallbacks and for the playable
+consumer. Ring fallbacks, token fallback and both approved unique skin rigs stay.
+The packer reads persisted aliases when source mirror masters are absent.
+
+Prepared loose files copy exactly. Tyke/Longan sources retain full canvases and
+receive their existing .86/.75 waist framing once in the packer. Portraits fit
+within 1280 pixels at WebP quality 90; gym/select backgrounds use quality 90.
+Registered arena layers stay lossless at 1299x1211. Atlas sheets now use lossless
+WebP without changing trim offsets, frame geometry or the 2048px sheet limit.
+
+Music remains three full stereo 44.1kHz MP3 tracks; 128kbps replaces 192kbps.
+Duration differences are checked within 0.1 seconds; scene mapping, looping,
+gesture unlock, stingers, pause and visibility behavior remain unchanged.
+The fetcher verifies the new audio ZIP SHA-256 in `music-manifest.json`.
+
+Offline, deterministic cleanup commands (no cloud writes):
+
+```sh
+npm run pack:assets punchies
+node scripts/clean-punchies-assets.mjs original-art.zip output-directory
+node scripts/optimize-punchies-audio.mjs original-audio.zip output-directory /path/to/ffmpeg
+node scripts/test-punchies-asset-optimization.mjs
+node scripts/check-punchies-budget.mjs
+```
+
+Run the art cleanup against freshly packed original sources. It preserves its
+input ZIP and inventories every decision. Audio cleanup also requires ffprobe
+beside ffmpeg; neither is needed by normal CI builds or asset fetching.
+
+The conservative WIP package fell from 30.28 MB to 16.50 MB, counting all shared
+build files, Punchies art, music, stingers, HTML and provenance. The build budget
+check rejects packages above 20,000,000 bytes, above 1500 files, or portraits at
+or above 1,000,000 bytes. This intentionally counts all dynamic content: the
+[CrazyGames mobile rule](https://docs.crazygames.com/requirements/technical/)
+measures initial download through the first Gameplay start event with SDK
+integration and otherwise uses the total package. Its separate total package
+limit is 250 MB with SDK integration, and its mobile homepage threshold is 20 MB.
+
+## Standard and compact profiles
+
+The WIP deployment keeps its existing standard art and MP3 music. Profile builds
+use the same game code and texture keys, and separate staging/output folders:
+
+```sh
+npm run build:punchies:standard
+npm run build:punchies:compact
+npm run build:punchies:compact -- --portal poki
+npm run build:punchies:compact -- --portal playgama
+```
+
+Both profile commands and CI default to CrazyGames. Pass `--portal web` to
+produce a standalone web build. Portal integration and asset profile are independent: either profile accepts
+`web`, `crazygames`, `poki` or `playgama`. Outputs are
+`dist/punchies-<profile>-<portal>/`. The portal-ready game entry is
+`index.html` at the package root. Each build contains only its chosen profile.
+CI's **Build Punchies asset profiles** workflow builds both profiles, verifies
+inventory and parity, and saves downloadable artifacts; manual runs select the
+portal. It does not publish a game to a portal account.
+
+Compact portraits use original masters, existing waist framing, maximum 768px
+and WebP Q78. Backgrounds and every registered ring layer fit within 960px at
+Q72; other loose art uses Q72. Fighter parts remain byte-identical because they
+are already small and their pixels drive palette masks. Atlas registration stays
+identical; a lossy Q65 atlas is used only when smaller than the lossless standard
+sheet. Transparent alpha remains preserved. Music is full-length AAC 64kbps in
+M4A, stereo 44.1kHz; stingers, scene mapping and looping remain unchanged.
+
+Prepared compact R2 archives and SHA-256 pins live in `asset-profiles.json`.
+Cache folders are isolated by profile and archive hash. `--fresh` verifies new
+downloads; `--offline` explicitly uses existing verified local inputs. The
+compact build checks its recorded standard-art ETag and standard-music hash,
+and refuses to silently ship outdated art when standard content changes.
+
+To regenerate compact art, first pack current standard sources, then run
+`node scripts/prepare-punchies-compact.mjs original-art.zip public/prototypes/punchies/assets output-directory`.
+For music use the existing offline audio optimizer with `--compact`. Upload the
+separate `punchies_compact_assets.zip` and `punchies_compact_audio.zip`, update
+their hashes and standard-source identity in `asset-profiles.json`, and build
+both profiles. The preparation scripts never write cloud objects or alter input
+masters. Inventories retain source lineage and encoding decisions.
+
+Budgets are 20 MB standard and 10 MB compact, including code, art, audio and
+provenance. Current isolated builds are about 16.15 MB standard / 9.44 MB
+compact. The compact profile is deliberately lower quality and should receive
+visual/listening review for new artwork or music before portal submission.

@@ -25,7 +25,7 @@ export class MatchIntro {
       const x=VIEW.cx+(side===0?-1:1)*VIEW.width*0.245;
       const key=skinTexture(scene,id,skins[side],`portrait_${id}`);
       if(scene.textures.exists(key)){
-        const portrait=scene.add.image(x,VIEW.bottom+2,key).setOrigin(0.5,1).setFlipX(side===1);
+        const portrait=scene.add.image(x,VIEW.bottom+2,key).setOrigin(0.5,1).setFlipX((side===1)!==(id==='tyke'));
         // Loose portraits have different transparent margins: align visible pixels.
         const canvas=document.createElement('canvas');
         canvas.width=portrait.width; canvas.height=portrait.height;
@@ -41,7 +41,7 @@ export class MatchIntro {
         const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83,tee:.83}[id]??0.7);
         const k=Math.min(height/(bottom-top),VIEW.width*0.43/(right-left));
         portrait.setScale(k);
-        portrait.x-=(side===1?-1:1)*((left+right)/2-canvas.width/2)*k;
+        portrait.x-=((side===1)!==(id==='tyke')?-1:1)*((left+right)/2-canvas.width/2)*k;
         portrait.y+=(canvas.height-bottom)*k;
         group.add(portrait);
       }

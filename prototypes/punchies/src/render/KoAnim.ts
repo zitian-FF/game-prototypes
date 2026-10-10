@@ -181,7 +181,7 @@ export class KoAnim {
     const f = this.loserFighter;
     if (f) {
       const look = this.looks[ko.loser];
-      const prefix = f.anchored ? 'dummy' : `${f.char}${look.color !== mainLook(f.char).color ? '_alt' : ''}`;
+      const prefix = f.anchored ? 'dummy' : f.char;
       const fly = ko.style === 'fly';
       const u = clamp01(el / (fly ? tune.ko.flyMs + tune.ko.sitMs : tune.ko.dropMs));
       if (this.drawPuppet(f, look, ko, fly, el, u, now)) return;

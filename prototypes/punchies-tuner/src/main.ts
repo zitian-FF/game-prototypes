@@ -54,7 +54,7 @@ function row(table:HTMLTableElement,key:string,path:string|null,current:number,m
   }else edit.append(el('span','Shared'));
   if(shared){tr.append(edit);table.append(tr);return;}
   const currentCell=el('td',format(current)),marcoCell=el('td',format(marco));tr.append(edit,currentCell,marcoCell);const diff=el('td',delta(current,marco));diff.className=current===marco?'neutral':current>marco?'positive':'negative';tr.append(diff);table.append(tr);
-  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?effective(draft,'marco',section,key):value;currentCell.textContent=format(value);marcoCell.textContent=format(baseline);diff.textContent=delta(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
+  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||section==='defense'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?effective(draft,'marco',section,key):value;currentCell.textContent=format(value);marcoCell.textContent=format(baseline);diff.textContent=delta(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
 }
 function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of shared?['Property','Raw value']:['Property','Tune value','In game','Marco','Difference'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
 function renderPerceivedStats(main:HTMLElement){
@@ -103,12 +103,19 @@ function render(){
   sidebar.append(button('Reset all edits',()=>{if(confirm('Reset all edits to the opened file?')){draft=structuredClone(base);remember();render();}}));layout.append(sidebar);
   const main=el('main');const heading=el('div');heading.className='section-heading';heading.append(el('h2',shared?`Base · v${baseVersion(draft)}`:names[selected].name),el('span',shared?'Raw starting values for every fighter':names[selected].style));main.append(heading);
   renderPerceivedStats(main);
-  const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'guard','dodge',...(shared?['history']:[])])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
+  const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'defense','guard','dodge',...(shared?['history']:[])])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
   const table=makeTable();
   if(shared&&section==='history'){renderBaseHistory(main);}
-  else if(shared){
+  else if(section==='defense'){
+    main.append(el('p',shared?'Shared collision radii, fighter scale and raw per-fighter proportions. Changes are recorded in Base history.':'Body size scales reach and collision radii. In-game values include the shared fighter scale and selected body proportion.'));
+    for(const key of ['hurtRadius','coreRadius','vulnerableHurtRadius'])row(table,key,`body.${key}`,shared?get(draft,`body.${key}`):effective(draft,selected,'defense',key),effective(draft,'marco','defense',key));
+    row(table,'fighterScale','view.fighterScale',shared?draft.view.fighterScale:effective(draft,selected,'defense','fighterScale'),effective(draft,'marco','defense','fighterScale'));
+    if(shared)for(const char of characters)row(table,`${names[char].name} body proportion`,`body.proportions.${char}`,draft.body.proportions[char],draft.body.proportions.marco);
+    else row(table,'proportion',`body.proportions.${selected}`,effective(draft,selected,'defense','proportion'),effective(draft,'marco','defense','proportion'));
+    main.append(table);if(shared)renderBaseHistory(main);
+  }else if(shared){
     main.append(el('p','Base contains the shared raw game values. Every fighter applies its multipliers and frame offsets to these values. Ratios are shown as their stored decimals; no percentage comparison is used here.'));
-    if(section==='core')for(const group of ['health','stamina','stun','movement','body','hit','fatigue','stars']){main.append(el('h3',label(group)));const t=makeTable();globalRows(t,group);main.append(t);}
+    if(section==='core')for(const group of ['health','stamina','stun','movement','hit','fatigue','stars']){main.append(el('h3',label(group)));const t=makeTable();globalRows(t,group);main.append(t);}
     else if((punches as readonly string[]).includes(section)){for(const key of Object.keys(draft.punches[section as typeof punches[number]])){const path=`punches.${section}.${key}`;row(table,key,path,get(draft,path),get(draft,path));}main.append(table);}
     else{globalRows(table,section);main.append(table);}
     renderBaseHistory(main);
@@ -127,4 +134,3 @@ function render(){
 window.addEventListener('beforeunload',event=>{if(saveChanges(base,draft).length){event.preventDefault();event.returnValue='';}});
 render();
 void detectLocalMode().then(enabled=>{githubMode=enabled;if(enabled){message='Local GitHub mode ready. Load latest before editing. Save to GitHub commits your edits and triggers normal CI/deployments.';render();}});
-

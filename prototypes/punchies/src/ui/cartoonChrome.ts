@@ -16,3 +16,24 @@ export function cartoonPanel(g:Phaser.GameObjects.Graphics,x:number,y:number,w:n
   g.lineStyle(2,shadeUi(color,1.4),.85).strokeRoundedRect(x+1,y+1,w-2,h-2,r);
   g.lineStyle(2,0x050d20).strokeRoundedRect(x-3,y-3,w+6,h+6,r+3);
 }
+
+/** Soft enamel buttons with one quiet edge and a shaded lower lip. */
+export function cartoonButton(g:Phaser.GameObjects.Graphics,x:number,y:number,w:number,h:number,color:number,r=10):void{
+ r=Math.min(r,h/2);
+ g.fillStyle(0x050d20,.28).fillRoundedRect(x,y+3,w,h,r);
+ g.fillStyle(shadeUi(color,.68)).fillRoundedRect(x,y,w,h,r);
+ g.fillStyle(color).fillRoundedRect(x+1,y+1,w-2,h-5,Math.max(2,r-1));
+ g.fillStyle(0xffffff,.18).fillRoundedRect(x+3,y+2,w-6,h*.38,Math.max(2,r-2));
+ g.lineStyle(1,shadeUi(color,.55),.65).strokeRoundedRect(x,y,w,h,r);
+}
+
+export type ButtonState='idle'|'hover'|'pressed'|'disabled';
+/** Pointer/touch states share the same affordance; disabled hits never activate. */
+export function bindButtonFeedback(hit:Phaser.GameObjects.Rectangle,draw:(state:ButtonState)=>void):void{
+ let hover=false,pressed=false,current:ButtonState|null=null;
+ const update=()=>{const state:ButtonState=!hit.input?.enabled?'disabled':pressed?'pressed':hover?'hover':'idle';if(state!==current){current=state;draw(state);}};
+ hit.on('pointerover',()=>{hover=true;update();}).on('pointerout',()=>{hover=false;pressed=false;update();})
+  .on('pointerdown',()=>{pressed=true;update();}).on('pointerup',()=>{hit.setData('buttonReleasedInside',pressed);pressed=false;update();})
+  .on('pointerupoutside',()=>{pressed=false;hover=false;update();});
+ const events=hit.scene.events;events.on('update',update);hit.once('destroy',()=>events.off('update',update));update();
+}

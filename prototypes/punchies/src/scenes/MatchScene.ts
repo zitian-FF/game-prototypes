@@ -2,6 +2,7 @@ import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
+import { awardMatch } from '../progress/progress';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -290,6 +291,7 @@ export class MatchScene extends Phaser.Scene {
     }
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
+    this.registry.set('lastAward', awardMatch({ kind: 'online', win: r.winner === this.match.localIdx }));
     if (this.remoteReselect) { this.changeBoxer(); return; }
     const rem = matchResult(this, text, {
       rematch: () => {

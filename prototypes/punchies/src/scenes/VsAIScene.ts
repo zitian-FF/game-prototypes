@@ -1,3 +1,4 @@
+import { awardMatch } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -90,6 +91,7 @@ export class VsAIScene extends Phaser.Scene {
       return;
     }
     track('match', 'VsAI', r.winner === null ? 'draw' : r.winner === 0 ? 'win' : 'lose', { level: this.level, char: this.chars[0] });
+    this.registry.set('lastAward', awardMatch({ kind: 'vsai', win: r.winner === 0, botLevel: this.level }));
     matchResult(this, r.winner === null ? t('common.draw') : r.winner === 0 ? t('common.victory') : t('common.defeat'), {
       rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),

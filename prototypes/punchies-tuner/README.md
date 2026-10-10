@@ -46,3 +46,7 @@ The coloured Health, Endurance, Speed, Power and Reach preview uses the same for
 The Character archetype textbox edits the fixed localisation key shown beside it (`char.base.nick` or the fighter's existing `char.<id>.nick`). Saved text lives in `balanceWorkshop.archetypes`, survives file/download/GitHub saves, and becomes the game's English fallback after tune sync or rebuild. The translation-sheet export includes these English overrides; existing translations remain unchanged and need review after wording changes. Text-only saves do not create a numeric Base revision. Same-key concurrent text edits are rejected; unrelated changes are preserved.
 
 Run `npm run test:tuner:preview` for formula parity, the 80% benchmark, bar capping, text validation, merge conflicts, snapshot/restore and translation export checks.
+
+## Tune schema sync (2026-10-10)
+
+Defense exposes shared collision radii, fighter scale and all seven tuned body proportions (0.6 to 1.5, step 0.01). Fighter rows show scaled effective radii and signed Marco comparisons; Base shows raw values and logs geometry changes. Reach and perceived bars react immediately to draft proportions. Defaults follow the owner-approved tune on main, including the 1.25 fighter scale and updated punch timing, reach and hit radii.

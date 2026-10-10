@@ -8,7 +8,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
 import type { ShopItem } from '../shop/draft';
 import { reducedMotion } from './presentation';
-import { cartoonPanel } from './cartoonChrome';
+import { bindButtonFeedback, cartoonButton } from './cartoonChrome';
 import { navRegister } from './menuNav';
 
 /** Reward is already saved before this presentation starts. */
@@ -33,7 +33,7 @@ export class RewardReveal {
         : skinTexture(scene,item.boxer,item.kind==='skins'?item.id:'default',`portrait_${item.boxer}`))
       : null;
     if (key && scene.textures.exists(key)) {
-      const portrait=scene.add.image(VIEW.cx,VIEW.bottom,key,'__BASE').setOrigin(.5,1);
+      const portrait=scene.add.image(VIEW.cx,VIEW.bottom,key,'__BASE').setOrigin(.5,1).setFlipX(item.boxer==='tyke');
       const source=scene.textures.get(key).getSourceImage() as HTMLImageElement;
       const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;
       const context=canvas.getContext('2d',{willReadFrequently:true})!;
@@ -46,7 +46,7 @@ export class RewardReveal {
       }
       if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
       const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left));
-      portrait.x-=((left+right)/2-canvas.width/2)*scale;
+      portrait.x-=(item.boxer==='tyke'?-1:1)*((left+right)/2-canvas.width/2)*scale;
       portrait.y+=(canvas.height-bottom)*scale;
       this.root.add(portrait.setScale(scale*(motion?cfg.entryScale:1)).setAlpha(motion?0:1));
       scene.tweens.add({targets:portrait,scale,alpha:1,duration:motion?cfg.entryMs:0,ease:'Back.Out'});
@@ -71,11 +71,18 @@ export class RewardReveal {
     this.timers.push(scene.time.delayedCall(titleAt+cfg.ackDelayMs,()=>{
       if(this.destroyed)return;
       const button=scene.add.container(VIEW.cx,VIEW.bottom-29);
-      const g=scene.add.graphics();cartoonPanel(g,-105,-19,210,38,0x28af70,8);button.add(g);
-      const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',stroke:'#081225',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
+      const g=scene.add.graphics();cartoonButton(g,-105,-19,210,38,0x28af70,8);button.add(g);
+      const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true},resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
       const acknowledge=()=>{if(this.destroyed)return;this.destroy();close();};
-      const hit=scene.add.rectangle(0,0,210,38,0,0).setDepth(610).setInteractive({useHandCursor:true})
-        .on('pointerdown',acknowledge);button.add(hit);navRegister(scene,hit,acknowledge);
+      const hit=scene.add.rectangle(0,0,210,38,0,0).setDepth(610).setInteractive({useHandCursor:true});
+      bindButtonFeedback(hit,state=>{
+        g.clear();cartoonButton(g,-105,-19,210,38,0x28af70,8);
+        g.setY(state==='pressed'?2:0).setAlpha(state==='disabled'?.45:1);
+        text.setY(state==='pressed'?2:0);
+        if(state==='hover')g.fillStyle(0xffffff,.1).fillRoundedRect(-105,-19,210,38,8);
+      });
+      hit.on('pointerup',()=>{if(hit.getData('buttonReleasedInside'))acknowledge();});
+      button.add(hit);navRegister(scene,hit,acknowledge);
       this.root.add(button.setScale(motion?cfg.buttonEntryScale:1).setAlpha(motion?0:1));
       scene.tweens.add({targets:button,scale:1,alpha:1,duration:motion?cfg.nameFadeMs:0,ease:'Back.Out'});
     }));

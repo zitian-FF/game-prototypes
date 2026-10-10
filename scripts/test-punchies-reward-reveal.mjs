@@ -22,7 +22,7 @@ function run(reduced=false){
  if(p.includes('sim/tune'))return{tune:{view:{menu:{rewardReveal:cfg}}}};
  if(p.includes('presentation'))return{reducedMotion:()=>reduced};
  if(p.includes('audio/stingers'))return{playStinger(){return()=>{};}};
- if(p.includes('cartoonChrome'))return{cartoonPanel(){}};
+ if(p.includes('cartoonChrome'))return{cartoonPanel(){},cartoonButton(){},bindButtonFeedback(){}};
  if(p.includes('menuNav'))return{navRegister:(_s,bg,fn)=>nav.push({bg,fn})};return{};
  }});
  const reveal=new exports.RewardReveal(scene,{name:'G.P. TEE',kind:'fighters',boxer:null},()=>closed++);

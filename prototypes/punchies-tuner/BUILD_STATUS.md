@@ -1,28 +1,21 @@
 ## Current milestone
-Base raw-stat editor, version history, game-equivalent perceived stat preview and localised archetype editing implemented; PR remains open for review.
+Workshop synced with the seven-fighter roster and owner-approved tune changes through main 9ce9087. Implementation remains in PR #270 for review.
 
 ## What was implemented
-- Five live coloured stat bars with Base at 80%, shared game formulas and a 100% cap.
-- Archetype textbox with fixed localisation keys, persistent selective saves, conflict detection and English translation-sheet export.
-- Base entry before the fighters, exposing raw core/punch/block/dodge stats without percentage comparisons.
-- History tab and numbered timestamped revisions: initial v0 snapshot, then old/new values for every saved Base change.
-- History persists in tune.json through local-file saves, exports and GitHub saves. No-op and fighter-only saves do not add Base versions.
-- Tests for inheritance, history persistence, concurrent merges, failed saves, client history rewrite protection and future history-bearing game builds.
-- Brave mock verification: v1 save, reload, v2 save, both revisions visibly retained, no console errors.
+- Defense category exposes shared hurt/core/vulnerable radii, fighter scale and per-fighter body proportions with current ranges and descriptions.
+- Effective reach, collision radii, Marco deltas and perceived bars follow tuned proportions; Base remains the 80% benchmark.
+- Preserved raw Base history, local/GitHub selective saves, archetype localisation and the latest game character-selection layout.
+- Updated regression coverage for draft geometry, versioning, all seven fighters and new roster archetype exports.
+- Verified typecheck, production build, workshop HTTP/file/model/history/display tests, geometry, localisation/export and tune guard. Brave confirmed live size updates, all seven raw proportions, Base at 80% and no console errors.
 
 ## Key technical decisions
-- Base edits existing shared tune fields; every fighter continues to use its current multipliers/offsets. Base is not a playable fighter.
-- Save generates history from actual latest file values after merge checks. GitHub retains its saved log rather than trusting client metadata.
-- Exclude workshop metadata from simulation tune so future game rebuilds remain compatible.
-- Existing loopback/credential protections remain; no live tune changes during development. PR auto-merge remains disabled.
+Use current main tune.json and metadata without changing owner-approved values. Read perceived stats from the supplied draft, not a hardcoded proportions table or global live tune. Body proportions and fighter scale are Base geometry values and version with raw Base changes. Existing PR remains unmerged.
 
 ## Open questions
-None.
+None for this tuner update. Progression/profile screens and portal work remain separate tasks.
 
 ## Known issues
-- External direct tune edits are not retroactively logged; GitHub still retains its separate commit audit trail.
-- Native file picker permissions remain a manual check. File-save transactions are covered with mocks.
-- Local companion is for a trusted PC only. Saved versions start with the first Base edit saved using the new workshop.
+Physical file-picker permissions remain a manual check. Existing translations need review when English archetype wording changes. Real balance saves are not performed during development.
 
 ## Next proposed step
-Review/merge the updated workshop PR, then use Base and History for real tuning saves.
+Review the workshop PR and use Defense to tune body size alongside collision radii.

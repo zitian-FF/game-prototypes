@@ -37,6 +37,8 @@ export interface Portal {
   gameplay(active: boolean): void;
   /** Optional: send an event to the portal's own analytics. Local logging always happens too. */
   track?(category: string, what: string, action: string, props: AnalyticsProps): void;
+  /** Optional: the portal's name for this player, if it has one. Used as the default alias. Adapters do not implement it yet. */
+  playerName?(): string | null;
   /** Optional: the language the portal says the player uses (for example "ja-JP"). */
   locale?(): string | null;
   readonly ads: PortalAds;
