@@ -296,8 +296,8 @@
     "penaltyFrames": 24
   },
   "dodge": {
-    "frames": 14,
-    "iFrames": 10,
+    "frames": 16,
+    "iFrames": 8,
     "exhaustedEfficacy": 0.5,
     "speed": 337.5,
     "vulnerableFrames": 24,
@@ -584,9 +584,9 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.0925,
+        "damage": 1.2,
         "staminaCost": 1,
-        "stunBuild": 1,
+        "stunBuild": 0.75,
         "push": 1,
         "reach": 1,
         "startup": -1,
@@ -594,7 +594,7 @@
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1.0925,
+        "damage": 1.2,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -615,11 +615,11 @@
       }
     },
     "tyke": {
-      "hp": 1,
+      "hp": 0.95,
       "stamina": 1.1,
-      "regen": 1.1,
+      "regen": 0.9,
       "stun": 1.05,
-      "speed": 1,
+      "speed": 0.85,
       "jab": {
         "damage": 1,
         "staminaCost": 1,
@@ -631,8 +631,8 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.1,
-        "staminaCost": 1,
+        "damage": 1.5,
+        "staminaCost": 1.2,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
@@ -1022,12 +1022,29 @@
               "after": 20
             }
           ]
+        },
+        {
+          "version": 2,
+          "savedAt": "2026-10-10T14:36:30.934Z",
+          "changes": [
+            {
+              "path": "dodge.frames",
+              "before": 14,
+              "after": 16
+            },
+            {
+              "path": "dodge.iFrames",
+              "before": 10,
+              "after": 8
+            }
+          ]
         }
       ]
     },
     "archetypes": {
       "char.marco.nick": "Steady all-rounder with a heavy Cross",
-      "char.mia.nick": "Fast hands and feet, shorter reach"
+      "char.mia.nick": "Fast hands and feet, shorter reach",
+      "char.tyke.nick": "Heavyweight champion"
     }
   }
 }
