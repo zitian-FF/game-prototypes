@@ -117,3 +117,79 @@ for (const type of ['jab', 'cross', 'hook']) {
   assert.equal(stanceOf(f), 'vulnerable');
 }
 console.log('Per-punch counter flags (startup/recovery), punished states, exhausted guard chip with uppercut exception and no perfect guard, and half-efficacy exhausted dodge passed');
+
+// 4. Hit and block stun: the defender is locked (no actions, no walking), the lock scales with the character push
+// multiplier, and the frame advantage follows the design: sweet hit favours the attacker, block and sour hit the defender.
+function advantage(type, mode) {
+  const sim = createSimState({ timed: false, fighters: [{ char: 'marco', infiniteStamina: true }, { char: 'marco', anchored: true, infiniteStamina: true }] });
+  const [a, b] = sim.fighters;
+  a.x = 200; a.y = b.y = 210; a.stars = tune.stars.max;
+  const cfg = punchCfg(a, type);
+  const dist = mode === 'sour' ? 56 : cfg.reach + cfg.hitRadius + tune.body.hurtRadius * tune.view.fighterScale - 0.1;
+  b.x = a.x + dist;
+  const def = mode === 'block' ? { ...N, guard: true } : N;
+  let hit = null, ta = null, td = null, t0 = null, locked = null;
+  for (let t = 0; t < 140 && (ta === null || td === null); t++) {
+    const ev = step(sim, [t === 0 ? { ...N, [type]: true } : N, def], false);
+    const h = ev.find(e => e.kind === 'hit' || e.kind === 'block');
+    if (h && hit === null) { hit = h; t0 = t; locked = b.lock; }
+    if (hit) { if (ta === null && a.punch === null) ta = t; if (td === null && b.lock === 0) td = t; }
+  }
+  return { hit, advantage: td - ta, locked, b, sim };
+}
+for (const type of ['jab', 'cross', 'hook']) {
+  const sweet = advantage(type, 'hit'), block = advantage(type, 'block'), sour = advantage(type, 'sour');
+  assert.equal(sweet.hit.kind, 'hit'); assert.equal(sweet.hit.sweet, true);
+  assert.ok(sweet.advantage > 0, `${type} sweet hit favours the attacker (${sweet.advantage})`);
+  assert.equal(block.hit.kind, 'block');
+  assert.ok(block.advantage < 0, `${type} block favours the defender (${block.advantage})`);
+  assert.equal(sour.hit.kind, 'hit'); assert.equal(sour.hit.sweet, false);
+  assert.ok(sour.advantage < 0, `${type} sour hit favours the defender (${sour.advantage})`);
+  assert.equal(sweet.locked, punchCfg('marco', type).hitStun, `${type} lock equals its hit stun`);
+  assert.equal(block.locked, punchCfg('marco', type).blockStun, `${type} lock equals its block stun`);
+  assert.ok(sweet.advantage <= 8, `${type}: no guaranteed combos from a plain hit`);
+}
+assert.ok(advantage('uppercut', 'hit').advantage > 0);
+// Character push scales the stun along with the shove.
+near(punchCfg('bruno', 'cross').hitStun, Math.round(tune.punches.cross.hitStun * tune.characters.bruno.cross.push));
+assert.ok(punchCfg('bruno', 'cross').hitStun > punchCfg('marco', 'cross').hitStun);
+// While locked: no punches or dodges start, no walking, and the guard is held without a release penalty.
+{
+  const r = advantage('jab', 'hit');
+  const b = r.b, sim = r.sim;
+  b.lock = 6; b.punch = null; b.dodge = null;
+  const x0 = b.x;
+  step(sim, [N, { ...N, jab: true, mx: 100 }], false);
+  assert.equal(b.punch, null, 'cannot punch while locked');
+  b.anchored = false;
+  const bx = b.x;
+  step(sim, [N, { ...N, mx: -100 }], false);
+  assert.ok(Math.abs(b.x - bx) < 1e-9, 'cannot walk while locked');
+  b.anchored = true;
+  const g = advantage('cross', 'block');
+  assert.ok(g.b.guardPenalty === 0, 'blocking never starts a release penalty');
+  g.b.lock = 4;
+  g.b.guarding = true;
+  step(g.sim, [N, N], false);
+  assert.ok(g.b.guarding && g.b.guardPenalty === 0, 'guard is held through block stun even if the button is released');
+}
+// A counter stretches the window so the attacker can follow up.
+{
+  const normal = advantage('jab', 'hit');
+  const counter = (() => {
+    const sim = createSimState({ timed: false, fighters: [{ char: 'marco', infiniteStamina: true }, { char: 'marco', anchored: true, infiniteStamina: true }] });
+    const [a, b] = sim.fighters;
+    a.x = 200; a.y = b.y = 210;
+    b.x = a.x + punchCfg(a, 'jab').reach + punchCfg(a, 'jab').hitRadius + tune.body.hurtRadius * tune.view.fighterScale - 0.1;
+    b.guardPenalty = 100;
+    let lock = null;
+    for (let t = 0; t < 40 && lock === null; t++) {
+      const ev = step(sim, [t === 0 ? { ...N, jab: true } : N, N], false);
+      if (ev.some(e => e.kind === 'hit' && e.counter)) lock = b.lock;
+    }
+    return lock;
+  })();
+  assert.equal(counter, Math.round(punchCfg('marco', 'jab').hitStun * tune.hit.counterStunMult));
+  assert.ok(counter > normal.locked);
+}
+console.log('Hit and block stun: locks actions and walking, scales with push, advantage signs, guard held through block stun, counter window passed');

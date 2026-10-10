@@ -76,6 +76,27 @@
     "max": 1,
     "step": 1
   },
+  "punches.jab.hitStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.jab.blockStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.jab.sourStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
   "punches.jab.startup": {
     "cat": "Attack",
     "desc": "Jab: frames before the fist moves. Lower = faster.",
@@ -179,6 +200,27 @@
     "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.cross.hitStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.cross.blockStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.cross.sourStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.cross.startup": {
@@ -286,6 +328,27 @@
     "max": 1,
     "step": 1
   },
+  "punches.hook.hitStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.hook.blockStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.hook.sourStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
   "punches.hook.startup": {
     "cat": "Attack",
     "desc": "Hook: frames before the fist moves. Lower = faster.",
@@ -389,6 +452,27 @@
     "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.uppercut.hitStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.uppercut.blockStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.uppercut.sourStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.uppercut.startup": {
@@ -1973,12 +2057,12 @@
     "max": 30,
     "step": 0.5
   },
-  "hit.pushLockFrames": {
+  "hit.counterStunMult": {
     "cat": "Attack",
-    "desc": "Pushback: ticks the defender can't walk after a push lands (dodge still works). Can be longer than the slide.",
-    "min": 0,
-    "max": 40,
-    "step": 1
+    "desc": "Counter hit: multiplier on the defender's hit stun, so a counter gives the attacker a bigger window to follow up.",
+    "min": 1,
+    "max": 3,
+    "step": 0.05
   },
   "ai.medium.reactionFrames": {
     "cat": "AI",

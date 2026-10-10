@@ -172,6 +172,9 @@
     "jab": {
       "counterStartup": 0,
       "counterRecovery": 0,
+      "hitStun": 12,
+      "blockStun": 8,
+      "sourStun": 8,
       "startup": 4,
       "sourEarly": 3,
       "sweet": 2,
@@ -194,6 +197,9 @@
     "cross": {
       "counterStartup": 1,
       "counterRecovery": 1,
+      "hitStun": 25,
+      "blockStun": 17,
+      "sourStun": 18,
       "startup": 15,
       "sourEarly": 3,
       "sweet": 4,
@@ -216,6 +222,9 @@
     "hook": {
       "counterStartup": 1,
       "counterRecovery": 1,
+      "hitStun": 16,
+      "blockStun": 11,
+      "sourStun": 10,
       "startup": 10,
       "sourEarly": 1,
       "sweet": 3,
@@ -239,6 +248,9 @@
     "uppercut": {
       "counterStartup": 0,
       "counterRecovery": 1,
+      "hitStun": 23,
+      "blockStun": 0,
+      "sourStun": 12,
       "startup": 2,
       "sourEarly": 0,
       "sweet": 3,
@@ -263,7 +275,7 @@
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
     "pushFrames": 6,
-    "pushLockFrames": 8
+    "counterStunMult": 1.5
   },
   "guard": {
     "perfectFrames": 3,
