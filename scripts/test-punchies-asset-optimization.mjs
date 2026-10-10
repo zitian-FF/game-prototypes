@@ -29,9 +29,10 @@ const rigs = new Set([...CHARACTER_IDS, ...uniqueSkins.map(item => item.rigGroup
 const aliases=JSON.parse(fs.readFileSync(path.join(out,'loose/part-mirrors.json')));
 assert.deepEqual(aliases,await mirroredParts(root),'all approved mirror mappings survive master archival');
 for(const [name,alias] of Object.entries(aliases)){
-  const match = /^part_(.+)_(glove|boot)_left$/.exec(name);
+  const match = /^part_(.+)_(glove|boot)_(left|right)$/.exec(name);
   assert(match && rigs.has(match[1]), `mirror belongs to a catalog rig limb: ${name}`);
-  assert.equal(alias.source, `part_${match[1]}_${match[2]}_right`, `same-rig opposite limb: ${name}`);
+  const opposite = match[3] === 'left' ? 'right' : 'left';
+  assert.equal(alias.source, `part_${match[1]}_${match[2]}_${opposite}`, `same-rig opposite limb: ${name}`);
   assert(['x', 'y'].includes(alias.axis), `supported mirror axis: ${name}`);
   assert(!aliases[alias.source], `mirror source is a direct texture: ${name}`);
   for (const ext of ['.png', '.webp']) assert(!fs.existsSync(path.join(out,'loose',name+ext)), `mirrored target is deduplicated: ${name}`);
