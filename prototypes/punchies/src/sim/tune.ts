@@ -9,8 +9,10 @@ import tuneMeta from '../../tune.meta.json';
 // tune.json committed to GitHub (main branch), so values can be tweaked
 // without a rebuild. Online, the guest temporarily adopts the host's values
 // for the match (see applyTuneJson / restoreTune).
-export type Tune = typeof tuneJson;
-export const tune: Tune = tuneJson;
+// Workshop history is persistence metadata, not simulation tuning.
+export type Tune = Omit<typeof tuneJson, 'balanceWorkshop'>;
+const {balanceWorkshop: _history, ...gameTune}=tuneJson as typeof tuneJson & {balanceWorkshop?:unknown};
+export const tune: Tune = gameTune;
 
 export const TICK_RATE = 60;
 
@@ -19,7 +21,7 @@ const SYNC_TIMEOUT_MS = 6000;
 
 type Obj = Record<string, unknown>;
 
-let baseline: Tune = structuredClone(tuneJson);
+let baseline: Tune = structuredClone(tune);
 let source = 'built-in';
 const listeners: (() => void)[] = [];
 

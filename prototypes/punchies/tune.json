@@ -428,9 +428,9 @@
   "characters": {
     "marco": {
       "hp": 1,
-      "stamina": 1.1,
-      "regen": 1.1,
-      "stun": 1.05,
+      "stamina": 1,
+      "regen": 1,
+      "stun": 1,
       "speed": 1,
       "jab": {
         "damage": 1,
@@ -443,7 +443,7 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.2,
+        "damage": 1.1,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -540,7 +540,7 @@
         "damage": 1.15,
         "staminaCost": 1,
         "stunBuild": 1,
-        "push": 1.25,
+        "push": 1.1,
         "reach": 1,
         "startup": 1,
         "recovery": 2,
@@ -560,7 +560,7 @@
         "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
-        "push": 1.25,
+        "push": 1.1,
         "reach": 1,
         "startup": 0,
         "recovery": 0,
@@ -569,9 +569,9 @@
     },
     "tee": {
       "hp": 0.75,
-      "stamina": 0.75,
+      "stamina": 0.85,
       "regen": 1,
-      "stun": 0.55,
+      "stun": 0.7,
       "speed": 1.2,
       "jab": {
         "damage": 0.95,
@@ -584,7 +584,7 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.2,
+        "damage": 1.15,
         "staminaCost": 1,
         "stunBuild": 0.75,
         "push": 1,
@@ -594,7 +594,7 @@
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1.2,
+        "damage": 1.15,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -615,29 +615,29 @@
       }
     },
     "tyke": {
-      "hp": 0.95,
-      "stamina": 1.1,
+      "hp": 1.05,
+      "stamina": 1,
       "regen": 0.9,
-      "stun": 1.05,
+      "stun": 1.1,
       "speed": 0.85,
       "jab": {
         "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.9,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.5,
+        "damage": 1.3,
         "staminaCost": 1.2,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
-        "startup": 0,
-        "recovery": 0,
+        "reach": 0.9,
+        "startup": 2,
+        "recovery": 2,
         "fatigueBars": 0
       },
       "hook": {
@@ -645,56 +645,56 @@
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.9,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
-        "staminaCost": 1,
+        "damage": 1.1,
+        "staminaCost": 1.15,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
-        "startup": 0,
-        "recovery": 0,
+        "reach": 0.9,
+        "startup": 1,
+        "recovery": 2,
         "fatigueBars": 0
       }
     },
     "dragon": {
       "hp": 1,
-      "stamina": 1.1,
-      "regen": 1.1,
+      "stamina": 0.95,
+      "regen": 1,
       "stun": 1.05,
-      "speed": 1,
+      "speed": 1.02,
       "jab": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 1.08,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "cross": {
         "damage": 1.1,
-        "staminaCost": 1,
+        "staminaCost": 1.05,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
-        "startup": 0,
-        "recovery": 0,
+        "reach": 1.08,
+        "startup": 1,
+        "recovery": 1,
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": 0,
-        "recovery": 0,
+        "recovery": 1,
         "fatigueBars": 0
       },
       "uppercut": {
@@ -709,39 +709,39 @@
       }
     },
     "longan": {
-      "hp": 1,
+      "hp": 0.95,
       "stamina": 1.1,
-      "regen": 1.1,
-      "stun": 1.05,
+      "regen": 1.05,
+      "stun": 0.95,
       "speed": 1,
       "jab": {
-        "damage": 1,
-        "staminaCost": 1,
+        "damage": 0.9,
+        "staminaCost": 0.9,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
-        "startup": 0,
+        "reach": 0.95,
+        "startup": -1,
         "recovery": 0,
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.95,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1,
-        "staminaCost": 1,
+        "damage": 0.95,
+        "staminaCost": 0.9,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.95,
         "startup": 0,
-        "recovery": 0,
+        "recovery": -1,
         "fatigueBars": 0
       },
       "uppercut": {
@@ -749,50 +749,50 @@
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.95,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       }
     },
     "captain": {
-      "hp": 1,
-      "stamina": 1.1,
-      "regen": 1.1,
-      "stun": 1.05,
-      "speed": 1,
+      "hp": 0.9,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.95,
+      "speed": 1.1,
       "jab": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": 0,
-        "recovery": 0,
+        "recovery": -1,
         "fatigueBars": 0
       },
       "cross": {
         "damage": 1.1,
-        "staminaCost": 1,
+        "staminaCost": 1.1,
         "stunBuild": 1,
-        "push": 1,
+        "push": 0.9,
         "reach": 1,
         "startup": 0,
-        "recovery": 0,
+        "recovery": -1,
         "fatigueBars": 0
       },
       "hook": {
         "damage": 1,
-        "staminaCost": 1,
+        "staminaCost": 1.1,
         "stunBuild": 1,
-        "push": 1,
+        "push": 0.9,
         "reach": 1,
         "startup": 0,
-        "recovery": 0,
+        "recovery": -1,
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,

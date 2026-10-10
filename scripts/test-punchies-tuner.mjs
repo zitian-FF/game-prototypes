@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 const bundle=await build({entryPoints:['prototypes/punchies-tuner/src/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
-const {defaults,parse,changes,set,effective,delta,mergeSave,characters,names,meta}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const {defaults:liveDefaults,parse,changes,set,effective,delta,mergeSave,characters,names,meta}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+// Test formula behavior with controlled inputs; production balance values are editable.
+parse(JSON.stringify(liveDefaults()));
+function defaults(){
+ const doc=liveDefaults();
+ doc.health.max=100;doc.stamina.max=100;doc.stun.threshold=100;doc.view.fighterScale=1.25;
+ doc.characters.marco.stamina=1.1;doc.characters.mia.hp=.85;doc.characters.longan.hp=1;
+ doc.punches.jab.startup=4;doc.characters.mia.jab.startup=-1;doc.punches.jab.reach=42;
+ doc.characters.mia.jab.reach=.9;doc.body.proportions.mia=.88;
+ doc.punches.cross.damage=10;doc.punches.uppercut.crossDamageMult=2;doc.characters.marco.uppercut.damage=1;
+ return doc;
+}
 const base=defaults(),draft=defaults();
 assert.equal(effective(base,'marco','core','stamina'),110.00000000000001);
 assert.equal(effective(base,'mia','core','hp'),85);

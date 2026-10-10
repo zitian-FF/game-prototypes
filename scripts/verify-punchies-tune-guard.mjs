@@ -6,6 +6,9 @@ const bundle = await build({ entryPoints: ['prototypes/punchies/src/sim/tune.ts'
 const { validateTuneJson, tune } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const meta = JSON.parse(readFileSync('prototypes/punchies/tune.meta.json', 'utf8'));
 
+const shipped=JSON.parse(readFileSync('prototypes/punchies/tune.json','utf8'));
+assert.equal(validateTuneJson(JSON.stringify({...shipped,balanceWorkshop:{baseHistory:{format:1,initial:{},versions:[]}}})).ok,true,'workshop metadata must not become combat tuning');
+assert(!Object.hasOwn(tune,'balanceWorkshop'));
 const live = JSON.parse(JSON.stringify(tune));
 assert.equal(validateTuneJson(JSON.stringify(live)).ok, true, 'the shipped tune must validate');
 

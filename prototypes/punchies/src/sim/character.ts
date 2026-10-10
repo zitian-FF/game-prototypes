@@ -14,12 +14,12 @@ export const CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 
 export type CharId = (typeof CHARACTER_IDS)[number];
 
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
-  captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Racing-suited fighter; provisional all-rounder stats pending tuning' },
-  longan: { name: 'Longan', nick: 'Still Waters', style: 'Wrapped-fist fighter; provisional all-rounder stats pending tuning' },
-  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Heavyweight champion; provisional stats pending tuning' },
-  dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Karate fighter; provisional stats pending tuning' },
-  tee: { name:'G.P. Tee',nick:'Tee',style:'Explosive power and speed; fragile and low endurance' },
-  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder with a heavy Cross' },
+  captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst attacker; quick disengagement, low durability' },
+  longan: { name: 'Longan', nick: 'Still Waters', style: 'Sustained pressure; efficient jab and hook, shorter reach' },
+  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Committed finisher; heavy blows, slow movement and costly recovery' },
+  dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Precision outboxer; longer jab and Cross, slower commitments' },
+  tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst damage; fragile with limited endurance' },
+  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Reliable fundamentals with a modest Cross advantage' },
   mia: { name: 'Mia Tanaka', nick: 'Flicker', style: 'Fast hands and feet, shorter reach' },
   bruno: { name: 'Bruno Kowalski', nick: 'Brick', style: 'Tough and heavy-handed, slow' },
 };

@@ -5,6 +5,7 @@ import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punc
 
 export type Doc = typeof initial;
 const template = structuredClone(initial);
+const {balanceWorkshop: _history,...gameSchema}=template as typeof template & {balanceWorkshop?:unknown};
 export const defaults = () => structuredClone(template);
 export const characters = [...CHARACTER_IDS];
 export const names = CHARACTER_INFO;
@@ -29,7 +30,7 @@ export function parse(text:string):Doc {
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }
   }
-  walk(template,candidate,'');return candidate;
+  walk(gameSchema,candidate,'');return candidate;
 }
 export function changes(base:Doc,draft:Doc):string[] {
   return Object.keys(meta).filter(path=>typeof getSafe(base,path)==='number'&&getSafe(base,path)!==getSafe(draft,path));
