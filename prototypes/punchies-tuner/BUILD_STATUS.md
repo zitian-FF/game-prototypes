@@ -2,6 +2,7 @@
 Every fighter property compares with Base; existing PR #270 remains open for review.
 
 ## What was implemented
+- Moved body proportions to individual fighter Defense tabs; Base keeps shared scale and radii, with relative size benchmark 1. Individual size changes no longer version Base; old logs remain readable.
 - Replaced Marco benchmarks with current effective neutral Base values for core, punches, Defense, block and dodge.
 - Difference from Base shows signed absolute and percentage differences and refreshes while editing.
 - Added coverage for neutral Base geometry, uppercut damage, live Base changes, all optional punch fields and independence from Marco edits.

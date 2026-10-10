@@ -52,3 +52,5 @@ Run `npm run test:tuner:preview` for formula parity, the 80% benchmark, bar capp
 Defense exposes shared collision radii, fighter scale and all seven tuned body proportions (0.6 to 1.5, step 0.01). Fighter rows show scaled effective radii and signed Base comparisons; Base shows raw values and logs geometry changes. Reach and perceived bars react immediately to draft proportions. Defaults follow the owner-approved tune on main, including the 1.25 fighter scale and updated punch timing, reach and hit radii.
 
 All fighter properties compare with the current neutral Base: unit multipliers, zero frame offsets and body proportion 1. The Difference from Base column shows the signed absolute change and percentage change. Shared block/dodge rules have zero difference. Base tables keep raw values.
+
+Body proportions are edited only on the individual fighter Defense tabs, against Base = 1. Base Defense retains shared collision radii and the raw fighter scale. Individual proportions do not create new Base history revisions; older logs remain readable.

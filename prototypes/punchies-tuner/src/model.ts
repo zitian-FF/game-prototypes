@@ -25,7 +25,9 @@ export const punches = ['jab','cross','hook','uppercut'] as const;
 export const meta = metadata as unknown as Record<string,{min:number;max:number;step:number;desc:string}>;
 export const baseGroups=['health','stamina','stun','movement','body','hit','fatigue','stars','punches','guard','dodge'] as const;
 export const basePaths=Object.keys(meta).filter(path=>path==='view.fighterScale'||baseGroups.some(group=>path.startsWith(`${group}.`)));
-export function baseSnapshot(doc:Doc):Record<string,number>{return Object.fromEntries(basePaths.filter(path=>typeof getSafe(doc,path)==='number').map(path=>[path,get(doc,path)]));}
+// Accept previous logs containing body proportions, but new revisions track shared Base values only.
+const isSharedBase=(path:string)=>basePaths.includes(path)&&!path.startsWith('body.proportions.');
+export function baseSnapshot(doc:Doc):Record<string,number>{return Object.fromEntries(basePaths.filter(path=>isSharedBase(path)&&typeof getSafe(doc,path)==='number').map(path=>[path,get(doc,path)]));}
 export function baseVersion(doc:Doc):number{const versions=doc.balanceWorkshop?.baseHistory?.versions;return versions?.[versions.length-1]?.version??0;}
 function validateHistory(doc:Doc):void{
   if(doc.balanceWorkshop===undefined)return;
@@ -42,7 +44,7 @@ function validateHistory(doc:Doc):void{
   });
 }
 function recordBaseRevision(previous:Doc,next:Doc):void{
-  const edited=changes(previous,next).filter(path=>basePaths.includes(path));
+  const edited=changes(previous,next).filter(isSharedBase);
   if(!edited.length)return;
   const history=next.balanceWorkshop?.baseHistory??{format:1 as const,initial:baseSnapshot(previous),versions:[]};
   history.versions.push({version:history.versions.length+1,savedAt:new Date().toISOString(),changes:edited.map(path=>({path,before:get(previous,path),after:get(next,path)}))});

@@ -107,10 +107,9 @@ function render(){
   const table=makeTable();
   if(shared&&section==='history'){renderBaseHistory(main);}
   else if(section==='defense'){
-    main.append(el('p',shared?'Shared collision radii, fighter scale and raw per-fighter proportions. Changes are recorded in Base history.':'Body size scales reach and collision radii. In-game values include the shared fighter scale and selected body proportion.'));
+    main.append(el('p',shared?'Shared collision radii and raw fighter scale. Base is size 1 for all relative fighter comparisons.':'Body proportion is relative to Base = 1. Effective reach and collision radii include the shared Base fighter scale.'));
     for(const key of ['hurtRadius','coreRadius','vulnerableHurtRadius'])row(table,key,`body.${key}`,shared?get(draft,`body.${key}`):effective(draft,selected,'defense',key),baseEffective(draft,'defense',key));
-    row(table,'fighterScale','view.fighterScale',shared?draft.view.fighterScale:effective(draft,selected,'defense','fighterScale'),baseEffective(draft,'defense','fighterScale'));
-    if(shared)for(const char of characters)row(table,`${names[char].name} body proportion`,`body.proportions.${char}`,draft.body.proportions[char],1);
+    if(shared)row(table,'fighterScale','view.fighterScale',draft.view.fighterScale,draft.view.fighterScale);
     else row(table,'proportion',`body.proportions.${selected}`,effective(draft,selected,'defense','proportion'),baseEffective(draft,'defense','proportion'));
     main.append(table);if(shared)renderBaseHistory(main);
   }else if(shared){

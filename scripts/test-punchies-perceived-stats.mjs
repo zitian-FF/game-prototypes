@@ -24,7 +24,8 @@ assert(Math.abs(m.perceivedStats(sized,'mia').reach-m.perceivedStats(base,'mia')
 assert(Math.abs(m.effective(sized,'mia','jab','reach')-sized.punches.jab.reach*sized.characters.mia.jab.reach*sized.view.fighterScale*1.1)<1e-12);
 assert(Math.abs(m.effective(sized,'mia','defense','hurtRadius')-sized.body.hurtRadius*sized.view.fighterScale*1.1)<1e-12);
 assert.equal(m.effective(sized,'mia','defense','proportion'),1.1);
-const sizedSave=m.mergeSave(base,sized,base);assert.equal(m.baseVersion(sizedSave),1);assert.equal(sizedSave.balanceWorkshop.baseHistory.versions[0].changes[0].path,'body.proportions.mia');
+const sizedSave=m.mergeSave(base,sized,base);assert.equal(m.baseVersion(sizedSave),0,'Individual size edits do not version Base');assert.equal(sizedSave.body.proportions.mia,1.1);
+const legacy=m.defaults();legacy.balanceWorkshop={baseHistory:{format:1,initial:{'body.proportions.mia':.88},versions:[{version:1,savedAt:'2026-10-10T00:00:00Z',changes:[{path:'body.proportions.mia',before:.88,after:1.1}]}]}};assert.equal(m.baseVersion(m.parse(JSON.stringify(legacy))),1,'Previous logs remain readable');
 const scaled=m.defaults();m.set(scaled,'view.fighterScale',1.4);assert.equal(m.baseVersion(m.mergeSave(base,scaled,base)),1);
 for(const id of ['tyke','dragon','longan']){const d=m.defaults();m.setArchetype(d,`char.${id}.nick`,'New Style');assert.equal(m.archetypeValue(m.mergeSave(base,d,base),`char.${id}.nick`),'New Style');}
 const draft=m.defaults();m.setArchetype(draft,'char.mia.nick','Counter Specialist');
