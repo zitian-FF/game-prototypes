@@ -117,6 +117,14 @@ export function currentReach(p: PunchState): number {
   return start + (reach - start) * (into / (p.sourEarly + 1));
 }
 
+// An exhausted fighter still dodges, at reduced efficacy: fewer invincible frames and a shorter hop.
+export function dodgeEfficacy(f: Fighter): number {
+  return f.exhausted ? tune.dodge.exhaustedEfficacy : 1;
+}
+export function dodgeIFrames(f: Fighter): number {
+  return Math.round(tune.dodge.iFrames * dodgeEfficacy(f));
+}
+
 export function isVulnerable(f: Fighter): boolean {
   if (f.forceVulnerable) return true;
   // Committed to a punch: exposed during startup and recovery (including
@@ -128,13 +136,14 @@ export function isVulnerable(f: Fighter): boolean {
   if (f.postDodgeVulnerable > 0 || f.guardPenalty > 0) return true;
   if (f.stunTimer > 0) return true;
   if (f.exhausted) return true;
-  if (f.dodge && f.dodge.frame >= tune.dodge.iFrames) return true;
+  if (f.dodge && f.dodge.frame >= dodgeIFrames(f)) return true;
   return false;
 }
 
 export function stanceOf(f: Fighter): Stance {
-  if (f.exhausted) return 'vulnerable';
-  if (f.dodge && f.dodge.frame < tune.dodge.iFrames) return 'dodging';
+  if (f.dodge && f.dodge.frame < dodgeIFrames(f)) return 'dodging';
+  // Exhausted: guard works but has no Perfect Guard window, everything else is open.
+  if (f.exhausted) return f.guarding ? 'guard' : 'vulnerable';
   if (f.guarding) return f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
   return isVulnerable(f) ? 'vulnerable' : 'normal';
 }
@@ -172,7 +181,6 @@ function spendStamina(f: Fighter, amount: number): void {
   if (f.stamina <= 0) {
     f.exhausted = true;
     f.regenWait = 0;
-    lowerGuard(f);
   }
 }
 
@@ -261,19 +269,12 @@ function requestedAction(input: FrameInput): BufferedAction | null {
 
 // Refused actions must not start later after stamina regeneration.
 function rejectAction(f: Fighter, idx: number, action: BufferedAction, events: SimEvent[]): boolean {
-  if (f.exhausted) {
-    if (action !== 'dodge') return false;
-    events.push({ kind: 'staminaRejected', fighter: idx });
-    f.buffered = null;
-    f.bufferFrames = 0;
-    return true;
-  }
   if (action === 'dodge' && f.postDodgeVulnerable > 0) {
     f.buffered = null;
     f.bufferFrames = 0;
     return true;
   }
-  if (action === 'dodge' && !f.infiniteStamina && f.stamina < tune.dodge.staminaCost) {
+  if (action === 'dodge' && !f.exhausted && !f.infiniteStamina && f.stamina < tune.dodge.staminaCost) {
     events.push({ kind: 'staminaRejected', fighter: idx });
     f.buffered = null;
     f.bufferFrames = 0;
@@ -298,8 +299,6 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
 
 function processInput(s: SimState, idx: number, input: FrameInput, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  if (input.guard && f.exhausted) events.push({ kind: 'staminaRejected', fighter: idx });
-
   const req = requestedAction(input);
   if (req && !rejectAction(f, idx, req, events)) {
     f.buffered = req;
@@ -314,7 +313,7 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
     }
   }
 
-  const canGuard = canAct(f) && f.stunTimer <= 0 && !f.exhausted && f.guardPenalty <= 0;
+  const canGuard = canAct(f) && f.stunTimer <= 0 && f.guardPenalty <= 0;
   if (input.guard && canGuard) {
     if (!f.guarding) {
       f.guarding = true;
@@ -343,8 +342,9 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     }
   }
   if (f.dodge) {
-    f.x += f.dodge.dx * tune.dodge.speed * dt;
-    f.y += f.dodge.dy * tune.dodge.speed * dt;
+    const speed = tune.dodge.speed * dodgeEfficacy(f);
+    f.x += f.dodge.dx * speed * dt;
+    f.y += f.dodge.dy * speed * dt;
     return;
   }
   if (f.anchored || shoved) return;
@@ -447,7 +447,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     const dy = def.y - pt.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > hurtRadius(def) + hitR) continue;
-    if (!def.exhausted && def.dodge && def.dodge.frame < tune.dodge.iFrames) {
+    if (def.dodge && def.dodge.frame < dodgeIFrames(def)) {
       p.resolved = true;
       events.push({ kind: 'dodged', attacker: i, x: pt.x, y: pt.y });
       continue;
@@ -490,7 +490,7 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushLock = Math.max(def.pushLock, tune.hit.pushLockFrames);
 }
 
-function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
+function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defRecovery: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
@@ -529,11 +529,13 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     spendStamina(att, tune.hit.attackerStaminaPenalty);
     // Blocked is contact, not a whiff: the star chain is kept.
     p.connected = true;
-    // Hooks wrap around a High Guard: chip damage (anti-turtle).
+    // Hooks wrap around a High Guard: chip damage (anti-turtle). An exhausted
+    // guard is chipped by every punch that it can block.
     let chip = 0;
-    if (p.type === 'hook') {
-      const full = punchCfg(att, 'hook').damage * damageMult;
-      chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * tune.punches.hook.guardChipMult;
+    if (p.type === 'hook' || def.exhausted) {
+      const full = cfg.damage * damageMult;
+      const share = def.exhausted ? tune.guard.exhaustedChipMult : tune.punches.hook.guardChipMult;
+      chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * share;
       def.health = Math.max(0, def.health - chip);
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
     }
@@ -568,8 +570,11 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // Counter (x1.5 damage and stun, double hit-stop, bonus stars): a Cross or
   // Hook that catches a punch in startup, or any punch that catches a
   // defender in a guard-release or dodge penalty (a punish).
-  const punished = def.guardPenalty > 0 || def.postDodgeVulnerable > 0 || (!!def.dodge && def.dodge.frame >= tune.dodge.iFrames);
-  const counter = damage > 0 && (((p.type === 'cross' || p.type === 'hook') && defStartup[defIdx]) || punished);
+  const punished = def.guardPenalty > 0 || def.postDodgeVulnerable > 0 || (!!def.dodge && def.dodge.frame >= dodgeIFrames(def));
+  // Each punch says whether it counters a defender caught in startup and/or recovery.
+  const flags = tune.punches[p.type];
+  const catches = (flags.counterStartup > 0 && defStartup[defIdx]) || (flags.counterRecovery > 0 && defRecovery[defIdx]);
+  const counter = damage > 0 && (catches || punished);
   if (counter) damage *= tune.hit.counterDamageMult;
 
   p.connected = true;
@@ -735,7 +740,6 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     if (!f.infiniteStamina && f.stamina <= 0) {
       f.exhausted = true;
       f.regenWait = 0;
-      lowerGuard(f);
     }
   }
 
@@ -745,7 +749,6 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     s.hitstop--;
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i];
-      if (inputs[i].guard && f.exhausted) events.push({ kind: 'staminaRejected', fighter: i });
       if (f.exhausted) gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
       const req = requestedAction(inputs[i]);
       if (req && !rejectAction(s.fighters[i], i, req, events)) {
@@ -766,9 +769,10 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 
   const stances: Stance[] = [stanceOf(s.fighters[0]), stanceOf(s.fighters[1])];
   const inStartup = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'startup');
+  const inRecovery = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'recovery');
   const emergencyAttack = s.fighters.map((f) => f.exhausted);
   const contacts = detectContacts(s, events);
-  for (const c of contacts) resolveContact(s, c, stances, inStartup, emergencyAttack, events);
+  for (const c of contacts) resolveContact(s, c, stances, inStartup, inRecovery, emergencyAttack, events);
 
   advanceTimers(s, 0, inputs[0], events);
   advanceTimers(s, 1, inputs[1], events);
