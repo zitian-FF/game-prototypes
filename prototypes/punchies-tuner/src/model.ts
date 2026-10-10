@@ -25,6 +25,7 @@ export function parse(text:string):Doc {
   // Full files only: omitted fields must not silently revert to bundled defaults.
   function walk(schema:unknown,value:unknown,path:string){
     if(schema&&typeof schema==='object')for(const [key,v] of Object.entries(schema)){
+      if(path===''&&key==='balanceWorkshop')continue; // Preserve optional editor provenance without treating it as game values.
       if(!value||typeof value!=='object'||!Object.prototype.hasOwnProperty.call(value,key))throw Error(`Missing ${path}${key}`);
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }

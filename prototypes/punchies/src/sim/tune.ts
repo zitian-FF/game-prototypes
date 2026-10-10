@@ -42,6 +42,7 @@ export function onTuneReplaced(cb: () => void): void {
 function assignKnown(dst: Obj, src: Obj): number {
   let applied = 0;
   for (const k of Object.keys(dst)) {
+    if (k === 'balanceWorkshop') continue; // Editor history is provenance, not simulation tuning.
     const d = dst[k];
     const s = src[k];
     if (s === undefined) continue;
@@ -75,6 +76,7 @@ export function validateTuneJson(json: string): TuneCheck {
   const meta = tuneMeta as unknown as Record<string, Range | undefined>;
   const walk = (dst: Obj, src: Obj, path: string): string | null => {
     for (const k of Object.keys(dst)) {
+      if (!path && k === 'balanceWorkshop') continue; // Editor history is not simulation tuning.
       const d = dst[k];
       const v = src[k];
       if (v === undefined) continue;

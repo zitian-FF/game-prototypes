@@ -374,5 +374,11 @@
   "layouts.dpad_15": "D Right",
   "char.captain.nick": "Full Throttle",
   "quote.captain": "You saw the visor. You missed the finish line.",
-  "shop.item.fighter-captain.name": "CAPTAIN EAGLE"
+  "shop.item.fighter-captain.name": "CAPTAIN EAGLE",
+  "char.roxy.nick": "Firecracker",
+  "char.nadia.nick": "Rising Star",
+  "quote.roxy": "That was the warm-up. Want another round?",
+  "quote.nadia": "Small target. Big mistake.",
+  "shop.item.fighter-roxy.name": "ROXY",
+  "shop.item.fighter-nadia.name": "NADIA"
 }

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 const store=new Map();
 const storage={getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)};
-const ids=['marco','mia','bruno','tee','tyke','dragon','longan','captain'];
+const ids=Object.keys(JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).characters);
 const character={CHARACTER_IDS:ids,isCharId:id=>ids.includes(id)};
 const portalStore={store:{getItem:k=>storage.getItem(k)??null,setItem:(k,v)=>storage.setItem(k,v),removeItem:k=>storage.removeItem?.(k)}};
 const portalKeys={KEYS:{audio:'punchies:audio:v1',shop:'punchies:shop-preview:v1',tutorial:'punchies:tutorial:v1',chars:'punchies:chars:v1',localInputs:'punchies:localInputs:v1'}};
@@ -84,7 +84,7 @@ console.log('Training: fixed dummy ignores opponent input; selected owned boxer/
 
 const fresh=draft.newShopDraft();
 for(const id of palette.STARTER_SKINS){assert(draft.availablePool(fresh,"skins").some(i=>i.id===id));assert(!roster.ownedSkins(fresh,id.split("-")[1]).includes(id));}
-for(const id of ["tyke","dragon","longan","captain"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}
+for(const id of ["tyke","dragon","longan","captain","roxy","nadia"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}
 assert(draft.availablePool(fresh,"skins").some(i=>i.id==="skin-mia-flaming-kunoichi"&&i.skinType==="unique"));
 console.log("New fighters and alternate skins locked until acquired; unique Kunoichi reward in pool passed");
 
@@ -93,5 +93,5 @@ assert.equal(classic.skinType,'unique');assert.equal(classic.rigGroup,'marco_mcc
 assert(!roster.ownedSkins(fresh,'marco').includes(classic.id));
 assert(roster.ownedSkins({...fresh,owned:[classic.id]},'marco').includes(classic.id));
 const tune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'));
-assert.deepEqual(tune.characters.longan,tune.characters.marco);
+for(const id of ['roxy','nadia'])assert.deepEqual(tune.characters[id],tune.characters.marco);
 console.log('Outsource content: Longan acquisition, McClassic ownership and provisional baseline stats passed');

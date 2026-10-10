@@ -29,6 +29,8 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  roxy: {skin:0xf0a060,headOrigin:.49,headScale:1,torsoScale:1},
+  nadia: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
   captain: {skin:0x173b79,headOrigin:.49,headScale:1,torsoScale:1},
   longan: {skin:0xe9a26b,headOrigin:.5,headScale:1,torsoScale:1},
   tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1},

@@ -8,7 +8,7 @@ const {rosterSlots,rosterIds,horizontalRosterPick,verticalRosterPick}=load('prot
 const slots=rosterSlots();assert.equal(slots.length,30);assert.equal(new Set(slots.map(p=>`${p.x},${p.y}`)).size,30);
 const live=Object.keys(JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).characters);
 for(let i=0;i<live.length;i++)for(const d of [-1,1]){const next=verticalRosterPick(i,d);assert(next>=0&&next<live.length,'Future slots must never receive selection');}
-const future=rosterIds([...live,'roxy','nadia']);assert.equal(future[0],'tee');assert.equal(JSON.stringify(future.slice(3,8)),JSON.stringify(['marco','mia','bruno','roxy','nadia']));assert.equal(new Set(future.filter(Boolean)).size,live.length+2);
+const future=rosterIds([...new Set([...live,'roxy','nadia'])]);assert.equal(future[0],'tee');assert.equal(JSON.stringify(future.slice(3,8)),JSON.stringify(['marco','mia','bruno','roxy','nadia']));assert.equal(new Set(future.filter(Boolean)).size,new Set([...live,'roxy','nadia']).size);
 assert.equal(horizontalRosterPick(3,1),0);assert.equal(verticalRosterPick(3,1),1);
 const {bindButtonFeedback}=load('prototypes/punchies/src/ui/cartoonChrome.ts');
 const hit=new EventEmitter(),events=new EventEmitter(),data={};hit.scene={events};hit.input={enabled:true};hit.setData=(k,v)=>{data[k]=v;};const states=[];

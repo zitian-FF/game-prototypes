@@ -9,6 +9,8 @@ export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|
 // G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
+  {id:'fighter-roxy',name:'ROXY',kind:'fighters',boxer:'roxy',accent:0xff761d,description:'Short orange hair, navy kit and orange gloves. Provisional stats.'},
+  {id:'fighter-nadia',name:'NADIA',kind:'fighters',boxer:'nadia',accent:0x7622bf,description:'Petite determined rising star, silver bun, violet kit and emerald gloves. Provisional stats.'},
   {id:'fighter-captain',name:'CAPTAIN EAGLE',kind:'fighters',boxer:'captain',accent:0xffce54,description:'Visored racer with eagle helmet, gold scarf and asymmetric armour. Provisional stats.'},
   {id:WELCOME_FIGHTER,name:'G.P. TEE',kind:'fighters',boxer:'tee',accent:0xee3159,description:'Explosive power and speed, low HP, stamina and stun resistance.'},
   {id:'fighter-longan',name:'LONGAN',kind:'fighters',boxer:'longan',accent:0x628958,description:'Tall Southeast Asian fighter with ivory handwraps and longan motifs. Provisional stats.'},

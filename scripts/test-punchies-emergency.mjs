@@ -78,7 +78,9 @@ for (const char of ['marco', 'mia', 'bruno']) for (const type of ['jab', 'cross'
 const lowDodge = state(); lowDodge.fighters[0].stamina = 1;
 assert.ok(step(lowDodge, [{ ...N, dodge: true }, N], false).some(e => e.kind === 'staminaRejected'));
 assert.equal(lowDodge.fighters[0].dodge, null);
-for (const [type, cost] of Object.entries({ jab: 4.8, cross: 10.8, hook: 8.4, uppercut: 12 })) near(tune.punches[type].staminaCost, cost);
+// Cross was subsequently tuned to 10 by the owner; the other action costs
+// retain the earlier 20% increase.
+for (const [type, cost] of Object.entries({ jab: 4.8, cross: 10, hook: 8.4, uppercut: 12 })) near(tune.punches[type].staminaCost, cost);
 near(tune.dodge.staminaCost, 17.28); near(tune.guard.staminaDrainPerSec, 7.2);
 
 function hit(type, emergencyAtt, emergencyDef, counter = false, buff = false, fatigued = false) {

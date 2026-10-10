@@ -31,14 +31,16 @@ export class ShopScene extends Phaser.Scene {
   create(){track('shop','shop','open');this.notice=t('shop.tap_a_chest_to_inspect');this.adSeen=false;sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
   update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(!this.reveal&&this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
   private persist(){if(!saveShopDraft(this.state))this.notice=t('shop.storage_unavailable_this_preview_will');}
-  private text(x:number,y:number,label:string,size=14,color='#fff3da'){
-    const t=this.add.text(x,y,label,{fontFamily:'Arial Black, Arial',fontSize:size,fontStyle:'bold',color,stroke:'#081225',strokeThickness:size>=14?3:1,resolution:PIXEL_RATIO});this.root.add(t);return t;
+  private text(x:number,y:number,label:string,size=14,color='#fff3da',maxWidth?:number){
+    const t=this.add.text(x,y,label,{fontFamily:'Arial Black, Arial',fontSize:size,fontStyle:'bold',color,stroke:'#081225',strokeThickness:size>=14?3:1,resolution:PIXEL_RATIO});
+    if(maxWidth&&t.width>maxWidth)t.setScale(maxWidth/t.width);
+    this.root.add(t);return t;
   }
   private panel(x:number,y:number,w:number,h:number,color=0x28517d){const g=this.add.graphics();cartoonPanel(g,x,y,w,h,color,11);this.root.add(g);}
   private hit(x:number,y:number,w:number,h:number,fn:()=>void,depth=0){const hit=this.add.rectangle(x+w/2,y+h/2,w,h,0,0).setDepth(depth).setInteractive({useHandCursor:true}).on('pointerdown',fn);this.root.add(hit);navRegister(this,hit,fn);return hit;}
   private button(x:number,y:number,w:number,label:string,fn:()=>void,enabled=true,depth=0,tone:'green'|'purple'|'gold'|'blue'='green'){
     const g=this.add.graphics();const color=!enabled?0x435271:tone==='purple'?0x9c4edf:tone==='gold'?0xe8a72d:tone==='blue'?0x268eda:0x28af70;cartoonButton(g,x,y,w,32,color,9);this.root.add(g);
-    this.text(x+w/2,y+16,label,12,enabled?'#fff5de':'#8e9ba9').setOrigin(.5).setStroke('#23415a',0).setShadow(0,2,'#23415a',1,true,true);
+    this.text(x+w/2,y+16,label,12,enabled?'#fff5de':'#8e9ba9',w-16).setOrigin(.5).setStroke('#23415a',0).setShadow(0,2,'#23415a',1,true,true);
     if(enabled){const hit=this.hit(x,y,w,32,fn,depth);hit.off('pointerdown',fn);bindButtonFeedback(hit,state=>{g.clear();cartoonButton(g,x,y+(state==='pressed'?2:0),w,32,color,9);if(state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(x,y,w,32,9);});hit.on('pointerup',()=>{if(hit.getData('buttonReleasedInside'))fn();});}
   }
   /** Rewarded ad for a token. The reward is granted only when the portal reports 'rewarded'. */
@@ -114,17 +116,17 @@ export class ShopScene extends Phaser.Scene {
   }
   private render(){
     this.rays=[];this.root?.destroy(true);const scale=Math.min(VIEW.width/844,VIEW.height/390);this.root=this.add.container(VIEW.cx-422*scale,VIEW.cy-195*scale).setScale(scale).setDepth(100);
-    this.text(25,14,t('shop.punchies_shop'),26);this.text(26,46,t('shop.local_preview_daily_chests_reset'),10,'#9fbbd4');
+    this.text(25,14,t('shop.punchies_shop'),26,'#fff3da',260);this.text(26,46,t('shop.local_preview_daily_chests_reset'),10,'#9fbbd4');
     this.root.add(punchToken(this,650,29,12,100));this.text(673,18,String(this.state.tokens),22);this.button(737,13,83,t('common.back'),()=>startScreen(this,'Menu'),true,0,'blue');
     // Test scaffold (test build or ?debug=1): jump to TEST_TOKENS tokens to test the chests.
     if(TEST_BUILD||isDebug())this.button(300,13,100,t('shop.debug_tokens'),()=>{this.state={...this.state,tokens:TEST_TOKENS};this.persist();this.render();},true,0,'purple');
     [25,291,557].forEach((x,i)=>this.panel(x,72,262,266,[0x236f9a,0x59398b,0x826027][i]));
-    this.text(156,89,t('shop.earn_tokens'),19).setOrigin(.5,0);
-    this.text(422,89,t('shop.skin_chest'),19,'#d6b4ff').setOrigin(.5,0);this.text(688,89,t('shop.fighter_chest'),19,'#ffdb78').setOrigin(.5,0);
+    this.text(156,89,t('shop.earn_tokens'),19,'#fff3da',244).setOrigin(.5,0);
+    this.text(422,89,t('shop.skin_chest'),19,'#d6b4ff',244).setOrigin(.5,0);this.text(688,89,t('shop.fighter_chest'),19,'#ffdb78',244).setOrigin(.5,0);
     const rewardKey=artKey(this,'reward_ad_base');
     if(rewardKey){const icon=this.add.image(156,167,rewardKey);icon.setScale(120/Math.max(icon.width,icon.height));this.root.add(icon);}
     else this.root.add(punchToken(this,156,165,38,100));
-    this.text(156,217,t('shop.watch_an_ad_get_1'),15,'#ffdc72').setOrigin(.5,0).setAlign('center');
+    this.text(156,217,t('shop.watch_an_ad_get_1'),15,'#ffdc72',244).setOrigin(.5,0).setAlign('center');
     this.text(156,262,t('shop.rewards_today', { n: this.state.adsToday, max: shopConfig.dailyAdLimit }),11,'#a8c1d8').setOrigin(.5,0);
     if(portal.ads.available&&!this.adSeen){this.adSeen=true;track('rewarded','shop_token','visible');}
     this.button(39,291,234,!portal.ads.available?t('shop.ads_unavailable'):portal.ads.kind==='preview'?t('shop.preview_ad_1_token'):t('shop.watch_ad_1_token'),()=>void this.watchAd(),portal.ads.available&&!this.adBusy&&this.state.adsToday<shopConfig.dailyAdLimit);

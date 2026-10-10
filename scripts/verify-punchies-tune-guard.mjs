@@ -9,8 +9,12 @@ const meta = JSON.parse(readFileSync('prototypes/punchies/tune.meta.json', 'utf8
 const live = JSON.parse(JSON.stringify(tune));
 assert.equal(validateTuneJson(JSON.stringify(live)).ok, true, 'the shipped tune must validate');
 
-// Every numeric value in tune.json has a range and sits inside it.
-const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? flat(v, `${p}${k}.`) : typeof v === 'number' ? [[`${p}${k}`, v]] : []));
+// Workshop history is provenance, not a simulation parameter. Every actual
+// numeric parameter still needs a range and must sit inside it.
+const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => !p && k === 'balanceWorkshop' ? [] : (v && typeof v === 'object' ? flat(v, `${p}${k}.`) : typeof v === 'number' ? [[`${p}${k}`, v]] : []));
+const withHistory = structuredClone(live);
+withHistory.balanceWorkshop = { baseHistory: { format: 999, values: { example: 1e20 } } };
+assert.equal(validateTuneJson(JSON.stringify(withHistory)).ok, true, 'editor provenance does not enter simulation range validation');
 for (const [k, v] of flat(live)) {
   assert.ok(meta[k] && typeof meta[k].min === 'number' && typeof meta[k].max === 'number', `${k} has no range in tune.meta.json`);
   assert.ok(v >= meta[k].min && v <= meta[k].max, `${k}=${v} is outside ${meta[k].min}..${meta[k].max}`);

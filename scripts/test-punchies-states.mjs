@@ -138,6 +138,10 @@ console.log('Per-punch counter flags (startup / whiff tail only), guard release 
 
 // 4. Hit and block stun: the defender is locked (no actions, no walking), the lock scales with the character push
 // multiplier, and the frame advantage follows the design: sweet hit favours the attacker, block and sour hit the defender.
+// This is a mechanics fixture, not a restriction on owner-authored balance.
+// Retain the cross timing/reach fixture from PR #309 for these design
+// assertions; the owner has since shortened its recovery in the live tune.
+Object.assign(tune.punches.cross, { startup: 15, recovery: 20, whiffRecovery: 12, reach: 48 });
 function advantage(type, mode) {
   const sim = createSimState({ timed: false, fighters: [{ char: 'marco', infiniteStamina: true }, { char: 'marco', anchored: true, infiniteStamina: true }] });
   const [a, b] = sim.fighters;

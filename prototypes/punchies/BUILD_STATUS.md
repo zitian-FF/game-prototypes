@@ -1,12 +1,12 @@
 ## Current milestone
-Settings language selection implemented and validated.
+Roxy, Nadia and all six language choices prepared for live deployment.
 ## What was implemented
-Language button beside Input Setup in shared main-menu and in-game Settings. Picker highlights the current language, saves choices through the existing portal store, and Back returns to Settings. A single available language is centered.
+Roxy and Nadia have independent portraits and overhead rigs, mirrored glove/foot aliases, locked fighter-pool entries, tuning metadata and the reserved second-row roster positions. Settings now offers English, Japanese, Korean, Chinese, Spanish and Arabic through 382-string frozen locale tables imported from the private translation Sheet. Longer shop and button labels fit their available widths.
 ## Key technical decisions
-Reuse the build-time Google Sheet locale pipeline and English fallback. Offer only populated languages in production. Language selection in GameMenu never restarts the active fight; existing gameplay labels refresh on their next scene creation.
+Preserve all existing owner tuning and workshop history. New fighter balance starts from Marco pending owner tuning; Nadia uses petite proportions. Verify both R2 art uploads by SHA-256. Pack repetitive tune metadata and locale tables without changing runtime values; standalone packages omit editor-only history and duplicate embedded art indexes. Keep source masters and recoverable source archives outside Git and shipping bundles.
 ## Open questions
-None for this UI change.
+Native-language copy review and distinct Roxy/Nadia balancing remain future work.
 ## Known issues
-Non-English locale files remain empty pending the private Sheet refresh and CSV import; English is currently the only production choice.
+Remaining machine-translated copy is not native-reviewed. The private Sheet is not published or exposed for automated unauthenticated imports. Compact delivery has little budget headroom and must retain its mandatory 10 MB gate.
 ## Next proposed step
-Complete the translation Sheet/import handoff and review Japanese, Korean, Chinese, Spanish and Arabic layouts before making those languages available.
+Merge the validated release, verify itch.io deployment and the published tuning roster, then hand off native copy review and fighter balancing.
