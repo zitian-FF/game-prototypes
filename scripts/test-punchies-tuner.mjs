@@ -25,3 +25,8 @@ assert.deepEqual(characters,['marco','mia','bruno','tee','tyke','dragon','longan
 for(const id of characters){assert(names[id]?.name);for(const key of ['hp','stamina','stun','speed','regen']){assert(meta['characters.'+id+'.'+key]);assert(Number.isFinite(effective(base,id,'core',key)));}}
 const longan=defaults();set(longan,'characters.longan.hp',.9);assert.equal(effective(longan,'longan','core','hp'),90);assert.equal(effective(base,'longan','core','hp'),100);
 console.log('PASS: seven-fighter roster matches game; metadata and editable Longan baseline available');
+
+for(const p of ['jab','cross','hook','uppercut']){assert(meta['punches.'+p+'.counterWhiff']);assert(!meta['punches.'+p+'.counterRecovery']);assert(Number.isFinite(effective(base,'bruno',p,'hitStun')));}
+assert.equal(effective(base,'bruno','cross','hitStun'),Math.round(base.punches.cross.hitStun*base.characters.bruno.cross.push));
+assert(meta['movement.lockMoveMult']);assert(!meta['hit.pushLockFrames']);
+console.log('PASS: current counter keys, push-derived hit stun and movement lock metadata');

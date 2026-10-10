@@ -116,6 +116,7 @@ jobs:
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
         run: |
           node scripts/test-punchies-audio.mjs
+          node scripts/test-punchies-combat-audio.mjs
           node scripts/test-punchies-music.mjs
           node scripts/test-punchies-stingers.mjs
           node scripts/test-punchies-feedback.mjs
@@ -128,6 +129,8 @@ jobs:
           node scripts/test-punchies-progress.mjs
           node scripts/test-punchies-alias.mjs
           node scripts/test-punchies-starter-skins.mjs
+          node scripts/test-punchies-material-masks.mjs
+          node scripts/test-punchies-leg-motion.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
           node scripts/test-punchies-states.mjs

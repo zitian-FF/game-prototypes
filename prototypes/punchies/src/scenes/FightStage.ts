@@ -10,6 +10,8 @@ import { addGameMenu } from '../ui/gameMenu';
 import { trackFightScene } from '../portal/gameplay';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
+import { MovementSound } from '../audio/movementSound';
+import { stopCombatSounds } from '../audio/sfx';
 import { KoAnim } from '../render/KoAnim';
 import { MatchIntro, knockoutWords } from '../ui/fightPresentation';
 import { TICK_RATE } from '../sim/tune';
@@ -34,6 +36,7 @@ export class FightStage {
   private info: InfoPanel;
   private views: [FighterView, FighterView];
   private fx: Effects;
+  private movementSound = new MovementSound();
   private ko: KoAnim;
   private ring: Phaser.GameObjects.Graphics;
   private floor: Phaser.GameObjects.Image | null;
@@ -83,6 +86,9 @@ export class FightStage {
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
     this.ko.skins=this.skins;
     this.fx = new Effects(scene);
+    scene.events.once('shutdown', stopCombatSounds);
+    scene.events.on('pause', stopCombatSounds);
+    scene.events.once('shutdown', () => scene.events.off('pause', stopCombatSounds));
     this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, tune.view.flashMs, zone);
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
@@ -167,6 +173,7 @@ export class FightStage {
   // predicted KO that gets rolled back never starts the animation.
   private lastDrawTick: number | null = null;
   draw(s: SimState, time: number, koAllowed = true): void {
+    this.movementSound.update(s);
     if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
     this.lastDrawTick=s.tick;
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));

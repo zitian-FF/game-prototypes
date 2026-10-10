@@ -41,7 +41,7 @@ export class Effects {
     if (e.damage <= 0) {
       this.puff(e.x, e.y);
       this.label(e.x, e.y - 22, 'absorbed', '#bbbbbb', 10);
-      sfx.sour();
+      sfx.impact(e.punch, false, false);
       return;
     }
 
@@ -53,18 +53,17 @@ export class Effects {
     const def = s.fighters[defIdx];
     this.damageNumber(def.x, def.y - 34, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
 
+    sfx.impact(e.punch, e.sweet, e.row === 'vulnerable');
+    if (e.counter) sfx.counter();
     if (dealt) {
       cam.shake(big ? 150 : 70, (big ? 0.009 : 0.003) * tune.view.cameraShakeScale);
       if (e.counter) {
         this.shakyLabel(e.x, e.y - 34, t('fx.counter'), '#ffe03a', 22);
         this.screenFlash(0xffffff, 0.3);
-        sfx.counter();
       } else if (e.sweet) {
         this.label(e.x, e.y - 26, e.row === 'vulnerable' ? t('fx.sweet') : t('fx.sweet_body'), '#ffe03a', 12);
-        sfx.sweet();
       } else {
         this.label(e.x, e.y - 22, 'sour', '#bbbbbb', 10);
-        sfx.sour();
       }
     } else {
       cam.shake(big ? 220 : 120, (big ? 0.014 : 0.007) * tune.view.cameraShakeScale);
@@ -76,9 +75,6 @@ export class Effects {
       }
       if (e.counter) {
         this.shakyLabel(e.x, e.y - 34, t('fx.punished'), '#ff3a3a', 22);
-        sfx.hurtBig();
-      } else {
-        sfx.hurt();
       }
     }
     if (e.buffed) this.label(e.x, e.y - 48, t('fx.power'), '#ff9a3a', 13);
@@ -186,7 +182,7 @@ export class Effects {
           if (localIdx === -1 || e.fighter === localIdx) sfx.denied();
           break;
         case 'throw': {
-          sfx.whoosh();
+          sfx.swing(e.punch);
           // Subtle cue that this punch type is fatigued (slower, weaker).
           if (e.tired) {
             const f = s.fighters[e.attacker];
@@ -199,7 +195,7 @@ export class Effects {
           break;
         case 'block':
           this.label(e.x, e.y - 22, e.chip > 0 ? t('fx.chip', { n: e.chip.toFixed(1) }) : t('fx.block'), e.chip > 0 ? '#ffb03a' : '#3ad0c0', 11);
-          sfx.block();
+          sfx.block(e.sweet);
           break;
         case 'perfectGuard':
           this.screenFlash(0xffffff, 0.25);
@@ -208,7 +204,7 @@ export class Effects {
           break;
         case 'dodged':
           this.label(e.x, e.y - 20, 'dodged', '#b89aff', 11);
-          sfx.dodge();
+          sfx.evade();
           break;
         case 'whiff': {
           const f = s.fighters[e.attacker];
