@@ -4,12 +4,13 @@ import { t } from '../i18n';
 import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
 import { skinReady } from '../render/skins';
 import { CharacterSelectView } from '../ui/CharacterSelectView';
+import {perceivedStats,perceivedStatKeys} from '../sim/perceivedStats';
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { charTune, punchCfg, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
+import { CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
@@ -44,27 +45,10 @@ export interface CharSelectData {
 // Bar fill per stat: today's base tune sits at 80%. Each bar is the plain
 // average of the multipliers behind it. Dash distance is the same for every
 // fighter today (no per-character override), so it is left out of Speed.
-const mean = (xs: number[]) => xs.reduce((n, x) => n + x, 0) / xs.length;
 function stats(id: CharId): [string, number][] {
-  const c = charTune(id);
-  const types = ['jab', 'cross', 'hook', 'uppercut'] as const;
-  // Hand speed vs the unmodified base frames (Marco carries no frame deltas).
-  let frames = 0;
-  let base = 0;
-  for (const t of types) {
-    const p = tune.punches[t];
-    base += p.startup + p.recovery;
-    frames += Math.max(1, p.startup + c[t].startup) + Math.max(1, p.recovery + c[t].recovery);
-  }
-  // Reach includes the fighter's body proportions, relative to a unit-scale fighter.
-  const reach = mean(types.map((t) => punchCfg(id, t).reach / (tune.punches[t].reach * tune.view.fighterScale)));
-  return [
-    [t('charselect.health'), c.hp],
-    [t('charselect.endurance'), mean([c.stamina, c.stun])],
-    [t('charselect.speed'), mean([c.speed, base / frames])],
-    [t('charselect.power'), mean(types.map((t) => c[t].damage))],
-    [t('charselect.reach'), reach],
-  ];
+  const values=perceivedStats(tune,id);
+  const labels={health:t('charselect.health'),endurance:t('charselect.endurance'),speed:t('charselect.speed'),power:t('charselect.power'),reach:t('charselect.reach')};
+  return perceivedStatKeys.map(key=>[labels[key],values[key]]);
 }
 
 interface Side {

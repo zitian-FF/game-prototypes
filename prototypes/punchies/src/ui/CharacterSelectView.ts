@@ -5,6 +5,7 @@ import { artKey } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { CHARACTER_IDS, CHARACTER_INFO, type CharId } from '../sim/character';
 import { tune } from '../sim/tune';
+import {statBarFill} from '../sim/perceivedStats';
 import { reducedMotion } from './presentation';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from './cartoonChrome';
 interface PanelState {
@@ -75,7 +76,7 @@ export class CharacterSelectView {
   hit.on('pointerup',()=>{if(hit.getData('buttonReleasedInside'))tap();});text.setData('chrome',g).setData('hit',hit);return text;
  }
  render(state:SelectionState):void{
-  const signature=JSON.stringify(state);if(signature===this.previous)return;this.previous=signature;
+  const signature=JSON.stringify([state,state.panels.map(p=>t('char.'+p.id+'.nick'))]);if(signature===this.previous)return;this.previous=signature;
   const g=this.chrome;g.clear();g.lineStyle(5,0x167cff).lineBetween(260,51,422,51);g.lineStyle(5,0xef3545).lineBetween(422,51,586,51);
   this.progress.forEach((text,i)=>{const active=state.step===i,complete=i<state.step;g.lineStyle(active?3:1,active?0x5bd8ff:complete?0x6bcba5:0x526078).lineBetween(242+i*132,89,338+i*132,89);text.setText((complete?'✓':i+1)+'  '+state.steps[i]).setColor(active?'#77ddff':complete?'#9dddc3':'#9fb0ca');});
   this.format.setText(t('charselect.best_of',{n:state.bestOf}));this.setButtonVisible(this.format,!state.training);
@@ -86,7 +87,7 @@ export class CharacterSelectView {
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
    this.panelHits[s].input!.enabled=!p.dummy;
-   const key=JSON.stringify([p.dummy,p.id,p.hidden,p.stats,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
+   const key=JSON.stringify([p.dummy,p.id,p.hidden,p.stats,p.skin,p.selected,p.skinIndex,p.skinCount,p.status,t('char.'+p.id+'.nick')]);
    if(key!==this.panelKeys[s]){const changed=this.panelKeys[s]!=='';this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
     if(changed&&!reducedMotion()){
      const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
@@ -122,7 +123,7 @@ export class CharacterSelectView {
   }
   const title=p.dummy?t('common.dummy'):CHARACTER_INFO[p.id].name.toUpperCase();const text=this.text(parent,centre,321,title,16);if(text.width>186)text.setScale(186/text.width);
   this.text(parent,centre,338,p.dummy?t('training.practice_target'):t('char.'+p.id+'.nick')+' · '+p.label,9,s===0?'#8ddaff':'#ff9eae');
-  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,10).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value*.8))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
+  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,10).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=statBarFill(value)*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
   if(p.selected&&p.available&&!p.dummy){this.text(parent,centre,356,p.skinName+' '+p.skinIndex+'/'+p.skinCount,8,'#fff1a8');[-1,1].forEach(d=>{const a=this.text(parent,centre+d*89,356,d<0?'‹':'›',19);a.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));});}
  }
 }

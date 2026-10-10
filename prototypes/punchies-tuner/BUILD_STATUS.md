@@ -1,12 +1,20 @@
 ## Current milestone
-Update live tuning workshop to the seven-fighter game roster.
+Workshop includes per-punch counter flags and exhausted guard/dodge tuning from main PR #306. PR #270 remains open.
+
 ## What was implemented
-Workshop roster uses the game's canonical fighter list: Marco, Mia, Bruno, G.P. Tee, Tyke, Dragon and Longan. Existing categories and Marco comparisons remain available for all fighters. Added roster, metadata and editable Longan baseline regression.
+- Counter Startup and Counter Recovery on all four punch tabs, with explicit 0/off and 1/on units and shared-rule descriptions.
+- Exhausted Chip Mult in Block and Exhausted Efficacy in Dodge, using current metadata ranges and defaults.
+- Save/roundtrip/conflict and unit coverage tests for the new fields.
+- Typecheck, production build, model/unit/history/HTTP/display/tune-guard checks passed. Brave verified counter controls and both exhausted settings with no console errors.
+
 ## Key technical decisions
-Unique and palette skins are cosmetic and share their fighter's stats. Longan's starting stats are provisional Marco values. No tuning values changed in this update.
+Counter flags remain shared punch rules and compare with Base. All new numeric fields participate in selective saves and Base history. Preserved owner-approved tune values, history and archetypes. No state-readability production work.
+
 ## Open questions
 None.
+
 ## Known issues
-Native local-file picker/permission flow still needs manual testing. Drafts based on older schemas may require reloading the current tune file.
+Native file-picker permissions remain manual; published workshop awaits the PR merge.
+
 ## Next proposed step
-Deploy the approved game stack and workshop to live; verify both deployment workflows and seven-fighter sidebar.
+Review the updated workshop and tune counter/exhausted rules.

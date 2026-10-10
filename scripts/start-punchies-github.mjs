@@ -1,0 +1,16 @@
+import {build as bundle} from 'esbuild';
+import {build} from 'vite';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {existsSync} from 'node:fs';
+import {createCompanion,githubCli} from './punchies-github-server.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+process.chdir(root);
+const staticDir=path.join(root,'.local/punchies-tuner');
+await build({configFile:false,root:path.join(root,'prototypes/punchies-tuner'),base:'/',build:{outDir:staticDir,emptyOutDir:true}});
+const result=await bundle({entryPoints:['prototypes/punchies-tuner/src/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const model=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+const windowsGh='C:/Users/Zitian/Documents/Codex/playdate-bootstrap/gh/bin/gh.exe';
+const server=createCompanion({api:githubCli(existsSync(windowsGh)?windowsGh:'gh'),model,staticDir});
+server.on('error',error=>{console.error(error.code==='EADDRINUSE'?'Port 5187 is already in use. Stop the previous workshop terminal and try again.':'Could not start the loopback companion.');process.exitCode=1;});
+server.listen(5187,'127.0.0.1',()=>console.log(`\nOpen in Brave: http://127.0.0.1:5187/\nLoad latest reads GitHub. Save commits to its default branch and triggers normal CI/deployments.\nLeave this terminal open; Ctrl+C stops the companion.`));

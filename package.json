@@ -19,6 +19,10 @@
     "pack:assets": "node scripts/pack-assets.js",
     "simulate": "node scripts/run-simulate.mjs",
     "build:punchies-playable": "vite build --config prototypes/punchies-playable/vite.config.ts",
+    "tuner:github": "node scripts/start-punchies-github.mjs",
+    "test:tuner:github": "node scripts/test-punchies-github.mjs",
+    "test:tuner:base": "node scripts/test-punchies-base-history.mjs",
+    "test:tuner:preview": "node scripts/test-punchies-perceived-stats.mjs",
     "build:punchies:standard": "npm run build:packages && node scripts/build-punchies-profile.mjs standard",
     "build:punchies:compact": "npm run build:packages && node scripts/build-punchies-profile.mjs compact"
   },

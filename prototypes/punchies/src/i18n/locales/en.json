@@ -1,4 +1,5 @@
 {
+  "char.base.nick": "Base",
   "ui.back_hint": "Esc / B: Back",
   "input.keyboard_left": "WASD: Move · J/K/L: Jab/Cross/Hook\nI: Uppercut · Space: Dodge · Shift: Guard",
   "input.keyboard_right": "Arrows: Move · Num 1/2/3: Jab/Cross/Hook\nNum 5: Uppercut · Num 0: Dodge · Num Enter: Guard",
