@@ -11,5 +11,4 @@ export const KEYS = {
   firstRun: 'punchies:firstrun:v1',
   progress: 'punchies:progress:v1',
   profile: 'punchies:profile:v1',
-  liveTranslations: 'punchies:translations-cache:v1',
 } as const;

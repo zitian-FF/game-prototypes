@@ -10,27 +10,18 @@ import en from './locales/en.json';
 export type Params = Record<string, string | number>;
 type Table = Record<string, string>;
 export type Coverage = Partial<Record<LangCode, number>>;
-export type LiveTables = Partial<Record<LangCode, Table>>;
 
 const english = en as Table;
 let table: Table = english;
 let current: LangCode | typeof PSEUDO = 'en';
 let loader: (code: LangCode) => Promise<Table> = async () => ({});
 let coverage: Coverage = {};
-let live: LiveTables = {};
 const listeners = new Set<(code: LangCode | typeof PSEUDO) => void>();
 
 export function setLocaleLoader(fn: (code: LangCode) => Promise<Table>, cov: Coverage): void {
   loader = fn;
   coverage = cov;
 }
-
-/** Test-build scaffold: translations read from the live Google Sheet. They win over the bundled files and make a language selectable. */
-export function setLiveTables(tables: LiveTables): void {
-  live = tables;
-}
-
-const covered = (code: LangCode): boolean => (coverage[code] ?? 0) > 0 || Object.keys(live[code] ?? {}).length > 0;
 
 function fill(text: string, params?: Params): string {
   if (!params) return text;
@@ -58,15 +49,13 @@ export function isRtl(): boolean { return LANGUAGES.find((l) => l.code === curre
 
 /** English plus every language that has translations. The picker only appears when this has more than one entry. */
 export function availableLanguages(includeAll = false): readonly (typeof LANGUAGES)[number][] {
-  return LANGUAGES.filter((l) => l.code === 'en' || includeAll || covered(l.code));
+  return LANGUAGES.filter((l) => l.code === 'en' || includeAll || (coverage[l.code] ?? 0) > 0);
 }
 
 export async function setLanguage(code: LangCode | typeof PSEUDO): Promise<void> {
   let next: Table = english;
   if (code !== 'en' && code !== PSEUDO) {
-    let bundled: Table = {};
-    try { bundled = await loader(code); } catch { bundled = {}; }
-    next = { ...bundled, ...(live[code] ?? {}) };
+    try { next = await loader(code); } catch { next = {}; }
   }
   table = next;
   current = code;
@@ -83,7 +72,7 @@ export function pickInitialLanguage(saved: string | null, portalLocale: string |
   const forced = new URLSearchParams(search).get('lang');
   if (forced === PSEUDO) return PSEUDO;
   if (isLangCode(forced)) return forced;
-  const usable = (c: LangCode | null): c is LangCode => c !== null && (c === 'en' || covered(c));
+  const usable = (c: LangCode | null): c is LangCode => c !== null && (c === 'en' || (coverage[c] ?? 0) > 0);
   if (isLangCode(saved) && usable(saved)) return saved;
   for (const locale of [portalLocale, browserLocale]) {
     const m = matchLocale(locale);

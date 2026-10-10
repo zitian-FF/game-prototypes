@@ -275,9 +275,17 @@ The itch.io Current WIP slot is a test build. Testing aids that a real player mu
 | "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | test build, or `?debug=1` |
 | Debug and tuning panel, hitboxes | `src/debug/debugPanel.ts` | `?debug=1` only (also fine to keep hidden in the final build) |
 | Reset save panel | `src/ui/resetSavePanel.ts` | Settings; decide whether the final build keeps it |
-| Live Google Sheet translations | `src/i18n/liveSheet.ts`, `liveSheet.json`, the `installLiveTranslations` call in `src/i18n/init.ts`, `KEYS.liveTranslations`, `scripts/test-punchies-i18n-live.mjs` | test build only (`?live=0` turns it off). The sheet must be shared "anyone with the link can view" |
 
-For the final build, freeze the sheet into `locales/*.json` first (see the translation pull below), review the translations, then remove the live loader. Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
+Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
+
+### Translations reach the build at build time
+
+Translations are built into the game and never fetched at runtime. The Google Sheet (English plus GOOGLETRANSLATE formulas for ja, ko, zh, es, ar) is the working copy; the game ships frozen `locales/*.json`.
+
+- A release build (`TEST_BUILD` is `false` in `src/testBuild.ts`) or a deploy started with the `pull_translations` input downloads the sheet as CSV (`scripts/i18n-sheet.mjs pull`, address in the `I18N_SHEET_URL` repository variable), validates it and packs it into that build. A release build stops if the download fails.
+- The "Pull Punchies translations" workflow, or `node scripts/i18n-sheet.mjs import <downloaded.csv>` after downloading the CSV in Brave, freezes the same files into the repository through a pull request.
+- The sheet must be readable by the CI download (link sharing or publish to the web). While the sheet is private, use the Brave download route.
+- Placeholders such as `{name}` must survive: the import keeps English for any cell that changes them. Reviewers fix the machine translations in the sheet.
 
 ## 9. Update log
 
@@ -295,4 +303,4 @@ For the final build, freeze the sheet into `locales/*.json` first (see the trans
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
 - 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
 - 2026-10-10: test-build scaffold flag added (Claude): `TEST_BUILD` shows a 999 token shop button on itch without `?debug=1`; removal list in section 8b.
-- 2026-10-10: live Google Sheet translations added for the test build (Claude): the game reads the sheet at boot (gviz CSV, 3 second timeout, cache, bundled files, English). Final builds still use frozen locales/*.json from the pull workflow. The sheet must be shared "anyone with the link can view"; it is currently private and still holds only the first 254 strings.
+- 2026-10-10: translations are packed into the build from the sheet's CSV on release builds or on request (Claude). A runtime live-sheet loader was tried and reverted: the game never reads the sheet at runtime.

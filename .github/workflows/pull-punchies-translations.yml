@@ -1,6 +1,6 @@
 name: Pull Punchies translations
 
-# Downloads the reviewed Google Sheet (published to the web as CSV), writes
+# Downloads the reviewed Google Sheet as CSV (link-shared or published to the web), writes
 # prototypes/punchies/src/i18n/locales/*.json and opens a pull request. The
 # game never reads the sheet at runtime: translations are frozen in the build.
 # The address comes from the repository variable I18N_SHEET_URL, or the input.
