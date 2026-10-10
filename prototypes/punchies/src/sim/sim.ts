@@ -218,6 +218,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     sweet: cfg.sweet,
     sour: cfg.sour,
     recovery: Math.max(1, Math.round(cfg.recovery * slow)),
+    whiffFrames: 0,
     reach: cfg.reach,
     startReach: cfg.reach * cfg.startReachFrac,
     damageMult,
@@ -492,7 +493,7 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushFrames = frames;
 }
 
-function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defRecovery: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
+function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defWhiff: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
@@ -573,11 +574,11 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // Counter (x1.5 damage and stun, double hit-stop, bonus stars): a Cross or
   // Hook that catches a punch in startup, or any punch that catches a
   // defender in a guard-release or dodge penalty (a punish).
-  const punished = def.guardPenalty > 0 || def.postDodgeVulnerable > 0 || (!!def.dodge && def.dodge.frame >= dodgeIFrames(def));
-  // Each punch says whether it counters a defender caught in startup and/or recovery.
+  // Each punch says whether it counters a defender caught in punch startup and/or the whiff
+  // tail of recovery. Guard release and dodge exposure only leave the defender vulnerable.
   const flags = tune.punches[p.type];
-  const catches = (flags.counterStartup > 0 && defStartup[defIdx]) || (flags.counterRecovery > 0 && defRecovery[defIdx]);
-  const counter = damage > 0 && (catches || punished);
+  const catches = (flags.counterStartup > 0 && defStartup[defIdx]) || (flags.counterWhiff > 0 && defWhiff[defIdx]);
+  const counter = damage > 0 && catches;
   if (counter) damage *= tune.hit.counterDamageMult;
 
   p.connected = true;
@@ -629,6 +630,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
       // Whiffing keeps the star chain (it used to reset it).
       // Whiff punish window, on top of normal recovery.
       p.recovery += tune.punches[p.type].whiffRecovery;
+      p.whiffFrames = tune.punches[p.type].whiffRecovery;
       events.push({ kind: 'whiff', attacker: idx, punch: p.type });
     }
     if (p.frame >= punchTotal(p)) f.punch = null;
@@ -775,10 +777,11 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 
   const stances: Stance[] = [stanceOf(s.fighters[0]), stanceOf(s.fighters[1])];
   const inStartup = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'startup');
-  const inRecovery = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'recovery');
+  // The tail of recovery that a whiff added: the window in which a counter still applies.
+  const inWhiff = s.fighters.map((f) => f.punch !== null && f.punch.whiffFrames > 0 && phaseOf(f.punch) === 'recovery' && f.punch.frame >= punchTotal(f.punch) - f.punch.whiffFrames);
   const emergencyAttack = s.fighters.map((f) => f.exhausted);
   const contacts = detectContacts(s, events);
-  for (const c of contacts) resolveContact(s, c, stances, inStartup, inRecovery, emergencyAttack, events);
+  for (const c of contacts) resolveContact(s, c, stances, inStartup, inWhiff, emergencyAttack, events);
 
   advanceTimers(s, 0, inputs[0], events);
   advanceTimers(s, 1, inputs[1], events);

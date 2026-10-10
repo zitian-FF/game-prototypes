@@ -172,7 +172,7 @@
   "punches": {
     "jab": {
       "counterStartup": 0,
-      "counterRecovery": 0,
+      "counterWhiff": 0,
       "hitStun": 10,
       "blockStun": 8,
       "sourStun": 8,
@@ -197,7 +197,7 @@
     },
     "cross": {
       "counterStartup": 1,
-      "counterRecovery": 1,
+      "counterWhiff": 1,
       "hitStun": 23,
       "blockStun": 17,
       "sourStun": 18,
@@ -222,7 +222,7 @@
     },
     "hook": {
       "counterStartup": 1,
-      "counterRecovery": 1,
+      "counterWhiff": 1,
       "hitStun": 14,
       "blockStun": 11,
       "sourStun": 10,
@@ -248,7 +248,7 @@
     },
     "uppercut": {
       "counterStartup": 0,
-      "counterRecovery": 1,
+      "counterWhiff": 1,
       "hitStun": 20,
       "blockStun": 0,
       "sourStun": 12,
@@ -272,7 +272,7 @@
   "hit": {
     "reducedDamageMult": 0.5,
     "attackerStaminaPenalty": 6,
-    "counterDamageMult": 1.5,
+    "counterDamageMult": 1.2,
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
     "pushFrames": 6,
@@ -319,7 +319,7 @@
   },
   "stars": {
     "max": 3,
-    "counterGain": 2
+    "counterGain": 1
   },
   "fatigue": {
     "perUse": 1,

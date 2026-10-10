@@ -196,7 +196,7 @@ export class InfoPanel {
       `Dodge: ${tune.dodge.iFrames}f invincible of ${tune.dodge.frames}f`,
       `Penalty: ${tune.dodge.vulnerableFrames}f, walk x${tune.dodge.penaltyMoveMult}, no dodge`,
       `Dodge then punch within ${tune.dodge.buffWindowFrames}f: x${tune.dodge.buffDamageMult} dmg`,
-      `Counter (per punch: startup / recovery): x${tune.hit.counterDamageMult}`,
+      `Counter (per punch: startup / whiff tail): x${tune.hit.counterDamageMult}`,
       `Round: ${tune.match.durationSec}s · HP ${tune.health.max}`,
     ]) {
       this.text(rx, ry, s, 9);

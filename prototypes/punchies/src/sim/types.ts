@@ -42,6 +42,8 @@ export interface PunchState {
   // Late sour: fist at full reach, past its sweet moment.
   sour: number;
   recovery: number;
+  // Extra recovery frames added when the punch whiffed (the tail of recovery).
+  whiffFrames: number;
   // Full reach and the reach it starts from (character-adjusted).
   reach: number;
   startReach: number;
