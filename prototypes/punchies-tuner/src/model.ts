@@ -105,12 +105,29 @@ export function effective(doc:Doc,char:CharId,section:string,key:string):number 
   }
   return get(doc,`${section}.${key}`);
 }
+/** Effective values for a neutral fighter: unit multipliers, zero frame offsets and unit body proportion. */
+export function baseEffective(doc:Doc,section:string,key:string):number {
+  if(section==='core')return ({hp:doc.health.max,stamina:doc.stamina.max,stun:doc.stun.threshold,speed:doc.movement.speed,regen:doc.stamina.regenIdlePerSec} as Record<string,number>)[key];
+  if(section==='defense'){
+    if(key==='proportion')return 1;
+    if(key==='fighterScale')return doc.view.fighterScale;
+    return get(doc,`body.${key}`)*doc.view.fighterScale;
+  }
+  if((punches as readonly string[]).includes(section)){
+    if(section==='uppercut'&&key==='damage')return doc.punches.cross.damage*doc.punches.uppercut.crossDamageMult;
+    const stored=get(doc,`punches.${section}.${key}`);
+    const value=stored??(['fatigueBars','fatigueSpeedPerBar','fatigueDamagePerBar'].includes(key)?0:stored);
+    return key==='reach'||key==='hitRadius'?value*doc.view.fighterScale:value;
+  }
+  return get(doc,`${section}.${key}`);
+}
+export function difference(value:number,base:number):string {
+  const amount=value-base;
+  return `${amount>0?'+':''}${Number(amount.toFixed(4))} (${delta(value,base)})`;
+}
 export function delta(value:number,base:number):string {
-  if(base===0)return value===0?'0%':'— (Marco = 0)';
+  if(base===0)return value===0?'0%':'— (Base = 0)';
   const percent=(value/base-1)*100;
   if(Math.abs(percent)<.05)return '0%';
   return `${percent>0?'+':''}${percent.toFixed(1)}%`;
 }
-
-
-

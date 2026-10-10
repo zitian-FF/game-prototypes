@@ -1,5 +1,5 @@
 import './style.css';
-import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta,mergeSave,baseVersion,archetypeValue,setArchetype,archetypeChanges,saveChanges } from './model';
+import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,baseEffective,difference,mergeSave,baseVersion,archetypeValue,setArchetype,archetypeChanges,saveChanges } from './model';
 import {perceivedStats,perceivedStatKeys,statBarFill} from '../../punchies/src/sim/perceivedStats';
 import english from '../../punchies/src/i18n/locales/en.json';
 import {saveOpened,type TuneFile as Handle} from './fileIO';
@@ -46,17 +46,17 @@ async function save(){
   const merged=await saveOpened(handle,base,draft);
   base=structuredClone(merged);draft=merged;message=`Saved ${handle.name}. Unrelated file changes were preserved. Commit/sync the file to update the game build.`;remember();render();
 }
-function row(table:HTMLTableElement,key:string,path:string|null,current:number,marco:number){
+function row(table:HTMLTableElement,key:string,path:string|null,current:number,benchmark:number){
   const tr=el('tr'),title=el('th',label(key));title.scope='row';const desc=path?meta[path]?.desc:'';if(desc){const small=el('small',desc);title.append(small);}tr.append(title);
   const edit=el('td');if(path){const range=meta[path],input=el('input');input.type='number';input.value=format(get(draft,path));input.min=String(range.min);input.max=String(range.max);input.step=String(range.step||'any');input.setAttribute('aria-label',`${section} ${label(key)} tune value`);
     input.oninput=()=>{try{if(input.value==='')throw Error('Enter a number');set(draft,path,Number(input.value));input.setCustomValidity('');remember();refreshRows.forEach(fn=>fn());status();}catch(e){input.setCustomValidity(String(e));message=String(e);status();}};input.onchange=()=>{if(input.validationMessage)input.reportValidity();};edit.append(input);
     const reset=button('↶',()=>{set(draft,path,get(base,path));remember();render();},'reset');reset.title='Reset this value to the opened file';reset.setAttribute('aria-label',`Reset ${label(key)}`);edit.append(reset);
   }else edit.append(el('span','Shared'));
   if(shared){tr.append(edit);table.append(tr);return;}
-  const currentCell=el('td',format(current)),marcoCell=el('td',format(marco));tr.append(edit,currentCell,marcoCell);const diff=el('td',delta(current,marco));diff.className=current===marco?'neutral':current>marco?'positive':'negative';tr.append(diff);table.append(tr);
-  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||section==='defense'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?effective(draft,'marco',section,key):value;currentCell.textContent=format(value);marcoCell.textContent=format(baseline);diff.textContent=delta(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
+  const currentCell=el('td',format(current)),baseCell=el('td',format(benchmark));tr.append(edit,currentCell,baseCell);const diff=el('td',difference(current,benchmark));diff.className=current===benchmark?'neutral':current>benchmark?'positive':'negative';tr.append(diff);table.append(tr);
+  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||section==='defense'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?baseEffective(draft,section,key):value;currentCell.textContent=format(value);baseCell.textContent=format(baseline);diff.textContent=difference(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
 }
-function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of shared?['Property','Raw value']:['Property','Tune value','In game','Marco','Difference'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
+function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of shared?['Property','Raw value']:['Property','Tune value','In game','Base','Difference from Base'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
 function renderPerceivedStats(main:HTMLElement){
   const id=shared?'base':selected,key=`char.${id}.nick`;
   const field=el('div');field.className='archetype-field';const title=el('label','Character archetype');title.htmlFor='archetype';
@@ -88,7 +88,7 @@ function renderBaseHistory(main:HTMLElement){
 function globalRows(table:HTMLTableElement,group:string,prefix=''){for(const key of Object.keys((draft as unknown as Record<string,Record<string,unknown>>)[group])){const path=`${group}.${key}`;if(typeof get(draft,path)==='number'&&meta[path])row(table,prefix+key,path,get(draft,path),get(draft,path));}}
 function render(){
   refreshRows=[];
-  app.replaceChildren();const header=el('header');const brand=el('div');brand.append(el('p','PUNCHIES / BALANCE WORKSHOP'),el('h1','Tune the next contender.'),el('p','Edit game values. Compare everyone against Marco.'));header.append(brand);
+  app.replaceChildren();const header=el('header');const brand=el('div');brand.append(el('p','PUNCHIES / BALANCE WORKSHOP'),el('h1','Tune the next contender.'),el('p','Edit game values. Compare every property against Base.'));header.append(brand);
   const actions=el('div');actions.className='actions';actions.append(button('Open tune.json',open,'primary'),button('Save to opened file',save),button('Download JSON',download));header.append(actions);app.append(header);
   if(githubMode){actions.prepend(button('Load latest',loadLatest,'primary'),button('Save to GitHub',saveGitHub),button('Check build status',checkBuilds));}
   const strip=el('div');strip.className='source';strip.append(el('span',source));const dirty=el('strong');dirty.id='dirty';strip.append(dirty);app.append(strip);
@@ -108,10 +108,10 @@ function render(){
   if(shared&&section==='history'){renderBaseHistory(main);}
   else if(section==='defense'){
     main.append(el('p',shared?'Shared collision radii, fighter scale and raw per-fighter proportions. Changes are recorded in Base history.':'Body size scales reach and collision radii. In-game values include the shared fighter scale and selected body proportion.'));
-    for(const key of ['hurtRadius','coreRadius','vulnerableHurtRadius'])row(table,key,`body.${key}`,shared?get(draft,`body.${key}`):effective(draft,selected,'defense',key),effective(draft,'marco','defense',key));
-    row(table,'fighterScale','view.fighterScale',shared?draft.view.fighterScale:effective(draft,selected,'defense','fighterScale'),effective(draft,'marco','defense','fighterScale'));
-    if(shared)for(const char of characters)row(table,`${names[char].name} body proportion`,`body.proportions.${char}`,draft.body.proportions[char],draft.body.proportions.marco);
-    else row(table,'proportion',`body.proportions.${selected}`,effective(draft,selected,'defense','proportion'),effective(draft,'marco','defense','proportion'));
+    for(const key of ['hurtRadius','coreRadius','vulnerableHurtRadius'])row(table,key,`body.${key}`,shared?get(draft,`body.${key}`):effective(draft,selected,'defense',key),baseEffective(draft,'defense',key));
+    row(table,'fighterScale','view.fighterScale',shared?draft.view.fighterScale:effective(draft,selected,'defense','fighterScale'),baseEffective(draft,'defense','fighterScale'));
+    if(shared)for(const char of characters)row(table,`${names[char].name} body proportion`,`body.proportions.${char}`,draft.body.proportions[char],1);
+    else row(table,'proportion',`body.proportions.${selected}`,effective(draft,selected,'defense','proportion'),baseEffective(draft,'defense','proportion'));
     main.append(table);if(shared)renderBaseHistory(main);
   }else if(shared){
     main.append(el('p','Base contains the shared raw game values. Every fighter applies its multipliers and frame offsets to these values. Ratios are shown as their stored decimals; no percentage comparison is used here.'));
@@ -121,12 +121,12 @@ function render(){
     renderBaseHistory(main);
   }else if(section==='core'){
     main.append(el('p','Tune values are character multipliers. In-game values include the shared base.'));
-    for(const key of ['hp','stamina','stun','speed','regen'])row(table,key,`characters.${selected}.${key}`,effective(draft,selected,'core',key),effective(draft,'marco','core',key));main.append(table);
+    for(const key of ['hp','stamina','stun','speed','regen'])row(table,key,`characters.${selected}.${key}`,effective(draft,selected,'core',key),baseEffective(draft,'core',key));main.append(table);
   }else if((punches as readonly string[]).includes(section)){
     main.append(el('p','Tune values are multipliers, except startup/recovery (added frames) and fatigue bars (added bars). Reach includes actual character size. Uppercut damage uses Cross base damage × uppercut factor × character uppercut multiplier.'));
     const cfgKeys=['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'];
-    for(const key of cfgKeys){const override=key==='pushHit'||key==='pushBlock'?'push':key;const path=`characters.${selected}.${section}.${override}`;row(table,key,meta[path]?path:null,effective(draft,selected,section,key),effective(draft,'marco',section,key));}main.append(table);
-  }else{main.append(el('p','Block and dodge currently share the same rules for every fighter. Edits here apply to everyone; differences from Marco are therefore 0%.'));globalRows(table,section);main.append(table);}
+    for(const key of cfgKeys){const override=key==='pushHit'||key==='pushBlock'?'push':key;const path=`characters.${selected}.${section}.${override}`;row(table,key,meta[path]?path:null,effective(draft,selected,section,key),baseEffective(draft,section,key));}main.append(table);
+  }else{main.append(el('p','Block and dodge currently share the same rules for every fighter. Edits here apply to everyone; differences from Base are therefore 0%.'));globalRows(table,section);main.append(table);}
   const changed=changes(base,draft),texts=archetypeChanges(base,draft);if(changed.length+texts.length){const details=el('details');details.append(el('summary',`Review ${changed.length+texts.length} edits`));const list=el('ul');for(const path of changed)list.append(el('li',`${path}: ${format(get(base,path))} → ${format(get(draft,path))}`));for(const key of texts)list.append(el('li',`${key}: ${archetypeValue(base,key)} → ${archetypeValue(draft,key)}`));details.append(list);main.append(details);}
   layout.append(main);app.append(layout);const footer=el('footer',githubMode?'Local GitHub mode: Load latest reads GitHub; Save to GitHub commits edited values using this PC’s GitHub CLI account. Normal CI/deployment follows. Credentials stay on the server.':'Files and drafts stay in this browser. No uploads, account access, or automatic GitHub commits. Save checks for conflicting edits.');app.append(footer);status();
   if(busy){for(const control of app.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,button'))control.disabled=true;note.textContent='Contacting GitHub…';}

@@ -1,6 +1,6 @@
 # Punchies Balance Workshop
 
-Standalone GitHub Pages web tool for ZeeTea to edit Punchies `tune.json`. Group each character's values into core (HP, stamina, stun resistance, movement), jab, cross, hook, uppercut, block and dodge. Show stored values, effective in-game values, Marco's effective values, and signed percentage differences. Include all current character stats and shared punch/block/dodge properties.
+Standalone GitHub Pages web tool for ZeeTea to edit Punchies `tune.json`. Group each character's values into core (HP, stamina, stun resistance, movement), jab, cross, hook, uppercut, block and dodge. Show stored values, effective in-game values, Base effective values, and signed percentage differences. Include all current character stats and shared punch/block/dodge properties.
 
 Use existing tune metadata for descriptions and allowed ranges and existing simulation formulas for calculated values. No game balance edits or localisation changes are part of this tool's implementation.
 
@@ -20,4 +20,6 @@ Run `npm run test:tuner:preview` for formula parity, the 80% benchmark, bar capp
 
 ## Tune schema sync (2026-10-10)
 
-Defense exposes shared collision radii, fighter scale and all seven tuned body proportions (0.6 to 1.5, step 0.01). Fighter rows show scaled effective radii and signed Marco comparisons; Base shows raw values and logs geometry changes. Reach and perceived bars react immediately to draft proportions. Defaults follow the owner-approved tune on main, including the 1.25 fighter scale and updated punch timing, reach and hit radii.
+Defense exposes shared collision radii, fighter scale and all seven tuned body proportions (0.6 to 1.5, step 0.01). Fighter rows show scaled effective radii and signed Base comparisons; Base shows raw values and logs geometry changes. Reach and perceived bars react immediately to draft proportions. Defaults follow the owner-approved tune on main, including the 1.25 fighter scale and updated punch timing, reach and hit radii.
+
+All fighter properties compare with the current neutral Base: unit multipliers, zero frame offsets and body proportion 1. The Difference from Base column shows the signed absolute change and percentage change. Shared block/dodge rules have zero difference. Base tables keep raw values.

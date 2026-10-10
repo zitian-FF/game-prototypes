@@ -1,21 +1,20 @@
 ## Current milestone
-Workshop synced with the seven-fighter roster and owner-approved tune changes through main 9ce9087. Implementation remains in PR #270 for review.
+Every fighter property compares with Base; existing PR #270 remains open for review.
 
 ## What was implemented
-- Defense category exposes shared hurt/core/vulnerable radii, fighter scale and per-fighter body proportions with current ranges and descriptions.
-- Effective reach, collision radii, Marco deltas and perceived bars follow tuned proportions; Base remains the 80% benchmark.
-- Preserved raw Base history, local/GitHub selective saves, archetype localisation and the latest game character-selection layout.
-- Updated regression coverage for draft geometry, versioning, all seven fighters and new roster archetype exports.
-- Verified typecheck, production build, workshop HTTP/file/model/history/display tests, geometry, localisation/export and tune guard. Brave confirmed live size updates, all seven raw proportions, Base at 80% and no console errors.
+- Replaced Marco benchmarks with current effective neutral Base values for core, punches, Defense, block and dodge.
+- Difference from Base shows signed absolute and percentage differences and refreshes while editing.
+- Added coverage for neutral Base geometry, uppercut damage, live Base changes, all optional punch fields and independence from Marco edits.
+- Verified typecheck, production build, model/display tests and every comparison category in Brave with no console errors.
 
 ## Key technical decisions
-Use current main tune.json and metadata without changing owner-approved values. Read perceived stats from the supplied draft, not a hardcoded proportions table or global live tune. Body proportions and fighter scale are Base geometry values and version with raw Base changes. Existing PR remains unmerged.
+Base uses unit multipliers, zero added frames and unit body proportion, while retaining shared fighter scale. Base tables remain raw. No tuning values changed.
 
 ## Open questions
-None for this tuner update. Progression/profile screens and portal work remain separate tasks.
+None.
 
 ## Known issues
-Physical file-picker permissions remain a manual check. Existing translations need review when English archetype wording changes. Real balance saves are not performed during development.
+Native file-picker permissions remain a manual check. Implementation is not yet merged into the published tool.
 
 ## Next proposed step
-Review the workshop PR and use Defense to tune body size alongside collision radii.
+Review the updated workshop PR and tune against Base.
