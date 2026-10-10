@@ -6,6 +6,8 @@ const config=JSON.parse(fs.readFileSync('prototypes/punchies/src/firstrun/firstf
 const exports={},saved={firstGiftDone:false};
 let done=0,gifts=0,reveals=0,awards=0,resumes=0;
 const modules={
+  '../input/devices':{devices:{lastSource:'touch',lastDevice:'touch'}},
+  '../ui/inputGlyph':{bindingLabel:()=> 'remapped'},
   phaser:{default:{Scene:class{}}},
   '../i18n':{t:key=>key},
   '../firstrun/firstfight.json':{default:config},

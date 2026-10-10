@@ -1,3 +1,5 @@
+import { bindingLabel } from '../ui/inputGlyph';
+import { devices } from '../input/devices';
 import Phaser from 'phaser';
 import { availableLanguages, t } from '../i18n';
 import { chooseLanguage } from '../i18n/init';
@@ -147,10 +149,12 @@ export class FirstFightScene extends Phaser.Scene {
   }
 
   private coachText(): string {
-    if (this.phase === 'jab') return t('firstfight.coach_jab');
-    if (this.phase === 'cross') return t('firstfight.coach_cross');
+    const source = devices.lastSource === 'touch' ? 'kb1' : devices.lastSource;
+    const binding = (action: 'jab' | 'cross') => devices.lastDevice === 'touch' ? action === 'jab' ? t('common.jab') : t('common.cross') : bindingLabel(source, action);
+    if (this.phase === 'jab') return t('layouts.coach_jab', { binding: binding('jab') });
+    if (this.phase === 'cross') return t('layouts.coach_cross', { binding: binding('cross') });
     if (this.phase === 'mix') return t('firstfight.coach_mix');
-    return t('firstfight.coach_move');
+    return t('layouts.coach_move', { binding: devices.lastDevice === 'touch' ? t('tutorial.the_joystick_left_side') : devices.lastDevice === 'gamepad' ? t('tutorial.the_left_stick') : ['up', 'left', 'down', 'right'].map(a => bindingLabel(source, a as 'up' | 'left' | 'down' | 'right')).join(' / ') });
   }
 
   private onHit(punch: string): void {
@@ -169,7 +173,7 @@ export class FirstFightScene extends Phaser.Scene {
     this.stage.pollDevices();
     const [player, opponent] = this.sim.fighters;
     if (this.phase === 'move' && Math.hypot(player.x - opponent.x, player.y - opponent.y) <= cfg.opponentJabRange) this.phase = 'jab';
-    this.coach.setText(this.coachText() + (time - this.lastPunchAt > cfg.idleHintMs && this.phase !== 'mix' && this.phase !== 'move' ? '\n' + t('firstfight.coach_move') : ''));
+    this.coach.setText(this.coachText() + (time - this.lastPunchAt > cfg.idleHintMs && this.phase !== 'mix' && this.phase !== 'move' ? '\n' + t('layouts.coach_close') : ''));
     if (!this.ending) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
       while (this.acc >= STEP_MS) {

@@ -1,20 +1,20 @@
 ## Current milestone
-All workshop tuning fields display units; PR #270 remains open for review.
+Workshop includes per-punch counter flags and exhausted guard/dodge tuning from main PR #306. PR #270 remains open.
 
 ## What was implemented
-- Stored-unit labels on every tuning control and units on effective values, Base comparisons and version history.
-- Distinguished HP damage, stamina damage, stun damage, frames, added frames, pixels, rates, ratios and multipliers.
-- Verified complete editable-field unit coverage, model regressions, typecheck and production build.
-- Brave checked every fighter/Base category with no console errors and captured the labelled punch table.
+- Counter Startup and Counter Recovery on all four punch tabs, with explicit 0/off and 1/on units and shared-rule descriptions.
+- Exhausted Chip Mult in Block and Exhausted Efficacy in Dodge, using current metadata ranges and defaults.
+- Save/roundtrip/conflict and unit coverage tests for the new fields.
+- Typecheck, production build, model/unit/history/HTTP/display/tune-guard checks passed. Brave verified counter controls and both exhausted settings with no console errors.
 
 ## Key technical decisions
-Stored fighter multipliers retain multiplier units; their calculated stats use gameplay units. Distances use logical game pixels; timing is measured in 60 Hz simulation frames. No numeric tuning values or save schema changed.
+Counter flags remain shared punch rules and compare with Base. All new numeric fields participate in selective saves and Base history. Preserved owner-approved tune values, history and archetypes. No state-readability production work.
 
 ## Open questions
 None.
 
 ## Known issues
-Native file-picker permissions remain a manual check. Published tool awaits the implementation PR merge.
+Native file-picker permissions remain manual; published workshop awaits the PR merge.
 
 ## Next proposed step
-Review the updated workshop PR and use the unit labels while tuning.
+Review the updated workshop and tune counter/exhausted rules.

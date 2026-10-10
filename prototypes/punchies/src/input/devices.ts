@@ -1,12 +1,13 @@
 import type { FrameInput } from '../sim/types';
 import { t } from '../i18n';
 import { NEUTRAL_INPUT } from '../sim/types';
+import { loadLayouts, TRIGGER_THRESHOLD, type Bindings } from './layouts';
 
 // Keyboard and gamepad bindings for the intent layer. Game logic never reads
 // these directly: a scene asks for a FrameInput from a source and feeds it to
 // the sim like any other input.
 //
-// Fixed layouts:
+// Backward-compatible defaults; saved profiles are read at runtime:
 //   kb1  (keyboard left):   WASD move, J jab, K cross, L hook, I uppercut,
 //                           Space dodge, Shift (hold) guard
 //   kb2  (keyboard right):  Arrows move, Numpad 1 jab, 2 cross, 3 hook,
@@ -19,54 +20,14 @@ import { NEUTRAL_INPUT } from '../sim/types';
 export type InputSource = 'touch' | 'kb1' | 'kb2' | 'pad1' | 'pad2';
 export type DeviceKind = 'touch' | 'keyboard' | 'gamepad';
 
-interface KeyMap {
-  up: string[];
-  down: string[];
-  left: string[];
-  right: string[];
-  jab: string[];
-  cross: string[];
-  hook: string[];
-  uppercut: string[];
-  dodge: string[];
-  guard: string[];
+type KeyMap = Bindings<string>;
+const STICK_DEADZONE = 0.25;
+export function gameKeys(): Set<string> {
+  const layouts = loadLayouts();
+  return new Set([...Object.values(layouts.kb1).flat(), ...Object.values(layouts.kb2).flat()]);
 }
 
-const KEYS: Record<'kb1' | 'kb2', KeyMap> = {
-  kb1: {
-    up: ['KeyW'],
-    down: ['KeyS'],
-    left: ['KeyA'],
-    right: ['KeyD'],
-    jab: ['KeyJ'],
-    cross: ['KeyK'],
-    hook: ['KeyL'],
-    uppercut: ['KeyI'],
-    dodge: ['Space'],
-    guard: ['ShiftLeft', 'ShiftRight'],
-  },
-  kb2: {
-    up: ['ArrowUp'],
-    down: ['ArrowDown'],
-    left: ['ArrowLeft'],
-    right: ['ArrowRight'],
-    jab: ['Numpad1'],
-    cross: ['Numpad2'],
-    hook: ['Numpad3'],
-    uppercut: ['Numpad5'],
-    dodge: ['Numpad0'],
-    guard: ['NumpadEnter'],
-  },
-};
-
-// Standard gamepad mapping button indices.
-const PAD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, up: 12, down: 13, left: 14, right: 15 };
-const STICK_DEADZONE = 0.25;
-const TRIGGER_THRESHOLD = 0.4;
-
-const GAME_KEYS = new Set(Object.values(KEYS).flatMap((m) => Object.values(m).flat()));
-
-class DeviceHub {
+export class DeviceHub {
   private down = new Set<string>();
   private edges = new Set<string>();
   private padPrev: boolean[][] = [[], []];
@@ -75,20 +36,41 @@ class DeviceHub {
   // on-screen controls).
   lastDevice: DeviceKind = 'touch';
 
+  private suppressed = 0;
+  private identities: (string | null)[] = [null, null];
+  private blockedKeys = new Set<string>();
+  private blockedPads: Set<number>[] = [new Set(), new Set()];
+  lastSource: InputSource = 'touch';
+  blockKey(code: string): void { this.blockedKeys.add(code); }
+  private blockHeldPads(): void {
+    for (let i = 0; i < 2; i++) this.pads()[i]?.buttons.forEach((b, n) => {
+      if (b.pressed || b.value > TRIGGER_THRESHOLD) this.blockedPads[i].add(n);
+    });
+  }
+  suspend(): () => void {
+    this.down.forEach(code => this.blockedKeys.add(code));
+    this.blockHeldPads();
+    this.suppressed++; this.clear();
+    let released = false;
+    return () => { if (released) return; released = true; this.suppressed--; this.blockHeldPads(); this.clear(); };
+  }
+  pad(source: 'pad1' | 'pad2'): Gamepad | null { return this.pads()[source === 'pad1' ? 0 : 1] ?? null; }
   constructor() {
     window.addEventListener('keydown', (e) => {
-      if (!GAME_KEYS.has(e.code)) return;
+      if (this.suppressed) { this.blockedKeys.add(e.code); return; }
+      if (this.blockedKeys.has(e.code) || (e.repeat && !this.down.has(e.code)) || !gameKeys().has(e.code)) return;
       e.preventDefault(); // Space/arrows would scroll the page
       if (!this.down.has(e.code)) this.edges.add(e.code);
       this.down.add(e.code);
       this.lastDevice = 'keyboard';
+      this.lastSource = Object.values(loadLayouts().kb2).some(c => c.includes(e.code)) ? 'kb2' : 'kb1';
     });
-    window.addEventListener('keyup', (e) => this.down.delete(e.code));
-    window.addEventListener('blur', () => this.down.clear());
+    window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.blockedKeys.delete(e.code); });
+    window.addEventListener('blur', () => { this.clear(); this.padPrev = [[], []]; this.identities = [null, null]; this.blockedKeys.clear(); });
     window.addEventListener(
       'pointerdown',
       (e) => {
-        if (e.pointerType === 'touch') this.lastDevice = 'touch';
+        if (e.pointerType === 'touch') { this.lastDevice = 'touch'; this.lastSource = 'touch'; }
       },
       { capture: true, passive: true },
     );
@@ -96,14 +78,14 @@ class DeviceHub {
 
   private pads(): (Gamepad | null)[] {
     try {
-      return Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => !!p && p.connected);
+      return Array.from(navigator.getGamepads?.() ?? []).map(p => p?.connected ? p : null);
     } catch {
       return [];
     }
   }
 
   connectedPads(): number {
-    return this.pads().length;
+    return this.pads().filter(Boolean).length;
   }
 
   // Call once per rendered frame: records gamepad button presses so a tap
@@ -112,22 +94,30 @@ class DeviceHub {
     const pads = this.pads();
     for (let i = 0; i < 2; i++) {
       const p = pads[i];
-      if (!p) continue;
+      if (!p) { this.padPrev[i] = []; this.padEdges[i].clear(); this.blockedPads[i].clear(); this.identities[i] = null; continue; }
+      const identity = p.index + ':' + p.id;
+      const connected = this.identities[i] !== identity;
+      this.identities[i] = identity;
+      if (connected) this.padEdges[i].clear();
       p.buttons.forEach((b, idx) => {
         const pressed = b.pressed || b.value > TRIGGER_THRESHOLD;
-        if (pressed && !this.padPrev[i][idx]) {
+        if (!pressed) this.blockedPads[i].delete(idx);
+        else if (this.suppressed || connected) this.blockedPads[i].add(idx);
+        if (!this.suppressed && !connected && !this.blockedPads[i].has(idx) && pressed && !this.padPrev[i][idx]) {
           this.padEdges[i].add(idx);
           this.lastDevice = 'gamepad';
+          this.lastSource = i === 0 ? 'pad1' : 'pad2';
         }
         this.padPrev[i][idx] = pressed;
       });
-      if (Math.abs(p.axes[0] ?? 0) > 0.5 || Math.abs(p.axes[1] ?? 0) > 0.5) this.lastDevice = 'gamepad';
+      if (!this.suppressed && (Math.abs(p.axes[0] ?? 0) > 0.5 || Math.abs(p.axes[1] ?? 0) > 0.5)) { this.lastDevice = 'gamepad'; this.lastSource = i === 0 ? 'pad1' : 'pad2'; }
     }
   }
 
   // FrameInput for one keyboard/gamepad source; consumes its tap edges.
   sample(source: Exclude<InputSource, 'touch'>): FrameInput {
-    return source === 'kb1' || source === 'kb2' ? this.sampleKeys(KEYS[source]) : this.samplePad(source === 'pad1' ? 0 : 1);
+    if (this.suppressed) return { ...NEUTRAL_INPUT };
+    return source === 'kb1' || source === 'kb2' ? this.sampleKeys(loadLayouts()[source]) : this.samplePad(source === 'pad1' ? 0 : 1);
   }
 
   private sampleKeys(m: KeyMap): FrameInput {
@@ -158,7 +148,8 @@ class DeviceHub {
   private samplePad(i: number): FrameInput {
     const p = this.pads()[i];
     if (!p) return { ...NEUTRAL_INPUT };
-    const held = (idx: number) => this.padPrev[i][idx] === true;
+    const m = loadLayouts()[i === 0 ? 'pad1' : 'pad2'];
+    const held = (idx: number) => this.padPrev[i][idx] === true && !this.blockedPads[i].has(idx);
     const edge = (...idx: number[]) => {
       let hit = false;
       for (const b of idx) if (this.padEdges[i].delete(b)) hit = true;
@@ -170,10 +161,10 @@ class DeviceHub {
       x = 0;
       y = 0;
     }
-    if (held(PAD.left)) x = -1;
-    if (held(PAD.right)) x = 1;
-    if (held(PAD.up)) y = -1;
-    if (held(PAD.down)) y = 1;
+    if (m.left.some(held)) x = -1;
+    if (m.right.some(held)) x = 1;
+    if (m.up.some(held)) y = -1;
+    if (m.down.some(held)) y = 1;
     const mag = Math.sqrt(x * x + y * y);
     if (mag > 1) {
       x /= mag;
@@ -182,12 +173,12 @@ class DeviceHub {
     return {
       mx: Math.round(x * 100),
       my: Math.round(y * 100),
-      jab: edge(PAD.x),
-      cross: edge(PAD.y),
-      hook: edge(PAD.b),
-      uppercut: edge(PAD.lb, PAD.lt),
-      dodge: edge(PAD.a),
-      guard: held(PAD.rb) || held(PAD.rt),
+      jab: edge(...m.jab),
+      cross: edge(...m.cross),
+      hook: edge(...m.hook),
+      uppercut: edge(...m.uppercut),
+      dodge: edge(...m.dodge),
+      guard: m.guard.some(held),
     };
   }
 
@@ -226,8 +217,8 @@ export function mergeInputs(inputs: FrameInput[]): FrameInput {
 
 export const SOURCE_LABEL: Record<InputSource, string> = {
   get touch() { return t('input.touch'); },
-  get kb1() { return t('input.keys_wasd'); },
-  get kb2() { return t('input.keys_arrows'); },
+  get kb1() { return t('layouts.keyboard_1'); },
+  get kb2() { return t('layouts.keyboard_2'); },
   get pad1() { return t('input.controller_1'); },
   get pad2() { return t('input.controller_2'); },
 };

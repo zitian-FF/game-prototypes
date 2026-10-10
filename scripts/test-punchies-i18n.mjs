@@ -58,7 +58,17 @@ for (const file of files) {
 const { CHARACTER_IDS } = await loadTs('./prototypes/punchies/src/sim/character', ['CHARACTER_IDS']);
 const progressCfg = JSON.parse(fs.readFileSync(`${src}/progress/progress-config.json`, 'utf8'));
 const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS, 'title.': progressCfg.titles.map((x) => x.id) };
-for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|title\.|shop\.item\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
+for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|title\.|shop\.item\.|layouts\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);
+// Explicit dynamic glyph/editor families; removed fixed readouts retain existing translations.
+const layoutDynamic = [
+  'kb1', 'kb2', 'pad1', 'pad2', 'touch',
+  ...['up', 'down', 'left', 'right', 'jab', 'cross', 'hook', 'uppercut', 'dodge', 'guard'].map(a => 'action_' + a),
+  ...['stick', 'main', 'hook', 'guard', 'dodge', 'uppercut'].map(a => 'touch_' + a),
+  ...['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'Space', 'Enter', 'Add', 'Subtract', 'Multiply', 'Divide', 'Decimal', 'Backspace', 'Tab', 'CapsLock'].map(c => 'key_' + c),
+  ...[12, 13, 14, 15].map(n => 'dpad_' + n),
+];
+for (const id of layoutDynamic) { const key = 'layouts.' + id; assert.ok(key in en, `missing dynamic input glyph/editor key ${key}`); used.add(key); }
+for (const key of ['input.keyboard_left', 'input.keyboard_right', 'input.controller', 'input.keys_wasd', 'input.keys_arrows', 'firstfight.coach_move', 'firstfight.coach_jab', 'firstfight.coach_cross']) used.add(key);
 for (const m of fs.readFileSync(`${src}/shop/draft.ts`, 'utf8').matchAll(/reasonKey:'([^']+)'/g)) { assert.ok(m[1] in en, `missing shop error key ${m[1]}`); used.add(m[1]); }
 for (const [prefix, ids] of Object.entries(groups)) for (const id of ids) {
   const key = prefix === 'char.' ? `char.${id}.nick` : `${prefix}${id}`;

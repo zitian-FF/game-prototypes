@@ -41,3 +41,13 @@ for(const section of ['core','defense',...['jab','cross','hook','uppercut']]){
 const changedBase=defaults();set(changedBase,'stamina.max',120);assert.equal(baseEffective(changedBase,'core','stamina'),120);
 console.log('PASS: neutral Base comparisons, scaled punch geometry, uppercut formula, absolute/percentage differences and live Base changes');
 for(const type of ['jab','cross','hook','uppercut'])for(const key of ['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'])assert(Number.isFinite(baseEffective(base,type,key)),type+'.'+key+' Base must be numeric');
+
+for(const type of ['jab','cross','hook','uppercut'])for(const flag of ['counterStartup','counterRecovery']){
+ const path=`punches.${type}.${flag}`,before=base.punches[type][flag],d=defaults();set(d,path,1-before);
+ assert.equal(effective(d,'mia',type,flag),1-before);assert.equal(baseEffective(d,type,flag),1-before);
+ const saved=mergeSave(base,d,base);assert.equal(parse(JSON.stringify(saved)).punches[type][flag],1-before);
+ const concurrent=defaults();concurrent.punches[type][flag]=.5;assert.throws(()=>mergeSave(base,d,concurrent),/same fields/);
+ assert.throws(()=>set(d,path,2));
+}
+for(const path of ['guard.exhaustedChipMult','dodge.exhaustedEfficacy']){const d=defaults();set(d,path,.75);const saved=mergeSave(base,d,base);assert.equal(path.split('.').reduce((o,k)=>o[k],parse(JSON.stringify(saved))),.75);}
+console.log('PASS: counter flag and exhausted defense controls, effective/Base values, saves and conflicts');

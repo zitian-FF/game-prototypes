@@ -94,7 +94,15 @@ localStorage `punchies:chars:v1`.
   - Dodge: direction from joystick; neutral stick = backstep.
   - Uppercut: dedicated button that doubles as the Star Power meter.
 
-## Keyboard / controller (fixed layouts)
+## Keyboard / controller (default layouts)
+- Saved local input layouts (approved 2026-10-10): Settings > Local Inputs
+  provides Edit Touch, Keyboard 1/2 and Controller 1/2. Editors stage changes
+  with Save, Cancel and Reset defaults. Touch handles use normalized viewport
+  positions, keep Jab/Cross together, reserve HUD/edge space and reject overlap.
+  Keyboard capture uses physical key codes; controller capture uses the chosen
+  Xbox profile, with pointer button choices when no hardware is connected.
+  Profiles persist independently through the registered local input save key;
+  existing defaults and menu navigation stay available.
 - Keys (left): WASD move, J jab, K cross, L hook, I uppercut, Space dodge,
   Shift hold guard.
 - Keys (right): Arrows move, Numpad 1/2/3 jab/cross/hook, 5 uppercut,

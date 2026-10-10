@@ -100,6 +100,7 @@ export function effective(doc:Doc,char:CharId,section:string,key:string):number 
     return doc.body[key as 'hurtRadius'|'coreRadius'|'vulnerableHurtRadius']*scale;
   }
   if((punches as readonly string[]).includes(section)){
+    if(key==='counterStartup'||key==='counterRecovery')return get(doc,`punches.${section}.${key}`);
     applyTuneJson(JSON.stringify(doc));
     const cfg=punchCfg(char,section as typeof punches[number]);
     if(key==='damage'&&section==='uppercut')return doc.punches.cross.damage*doc.punches.uppercut.crossDamageMult*cfg.damage;

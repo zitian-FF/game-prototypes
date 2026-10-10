@@ -31,6 +31,17 @@ function setup(fight = false) {
 }
 const pad = () => ({buttons: Array.from({length:16}, () => ({pressed:false})), axes:[0,0]});
 
+// Binding capture temporarily owns navigation, including Escape, B and held A.
+{
+  const h = setup(), calls = [];
+  const anchor = new Hit(460); h.nav.modalBack(anchor, () => calls.push('back'));
+  h.nav.add(new Hit(462), () => calls.push('confirm')); h.key('ArrowDown');
+  const release = h.nav.ownBindings();
+  h.key('Enter'); h.key('Escape'); pads = [pad()]; pads[0].buttons[0].pressed = true; pads[0].buttons[1].pressed = true; h.tick();
+  assert.deepEqual(calls, []); release(); release(); h.tick(); assert.deepEqual(calls, [], 'held capture buttons do not activate restored navigation');
+  pads[0].buttons.forEach(b => b.pressed = false); h.tick(); h.key('Escape'); assert.deepEqual(calls, ['back']); h.stop(); pads = [];
+}
+
 // Shop ad suppression covers global keys and pads, including Back and held edges.
 {
   const h=setup(), calls=[], anchor=new Hit(300), button=new Hit(302);
