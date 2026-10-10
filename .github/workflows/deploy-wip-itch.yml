@@ -21,6 +21,11 @@ on:
       - 'tsconfig.json'
       - '.github/workflows/deploy-wip-itch.yml'
   workflow_dispatch:
+    inputs:
+      pull_translations:
+        description: Download the translation sheet as CSV and pack it into this build (Punchies). Release builds always do this.
+        type: boolean
+        default: false
 
 concurrency:
   group: itch-wip
@@ -111,6 +116,34 @@ jobs:
       - name: Fetch verified Punchies music
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
         run: node scripts/fetch-punchies-music.mjs
+
+      # Translations are built into the game, never fetched at runtime. A release build (TEST_BUILD is
+      # false in prototypes/punchies/src/testBuild.ts) or a run started with "pull_translations" downloads
+      # the reviewed Google Sheet as CSV and writes locales/*.json into the workspace before the tests and
+      # the build, so they are packed with the game. The pulled files are not committed; open the "Pull
+      # Punchies translations" workflow to freeze them into the repository. If the download fails, a
+      # release build stops; a test build keeps the committed files.
+      - name: Pull translations from the sheet into the build
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        env:
+          I18N_SHEET_URL: ${{ vars.I18N_SHEET_URL }}
+          REQUESTED: ${{ inputs.pull_translations }}
+        run: |
+          release=false
+          grep -q 'TEST_BUILD = false' prototypes/punchies/src/testBuild.ts && release=true
+          if [ "$release" != true ] && [ "$REQUESTED" != true ]; then echo "Using the committed translation files"; exit 0; fi
+          if [ -z "$I18N_SHEET_URL" ]; then
+            echo "::error::Set the I18N_SHEET_URL repository variable (the sheet's CSV address) to pack translations"
+            [ "$release" = true ] && exit 1 || exit 0
+          fi
+          if node scripts/i18n-sheet.mjs pull && node scripts/i18n-sheet.mjs check; then
+            echo "Packed translations from the sheet"
+          else
+            echo "::error::Could not pull translations from the sheet"
+            if [ "$release" = true ]; then exit 1; fi
+            git checkout -- prototypes/punchies/src/i18n/locales
+            echo "Kept the committed translation files"
+          fi
 
       - name: Verify Punchies audio and roster
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
