@@ -116,6 +116,7 @@ jobs:
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
         run: |
           node scripts/test-punchies-audio.mjs
+          node scripts/test-punchies-combat-audio.mjs
           node scripts/test-punchies-music.mjs
           node scripts/test-punchies-stingers.mjs
           node scripts/test-punchies-feedback.mjs

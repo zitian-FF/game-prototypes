@@ -1,9 +1,8 @@
 import type Phaser from 'phaser';
-import resultUrl from './stingers/result.mp3?url';
 import rewardUrl from './stingers/reward.mp3?url';
 import { audioOutput, unlockMixer } from './mixer';
 
-const urls = { result: resultUrl, reward: rewardUrl };
+const urls = { reward: rewardUrl };
 type Cue = keyof typeof urls;
 const bytes = new Map<Cue, Promise<ArrayBuffer>>();
 export function preloadStingers(): void {
