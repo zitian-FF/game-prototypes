@@ -1,3 +1,5 @@
+import { bindingLabel } from '../ui/inputGlyph';
+import type { Profile } from '../input/layouts';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -222,12 +224,15 @@ const STEPS: Step[] = [
 // Button names for the device the player is using right now.
 function binder(): (a: Action) => string {
   const d = devices.lastDevice;
+  const source: Profile = devices.lastSource === 'touch' ? 'kb1' : devices.lastSource;
+  const binding = (action: 'jab' | 'cross' | 'hook' | 'guard' | 'dodge' | 'uppercut') => bindingLabel(source, action);
+  const move = ['up', 'left', 'down', 'right'].map(a => bindingLabel(source, a as 'up' | 'left' | 'down' | 'right')).join(' / ');
   const press = (key: string) => t('tutorial.press_key', { key });
   const tap = (name: string) => t('tutorial.tap_button', { button: name });
   const names: Record<'touch' | 'keyboard' | 'gamepad', Record<Action, string>> = {
     touch: { move: t('tutorial.the_joystick_left_side'), jab: tap(t('common.jab')), cross: tap(t('common.cross')), hook: tap(t('common.hook')), guard: t('common.guard'), dodge: tap(t('common.dodge')), upper: tap(t('common.upper')) },
-    keyboard: { move: 'W A S D', jab: press('J'), cross: press('K'), hook: press('L'), guard: 'Shift', dodge: press('Space'), upper: press('I') },
-    gamepad: { move: t('tutorial.the_left_stick'), jab: press('X'), cross: press('Y'), hook: press('B'), guard: 'RB', dodge: press('A'), upper: press('LB') },
+    keyboard: { move, jab: press(binding('jab')), cross: press(binding('cross')), hook: press(binding('hook')), guard: binding('guard'), dodge: press(binding('dodge')), upper: press(binding('uppercut')) },
+    gamepad: { move: t('tutorial.the_left_stick') + ' / ' + move, jab: press(binding('jab')), cross: press(binding('cross')), hook: press(binding('hook')), guard: binding('guard'), dodge: press(binding('dodge')), upper: press(binding('uppercut')) },
   };
   return (a) => names[d][a];
 }

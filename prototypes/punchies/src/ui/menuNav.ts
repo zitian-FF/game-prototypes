@@ -38,6 +38,12 @@ export class MenuNav {
   private engaged = false;
   // Text entry modal (join keypad) handles letters / Enter itself.
   textEntry = false;
+  private bindingOwners = 0;
+  ownBindings(): () => void {
+    this.bindingOwners++;
+    let released = false;
+    return () => { if (!released) { released = true; this.bindingOwners--; } };
+  }
 
   constructor(private scene: Phaser.Scene) {
     this.g = scene.add.graphics().setDepth(1000);
@@ -153,6 +159,7 @@ export class MenuNav {
   }
 
   private onKey(e: KeyboardEvent): void {
+    if (this.bindingOwners) return;
     if (this.scene.input.enabled === false) {
       this.highlight = false;
       this.g.clear();
@@ -174,14 +181,14 @@ export class MenuNav {
 
   private update(): void {
     const blocked = this.scene.input.enabled === false || this.scene.registry.get('gameMenu:' + this.scene.scene.key) || !this.scene.scene.isActive();
-    this.pollPads(!blocked);
+    this.pollPads(!blocked && !this.bindingOwners);
     const g = this.g;
     g.clear();
     if (blocked || this.scene.input.enabled === false) {
       this.highlight = false;
       return;
     }
-    if (!this.capturing || !this.highlight) return;
+    if (this.bindingOwners || !this.capturing || !this.highlight) return;
     const live = this.live();
     if (!this.focus || !live.includes(this.focus)) this.focus = live[0] ?? null;
     if (!this.focus) return;

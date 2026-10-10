@@ -16,6 +16,7 @@ import { getNav, navRegister } from '../ui/menuNav';
 import { artImage, backdrop } from '../render/art';
 import { pulseLogo, startScreen } from '../ui/presentation';
 import { titleButton } from '../ui/titleButton';
+import { inputLayoutEditor } from '../ui/inputLayoutEditor';
 import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
@@ -170,9 +171,10 @@ export class MenuScene extends Phaser.Scene {
       refresh();
     });
     const pads = txt(VIEW.cx, VIEW.cy - 43, '', 14, '#dbe9fa');
-    txt(VIEW.cx, VIEW.cy - 9, t('input.keyboard_left'), 14);
-    txt(VIEW.cx, VIEW.cy + 29, t('input.keyboard_right'), 14);
-    txt(VIEW.cx, VIEW.cy + 67, t('input.controller'), 14);
+    btn(VIEW.cx, VIEW.cy - 3, 340, t('layouts.edit_touch'), () => inputLayoutEditor(this, 'touch'));
+    for (const [profile, x, y] of [['kb1', -145, 39], ['kb2', 145, 39], ['pad1', -145, 81], ['pad2', 145, 81]] as const) {
+      btn(VIEW.cx + x, VIEW.cy + y, 280, t('layouts.edit_title', { device: t('layouts.' + profile) }), () => inputLayoutEditor(this, profile));
+    }
     txt(VIEW.cx, VIEW.cy + 155, t('ui.back_hint'), 12);
     const refresh = () => {
       p1.setText(`< ${SOURCE_LABEL[v.p1]} >`);
