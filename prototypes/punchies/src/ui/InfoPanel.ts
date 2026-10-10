@@ -182,7 +182,7 @@ export class InfoPanel {
     ry += 8;
     this.text(rx, ry, 'VULNERABLE WHEN', 11, '#ffd24a', true);
     ry += 16;
-    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', 'Emergency: 0 → full; idle regen', 'Punches x0.5; no guard/dodge']) {
+    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', 'Emergency: 0 → full; idle regen', 'Punches x0.5; guard (no perfect, chip), half dodge']) {
       this.text(rx, ry, s, 9);
       ry += 12;
     }
@@ -196,7 +196,7 @@ export class InfoPanel {
       `Dodge: ${tune.dodge.iFrames}f invincible of ${tune.dodge.frames}f`,
       `Penalty: ${tune.dodge.vulnerableFrames}f, walk x${tune.dodge.penaltyMoveMult}, no dodge`,
       `Dodge then punch within ${tune.dodge.buffWindowFrames}f: x${tune.dodge.buffDamageMult} dmg`,
-      `Counter (Cross/Hook on startup): x${tune.hit.counterDamageMult}`,
+      `Counter (per punch: startup / recovery): x${tune.hit.counterDamageMult}`,
       `Round: ${tune.match.durationSec}s · HP ${tune.health.max}`,
     ]) {
       this.text(rx, ry, s, 9);

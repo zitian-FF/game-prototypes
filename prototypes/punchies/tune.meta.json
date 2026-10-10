@@ -62,6 +62,20 @@
     "max": 3000,
     "step": 50
   },
+  "punches.jab.counterStartup": {
+    "cat": "Attack",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "punches.jab.counterRecovery": {
+    "cat": "Attack",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
   "punches.jab.startup": {
     "cat": "Attack",
     "desc": "Jab: frames before the fist moves. Lower = faster.",
@@ -152,6 +166,20 @@
     "min": 0,
     "max": 1,
     "step": 0.05
+  },
+  "punches.cross.counterStartup": {
+    "cat": "Attack",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "punches.cross.counterRecovery": {
+    "cat": "Attack",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "min": 0,
+    "max": 1,
+    "step": 1
   },
   "punches.cross.startup": {
     "cat": "Attack",
@@ -244,6 +272,20 @@
     "max": 1,
     "step": 0.05
   },
+  "punches.hook.counterStartup": {
+    "cat": "Attack",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "punches.hook.counterRecovery": {
+    "cat": "Attack",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
   "punches.hook.startup": {
     "cat": "Attack",
     "desc": "Hook: frames before the fist moves. Lower = faster.",
@@ -334,6 +376,20 @@
     "min": 0,
     "max": 1,
     "step": 0.05
+  },
+  "punches.uppercut.counterStartup": {
+    "cat": "Attack",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  "punches.uppercut.counterRecovery": {
+    "cat": "Attack",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "min": 0,
+    "max": 1,
+    "step": 1
   },
   "punches.uppercut.startup": {
     "cat": "Attack",
@@ -503,6 +559,13 @@
     "max": 20,
     "step": 1
   },
+  "guard.exhaustedChipMult": {
+    "cat": "Defense",
+    "desc": "Exhausted guard: share of damage that chips through from every punch it can block (uppercut still ignores guard).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
   "guard.staminaDrainPerSec": {
     "cat": "Defense",
     "desc": "Stamina drained per second while holding High Guard.",
@@ -544,6 +607,13 @@
     "min": 0,
     "max": 40,
     "step": 1
+  },
+  "dodge.exhaustedEfficacy": {
+    "cat": "Defense",
+    "desc": "Exhausted dodge: share of the invincible frames and dodge distance kept (no stamina cost).",
+    "min": 0.1,
+    "max": 1,
+    "step": 0.05
   },
   "dodge.speed": {
     "cat": "Defense",

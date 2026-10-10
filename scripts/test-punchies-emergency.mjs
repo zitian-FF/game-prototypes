@@ -31,9 +31,15 @@ const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-7, `${a} != ${b}`);
 for (const char of ['marco', 'mia', 'bruno']) {
   const s = state(char), f = s.fighters[0];
   f.stamina = 0; f.regenWait = 99;
-  let events = step(s, [{ ...N, guard: true, dodge: true }, N], false);
-  assert.ok(f.exhausted && !f.guarding && !f.dodge);
-  assert.ok(events.some(e => e.kind === 'staminaRejected'));
+  let events = step(s, [{ ...N, guard: true }, N], false);
+  assert.ok(f.exhausted && f.guarding && !f.dodge, 'exhausted fighters may guard');
+  assert.equal(stanceOf(f), 'guard', 'no perfect guard window while exhausted');
+  assert.ok(!events.some(e => e.kind === 'staminaRejected'));
+  events = step(s, [{ ...N, dodge: true }, N], false);
+  assert.ok(f.exhausted && f.dodge && !f.guarding, 'exhausted fighters may dodge at reduced efficacy');
+  assert.ok(!events.some(e => e.kind === 'staminaRejected'));
+  f.dodge = null; f.postDodgeVulnerable = 0; f.stamina = 0; f.regenWait = 99;
+  step(s, [N, N], false);
   const rate = tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE;
   near(f.stamina, rate);
   f.stamina = 21;
@@ -108,5 +114,7 @@ for (const type of ['jab', 'cross', 'hook', 'uppercut']) {
   }
 }
 const s = state(); s.fighters[0].exhausted = true; s.fighters[0].dodge = { frame: 0, dx: 1, dy: 0 };
-assert.equal(stanceOf(s.fighters[0]), 'vulnerable');
-console.log('Emergency entry/full-only exit, uninterrupted protected recovery, all punches, defence rejection, headshots and half damage with counter/buff multipliers passed');
+assert.equal(stanceOf(s.fighters[0]), 'dodging');
+s.fighters[0].dodge.frame = Math.round(tune.dodge.iFrames * tune.dodge.exhaustedEfficacy);
+assert.equal(stanceOf(s.fighters[0]), 'vulnerable', 'exhausted dodge keeps half the invincible frames');
+console.log('Emergency entry/full-only exit, uninterrupted protected recovery, all punches, exhausted guard and half dodge, headshots and half damage with counter/buff multipliers passed');

@@ -130,6 +130,9 @@ jobs:
           node scripts/test-punchies-starter-skins.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
+          node scripts/test-punchies-states.mjs
+          node scripts/test-punchies-emergency.mjs
+          node scripts/test-punchies-geometry.mjs
           node scripts/test-punchies-i18n.mjs
           if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
             node scripts/test-punchies-asset-optimization.mjs
