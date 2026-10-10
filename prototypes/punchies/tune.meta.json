@@ -601,6 +601,55 @@
     "max": 60,
     "step": 1
   },
+  "body.proportions.marco": {
+    "cat": "Defense",
+    "desc": "Body size of Marco relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.mia": {
+    "cat": "Defense",
+    "desc": "Body size of Mia relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.bruno": {
+    "cat": "Defense",
+    "desc": "Body size of Bruno relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.tee": {
+    "cat": "Defense",
+    "desc": "Body size of Tee relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.tyke": {
+    "cat": "Defense",
+    "desc": "Body size of Tyke relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.dragon": {
+    "cat": "Defense",
+    "desc": "Body size of Dragon relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.longan": {
+    "cat": "Defense",
+    "desc": "Body size of Longan relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
   "health.max": {
     "cat": "HP & Stun",
     "desc": "Starting health.",
