@@ -1,12 +1,12 @@
 ## Current milestone
-Pending art production integration, locally validated; publication blocked awaiting explicit R2 approval.
+Approved pending art release: public R2 bundles verified; merge and deployment in progress.
 ## What was implemented
-Captain Eagle portrait and complete rig, scarf motion, navy-covered limbs, mirrored canonical glove/boot, fighter chest and tuner entry. Approved Bruno portrait repair, lock selector icon and ten overhead torso replacements prepared in both profiles. Tee retains her existing live torso.
+Captain Eagle portrait and complete rig with anchored scarf, covered limbs and canonical mirrored gloves/boots. Approved Bruno portrait repair, locked-roster icon and ten overhead torso replacements. Captain is in the fighter chest pool and tuner. Tee retains her existing live torso.
 ## Key technical decisions
-Captain uses provisional Marco stats. Existing fighter tune values are unchanged. Lossless masters archived in Drive 1bH0muAJAID4VUQAiAYW_25yKhyjJLjZo. Previous R2 art downloaded and SHA-verified before attempted replacement. Standard 16,804,365 bytes; compact 9,809,654 bytes. Compact source/art hash prepared locally; standard ETag remains old until publication.
+Captain uses provisional Marco stats; existing tuning is unchanged. Lossless originals archived to Drive 1bH0muAJAID4VUQAiAYW_25yKhyjJLjZo. Both public R2 downloads match prepared SHA-256 hashes. Standard ETag updated to f3f637072d769d7f2929fa8a55ca1bc8. Fresh standard and compact builds pass integrity and parity checks at 16,804,365 and 9,809,654 bytes.
 ## Open questions
-Approval to overwrite public R2 standard and compact art bundles is required after automatic review rejected publication authorization.
+Nadia redesign needs portrait approval before rig production. Her hair will be a compact braided bun, distinct from Mia's ponytail. Roxy's approved portrait is retained for rig preparation.
 ## Known issues
-Tee collar recolour rejected by image tool; her replacement is excluded. R2 upload, fresh-download verification, merge and live deploy have not occurred. Profile/progression UI remains outside this art pass.
+Tee collar correction remains unfinished after image tool rejection. Captain tuning is provisional. Profile/progression screens remain separate work.
 ## Next proposed step
-Approve R2 publication, verify downloaded bytes and ETag, rebuild both profiles with fresh compact download, then merge and verify live.
+Verify deployment, then review Nadia portrait and prepare Roxy's rig using the approved portrait.
