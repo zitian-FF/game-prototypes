@@ -62,7 +62,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     pushX: 0,
     pushY: 0,
     pushFrames: 0,
-    pushLock: 0,
+    lock: 0,
     char: opts.char ?? 'marco',
   };
   f.health = maxHealth(f);
@@ -165,7 +165,7 @@ export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } 
 
 
 function canAct(f: Fighter): boolean {
-  return f.punch === null && f.dodge === null;
+  return f.punch === null && f.dodge === null && f.lock <= 0;
 }
 
 // Every transition out of an active guard starts the release penalty.
@@ -314,7 +314,10 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
   }
 
   const canGuard = canAct(f) && f.stunTimer <= 0 && f.guardPenalty <= 0;
-  if (input.guard && canGuard) {
+  if (f.lock > 0 && f.guarding) {
+    // Block stun: the guard is held through it, with no release penalty.
+    f.guardFrames++;
+  } else if (input.guard && canGuard) {
     if (!f.guarding) {
       f.guarding = true;
       f.guardFrames = 0;
@@ -332,8 +335,8 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   const dt = 1 / TICK_RATE;
   // Being shoved: the push replaces the player's own walking for its
   // duration, so holding forward can't cancel it (dodging still works).
-  const shoved = f.pushLock > 0;
-  if (f.pushLock > 0) f.pushLock--;
+  const shoved = f.lock > 0;
+  if (f.lock > 0) f.lock--;
   if (f.pushFrames > 0) {
     f.pushFrames--;
     if (!f.anchored) {
@@ -487,7 +490,6 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushX = (dx * dist) / frames;
   def.pushY = (dy * dist) / frames;
   def.pushFrames = frames;
-  def.pushLock = Math.max(def.pushLock, tune.hit.pushLockFrames);
 }
 
 function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defRecovery: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
@@ -540,6 +542,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
     }
     pushBack(att, def, p, cfg.pushBlock);
+    def.lock = Math.max(def.lock, cfg.blockStun);
     events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet, chip });
     return;
   }
@@ -579,6 +582,9 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
 
   p.connected = true;
   pushBack(att, def, p, cfg.pushHit);
+  // Hit stun: sweet and sour hits lock the defender for their own frames, and a counter
+  // stretches the window so the attacker can follow up.
+  def.lock = Math.max(def.lock, Math.round((c.sweet ? cfg.hitStun : cfg.sourStun) * (counter ? tune.hit.counterStunMult : 1)));
   if (damage > 0) {
     def.health = Math.max(0, def.health - damage);
     def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };

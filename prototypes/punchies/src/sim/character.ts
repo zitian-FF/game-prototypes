@@ -63,6 +63,9 @@ export interface PunchCfg {
   startReachFrac: number;
   pushHit: number;
   pushBlock: number;
+  hitStun: number;
+  blockStun: number;
+  sourStun: number;
   fatigueBars: number;
   fatigueSpeedPerBar: number;
   fatigueDamagePerBar: number;
@@ -93,6 +96,10 @@ export function punchCfg(f: Fighter | string, type: PunchType): PunchCfg {
     startReachFrac: base.startReachFrac,
     pushHit: base.pushHit * o.push,
     pushBlock: base.pushBlock * o.push,
+    // Stun frames travel with the push: a harder shove locks the defender longer.
+    hitStun: Math.round(base.hitStun * o.push),
+    blockStun: Math.round(base.blockStun * o.push),
+    sourStun: Math.round(base.sourStun * o.push),
     fatigueBars: bars,
     fatigueSpeedPerBar: (base.fatigueSpeedPerBar ?? 0) * spread,
     fatigueDamagePerBar: (base.fatigueDamagePerBar ?? 0) * spread,

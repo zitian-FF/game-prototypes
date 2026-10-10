@@ -106,7 +106,7 @@ export interface Fighter {
   pushY: number;
   pushFrames: number;
   // Ticks the player's own walking stays locked after a push lands.
-  pushLock: number;
+  lock: number; // frames of hit/block stun left: no actions, no walking
   // The last blow that took health (a finishing blow decides the KO style).
   lastBlow: LastBlow | null;
 }
