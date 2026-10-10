@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+const result=await build({stdin:{contents:"export * from './prototypes/punchies-tuner/src/units';export * from './prototypes/punchies-tuner/src/model';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false});
+const m=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+for(const path of Object.keys(m.meta).filter(p=>p.startsWith('characters.')||m.basePaths.includes(p)))assert(m.storedUnit(path),path);
+assert.deepEqual(m.rowUnits('characters.mia.jab.damage','jab','damage'),{stored:'multiplier',effective:'HP damage'});
+assert.deepEqual(m.rowUnits('characters.mia.jab.startup','jab','startup'),{stored:'added frames',effective:'frames'});
+assert.equal(m.rowUnits(null,'uppercut','stunBuild').effective,'stun damage');
+assert.equal(m.rowUnits(null,'jab','staminaDamage').effective,'stamina damage');
+assert.equal(m.rowUnits(null,'jab','reach').effective,'px');
+assert.equal(m.rowUnits('characters.mia.speed','core','speed').effective,'px/s');
+assert.equal(m.storedUnit('body.proportions.mia'),'multiplier (Base = 1)');
+console.log('PASS: all editable field units, multipliers versus effective damage, timing, distance and rates');

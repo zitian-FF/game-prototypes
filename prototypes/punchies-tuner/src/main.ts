@@ -1,4 +1,5 @@
 import './style.css';
+import {storedUnit,rowUnits} from './units';
 import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,baseEffective,difference,mergeSave,baseVersion,archetypeValue,setArchetype,archetypeChanges,saveChanges } from './model';
 import {perceivedStats,perceivedStatKeys,statBarFill} from '../../punchies/src/sim/perceivedStats';
 import english from '../../punchies/src/i18n/locales/en.json';
@@ -47,15 +48,20 @@ async function save(){
   base=structuredClone(merged);draft=merged;message=`Saved ${handle.name}. Unrelated file changes were preserved. Commit/sync the file to update the game build.`;remember();render();
 }
 function row(table:HTMLTableElement,key:string,path:string|null,current:number,benchmark:number){
+  const units=rowUnits(path,section,key);
+  const display=(value:number)=>`${format(value)} ${units.effective}`;
+  const displayDifference=(value:number,benchmark:number)=>`${difference(value,benchmark)} ${units.effective}`;
   const tr=el('tr'),title=el('th',label(key));title.scope='row';const desc=path?meta[path]?.desc:'';if(desc){const small=el('small',desc);title.append(small);}tr.append(title);
   const edit=el('td');if(path){const range=meta[path],input=el('input');input.type='number';input.value=format(get(draft,path));input.min=String(range.min);input.max=String(range.max);input.step=String(range.step||'any');input.setAttribute('aria-label',`${section} ${label(key)} tune value`);
     input.oninput=()=>{try{if(input.value==='')throw Error('Enter a number');set(draft,path,Number(input.value));input.setCustomValidity('');remember();refreshRows.forEach(fn=>fn());status();}catch(e){input.setCustomValidity(String(e));message=String(e);status();}};input.onchange=()=>{if(input.validationMessage)input.reportValidity();};edit.append(input);
     const reset=button('↶',()=>{set(draft,path,get(base,path));remember();render();},'reset');reset.title='Reset this value to the opened file';reset.setAttribute('aria-label',`Reset ${label(key)}`);edit.append(reset);
   }else edit.append(el('span','Shared'));
+  if(path){const unit=el('small',units.stored);unit.className='tune-unit';edit.append(unit);inputUnitDescription(edit,unit);}
   if(shared){tr.append(edit);table.append(tr);return;}
-  const currentCell=el('td',format(current)),baseCell=el('td',format(benchmark));tr.append(edit,currentCell,baseCell);const diff=el('td',difference(current,benchmark));diff.className=current===benchmark?'neutral':current>benchmark?'positive':'negative';tr.append(diff);table.append(tr);
-  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||section==='defense'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?baseEffective(draft,section,key):value;currentCell.textContent=format(value);baseCell.textContent=format(baseline);diff.textContent=difference(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
+  const currentCell=el('td',display(current)),baseCell=el('td',display(benchmark));tr.append(edit,currentCell,baseCell);const diff=el('td',displayDifference(current,benchmark));diff.className=current===benchmark?'neutral':current>benchmark?'positive':'negative';tr.append(diff);table.append(tr);
+  refreshRows.push(()=>{const characterRow=!shared&&(section==='core'||section==='defense'||(punches as readonly string[]).includes(section));const value=characterRow?effective(draft,selected,section,key):path?get(draft,path):current;const baseline=characterRow?baseEffective(draft,section,key):value;currentCell.textContent=display(value);baseCell.textContent=display(baseline);diff.textContent=displayDifference(value,baseline);diff.className=value===baseline?'neutral':value>baseline?'positive':'negative';});
 }
+function inputUnitDescription(cell:HTMLElement,unit:HTMLElement){const input=cell.querySelector('input');if(input){unit.id=`unit-${document.querySelectorAll('.tune-unit').length}`;input.setAttribute('aria-describedby',unit.id);}}
 function makeTable(){const table=el('table');const head=el('thead'),tr=el('tr');for(const h of shared?['Property','Raw value']:['Property','Tune value','In game','Base','Difference from Base'])tr.append(el('th',h));head.append(tr);table.append(head);return table;}
 function renderPerceivedStats(main:HTMLElement){
   const id=shared?'base':selected,key=`char.${id}.nick`;
@@ -81,9 +87,9 @@ function renderBaseHistory(main:HTMLElement){
   for(const revision of [...history.versions].reverse()){
     const details=el('details');details.append(el('summary',`v${revision.version-1} → v${revision.version} · ${new Date(revision.savedAt).toLocaleString()} · ${revision.changes.length} changes`));
     const table=el('table'),head=el('tr');for(const title of ['Property','Previous raw value','New raw value'])head.append(el('th',title));table.append(head);
-    for(const change of revision.changes){const tr=el('tr');tr.append(el('th',change.path),el('td',format(change.before)),el('td',format(change.after)));table.append(tr);}details.append(table);main.append(details);
+    for(const change of revision.changes){const tr=el('tr');tr.append(el('th',change.path),el('td',`${format(change.before)} ${storedUnit(change.path)}`),el('td',`${format(change.after)} ${storedUnit(change.path)}`));table.append(tr);}details.append(table);main.append(details);
   }
-  const initial=el('details');initial.append(el('summary','v0 · Initial Base values'));const list=el('ul');for(const [path,value] of Object.entries(history.initial))list.append(el('li',`${path}: ${format(value)}`));initial.append(list);main.append(initial);
+  const initial=el('details');initial.append(el('summary','v0 · Initial Base values'));const list=el('ul');for(const [path,value] of Object.entries(history.initial))list.append(el('li',`${path}: ${format(value)} ${storedUnit(path)}`));initial.append(list);main.append(initial);
 }
 function globalRows(table:HTMLTableElement,group:string,prefix=''){for(const key of Object.keys((draft as unknown as Record<string,Record<string,unknown>>)[group])){const path=`${group}.${key}`;if(typeof get(draft,path)==='number'&&meta[path])row(table,prefix+key,path,get(draft,path),get(draft,path));}}
 function render(){

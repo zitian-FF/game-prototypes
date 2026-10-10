@@ -25,3 +25,5 @@ Defense exposes shared collision radii, fighter scale and all seven tuned body p
 All fighter properties compare with the current neutral Base: unit multipliers, zero frame offsets and body proportion 1. The Difference from Base column shows the signed absolute change and percentage change. Shared block/dodge rules have zero difference. Base tables keep raw values.
 
 Body proportions are edited only on the individual fighter Defense tabs, against Base = 1. Base Defense retains shared collision radii and the raw fighter scale. Individual proportions do not create new Base history revisions; older logs remain readable.
+
+Every tuning control labels its stored unit, while effective values, Base comparisons and history use their own units: HP/HP damage, stamina/stun points or damage, frames or added frames, pixels, pixels per second, points per second, fatigue bars, stars, ratios and multipliers. Pixel distances are logical game pixels; frame timing uses the 60 Hz simulation. Run `node scripts/test-punchies-tuner-units.mjs` for unit coverage.

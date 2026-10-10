@@ -1,21 +1,20 @@
 ## Current milestone
-Every fighter property compares with Base; existing PR #270 remains open for review.
+All workshop tuning fields display units; PR #270 remains open for review.
 
 ## What was implemented
-- Moved body proportions to individual fighter Defense tabs; Base keeps shared scale and radii, with relative size benchmark 1. Individual size changes no longer version Base; old logs remain readable.
-- Replaced Marco benchmarks with current effective neutral Base values for core, punches, Defense, block and dodge.
-- Difference from Base shows signed absolute and percentage differences and refreshes while editing.
-- Added coverage for neutral Base geometry, uppercut damage, live Base changes, all optional punch fields and independence from Marco edits.
-- Verified typecheck, production build, model/display tests and every comparison category in Brave with no console errors.
+- Stored-unit labels on every tuning control and units on effective values, Base comparisons and version history.
+- Distinguished HP damage, stamina damage, stun damage, frames, added frames, pixels, rates, ratios and multipliers.
+- Verified complete editable-field unit coverage, model regressions, typecheck and production build.
+- Brave checked every fighter/Base category with no console errors and captured the labelled punch table.
 
 ## Key technical decisions
-Base uses unit multipliers, zero added frames and unit body proportion, while retaining shared fighter scale. Base tables remain raw. No tuning values changed.
+Stored fighter multipliers retain multiplier units; their calculated stats use gameplay units. Distances use logical game pixels; timing is measured in 60 Hz simulation frames. No numeric tuning values or save schema changed.
 
 ## Open questions
 None.
 
 ## Known issues
-Native file-picker permissions remain a manual check. Implementation is not yet merged into the published tool.
+Native file-picker permissions remain a manual check. Published tool awaits the implementation PR merge.
 
 ## Next proposed step
-Review the updated workshop PR and tune against Base.
+Review the updated workshop PR and use the unit labels while tuning.
