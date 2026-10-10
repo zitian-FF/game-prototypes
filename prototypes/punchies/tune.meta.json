@@ -909,6 +909,13 @@
     "max": 1,
     "step": 0.05
   },
+  "movement.lockMoveMult": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed multiplier while locked by hit stun (blocking fighters use the guard multiplier instead).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
   "movement.minSeparation": {
     "cat": "Movement & Arena",
     "desc": "Closest the two boxers can stand (px).",
