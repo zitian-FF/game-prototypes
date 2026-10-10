@@ -5,7 +5,7 @@ import ts from 'typescript';
 import sharp from 'sharp';
 const load=(file,require)=>{const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require});return exports;};
 const catalog=load('prototypes/punchies/src/render/paletteCatalog.ts');
-const palette=load('prototypes/punchies/src/render/skinPalette.ts',()=>catalog);
+const palette=load('prototypes/punchies/src/render/skinPalette.ts',p=>p.includes('materialMasks')?load('prototypes/punchies/src/render/materialMasks.ts'):catalog);
 const chars=['marco','mia','bruno','tee','tyke','dragon','longan'];
 for(const char of chars)assert.equal(Object.values(catalog.PALETTES).filter(p=>p.boxer===char).length,3);
 assert.equal(Object.keys(catalog.PALETTES).length,21);

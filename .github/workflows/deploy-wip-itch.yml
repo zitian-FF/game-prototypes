@@ -128,6 +128,8 @@ jobs:
           node scripts/test-punchies-progress.mjs
           node scripts/test-punchies-alias.mjs
           node scripts/test-punchies-starter-skins.mjs
+          node scripts/test-punchies-material-masks.mjs
+          node scripts/test-punchies-leg-motion.mjs
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
           node scripts/test-punchies-states.mjs

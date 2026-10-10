@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 const load=(file,scope)=>{const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,...scope});return exports;};
 const PALETTES=JSON.parse(fs.readFileSync('prototypes/punchies/src/render/paletteCatalog.ts','utf8').split('= ')[1].replace(/;\s*$/,''));
-const palette=load('prototypes/punchies/src/render/skinPalette.ts',{require:()=>({PALETTES})});
+const palette=load('prototypes/punchies/src/render/skinPalette.ts',{require:p=>p.includes('materialMasks')?(()=>{const e={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/materialMasks.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:e});return e;})():({PALETTES})});
 const items=['marco','mia','bruno'].map((char,i)=>({id:palette.STARTER_SKINS[i],boxer:char,skinType:'palette',accent:0x16cde3}));
 items.push({id:'unique',boxer:'mia',skinType:'unique',portraitKey:'portrait_unique',rigGroup:'unique'});
 let draws=0,created=0;

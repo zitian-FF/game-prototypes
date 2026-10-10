@@ -1,3 +1,4 @@
+import { footCycle } from './legMotion';
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { limbSkin } from './skinPalette';
@@ -95,6 +96,7 @@ export interface PuppetArgs {
   dodging: boolean;
   guarding: boolean;
   vulnerable?: boolean; // open to full-damage hits: the silhouette pulses red-orange
+  reviewLegsOnly?: boolean; // isolated developer review, never enabled by game scenes
   limp?: boolean; // knocked out: slumped, no sweat or wobble
 }
 
@@ -158,8 +160,11 @@ export class Puppet {
     this.bootL.setTexture(part('boot_left'));
     this.bootR.setTexture(part('boot_right'));
     this.torso.setTexture(part('torso'));
-    this.gloveL.setTexture(part('glove_left'));
-    this.gloveR.setTexture(part('glove_right'));
+    // Rising Star's authored source has the left-hand thumb silhouette.
+    // Its mirrored alias therefore belongs to the right hand.
+    const swapGloves = char === 'marco' && skin === 'skin-marco-unique';
+    this.gloveL.setTexture(part(swapGloves ? 'glove_right' : 'glove_left'));
+    this.gloveR.setTexture(part(swapGloves ? 'glove_left' : 'glove_right'));
     this.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5);
     const pony = part('ponytail');
     if (this.scene.textures.exists(pony)) this.ponytail.setTexture(pony).setOrigin(PONYTAIL_PIVOT, 0.5);
@@ -219,12 +224,13 @@ export class Puppet {
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? 1 : -1; // boot_left on +v
       const ph = a.walk + (i === 0 ? 0 : Math.PI);
-      const sw = Math.sin(ph);
+      const cycle = footCycle(ph);
+      const sw = cycle.travel;
       const u0 = (i === 0 ? rig.leadBootForward : rig.rearBootForward) * k;
       const v0 = rig.bootSpread * k * side;
       const pos = P(u0 + mu * amp * sw, v0 + mv * amp * sw, v.feetOffsetY);
       const yaw = 0.3 * strafe * Math.sign(mv || 1) * a.stride;
-      const lift = Math.max(0, Math.cos(ph)) * a.stride;
+      const lift = cycle.lift * a.stride;
       const hip = P(-2 * k, rig.hipSpread * k * side, v.bodyOffsetY);
       const ankle = { x: pos.x - fx * 4 * k, y: pos.y - fy * 4 * k };
       feet.push({ pos, yaw, lift, ankle, hip, out: { x: lx * side, y: ly * side } });
@@ -235,7 +241,10 @@ export class Puppet {
       boot.setPosition(ft.pos.x, ft.pos.y).setRotation(th + ft.yaw).setScale(s).setAlpha(alpha).setVisible(true).setDepth(9.3 + 0.01 * ft.lift);
     });
     for (const ft of feet) {
-      const knee = joint(ft.hip, ft.ankle, 8 * k, ft.out);
+      // A top-down knee is a shallow projected bend. A fixed 8px minimum
+      // segment forced short legs into wide triangular loops under the torso.
+      const projectedLength = Math.hypot(ft.ankle.x-ft.hip.x, ft.ankle.y-ft.hip.y);
+      const knee = joint(ft.hip, ft.ankle, projectedLength * .51, ft.out);
       limb(this.legs, ft.hip, knee, ft.ankle, 5.5 * k, look.skin, alpha);
     }
 
@@ -383,6 +392,11 @@ export class Puppet {
         this.fx.fillStyle(0xffffff, al * 0.8);
         this.fx.fillCircle(x - 0.5, y - 0.6, rig.sweatHighlightRadius * k);
       }
+    }
+    if (a.reviewLegsOnly) {
+      this.arms.clear(); this.fx.clear();
+      for (const image of [this.head,this.torso,this.gloveL,this.gloveR,this.ponytail,...this.twinTails]) image.setVisible(false);
+      for (const ghost of this.ghosts) { ghost.head.setVisible(false); ghost.torso.setVisible(false); }
     }
     return true;
   }
