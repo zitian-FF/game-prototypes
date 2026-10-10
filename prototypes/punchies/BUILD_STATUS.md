@@ -1,12 +1,12 @@
 ## Current milestone
-Approved roster placement, connected leg rig and shared portrait scaling ready for merge and deployment.
+Settings language selection implemented and validated.
 ## What was implemented
-Reserved second row for Marco, Mia, Bruno, Roxy and Nadia; Tee top-left and other fighters in stable shuffled middle slots. Pointer and keyboard/controller selection use display order without changing saved character IDs. Tuner roster parity test is dynamic. Legs attach to rotating/scaling boot collars with an overlapping ankle layer. Forward/back and strafe steps blend continuously with smoothed direction changes. All ten current/planned fighters share a portrait size table, reviewed by visible head size with bottom anchoring across selection, VS, victory and reveals.
+Language button beside Input Setup in shared main-menu and in-game Settings. Picker highlights the current language, saves choices through the existing portal store, and Back returns to Settings. A single available language is centered.
 ## Key technical decisions
-Only rendering changes for the gait; combat tuning and movement speed unchanged. Unfinished Roxy/Nadia remain silhouettes until integrated into the playable catalog. No new art upload required; this release updates runtime presentation code. Claude PR315 localisation build-time pipeline preserved.
+Reuse the build-time Google Sheet locale pipeline and English fallback. Offer only populated languages in production. Language selection in GameMenu never restarts the active fight; existing gameplay labels refresh on their next scene creation.
 ## Open questions
-Nadia portrait approval and rig production; Roxy draft integration approval; Marco torso revision remains a separate local art draft.
+None for this UI change.
 ## Known issues
-Visual validation used actual Puppet fixtures for Marco, Mia and Bruno, not a complete combat playthrough. Tee collar correction remains unfinished.
+Non-English locale files remain empty pending the private Sheet refresh and CSV import; English is currently the only production choice.
 ## Next proposed step
-Deploy approved presentation changes. Next localisation work: refresh private sheet to 376 keys, preserve reviewer edits, correct placeholders/game terminology, import Brave CSV and validate five languages. Sheet publication remains unapproved.
+Complete the translation Sheet/import handoff and review Japanese, Korean, Chinese, Spanish and Arabic layouts before making those languages available.
