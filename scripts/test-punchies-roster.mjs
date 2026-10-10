@@ -94,4 +94,6 @@ assert(!roster.ownedSkins(fresh,'marco').includes(classic.id));
 assert(roster.ownedSkins({...fresh,owned:[classic.id]},'marco').includes(classic.id));
 const tune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'));
 for(const id of ['roxy','nadia'])assert.deepEqual(tune.characters[id],tune.characters.marco);
-console.log('Outsource content: Longan acquisition, McClassic ownership and provisional baseline stats passed');
+assert.deepEqual(Object.keys(tune.characters.longan).sort(),Object.keys(tune.characters.marco).sort());
+for(const value of Object.values(tune.characters.longan))if(typeof value==='number')assert(Number.isFinite(value));
+console.log('Outsource content: Longan acquisition, McClassic ownership and independently tunable fighter schema passed');

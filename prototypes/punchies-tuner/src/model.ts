@@ -5,6 +5,7 @@ import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punc
 
 export type Doc = typeof initial;
 const template = structuredClone(initial);
+const {balanceWorkshop: _history,...gameSchema}=template as typeof template & {balanceWorkshop?:unknown};
 export const defaults = () => structuredClone(template);
 export const characters = [...CHARACTER_IDS];
 export const names = CHARACTER_INFO;
@@ -25,12 +26,11 @@ export function parse(text:string):Doc {
   // Full files only: omitted fields must not silently revert to bundled defaults.
   function walk(schema:unknown,value:unknown,path:string){
     if(schema&&typeof schema==='object')for(const [key,v] of Object.entries(schema)){
-      if(path===''&&key==='balanceWorkshop')continue; // Preserve optional editor provenance without treating it as game values.
       if(!value||typeof value!=='object'||!Object.prototype.hasOwnProperty.call(value,key))throw Error(`Missing ${path}${key}`);
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }
   }
-  walk(template,candidate,'');return candidate;
+  walk(gameSchema,candidate,'');return candidate;
 }
 export function changes(base:Doc,draft:Doc):string[] {
   return Object.keys(meta).filter(path=>typeof getSafe(base,path)==='number'&&getSafe(base,path)!==getSafe(draft,path));

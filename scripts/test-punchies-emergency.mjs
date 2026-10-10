@@ -7,7 +7,10 @@ const root = path.resolve('prototypes/punchies/src/sim');
 const cache = new Map();
 function load(file) {
   file = path.resolve(file);
+  if(!fs.existsSync(file)&&file.endsWith('.ts'))file=path.join(file.slice(0,-3),'index.ts');
   if (cache.has(file)) return cache.get(file);
+  // Combat scenarios use fixed inputs; production tune.json remains user-editable.
+  if(file===path.resolve('prototypes/punchies/tune.json'))return {default:JSON.parse(fs.readFileSync('scripts/fixtures/punchies-combat-tune.json','utf8'))};
   if (file.endsWith('.json')) return { default: JSON.parse(fs.readFileSync(file, 'utf8')) };
   const exports = {};
   cache.set(file, exports);
@@ -78,9 +81,7 @@ for (const char of ['marco', 'mia', 'bruno']) for (const type of ['jab', 'cross'
 const lowDodge = state(); lowDodge.fighters[0].stamina = 1;
 assert.ok(step(lowDodge, [{ ...N, dodge: true }, N], false).some(e => e.kind === 'staminaRejected'));
 assert.equal(lowDodge.fighters[0].dodge, null);
-// Cross was subsequently tuned to 10 by the owner; the other action costs
-// retain the earlier 20% increase.
-for (const [type, cost] of Object.entries({ jab: 4.8, cross: 10, hook: 8.4, uppercut: 12 })) near(tune.punches[type].staminaCost, cost);
+for (const [type, cost] of Object.entries({ jab: 4.8, cross: 10.8, hook: 8.4, uppercut: 12 })) near(tune.punches[type].staminaCost, cost);
 near(tune.dodge.staminaCost, 17.28); near(tune.guard.staminaDrainPerSec, 7.2);
 
 function hit(type, emergencyAtt, emergencyDef, counter = false, buff = false, fatigued = false) {
