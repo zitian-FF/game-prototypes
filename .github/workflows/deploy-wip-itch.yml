@@ -137,6 +137,7 @@ jobs:
           node scripts/test-punchies-emergency.mjs
           node scripts/test-punchies-geometry.mjs
           node scripts/test-punchies-i18n.mjs
+          node scripts/test-punchies-i18n-live.mjs
           if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
             node scripts/test-punchies-asset-optimization.mjs
           fi

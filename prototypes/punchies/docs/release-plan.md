@@ -275,8 +275,9 @@ The itch.io Current WIP slot is a test build. Testing aids that a real player mu
 | "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | test build, or `?debug=1` |
 | Debug and tuning panel, hitboxes | `src/debug/debugPanel.ts` | `?debug=1` only (also fine to keep hidden in the final build) |
 | Reset save panel | `src/ui/resetSavePanel.ts` | Settings; decide whether the final build keeps it |
+| Live Google Sheet translations | `src/i18n/liveSheet.ts`, `liveSheet.json`, the `installLiveTranslations` call in `src/i18n/init.ts`, `KEYS.liveTranslations`, `scripts/test-punchies-i18n-live.mjs` | test build only (`?live=0` turns it off). The sheet must be shared "anyone with the link can view" |
 
-Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
+For the final build, freeze the sheet into `locales/*.json` first (see the translation pull below), review the translations, then remove the live loader. Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
 
 ## 9. Update log
 
@@ -294,3 +295,4 @@ Also remove before final: the string `shop.debug_tokens` in `en.json` once the b
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
 - 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
 - 2026-10-10: test-build scaffold flag added (Claude): `TEST_BUILD` shows a 999 token shop button on itch without `?debug=1`; removal list in section 8b.
+- 2026-10-10: live Google Sheet translations added for the test build (Claude): the game reads the sheet at boot (gviz CSV, 3 second timeout, cache, bundled files, English). Final builds still use frozen locales/*.json from the pull workflow. The sheet must be shared "anyone with the link can view"; it is currently private and still holds only the first 254 strings.
