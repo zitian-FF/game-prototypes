@@ -5,6 +5,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateVersionStamps } from './scripts/generate-versions.js';
+import { packTuneMetadata, packLocale } from './scripts/punchies-json-packing';
 
 function getGitSha(): string {
   try {
@@ -51,7 +52,26 @@ export default defineConfig(({ command }) => ({
   root: assetProfile ? path.resolve(__dirname, 'prototypes/punchies') : __dirname,
   base: '/game-prototypes/',
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), {
+    name: 'punchies-packed-json',
+    enforce: 'post',
+    apply: 'build',
+    transform(_code, id) {
+      const file = id.replace(/\\/g, '/');
+      if (assetProfile && file.endsWith('/prototypes/punchies/tune.json')) {
+        // Standalone game packages do not include the workshop/editor. Preserve
+        // its history in tune.json and the normal hub/tuner build, not in gameplay.
+        const values = JSON.parse(fs.readFileSync(id, 'utf8'));
+        delete values.balanceWorkshop;
+        return { code: `export default ${JSON.stringify(values)};`, map: null };
+      }
+      if (file.endsWith('/prototypes/punchies/tune.meta.json')) return { code: packTuneMetadata(JSON.parse(fs.readFileSync(id, 'utf8'))), map: null };
+      if (/\/prototypes\/punchies\/src\/i18n\/locales\/(ja|ko|zh|es|ar)\.json$/.test(file)) {
+        const en = JSON.parse(fs.readFileSync(path.join(path.dirname(id), 'en.json'), 'utf8'));
+        return { code: packLocale(en, JSON.parse(fs.readFileSync(id, 'utf8'))), map: null };
+      }
+    },
+  }],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),

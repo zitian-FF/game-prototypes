@@ -111,10 +111,9 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Longan | `fighter-longan` | All-rounder | Fighter chest | done | done | Provisional stats. Added in #274 |
 | Tyke Maison | `fighter-tyke` | Heavyweight | Fighter chest | done | done | Provisional stats. Added in #274 |
 | Dragon | `fighter-dragon` | Karate | Fighter chest | done | done | Provisional stats. Added in #274 |
-| The Rookie | `fighter-five` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
-| The Southpaw | `fighter-six` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
-
-| Captain Eagle | `fighter-captain` | Racer | Fighter chest | prepared | integrated locally | Pending R2 publication; provisional Marco baseline. Gold scarf, visor, single shoulder armour. |
+| Captain Eagle | `fighter-captain` | Racer | Fighter chest | done | done | Provisional Marco baseline. Gold scarf, visor, single shoulder armour. |
+| Roxy | `fighter-roxy` | Firecracker | Fighter chest | done | done | Orange hair, navy kit and orange gloves; provisional current Marco baseline. Second row, fourth slot. |
+| Nadia | `fighter-nadia` | Rising Star | Fighter chest | done | done | Petite, silver braided bun, violet kit and emerald gloves; provisional current Marco stats, Mia body proportions. Second row, fifth slot. |
 
 ### Skins
 
@@ -152,7 +151,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | McClassic | `skin-marco-mcclassic` | Marco | unique | Skin chest | done | Portrait and complete rig shipped |
 | Flaming Kunoichi | `skin-mia-flaming-kunoichi` | Mia | unique | Skin chest | done | Portrait and complete rig shipped |
 
-Inventory: 7 live fighters plus Captain Eagle integrated locally pending release, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
+Inventory: 10 playable fighters, 21 palette skins (3 for each of the first seven fighters), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Future slots remain generic locked silhouettes. Roxy and Nadia are ordinary locked fighter-chest rewards and are available in the tuning tool.
 
 ### Content roadmap targets (owner to set)
 
@@ -282,12 +281,16 @@ Also remove before final: the string `shop.debug_tokens` in `en.json` once the b
 
 Translations are built into the game and never fetched at runtime. The Google Sheet (English plus GOOGLETRANSLATE formulas for ja, ko, zh, es, ar) is the working copy; the game ships frozen `locales/*.json`.
 
+The 2026-10-11 content build freezes 382 strings in each of Japanese, Korean, Simplified Chinese, Spanish and Arabic. Settings > Language now offers these five plus English. Boxing terminology, narrow labels and placeholders received a contextual pass; remaining machine-translated copy still needs native-speaker review. The Sheet remains private; its effective cell values were exported through the connected Sheets API when Brave's CSV download stalled. No automated CI download or sharing change was enabled.
+
 - A release build (`TEST_BUILD` is `false` in `src/testBuild.ts`) or a deploy started with the `pull_translations` input downloads the sheet as CSV (`scripts/i18n-sheet.mjs pull`, address in the `I18N_SHEET_URL` repository variable), validates it and packs it into that build. A release build stops if the download fails.
 - The "Pull Punchies translations" workflow, or `node scripts/i18n-sheet.mjs import <downloaded.csv>` after downloading the CSV in Brave, freezes the same files into the repository through a pull request.
 - The sheet must be readable by the CI download (link sharing or publish to the web). While the sheet is private, use the Brave download route.
 - Placeholders such as `{name}` must survive: the import keeps English for any cell that changes them. Reviewers fix the machine translations in the sheet.
 
 ## 9. Update log
+
+- 2026-10-11: Roxy and Nadia added to the playable roster, daily fighter pool and tuner; their portrait/rig keys are published in both verified R2 profiles. Nadia has her own silver-bun rig, Mia-sized proportions and current Marco provisional stats. Existing owner tuning is preserved. Five populated locales imported from the private Sheet; longer button/chest labels fit their existing UI bounds. Compact deliveries omit second copies of embedded atlas indexes and pack repeated JSON labels without changing runtime values.
 
 - 2026-10-09: Codex polished first-play UI and integrated Rising Star portrait/rig in both R2 profiles. Coach advances on approach, Skip sits at upper right, HP-only HUD retains names, returning through pause menu preserves the welcome gift, gameplay music maps to the first fight and title music to its reward/welcome. Welcome card uses bottom-anchored Marco and the purple chest; reward acknowledgement has standard button feedback. Language choice precedes the fight only when multiple translated languages are available. Profile/progression screens remain separate pending work.
 

@@ -174,7 +174,9 @@
       "tyke": 1.18,
       "dragon": 1,
       "longan": 1,
-      "captain": 1
+      "captain": 1,
+      "roxy": 1,
+      "nadia": 0.88
     }
   },
   "punches": {
@@ -793,6 +795,100 @@
       },
       "uppercut": {
         "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "roxy": {
+      "hp": 1,
+      "stamina": 1,
+      "regen": 1,
+      "stun": 1,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      }
+    },
+    "nadia": {
+      "hp": 1,
+      "stamina": 1,
+      "regen": 1,
+      "stun": 1,
+      "speed": 1,
+      "jab": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,

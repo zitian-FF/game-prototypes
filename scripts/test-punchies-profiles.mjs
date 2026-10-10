@@ -19,7 +19,8 @@ for(const entry of JSON.parse(fs.readFileSync(path.join(root,'assets/manifest.js
   if(/\/portrait_/.test(entry.path)){const meta=await sharp(file).metadata();assert(meta.hasAlpha);assert(Math.max(meta.width,meta.height)<=(profile==='compact'?768:1280));}
 }
 const loose=path.join(root,'assets/loose'),aliases=JSON.parse(fs.readFileSync(path.join(loose,'part-mirrors.json')));
-for(const char of ['marco','mia','bruno','tee','tyke','dragon','longan','captain','marco_mcclassic','mia_flaming_kunoichi','marco_rising_star'])for(const part of ['head','torso','glove_left','glove_right','boot_left','boot_right'])assert(aliases[`part_${char}_${part}`]||fs.existsSync(path.join(loose,`part_${char}_${part}.webp`)));
+for(const char of ['marco','mia','bruno','tee','tyke','dragon','longan','captain','roxy','nadia','marco_mcclassic','mia_flaming_kunoichi','marco_rising_star'])for(const part of ['head','torso','glove_left','glove_right','boot_left','boot_right'])assert(aliases[`part_${char}_${part}`]||fs.existsSync(path.join(loose,`part_${char}_${part}.webp`)));
+for(const char of ['roxy','nadia'])assert(fs.statSync(path.join(loose,`portrait_${char}.webp`)).size<(profile==='compact'?100000:200000));
 assert(fs.statSync(path.join(loose,'portrait_marco_rising_star.webp')).size<(profile==='compact'?100000:200000));
 for(const part of ['glove','boot']){
   assert.equal(aliases[`part_marco_rising_star_${part}_left`].axis,'y');
