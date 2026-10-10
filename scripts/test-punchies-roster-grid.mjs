@@ -3,11 +3,13 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { EventEmitter } from 'node:events';
-function load(file){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports});return exports;}
-const {rosterSlots,verticalRosterPick}=load('prototypes/punchies/src/ui/rosterLayout.ts');
+function load(file){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:()=>({CHARACTER_IDS:Object.keys(JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).characters)})});return exports;}
+const {rosterSlots,rosterIds,horizontalRosterPick,verticalRosterPick}=load('prototypes/punchies/src/ui/rosterLayout.ts');
 const slots=rosterSlots();assert.equal(slots.length,30);assert.equal(new Set(slots.map(p=>`${p.x},${p.y}`)).size,30);
-for(let i=0;i<7;i++)for(const d of [-1,1]){const next=verticalRosterPick(i,d,7);assert(next>=0&&next<7,'Future slots must never receive selection');}
-assert.equal(verticalRosterPick(0,1,7),4);assert.equal(verticalRosterPick(4,-1,7),0);
+const live=Object.keys(JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).characters);
+for(let i=0;i<live.length;i++)for(const d of [-1,1]){const next=verticalRosterPick(i,d);assert(next>=0&&next<live.length,'Future slots must never receive selection');}
+const future=rosterIds([...live,'roxy','nadia']);assert.equal(future[0],'tee');assert.equal(JSON.stringify(future.slice(3,8)),JSON.stringify(['marco','mia','bruno','roxy','nadia']));assert.equal(new Set(future.filter(Boolean)).size,live.length+2);
+assert.equal(horizontalRosterPick(3,1),0);assert.equal(verticalRosterPick(3,1),1);
 const {bindButtonFeedback}=load('prototypes/punchies/src/ui/cartoonChrome.ts');
 const hit=new EventEmitter(),events=new EventEmitter(),data={};hit.scene={events};hit.input={enabled:true};hit.setData=(k,v)=>{data[k]=v;};const states=[];
 bindButtonFeedback(hit,s=>states.push(s));assert.equal(states.at(-1),'idle');

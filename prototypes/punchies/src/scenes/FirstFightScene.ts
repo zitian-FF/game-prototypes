@@ -1,3 +1,4 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import { bindingLabel } from '../ui/inputGlyph';
 import { devices } from '../input/devices';
 import Phaser from 'phaser';
@@ -217,7 +218,7 @@ export class FirstFightScene extends Phaser.Scene {
       const source = this.textures.get(key).getSourceImage() as HTMLImageElement;
       const bounds = portraitBounds(this, key);
       portrait.setOrigin((bounds.left + bounds.right) / 2 / source.width, bounds.bottom / source.height);
-      portrait.setScale(Math.min(VIEW.height * .92 / (bounds.bottom - bounds.top), 330 / (bounds.right - bounds.left)));
+      portrait.setScale(Math.min(VIEW.height * .92 / (bounds.bottom - bounds.top), 330 / (bounds.right - bounds.left))*portraitScaleFactor('marco'));
     }
     const x = VIEW.cx + 125;
     const graphics = this.add.graphics().setDepth(D + 2);
