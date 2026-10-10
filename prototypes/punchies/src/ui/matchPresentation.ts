@@ -1,3 +1,4 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { artImage } from '../render/art';
@@ -77,7 +78,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   if(hasWinner&&portraitKey&&scene.textures.exists(portraitKey)){
     portrait=scene.add.image(VIEW.left+VIEW.width*.25,VIEW.bottom,portraitKey).setDepth(140);
     const bounds=portraitBounds(scene,portraitKey);
-    const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top));
+    const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top))*portraitScaleFactor(winner!.char);
     portrait.setFlipX(winner!.char==='tyke').setOrigin(winner!.char==='tyke'?1-(bounds.left+bounds.right)/2/portrait.width:(bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
   }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';

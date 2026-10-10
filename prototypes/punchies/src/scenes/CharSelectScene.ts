@@ -1,4 +1,4 @@
-import { verticalRosterPick } from '../ui/rosterLayout';
+import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
 import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
@@ -247,7 +247,7 @@ export class CharSelectScene extends Phaser.Scene {
   private moveVertical(s:number,d:number):void {
     if(!this.editable(s)||this.sides[s].selected)return;
     const current=this.sides[s].sel,next=verticalRosterPick(current,d,CHARACTER_IDS.length);
-    if(next!==current)this.move(s,next-current);
+    if(next!==current)this.move(s,next-current,true);
   }
 
   private cycleLevel(d: number): void {
@@ -261,11 +261,11 @@ export class CharSelectScene extends Phaser.Scene {
     return this.sides[s].src !== 'remote' && !(this.data0.mode==='training' && s===1);
   }
 
-  private move(s: number, d: number): void {
+  private move(s: number, d: number, absoluteDelta=false): void {
     const side = this.sides[s];
     if (!this.editable(s)) return;
     if(side.selected){this.cycleSkin(s,d);return;}
-    side.sel = (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length;
+    side.sel = absoluteDelta ? (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length : horizontalRosterPick(side.sel,d);
     sfx.uiSelect();
     side.skin=this.preferredSkin(s);this.notice='';
     if(this.data0.mode==='online')this.sendPick();

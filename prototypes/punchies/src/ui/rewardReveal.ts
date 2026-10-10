@@ -1,3 +1,4 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { itemName } from '../shop/itemText';
@@ -45,7 +46,7 @@ export class RewardReveal {
         left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);
       }
       if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
-      const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left));
+      const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left))*portraitScaleFactor(item.boxer??'');
       portrait.x-=(item.boxer==='tyke'?-1:1)*((left+right)/2-canvas.width/2)*scale;
       portrait.y+=(canvas.height-bottom)*scale;
       this.root.add(portrait.setScale(scale*(motion?cfg.entryScale:1)).setAlpha(motion?0:1));

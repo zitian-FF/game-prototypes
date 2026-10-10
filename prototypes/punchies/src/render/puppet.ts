@@ -1,4 +1,4 @@
-import { footCycle } from './legMotion';
+import { blendedFootStep, bootCollar } from './legMotion';
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { limbSkin } from './skinPalette';
@@ -103,6 +103,7 @@ export interface PuppetArgs {
 
 export class Puppet {
   private legs: Phaser.GameObjects.Graphics;
+  private ankles: Phaser.GameObjects.Graphics;
   private arms: Phaser.GameObjects.Graphics;
   private fx: Phaser.GameObjects.Graphics;
   private bootL: Phaser.GameObjects.Image;
@@ -121,6 +122,7 @@ export class Puppet {
   constructor(private scene: Phaser.Scene) {
     const img = (d: number) => scene.add.image(0, 0, '__DEFAULT').setDepth(d).setVisible(false);
     this.legs = scene.add.graphics().setDepth(9.2);
+    this.ankles = scene.add.graphics().setDepth(9.35);
     this.bootL = img(9.3);
     this.bootR = img(9.3);
     this.ghosts = [0, 1].map(() => ({ torso: img(9.6), head: img(9.62) }));
@@ -141,6 +143,7 @@ export class Puppet {
 
   hide(): void {
     this.legs.clear();
+    this.ankles.clear();
     this.arms.clear();
     this.fx.clear();
     for (const o of [...this.twinTails,this.bootL, this.bootR, this.torso, this.ponytail, this.scarf, this.gloveL, this.gloveR, this.head]) o.setVisible(false);
@@ -209,6 +212,7 @@ export class Puppet {
     const breathe = Math.sin(now / 520);
 
     this.legs.clear();
+    this.ankles.clear();
     this.arms.clear();
     this.fx.clear();
 
@@ -217,26 +221,22 @@ export class Puppet {
     let mu = 0;
     let mv = 0;
     if (speed > 0.01) {
-      mu = (a.vel.x * fx + a.vel.y * fy) / speed;
-      mv = (a.vel.x * lx + a.vel.y * ly) / speed;
+      mu = a.vel.x * fx + a.vel.y * fy;
+      mv = a.vel.x * lx + a.vel.y * ly;
     }
-    // 0 = walking forward / back, 1 = side-stepping (past ~45 degrees).
-    const angle = Math.atan2(Math.abs(mv), Math.abs(mu));
-    const strafe = Math.min(1, Math.max(0, (angle - 0.52) / 0.5));
-    const amp = (9 - 2 * strafe) * k * a.stride;
+    // Blend independent longitudinal and lateral steps without an angle threshold.
     const feet: { pos: Pt; yaw: number; lift: number; ankle: Pt; hip: Pt; out: Pt }[] = [];
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? 1 : -1; // boot_left on +v
       const ph = a.walk + (i === 0 ? 0 : Math.PI);
-      const cycle = footCycle(ph);
-      const sw = cycle.travel;
+      const step = blendedFootStep(ph,mu,mv,a.stride);
       const u0 = (i === 0 ? rig.leadBootForward : rig.rearBootForward) * k;
       const v0 = rig.bootSpread * k * side;
-      const pos = P(u0 + mu * amp * sw, v0 + mv * amp * sw, v.feetOffsetY);
-      const yaw = 0.3 * strafe * Math.sign(mv || 1) * a.stride;
-      const lift = cycle.lift * a.stride;
+      const pos = P(u0 + step.u*k, v0 + step.v*k, v.feetOffsetY);
+      const yaw = step.yaw;
+      const lift = step.lift;
       const hip = P(-2 * k, rig.hipSpread * k * side, v.bodyOffsetY);
-      const ankle = { x: pos.x - fx * 4 * k, y: pos.y - fy * 4 * k };
+      const ankle = bootCollar(pos.x,pos.y,th+yaw,rig.bootWidth*k*(1+.14*lift));
       feet.push({ pos, yaw, lift, ankle, hip, out: { x: lx * side, y: ly * side } });
     }
     [this.bootL, this.bootR].forEach((boot, i) => {
@@ -250,6 +250,11 @@ export class Puppet {
       const projectedLength = Math.hypot(ft.ankle.x-ft.hip.x, ft.ankle.y-ft.hip.y);
       const knee = joint(ft.hip, ft.ankle, projectedLength * .51, ft.out);
       limb(this.legs, ft.hip, knee, ft.ankle, 5.5 * k, look.skin, alpha);
+      // Shoe pixels are opaque inside the collar: overlap a short ankle above
+      // the boot, while the full leg remains behind it and the torso.
+      const dx=knee.x-ft.ankle.x,dy=knee.y-ft.ankle.y,length=Math.hypot(dx,dy)||1;
+      const join={x:ft.ankle.x+dx/length*3*k,y:ft.ankle.y+dy/length*3*k};
+      limb(this.ankles,join,join,ft.ankle,3*k,look.skin,alpha);
     }
 
     // ---- torso and head ----
