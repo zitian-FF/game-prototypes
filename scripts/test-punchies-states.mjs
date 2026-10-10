@@ -7,7 +7,10 @@ const root = path.resolve('prototypes/punchies/src/sim');
 const cache = new Map();
 function load(file) {
   file = path.resolve(file);
+  if(!fs.existsSync(file)&&file.endsWith('.ts'))file=path.join(file.slice(0,-3),'index.ts');
   if (cache.has(file)) return cache.get(file);
+  // Combat scenarios use fixed inputs; production tune.json remains user-editable.
+  if(file===path.resolve('prototypes/punchies/tune.json'))return {default:JSON.parse(fs.readFileSync('scripts/fixtures/punchies-combat-tune.json','utf8'))};
   if (file.endsWith('.json')) return { default: JSON.parse(fs.readFileSync(file, 'utf8')) };
   const exports = {};
   cache.set(file, exports);
