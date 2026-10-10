@@ -157,7 +157,16 @@
   "body": {
     "hurtRadius": 22,
     "coreRadius": 10,
-    "vulnerableHurtRadius": 28
+    "vulnerableHurtRadius": 28,
+    "proportions": {
+      "marco": 1,
+      "mia": 0.88,
+      "bruno": 1.12,
+      "tee": 0.88,
+      "tyke": 1.18,
+      "dragon": 1,
+      "longan": 1
+    }
   },
   "punches": {
     "jab": {
@@ -168,7 +177,7 @@
       "recovery": 8,
       "whiffRecovery": 4,
       "reach": 42,
-      "hitRadius": 6,
+      "hitRadius": 9,
       "damage": 4,
       "staminaCost": 4.8,
       "staminaDamage": 5,
@@ -181,14 +190,14 @@
       "pushBlock": 0
     },
     "cross": {
-      "startup": 13,
+      "startup": 15,
       "sourEarly": 3,
-      "sweet": 6,
+      "sweet": 4,
       "sour": 0,
       "recovery": 20,
       "whiffRecovery": 12,
-      "reach": 56,
-      "hitRadius": 7,
+      "reach": 48,
+      "hitRadius": 10,
       "damage": 10,
       "staminaCost": 10.8,
       "staminaDamage": 16,
@@ -208,7 +217,7 @@
       "recovery": 12,
       "whiffRecovery": 8,
       "reach": 31,
-      "hitRadius": 12,
+      "hitRadius": 10,
       "damage": 7,
       "staminaCost": 8.4,
       "staminaDamage": 12,
@@ -229,7 +238,7 @@
       "recovery": 16,
       "whiffRecovery": 45,
       "reach": 31,
-      "hitRadius": 12,
+      "hitRadius": 10,
       "crossDamageMult": 2,
       "staminaCost": 12,
       "staminaDamage": 24,
