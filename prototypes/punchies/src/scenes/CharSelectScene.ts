@@ -30,7 +30,7 @@ import { backdrop, fighterGroups, prefetchGroups } from '../render/art';
 //   online:  each phone picks only its own side; the opponent's pick shows
 //            as READY until the host starts the match.
 
-type Mode = 'training' | 'vsai' | 'localvs' | 'online';
+type Mode = 'survival' | 'training' | 'vsai' | 'localvs' | 'online';
 
 export interface CharSelectData {
   mode: Mode;
@@ -91,7 +91,7 @@ export class CharSelectScene extends Phaser.Scene {
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
     this.level = prefs.level;
-    if (data.mode === 'training') {
+    if ((data.mode === 'training' || data.mode === 'survival')) {
       this.sides = [
         {sel:idx(prefs.p1),locked:false,label:t('common.you'),src:'any'},
         {sel:0,locked:true,label:t('common.dummy'),src:'remote'},
@@ -137,7 +137,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private cycleFormat(): void {
-    if (this.data0.mode === 'training' || (this.data0.mode === 'online' && this.data0.localIdx !== 0)) return;
+    if ((this.data0.mode === 'training' || this.data0.mode === 'survival') || (this.data0.mode === 'online' && this.data0.localIdx !== 0)) return;
     tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
     sfx.uiSelect();
   }
@@ -239,7 +239,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private editable(s: number): boolean {
-    return this.sides[s].src !== 'remote' && !(this.data0.mode==='training' && s===1);
+    return this.sides[s].src !== 'remote' && !((this.data0.mode==='training'||this.data0.mode==='survival') && s===1);
   }
 
   private move(s: number, d: number, absoluteDelta=false): void {
@@ -350,7 +350,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private leave(): void {
-    startScreen(this, 'Menu');
+    startScreen(this, this.data0.mode==='survival'?'SurvivalEntry':'Menu');
   }
 
   // Online: the button is READY / UNREADY for your own pick.
@@ -369,11 +369,11 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private fight(): void {
-    if (this.data0.mode==='training') {
+    if ((this.data0.mode==='training'||this.data0.mode==='survival')) {
       if (!this.bothLocked() || !this.available(0)) return;
       const char=this.picks()[0],skin=this.skins()[0],prefs=loadCharPrefs();
       saveCharPrefs({p1:char,skins:{...prefs.skins,p1:{...prefs.skins.p1,[char]:skin}}});
-      startScreen(this,'Training',{char,skin});
+      startScreen(this,this.data0.mode==='survival'?'Survival':'Training',{char,skin});
       return;
     }
     if (!this.bothLocked() || this.sides.some((_,s)=>!this.available(s))) return;
@@ -416,6 +416,7 @@ export class CharSelectScene extends Phaser.Scene {
         }
         const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
+        if(m.ratingNonce)void s.beginRating(m.ratingNonce);
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
@@ -442,7 +443,8 @@ export class CharSelectScene extends Phaser.Scene {
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;
-    s.send({ k: 'start', round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
+    const ratingNonce=crypto.randomUUID();void s.beginRating(ratingNonce);
+    s.send({ k: 'start', ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
     this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }
 
@@ -462,26 +464,27 @@ export class CharSelectScene extends Phaser.Scene {
     const ready = this.bothLocked();
     const me = this.data0.localIdx ?? 0;
     this.selectionView.render({
-      training:this.data0.mode==='training',
+      training:(this.data0.mode==='training'||this.data0.mode==='survival'),
       bestOf: tune.match.bestOf,
       formatEditable: this.data0.mode !== 'online' || this.data0.localIdx === 0,
       panels: this.sides.map((side, s) => ({
         dummy:this.data0.mode==='training'&&s===1,
+        survival:this.data0.mode==='survival'&&s===1,
         id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
         cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
         hidden: side.src === 'remote', locked: side.locked,
         focused: !ready && (local ? !side.locked : this.active === s),
-        status: this.data0.mode==='training'&&s===1?'':side.src === 'remote'
+        status: (this.data0.mode==='training'||this.data0.mode==='survival')&&s===1?'':side.src === 'remote'
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
           : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
         uppercut: rosterUppercut(chars[s]),
         durability: {hp:tune.health.max*charTune(chars[s]).hp,stun:tune.stun.threshold*charTune(chars[s]).stun},
       })),
-      step: ready ? 2 : this.data0.mode==='training'?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
-      steps: this.data0.mode==='training'?[t('common.your_boxer'),t('common.ready'),t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
+      step: ready ? 2 : (this.data0.mode==='training'||this.data0.mode==='survival')?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
+      steps: (this.data0.mode==='training'||this.data0.mode==='survival')?[t('common.your_boxer'),t('common.ready'),this.data0.mode==='survival'?t('survival.start'):t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
       action: online ? (this.sides[me].locked ? t('charselect.unready') : this.sides[me].selected?t('charselect.ready'):t('charselect.select_boxer'))
-        : ready ? (this.data0.mode==='training'?t('training.start'):t('charselect.fight')) : local
+        : ready ? ((this.data0.mode==='training'||this.data0.mode==='survival')?(this.data0.mode==='survival'?t('survival.start'):t('training.start')):t('charselect.fight')) : local
           ? (this.sides.some((side) => side.src === 'touch')
             ? (this.sides[0].locked ? t('charselect.waiting_for_p2') : t('common.confirm_boxer')) : t('charselect.confirm_on_device'))
           : this.active === 0 ? t('common.confirm_boxer') : t('charselect.confirm_opponent'),

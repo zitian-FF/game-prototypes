@@ -5,7 +5,7 @@ import { audioOutput, unlockMixer } from './mixer';
 type Track = 'title' | 'charselect' | 'gameplay';
 declare const __PUNCHIES_ASSET_BASE__: string;
 declare const __PUNCHIES_MUSIC_EXTENSION__: 'mp3' | 'm4a';
-const fights = new Set(['FirstFight', 'Training', 'Tutorial', 'VsAI', 'LocalVs', 'Match']);
+const fights = new Set(['FirstFight', 'Training', 'Tutorial', 'VsAI', 'LocalVs', 'Match', 'Survival']);
 const root = `${__PUNCHIES_ASSET_BASE__}prototypes/punchies/audio/`;
 
 // Stream long tracks rather than decoding all three into memory on mobile.

@@ -186,6 +186,8 @@ jobs:
 
       - name: Build (relative base for itch.io)
         if: steps.relevant.outputs.run == 'true'
+        env:
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
         run: npx vite build --base ./
 
       # Keep only the target prototype's page plus shared assets/, so the

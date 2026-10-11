@@ -17,6 +17,9 @@ export class Hud {
   private series: SeriesState = {bestOf:3,roundNumber:1,wins:[0,0]};
   shown: Set<string> | null = null;
   resourceRow: number[] = [];
+  sidesShown = [true,true];
+  timerText: string | null = null;
+  showRoundSockets = true;
 
   private names: Phaser.GameObjects.Text[] = [];
   private upperReady: Phaser.GameObjects.Text[] = [];
@@ -49,7 +52,7 @@ export class Hud {
       g.fillStyle(0x14243b).fillPoints(hex(1),true);g.lineStyle(1.5,0x617994).strokePoints(hex(1),true);
       g.lineStyle(1,0xe4edfb,.3).lineBetween(VIEW.cx-25,VIEW.top+5,VIEW.cx+25,VIEW.top+5);
       g.fillStyle(0x1f324e).fillPoints([{x:VIEW.cx-22,y:VIEW.top+8},{x:VIEW.cx+22,y:VIEW.top+8},{x:VIEW.cx+35,y:VIEW.top+18},{x:VIEW.cx-35,y:VIEW.top+18}],true);
-      for(let side=0;side<2;side++)for(let i=0;i<(this.series.bestOf===3?2:1);i++){
+      for(let side=0;this.showRoundSockets&&side<2;side++)for(let i=0;i<(this.series.bestOf===3?2:1);i++){
         const sign=side===0?-1:1,x=VIEW.cx+sign*(35+i*9),y=VIEW.top+8+i*8;
         const p=[{x,y:y-4},{x:x+4,y},{x,y:y+4},{x:x-4,y}];
         g.lineStyle(4,0x020613).strokePoints(p,true);g.fillStyle(i<this.series.wins[side]?0xffd35b:0x18243a).fillPoints(p,true);
@@ -57,8 +60,9 @@ export class Hud {
       }
     }
     this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)));
-    this.names.forEach(t=>t.setVisible(show('health')));
+    this.names.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
     for(let i=0;i<2;i++){
+      if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);continue;}
       const f=s.fighters[i],left=i===0;
       this.shownHealth[i]=this.shownHealth[i]<0?f.health:Math.max(f.health,this.shownHealth[i]-.4);
       if(show('health'))this.bar(left,34,14,.40,f.health/maxHealth(f),this.shownHealth[i]/maxHealth(f),0xef4db6,0,true);
@@ -77,7 +81,7 @@ export class Hud {
         .setColor('#fff3a1').setStroke('#8a4600',2)
         .setShadow(0,0,'#ffce32',8+8*pulse,true,true);
     }
-    this.timer.setText(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--').setVisible(show('timer'));
+    this.timer.setText(this.timerText??(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--')).setVisible(show('timer'));
   }
   private drawResources(f:Fighter,side:number):void{
     const g=this.g,sign=side===0?-1:1;

@@ -1,3 +1,5 @@
+import { SurvivalEntryScene } from './scenes/SurvivalEntryScene';
+import { SurvivalScene } from './scenes/SurvivalScene';
 import { ScreenTransition } from './ui/presentation';
 import { installMusic } from './audio/music';
 import Phaser from 'phaser';
@@ -45,7 +47,7 @@ installMusic(game);
 // keeps running (restarting it would break online play): its ring stays
 // centred and the extra space is simply shown.
 let resizeTimer = 0;
-const MENU_SCENES = ['Menu', 'CharSelect', 'Shop'];
+const MENU_SCENES = ['Menu', 'CharSelect', 'Shop', 'SurvivalEntry'];
 function onScreenShape(): void {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
@@ -77,6 +79,8 @@ window.addEventListener('orientationchange', onScreenShape);
 document.addEventListener('fullscreenchange', onScreenShape);
 game.scene.add('ScreenTransition', ScreenTransition, false);
 game.scene.add('Menu', MenuScene, false);
+game.scene.add('SurvivalEntry', SurvivalEntryScene, false);
+game.scene.add('Survival', SurvivalScene, false);
 game.scene.add('GameMenu', GameMenuScene, false);
 game.scene.add('Shop', ShopScene, false);
 game.scene.add('Training', TrainingScene, false);

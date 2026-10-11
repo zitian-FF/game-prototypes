@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Survival logic QA</title>
+<style>body{background:#111c2b;color:#fff;font:16px system-ui;margin:20px}button{padding:12px;margin:4px}canvas{display:block;margin-top:12px}#status{white-space:pre-wrap}</style>
+<h1>Survival logic QA — placeholder renderer</h1>
+<p>WASD/arrows move. J jab, C cross, H hook, U uppercut, Space dodge, G guard.</p>
+<button id="new">New run</button><button id="boss">Test wave 5</button><button id="clear">Test timer expiry</button><button id="advance">Next wave</button><button id="resume">Load checkpoint</button><button id="pause">Pause</button>
+<div id="status"></div><div id="game"></div>
+<script type="module">
+import Phaser from 'phaser';
+import {SurvivalStore} from '../prototypes/punchies/src/survival/save';
+import {survivalView} from '../prototypes/punchies/src/survival/sim';
+import {tune} from '../prototypes/punchies/src/sim/tune';
+import {NEUTRAL_INPUT} from '../prototypes/punchies/src/sim/types';
+const store=new SurvivalStore(localStorage), keys=new Set();
+let run=store.begin({fighter:'marco',skin:'base',seed:42,runId:crypto.randomUUID()}),paused=true,acc=0,lastEvents=[];
+addEventListener('keydown',e=>{keys.add(e.code);if(e.code==='Space')e.preventDefault();});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());
+document.querySelector('#new').onclick=()=>{run=store.begin({fighter:'marco',skin:'base',seed:42,runId:crypto.randomUUID()});paused=false;};
+document.querySelector('#boss').onclick=()=>{run=store.begin({fighter:'marco',skin:'base',seed:42,runId:crypto.randomUUID()});run.status='intermission';run.wave=4;store.advance(run);paused=true;};
+document.querySelector('#clear').onclick=()=>{run.remainingTicks=1;lastEvents=store.step(run,NEUTRAL_INPUT);paused=true;};
+document.querySelector('#advance').onclick=()=>{lastEvents=store.advance(run);paused=false;};
+document.querySelector('#resume').onclick=()=>{const result=store.loadResume();if(result.kind==='ready'){run=result.run;paused=true;}else document.querySelector('#status').textContent=result.kind;};
+document.querySelector('#pause').onclick=()=>paused=!paused;
+new Phaser.Game({type:Phaser.CANVAS,width:900,height:600,parent:'game',scene:{
+create(){this.g=this.add.graphics();},
+update(_,delta){
+ if(!paused){acc+=Math.min(delta,100);while(acc>=1000/60){acc-=1000/60;lastEvents=store.step(run,{...NEUTRAL_INPUT,mx:(keys.has('KeyD')||keys.has('ArrowRight')?100:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?100:0),my:(keys.has('KeyS')||keys.has('ArrowDown')?100:0)-(keys.has('KeyW')||keys.has('ArrowUp')?100:0),jab:keys.has('KeyJ'),cross:keys.has('KeyC'),hook:keys.has('KeyH'),uppercut:keys.has('KeyU'),dodge:keys.has('Space'),guard:keys.has('KeyG')});}}else acc=0;
+ const v=survivalView(run),r=tune.ring,g=this.g;g.clear();g.lineStyle(4,0xee425b);g.strokeRect(r.left,r.top,r.right-r.left,r.bottom-r.top);
+ const entities=[{fighter:run.player,kind:'player'},...run.enemies];
+ for(const e of entities){const f=e.fighter;g.fillStyle(e.kind==='player'?0x35bcff:e.kind==='boss'?0xf0b93b:0x62bb65);g.fillCircle(f.x,f.y,14);g.lineStyle(3,0xffffff);g.lineBetween(f.x,f.y,f.x+f.fx*23,f.y+f.fy*23);g.lineStyle(2,0x76e88b);g.lineBetween(f.x-16,f.y-22,f.x+16*Math.max(0,f.health)/(e.maxHealth??v.maxHealth),f.y-22);}
+ document.querySelector('#status').textContent=`${paused?'PAUSED':'RUNNING'} | Wave ${v.wave} | ${v.timeText} | ${v.status}\nEnemies ${v.enemies.length} | Kills ${v.waveKills} | Healing ${v.healing} | Boss ${v.bossChar??'none'} | PB ${store.best()?.clearedWave??0}\n${lastEvents.map(e=>e.kind).join(', ')}`;
+}}});
+</script></html>

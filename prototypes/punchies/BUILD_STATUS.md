@@ -1,12 +1,12 @@
 ## Current milestone
-CrazyGames launch prep: adapter verified against the real SDK; casual online Elo (Cloudflare Worker, built by Codex) in planning.
+Owner-authorized complete Zombie Survival and casual Elo release; combined local checks passed, publication pending.
 ## What was implemented
-CrazyGames adapter checked against the real SDK v3.8.0 in its local demo mode (`scripts/test-punchies-crazygames-sdk.mjs`): init, `loadingStart`/`loadingStop`, saves through the SDK data module, no console errors. The adapter now sends `loadingStart` after init and treats the Basic Launch ad error (`adsDisabledBasicLaunch`) as unavailable instead of failed. The test-build scaffold (999 token shop button) is now on only in the default `web` build (itch.io Current WIP); every portal build drops it. Earlier this session: package budgets raised (compact 20 MB, standard 40 MB), perfect guard widened to 8 frames, tutorial panel moved to the bottom with Skip/Exit stacked at its right, tutorial copy shortened, combat translation fixes merged.
+Casual private-room Elo client, bounded status presentation and SQLite Durable Object service; complete Zombie Survival entry, solo roster/skin choice, timed combat, independent Zombie rig, boss waves, healing, checkpoint resume, save failure/retry and pause controls. Existing combat tuning is unchanged.
 ## Key technical decisions
-`TEST_BUILD` is derived from the build-time portal constant, so no manual flag edit is needed for a portal build. The SDK check runs only against local demo mode, so gameplay start/stop and rewarded ads remain covered by mock tests until CrazyGames' QA tool is used. Elo plan (Codex implementing): Elo with a range-based farm guard, max participant K for zero-sum, both clients must report, no unilateral win claims.
+Integrate only Survival production UI and rig commits, excluding obsolete Ranked and unrelated progression. Rating identity and pending reports use registered portal storage. Both art profiles preserve existing entries and share identical Zombie parts and mirror aliases. Deploy Worker first, capture its actual URL and rebuild clients afterward. VFX remains a subsequent isolated release.
 ## Open questions
-Does online play ship on CrazyGames at all (third-party relays and a Worker)? Which launch scope (basic launch with 3 fighters) and when. Art launch work (thumbnails, cover, screenshots, trailer) must be discussed with the owner first; Codex has been told. Guard/dodge exposure windows (24 frames) and the stamina inversion (1 to 17 stamina cannot dodge, 0 can) are undecided.
+The 33 Survival translations use English fallback while reviewed Sheet formulas resolve. A deployed two-peer fight remains a release smoke requirement.
 ## Known issues
-Non-English tutorial copy is stale until Codex re-translates the 13 changed keys. Bots do not use the hit/block lock or exhausted guard and dodge rules. The tutorial panel overlaps the ring's lower edge slightly on some aspect ratios. PR #270 (tuner workshop) was reported rebased by Codex but is not merged; PRs #335 and #336 were approved by the owner and merged.
+Anonymous storage reset loses the rating identity. Agreed fake results and unreported disconnects remain accepted casual-rating limitations. Local review harness mocks saves and controller buttons; it is not physical-device or live-service evidence.
 ## Next proposed step
-Run the CrazyGames build in CrazyGames' QA tool, then decide launch scope and the online-mode question.
+Merge the reviewed combined release, deploy and validate the rating Worker, configure the actual service URL, publish clients and verify the live game before continuing VFX.
