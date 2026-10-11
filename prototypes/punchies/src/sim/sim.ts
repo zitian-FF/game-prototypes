@@ -795,3 +795,10 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
   if (finishMatch) checkMatchEnd(s, events);
   return events;
 }
+
+// Opt-in arena adapter. Normal boxing continues to use step unchanged. An
+// arena calls input/movement/timers once per entity, and contacts per pair.
+export const arenaCombat = {
+  createFighter, processInput, move, advanceTimers, detectContacts, resolveContact,
+  requestedAction, rejectAction, gainStamina,
+};
