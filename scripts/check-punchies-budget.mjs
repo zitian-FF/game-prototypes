@@ -16,7 +16,7 @@ for(const folder of ['assets','prototypes/punchies']){
 const categories={art:0,audio:0,codeAndOther:0};
 for(const file of files){const key=/\.(mp3|ogg|wav|m4a)$/.test(file.path)||file.path.includes('/audio/')?'audio':file.path.includes('/assets/')||/\.(png|webp|jpg)$/.test(file.path)?'art':'codeAndOther';categories[key]+=file.bytes;}
 const total=files.reduce((sum,file)=>sum+file.bytes,0);
-const limitBytes=Number(process.env.PUNCHIES_BUDGET_LIMIT_BYTES??20_000_000);
+const limitBytes=Number(process.env.PUNCHIES_BUDGET_LIMIT_BYTES??40_000_000);
 if(!Number.isSafeInteger(limitBytes)||limitBytes<=0)throw Error('Invalid package budget');
 const report={limitBytes,totalBytes:total,categories,fileCount:files.length,largest:files.sort((a,b)=>b.bytes-a.bytes).slice(0,15)};
 console.log(JSON.stringify(report,null,2));

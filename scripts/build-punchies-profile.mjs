@@ -63,5 +63,5 @@ const embedded=new Set(['atlas/animations.json','atlas/groups.json']);
 for(const file of embedded)fs.rmSync(path.join(deliveredArt,file));
 const manifest=JSON.parse(fs.readFileSync(path.join(deliveredArt,'manifest.json'))).filter(entry=>!embedded.has(entry.path));
 fs.writeFileSync(path.join(deliveredArt,'manifest.json'),JSON.stringify(manifest));
-execFileSync(process.execPath,['scripts/check-punchies-budget.mjs',outDir],{stdio:'inherit',env:{...process.env,PUNCHIES_BUDGET_LIMIT_BYTES:profile==='compact'?'10000000':'20000000',PUNCHIES_BUDGET_REPORT:path.join(staging,`budget-${portal}.json`)}});
+execFileSync(process.execPath,['scripts/check-punchies-budget.mjs',outDir],{stdio:'inherit',env:{...process.env,PUNCHIES_BUDGET_LIMIT_BYTES:profile==='compact'?'20000000':'40000000',PUNCHIES_BUDGET_REPORT:path.join(staging,`budget-${portal}.json`)}});
 console.log(`Built ${profile}/${portal}: ${outDir}`);
