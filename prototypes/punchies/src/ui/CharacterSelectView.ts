@@ -124,7 +124,13 @@ export class CharacterSelectView {
    const scale=Math.min(visibleHeight/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id));const flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;parent.add(image);
   }
   const title=p.dummy?t('common.dummy'):CHARACTER_INFO[p.id].name.toUpperCase();const text=this.text(parent,centre,321,title,16);if(text.width>186)text.setScale(186/text.width);
-  this.text(parent,centre,338,p.dummy?t('training.practice_target'):t('char.'+p.id+'.nick')+' · '+p.label,9,s===0?'#8ddaff':'#ff9eae');
+  const archetype=this.text(parent,centre,339,p.dummy?t('training.practice_target'):t('char.'+p.id+'.nick')+' · '+p.label,9,s===0?'#8ddaff':'#ff9eae');
+  archetype.setAlign('center').setWordWrapWidth(186,true);
+  // Fit the complete description between the name and skin controls; never truncate it.
+  for(let size=9;size>=1;size-=.5){
+   archetype.setFontSize(size);
+   if(archetype.getWrappedText().length<=2&&archetype.width<=186&&archetype.height<=20)break;
+  }
   const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,10).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value*.8))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
   if(p.selected&&p.available&&!p.dummy){this.text(parent,centre,356,p.skinName+' '+p.skinIndex+'/'+p.skinCount,8,'#fff1a8');[-1,1].forEach(d=>{const a=this.text(parent,centre+d*89,356,d<0?'‹':'›',19);a.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));});}
  }

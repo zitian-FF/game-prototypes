@@ -1,6 +1,6 @@
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
-import { t } from '../i18n';
+import { getLanguage, t } from '../i18n';
 import { skinTexture } from '../render/skins';
 import { artKey, artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -112,7 +112,10 @@ export class MatchIntro {
 }
 
 export function knockoutWords(scene: Phaser.Scene): () => void {
-  return impactWords(scene,[t('fight.knock'),t('fight.out')],tune.view.fightPresentation.koHoldMs);
+  const labels = getLanguage() === 'en' || getLanguage() === 'pseudo'
+    ? [t('fight.knock'), t('fight.out')]
+    : [t('fight.knockout')];
+  return impactWords(scene, labels, tune.view.fightPresentation.koHoldMs);
 }
 
 export function fightWord(scene: Phaser.Scene): void {
