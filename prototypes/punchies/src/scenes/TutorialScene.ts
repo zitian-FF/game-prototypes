@@ -23,10 +23,10 @@ import { fighterGroups, whenGroupsReady } from '../render/art';
 // controls/HUD it needs, shows one instruction, and completes when the
 // player actually does the thing. Progress is remembered on the device.
 
-// Lesson panel: left of the ring stairs (centred under the ring) and right of the default left stick.
-const LESSON_WIDTH = 208;
-const LESSON_LEFT = VIEW.cx - 44 - LESSON_WIDTH;
-const LESSON_BUTTONS_X = 78;
+// Lesson panel: right of the default left stick, with the Skip/Exit column on its right.
+const LESSON_WIDTH = 350;
+const LESSON_LEFT = VIEW.cx - 252;
+const LESSON_BUTTONS_X = 137;
 const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
 const SAVE_KEY = KEYS.tutorial;
@@ -295,11 +295,10 @@ export class TutorialScene extends Phaser.Scene {
     this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
     this.stage.hideInfoButton();
     // Dock the lesson at the bottom, between the left stick and the ring stairs, so it never covers the
-    // HUD bars or the ring. Skip and Exit sit on the other side of the stairs, before the right buttons.
+    // HUD bars or the ring. Skip and Exit stack in a column to its right, before the right buttons.
     this.lessonPanel = this.add.graphics().setDepth(129).setAlpha(.94);
-    const buttonY = VIEW.bottom - 26;
-    titleButton(this,VIEW.cx+LESSON_BUTTONS_X,buttonY,62,28,t('tutorial.skip'),()=>this.advance());
-    titleButton(this,VIEW.cx+LESSON_BUTTONS_X+68,buttonY,62,28,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
+    titleButton(this,VIEW.cx+LESSON_BUTTONS_X,VIEW.bottom-52,62,28,t('tutorial.skip'),()=>this.advance());
+    titleButton(this,VIEW.cx+LESSON_BUTTONS_X,VIEW.bottom-20,62,28,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
     this.title = this.add.text(LESSON_LEFT+10,VIEW.bottom-60,'',{
       fontFamily:'Arial',fontSize:10,fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO,
       wordWrap:{width:LESSON_WIDTH-20},
