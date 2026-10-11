@@ -63,7 +63,7 @@ export class Effects {
       } else if (e.sweet) {
         this.label(e.x, e.y - 26, e.row === 'vulnerable' ? t('fx.sweet') : t('fx.sweet_body'), '#ffe03a', 12);
       } else {
-        this.label(e.x, e.y - 22, 'sour', '#bbbbbb', 10);
+        this.label(e.x, e.y - 22, t('fx.sour'), '#bbbbbb', 10);
       }
     } else {
       cam.shake(big ? 220 : 120, (big ? 0.014 : 0.007) * tune.view.cameraShakeScale);
