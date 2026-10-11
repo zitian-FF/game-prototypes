@@ -21,7 +21,6 @@
   "charselect.endurance": "تَحمُّل",
   "charselect.fight": "ابدأ النزال! ›",
   "charselect.format_hint": "F / Y: تنسيق المباراة",
-  "charselect.health": "الصحة",
   "charselect.host_sent_invalid_settings": "أرسل المضيف إعدادات غير صالحة",
   "charselect.host_sets_format": "مجموعة المضيف تتطابق مع التنسيق",
   "charselect.left_right_skins_confirm_to": "يسار / يمين: أشكال الشخصيات · تأكيد الجاهزية",
@@ -380,5 +379,8 @@
   "tutorial.tutorial_complete": "شرح كامل",
   "tutorial.uppercut_charge_text": "تملأ الضربات الدقيقة عداد نجوم مقاتلك. املأ جميع الخانات لتجهيز لكمة صاعدة واحدة تتجاوز الحراسة: {btn}. استخدامها يفرغ العداد. أصب بها الخصم.",
   "tutorial.your_fist_travels_out_too": "تمتد قبضتك إلى الأمام. إذا كنت قريبًا جدًا، تكون الضربة ضعيفة. عند امتداد الذراع بالكامل، تكون الإصابة دقيقة. تراجع قليلًا وسدد إصابة دقيقة.",
-  "ui.back_hint": "Esc / B: رجوع"
+  "ui.back_hint": "Esc / B: رجوع",
+  "charselect.durability": "الصلابة",
+  "charselect.uppercut_stats": "صاعدة: {stars} ★ · {damage} HP",
+  "charselect.durability_details": "صحة {hp} · مقاومة صعق {stun}"
 }

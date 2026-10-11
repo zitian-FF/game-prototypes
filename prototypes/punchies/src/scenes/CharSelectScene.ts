@@ -1,3 +1,4 @@
+import {rosterScores,statFill,rosterUppercut,type RosterStat} from '../sim/rosterStats';
 import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
@@ -9,7 +10,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { charTune, punchCfg, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
+import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
@@ -41,30 +42,10 @@ export interface CharSelectData {
   nextRound?: number;
 }
 
-// Bar fill per stat: today's base tune sits at 80%. Each bar is the plain
-// average of the multipliers behind it. Dash distance is the same for every
-// fighter today (no per-character override), so it is left out of Speed.
-const mean = (xs: number[]) => xs.reduce((n, x) => n + x, 0) / xs.length;
-function stats(id: CharId): [string, number][] {
-  const c = charTune(id);
-  const types = ['jab', 'cross', 'hook', 'uppercut'] as const;
-  // Hand speed vs the unmodified base frames (Marco carries no frame deltas).
-  let frames = 0;
-  let base = 0;
-  for (const t of types) {
-    const p = tune.punches[t];
-    base += p.startup + p.recovery;
-    frames += Math.max(1, p.startup + c[t].startup) + Math.max(1, p.recovery + c[t].recovery);
-  }
-  // Reach includes the fighter's body proportions, relative to a unit-scale fighter.
-  const reach = mean(types.map((t) => punchCfg(id, t).reach / (tune.punches[t].reach * tune.view.fighterScale)));
-  return [
-    [t('charselect.health'), c.hp],
-    [t('charselect.endurance'), mean([c.stamina, c.stun])],
-    [t('charselect.speed'), mean([c.speed, base / frames])],
-    [t('charselect.power'), mean(types.map((t) => c[t].damage))],
-    [t('charselect.reach'), reach],
-  ];
+function stats(id:CharId):[string,number,number][] {
+ const scores=rosterScores(id);
+ const labels={durability:t('charselect.durability'),endurance:t('charselect.endurance'),speed:t('charselect.speed'),power:t('charselect.power'),reach:t('charselect.reach')};
+ return (Object.keys(scores) as RosterStat[]).map(key=>[labels[key],statFill(key,scores[key]),scores[key]]);
 }
 
 interface Side {
@@ -494,6 +475,8 @@ export class CharSelectScene extends Phaser.Scene {
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
           : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
+        uppercut: rosterUppercut(chars[s]),
+        durability: {hp:tune.health.max*charTune(chars[s]).hp,stun:tune.stun.threshold*charTune(chars[s]).stun},
       })),
       step: ready ? 2 : this.data0.mode==='training'?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
       steps: this.data0.mode==='training'?[t('common.your_boxer'),t('common.ready'),t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],

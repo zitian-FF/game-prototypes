@@ -21,7 +21,6 @@
   "charselect.endurance": "RESISTENCIA",
   "charselect.fight": "¡LUCHA! ›",
   "charselect.format_hint": "F / Y: Formato de partido",
-  "charselect.health": "SALUD",
   "charselect.host_sent_invalid_settings": "El host envió una configuración no válida.",
   "charselect.host_sets_format": "El anfitrión establece el formato del partido",
   "charselect.left_right_skins_confirm_to": "IZQUIERDA / DERECHA: APARIENCIAS · CONFIRMAR QUE ESTÁ LISTO",
@@ -380,5 +379,8 @@
   "tutorial.tutorial_complete": "TUTORIAL COMPLETADO",
   "tutorial.uppercut_charge_text": "Los golpes limpios llenan el medidor de estrellas de tu luchador. Llena todos los espacios para preparar un uppercut que atraviesa la guardia: {btn}. Usarlo vacía el medidor. Acierta uno.",
   "tutorial.your_fist_travels_out_too": "El puño se extiende hacia delante. Demasiado cerca = golpe débil. Con el brazo completamente extendido = golpe limpio. Retrocede un poco y conecta un golpe limpio.",
-  "ui.back_hint": "Esc / B: Atrás"
+  "ui.back_hint": "Esc / B: Atrás",
+  "charselect.durability": "DUREZA",
+  "charselect.uppercut_stats": "UPPER: {stars} ★ · {damage} HP",
+  "charselect.durability_details": "HP {hp} · RESIST. ATURD. {stun}"
 }

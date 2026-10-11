@@ -21,7 +21,6 @@
   "charselect.endurance": "耐力",
   "charselect.fight": "开战！ ›",
   "charselect.format_hint": "F / Y：比赛形式",
-  "charselect.health": "生命",
   "charselect.host_sent_invalid_settings": "主机发送了无效设置",
   "charselect.host_sets_format": "主机集匹配格式",
   "charselect.left_right_skins_confirm_to": "左/右：皮肤 · 确认准备就绪",
@@ -380,5 +379,8 @@
   "tutorial.tutorial_complete": "教程完成",
   "tutorial.uppercut_charge_text": "精准命中可填充拳手的星星槽。填满所有格子后，可使用一次无法被普通防御挡住的上勾拳：{btn}。使用后槽会清空。试着命中一次。",
   "tutorial.your_fist_travels_out_too": "拳头会向前伸出。距离太近时会造成擦击，伤害较低；手臂完全伸展时则能精准命中。稍微后退一点，打出一次精准命中。",
-  "ui.back_hint": "Esc / B：返回"
+  "ui.back_hint": "Esc / B：返回",
+  "charselect.durability": "耐久",
+  "charselect.uppercut_stats": "上勾拳: {stars} ★ · {damage} HP",
+  "charselect.durability_details": "生命 {hp} · 抗晕 {stun}"
 }

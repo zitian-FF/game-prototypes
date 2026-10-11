@@ -158,6 +158,7 @@ jobs:
           node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
           node scripts/test-punchies-roster.mjs
+          node scripts/test-punchies-roster-stats.mjs
           node scripts/test-punchies-shop.mjs
           node scripts/test-punchies-progress.mjs
           node scripts/test-punchies-alias.mjs
