@@ -3,7 +3,6 @@ import { t } from '../i18n';
 import { itemName } from '../shop/itemText';
 import { track } from '../portal/analytics';
 import { portal, showRewardedAd } from '../portal/index';
-import { isDebug } from '../debug/debugPanel';
 import { TEST_BUILD, TEST_TOKENS } from '../testBuild';
 import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
@@ -122,7 +121,7 @@ export class ShopScene extends Phaser.Scene {
     this.text(25,14,t('shop.punchies_shop'),26,'#fff3da',260);this.text(26,46,t('shop.local_preview_daily_chests_reset'),10,'#9fbbd4');
     this.root.add(punchToken(this,650,29,12,100));this.text(673,18,String(this.state.tokens),22);this.button(737,13,83,t('common.back'),()=>startScreen(this,'Menu'),true,0,'blue');
     // Test scaffold (test build or ?debug=1): jump to TEST_TOKENS tokens to test the chests.
-    if(TEST_BUILD||isDebug())this.button(300,13,100,t('shop.debug_tokens'),()=>{this.state={...this.state,tokens:TEST_TOKENS};this.persist();this.render();},true,0,'purple');
+    if(TEST_BUILD)this.button(300,13,100,t('shop.debug_tokens'),()=>{this.state={...this.state,tokens:TEST_TOKENS};this.persist();this.render();},true,0,'purple');
     [25,291,557].forEach((x,i)=>this.panel(x,72,262,266,[0x236f9a,0x59398b,0x826027][i]));
     this.text(156,89,t('shop.earn_tokens'),19,'#fff3da',244).setOrigin(.5,0);
     this.text(422,89,t('shop.skin_chest'),19,'#d6b4ff',244).setOrigin(.5,0);this.text(688,89,t('shop.fighter_chest'),19,'#ffdb78',244).setOrigin(.5,0);

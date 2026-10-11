@@ -2,12 +2,12 @@ import { loadScript } from './loadScript';
 import { webPortal } from './web';
 import type { Portal, PortalStorage, RewardedResult } from './types';
 
-// CrazyGames SDK v3 (docs.crazygames.com). Written against the documented API
-// and covered by mock tests; not yet run against the real SDK.
+// CrazyGames SDK v3 (docs.crazygames.com). Checked against the real v3.6.0 script in its
+// local demo mode (scripts/test-punchies-crazygames-sdk.mjs); not yet run inside CrazyGames' QA tool.
 interface CgSdk {
   init(): Promise<void>;
   game: { gameplayStart(): void; gameplayStop(): void; loadingStart?(): void; loadingStop?(): void };
-  ad: { requestAd(type: 'midgame' | 'rewarded', cb: { adStarted(): void; adFinished(): void; adError(e: unknown): void }): void };
+  ad: { requestAd(type: 'midgame' | 'rewarded', cb: { adStarted(): void; adFinished(): void; adError(e: { code?: string } | unknown): void }): void };
   user?: { systemInfo?: { locale?: string } };
   data: { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void };
 }
@@ -29,6 +29,7 @@ export function crazyGamesPortal(adsEnabled: boolean): Portal {
         await loadScript('https://sdk.crazygames.com/crazygames-sdk-v3.js');
         await sdk()!.init();
         ready = true;
+        sdk()!.game.loadingStart?.();
       } catch { ready = false; }
     },
     loadingFinished() { if (ready) sdk()!.game.loadingStop?.(); },
@@ -45,7 +46,8 @@ export function crazyGamesPortal(adsEnabled: boolean): Portal {
           sdk()!.ad.requestAd('rewarded', {
             adStarted: () => hooks.onStart(),
             adFinished: () => end('rewarded'),
-            adError: () => end('failed'),
+            // Basic Launch builds answer every ad request with this code: not a failure to retry.
+            adError: (e) => end((e as { code?: string } | null)?.code === 'adsDisabledBasicLaunch' ? 'unavailable' : 'failed'),
           });
         });
       },
