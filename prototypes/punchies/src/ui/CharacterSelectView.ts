@@ -1,6 +1,7 @@
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
+import {PALETTES} from '../render/paletteCatalog';
 import { skinTexture } from '../render/skins';
 import { artKey } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -19,6 +20,8 @@ export class CharacterSelectView {
  private content:Phaser.GameObjects.Container[]=[];
  private panelHits:Phaser.GameObjects.Rectangle[]=[];
  private panelKeys=['',''];
+ private panelIdentities=['',''];
+ private impacts:Phaser.GameObjects.Graphics[]=[];
  private cards:Phaser.GameObjects.Graphics[]=[];
  private locks:Phaser.GameObjects.Image[][]=[];
  private progress:Phaser.GameObjects.Text[]=[];
@@ -42,7 +45,7 @@ export class CharacterSelectView {
   for(let s=0;s<2;s++){
    const hit=scene.add.rectangle(s===0?111:733,237,214,224,0,0).setInteractive({useHandCursor:true});
    hit.on('pointerdown',()=>callbacks.panel(s));this.root.add(hit);this.panelHits.push(hit);
-   const c=scene.add.container();this.root.add(c);this.content.push(c);
+   const c=scene.add.container();this.root.add(c);this.content.push(c);this.impacts.push(this.graphics(this.root).setAlpha(0));
   }
   rosterSlots().forEach((pos,i)=>{
    const card=scene.add.container(pos.x,pos.y);this.root.add(card);const frame=this.graphics(card);this.cards.push(frame);
@@ -89,15 +92,22 @@ export class CharacterSelectView {
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
    this.panelHits[s].input!.enabled=!p.dummy&&!p.survival;
-   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
-   if(key!==this.panelKeys[s]){const previous=this.panelKeys[s]?JSON.parse(this.panelKeys[s]):null;const changed=!!previous&&(previous[0]!==!!p.dummy||previous[1]!==p.id||previous[2]!==p.hidden||previous[4]!==p.skin);this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
-    if(changed&&!reducedMotion()){
-     const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
-     this.scene.tweens.add({targets:c,x:0,alpha:1,duration:cfg.characterSlideMs,ease:cfg.characterSlideEase,onComplete:()=>{
-      const flash=this.graphics(this.root);flash.fillStyle(s===0?0x5bd8ff:0xff788d,.4).fillRoundedRect(s===0?5:639,181,200,152,8);
-      this.scene.tweens.add({targets:flash,alpha:0,duration:cfg.characterImpactMs,onComplete:()=>flash.destroy()});
-      this.scene.tweens.add({targets:c,x:(s===0?1:-1)*cfg.characterImpactPixels,duration:cfg.characterImpactMs/3,yoyo:true,repeat:1,onComplete:()=>c.x=0});
-     }});
+   const key=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
+   if(key!==this.panelKeys[s]){
+    const identity=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden]);
+    const changed=!!this.panelIdentities[s]&&identity!==this.panelIdentities[s];
+    this.panelIdentities[s]=identity;this.panelKeys[s]=key;this.buildPanel(s,p);
+    const c=this.content[s],flash=this.impacts[s];
+    if(changed){
+     this.scene.tweens.killTweensOf(c);this.scene.tweens.killTweensOf(flash);flash.clear().setAlpha(0);c.setPosition(0,0).setAlpha(1);
+     if(!reducedMotion()){
+      const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
+      this.scene.tweens.add({targets:c,x:0,alpha:1,duration:cfg.characterSlideMs,ease:cfg.characterSlideEase,onComplete:()=>{
+       flash.clear().setAlpha(1).fillStyle(s===0?0x5bd8ff:0xff788d,.4).fillRoundedRect(s===0?5:639,181,200,152,8);
+       this.scene.tweens.add({targets:flash,alpha:0,duration:cfg.characterImpactMs});
+       this.scene.tweens.add({targets:c,x:(s===0?1:-1)*cfg.characterImpactPixels,duration:cfg.characterImpactMs/3,yoyo:true,repeat:1,onComplete:()=>c.x=0});
+      }});
+     }
     }
    }
   });
@@ -125,8 +135,8 @@ export class CharacterSelectView {
   if(p.hidden&&!p.dummy){this.text(parent,centre,251,p.label,17);this.text(parent,centre,276,p.status,9,'#aebbd0');return;}
   const texture=p.dummy?artKey(this.scene,'portrait_training_dummy'):skinTexture(this.scene,p.id,p.skin,'portrait_'+p.id);
   if(texture&&this.scene.textures.exists(texture)){
-   const image=this.scene.add.image(centre,315,texture).setOrigin(.5,1);let b=this.bounds.get(texture);
-   if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(texture,b);}
+   const image=this.scene.add.image(centre,315,texture).setOrigin(.5,1);const boundsKey=PALETTES[p.skin]?.boxer===p.id?'punchies:portrait_'+p.id:texture;let b=this.bounds.get(boundsKey);
+   if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(boundsKey,b);}
    const visibleHeight=p.dummy?130:110;
    const scale=Math.min(visibleHeight/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id));const flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;parent.add(image);
   }

@@ -1,4 +1,5 @@
 import { tune, TICK_RATE } from './tune';
+import { fightCueTiming } from './fightCue';
 import { fighterScale, normalHurtRadius, coreRadius, separation } from './geometry';
 import type {
   BufferedAction,
@@ -436,7 +437,7 @@ interface Contact {
 
 // Finds contacts for both fighters against pre-resolution state, so two
 // punches landing on the same tick trade cleanly regardless of index order.
-function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
+function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint): Contact[] {
   const contacts: Contact[] = [];
   for (let i = 0; i < 2; i++) {
     const att = s.fighters[i];
@@ -445,7 +446,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     if (!p || p.resolved) continue;
     const phase = phaseOf(p);
     if (phase !== 'sweet' && phase !== 'sour') continue;
-    const pt = punchPoint(att, p);
+    const pt = pointOf(att, p);
     const hitR = punchCfg(att, p.type).hitRadius;
     const dx = def.x - pt.x;
     const dy = def.y - pt.y;
@@ -740,8 +741,8 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     const showcaseTicks = Math.max(0, s.fightStartTick - Math.round(tune.match.introSec * TICK_RATE));
     if (s.tick === showcaseTicks) events.push({ kind: 'ready' });
     s.tick++;
-    // Reveal FIGHT while combat is still frozen, then unlock as it clears.
-    const cueTicks=Math.ceil((tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs)*TICK_RATE/1000);
+    // Complete the FIGHT entrance while frozen; unlock as its fade starts.
+    const cueTicks=fightCueTiming().entranceTicks;
     if(s.tick===Math.max(showcaseTicks+1,s.fightStartTick-cueTicks))events.push({kind:'fightCue'});
     if (s.tick === s.fightStartTick) events.push({ kind: 'go' });
     return events;

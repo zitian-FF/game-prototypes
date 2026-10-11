@@ -1,10 +1,11 @@
 import config from './config.json';
 import { tune, TICK_RATE } from '../sim/tune';
 import { CHARACTER_IDS, maxHealth, maxStamina, punchCfg, regenMult } from '../sim/character';
-import { normalHurtRadius, separation } from '../sim/geometry';
+import { punchFist } from '../sim/fistPath';
+import { fighterScale, normalHurtRadius, separation } from '../sim/geometry';
 import { EasyAI } from '../sim/ai';
 import { arenaCombat as combat, phaseOf, punchTotal, stanceOf } from '../sim/sim';
-import { NEUTRAL_INPUT, type Fighter, type FrameInput, type SimEvent, type SimState } from '../sim/types';
+import { NEUTRAL_INPUT, type Fighter, type FrameInput, type PunchState, type SimEvent, type SimState } from '../sim/types';
 import type { RunOptions, SurvivalEnemy, SurvivalEvent, SurvivalRun } from './types';
 
 export { default as survivalConfig } from './config.json';
@@ -29,6 +30,7 @@ function face(f: Fighter, other: Fighter): void {
   const dx = other.x - f.x, dy = other.y - f.y, d = Math.hypot(dx, dy);
   if (d > 0) { f.fx = dx / d; f.fy = dy / d; }
 }
+export const survivalPunchPoint = (f: Fighter,p: PunchState) => punchFist(f,p,fighterScale(f));
 export function closestEnemy(r: SurvivalRun): SurvivalEnemy | undefined {
   let best: SurvivalEnemy | undefined, distance = Infinity;
   for (const e of r.enemies) {
@@ -187,7 +189,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     const contacts = r.enemies.map(e => {
       const s = pair(r, e.fighter), events: SimEvent[] = [];
       if (r.player.punch) r.player.punch.resolved = r.swingHits.includes(e.id);
-      const hits = combat.detectContacts(s, events);
+      const hits = combat.detectContacts(s, events, survivalPunchPoint);
       if (events.some(event => event.kind === 'dodged' && event.attacker === 0)) r.swingHits.push(e.id);
       wrap(events, e.id, out); return { s, hits };
     });
@@ -206,7 +208,11 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });
     for (const e of r.enemies) if (e.fighter.health <= 0) {
       r.waveKills++; r.totalKills++; if (e.kind === 'zombie') r.waveZombieKills++;
-      out.push({ kind: 'kill', enemyId: e.id, enemyKind: e.kind });
+      const fighter = structuredClone(e.fighter);
+      const dx = fighter.lastBlow?.dx ?? fighter.x-r.player.x, dy = fighter.lastBlow?.dy ?? fighter.y-r.player.y;
+      const length = Math.hypot(dx,dy);
+      out.push({ kind: 'kill', enemyId: e.id, enemyKind: e.kind, visualId:e.visualId, fighter,
+        position:{x:fighter.x,y:fighter.y}, direction:length>0?{x:dx/length,y:dy/length}:{x:1,y:0} });
     }
     r.enemies = r.enemies.filter(e => e.fighter.health > 0);
     if (--r.spawnWait <= 0) {
@@ -215,6 +221,8 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       r.spawnWait = spawnInterval(r);
     }
   }
+  const nextTarget = closestEnemy(r);
+  if (nextTarget) face(r.player, nextTarget.fighter);
   r.tick++; r.remainingTicks = Math.max(0, r.remainingTicks - 1);
   if (r.player.health <= 0) out.push(...endRun(r, 'defeat'));
   else if (r.remainingTicks === 0) {

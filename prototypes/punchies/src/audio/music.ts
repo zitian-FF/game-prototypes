@@ -13,10 +13,16 @@ export function installMusic(game: Phaser.Game): void {
   preloadStingers();
   const players = new Map<Track, { element: HTMLAudioElement; gain: GainNode }>();
   let selected: Track | null = null;
-  let unlocked = false;
+  let context: AudioContext | null = null;
+  const contextChanged = () => { if (context?.state === 'running') play(); };
   function play(): void {
-    if (!unlocked || !selected || document.hidden) return;
+    if (!selected || document.hidden) return;
     const ctx = unlockMixer();
+    if (ctx && ctx !== context) {
+      context?.removeEventListener('statechange', contextChanged);
+      context = ctx;
+      context.addEventListener('statechange', contextChanged);
+    }
     const bus = audioOutput('bgm');
     if (!ctx || !bus) return;
     let player = players.get(selected);
@@ -42,26 +48,29 @@ export function installMusic(game: Phaser.Game): void {
     const fighting = [...fights].some(key => (key !== 'FirstFight' || !game.registry.get('firstFightComplete')) && (game.scene.isActive(key) || game.scene.isPaused(key)));
     const next: Track = fighting ? 'gameplay' : scenes.includes('CharSelect') ? 'charselect' : 'title';
     if (next !== selected) { selected = next; play(); }
-    const ctx = unlockContextIfReady();
+    const ctx = context;
     if (ctx) for (const [track, p] of players) {
       if (track !== selected && p.gain.gain.value < 0.002) p.element.pause();
     }
   }
-  function unlockContextIfReady(): AudioContext | null { return unlocked ? unlockMixer() : null; }
-  function gesture(): void { unlocked = true; play(); }
+  // Try on initial scene readiness: browsers that permit autoplay start at once.
+  // A rejected media play remains queued as selected; retry on a real gesture
+  // and when the shared SFX/audio context finishes unlocking.
+  function gesture(): void { play(); }
   function visibility(): void {
     if (document.hidden) for (const p of players.values()) p.element.pause();
     else play();
   }
   game.events.on('step', update);
-  window.addEventListener('pointerdown', gesture);
-  window.addEventListener('keydown', gesture);
+  window.addEventListener('pointerdown', gesture, {capture:true,passive:true});
+  window.addEventListener('keydown', gesture, {capture:true,passive:true});
   document.addEventListener('visibilitychange', visibility);
   game.events.once('destroy', () => {
     game.events.off('step', update);
-    window.removeEventListener('pointerdown', gesture);
-    window.removeEventListener('keydown', gesture);
+    window.removeEventListener('pointerdown', gesture, true);
+    window.removeEventListener('keydown', gesture, true);
     document.removeEventListener('visibilitychange', visibility);
+    context?.removeEventListener('statechange', contextChanged);
     for (const p of players.values()) { p.element.pause(); p.element.removeAttribute('src'); p.element.load(); p.gain.disconnect(); }
   });
 }

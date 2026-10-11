@@ -150,10 +150,38 @@ for(let i=0;i<showcase.fightStartTick;i++){
 }
 assert.equal(readyAt,showcaseTicks);assert.equal(goAt,showcase.fightStartTick);
 assert.equal(cueCount,1,'FIGHT appears once while controls remain locked');
-assert.equal(cueAt,goAt-Math.ceil((tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs)*TICK_RATE/1000),'FIGHT clears before combat unlocks');
+const {fightCueTiming}=load(root+'/fightCue.ts');
+assert.equal(cueAt,goAt-fightCueTiming().entranceTicks,'FIGHT entrance completes at unlock/fade start');
+assert.ok(fightCueTiming().entranceMs>=tune.view.fightPresentation.impactMs);
+// First and subsequent rounds retain the existing timer; input is frozen
+// through entrance, and accepted while the banner is fading.
+for(const showcase of [false,true]) {
+ const state=createSimState({timed:true,showcase,fighters:[{char:'marco'},{char:'mia'}]});
+ const frozen=JSON.stringify(state.fighters);let cues=0;
+ while(state.tick<state.fightStartTick){
+  const ev=step(state,[{...NEUTRAL_INPUT,mx:1},NEUTRAL_INPUT]);
+  cues+=ev.filter(e=>e.kind==='fightCue').length;
+  assert.equal(JSON.stringify(state.fighters),frozen);
+ }
+ assert.equal(cues,1);const x=state.fighters[0].x;
+ step(state,[{...NEUTRAL_INPUT,mx:1},NEUTRAL_INPUT]);
+ assert.notEqual(state.fighters[0].x,x,'movement accepted at fade start, before fade completes');
+}
+const originalImpact=tune.view.fightPresentation.impactMs;
+tune.view.fightPresentation.impactMs=originalImpact+400;
+assert.ok(fightCueTiming().entranceMs>=originalImpact+400,'longer entrance cannot be truncated by old hold');
+tune.view.fightPresentation.impactMs=originalImpact;
 const {Rollback,hashState}=load(path.resolve(root,'../net/rollback.ts'));
 const peers=[0,1].map(i=>new Rollback(i,3,12,1,()=>{},()=>{},['mia','bruno'],{showcase:true}));
 assert.equal(hashState(peers[0].sim),hashState(peers[1].sim),'both peers use the same frozen intro timing');
+const onlineStates=[0,1].map(()=>createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{char:'bruno'}]}));
+for(let tick=0;tick<=onlineStates[0].fightStartTick+Math.ceil(fightCueTiming().fadeMs*TICK_RATE/1000);tick++){
+ const inputs=[{...NEUTRAL_INPUT,mx:1},NEUTRAL_INPUT];
+ const events=onlineStates.map(state=>step(state,inputs));
+ assert.equal(hashState(onlineStates[0]),hashState(onlineStates[1]),'both peers retain identical entrance/fade ready gates');
+ assert.equal(JSON.stringify(events[0]),JSON.stringify(events[1]),'both peers emit identical cue/go events');
+}
+
 assert.ok(tune.view.fightPresentation.koHoldMs+tune.view.fightPresentation.fadeMs<=Math.min(tune.ko.dropMs,tune.ko.flyMs+tune.ko.sitMs)+tune.ko.resultDelayMs,'KO title finishes before result/round splash');
 console.log('First-round showcase timing, delayed ROUND/FIGHT, full combat freeze, online peer hashes and KO/result ordering passed');
 

@@ -1,17 +1,23 @@
+import {CombatText} from './combatText';
 import {CombatSparks} from './combatVfx';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import type { SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
 import { PIXEL_RATIO, VIEW } from './pixelRatio';
-import { tune } from '../sim/tune';
+import { tune, TICK_RATE } from '../sim/tune';
+import { fightCueTiming } from '../sim/fightCue';
 import { fightWord } from '../ui/fightPresentation';
 
 // Turns sim events into visual and audio feedback: sweet sparks, counter
 // flash, block/perfect-guard rings, callout labels. Presentation only.
 export class Effects {
   roundNumber = 1;
+  private fightCue:ReturnType<typeof fightWord>|null=null;
+  private fightCueTick=0;
+  draw(s:SimState):void {this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);}
   private sparks: CombatSparks;
+  private combatText:CombatText;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -19,7 +25,9 @@ export class Effects {
   onFighterFlash: (idx: number, color: number, zone: 'head' | 'body') => void = () => {};
 
   constructor(private scene: Phaser.Scene) {
+    scene.events.once('shutdown',()=>{this.fightCue?.();this.fightCue=null;});
     this.sparks=new CombatSparks(scene);
+    this.combatText=new CombatText(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
       .setDepth(80);
@@ -94,53 +102,11 @@ export class Effects {
   private dmgSlot = 0;
   private damageNumber(x: number, y: number, dmg: number, color: string, big: boolean): void {
     this.dmgSlot = (this.dmgSlot + 1) % 3;
-    const t = this.scene.add
-      .text(x + (this.dmgSlot - 1) * 14, y, `${Math.round(dmg * 10) / 10}`, {
-        fontFamily: 'monospace',
-        fontSize: big ? '24px' : '17px',
-        fontStyle: 'bold',
-        color,
-        stroke: '#000000',
-        strokeThickness: 5,
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setDepth(72)
-      .setScale(1.6);
-    this.scene.tweens.add({ targets: t, scale: 1, duration: 110, ease: 'Back.easeOut' });
-    this.scene.tweens.add({ targets: t, y: y - 26, alpha: 0, delay: 380, duration: 520, ease: 'Cubic.easeIn', onComplete: () => t.destroy() });
+    this.combatText.show('damage',x+(this.dmgSlot-1)*14,y,`${Math.round(dmg*10)/10}`,color,big?24:17);
   }
-
-  // Callout that vibrates as it fades (impact text).
-  private shakyLabel(x: number, y: number, text: string, color: string, size: number): void {
-    const t = this.scene.add
-      .text(x, y, text, {
-        fontFamily: 'monospace',
-        fontSize: `${size}px`,
-        fontStyle: 'bold',
-        color,
-        stroke: '#000000',
-        strokeThickness: 4,
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setDepth(75)
-      .setScale(1.4);
-    const state = { k: 1 };
-    this.scene.tweens.add({
-      targets: state,
-      k: 0,
-      duration: 750,
-      onUpdate: () => {
-        const amp = 4 * state.k;
-        t.setPosition(x + (Math.random() - 0.5) * 2 * amp, y - (1 - state.k) * 12 + (Math.random() - 0.5) * 2 * amp);
-        t.setAlpha(Math.min(1, state.k * 1.6));
-        t.setScale(1 + 0.4 * state.k * state.k);
-      },
-      onComplete: () => t.destroy(),
-    });
+  private shakyLabel(x:number,y:number,text:string,color:string,size:number):void {
+    this.combatText.show('shaky',x,y,text,color,size);
   }
-
   private redEdges(strength: number): void {
     this.vignette.setAlpha(strength);
     this.scene.tweens.add({ targets: this.vignette, alpha: 0, duration: 380 });
@@ -197,11 +163,12 @@ export class Effects {
           if (e.fighter === localIdx) sfx.starsReady();
           break;
         case 'ready':
-          this.banner(t('fx.round', { n: this.roundNumber }), Math.max(0.3, tune.match.introSec - (tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs+tune.view.fightPresentation.fadeMs)/1000), '#fff1d1', false, tune.view.fightPresentation.fadeMs);
+          this.banner(t('fx.round', { n: this.roundNumber }), Math.max(0.3, tune.match.introSec - (fightCueTiming().entranceMs+tune.view.fightPresentation.fadeMs)/1000), '#fff1d1', false, tune.view.fightPresentation.fadeMs);
           sfx.ready();
           break;
         case 'fightCue':
-          fightWord(this.scene);
+          this.fightCue?.();this.fightCueTick=s.fightStartTick-fightCueTiming().entranceTicks;
+          this.fightCue=fightWord(this.scene);this.draw(s);
           break;
         case 'go':
           sfx.roundBell();
@@ -250,21 +217,8 @@ export class Effects {
   }
 
   private label(x: number, y: number, text: string, color: string, size: number): void {
-    const t = this.scene.add
-      .text(x, y, text, {
-        fontFamily: 'monospace',
-        fontSize: `${size}px`,
-        fontStyle: 'bold',
-        color,
-        stroke: '#000000',
-        strokeThickness: 3,
-        resolution: PIXEL_RATIO,
-      })
-      .setOrigin(0.5)
-      .setDepth(70);
-    this.scene.tweens.add({ targets: t, y: y - 18, alpha: 0, delay: 250, duration: 450, onComplete: () => t.destroy() });
+    this.combatText.show('label',x,y,text,color,size);
   }
-
   private banner(text: string, holdSec = 1.2, color = '#ffffff', punch = false, fadeMs = 250): void {
     const t = this.scene.add
       .text(VIEW.cx, VIEW.cy - 20, text, {
