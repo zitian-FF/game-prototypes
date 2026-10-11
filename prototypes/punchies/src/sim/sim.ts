@@ -1,4 +1,5 @@
 import { tune, TICK_RATE } from './tune';
+import { fightCueTiming } from './fightCue';
 import { fighterScale, normalHurtRadius, coreRadius, separation } from './geometry';
 import type {
   BufferedAction,
@@ -740,8 +741,8 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     const showcaseTicks = Math.max(0, s.fightStartTick - Math.round(tune.match.introSec * TICK_RATE));
     if (s.tick === showcaseTicks) events.push({ kind: 'ready' });
     s.tick++;
-    // Reveal FIGHT while combat is still frozen, then unlock as it clears.
-    const cueTicks=Math.ceil((tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs)*TICK_RATE/1000);
+    // Complete the FIGHT entrance while frozen; unlock as its fade starts.
+    const cueTicks=fightCueTiming().entranceTicks;
     if(s.tick===Math.max(showcaseTicks+1,s.fightStartTick-cueTicks))events.push({kind:'fightCue'});
     if (s.tick === s.fightStartTick) events.push({ kind: 'go' });
     return events;
