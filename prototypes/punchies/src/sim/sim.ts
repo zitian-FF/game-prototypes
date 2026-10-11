@@ -740,6 +740,9 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     const showcaseTicks = Math.max(0, s.fightStartTick - Math.round(tune.match.introSec * TICK_RATE));
     if (s.tick === showcaseTicks) events.push({ kind: 'ready' });
     s.tick++;
+    // Reveal FIGHT while combat is still frozen, then unlock as it clears.
+    const cueTicks=Math.ceil((tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs)*TICK_RATE/1000);
+    if(s.tick===Math.max(showcaseTicks+1,s.fightStartTick-cueTicks))events.push({kind:'fightCue'});
     if (s.tick === s.fightStartTick) events.push({ kind: 'go' });
     return events;
   }

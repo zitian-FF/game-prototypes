@@ -15,7 +15,7 @@ function load(file) {
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS,
     target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(code, { exports, structuredClone, console, setTimeout, clearTimeout,
-    require: (id) => load(path.resolve(path.dirname(file), id.endsWith('.json') ? id : id + '.ts')) });
+    require: (id) => id.endsWith('/i18n') ? i18nStub : load(path.resolve(path.dirname(file), id.endsWith('.json') ? id : id + '.ts')) });
   return exports;
 }
 const { newSeries, finishRound } = load(root + '/series.ts');
@@ -119,14 +119,17 @@ const showcase=createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{
 const showcaseTicks=Math.round(tune.view.fightPresentation.showcaseMs*TICK_RATE/1000);
 assert.equal(showcase.fightStartTick,intro+showcaseTicks);
 const initial=JSON.stringify(showcase.fighters);
-let readyAt=-1,goAt=-1;
+let readyAt=-1,goAt=-1,cueAt=-1,cueCount=0;
 for(let i=0;i<showcase.fightStartTick;i++){
  const events=step(showcase,[{...NEUTRAL_INPUT,mx:1,jab:true,dodge:true,guard:true},NEUTRAL_INPUT]);
  if(events.some(e=>e.kind==='ready'))readyAt=i;
  if(events.some(e=>e.kind==='go'))goAt=i+1;
+ if(events.some(e=>e.kind==='fightCue')){cueAt=i+1;cueCount++;}
  assert.equal(JSON.stringify(showcase.fighters),initial,'showcase/countdown must freeze all combat resources and motion');
 }
 assert.equal(readyAt,showcaseTicks);assert.equal(goAt,showcase.fightStartTick);
+assert.equal(cueCount,1,'FIGHT appears once while controls remain locked');
+assert.equal(cueAt,goAt-Math.ceil((tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs)*TICK_RATE/1000),'FIGHT clears before combat unlocks');
 const {Rollback,hashState}=load(path.resolve(root,'../net/rollback.ts'));
 const peers=[0,1].map(i=>new Rollback(i,3,12,1,()=>{},()=>{},['mia','bruno'],{showcase:true}));
 assert.equal(hashState(peers[0].sim),hashState(peers[1].sim),'both peers use the same frozen intro timing');

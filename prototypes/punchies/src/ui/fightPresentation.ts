@@ -119,10 +119,10 @@ export function knockoutWords(scene: Phaser.Scene): () => void {
 }
 
 export function fightWord(scene: Phaser.Scene): void {
-  impactWords(scene,[t('common.fight')],tune.view.fightPresentation.fightHoldMs);
+  impactWords(scene,[t('common.fight')],tune.view.fightPresentation.fightHoldMs,tune.view.fightPresentation.fightFadeMs);
 }
 
-function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number): () => void {
+function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number, fadeMs = tune.view.fightPresentation.fadeMs): () => void {
   const cfg=tune.view.fightPresentation;
   const cover=scene.add.container().setDepth(150);
   const paint=scene.add.graphics();cover.add(paint);
@@ -151,7 +151,7 @@ function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number): () 
         onUpdate:()=>text.setCrop(0,0,stroke.width,text.height),onComplete:()=>text.setCrop()});
     }
   }));
-  scene.tweens.add({targets:cover,alpha:0,delay:holdMs,duration:cfg.fadeMs});
+  scene.tweens.add({targets:cover,alpha:0,delay:holdMs,duration:fadeMs});
   let cleaned=false;
   const cleanup=()=>{
     if(cleaned)return;
@@ -161,6 +161,6 @@ function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number): () 
     scene.tweens.killTweensOf([cover,...words,...strokeTargets]);
     cover.destroy(true);
   };
-  const expiry=scene.time.delayedCall(holdMs+cfg.fadeMs,cleanup);
+  const expiry=scene.time.delayedCall(holdMs+fadeMs,cleanup);
   return cleanup;
 }
