@@ -30,7 +30,9 @@ const aliases=JSON.parse(fs.readFileSync(path.join(out,'loose/part-mirrors.json'
 assert.deepEqual(aliases,await mirroredParts(root),'all approved mirror mappings survive master archival');
 for(const [name,alias] of Object.entries(aliases)){
   const match = /^part_(.+)_(glove|boot)_(left|right)$/.exec(name);
-  assert(match && rigs.has(match[1]), `mirror belongs to a catalog rig limb: ${name}`);
+  // Art uploads may contain future fighters before their gameplay catalogs exist.
+  // Validate every mirror's integrity here; required catalog rigs are checked below.
+  assert(match, `mirror names a rig limb: ${name}`);
   const opposite = match[3] === 'left' ? 'right' : 'left';
   assert.equal(alias.source, `part_${match[1]}_${match[2]}_${opposite}`, `same-rig opposite limb: ${name}`);
   assert(['x', 'y'].includes(alias.axis), `supported mirror axis: ${name}`);
