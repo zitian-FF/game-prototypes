@@ -1,12 +1,18 @@
 ## Current milestone
-Roxy, Nadia and all six language choices prepared for live deployment.
+Epic and Legendary reward presentation implemented locally.
 ## What was implemented
-Roxy and Nadia have independent portraits and overhead rigs, mirrored glove/foot aliases, locked fighter-pool entries, tuning metadata and the reserved second-row roster positions. Settings now offers English, Japanese, Korean, Chinese, Spanish and Arabic through 382-string frozen locale tables imported from the private translation Sheet. Longer shop and button labels fit their available widths.
+Chest reward previews and pull reveals classify palette swaps as Epic in purple and fighters/unique skins as Legendary with animated prismatic lettering.
 ## Key technical decisions
-Preserve all existing owner tuning and workshop history. New fighter balance starts from Marco pending owner tuning; Nadia uses petite proportions. Verify both R2 art uploads by SHA-256. Pack repetitive tune metadata and locale tables without changing runtime values; standalone packages omit editor-only history and duplicate embedded art indexes. Keep source masters and recoverable source archives outside Git and shipping bundles.
+Shared rarity mapping and styling keep both surfaces consistent. Reduced motion uses a static prismatic gradient. Animation is removed when its label is destroyed. Existing odds, prices and tuning are unchanged.
 ## Open questions
-Native-language copy review and distinct Roxy/Nadia balancing remain future work.
+None for rarity classification.
 ## Known issues
-Remaining machine-translated copy is not native-reviewed. The private Sheet is not published or exposed for automated unauthenticated imports. Compact delivery has little budget headroom and must retain its mandatory 10 MB gate.
+Rarity terms use English fallback until added through the translation Sheet. This change is not deployed yet.
 ## Next proposed step
-Merge the validated release, verify itch.io deployment and the published tuning roster, then hand off native copy review and fighter balancing.
+Include the validated rarity presentation in the next release.
+
+Language settings: added compact canvas country flags for all six language options; verified layout in Brave with no console errors. Typecheck and build pass. Not deployed.
+
+Tutorial: moved instruction panel from top+92 to top+8, keeping heading, body and skip/exit controls together. Verified ring clearance in Brave; build/typecheck pass. No text changes.
+
+Selection fixes: confirmation/status changes no longer trigger card clash; fighter and skin art changes still do. Flaming Kunoichi uses one shared waist-framed runtime texture in all portrait screens, preserving source masters. Waist crop verified in Brave with no errors; build passes. Combat VFX now uses outlined bursts with weaker sour sparks and layered pre-fight flames; flame preview verified, full combat motion validation pending. Localisation approved corrections are frozen in Sheet and regenerated, with Cross=摆拳 and Epic/Legendary translated. Pending deployment.

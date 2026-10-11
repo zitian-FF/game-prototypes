@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { availableLanguages, getLanguage, t } from '../i18n';
+import { languageFlag } from '../ui/languageFlag';
 import { LANGUAGES } from '../i18n/languages';
 import { chooseLanguage } from '../i18n/init';
 import { isDebug } from '../debug/debugPanel';
@@ -95,7 +96,7 @@ export class MenuScene extends Phaser.Scene {
     languages.forEach((lang, i) => {
       const x = VIEW.cx + (languages.length === 1 ? 0 : i % 2 === 0 ? -90 : 90);
       const y = VIEW.cy - 45 + Math.floor(i / 2) * 38;
-      const pick = titleButton(this, x, y, 160, 30, lang.native, () => {
+      const pick = titleButton(this, x, y, 160, 30, `      ${lang.native}`, () => {
         p.close();
         void chooseLanguage(lang.code).then(() => {
           // GameMenu overlays a live match: never restart its source scene.
@@ -104,6 +105,7 @@ export class MenuScene extends Phaser.Scene {
         });
       }, false, 402, lang.code === getLanguage() ? 'green' : 'default');
       p.items.push(pick, pick.getData('bg'));
+      p.items.push(languageFlag(this,lang.code,x-57,y,403));
     });
   }
 

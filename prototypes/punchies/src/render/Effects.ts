@@ -46,9 +46,9 @@ export class Effects {
     }
 
     // Directional spark along the strike (attacker's facing).
-    const size = big ? 2 : e.sweet ? 1.25 : 0.8;
+    const size = (big ? 2 : 1.25) * (e.sweet ? 1 : .45);
     const palette = dealt ? [0xffffff, 0xfff27a, 0xffc83a] : [0xffd0b0, 0xff8a3a, 0xff3a2a];
-    this.directionalSpark(e.x, e.y, att.fx, att.fy, size, palette, big ? 16 : e.sweet ? 10 : 6);
+    this.directionalSpark(e.x, e.y, att.fx, att.fy, size, palette, e.sweet ? (big ? 16 : 10) : 4);
     this.onFighterFlash(defIdx, dealt ? 0xffffff : 0xff4a4a, e.row === 'vulnerable' ? 'head' : 'body');
     const def = s.fighters[defIdx];
     this.damageNumber(def.x, def.y - 34, e.damage, dealt ? '#fff27a' : '#ff5a5a', big);
@@ -84,16 +84,25 @@ export class Effects {
   // Tekken-style hit spark: a hot core flash plus streaks sprayed forward in
   // a cone along the punch direction, and a few embers.
   private directionalSpark(x: number, y: number, dx: number, dy: number, size: number, palette: number[], streaks: number): void {
-    const core = this.scene.add.circle(x, y, 6 * size, palette[0], 1).setDepth(61);
-    this.scene.tweens.add({ targets: core, scale: 2.2, alpha: 0, duration: 120, onComplete: () => core.destroy() });
     const base = Math.atan2(dy, dx);
+    const core = this.scene.add.graphics({x,y}).setDepth(61);
+    const burst=Array.from({length:16},(_,i)=>{
+      const a=base+i*Math.PI/8,r=(i%2?3:10+(i%3)*3)*size;
+      return {x:Math.cos(a)*r,y:Math.sin(a)*r};
+    });
+    core.lineStyle(3,0x843416).strokePoints(burst,true);
+    core.fillStyle(palette[2]).fillPoints(burst,true);
+    core.fillStyle(palette[0]).fillPoints(burst.map(p=>({x:p.x*.6,y:p.y*.6})),true);
+    this.scene.tweens.add({ targets: core, scale: 1.7, alpha: 0, duration: 120, onComplete: () => core.destroy() });
     for (let i = 0; i < streaks; i++) {
       const a = base + (Math.random() - 0.5) * 1.3;
       const len = (10 + Math.random() * 16) * size;
       const dist = (22 + Math.random() * 30) * size;
       const g = this.scene.add.graphics().setDepth(60);
-      g.lineStyle(Math.max(1.5, 3 * size * (0.6 + Math.random() * 0.4)), palette[i % palette.length], 1);
-      g.lineBetween(0, 0, Math.cos(a) * len, Math.sin(a) * len);
+      const w=2*size,ux=Math.cos(a),uy=Math.sin(a);
+      const shard=[{x:-uy*w,y:ux*w},{x:ux*len,y:uy*len},{x:uy*w,y:-ux*w}];
+      g.lineStyle(1.5,0x9a451a).strokePoints(shard,true);
+      g.fillStyle(palette[i%palette.length]).fillPoints(shard,true);
       g.setPosition(x, y);
       this.scene.tweens.add({
         targets: g,
