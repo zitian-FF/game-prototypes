@@ -47,7 +47,7 @@ function client(saved=new Map(),configured=true){
  const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const exports={};
  vm.runInNewContext(code,{exports,crypto,AbortController,setTimeout,clearTimeout,console,
-  localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
+  require:path=>{if(path==='../portal/store')return {store:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)}};if(path==='../portal/keys')return {KEYS:{rating:'punchies:rating:v1'}};throw Error(`Unexpected client import ${path}`);},
   fetch:async(url,options)=>{if(offline)throw Error('offline');return m.worker.fetch(new Request(url,{...options,headers:{...options.headers,Origin:'http://localhost:5189'}}),env);}});
  return {api:exports,saved,setOffline:value=>offline=value};
 }

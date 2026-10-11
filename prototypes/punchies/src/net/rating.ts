@@ -1,10 +1,12 @@
+import {store} from '../portal/store';
+import {KEYS} from '../portal/keys';
 export interface RatingIdentity {myId:string;token:string;rating:number;matches:number}
 export interface RatingResult {state:'pending'|'settled'|'expired';rating:number;matches:number;delta:number}
 export type RatingServiceState = {status:'unconfigured'|'loading'|'error'} | {status:'ready';rating:number;matches:number};
 interface PendingReport {matchId:string;score:0|.5|1;quit:boolean;expires:number}
 interface SavedIdentity extends RatingIdentity {pending?:PendingReport[]}
 const configuredUrl=(import.meta.env.VITE_PUNCHIES_RATING_URL as string|undefined)?.replace(/\/$/,'');
-const key='punchies:rating:v1';
+const key=KEYS.rating;
 let identity:RatingIdentity|null=null, pending:PendingReport[]=[];
 let state:RatingServiceState={status:configuredUrl?'loading':'unconfigured'};
 let loading:Promise<RatingIdentity|null>|null=null;
@@ -22,7 +24,7 @@ async function request<T>(path:string,body:unknown):Promise<T>{
 const validId=(id:unknown):id is string=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function validIdentity(v:unknown):v is SavedIdentity {const p=v as SavedIdentity;return !!p&&validId(p.myId)&&typeof p.token==='string'&&p.token.length===72&&Number.isSafeInteger(p.rating)&&p.rating>=0&&Number.isSafeInteger(p.matches)&&p.matches>=0;}
 function validResult(r:RatingResult){return !!r&&['pending','settled','expired'].includes(r.state)&&Number.isSafeInteger(r.rating)&&r.rating>=0&&Number.isSafeInteger(r.matches)&&r.matches>=0&&Number.isSafeInteger(r.delta);}
-function save(){if(identity)try{localStorage.setItem(key,JSON.stringify({...identity,pending}));}catch{/* Anonymous identity remains session-only if storage is unavailable. */}}
+function save(){if(identity)try{store.setItem(key,JSON.stringify({...identity,pending}));}catch{/* Anonymous identity remains session-only if storage is unavailable. */}}
 function applyResult(r:RatingResult){if(r.matches>=identity!.matches)Object.assign(identity!,{rating:r.rating,matches:r.matches});save();updateState({status:'ready',rating:identity!.rating,matches:identity!.matches});}
 export function currentRating(){return state.status==='ready'?identity:null;}
 export function loadRating():Promise<RatingIdentity|null>{
@@ -31,7 +33,7 @@ export function loadRating():Promise<RatingIdentity|null>{
   if(!configuredUrl){updateState({status:'unconfigured'});return null;}
   updateState({status:'loading'});
   try{
-   if(!identity){try{const stored=JSON.parse(localStorage.getItem(key)??'null');if(validIdentity(stored)){identity={myId:stored.myId,token:stored.token,rating:stored.rating,matches:stored.matches};pending=(stored.pending??[]).filter(p=>validId(p.matchId)&&[0,.5,1].includes(p.score)&&typeof p.quit==='boolean'&&(!p.quit||p.score===0)&&Number.isFinite(p.expires));}}catch{/* New player or invalid local save. */}}
+   if(!identity){try{const stored=JSON.parse(store.getItem(key)??'null');if(validIdentity(stored)){identity={myId:stored.myId,token:stored.token,rating:stored.rating,matches:stored.matches};pending=(stored.pending??[]).filter(p=>validId(p.matchId)&&[0,.5,1].includes(p.score)&&typeof p.quit==='boolean'&&(!p.quit||p.score===0)&&Number.isFinite(p.expires));}}catch{/* New player or invalid local save. */}}
    if(!identity){const myId=crypto.randomUUID();identity={myId,...await request<Omit<RatingIdentity,'myId'>>('/register',{myId})};}
    else Object.assign(identity,await request('/rating',{myId:identity.myId,token:identity.token}));
    if(!validIdentity(identity))throw Error('Invalid rating response');

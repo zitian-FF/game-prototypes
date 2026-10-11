@@ -12,4 +12,5 @@ export const KEYS = {
   progress: 'punchies:progress:v1',
   profile: 'punchies:profile:v1',
   survival: 'punchies:survival:v1',
+  rating: 'punchies:rating:v1',
 } as const;
