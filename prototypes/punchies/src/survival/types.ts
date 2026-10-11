@@ -26,7 +26,7 @@ export interface SurvivalRun {
 export type SurvivalEvent =
   | { kind: 'combat'; event: SimEvent; entityIds: readonly [string, string] }
   | { kind: 'spawn'; enemyId: string; enemyKind: SurvivalEnemy['kind'] }
-  | { kind: 'kill'; enemyId: string; enemyKind: SurvivalEnemy['kind'] }
+  | { kind: 'kill'; enemyId: string; enemyKind: SurvivalEnemy['kind']; visualId: SurvivalEnemy['visualId']; fighter: Fighter; position: {x:number;y:number}; direction: {x:number;y:number} }
   | { kind: 'waveCleared'; wave: number; kills: number; zombieKills: number; healing: number }
   | { kind: 'runEnded'; reason: 'defeat' | 'abandoned'; clearedWave: number };
 

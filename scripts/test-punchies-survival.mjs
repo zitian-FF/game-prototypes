@@ -87,7 +87,14 @@ assert.ok(spread<normalHurtRadius(multi.enemies[0].fighter)+punchCfg(multi.playe
 multi.enemies.forEach((e,i)=>{e.fighter.x=pt.x;e.fighter.y=pt.y+(i?spread:-spread);e.fighter.anchored=true;e.attackWait=999;e.fighter.health=10000;});
 const killing=structuredClone(multi);killing.enemies.forEach(e=>e.fighter.health=1);
 const kills=stepSurvival(killing,N);
-assert.equal(kills.filter(e=>e.kind==='kill').length,2);assert.equal(killing.waveZombieKills,2);assert.equal(killing.totalKills,2);
+assert.equal(kills.filter(e=>e.kind==='kill').length,2);
+for(const event of kills.filter(e=>e.kind==='kill')){
+ assert.equal(event.visualId,'zombie');assert.ok(event.fighter.health<=0);
+ assert.equal(event.position.x,event.fighter.x);assert.equal(event.position.y,event.fighter.y);
+ assert.ok(Math.abs(Math.hypot(event.direction.x,event.direction.y)-1)<1e-10);
+ assert.ok(event.direction.x>.99,'final cross direction is retained');
+ const saved=JSON.stringify(event);stepSurvival(killing,N);assert.equal(JSON.stringify(event),saved,'presentation snapshot survives gameplay removal');
+}assert.equal(killing.waveZombieKills,2);assert.equal(killing.totalKills,2);
 assert.equal(stepSurvival(killing,N).filter(e=>e.kind==='kill').length,0,'dead enemies are removed once');
 const first=stepSurvival(multi,N);assert.equal(combatEvents(first).filter(e=>e.kind==='hit'&&e.attacker===0).length,2);
 const after=multi.enemies.map(e=>e.fighter.health);
