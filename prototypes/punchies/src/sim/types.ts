@@ -150,6 +150,7 @@ export type SimEvent =
   | { kind: 'starsReady'; fighter: number }
   | { kind: 'ready' }
   | { kind: 'go' }
+  | { kind: 'fightCue' }
   | { kind: 'ko'; loser: number }
   | { kind: 'timeUp'; winner: number | null };
 

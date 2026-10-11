@@ -23,7 +23,8 @@
       "vibratePixels": 4,
       "vsExitMs": 320,
       "vsExitScale": 16,
-      "fightHoldMs": 600,
+      "fightHoldMs": 180,
+      "fightFadeMs": 80,
       "upperPulseMs": 940
     },
     "arena": {

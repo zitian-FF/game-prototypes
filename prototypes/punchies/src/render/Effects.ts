@@ -230,11 +230,13 @@ export class Effects {
           if (e.fighter === localIdx) sfx.starsReady();
           break;
         case 'ready':
-          this.banner(t('fx.round', { n: this.roundNumber }), Math.max(0.3, tune.match.introSec - 0.3), '#fff1d1');
+          this.banner(t('fx.round', { n: this.roundNumber }), Math.max(0.3, tune.match.introSec - (tune.view.fightPresentation.fightHoldMs+tune.view.fightPresentation.fightFadeMs+tune.view.fightPresentation.fadeMs)/1000), '#fff1d1', false, tune.view.fightPresentation.fadeMs);
           sfx.ready();
           break;
-        case 'go':
+        case 'fightCue':
           fightWord(this.scene);
+          break;
+        case 'go':
           sfx.roundBell();
           break;
         case 'ko':
@@ -296,7 +298,7 @@ export class Effects {
     this.scene.tweens.add({ targets: t, y: y - 18, alpha: 0, delay: 250, duration: 450, onComplete: () => t.destroy() });
   }
 
-  private banner(text: string, holdSec = 1.2, color = '#ffffff', punch = false): void {
+  private banner(text: string, holdSec = 1.2, color = '#ffffff', punch = false, fadeMs = 250): void {
     const t = this.scene.add
       .text(VIEW.cx, VIEW.cy - 20, text, {
         fontFamily: 'monospace',
@@ -313,7 +315,7 @@ export class Effects {
       t.setScale(1.8);
       this.scene.tweens.add({ targets: t, scale: 1, duration: 140, ease: 'Back.easeOut' });
     }
-    this.scene.tweens.add({ targets: t, alpha: 0, delay: holdSec * 1000, duration: 250, onComplete: () => t.destroy() });
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: holdSec * 1000, duration: fadeMs, onComplete: () => t.destroy() });
   }
 
 }
