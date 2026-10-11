@@ -1,13 +1,12 @@
 ## Current milestone
-Casual private-room Elo integrated and locally verified on proto/punchies/casual-elo. Prepared for review and Build/deployment handoff; no live rating service is claimed.
+Owner-authorized combined Elo and complete Zombie Survival release, under integration review.
 ## What was implemented
-Cloudflare Worker with SQLite Durable Object, anonymous token-bound identities, authoritative points, idempotent pair/nonce match IDs, atomic one-time settlement, agreed result/explicit quit handling, ten-minute expiry and bounded CORS/payloads. Client persistent identity and result retry outbox, actual lobby/results hooks, closest simultaneous guest preference, fresh completed-set rematch nonce and transition-safe session binding. Result polling stops on terminal states/shutdown. Disconnects never submit unilateral wins or accidentally self-forfeit between rounds. Six locale keys added. WIP/profile builds accept the service URL via repository variable; Worker deployment workflow and reproducible QA docs/scripts included.
+Casual private-room Elo client, bounded status presentation and SQLite Durable Object service are integrated with Zombie Survival simulation and checkpoint persistence. Production Survival scene and rig handoff remains required before publication.
 ## Key technical decisions
-Use owner-approved 1000 start, zero floor, K40/24/16 and gap farm1-to0.1. Max participant K, round one symmetric transfer, exact opposite delta and floor-limited transfer. One result per completed set. Missing/disputed reports or plug-pull do not award points; voluntary self-quit can settle own loss. Private room codes only: no queue, ranks, leaderboard, accounts or replay anti-cheat. Tokens never go to peers/analytics. Survival PR339 stays separate. Art owns final presentation; actual state contract is in docs/casual-elo.md.
+Preserve existing combat tuning. Deploy the rating Worker with the pinned configuration, capture its actual URL, then rebuild clients with PUNCHIES_RATING_URL. Keep the reviewed VFX pass separate until after this release.
 ## Open questions
-Original brief requires owner plan approval before backend deployment. Main/Build must obtain that approval, deploy Worker, set PUNCHIES_RATING_URL to the returned HTTPS URL and rebuild clients. Portal online launch availability remains the existing owner decision. Complete live two-peer match smoke after authorized release.
+Final production Survival handoff and deployed browser smoke are pending.
 ## Known issues
-No production rating endpoint has been deployed in this task. Local real workerd/SQLite tests are distinct from Node SQLite tests with mocked transport/Trystero. Existing relay.damus.io emitted rate-limit/banned warnings during Lobby wait; no client console errors occurred. Anonymous storage reset loses identity; agreed fake results and unpunished disconnects are accepted casual limits. Art's bounded status presentation is integrated in this branch. Existing production chunk-size/locale import warnings remain.
+No live rating endpoint or completed combined release is claimed yet. Anonymous storage reset loses rating identity; agreed fake results and unreported disconnects remain accepted casual-rating limitations.
 ## Next proposed step
-Review the combined Elo PR, then approved Build/deployment release and live endpoint/two-peer smoke. Verified: typecheck/build; formula/farm/floor/zero-sum, SQLite idempotency/auth/settlement/expiry, real client persistence/reload retry, rematch/pairing/disconnect and series regressions; i18n. Real local Wrangler/workerd SQLite smoke passed. Brave actual Lobby showed1000; actual client/Worker flow stayed pending1000 until agreement, then1020(+20), retained1020 after Worker/browser restart. Screenshot inspected, no errors. This task has not changed combat tuning.
-
+Integrate Art's production Survival commit and rig, run combined checks and profile validation, then merge and deploy the authorized release.
