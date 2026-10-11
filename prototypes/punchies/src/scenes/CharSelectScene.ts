@@ -1,4 +1,4 @@
-import {rosterScores,statFill,rosterUppercut,type RosterStat} from '../sim/rosterStats';
+import {rosterScores,statFill,type RosterStat} from '../sim/rosterStats';
 import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
@@ -10,7 +10,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
+import { uppercutStars, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
@@ -478,8 +478,7 @@ export class CharSelectScene extends Phaser.Scene {
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
           : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
-        uppercut: rosterUppercut(chars[s]),
-        durability: {hp:tune.health.max*charTune(chars[s]).hp,stun:tune.stun.threshold*charTune(chars[s]).stun},
+        uppercut: {stars:uppercutStars(chars[s])},
       })),
       step: ready ? 2 : (this.data0.mode==='training'||this.data0.mode==='survival')?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
       steps: (this.data0.mode==='training'||this.data0.mode==='survival')?[t('common.your_boxer'),t('common.ready'),this.data0.mode==='survival'?t('survival.start'):t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],

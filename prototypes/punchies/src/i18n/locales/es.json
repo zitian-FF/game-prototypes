@@ -381,12 +381,11 @@
   "tutorial.your_fist_travels_out_too": "El puño se extiende hacia delante. Demasiado cerca = golpe débil. Con el brazo completamente extendido = golpe limpio. Retrocede un poco y conecta un golpe limpio.",
   "ui.back_hint": "Esc / B: Atrás",
   "charselect.durability": "DUREZA",
-  "charselect.uppercut_stats": "UPPER: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · RESIST. ATURD. {stun}",
   "rating.loading": "Cargando puntos…",
   "rating.points": "{points} PUNTOS",
   "rating.unavailable": "Puntos no disponibles · partida casual",
   "rating.pending": "Esperando confirmación",
   "rating.result": "{points} PUNTOS ({delta})",
-  "rating.unsettled": "Resultado sin confirmar · puntos sin cambios"
+  "rating.unsettled": "Resultado sin confirmar · puntos sin cambios",
+  "charselect.uppercut_stars": "UPPER: {stars} ★"
 }

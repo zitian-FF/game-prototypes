@@ -381,12 +381,11 @@
   "tutorial.your_fist_travels_out_too": "拳头会向前伸出。距离太近时会造成擦击，伤害较低；手臂完全伸展时则能精准命中。稍微后退一点，打出一次精准命中。",
   "ui.back_hint": "Esc / B：返回",
   "charselect.durability": "耐久",
-  "charselect.uppercut_stats": "上勾拳: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "生命 {hp} · 抗晕 {stun}",
   "rating.loading": "正在读取积分…",
   "rating.points": "{points} 积分",
   "rating.unavailable": "积分暂不可用 · 休闲对战",
   "rating.pending": "积分等待确认",
   "rating.result": "{points} 积分（{delta}）",
-  "rating.unsettled": "结果未确认 · 积分不变"
+  "rating.unsettled": "结果未确认 · 积分不变",
+  "charselect.uppercut_stars": "上勾拳: {stars} ★"
 }

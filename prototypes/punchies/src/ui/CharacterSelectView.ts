@@ -9,7 +9,7 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from './cartoonChrome';
 interface PanelState {
- dummy?:boolean;survival?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number,number][];uppercut?:{stars:number;damage:number};durability?:{hp:number;stun:number};
+ dummy?:boolean;survival?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number,number][];uppercut?:{stars:number};
 }
 export interface SelectionState {training?:boolean;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 import { rosterSlots, rosterIds } from './rosterLayout';
@@ -89,7 +89,7 @@ export class CharacterSelectView {
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
    this.panelHits[s].input!.enabled=!p.dummy&&!p.survival;
-   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.uppercut,p.durability,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
+   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
    if(key!==this.panelKeys[s]){const previous=this.panelKeys[s]?JSON.parse(this.panelKeys[s]):null;const changed=!!previous&&(previous[0]!==!!p.dummy||previous[1]!==p.id||previous[2]!==p.hidden||previous[4]!==p.skin);this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
     if(changed&&!reducedMotion()){
      const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
@@ -139,8 +139,7 @@ export class CharacterSelectView {
    if(archetype.getWrappedText().length<=2&&archetype.width<=186&&archetype.height<=20)break;
   }
   const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value,score],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,9).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);this.text(parent,x+140,y+5,Math.round(score*100)+'%',8,'#ffffff').setStroke('#050a18',2);});
-  if(!p.dummy&&p.durability)this.text(parent,centre,176,t('charselect.durability_details',{hp:Number(p.durability.hp.toFixed(1)),stun:Number(p.durability.stun.toFixed(1))}),8,'#dbe9fa');
-  if(!p.dummy&&p.uppercut)this.text(parent,centre,188,t('charselect.uppercut_stats',{stars:p.uppercut.stars,damage:Number(p.uppercut.damage.toFixed(1))}),9,'#ffdf83');
+  if(!p.dummy&&p.uppercut)this.text(parent,centre,180,t('charselect.uppercut_stars',{stars:p.uppercut.stars}),9,'#ffdf83');
   if(p.selected&&p.available&&!p.dummy){
    const tray=this.graphics(parent);tray.fillStyle(0x09182b,.95).fillRoundedRect(x,351,198,38,8);
    const name=this.text(parent,centre,362,p.skinName,10,'#fff1a8');

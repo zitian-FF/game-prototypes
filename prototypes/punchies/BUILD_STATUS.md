@@ -1,6 +1,7 @@
 ## Current milestone
 Owner-authorized complete Zombie Survival and casual Elo release; combined local checks passed, publication pending.
 ## What was implemented
+Pending balance PR: approved uppercut reward targets (Longan 6; two-star 15–18; three-star 29–35; Tyke four-star 48 HP damage). Roster details show only uppercut stars; raw HP, stun and uppercut damage are removed in all six locales. Production code build and balance/display/localisation tests pass. Leave this PR unmerged until the owner requests merging.
 Casual private-room Elo client, bounded status presentation and SQLite Durable Object service; complete Zombie Survival entry, solo roster/skin choice, timed combat, independent Zombie rig, boss waves, healing, checkpoint resume, save failure/retry and pause controls. Existing combat tuning is unchanged.
 ## Key technical decisions
 Integrate only Survival production UI and rig commits, excluding obsolete Ranked and unrelated progression. Rating identity and pending reports use registered portal storage. Both art profiles preserve existing entries and share identical Zombie parts and mirror aliases. Deploy Worker first, capture its actual URL and rebuild clients afterward. VFX remains a subsequent isolated release.
