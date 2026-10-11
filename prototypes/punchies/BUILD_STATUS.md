@@ -1,18 +1,17 @@
 ## Current milestone
-Validated combat VFX, replacement pre-match VS fire and owner-approved uppercut balancing PR344.
+Complete Main-approved bug/performance batch validated against live147.
 
 ## What was implemented
-Directional sweet/sour sparks use a fixed eight-Graphics pool with bounded rays/flecks and shutdown cleanup. Uppercut fire follows the existing glove attachment. VS fire uses seven asymmetric layered tongues, a continuous bed and twelve drifting embers on one existing Graphics. Review harness stops queued boot Menu so it cannot obscure proof. Uppercut damage targets: Longan 6; Mia 16, Tee 18, Captain 17, Nadia 15; Marco 31, Bruno 34, Dragon 29, Roxy 35; Tyke 48. Roster details show stars required and retain five stat bars.
+Survival creates all dynamic rigs inside the ring world and uses the visible glove path for contact without expanding hitboxes. Neutral facing reacquires on completed-action ticks. Zombies spawn with a fade and fly in the immutable final-hit direction to an inset red rope before fading; at most 24 reused views. Music queues the selected track and retries on initial readiness, capture-phase gestures and shared audio-context unlock. FIGHT completes its entrance before fade/input unlock using shared deterministic simulation timing. VS fire uses a cached 16-frame runtime atlas; hit text uses 20 reused objects. Fighter identity owns roster clash animation; bounded material masks, shade memo and shared alpha bounds reduce palette work while preserving pixels.
 
 ## Key technical decisions
-VFX adds no textures, particles, tweens, audio or gameplay/timing changes. Balancing changes only owner-approved uppercut damage multipliers and Tyke metadata range; other tuning remains. Integrated Art3058f40 and VFXbed5a37 on corrected main, preserving Marco cosmetic proportions and progression titles. Standard/compact inventory and content parity remain intact.
+Integrated Logic/VFX86cc07a and Artbebd1c1 on latest main, preserving approved tune values, Ranked Elo and Profile. No new download assets/R2/Worker changes. Verified all 2069 source files against published standard ZIP and freshly downloaded compact hashes. Both profiles default CrazyGames. Packages: standard17315301 bytes (+6784), compact10093454 bytes (+6784) versus live147; 40MB/20MB budgets and parity pass. Cached fire adds3.52MiB runtime RGBA memory, not download assets.
 
 ## Open questions
-Physical-mobile performance benchmarking and full played two-peer Ranked KO/rematch remain outstanding.
+Physical Android spark disappearance is unreproduced. Physical mobile performance, full played Ranked KO/rematch and native-speaker translation review remain unverified.
 
 ## Known issues
-Native-speaker translation review remains outstanding. Existing anonymous Elo and disconnect service limitations remain. Local Vite must restart after repacking assets to refresh its compile-time art index; release builds use a fresh index.
+Desktop controlled profiling shows lower roster stalls and bounded VFX churn; no mobile60fps or broad frame-rate-fix claim. Cold palette upload can still exceed a frame. Browser autoplay may require a valid first gesture; saved mute/volume are preserved. Music signal/playback evidence is instrumented, not subjective listening.
 
 ## Next proposed step
-Merge and deploy validated balancing PR344, then playtest the experimental uppercut curve.
-
+Merge and deploy this complete batch, verify live flows, then obtain physical Android reproduction/performance evidence.
