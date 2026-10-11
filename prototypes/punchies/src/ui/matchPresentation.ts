@@ -1,3 +1,4 @@
+import { VictoryAccent } from './rewardAccents';
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
@@ -106,6 +107,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     details.forEach(o=>o.setAlpha(0).setVisible(false));hits.forEach(hit=>hit.disableInteractive());
     const reveal=()=>{
       if(!alive)return;
+      if(kind==='victory')new VictoryAccent(scene,textX,heading.y,heading.width);
       details.forEach(o=>o.setVisible(true));
       scene.tweens.add({targets:details,alpha:1,duration:tune.view.fightPresentation.resultEnterMs,ease:'Sine.Out',onComplete:()=>{
         if(alive)hits.forEach(hit=>hit.setInteractive({useHandCursor:true}));
@@ -115,5 +117,6 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     heading.setX(textX+VIEW.width*.65);
     scene.tweens.add({targets:heading,x:textX,duration:tune.view.fightPresentation.portraitSlideMs,ease:'Cubic.Out',onComplete:reveal});
   }
+  if(reducedMotion()&&kind==='victory')new VictoryAccent(scene,textX,heading.y,heading.width);
   return rematch;
 }
