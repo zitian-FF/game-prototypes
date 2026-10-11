@@ -21,7 +21,6 @@
   "charselect.endurance": "지구력",
   "charselect.fight": "시작! ›",
   "charselect.format_hint": "F/Y: 경기 형식",
-  "charselect.health": "체력",
   "charselect.host_sent_invalid_settings": "호스트가 잘못된 설정을 보냈습니다.",
   "charselect.host_sets_format": "호스트가 매치 형식을 설정합니다.",
   "charselect.left_right_skins_confirm_to": "왼쪽/오른쪽: 스킨 · 준비 완료 확인",
@@ -380,5 +379,8 @@
   "tutorial.tutorial_complete": "튜토리얼 완료",
   "tutorial.uppercut_charge_text": "정타로 선수의 별 게이지를 채우세요. 모든 칸을 채우면 가드할 수 없는 어퍼컷을 한 번 사용할 수 있습니다: {btn}. 사용하면 게이지가 비워집니다. 명중시키세요.",
   "tutorial.your_fist_travels_out_too": "주먹은 앞으로 뻗어 나갑니다. 너무 가까우면 약한 타격이 되고, 팔이 완전히 뻗었을 때는 정타가 됩니다. 조금 뒤로 물러나 정타를 맞히세요.",
-  "ui.back_hint": "Esc / B: 뒤로"
+  "ui.back_hint": "Esc / B: 뒤로",
+  "charselect.durability": "내구력",
+  "charselect.uppercut_stats": "어퍼: {stars} ★ · {damage} HP",
+  "charselect.durability_details": "HP {hp} · 기절 저항 {stun}"
 }

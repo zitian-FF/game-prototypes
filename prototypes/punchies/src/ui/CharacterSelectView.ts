@@ -9,7 +9,7 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from './cartoonChrome';
 interface PanelState {
- dummy?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number][];
+ dummy?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number,number][];uppercut?:{stars:number;damage:number};durability?:{hp:number;stun:number};
 }
 export interface SelectionState {training?:boolean;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 import { rosterSlots, rosterIds } from './rosterLayout';
@@ -89,7 +89,7 @@ export class CharacterSelectView {
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
    this.panelHits[s].input!.enabled=!p.dummy;
-   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
+   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.uppercut,p.durability,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
    if(key!==this.panelKeys[s]){const previous=this.panelKeys[s]?JSON.parse(this.panelKeys[s]):null;const changed=!!previous&&(previous[0]!==!!p.dummy||previous[1]!==p.id||previous[2]!==p.hidden||previous[4]!==p.skin);this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
     if(changed&&!reducedMotion()){
      const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
@@ -113,14 +113,14 @@ export class CharacterSelectView {
  private setButtonVisible(text:Phaser.GameObjects.Text,show:boolean):void{text.setVisible(show);(text.getData('chrome')as Phaser.GameObjects.Graphics).setVisible(show);const hit=text.getData('hit')as Phaser.GameObjects.Rectangle;hit.setVisible(show);hit.input!.enabled=show;}
  private buildPanel(s:number,p:PanelState):void{
   const parent=this.content[s];parent.removeAll(true);const x=s===0?6:640,centre=x+99;
-  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,77,7);
+  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,94,7);
   panel.fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,181,198,155,8);
   if(p.hidden&&!p.dummy){this.text(parent,centre,251,p.label,17);this.text(parent,centre,276,p.status,9,'#aebbd0');return;}
   const texture=p.dummy?artKey(this.scene,'portrait_training_dummy'):skinTexture(this.scene,p.id,p.skin,'portrait_'+p.id);
   if(texture&&this.scene.textures.exists(texture)){
    const image=this.scene.add.image(centre,315,texture).setOrigin(.5,1);let b=this.bounds.get(texture);
    if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(texture,b);}
-   const visibleHeight=p.dummy?130:125;
+   const visibleHeight=p.dummy?130:110;
    const scale=Math.min(visibleHeight/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id));const flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;parent.add(image);
   }
   const title=p.dummy?t('common.dummy'):CHARACTER_INFO[p.id].name.toUpperCase();const text=this.text(parent,centre,321,title,16);if(text.width>186)text.setScale(186/text.width);
@@ -131,7 +131,9 @@ export class CharacterSelectView {
    archetype.setFontSize(size);
    if(archetype.getWrappedText().length<=2&&archetype.width<=186&&archetype.height<=20)break;
   }
-  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,10).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value*.8))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);});
+  const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value,score],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,9).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);this.text(parent,x+140,y+5,Math.round(score*100)+'%',8,'#ffffff').setStroke('#050a18',2);});
+  if(!p.dummy&&p.durability)this.text(parent,centre,176,t('charselect.durability_details',{hp:Number(p.durability.hp.toFixed(1)),stun:Number(p.durability.stun.toFixed(1))}),8,'#dbe9fa');
+  if(!p.dummy&&p.uppercut)this.text(parent,centre,188,t('charselect.uppercut_stats',{stars:p.uppercut.stars,damage:Number(p.uppercut.damage.toFixed(1))}),9,'#ffdf83');
   if(p.selected&&p.available&&!p.dummy){this.text(parent,centre,356,p.skinName+' '+p.skinIndex+'/'+p.skinCount,8,'#fff1a8');[-1,1].forEach(d=>{const a=this.text(parent,centre+d*89,356,d<0?'‹':'›',19);a.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));});}
  }
 }
