@@ -206,7 +206,11 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });
     for (const e of r.enemies) if (e.fighter.health <= 0) {
       r.waveKills++; r.totalKills++; if (e.kind === 'zombie') r.waveZombieKills++;
-      out.push({ kind: 'kill', enemyId: e.id, enemyKind: e.kind });
+      const fighter = structuredClone(e.fighter);
+      const dx = fighter.lastBlow?.dx ?? fighter.x-r.player.x, dy = fighter.lastBlow?.dy ?? fighter.y-r.player.y;
+      const length = Math.hypot(dx,dy);
+      out.push({ kind: 'kill', enemyId: e.id, enemyKind: e.kind, visualId:e.visualId, fighter,
+        position:{x:fighter.x,y:fighter.y}, direction:length>0?{x:dx/length,y:dy/length}:{x:1,y:0} });
     }
     r.enemies = r.enemies.filter(e => e.fighter.health > 0);
     if (--r.spawnWait <= 0) {
