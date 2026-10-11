@@ -142,7 +142,7 @@ ed = scene(); inputLayoutEditor(ed, 'touch'); handle = ed.objects.filter(o => o.
 handle.emit('pointerdown', pointer(23, handle.x, handle.y)); ed.input.emit('pointermove', pointer(23, handle.x - 84 * previewScale, handle.y - 64 * previewScale)); at(612, 346);
 equal(loadLayouts().touch, defaults().touch, 'overlapping layout cannot save'); assert.ok(ed.objects.some(o => o.active)); ed.events.emit('shutdown'); assert.equal(ed.input.listenerCount('pointermove'), 0);
 const tutorial = load('scenes/TutorialScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph,
-  '../i18n': i18nStub, '../portal/keys': { KEYS: { tutorial: 'tutorial' } }, '../sim/tune': { TICK_RATE: 60 } }, '\nexports.binderForTest = binder;');
+  '../i18n': i18nStub, '../portal/keys': { KEYS: { tutorial: 'tutorial' } }, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 }, '../sim/tune': { TICK_RATE: 60 } }, '\nexports.binderForTest = binder;');
 hub.lastSource = 'kb2'; hub.lastDevice = 'keyboard'; custom.kb2.jab = ['KeyZ']; custom.kb2.guard = ['ControlRight']; saveLayouts(custom);
 assert.equal(tutorial.binderForTest()('jab'), i18nStub.t('tutorial.press_key', { key: 'Z' })); assert.equal(tutorial.binderForTest()('guard'), glyph.keyLabel('ControlRight'));
 const { FirstFightScene } = load('scenes/FirstFightScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph, '../i18n': i18nStub, '../sim/tune': { TICK_RATE: 60 } });
