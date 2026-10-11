@@ -1,0 +1,113 @@
+{
+  "sourceSha256": "465d86af88e89cad800f0eb64e85defefef0edea81dda3c73bdbddfc315d1e9b",
+  "sourceSize": [
+    1275,
+    1233
+  ],
+  "parts": [
+    {
+      "key": "part_zombie_head",
+      "source": "generated-sheet.png",
+      "master": "parts/zombie/head.png",
+      "sourceCrop": {
+        "left": 83,
+        "top": 119,
+        "width": 546,
+        "height": 522
+      },
+      "masterSha256": "9de49bd9d2f18bc76bda62622a01e33a79f724b55c5047dc0dfd2f2b832f3ef3",
+      "runtimeSha256": "3b36229fa74fe70e820c4fd9c021d1b76ee9153d670de0647122f31894fdf774",
+      "runtimeBytes": 15750,
+      "runtimeSize": [
+        126,
+        120
+      ]
+    },
+    {
+      "key": "part_zombie_torso",
+      "source": "generated-sheet.png",
+      "master": "parts/zombie/torso.png",
+      "sourceCrop": {
+        "left": 712,
+        "top": 75,
+        "width": 481,
+        "height": 650
+      },
+      "masterSha256": "b497c7d776e52fc8e0ff522e7eaccad0e4d7c5522d6b8da28b63f1433dfd5444",
+      "runtimeSha256": "6335502ff04e64465e7ddf7c8a6d45d154a46577270627ced78e521f75084a53",
+      "runtimeBytes": 15300,
+      "runtimeSize": [
+        95,
+        128
+      ]
+    },
+    {
+      "key": "part_zombie_glove_right",
+      "source": "generated-sheet.png",
+      "master": "parts/zombie/glove_right.png",
+      "sourceCrop": {
+        "left": 176,
+        "top": 804,
+        "width": 365,
+        "height": 368
+      },
+      "masterSha256": "a3f4866236a270bc92e39b7f99f4ed2b2b2a7aedcd440ec0c631bd6aa3e1b4fb",
+      "runtimeSha256": "9b858ffb100629e69b8951b8a2b9d78610c34f18a9bcc2944a2e4dcdbdff6cca",
+      "runtimeBytes": 10262,
+      "runtimeSize": [
+        95,
+        96
+      ]
+    },
+    {
+      "key": "part_zombie_boot_right",
+      "source": "generated-sheet.png",
+      "master": "parts/zombie/boot_right.png",
+      "sourceCrop": {
+        "left": 700,
+        "top": 881,
+        "width": 496,
+        "height": 274
+      },
+      "masterSha256": "40013bc217db92dc4faaadd5aaf364cca15c43078b85fe289113d4ddc70366ab",
+      "runtimeSha256": "3e4fb13d063ba27cb3b4855f3fa8aaa26e263e5fafe39634fa173d6041536809",
+      "runtimeBytes": 5916,
+      "runtimeSize": [
+        84,
+        46
+      ]
+    }
+  ],
+  "mirrors": {
+    "part_zombie_glove_left": {
+      "source": "part_zombie_glove_right",
+      "axis": "x"
+    },
+    "part_zombie_boot_left": {
+      "source": "part_zombie_boot_right",
+      "axis": "y"
+    }
+  },
+  "runtimeBytes": 47413,
+  "registration": {
+    "headOrigin": [
+      0.49,
+      0.5
+    ],
+    "torsoOrigin": [
+      0.5,
+      0.5
+    ],
+    "gloveOrigin": [
+      0.5,
+      0.5
+    ],
+    "gloveAxis": 1.5707963267948966,
+    "bootOrigin": [
+      0.5,
+      0.5
+    ],
+    "skin": "#9dbc61",
+    "preparedSizes": "existing Punchies contract; standard and compact share prepared pixels"
+  }
+}

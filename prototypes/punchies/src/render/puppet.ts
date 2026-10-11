@@ -29,6 +29,7 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  zombie: {skin:0x9dbc61,headOrigin:.49,headScale:1,torsoScale:1},
   roxy: {skin:0xf0a060,headOrigin:.49,headScale:1,torsoScale:1},
   nadia: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
   captain: {skin:0x173b79,headOrigin:.49,headScale:1,torsoScale:1},
@@ -83,6 +84,7 @@ function limb(g: Phaser.GameObjects.Graphics, a: Pt, b: Pt, c: Pt, width: number
 
 export interface PuppetArgs {
   f: Fighter;
+  visualId?: string; // Art identity only; underlying fighter retains its stats.
   now: number;
   k: number; // character scale
   alt: boolean;
@@ -189,7 +191,7 @@ export class Puppet {
   // Draws the boxer. Returns false (and hides) when the parts are missing, so
   // the caller can fall back to the older art.
   draw(a: PuppetArgs): boolean {
-    const { f } = a;
+    const f = a.visualId ? { ...a.f, char: a.visualId } : a.f;
     const originalLook = LOOKS[f.char];
     const look = originalLook && { ...originalLook, skin: limbSkin(f.char,a.skin??'default',originalLook.skin) };
     if (!look || f.anchored || !this.bind(f.char,a.skin)) {
