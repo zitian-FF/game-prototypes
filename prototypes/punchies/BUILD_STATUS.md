@@ -1,12 +1,12 @@
 ## Current milestone
-Recalibrated roster stat display approved for live release.
+FIGHT timing aligned with the locked round intro; validated for review.
 ## What was implemented
-Five Base-relative bars: Durability, Endurance, Speed, Power and Reach. Fixed piecewise ranges place Base at 60% fill and amplify small differences. Durability combines 70% HP and 30% stun threshold; Endurance combines stamina capacity, regeneration and ordinary-punch efficiency. Speed uses movement and full ordinary-punch cycles; Power and Reach exclude uppercuts. Bars show exact rounded Base-relative percentages. Separate lines show actual HP/stun threshold and uppercut stars/HP damage. All six languages include the new labels and matching placeholders.
+FIGHT plays for 260 ms during the end of the existing countdown, with a dedicated 80 ms fade. ROUND clears before it. Controls unlock and the bell sounds at the existing fight start tick.
 ## Key technical decisions
-Display only: no combat tuning changes. Compare against neutral Base, including unit body proportions, never Marco. Stable ranges do not depend on roster min/max. Uppercuts are separate because per-fighter charge costs make their raw averages misleading. Keep portrait and details inside the selection panel.
+A cosmetic fightCue event precedes gameplay go. No extra round delay, no tuning changes to punches or movement, and KO fade remains unchanged.
 ## Open questions
-Human playtesting should review readability across screen sizes and languages.
+Merge and deployment approval is pending.
 ## Known issues
-Existing machine-translated copy is not native-reviewed. Compact delivery retains its mandatory 10 MB gate.
+The browser timing preview is still being verified. Automated frozen-input and online synchronization checks pass.
 ## Next proposed step
-Verify live deployment and review the recalibrated roster in-game.
+Review and merge the timing fix. Typecheck and full build pass.
