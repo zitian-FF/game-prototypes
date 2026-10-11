@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "Online (Casual)",
   "menu.online_ranked": "Online (Ranked)",
-  "charselect.uppercut_stars": "UPPER: {stars} ★"
+  "charselect.uppercut_stars": "UPPER: {stars} ★",
+  "survival.run_stats": "Zombies defeated: {zombies}\nDamage dealt: {dealt}\nDamage received: {received}",
+  "ranked.searching": "Searching for an opponent…",
+  "ranked.connecting": "Connecting to your opponent…",
+  "ranked.search_ended": "Search ended. Please try again.",
+  "ranked.unavailable": "Matchmaking unavailable. Please try again."
 }

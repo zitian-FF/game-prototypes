@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "オンライン（カジュアル）",
   "menu.online_ranked": "オンライン（ランキング）",
-  "charselect.uppercut_stars": "アッパー: {stars} ★"
+  "charselect.uppercut_stars": "アッパー: {stars} ★",
+  "survival.run_stats": "倒したゾンビ: {zombies}\n与えたダメージ: {dealt}\n受けたダメージ: {received}",
+  "ranked.searching": "対戦相手を検索中…",
+  "ranked.connecting": "対戦相手に接続中…",
+  "ranked.search_ended": "検索が終了しました。もう一度お試しください。",
+  "ranked.unavailable": "マッチメイキングを利用できません。もう一度お試しください。"
 }

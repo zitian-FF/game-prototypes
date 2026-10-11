@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "عبر الإنترنت (بشكل غير رسمي)",
   "menu.online_ranked": "عبر الإنترنت (مصنف)",
-  "charselect.uppercut_stars": "صاعدة: {stars} ★"
+  "charselect.uppercut_stars": "صاعدة: {stars} ★",
+  "survival.run_stats": "الزومبي المهزومون: {zombies}\nالضرر المُلحَق: {dealt}\nالضرر المتلقّى: {received}",
+  "ranked.searching": "جارٍ البحث عن منافس…",
+  "ranked.connecting": "جارٍ الاتصال بمنافسك…",
+  "ranked.search_ended": "انتهى البحث. يُرجى المحاولة مجددًا.",
+  "ranked.unavailable": "المطابقة غير متاحة. يُرجى المحاولة مجددًا."
 }
