@@ -79,7 +79,7 @@ equal(validateLayouts({ ...defaults(), touch: badTouch }).touch, touch);
 // Execute real touch handlers, graphics and label placements against the same resolved geometry.
 class Obj extends EventEmitter {
   constructor(x = 0, y = 0, text = '') { super(); Object.assign(this, { x, y, text, active: true, data: {}, circles: [] }); }
-  setDepth() { return this; } setOrigin() { return this; } setAlpha() { return this; } setVisible() { return this; } setInteractive() { return this; }
+  setColor() { return this; } setShadow() { return this; } setDepth() { return this; } setOrigin() { return this; } setAlpha() { return this; } setVisible() { return this; } setInteractive() { return this; }
   setPosition(x, y) { this.x = x; this.y = y; return this; } setText(text) { this.text = text; return this; } setWordWrapWidth() { return this; }
   setData(k, v) { this.data[k] = v; return this; } getData(k) { return this.data[k]; }
   destroy() { if (!this.active) return; this.active = false; this.emit('destroy'); }
@@ -97,7 +97,7 @@ function scene() {
 const { IntentLayer } = load('input/intents');
 const { TouchControls } = load('ui/TouchControls', { '../input/layouts': layouts, '../i18n': i18nStub, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 },
   phaser: { default: { Math: { Distance: { Between: (x, y, a, b) => Math.hypot(x - a, y - b) } } } }, '../render/art': { artImage: () => null },
-  '../sim/tune': { tune }, '../sim/character': { uppercutStars: f => f.char === 'tyke' ? 4 : f.char === 'longan' ? 1 : 3, punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
+  './presentation': { reducedMotion: () => false }, '../sim/tune': { tune }, '../sim/character': { uppercutStars: f => f.char === 'tyke' ? 4 : f.char === 'longan' ? 1 : 3, punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
 saveLayouts(defaults());
 const sc = scene(), intents = new IntentLayer(), controls = new TouchControls(sc, intents);
 const pointer = (id, x, y) => ({ id, x: x * 2, y: y * 2, worldX: -999, worldY: -999 });
