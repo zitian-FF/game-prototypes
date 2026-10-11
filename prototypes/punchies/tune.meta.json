@@ -3044,6 +3044,13 @@
     "max": 5000,
     "step": 10
   },
+  "view.fightPresentation.fightFadeMs": {
+    "cat": "Presentation",
+    "desc": "FIGHT lettering fade-out after the hold.",
+    "min": 0,
+    "max": 2000,
+    "step": 10
+  },
   "view.fightPresentation.upperPulseMs": {
     "cat": "Presentation",
     "desc": "Full-charge UPPER label pulse period; reduced motion uses a steady label.",

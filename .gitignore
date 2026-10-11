@@ -16,3 +16,6 @@ scripts/simulate-output/
 .dev.vars
 .dev.vars.*
 .wrangler/
+
+# Local workshop build (never publish backend)
+.local/
