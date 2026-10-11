@@ -1,5 +1,5 @@
 import { tune } from './tune';
-import { punchCfg } from './character';
+import { punchCfg, uppercutStars } from './character';
 import { fighterScale, normalHurtRadius } from './geometry';
 import { phaseOf } from './sim';
 import { NEUTRAL_INPUT, type FrameInput, type SimState } from './types';
@@ -99,7 +99,7 @@ export class EasyAI {
     // Offense.
     if (!tired && !busy && this.cooldown === 0 && dist <= attackRange && this.rng() < tune.ai.attackChance) {
       this.cooldown = Math.round(tune.ai.attackCooldownFrames);
-      if (me.stars >= tune.stars.max) {
+      if (me.stars >= uppercutStars(me)) {
         input.uppercut = true;
       } else {
         const close = dist < punchCfg(me, 'hook').reach + normalHurtRadius(foe);

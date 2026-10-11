@@ -19,6 +19,7 @@ export const get = (doc:Doc,path:string):number => path.split('.').reduce<unknow
 export function set(doc:Doc,path:string,value:number):void {
   const range=meta[path];
   if(!range||!Number.isFinite(value)||value<range.min||value>range.max)throw Error(`Allowed range: ${range?.min} to ${range?.max}`);
+  if(path.endsWith('.starRequirement')&&!Number.isInteger(value))throw Error('Use whole stars');
   const parts=path.split('.'),key=parts.pop()!;
   const parent=parts.reduce<unknown>((o,k)=>(o as Record<string,unknown>)[k],doc) as Record<string,unknown>;
   if(typeof parent[key]!=='number')throw Error('Unknown tuning value');

@@ -8,11 +8,11 @@
   "pause.your_practice_session_will_end": "Your practice session will end.",
   "char.bruno.nick": "Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.",
   "char.dragon.nick": "Long-range outboxer: extended jab and Cross, slower follow-through.",
-  "char.longan.nick": "Endurance specialist: efficient jab and hooks, lighter blows and short reach.",
+  "char.longan.nick": "Endurance specialist: efficient pressure and a weak one-star uppercut.",
   "char.marco.nick": "Steady all-rounder: stronger Cross, balanced speed and endurance.",
   "char.mia.nick": "Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.",
   "char.tee.nick": "Fast burst attacker: heavy Cross and hooks, fragile with low stamina.",
-  "char.tyke.nick": "Power finisher: crushing Cross and uppercut, slow and stamina-hungry.",
+  "char.tyke.nick": "Power finisher: heavy Cross and devastating four-star uppercut, slow recovery.",
   "charselect.back": "â€¹  BACK",
   "charselect.best_of": "BEST OF {n}",
   "charselect.best_of_3": "BEST OF 3",
@@ -295,7 +295,6 @@
   "tutorial.repeating_one_punch_tires_it": "Repeating one punch tires it: red bars fill, it gets slower and weaker (\"tired\"). Mix it up! Throw the same punch until 2 bars light up.",
   "tutorial.right_after_a_dodge_you": "Right after a dodge you glow yellow: your next punch does 1.5x damage. Dodge toward the dummy and punch straight away for a POWER! hit.",
   "tutorial.skip": "SKIP",
-  "tutorial.stars_text": "Sweet hits fill the three star sockets beside STUN. At 3, UPPER pulses and the Uppercut is ready: {btn}. It can't be blocked. Land one.",
   "tutorial.stars_uppercut": "STARS & UPPERCUT",
   "tutorial.step_progress": "STEP {n}/{total} Â· {title}",
   "tutorial.taking_hits_fills_the_stun": "Taking hits fills the stun meter (thin bar). Full = stunned: open to anything. The dummy is nearly there. Finish it!",
@@ -381,5 +380,6 @@
   "quote.nadia": "Small target. Big mistake.",
   "shop.item.fighter-roxy.name": "ROXY",
   "shop.item.fighter-nadia.name": "NADIA",
-  "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance."
+  "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
+  "tutorial.uppercut_charge_text": "Sweet hits fill your fighter’s star meter. Fill every socket to ready one unblockable Uppercut: {btn}. Using it empties the meter. Land one."
 }

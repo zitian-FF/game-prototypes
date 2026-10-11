@@ -6,7 +6,7 @@ import type { Fighter, PunchType } from './types';
 // (tune.characters.<id>). Multipliers for HP, stamina, regen, stun
 // threshold, walk speed and per-punch damage / stamina cost / stun build /
 // pushback / reach; frame deltas for startup / recovery; extra fatigue bars.
-// Everything else (sweet / sour windows, hit table, guard, dodge, stars,
+// Everything else (sweet / sour windows, hit table, guard, dodge, star earning,
 // fatigue rules) stays global so every character reads the same.
 // Deterministic: the sim only reads tune + the fighter's character id.
 
@@ -17,8 +17,8 @@ export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style:
   roxy: { name: 'Roxy', nick: 'Firecracker', style: 'Close-range brawler: heavy hooks, costly swings.' },
   nadia: { name: 'Nadia', nick: 'Rising Star', style: 'Fast, light Cross pressure with extra fatigue capacity.' },
   captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst fighter: quick recovery, costly pressure and lower durability.' },
-  longan: { name: 'Longan', nick: 'Still Waters', style: 'Endurance specialist: efficient jab and hooks, lighter blows and short reach.' },
-  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: crushing Cross and uppercut, slow and stamina-hungry.' },
+  longan: { name: 'Longan', nick: 'Still Waters', style: 'Endurance specialist: efficient pressure and a weak one-star uppercut.' },
+  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: heavy Cross and devastating four-star uppercut, slow recovery.' },
   dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Long-range outboxer: extended jab and Cross, slower follow-through.' },
   tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst attacker: heavy Cross and hooks, fragile with low stamina.' },
   marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder: stronger Cross, balanced speed and endurance.' },
@@ -45,6 +45,14 @@ export function charTune(id: string): CharTune {
 
 const ct = (f: Fighter) => charTune(f.char);
 
+// One charge per fighter: its requirement is also its meter capacity.
+// Older combat fixtures use the shared Base requirement.
+export function uppercutStars(f: Fighter | string): number {
+  const u = charTune(typeof f === 'string' ? f : f.char).uppercut as { starRequirement?: number };
+  return Math.max(1, Math.min(4, Math.round(u.starRequirement ?? tune.stars.max)));
+}
+
+
 export const maxHealth = (f: Fighter) => tune.health.max * ct(f).hp;
 export const maxStamina = (f: Fighter) => tune.stamina.max * ct(f).stamina;
 export const regenMult = (f: Fighter) => ct(f).regen;
@@ -52,6 +60,7 @@ export const stunThreshold = (f: Fighter) => tune.stun.threshold * ct(f).stun;
 export const moveSpeed = (f: Fighter) => tune.movement.speed * ct(f).speed;
 
 export interface PunchCfg {
+  starRequirement: number;
   startup: number;
   sourEarly: number;
   sweet: number;
@@ -85,6 +94,7 @@ export function punchCfg(f: Fighter | string, type: PunchType): PunchCfg {
   // Extra bars spread the same maximum penalty thinner.
   const spread = bars > 0 && baseBars > 0 ? baseBars / bars : 1;
   return {
+    starRequirement: uppercutStars(f),
     startup: Math.max(1, base.startup + o.startup),
     sourEarly: base.sourEarly,
     sweet: base.sweet,
