@@ -1,3 +1,5 @@
+import {ratingStatus,reportRating} from '../net/rating';
+import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -289,6 +291,7 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
+    void this.showRating(r.winner===null?.5:r.winner===this.match.localIdx?1:0);
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     this.registry.set('lastAward', awardMatch({ kind: 'online', win: r.winner === this.match.localIdx }));
@@ -309,9 +312,30 @@ export class MatchScene extends Phaser.Scene {
     }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
   }
 
+  private async showRating(score?:0|.5|1):Promise<void>{
+    const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
+    const label=status.label;
+    status.set(ratingLabel({phase:'pending'},t));
+    const matchPromise=this.match.session.ratingMatch;
+    const id=await matchPromise;if(!id){if(this.scene.isActive())status.set(ratingLabel({phase:'unavailable'},t));return;}
+    let result=score===undefined?await ratingStatus(id):await reportRating(id,score);if(!this.scene.isActive())return;
+    const alive=()=>this.scene.isActive()&&label.active;
+    const refresh=()=>{if(!alive())return;status.set(ratingLabel(result?.state==='settled'
+      ?{phase:'settled',rating:result.rating,delta:result.delta}
+      :{phase:!result?'unavailable':result.state==='expired'?'expired':'pending'},t));};refresh();
+    if(result?.state!=='settled'&&result?.state!=='expired'){
+      let busy=false;
+      const poll=this.time.addEvent({delay:2000,repeat:299,callback:()=>{
+        if(!alive()){poll.remove();return;}if(busy)return;busy=true;
+        void ratingStatus(id).then(next=>{result=next;refresh();if(next?.state==='settled'||next?.state==='expired')poll.remove();}).finally(()=>busy=false);
+      }});
+      this.events.once('shutdown',()=>poll.remove());
+    }
+  }
   private tryRematch(): void {
     if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
     this.advancing = true;
+    if(!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
     this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
   }
 
@@ -327,6 +351,9 @@ export class MatchScene extends Phaser.Scene {
     if(this.departed)return;
     this.departed=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;
     this.time.removeAllEvents();
+    if(!this.over||this.nextSeries)void this.showRating(forfeited?1:undefined);
+    // A remote disappearance is not a voluntary local quit, including Bo3 breaks.
+    this.nextSeries=undefined;
     this.cancelSplash?.();
     this.cancelSplash = undefined;
     getNav(this).engage();

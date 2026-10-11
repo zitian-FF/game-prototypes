@@ -63,7 +63,7 @@ const sceneFile = path.resolve(root, '../scenes/MatchScene.ts');
 const sceneCode = ts.transpileModule(fs.readFileSync(sceneFile, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, require: (id) => {
+vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,performance, console, require: (id) => {
   if (id === 'phaser') return { default: { Scene: class {} } };
   if (id === '../sim/series') return { newSeries, finishRound };
   if (id === '../sim/tune') return { tune, TICK_RATE };
@@ -75,6 +75,9 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, req
   if (id === '../i18n') return i18nStub;
   if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
   if (id === '../portal/analytics') return { track() {} };
+  if (id === '../ui/menuNav') return { getNav:()=>({engage(){}}) };
+  if (id === './FightStage') return {makeButton(){}};
+  if (id === '../render/pixelRatio') return {VIEW:{cx:422,cy:195},PIXEL_RATIO:1};
   if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }) };
   return {};
 } });
@@ -105,14 +108,27 @@ late.tryRematch();
 assert.equal(splashes.length, 1);
 splashes.pop()();
 const final = online({ bestOf: 3, roundNumber: 2, wins: [1, 0] }, 0);
-final.showResult();
+let ratingReports=0;final.showRating=()=>{ratingReports++;};
+final.showResult();assert.equal(ratingReports,1,'rating submitted once after the full set');
 assert.equal(splashes.length, 0, 'series completion stays on the result');
 resultActions.rematch();
 final.rematchRemote = true;
+final.match.session.beginRating=()=>{};final.match.localIdx=0;
 final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
+
+for(const forfeited of [false,true]){
+ const disconnected=online(newSeries(3),0),claims=[];let ownQuits=0;
+ disconnected.over=true;disconnected.nextSeries={bestOf:3,roundNumber:2,wins:[1,0]};
+ disconnected.time.removeAllEvents=()=>{};disconnected.showRating=score=>claims.push(score);
+ const label={setOrigin(){return this;},setDepth(){return this;}};disconnected.add={text:()=>label};
+ disconnected.match.session.forfeit=async()=>ownQuits++;disconnected.match.session.leave=()=>{};
+ disconnected.opponentLeft(forfeited);assert.equal(claims.length,1);assert.equal(claims[0],forfeited?1:undefined);
+ await disconnected.leave();assert.equal(ownQuits,0,'returning after remote disconnect must never self-report a loss');
+}
+console.log('Explicit peer quit displays settlement; remote disappearance polls status without a win claim or local forfeit');
 
 // First-match showcase runs before the ordinary round countdown, not combat.
 const showcase=createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{char:'bruno'}]});

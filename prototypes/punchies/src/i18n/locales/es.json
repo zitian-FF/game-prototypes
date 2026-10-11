@@ -382,5 +382,11 @@
   "ui.back_hint": "Esc / B: Atrás",
   "charselect.durability": "DUREZA",
   "charselect.uppercut_stats": "UPPER: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · RESIST. ATURD. {stun}"
+  "charselect.durability_details": "HP {hp} · RESIST. ATURD. {stun}",
+  "rating.loading": "Cargando puntos…",
+  "rating.points": "{points} PUNTOS",
+  "rating.unavailable": "Puntos no disponibles · partida casual",
+  "rating.pending": "Esperando confirmación",
+  "rating.result": "{points} PUNTOS ({delta})",
+  "rating.unsettled": "Resultado sin confirmar · puntos sin cambios"
 }

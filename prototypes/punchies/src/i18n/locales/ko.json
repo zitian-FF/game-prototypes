@@ -382,5 +382,11 @@
   "ui.back_hint": "Esc / B: 뒤로",
   "charselect.durability": "내구력",
   "charselect.uppercut_stats": "어퍼: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · 기절 저항 {stun}"
+  "charselect.durability_details": "HP {hp} · 기절 저항 {stun}",
+  "rating.loading": "포인트 불러오는 중…",
+  "rating.points": "{points} 포인트",
+  "rating.unavailable": "포인트 확인 불가 · 일반 대전",
+  "rating.pending": "결과 확인 대기 중",
+  "rating.result": "{points} 포인트 ({delta})",
+  "rating.unsettled": "결과 미확인 · 포인트 변동 없음"
 }
