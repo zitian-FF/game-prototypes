@@ -97,7 +97,7 @@ function scene() {
 const { IntentLayer } = load('input/intents');
 const { TouchControls } = load('ui/TouchControls', { '../input/layouts': layouts, '../i18n': i18nStub, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 },
   phaser: { default: { Math: { Distance: { Between: (x, y, a, b) => Math.hypot(x - a, y - b) } } } }, '../render/art': { artImage: () => null },
-  '../sim/tune': { tune }, '../sim/character': { punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
+  '../sim/tune': { tune }, '../sim/character': { uppercutStars: f => f.char === 'tyke' ? 4 : f.char === 'longan' ? 1 : 3, punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
 saveLayouts(defaults());
 const sc = scene(), intents = new IntentLayer(), controls = new TouchControls(sc, intents);
 const pointer = (id, x, y) => ({ id, x: x * 2, y: y * 2, worldX: -999, worldY: -999 });
@@ -107,6 +107,12 @@ controls.onDown(pointer(2, 100, 300)); controls.onMove(pointer(2, 200, 300)); as
 const moved = defaults(); moved.touch.main.x += .01; assert.equal(touchValid(moved.touch, view), true); saveLayouts(moved); controls.draw({ stars: 0 });
 assert.equal(controls.labels[0].x, resolveTouch(moved.touch, view).main.x - 29);
 assert.ok(sc.objects[0].circles.some(p => p.x === resolveTouch(moved.touch, view).main.x && p.r === 58));
+// The touch meter draws exactly this fighter's charge capacity.
+controls.shown = new Set(['uppercut']);
+for (const [char,capacity] of [['longan',1],['tyke',4]]) {
+ sc.objects[0].circles.length=0;controls.draw({char,stars:capacity-1});
+ assert.equal(sc.objects[0].circles.filter(c=>c.r===4).length,capacity,`${char} uppercut sockets`);
+}
 controls.shown = null; controls.onDown(pointer(1, 668, 236)); sc.events.emit('shutdown'); assert.equal(intents.sample().guard, false); assert.equal(sc.input.listenerCount('pointerdown'), 0);
 
 // The real modal: staging, pointer choices without hardware, keyboard capture, Save / Cancel / Reset and shutdown ownership.

@@ -370,7 +370,6 @@
   "tutorial.repeating_one_punch_tires_it": "Repetir un solo golpe lo cansa: las barras rojas se llenan, se vuelve más lento y débil (\"cansado\"). ¡Varía tu ataque! Lanza el mismo golpe hasta que se iluminen dos barras.",
   "tutorial.right_after_a_dodge_you": "Justo después de esquivar, brillas en amarillo: tu siguiente puñetazo inflige 1,5 veces más daño. Esquiva hacia el muñeco y golpea inmediatamente para un golpe PODEROSO.",
   "tutorial.skip": "SALTAR",
-  "tutorial.stars_text": "Los golpes dulces llenan los tres huecos de estrella junto a STUN. En 3, UPPER pulsa y el Uppercut está listo: {btn}. No se puede bloquear. Conecta uno.",
   "tutorial.stars_uppercut": "ESTRELLAS Y UPPERCUT",
   "tutorial.step_progress": "PASO {n}/{total} · {title}",
   "tutorial.taking_hits_fills_the_stun": "Recibir golpes llena el medidor de aturdimiento (barra delgada). Lleno = aturdido: vulnerable a cualquier ataque. El muñeco está casi listo. ¡Acaba con él!",
@@ -380,5 +379,6 @@
   "tutorial.the_left_stick": "el joystick izquierdo",
   "tutorial.tutorial_complete": "TUTORIAL COMPLETADO",
   "tutorial.your_fist_travels_out_too": "Tu puño se extiende. Demasiado cerca = FRUTO (débil). Con la extensión completa = BUENO. Retrocede un poco y conecta un golpe BUENO.",
-  "ui.back_hint": "Esc / B: Atrás"
+  "ui.back_hint": "Esc / B: Atrás",
+  "tutorial.uppercut_charge_text": "Los golpes precisos llenan el medidor de estrellas de tu luchador. Llena todos los espacios para preparar un uppercut que atraviesa la guardia: {btn}. Usarlo vacía el medidor. Acerta uno."
 }

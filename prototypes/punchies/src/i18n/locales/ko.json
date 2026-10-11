@@ -370,7 +370,6 @@
   "tutorial.repeating_one_punch_tires_it": "한 가지 공격을 반복하면 힘이 약해집니다. 빨간색 막대가 차오르면서 속도가 느려지고 힘이 약해지죠. 다양한 공격을 섞어서 사용하세요! 빨간색 막대가 두 개 뜰 때까지 같은 공격을 계속하세요.",
   "tutorial.right_after_a_dodge_you": "회피 직후 몸이 노랗게 빛나면 다음 펀치의 위력이 1.5배 증가합니다. 더미 쪽으로 회피한 후 바로 펀치를 날리면 강력한 공격을 할 수 있습니다!",
   "tutorial.skip": "넘기기",
-  "tutorial.stars_text": "STUN 옆에 있는 세 개의 별 모양 소켓에 강력한 공격이 채워집니다. 3개가 채워지면 UPPER가 발동하고 어퍼컷({btn})이 준비됩니다. 막을 수 없는 공격입니다. 꼭 적중시키세요.",
   "tutorial.stars_uppercut": "스타즈 앤 어퍼컷",
   "tutorial.step_progress": "단계 {n}/{total} · {title}",
   "tutorial.taking_hits_fills_the_stun": "공격을 받으면 기절 게이지(가는 막대)가 차오릅니다. 게이지가 가득 차면 기절 상태가 되어 모든 공격에 무방비 상태가 됩니다. 이제 거의 다 왔습니다. 마무리하세요!",
@@ -380,5 +379,6 @@
   "tutorial.the_left_stick": "왼쪽 스틱",
   "tutorial.tutorial_complete": "튜토리얼 완료",
   "tutorial.your_fist_travels_out_too": "주먹을 앞으로 뻗으세요. 너무 가까이 뻗으면 약한 타격이 되고, 완전히 뻗으면 강력한 타격이 됩니다. 살짝 뒤로 물러나서 강력한 타격을 날리세요.",
-  "ui.back_hint": "Esc / B: 뒤로"
+  "ui.back_hint": "Esc / B: 뒤로",
+  "tutorial.uppercut_charge_text": "스위트 히트로 선수의 별 게이지를 채우세요. 모든 칸을 채우면 가드할 수 없는 어퍼컷을 한 번 사용할 수 있습니다: {btn}. 사용하면 게이지가 비워집니다. 명중시키세요."
 }
