@@ -150,6 +150,8 @@ export class FighterView {
   private gait = new WalkMotion();
   private walk = 0;
   private stride = 0;
+  readonly objects: Phaser.GameObjects.GameObject[];
+  presentationLimp=false;
 
   // Brief body flash when hit (white = you landed it, red = you took it).
   flash(color: number, now: number, ms = 110, zone: 'head' | 'body' = 'body'): void {
@@ -185,6 +187,7 @@ export class FighterView {
     scene: Phaser.Scene,
     private color: number,
   ) {
+    const before=new Set(scene.children.list);
     this.ground = new GroundLayer(scene, BODY_R);
     this.puppet = new Puppet(scene);
     this.dummy = new TrainingDummy(scene);
@@ -197,6 +200,7 @@ export class FighterView {
     this.head = layer(10.2);
     this.effects = layer(10.3);
     this.fx = scene.add.graphics().setDepth(12);
+    this.objects=scene.children.list.filter(o=>!before.has(o));
   }
 
   setLook(color: number, scale = 1, ponytail = false): void {
@@ -217,6 +221,18 @@ export class FighterView {
     this.puppet.hide();
     this.ground.hide();
     this.fx.clear();
+    this.dummy.hide();
+  }
+
+  /** Reset temporal presentation before a pooled view is assigned a new entity. */
+  reset():void {
+    this.clear();this.gait=new WalkMotion();this.walk=0;this.stride=0;
+    this.presentationLimp=false;
+    this.flashHeadUntil=this.flashBodyUntil=this.flashUntil=this.flashStart=0;
+    for(const o of this.objects)(o as Phaser.GameObjects.Image).setAlpha(1);
+  }
+  setPresentationAlpha(alpha:number):void {
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;a.setAlpha(a.alpha*alpha);}
   }
 
   reactToDummyHit(zone: 'head' | 'body', now: number): void {
@@ -224,6 +240,7 @@ export class FighterView {
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
+    for(const o of this.objects)(o as Phaser.GameObjects.Image).setAlpha(1);
     const g = this.g;
     g.clear();
     this.fx.clear();
@@ -233,7 +250,7 @@ export class FighterView {
     const alpha = stance === 'dodging' ? 0.35 : 1;
     const k = this.scale;
 
-    const walking = this.gait.update(f, now, tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1));
+    const walking = !this.presentationLimp&&this.gait.update(f, now, tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1));
     this.walk = this.gait.phase;
     this.stride = this.gait.stride;
 
@@ -348,6 +365,7 @@ export class FighterView {
       dodging: stance === 'dodging',
       vulnerable: isVulnerable(f) && stance !== 'dodging',
       guarding: f.guarding,
+      limp:this.presentationLimp,
     });
     if (ok) {
       this.sprite.setVisible(false);
