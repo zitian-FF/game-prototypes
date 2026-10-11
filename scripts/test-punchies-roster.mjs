@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {webcrypto} from 'node:crypto';
 import { i18nStub } from './lib-i18n-stub.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -11,7 +12,7 @@ const portalStore={store:{getItem:k=>storage.getItem(k)??null,setItem:(k,v)=>sto
 const portalKeys={KEYS:{audio:'punchies:audio:v1',shop:'punchies:shop-preview:v1',tutorial:'punchies:tutorial:v1',chars:'punchies:chars:v1',localInputs:'punchies:localInputs:v1'}};
 function module(file,rawRequire) {
  const require=id=>id.includes('paletteCatalog')?{PALETTES:JSON.parse(fs.readFileSync('prototypes/punchies/src/render/paletteCatalog.ts','utf8').split('= ')[1].replace(/;\s*$/,''))}:id.includes('/i18n')?i18nStub:id.includes('itemText')?{itemName:i=>i.name}:id.includes('portal/store')?portalStore:id.includes('portal/keys')?portalKeys:id.includes('portal/gameplay')?{setGameplay(){},trackFightScene(){}}:id.includes('portal/index')?{loadingFinished(){},showRewardedAd:async()=>'rewarded',portal:{ads:{available:true,kind:'preview'}}}:rawRequire(id);
- const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require,localStorage:storage,Date,Math,Set,Number,JSON,Object,Array});return exports;
+ const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require,crypto:webcrypto,localStorage:storage,Date,Math,Set,Number,JSON,Object,Array});return exports;
 }
 const palette=module('prototypes/punchies/src/render/skinPalette.ts',()=>({}));
 const draft=module('prototypes/punchies/src/shop/draft.ts',p=>p.includes('skinPalette')?palette:({default:JSON.parse(fs.readFileSync('prototypes/punchies/src/shop/draft-config.json','utf8'))}));
@@ -46,7 +47,7 @@ console.log('Roster: Tee lock/unlock, per-player skin persistence, ownership iso
 // A peer's locked fighter is independent of the local collection. Invalid or
 // unavailable peer picks cannot make the host start; cosmetic IDs match the boxer.
 draft.saveShopDraft(draft.newShopDraft());
-const packets=[],session={send:m=>packets.push(m)};
+const packets=[],session={send:m=>packets.push(m),beginRating:async()=>null};
 const net=new Scene();net.data0={mode:'online',localIdx:0,session};net.time={addEvent:()=>{}};
 net.sides=[{sel:0,src:'any',locked:false,skin:'default'},{sel:0,src:'remote',locked:false}];net.setupNet();
 session.onCtl({k:'pick',char:'tee',hover:'tee',available:ids.slice(0,3),skin:'skin-mia'});
