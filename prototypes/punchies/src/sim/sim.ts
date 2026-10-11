@@ -436,7 +436,7 @@ interface Contact {
 
 // Finds contacts for both fighters against pre-resolution state, so two
 // punches landing on the same tick trade cleanly regardless of index order.
-function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
+function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint): Contact[] {
   const contacts: Contact[] = [];
   for (let i = 0; i < 2; i++) {
     const att = s.fighters[i];
@@ -445,7 +445,7 @@ function detectContacts(s: SimState, events: SimEvent[]): Contact[] {
     if (!p || p.resolved) continue;
     const phase = phaseOf(p);
     if (phase !== 'sweet' && phase !== 'sour') continue;
-    const pt = punchPoint(att, p);
+    const pt = pointOf(att, p);
     const hitR = punchCfg(att, p.type).hitRadius;
     const dx = def.x - pt.x;
     const dy = def.y - pt.y;

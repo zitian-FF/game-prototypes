@@ -125,6 +125,15 @@ export class FightStage {
     scene.events.once('shutdown', () => scene.game.events.off(Phaser.Core.Events.BLUR, clear));
   }
 
+  // Runtime Survival enemies/corpses must share the player's ring camera.
+  // The constructor's initial snapshot cannot include objects created later.
+  createFighterView(color: number): FighterView {
+    const before = new Set(this.scene.children.list);
+    const view = new FighterView(this.scene, color);
+    this.persp.take(this.scene.children.list.filter(o => !before.has(o)));
+    return view;
+  }
+
   pollDevices(): void {
     devices.poll();
   }
