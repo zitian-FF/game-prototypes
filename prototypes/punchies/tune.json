@@ -1138,9 +1138,15 @@
       ]
     },
     "archetypes": {
-      "char.marco.nick": "Steady all-rounder with a heavy Cross",
-      "char.mia.nick": "Fast hands and feet, shorter reach",
-      "char.tyke.nick": "Heavyweight champion",
+      "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
+      "char.marco.nick": "Steady all-rounder: stronger Cross, balanced speed and endurance.",
+      "char.mia.nick": "Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.",
+      "char.bruno.nick": "Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.",
+      "char.tee.nick": "Fast burst attacker: heavy Cross and hooks, fragile with low stamina.",
+      "char.tyke.nick": "Power finisher: crushing Cross and uppercut, slow and stamina-hungry.",
+      "char.dragon.nick": "Long-range outboxer: extended jab and Cross, slower follow-through.",
+      "char.longan.nick": "Endurance specialist: efficient jab and hooks, lighter blows and short reach.",
+      "char.captain.nick": "Mobile burst fighter: quick recovery, costly pressure and lower durability.",
       "char.roxy.nick": "Close-range brawler: heavy hooks, costly swings.",
       "char.nadia.nick": "Fast, light Cross pressure with extra fatigue capacity."
     }
