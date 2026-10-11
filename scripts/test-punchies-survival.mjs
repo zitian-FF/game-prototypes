@@ -85,6 +85,10 @@ multi.player.punch.frame=multi.player.punch.startup+multi.player.punch.sourEarly
 const pt=punchPoint(multi.player,multi.player.punch),spread=separation(multi.enemies[0].fighter,multi.enemies[1].fighter)/2+0.01;
 assert.ok(spread<normalHurtRadius(multi.enemies[0].fighter)+punchCfg(multi.player,'cross').hitRadius);
 multi.enemies.forEach((e,i)=>{e.fighter.x=pt.x;e.fighter.y=pt.y+(i?spread:-spread);e.fighter.anchored=true;e.attackWait=999;e.fighter.health=10000;});
+const killing=structuredClone(multi);killing.enemies.forEach(e=>e.fighter.health=1);
+const kills=stepSurvival(killing,N);
+assert.equal(kills.filter(e=>e.kind==='kill').length,2);assert.equal(killing.waveZombieKills,2);assert.equal(killing.totalKills,2);
+assert.equal(stepSurvival(killing,N).filter(e=>e.kind==='kill').length,0,'dead enemies are removed once');
 const first=stepSurvival(multi,N);assert.equal(combatEvents(first).filter(e=>e.kind==='hit'&&e.attacker===0).length,2);
 const after=multi.enemies.map(e=>e.fighter.health);
 for(let i=0;i<12;i++)stepSurvival(multi,N);
@@ -103,6 +107,7 @@ assert.ok(grow.enemies[0].maxHealth>hp&&grow.enemies[0].speedRatio>speed);
 // Automatic checkpoint, balance mismatch, consumption, PB and invalid save.
 const data=new Map(),adapter={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
 const store=new SurvivalStore(adapter),run=store.begin(options);run.remainingTicks=1;run.hitstop=1;
+run.player.lastBlow={punch:'jab',sweet:true,chip:false,dx:1,dy:0};
 store.step(run,N);assert.equal(store.loadResume().kind,'ready');assert.equal(store.best().clearedWave,1);
 assert.equal(store.saveAndExit(run),true);
 assert.equal(store.loadResume('changed').kind,'incompatible');
