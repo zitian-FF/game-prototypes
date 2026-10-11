@@ -79,6 +79,7 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(bx, by, '!', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(134);
     }
 
+    titleButton(this,VIEW.left+VIEW.width*.665,VIEW.bottom-33,210,40,t('survival.menu'),()=>startScreen(this,'SurvivalEntry'),false,130,'green');
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);

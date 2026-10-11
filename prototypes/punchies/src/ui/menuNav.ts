@@ -26,6 +26,7 @@ const STICK = 0.6;
 const REPEAT_MS = 220;
 
 export class MenuNav {
+  pauseAction: (() => void) | null = null;
   private items: Item[] = [];
   private focus: Item | null = null;
   private modals: { anchor: Phaser.GameObjects.Rectangle; back: () => void }[] = [];
@@ -166,7 +167,9 @@ export class MenuNav {
       return;
     }
     if (e.key === 'Escape' && !this.textEntry) {
-      if (!this.back() && !this.hasModal()) this.toggle();
+      if (!this.back() && !this.hasModal()) {
+        if(this.fightMode&&this.pauseAction)this.pauseAction();else this.toggle();
+      }
       return;
     }
     if (!this.capturing) return;
@@ -226,7 +229,9 @@ export class MenuNav {
       if (!p) continue;
       const edge = (n: number) => !!edgesByPad[i][n];
       if (edge(1) && this.back()) return;
-      if (edge(9) && !this.hasModal()) this.toggle();
+      if (edge(9) && !this.hasModal()) {
+        if(this.fightMode&&this.pauseAction){this.pauseAction();return;}else this.toggle();
+      }
       if (!this.capturing) continue;
       if (edge(12)) this.move(0, -1);
       if (edge(13)) this.move(0, 1);

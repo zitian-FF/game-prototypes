@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { cartoonPanel } from '../ui/cartoonChrome';
 import { titleButton } from '../ui/titleButton';
+import { getNav } from '../ui/menuNav';
 import { devices } from '../input/devices';
 export class GameMenuScene extends MenuScene {
   private leaving=false;
@@ -23,12 +24,13 @@ export class GameMenuScene extends MenuScene {
   private close():void {this.scene.stop();}
   private drawMenu(confirm:boolean):void {
     this.children.removeAll(true);
-    this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,.78).setInteractive();
+    const shade=this.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x071020,.78).setDepth(301).setInteractive();
+    getNav(this).modalBack(shade,()=>confirm?this.drawMenu(false):this.close());
     const g=this.add.graphics();cartoonPanel(g,VIEW.cx-190,VIEW.cy-123,380,246,0x28517d,15);
     this.add.text(VIEW.cx,VIEW.cy-89,confirm?t('pause.return_to_main_menu'):this.multiplayer?t('pause.match_menu'):t('pause.paused'),
       {fontFamily:'Arial Black, Arial',fontSize:22,color:'#fff3da',stroke:'#081225',strokeThickness:3,resolution:PIXEL_RATIO}).setOrigin(.5);
     if(confirm){
-      this.add.text(VIEW.cx,VIEW.cy-27,this.multiplayer?t('pause.the_match_keeps_running_returning'):this.source==='Training'?t('pause.your_practice_session_will_end'):t('pause.your_current_round_will_end'),{fontFamily:'Arial',fontSize:15,color:'#fff3da',align:'center',resolution:PIXEL_RATIO}).setOrigin(.5);
+      this.add.text(VIEW.cx,VIEW.cy-27,this.multiplayer?t('pause.the_match_keeps_running_returning'):this.source==='Survival'?t('survival.active_exit'):this.source==='Training'?t('pause.your_practice_session_will_end'):t('pause.your_current_round_will_end'),{fontFamily:'Arial',fontSize:15,color:'#fff3da',align:'center',resolution:PIXEL_RATIO}).setOrigin(.5);
       titleButton(this,VIEW.cx-86,VIEW.cy+62,155,38,t('common.cancel'),()=>this.drawMenu(false),false,302,'default','back');
       titleButton(this,VIEW.cx+86,VIEW.cy+62,155,38,t('pause.return'),()=>{
         this.leaving=true;const source=this.scene.get(this.source);

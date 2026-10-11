@@ -9,7 +9,7 @@ import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from './cartoonChrome';
 interface PanelState {
- dummy?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number,number][];uppercut?:{stars:number;damage:number};durability?:{hp:number;stun:number};
+ dummy?:boolean;survival?:boolean;id:CharId;label:string;hidden:boolean;locked:boolean;focused:boolean;cursor:boolean;available:boolean;selected:boolean;skin:string;skinName:string;skinIndex:number;skinCount:number;status:string;stats:[string,number,number][];uppercut?:{stars:number;damage:number};durability?:{hp:number;stun:number};
 }
 export interface SelectionState {training?:boolean;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 import { rosterSlots, rosterIds } from './rosterLayout';
@@ -88,7 +88,7 @@ export class CharacterSelectView {
   // Dark central well gives future slots room without competing with the portraits.
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
-   this.panelHits[s].input!.enabled=!p.dummy;
+   this.panelHits[s].input!.enabled=!p.dummy&&!p.survival;
    const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.uppercut,p.durability,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
    if(key!==this.panelKeys[s]){const previous=this.panelKeys[s]?JSON.parse(this.panelKeys[s]):null;const changed=!!previous&&(previous[0]!==!!p.dummy||previous[1]!==p.id||previous[2]!==p.hidden||previous[4]!==p.skin);this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
     if(changed&&!reducedMotion()){
@@ -115,6 +115,13 @@ export class CharacterSelectView {
   const parent=this.content[s];parent.removeAll(true);const x=s===0?6:640,centre=x+99;
   const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,94,7);
   panel.fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,181,198,155,8);
+  if(p.survival){
+   const heading=this.text(parent,centre,135,t('survival.heading'),16,'#9ee7b5').setWordWrapWidth(182,true);
+   heading.setScale(Math.min(1,42/heading.height));
+   const body=this.text(parent,centre,224,t('survival.selection_hint'),14,'#dbe9fa').setWordWrapWidth(178,true);
+   body.setScale(Math.min(1,126/body.height));
+   return;
+  }
   if(p.hidden&&!p.dummy){this.text(parent,centre,251,p.label,17);this.text(parent,centre,276,p.status,9,'#aebbd0');return;}
   const texture=p.dummy?artKey(this.scene,'portrait_training_dummy'):skinTexture(this.scene,p.id,p.skin,'portrait_'+p.id);
   if(texture&&this.scene.textures.exists(texture)){

@@ -49,6 +49,12 @@ export class FightStage {
   private clearKoTitle: (() => void) | null = null;
   private koTitleUntil = 0;
   private matchIntro: MatchIntro | null = null;
+  hideOpponent = false; // Survival renders additional enemies by entity ID.
+  inputBlocked = false;
+  survivalHud(seconds:number):void {
+    this.hud.sidesShown=[true,false];this.hud.showRoundSockets=false;
+    this.hud.timerText=String(seconds).padStart(2,'0');
+  }
   private introChecked = false;
 
 
@@ -135,6 +141,7 @@ export class FightStage {
   // Solo modes: touch + either keyboard half + any controller all drive the
   // one local player.
   sampleLocal(): FrameInput {
+    if(this.inputBlocked)return NEUTRAL_INPUT;
     // While keyboard / controller are driving the menu highlight, only
     // touch reaches the fighter.
     if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
@@ -190,7 +197,7 @@ export class FightStage {
     this.ko.looks = looks;
     this.drawRing(looks[0].color, looks[1].color);
     this.drawTags(s, looks.map((l) => l.color));
-    this.controls.enabled = this.touchEnabled && !this.info.open && !this.scene.registry.get('gameMenu:'+this.scene.scene.key);
+    this.controls.enabled = this.touchEnabled && !this.inputBlocked && !this.info.open && !this.scene.registry.get('gameMenu:'+this.scene.scene.key);
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
@@ -210,7 +217,8 @@ export class FightStage {
       this.ko.draw(time);
     } else {
       this.views[0].draw(s.fighters[0], time, show);
-      this.views[1].draw(s.fighters[1], time, show);
+      if(this.hideOpponent)this.views[1].clear();
+      else this.views[1].draw(s.fighters[1], time, show);
     }
     // Both players show uppercut charge sockets beside the stun meters.
     this.hud.resourceRow = [0, 1];
