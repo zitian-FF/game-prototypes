@@ -96,6 +96,8 @@ Size budget: CrazyGames wants an initial download of 50 MB or less, and 20 MB or
 mobile homepage placement. The game is about 12 MB plus about 12.5 MB of music in production
 builds. Music can be streamed after the first screen if the mobile placement matters.
 
+Package budgets (owner decision, 2026-10-11): 40,000,000 bytes for the standard build and 20,000,000 bytes for the compact build (previously 20 and 10 MB). The standard build was 17.2 MB and compact 10.0 MB when raised. The compact cap sits on CrazyGames' 20 MB mobile homepage line, so keep compact at or below it if that placement matters; standard can grow past 20 MB but must stay under CrazyGames' 50 MB initial download limit.
+
 ## 5. Content inventory (Codex keeps this current)
 
 Art status columns: portrait, rig (the sprite set used in fights), palette swap (cheap recolour in code).
@@ -108,11 +110,12 @@ Art status columns: portrait, rig (the sprite set used in fights), palette swap 
 | Mia Tanaka | `mia` | Agile | Owned from the start | done | done | |
 | Bruno Kowalski | `bruno` | Tank | Owned from the start | done | done | |
 | G.P. Tee | `tee` | Glass Cannon | Fighter chest (no longer a free claim) | done | done | Hidden in roster until owned |
-| Longan | `fighter-longan` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
-| Tyke Maison | `fighter-tyke` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
-| Dragon | `fighter-dragon` | `?` | Fighter chest | `?` | `?` | Provisional stats. Added in #274 |
-| The Rookie | `fighter-five` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
-| The Southpaw | `fighter-six` | `?` | Fighter chest (placeholder) | `?` | `?` | Name and stats pending |
+| Longan | `fighter-longan` | All-rounder | Fighter chest | done | done | Provisional stats. Added in #274 |
+| Tyke Maison | `fighter-tyke` | Heavyweight | Fighter chest | done | done | Provisional stats. Added in #274 |
+| Dragon | `fighter-dragon` | Karate | Fighter chest | done | done | Provisional stats. Added in #274 |
+| Captain Eagle | `fighter-captain` | Racer | Fighter chest | done | done | Provisional Marco baseline. Gold scarf, visor, single shoulder armour. |
+| Roxy | `fighter-roxy` | Firecracker | Fighter chest | done | done | Orange hair, navy kit and orange gloves; provisional current Marco baseline. Second row, fourth slot. |
+| Nadia | `fighter-nadia` | Rising Star | Fighter chest | done | done | Petite, silver braided bun, violet kit and emerald gloves; provisional current Marco stats, Mia body proportions. Second row, fifth slot. |
 
 ### Skins
 
@@ -150,7 +153,7 @@ Launch source for every skin below: skin chest (5 tokens), except the one gift.
 | McClassic | `skin-marco-mcclassic` | Marco | unique | Skin chest | done | Portrait and complete rig shipped |
 | Flaming Kunoichi | `skin-mia-flaming-kunoichi` | Mia | unique | Skin chest | done | Portrait and complete rig shipped |
 
-Inventory: 7 existing fighters, 21 palette skins (3 per fighter), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Four new fighters have portraits commissioned for approval only and are not in the playable pool.
+Inventory: 10 playable fighters, 21 palette skins (3 for each of the first seven fighters), and 5 catalogued unique skins. Ring Captain and Old Champ remain pending artwork; ready unique skins are Rising Star, McClassic and Flaming Kunoichi. Future slots remain generic locked silhouettes. Roxy and Nadia are ordinary locked fighter-chest rewards and are available in the tuning tool.
 
 ### Content roadmap targets (owner to set)
 
@@ -264,7 +267,32 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - Title list and level for each title (owner to write; Claude proposes). `?`
 - Do online opponents' aliases need a report or hide option? Without chat the risk is lower, but portal review may ask. `?`
 
+## 8b. Test scaffold to remove for the final build
+
+The itch.io Current WIP slot is a test build. Testing aids that a real player must not see are gated behind one flag, `TEST_BUILD` in `src/testBuild.ts`. For the final build set it to `false` (or delete the file and its imports) and check this list.
+
+| Scaffold | Where | Visible when |
+|---|---|---|
+| "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | test build, or `?debug=1` |
+| Debug and tuning panel, hitboxes | `src/debug/debugPanel.ts` | `?debug=1` only (also fine to keep hidden in the final build) |
+| Reset save panel | `src/ui/resetSavePanel.ts` | Settings; decide whether the final build keeps it |
+
+Also remove before final: the string `shop.debug_tokens` in `en.json` once the button is gone (the i18n check fails on unused keys).
+
+### Translations reach the build at build time
+
+Translations are built into the game and never fetched at runtime. The Google Sheet (English plus GOOGLETRANSLATE formulas for ja, ko, zh, es, ar) is the working copy; the game ships frozen `locales/*.json`.
+
+The 2026-10-11 content build freezes 382 strings in each of Japanese, Korean, Simplified Chinese, Spanish and Arabic. Settings > Language now offers these five plus English. Boxing terminology, narrow labels and placeholders received a contextual pass; remaining machine-translated copy still needs native-speaker review. The Sheet remains private; its effective cell values were exported through the connected Sheets API when Brave's CSV download stalled. No automated CI download or sharing change was enabled.
+
+- A release build (`TEST_BUILD` is `false` in `src/testBuild.ts`) or a deploy started with the `pull_translations` input downloads the sheet as CSV (`scripts/i18n-sheet.mjs pull`, address in the `I18N_SHEET_URL` repository variable), validates it and packs it into that build. A release build stops if the download fails.
+- The "Pull Punchies translations" workflow, or `node scripts/i18n-sheet.mjs import <downloaded.csv>` after downloading the CSV in Brave, freezes the same files into the repository through a pull request.
+- The sheet must be readable by the CI download (link sharing or publish to the web). While the sheet is private, use the Brave download route.
+- Placeholders such as `{name}` must survive: the import keeps English for any cell that changes them. Reviewers fix the machine translations in the sheet.
+
 ## 9. Update log
+
+- 2026-10-11: Roxy and Nadia added to the playable roster, daily fighter pool and tuner; their portrait/rig keys are published in both verified R2 profiles. Nadia has her own silver-bun rig, Mia-sized proportions and current Marco provisional stats. Existing owner tuning is preserved. Five populated locales imported from the private Sheet; longer button/chest labels fit their existing UI bounds. Compact deliveries omit second copies of embedded atlas indexes and pack repeated JSON labels without changing runtime values.
 
 - 2026-10-09: Codex polished first-play UI and integrated Rising Star portrait/rig in both R2 profiles. Coach advances on approach, Skip sits at upper right, HP-only HUD retains names, returning through pause menu preserves the welcome gift, gameplay music maps to the first fight and title music to its reward/welcome. Welcome card uses bottom-anchored Marco and the purple chest; reward acknowledgement has standard button feedback. Language choice precedes the fight only when multiple translated languages are available. Profile/progression screens remain separate pending work.
 
@@ -279,3 +307,5 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 - 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
 - 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
+- 2026-10-10: test-build scaffold flag added (Claude): `TEST_BUILD` shows a 999 token shop button on itch without `?debug=1`; removal list in section 8b.
+- 2026-10-10: translations are packed into the build from the sheet's CSV on release builds or on request (Claude). A runtime live-sheet loader was tried and reverted: the game never reads the sheet at runtime.

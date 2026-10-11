@@ -42,6 +42,8 @@ export interface PunchState {
   // Late sour: fist at full reach, past its sweet moment.
   sour: number;
   recovery: number;
+  // Extra recovery frames added when the punch whiffed (the tail of recovery).
+  whiffFrames: number;
   // Full reach and the reach it starts from (character-adjusted).
   reach: number;
   startReach: number;
@@ -106,7 +108,7 @@ export interface Fighter {
   pushY: number;
   pushFrames: number;
   // Ticks the player's own walking stays locked after a push lands.
-  pushLock: number;
+  lock: number; // frames of hit/block stun left: no actions, no walking
   // The last blow that took health (a finishing blow decides the KO style).
   lastBlow: LastBlow | null;
 }

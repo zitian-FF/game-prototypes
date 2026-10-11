@@ -14,7 +14,7 @@ import type {
   Stance,
 } from './types';
 import { FATIGUED_PUNCHES } from './types';
-import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold } from './character';
+import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold, uppercutStars } from './character';
 
 // Deterministic fight simulation, stepped at a fixed 60 Hz. Only uses
 // + - * / and Math.sqrt/round/min/max/abs (all exactly specified by IEEE
@@ -62,7 +62,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     pushX: 0,
     pushY: 0,
     pushFrames: 0,
-    pushLock: 0,
+    lock: 0,
     char: opts.char ?? 'marco',
   };
   f.health = maxHealth(f);
@@ -165,7 +165,7 @@ export function punchPoint(f: Fighter, p: PunchState): { x: number; y: number } 
 
 
 function canAct(f: Fighter): boolean {
-  return f.punch === null && f.dodge === null;
+  return f.punch === null && f.dodge === null && f.lock <= 0;
 }
 
 // Every transition out of an active guard starts the release penalty.
@@ -218,6 +218,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     sweet: cfg.sweet,
     sour: cfg.sour,
     recovery: Math.max(1, Math.round(cfg.recovery * slow)),
+    whiffFrames: 0,
     reach: cfg.reach,
     startReach: cfg.reach * cfg.startReachFrac,
     damageMult,
@@ -292,7 +293,7 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
   }
   // Stunned fighters may move and dodge but never attack.
   if (f.stunTimer > 0) return false;
-  if (action === 'uppercut' && f.stars < tune.stars.max) return false;
+  if (action === 'uppercut' && f.stars < uppercutStars(f)) return false;
   startPunch(s, idx, action, events);
   return true;
 }
@@ -314,7 +315,10 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
   }
 
   const canGuard = canAct(f) && f.stunTimer <= 0 && f.guardPenalty <= 0;
-  if (input.guard && canGuard) {
+  if (f.lock > 0 && f.guarding) {
+    // Block stun: the guard is held through it, with no release penalty.
+    f.guardFrames++;
+  } else if (input.guard && canGuard) {
     if (!f.guarding) {
       f.guarding = true;
       f.guardFrames = 0;
@@ -330,10 +334,9 @@ function processInput(s: SimState, idx: number, input: FrameInput, events: SimEv
 function move(s: SimState, idx: number, input: FrameInput): void {
   const f = s.fighters[idx];
   const dt = 1 / TICK_RATE;
-  // Being shoved: the push replaces the player's own walking for its
-  // duration, so holding forward can't cancel it (dodging still works).
-  const shoved = f.pushLock > 0;
-  if (f.pushLock > 0) f.pushLock--;
+  // Hit and block stun lock actions but not walking: a locked fighter can still
+  // step away, slowly, which is the escape from a pressing attacker.
+  if (f.lock > 0) f.lock--;
   if (f.pushFrames > 0) {
     f.pushFrames--;
     if (!f.anchored) {
@@ -347,7 +350,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     f.y += f.dodge.dy * speed * dt;
     return;
   }
-  if (f.anchored || shoved) return;
+  if (f.anchored) return;
   let mx = input.mx / 100;
   let my = input.my / 100;
   const mag = Math.sqrt(mx * mx + my * my);
@@ -359,6 +362,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   if (f.punch) speed *= tune.movement.punchMoveMult;
   else if (f.guarding) speed *= tune.movement.guardMoveMult;
   if (f.stunTimer > 0) speed *= tune.movement.stunMoveMult;
+  if (f.lock > 0 && !f.guarding) speed *= tune.movement.lockMoveMult;
   if (f.postDodgeVulnerable > 0) speed *= tune.dodge.penaltyMoveMult;
   f.x += mx * speed * dt;
   f.y += my * speed * dt;
@@ -417,9 +421,9 @@ function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): 
 
 function addStar(s: SimState, idx: number, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  if (f.stars >= tune.stars.max) return;
+  if (f.stars >= uppercutStars(f)) return;
   f.stars++;
-  if (f.stars === tune.stars.max) events.push({ kind: 'starsReady', fighter: idx });
+  if (f.stars === uppercutStars(f)) events.push({ kind: 'starsReady', fighter: idx });
 }
 
 interface Contact {
@@ -487,10 +491,9 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushX = (dx * dist) / frames;
   def.pushY = (dy * dist) / frames;
   def.pushFrames = frames;
-  def.pushLock = Math.max(def.pushLock, tune.hit.pushLockFrames);
 }
 
-function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defRecovery: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
+function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defWhiff: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
@@ -540,6 +543,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
       if (chip > 0) def.lastBlow = { punch: p.type, sweet: c.sweet, chip: true, dx: att.fx, dy: att.fy };
     }
     pushBack(att, def, p, cfg.pushBlock);
+    def.lock = Math.max(def.lock, cfg.blockStun);
     events.push({ kind: 'block', attacker: c.attacker, x: c.x, y: c.y, sweet: c.sweet, chip });
     return;
   }
@@ -570,15 +574,18 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // Counter (x1.5 damage and stun, double hit-stop, bonus stars): a Cross or
   // Hook that catches a punch in startup, or any punch that catches a
   // defender in a guard-release or dodge penalty (a punish).
-  const punished = def.guardPenalty > 0 || def.postDodgeVulnerable > 0 || (!!def.dodge && def.dodge.frame >= dodgeIFrames(def));
-  // Each punch says whether it counters a defender caught in startup and/or recovery.
+  // Each punch says whether it counters a defender caught in punch startup and/or the whiff
+  // tail of recovery. Guard release and dodge exposure only leave the defender vulnerable.
   const flags = tune.punches[p.type];
-  const catches = (flags.counterStartup > 0 && defStartup[defIdx]) || (flags.counterRecovery > 0 && defRecovery[defIdx]);
-  const counter = damage > 0 && (catches || punished);
+  const catches = (flags.counterStartup > 0 && defStartup[defIdx]) || (flags.counterWhiff > 0 && defWhiff[defIdx]);
+  const counter = damage > 0 && catches;
   if (counter) damage *= tune.hit.counterDamageMult;
 
   p.connected = true;
   pushBack(att, def, p, cfg.pushHit);
+  // Hit stun: sweet and sour hits lock the defender for their own frames, and a counter
+  // stretches the window so the attacker can follow up.
+  def.lock = Math.max(def.lock, Math.round((c.sweet ? cfg.hitStun : cfg.sourStun) * (counter ? tune.hit.counterStunMult : 1)));
   if (damage > 0) {
     def.health = Math.max(0, def.health - damage);
     def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };
@@ -623,6 +630,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
       // Whiffing keeps the star chain (it used to reset it).
       // Whiff punish window, on top of normal recovery.
       p.recovery += tune.punches[p.type].whiffRecovery;
+      p.whiffFrames = tune.punches[p.type].whiffRecovery;
       events.push({ kind: 'whiff', attacker: idx, punch: p.type });
     }
     if (p.frame >= punchTotal(p)) f.punch = null;
@@ -769,10 +777,11 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 
   const stances: Stance[] = [stanceOf(s.fighters[0]), stanceOf(s.fighters[1])];
   const inStartup = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'startup');
-  const inRecovery = s.fighters.map((f) => f.punch !== null && phaseOf(f.punch) === 'recovery');
+  // The tail of recovery that a whiff added: the window in which a counter still applies.
+  const inWhiff = s.fighters.map((f) => f.punch !== null && f.punch.whiffFrames > 0 && phaseOf(f.punch) === 'recovery' && f.punch.frame >= punchTotal(f.punch) - f.punch.whiffFrames);
   const emergencyAttack = s.fighters.map((f) => f.exhausted);
   const contacts = detectContacts(s, events);
-  for (const c of contacts) resolveContact(s, c, stances, inStartup, inRecovery, emergencyAttack, events);
+  for (const c of contacts) resolveContact(s, c, stances, inStartup, inWhiff, emergencyAttack, events);
 
   advanceTimers(s, 0, inputs[0], events);
   advanceTimers(s, 1, inputs[1], events);

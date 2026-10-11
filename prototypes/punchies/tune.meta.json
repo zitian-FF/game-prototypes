@@ -64,16 +64,37 @@
   },
   "punches.jab.counterStartup": {
     "cat": "Attack",
-    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.jab.counterRecovery": {
+  "punches.jab.counterWhiff": {
     "cat": "Attack",
-    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Jab: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.jab.hitStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.jab.blockStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.jab.sourStun": {
+    "cat": "Attack",
+    "desc": "Jab: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.jab.startup": {
@@ -169,16 +190,37 @@
   },
   "punches.cross.counterStartup": {
     "cat": "Attack",
-    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.cross.counterRecovery": {
+  "punches.cross.counterWhiff": {
     "cat": "Attack",
-    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Cross: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.cross.hitStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.cross.blockStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.cross.sourStun": {
+    "cat": "Attack",
+    "desc": "Cross: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.cross.startup": {
@@ -274,16 +316,37 @@
   },
   "punches.hook.counterStartup": {
     "cat": "Attack",
-    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.hook.counterRecovery": {
+  "punches.hook.counterWhiff": {
     "cat": "Attack",
-    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Hook: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.hook.hitStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.hook.blockStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.hook.sourStun": {
+    "cat": "Attack",
+    "desc": "Hook: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.hook.startup": {
@@ -379,23 +442,44 @@
   },
   "punches.uppercut.counterStartup": {
     "cat": "Attack",
-    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup.",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch startup, which also cancels their punch.",
     "min": 0,
     "max": 1,
     "step": 1
   },
-  "punches.uppercut.counterRecovery": {
+  "punches.uppercut.counterWhiff": {
     "cat": "Attack",
-    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in punch recovery, including whiff recovery.",
+    "desc": "Uppercut: 1 = counters (x hit.counterDamageMult) a defender caught in the whiff tail of punch recovery (the extra recovery frames added when a punch misses).",
     "min": 0,
     "max": 1,
+    "step": 1
+  },
+  "punches.uppercut.hitStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames the defender is locked (no actions, no walking) after a sweet hit. Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.uppercut.blockStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames a blocking defender is locked (guard held, no actions, no walking). Scaled per character by the push multiplier.",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  "punches.uppercut.sourStun": {
+    "cat": "Attack",
+    "desc": "Uppercut: frames the defender is locked after a sour hit. Keep it below the attacker's remaining frames to give the defender the advantage.",
+    "min": 0,
+    "max": 80,
     "step": 1
   },
   "punches.uppercut.startup": {
     "cat": "Attack",
     "desc": "Uppercut: frames before the fist moves. Lower = faster.",
-    "min": 1,
-    "max": 30,
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "punches.uppercut.sourEarly": {
@@ -422,8 +506,8 @@
   "punches.uppercut.recovery": {
     "cat": "Attack",
     "desc": "Uppercut: frames to recover after the active frames (Vulnerable).",
-    "min": 1,
-    "max": 60,
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "punches.uppercut.whiffRecovery": {
@@ -464,7 +548,7 @@
   "punches.uppercut.stunBuild": {
     "cat": "Attack",
     "desc": "Uppercut: stun meter added to the defender on a direct hit.",
-    "min": 0,
+    "min": 0.25,
     "max": 100,
     "step": 1
   },
@@ -505,7 +589,7 @@
   },
   "hit.counterDamageMult": {
     "cat": "Attack",
-    "desc": "Damage multiplier for Cross/Hook counters on the opponent's startup.",
+    "desc": "Counter hit: damage and stun-meter multiplier when a punch catches the defender in punch startup or the whiff tail of recovery (per-punch flags).",
     "min": 1,
     "max": 3,
     "step": 0.1
@@ -821,6 +905,13 @@
   "movement.stunMoveMult": {
     "cat": "Movement & Arena",
     "desc": "Walk speed multiplier while stunned.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "movement.lockMoveMult": {
+    "cat": "Movement & Arena",
+    "desc": "Walk speed multiplier while locked by hit stun (blocking fighters use the guard multiplier instead).",
     "min": 0,
     "max": 1,
     "step": 0.05
@@ -1395,7 +1486,7 @@
   "characters.marco.uppercut.damage": {
     "cat": "Characters",
     "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1409,7 +1500,7 @@
   "characters.marco.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1429,16 +1520,16 @@
   },
   "characters.marco.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Marco uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.marco.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Marco uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.marco.uppercut.fatigueBars": {
@@ -1654,7 +1745,7 @@
   "characters.mia.uppercut.damage": {
     "cat": "Characters",
     "desc": "Mia uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1668,7 +1759,7 @@
   "characters.mia.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Mia uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1688,16 +1779,16 @@
   },
   "characters.mia.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Mia uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Mia uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.mia.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Mia uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Mia uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.mia.uppercut.fatigueBars": {
@@ -1913,7 +2004,7 @@
   "characters.bruno.uppercut.damage": {
     "cat": "Characters",
     "desc": "Bruno uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1927,7 +2018,7 @@
   "characters.bruno.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Bruno uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1947,16 +2038,16 @@
   },
   "characters.bruno.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Bruno uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Bruno uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.bruno.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Bruno uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Bruno uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.bruno.uppercut.fatigueBars": {
@@ -1973,12 +2064,12 @@
     "max": 30,
     "step": 0.5
   },
-  "hit.pushLockFrames": {
+  "hit.counterStunMult": {
     "cat": "Attack",
-    "desc": "Pushback: ticks the defender can't walk after a push lands (dodge still works). Can be longer than the slide.",
-    "min": 0,
-    "max": 40,
-    "step": 1
+    "desc": "Counter hit: multiplier on the defender's hit stun, so a counter gives the attacker a bigger window to follow up.",
+    "min": 1,
+    "max": 3,
+    "step": 0.05
   },
   "ai.medium.reactionFrames": {
     "cat": "AI",
@@ -3173,7 +3264,7 @@
   "characters.tee.uppercut.damage": {
     "cat": "Characters",
     "desc": "G.P. Tee uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -3187,7 +3278,7 @@
   "characters.tee.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "G.P. Tee uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -3207,16 +3298,16 @@
   },
   "characters.tee.uppercut.startup": {
     "cat": "Characters",
-    "desc": "G.P. Tee uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tee uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.tee.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "G.P. Tee uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tee uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.tee.uppercut.fatigueBars": {
@@ -3816,112 +3907,112 @@
   },
   "characters.tyke.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Tyke uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Dragon uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Tyke uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Dragon uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Tyke uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Dragon uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Tyke uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.dragon.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Dragon uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.tyke.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Tyke uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.dragon.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Dragon uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.tyke.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tyke uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.dragon.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Dragon uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.tyke.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tyke uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.dragon.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Dragon uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.tyke.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Tyke uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
   },
   "characters.dragon.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Dragon uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
@@ -4132,7 +4223,7 @@
   "characters.longan.uppercut.damage": {
     "cat": "Characters",
     "desc": "Longan (provisional) uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4146,7 +4237,7 @@
   "characters.longan.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Longan (provisional) uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4166,16 +4257,16 @@
   },
   "characters.longan.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Longan (provisional) uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Longan uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.longan.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Longan (provisional) uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Longan uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.longan.uppercut.fatigueBars": {
@@ -4198,5 +4289,922 @@
     "step": 0.5,
     "cat": "View",
     "desc": "Selection card landing displacement in logical pixels."
+  },
+  "characters.captain.hp": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.stamina": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.regen": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.stun": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.speed": {
+    "cat": "Characters",
+    "desc": "Captain Eagle: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.captain.jab.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.jab.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.jab.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.jab.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.cross.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.cross.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.cross.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.hook.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.hook.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.hook.startup": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.captain.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: damage multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: stun build multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.captain.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.captain.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Captain uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
+    "step": 1
+  },
+  "characters.captain.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Captain uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
+    "step": 1
+  },
+  "characters.captain.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Captain Eagle uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "body.proportions.captain": {
+    "cat": "Defense",
+    "desc": "Captain Eagle visual and hitbox scale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfOriginX": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf OriginX.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfOriginY": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf OriginY.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfBack": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf Back.",
+    "min": 0,
+    "max": 30,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfScale": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf Scale.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfSwayMs": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf SwayMs.",
+    "min": 0,
+    "max": 2000,
+    "step": 10
+  },
+  "view.puppet.captainScarfIdleSway": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf IdleSway.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "view.puppet.captainScarfWalkSway": {
+    "cat": "View",
+    "desc": "Captain Eagle scarf WalkSway.",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  "characters.roxy.hp": {
+    "cat": "Characters",
+    "desc": "Marco: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.roxy.stamina": {
+    "cat": "Characters",
+    "desc": "Marco: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.roxy.regen": {
+    "cat": "Characters",
+    "desc": "Marco: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.roxy.stun": {
+    "cat": "Characters",
+    "desc": "Marco: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.roxy.speed": {
+    "cat": "Characters",
+    "desc": "Marco: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.roxy.jab.damage": {
+    "cat": "Characters",
+    "desc": "Marco jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.jab.push": {
+    "cat": "Characters",
+    "desc": "Marco jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.roxy.jab.reach": {
+    "cat": "Characters",
+    "desc": "Marco jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.roxy.jab.startup": {
+    "cat": "Characters",
+    "desc": "Marco jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Marco jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.cross.damage": {
+    "cat": "Characters",
+    "desc": "Marco cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.cross.push": {
+    "cat": "Characters",
+    "desc": "Marco cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.roxy.cross.reach": {
+    "cat": "Characters",
+    "desc": "Marco cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.roxy.cross.startup": {
+    "cat": "Characters",
+    "desc": "Marco cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Marco cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.hook.damage": {
+    "cat": "Characters",
+    "desc": "Marco hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.hook.push": {
+    "cat": "Characters",
+    "desc": "Marco hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.roxy.hook.reach": {
+    "cat": "Characters",
+    "desc": "Marco hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.roxy.hook.startup": {
+    "cat": "Characters",
+    "desc": "Marco hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Marco hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.roxy.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: damage multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: stun build multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.roxy.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.roxy.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.roxy.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
+    "step": 1
+  },
+  "characters.roxy.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
+    "step": 1
+  },
+  "characters.roxy.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Roxy uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.hp": {
+    "cat": "Characters",
+    "desc": "Marco: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.nadia.stamina": {
+    "cat": "Characters",
+    "desc": "Marco: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.nadia.regen": {
+    "cat": "Characters",
+    "desc": "Marco: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.nadia.stun": {
+    "cat": "Characters",
+    "desc": "Marco: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.nadia.speed": {
+    "cat": "Characters",
+    "desc": "Marco: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.nadia.jab.damage": {
+    "cat": "Characters",
+    "desc": "Marco jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.jab.push": {
+    "cat": "Characters",
+    "desc": "Marco jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.nadia.jab.reach": {
+    "cat": "Characters",
+    "desc": "Marco jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.nadia.jab.startup": {
+    "cat": "Characters",
+    "desc": "Marco jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Marco jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.cross.damage": {
+    "cat": "Characters",
+    "desc": "Marco cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.cross.push": {
+    "cat": "Characters",
+    "desc": "Marco cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.nadia.cross.reach": {
+    "cat": "Characters",
+    "desc": "Marco cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.nadia.cross.startup": {
+    "cat": "Characters",
+    "desc": "Marco cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Marco cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.hook.damage": {
+    "cat": "Characters",
+    "desc": "Marco hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Marco hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Marco hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.hook.push": {
+    "cat": "Characters",
+    "desc": "Marco hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.nadia.hook.reach": {
+    "cat": "Characters",
+    "desc": "Marco hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.nadia.hook.startup": {
+    "cat": "Characters",
+    "desc": "Marco hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Marco hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Marco hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.nadia.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: damage multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: stun build multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.nadia.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.nadia.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.nadia.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
+    "step": 1
+  },
+  "characters.nadia.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
+    "step": 1
+  },
+  "characters.nadia.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Nadia uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "body.proportions.roxy": {
+    "cat": "Defense",
+    "desc": "Body size of Mia relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "body.proportions.nadia": {
+    "cat": "Defense",
+    "desc": "Body size of Mia relative to the base fighter. Scales the hurt, core and vulnerable radii, spacing and artwork with view.fighterScale.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
+  },
+  "characters.marco.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Marco: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.mia.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Mia: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.bruno.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Bruno: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tee.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Tee: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tyke.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Tyke: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.dragon.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Dragon: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.longan.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Longan: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.captain.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Captain: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.roxy.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Roxy: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.nadia.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Nadia: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
   }
 }

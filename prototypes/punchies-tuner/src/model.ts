@@ -1,4 +1,5 @@
 import initial from '../../punchies/tune.json';
+
 import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
 import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punchies/src/sim/character';
@@ -15,7 +16,7 @@ export function setArchetype(doc:Doc,key:string,value:string):void{
 }
 export const archetypeChanges=(base:Doc,draft:Doc):string[]=>archetypeKeys.filter(key=>archetypeValue(base,key)!==archetypeValue(draft,key));
 export const saveChanges=(base:Doc,draft:Doc):string[]=>[...changes(base,draft),...archetypeChanges(base,draft)];
-const bundled:Doc = structuredClone(initial);
+const bundled:Doc = structuredClone(initial) as Doc;
 const template:Doc = structuredClone(bundled);
 delete template.balanceWorkshop;
 export const defaults = ():Doc => structuredClone(bundled);
@@ -54,6 +55,7 @@ export const get = (doc:Doc,path:string):number => path.split('.').reduce<unknow
 export function set(doc:Doc,path:string,value:number):void {
   const range=meta[path];
   if(!range||!Number.isFinite(value)||value<range.min||value>range.max)throw Error(`Allowed range: ${range?.min} to ${range?.max}`);
+  if(path.endsWith('.starRequirement')&&!Number.isInteger(value))throw Error('Use whole stars');
   const parts=path.split('.'),key=parts.pop()!;
   const parent=parts.reduce<unknown>((o,k)=>(o as Record<string,unknown>)[k],doc) as Record<string,unknown>;
   if(typeof parent[key]!=='number')throw Error('Unknown tuning value');
@@ -69,7 +71,7 @@ export function parse(text:string):Doc {
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }
   }
-  walk(template,candidate,'');validateHistory(candidate);return candidate;
+  walk(template,candidate,'');validateHistory(candidate);readArchetypes(candidate);return candidate;
 }
 export function changes(base:Doc,draft:Doc):string[] {
   return Object.keys(meta).filter(path=>typeof getSafe(base,path)==='number'&&getSafe(base,path)!==getSafe(draft,path));
@@ -100,7 +102,7 @@ export function effective(doc:Doc,char:CharId,section:string,key:string):number 
     return doc.body[key as 'hurtRadius'|'coreRadius'|'vulnerableHurtRadius']*scale;
   }
   if((punches as readonly string[]).includes(section)){
-    if(key==='counterStartup'||key==='counterRecovery')return get(doc,`punches.${section}.${key}`);
+    if(key==='counterStartup'||key==='counterWhiff')return get(doc,`punches.${section}.${key}`);
     applyTuneJson(JSON.stringify(doc));
     const cfg=punchCfg(char,section as typeof punches[number]);
     if(key==='damage'&&section==='uppercut')return doc.punches.cross.damage*doc.punches.uppercut.crossDamageMult*cfg.damage;
@@ -117,6 +119,7 @@ export function baseEffective(doc:Doc,section:string,key:string):number {
     return get(doc,`body.${key}`)*doc.view.fighterScale;
   }
   if((punches as readonly string[]).includes(section)){
+    if(key==='starRequirement')return doc.stars.max;
     if(section==='uppercut'&&key==='damage')return doc.punches.cross.damage*doc.punches.uppercut.crossDamageMult;
     const stored=get(doc,`punches.${section}.${key}`);
     const value=stored??(['fatigueBars','fatigueSpeedPerBar','fatigueDamagePerBar'].includes(key)?0:stored);

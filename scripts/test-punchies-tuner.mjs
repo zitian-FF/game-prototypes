@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 const bundle=await build({entryPoints:['prototypes/punchies-tuner/src/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
-const {defaults,parse,changes,set,effective,baseEffective,difference,delta,mergeSave,characters,names,meta}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const {defaults:liveDefaults,parse,changes,set,effective,baseEffective,difference,delta,mergeSave,characters,names,meta,archetypeValue,setArchetype}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+// Test formula behavior with controlled inputs; production balance values are editable.
+parse(JSON.stringify(liveDefaults()));
+function defaults(){
+ const doc=liveDefaults();
+ doc.health.max=100;doc.stamina.max=100;doc.stun.threshold=100;doc.view.fighterScale=1.25;
+ doc.characters.marco.stamina=1.1;doc.characters.mia.hp=.85;doc.characters.longan.hp=1;
+ doc.punches.jab.startup=4;doc.characters.mia.jab.startup=-1;doc.punches.jab.reach=42;
+ doc.characters.mia.jab.reach=.9;doc.body.proportions.mia=.88;
+ doc.punches.cross.damage=10;doc.punches.uppercut.crossDamageMult=2;doc.characters.marco.uppercut.damage=1;
+ return doc;
+}
 const base=defaults(),draft=defaults();
 assert.equal(effective(base,'marco','core','stamina'),110.00000000000001);
 assert.equal(effective(base,'mia','core','hp'),85);
@@ -21,10 +32,10 @@ assert.deepEqual(defaults(),base,'source tune is unchanged');
 console.log('PASS: effective stats, actual punch formulas, signed Base deltas, validation, selective merging, same-field conflicts and preserved unknown fields');
 
 
-assert.deepEqual(characters,['marco','mia','bruno','tee','tyke','dragon','longan']);
+assert.deepEqual([...characters].sort(),Object.keys(base.characters).sort(),'tuner includes every tuning roster entry');
 for(const id of characters){assert(names[id]?.name);for(const key of ['hp','stamina','stun','speed','regen']){assert(meta['characters.'+id+'.'+key]);assert(Number.isFinite(effective(base,id,'core',key)));}}
 const longan=defaults();set(longan,'characters.longan.hp',.9);assert.equal(effective(longan,'longan','core','hp'),90);assert.equal(effective(base,'longan','core','hp'),100);
-console.log('PASS: seven-fighter roster matches game; metadata and editable Longan baseline available');
+console.log('PASS: dynamic fighter roster matches game; metadata and editable Longan baseline available');
 
 assert.equal(baseEffective(base,'core','stamina'),100);
 assert.equal(baseEffective(base,'core','stun'),100);
@@ -42,7 +53,7 @@ const changedBase=defaults();set(changedBase,'stamina.max',120);assert.equal(bas
 console.log('PASS: neutral Base comparisons, scaled punch geometry, uppercut formula, absolute/percentage differences and live Base changes');
 for(const type of ['jab','cross','hook','uppercut'])for(const key of ['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'])assert(Number.isFinite(baseEffective(base,type,key)),type+'.'+key+' Base must be numeric');
 
-for(const type of ['jab','cross','hook','uppercut'])for(const flag of ['counterStartup','counterRecovery']){
+for(const type of ['jab','cross','hook','uppercut'])for(const flag of ['counterStartup','counterWhiff']){
  const path=`punches.${type}.${flag}`,before=base.punches[type][flag],d=defaults();set(d,path,1-before);
  assert.equal(effective(d,'mia',type,flag),1-before);assert.equal(baseEffective(d,type,flag),1-before);
  const saved=mergeSave(base,d,base);assert.equal(parse(JSON.stringify(saved)).punches[type][flag],1-before);
@@ -51,3 +62,11 @@ for(const type of ['jab','cross','hook','uppercut'])for(const flag of ['counterS
 }
 for(const path of ['guard.exhaustedChipMult','dodge.exhaustedEfficacy']){const d=defaults();set(d,path,.75);const saved=mergeSave(base,d,base);assert.equal(path.split('.').reduce((o,k)=>o[k],parse(JSON.stringify(saved))),.75);}
 console.log('PASS: counter flag and exhausted defense controls, effective/Base values, saves and conflicts');
+console.log('PASS: dynamic fighter roster matches game; metadata and editable Longan baseline available');
+
+for(const p of ['jab','cross','hook','uppercut']){assert(meta['punches.'+p+'.counterWhiff']);assert(!meta['punches.'+p+'.counterRecovery']);assert(Number.isFinite(effective(base,'bruno',p,'hitStun')));}
+assert.equal(effective(base,'bruno','cross','hitStun'),Math.round(base.punches.cross.hitStun*base.characters.bruno.cross.push));
+assert(meta['movement.lockMoveMult']);assert(!meta['hit.pushLockFrames']);
+console.log('PASS: current counter keys, push-derived hit stun and movement lock metadata');
+
+const textDraft=defaults();setArchetype(textDraft,'char.nadia.nick','Fast Cross pressure; sustained fatigue capacity.');const textSaved=mergeSave(base,textDraft,base);assert.equal(archetypeValue(textSaved,'char.nadia.nick'),'Fast Cross pressure; sustained fatigue capacity.');const textLatest=defaults();setArchetype(textLatest,'char.nadia.nick','Other editor');assert.throws(()=>mergeSave(base,textDraft,textLatest),/same fields/);

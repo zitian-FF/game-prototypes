@@ -23,6 +23,10 @@ import { fighterGroups, whenGroupsReady } from '../render/art';
 // controls/HUD it needs, shows one instruction, and completes when the
 // player actually does the thing. Progress is remembered on the device.
 
+// Lesson panel: right of the default left stick, with the Skip/Exit column on its right.
+const LESSON_WIDTH = 350;
+const LESSON_LEFT = VIEW.cx - 252;
+const LESSON_BUTTONS_X = 137;
 const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
 const SAVE_KEY = KEYS.tutorial;
@@ -180,7 +184,7 @@ const STEPS: Step[] = [
   },
   {
     get title() { return t('tutorial.stars_uppercut'); },
-    text: (b) => t('tutorial.stars_text', { btn: b('upper') }),
+    text: (b) => t('tutorial.uppercut_charge_text', { btn: b('upper') }),
     adds: ['uppercut'],
     dummy: 'idle',
     goal: 1,
@@ -290,18 +294,18 @@ export class TutorialScene extends Phaser.Scene {
     this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
     this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
     this.stage.hideInfoButton();
-    // Keep the full HUD above the lesson; actions share its heading row.
-    const panelTop = VIEW.top + 92;
-    this.lessonPanel = this.add.graphics().setDepth(129);
-    titleButton(this,VIEW.cx+173,panelTop+18,66,30,t('tutorial.skip'),()=>this.advance());
-    titleButton(this,VIEW.cx+247,panelTop+18,66,30,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
-    this.title = this.add.text(VIEW.cx-270,panelTop+18,'',{
-      fontFamily:'Arial',fontSize:15,fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO,
-      wordWrap:{width:395},
+    // Dock the lesson at the bottom, between the left stick and the ring stairs, so it never covers the
+    // HUD bars or the ring. Skip and Exit stack in a column to its right, before the right buttons.
+    this.lessonPanel = this.add.graphics().setDepth(129).setAlpha(.94);
+    titleButton(this,VIEW.cx+LESSON_BUTTONS_X,VIEW.bottom-52,62,28,t('tutorial.skip'),()=>this.advance());
+    titleButton(this,VIEW.cx+LESSON_BUTTONS_X,VIEW.bottom-20,62,28,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
+    this.title = this.add.text(LESSON_LEFT+10,VIEW.bottom-60,'',{
+      fontFamily:'Arial',fontSize:10,fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO,
+      wordWrap:{width:LESSON_WIDTH-20},
     }).setOrigin(0,.5).setDepth(131);
-    this.body = this.add.text(VIEW.cx,panelTop+42,'',{
-      fontFamily:'Arial',fontSize:15,color:'#ffffff',align:'center',
-      wordWrap:{width:550},resolution:PIXEL_RATIO,
+    this.body = this.add.text(LESSON_LEFT+LESSON_WIDTH/2,VIEW.bottom-50,'',{
+      fontFamily:'Arial',fontSize:11,color:'#ffffff',align:'center',
+      wordWrap:{width:LESSON_WIDTH-18},resolution:PIXEL_RATIO,
     }).setOrigin(.5,0).setDepth(131);
     this.tick = this.add
       .text(VIEW.cx, VIEW.cy + 10, t('tutorial.nice'), { fontFamily: 'Arial', fontSize: '28px', fontStyle: 'bold', color: '#7fe08a', stroke: '#000000', strokeThickness: 5, resolution: PIXEL_RATIO })
@@ -409,7 +413,11 @@ export class TutorialScene extends Phaser.Scene {
     this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: STEPS.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
     this.body.setText(st.text(binder()));
     this.lessonPanel.clear();
-    cartoonPanel(this.lessonPanel,VIEW.cx-290,VIEW.top+92,580,Math.max(85,54+this.body.height),0x28517d,12);
+    const panelH = Math.ceil(this.title.height + this.body.height) + 16;
+    const panelTop = VIEW.bottom - 8 - panelH;
+    cartoonPanel(this.lessonPanel,LESSON_LEFT,panelTop,LESSON_WIDTH,panelH,0x28517d,10);
+    this.title.setPosition(LESSON_LEFT+10,panelTop+7+this.title.height/2);
+    this.body.setPosition(LESSON_LEFT+LESSON_WIDTH/2,panelTop+8+this.title.height);
 
     if (!this.finished) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);

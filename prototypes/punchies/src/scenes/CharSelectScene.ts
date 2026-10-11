@@ -1,16 +1,16 @@
-import { verticalRosterPick } from '../ui/rosterLayout';
+import {rosterScores,statFill,rosterUppercut,type RosterStat} from '../sim/rosterStats';
+import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
 import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
 import { skinReady } from '../render/skins';
 import { CharacterSelectView } from '../ui/CharacterSelectView';
-import {perceivedStats,perceivedStatKeys} from '../sim/perceivedStats';
 import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
+import { charTune, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
@@ -42,13 +42,10 @@ export interface CharSelectData {
   nextRound?: number;
 }
 
-// Bar fill per stat: today's base tune sits at 80%. Each bar is the plain
-// average of the multipliers behind it. Dash distance is the same for every
-// fighter today (no per-character override), so it is left out of Speed.
-function stats(id: CharId): [string, number][] {
-  const values=perceivedStats(tune,id);
-  const labels={health:t('charselect.health'),endurance:t('charselect.endurance'),speed:t('charselect.speed'),power:t('charselect.power'),reach:t('charselect.reach')};
-  return perceivedStatKeys.map(key=>[labels[key],values[key]]);
+function stats(id:CharId):[string,number,number][] {
+ const scores=rosterScores(id);
+ const labels={durability:t('charselect.durability'),endurance:t('charselect.endurance'),speed:t('charselect.speed'),power:t('charselect.power'),reach:t('charselect.reach')};
+ return (Object.keys(scores) as RosterStat[]).map(key=>[labels[key],statFill(key,scores[key]),scores[key]]);
 }
 
 interface Side {
@@ -231,7 +228,7 @@ export class CharSelectScene extends Phaser.Scene {
   private moveVertical(s:number,d:number):void {
     if(!this.editable(s)||this.sides[s].selected)return;
     const current=this.sides[s].sel,next=verticalRosterPick(current,d,CHARACTER_IDS.length);
-    if(next!==current)this.move(s,next-current);
+    if(next!==current)this.move(s,next-current,true);
   }
 
   private cycleLevel(d: number): void {
@@ -245,11 +242,11 @@ export class CharSelectScene extends Phaser.Scene {
     return this.sides[s].src !== 'remote' && !(this.data0.mode==='training' && s===1);
   }
 
-  private move(s: number, d: number): void {
+  private move(s: number, d: number, absoluteDelta=false): void {
     const side = this.sides[s];
     if (!this.editable(s)) return;
     if(side.selected){this.cycleSkin(s,d);return;}
-    side.sel = (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length;
+    side.sel = absoluteDelta ? (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length : horizontalRosterPick(side.sel,d);
     sfx.uiSelect();
     side.skin=this.preferredSkin(s);this.notice='';
     if(this.data0.mode==='online')this.sendPick();
@@ -478,6 +475,8 @@ export class CharSelectScene extends Phaser.Scene {
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
           : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
         stats: stats(chars[s]),
+        uppercut: rosterUppercut(chars[s]),
+        durability: {hp:tune.health.max*charTune(chars[s]).hp,stun:tune.stun.threshold*charTune(chars[s]).stun},
       })),
       step: ready ? 2 : this.data0.mode==='training'?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
       steps: this.data0.mode==='training'?[t('common.your_boxer'),t('common.ready'),t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],

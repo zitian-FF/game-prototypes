@@ -1,6 +1,6 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
-import { playStinger } from '../audio/stingers';
 import { artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { tune } from '../sim/tune';
@@ -66,7 +66,6 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   const before=new Set(scene.children.list);
   const defeat=kind==='defeat';
   const draw=kind==='draw';
-  playStinger(scene, 'result');
   const panel=scene.add.graphics().setDepth(129);
   panel.fillStyle(0x050d20,.72).fillRect(VIEW.left,VIEW.top,VIEW.width,VIEW.height);
   const shield=scene.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x000000,0).setDepth(130).setInteractive();
@@ -79,7 +78,7 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   if(hasWinner&&portraitKey&&scene.textures.exists(portraitKey)){
     portrait=scene.add.image(VIEW.left+VIEW.width*.25,VIEW.bottom,portraitKey).setDepth(140);
     const bounds=portraitBounds(scene,portraitKey);
-    const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top));
+    const scale=Math.min(VIEW.width*.46/(bounds.right-bounds.left),VIEW.height*.92/(bounds.bottom-bounds.top))*portraitScaleFactor(winner!.char);
     portrait.setFlipX(winner!.char==='tyke').setOrigin(winner!.char==='tyke'?1-(bounds.left+bounds.right)/2/portrait.width:(bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
   }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';

@@ -65,7 +65,7 @@ export function uppercutFireIntensity(p: PunchState): number {
 export function gloveRegistration(char:string,width:number,height:number,k:number,skin='default'):{scale:number;axis:number;cuff:number} {
   const rig=tune.view.puppet;
   const h=rig.gloveHeight*k*(char==='tee'?rig.teeHandScale:1);
-  const facesRight = char==='tee' || skin==='skin-marco-unique';
-  return {scale:h/height,axis:skin==='skin-marco-unique'?0:char==='tee'?rig.teeGloveAxisDegrees*Math.PI/180:Math.PI/2,
+  const facesRight = char==='tee' || char==='captain' || skin==='skin-marco-unique';
+  return {scale:h/height,axis:char==='captain'||skin==='skin-marco-unique'?0:char==='tee'?rig.teeGloveAxisDegrees*Math.PI/180:Math.PI/2,
     cuff:(facesRight?h*width/height:h)*.4};
 }

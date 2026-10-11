@@ -28,6 +28,8 @@ export function titleButton(scene: Phaser.Scene, x: number, y: number, w: number
   const text = scene.add.text(x+(primary?18:0),y,label,{fontFamily:'Arial, sans-serif',fontSize:`${primary?20:h<30?12:15}px`,
     fontStyle:'bold',color:'#fff7e6',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(depth+1);
+  const labelWidth = w - (primary ? 80 : 20);
+  if (text.width > labelWidth) text.setScale(labelWidth / text.width);
   hit.on('pointerdown',()=>text.y=y+2).on('pointerup',()=>text.y=y).on('pointerout',()=>text.y=y);
   text.setData('bg',hit);
   return text;

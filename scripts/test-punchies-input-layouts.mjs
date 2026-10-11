@@ -79,7 +79,7 @@ equal(validateLayouts({ ...defaults(), touch: badTouch }).touch, touch);
 // Execute real touch handlers, graphics and label placements against the same resolved geometry.
 class Obj extends EventEmitter {
   constructor(x = 0, y = 0, text = '') { super(); Object.assign(this, { x, y, text, active: true, data: {}, circles: [] }); }
-  setDepth() { return this; } setOrigin() { return this; } setAlpha() { return this; } setVisible() { return this; } setInteractive() { return this; }
+  setColor() { return this; } setShadow() { return this; } setDepth() { return this; } setOrigin() { return this; } setAlpha() { return this; } setVisible() { return this; } setInteractive() { return this; }
   setPosition(x, y) { this.x = x; this.y = y; return this; } setText(text) { this.text = text; return this; } setWordWrapWidth() { return this; }
   setData(k, v) { this.data[k] = v; return this; } getData(k) { return this.data[k]; }
   destroy() { if (!this.active) return; this.active = false; this.emit('destroy'); }
@@ -97,7 +97,7 @@ function scene() {
 const { IntentLayer } = load('input/intents');
 const { TouchControls } = load('ui/TouchControls', { '../input/layouts': layouts, '../i18n': i18nStub, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 },
   phaser: { default: { Math: { Distance: { Between: (x, y, a, b) => Math.hypot(x - a, y - b) } } } }, '../render/art': { artImage: () => null },
-  '../sim/tune': { tune }, '../sim/character': { punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
+  './presentation': { reducedMotion: () => false }, '../sim/tune': { tune }, '../sim/character': { uppercutStars: f => f.char === 'tyke' ? 4 : f.char === 'longan' ? 1 : 3, punchCfg: () => ({ fatigueBars: 3 }) }, '../sim/sim': { fatigueLevel: () => 0 } });
 saveLayouts(defaults());
 const sc = scene(), intents = new IntentLayer(), controls = new TouchControls(sc, intents);
 const pointer = (id, x, y) => ({ id, x: x * 2, y: y * 2, worldX: -999, worldY: -999 });
@@ -107,6 +107,12 @@ controls.onDown(pointer(2, 100, 300)); controls.onMove(pointer(2, 200, 300)); as
 const moved = defaults(); moved.touch.main.x += .01; assert.equal(touchValid(moved.touch, view), true); saveLayouts(moved); controls.draw({ stars: 0 });
 assert.equal(controls.labels[0].x, resolveTouch(moved.touch, view).main.x - 29);
 assert.ok(sc.objects[0].circles.some(p => p.x === resolveTouch(moved.touch, view).main.x && p.r === 58));
+// The touch meter draws exactly this fighter's charge capacity.
+controls.shown = new Set(['uppercut']);
+for (const [char,capacity] of [['longan',1],['tyke',4]]) {
+ sc.objects[0].circles.length=0;controls.draw({char,stars:capacity-1});
+ assert.equal(sc.objects[0].circles.filter(c=>c.r===4).length,capacity,`${char} uppercut sockets`);
+}
 controls.shown = null; controls.onDown(pointer(1, 668, 236)); sc.events.emit('shutdown'); assert.equal(intents.sample().guard, false); assert.equal(sc.input.listenerCount('pointerdown'), 0);
 
 // The real modal: staging, pointer choices without hardware, keyboard capture, Save / Cancel / Reset and shutdown ownership.
@@ -136,7 +142,7 @@ ed = scene(); inputLayoutEditor(ed, 'touch'); handle = ed.objects.filter(o => o.
 handle.emit('pointerdown', pointer(23, handle.x, handle.y)); ed.input.emit('pointermove', pointer(23, handle.x - 84 * previewScale, handle.y - 64 * previewScale)); at(612, 346);
 equal(loadLayouts().touch, defaults().touch, 'overlapping layout cannot save'); assert.ok(ed.objects.some(o => o.active)); ed.events.emit('shutdown'); assert.equal(ed.input.listenerCount('pointermove'), 0);
 const tutorial = load('scenes/TutorialScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph,
-  '../i18n': i18nStub, '../portal/keys': { KEYS: { tutorial: 'tutorial' } }, '../sim/tune': { TICK_RATE: 60 } }, '\nexports.binderForTest = binder;');
+  '../i18n': i18nStub, '../portal/keys': { KEYS: { tutorial: 'tutorial' } }, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 }, '../sim/tune': { TICK_RATE: 60 } }, '\nexports.binderForTest = binder;');
 hub.lastSource = 'kb2'; hub.lastDevice = 'keyboard'; custom.kb2.jab = ['KeyZ']; custom.kb2.guard = ['ControlRight']; saveLayouts(custom);
 assert.equal(tutorial.binderForTest()('jab'), i18nStub.t('tutorial.press_key', { key: 'Z' })); assert.equal(tutorial.binderForTest()('guard'), glyph.keyLabel('ControlRight'));
 const { FirstFightScene } = load('scenes/FirstFightScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph, '../i18n': i18nStub, '../sim/tune': { TICK_RATE: 60 } });

@@ -5,6 +5,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateVersionStamps } from './scripts/generate-versions.js';
+import { packTuneMetadata, packLocale, packArtIndex } from './scripts/punchies-json-packing';
 
 function getGitSha(): string {
   try {
@@ -51,10 +52,36 @@ export default defineConfig(({ command }) => ({
   root: assetProfile ? path.resolve(__dirname, 'prototypes/punchies') : __dirname,
   base: '/game-prototypes/',
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
-  plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), {
+      name: 'punchies-art-index', enforce:'pre', apply:'build',
+      resolveId(id) { if(id==='virtual:punchies-art')return '\0punchies-art'; },
+      load(id) { if(id==='\0punchies-art')return `export default ${packArtIndex(punchiesArtIndex() as Parameters<typeof packArtIndex>[0])};`; },
+      transform(code,id) {
+        if(id.replace(/\\/g,'/').endsWith('/prototypes/punchies/src/render/art.ts'))return {code:"import packedArt from 'virtual:punchies-art';\n"+code.replace('const index = __PUNCHIES_ART__;', 'const index: ArtIndex = packedArt;'),map:null};
+      },
+    }, {
+    name: 'punchies-packed-json',
+    enforce: 'post',
+    apply: 'build',
+    transform(_code, id) {
+      const file = id.replace(/\\/g, '/');
+      if (assetProfile && file.endsWith('/prototypes/punchies/tune.json')) {
+        // Standalone game packages do not include the workshop/editor. Preserve
+        // its history in tune.json and the normal hub/tuner build, not in gameplay.
+        const values = JSON.parse(fs.readFileSync(id, 'utf8'));
+        delete values.balanceWorkshop;
+        return { code: `export default ${JSON.stringify(values)};`, map: null };
+      }
+      if (file.endsWith('/prototypes/punchies/tune.meta.json')) return { code: packTuneMetadata(JSON.parse(fs.readFileSync(id, 'utf8'))), map: null };
+      if (/\/prototypes\/punchies\/src\/i18n\/locales\/(ja|ko|zh|es|ar)\.json$/.test(file)) {
+        const en = JSON.parse(fs.readFileSync(path.join(path.dirname(id), 'en.json'), 'utf8'));
+        return { code: packLocale(en, JSON.parse(fs.readFileSync(id, 'utf8'))), map: null };
+      }
+    },
+  }],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
-    __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
+      __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),
     __PUNCHIES_PORTAL_ADS__: JSON.stringify(process.env.PORTAL_ADS !== 'off'),

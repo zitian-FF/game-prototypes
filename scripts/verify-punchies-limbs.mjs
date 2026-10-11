@@ -4,7 +4,7 @@ const bundle = await build({stdin:{contents:`export * from './prototypes/punchie
 const {createSimState,step,punchCfg,punchFist,punchExtension,armPose,gloveRegistration,uppercutFireIntensity,tune,activeEnd,punchPoint}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const neutral={mx:0,my:0,jab:false,cross:false,hook:false,uppercut:false,dodge:false,guard:false};
 const near=(a,b)=>assert(Math.abs(a-b)<1e-9);
-for(const char of ['marco','mia','bruno','tee','tyke','dragon']) for(const type of ['jab','cross','hook','uppercut']) {
+for(const char of ['marco','mia','bruno','tee','tyke','dragon','longan','captain']) for(const type of ['jab','cross','hook','uppercut']) {
  const s=createSimState({timed:false,fighters:[{char},{anchored:true}]});const f=s.fighters[0];f.stars=tune.stars.max;step(s,[{...neutral,[type]:true},neutral]);const p=f.punch;
  for(let frame=0;frame<activeEnd(p)+p.recovery;frame++) {
   p.frame=frame;const before=JSON.stringify(s);const v=punchFist(f,p,1);assert(Number.isFinite(v.x)&&Number.isFinite(v.y));assert.equal(JSON.stringify(s),before,'presentation math must never mutate simulation');
@@ -50,3 +50,7 @@ for(const kind of ['jab','cross','hook','uppercut']){
 }
 assert(tune.characters.tee.stun<.7);assert(tune.characters.tee.speed>tune.characters.mia.speed);assert(tune.view.puppet.teeWalkRate>1);
 console.log('PASS: Tee right-facing fists meet cuff/forearm on both hands across facings; Mia punch timing, 5% below Bruno power, lower stun resistance and faster footwork.');
+
+assert.equal(gloveRegistration('captain',115,96,1.5).axis,0);
+assert.equal(gloveRegistration('captain',115,96,1.5).scale,tune.view.puppet.gloveHeight*1.5/96);
+console.log('PASS: Captain Eagle straight-punch contact and right-facing glove registration without Tee hand scaling');

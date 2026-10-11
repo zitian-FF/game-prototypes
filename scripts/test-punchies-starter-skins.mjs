@@ -5,7 +5,7 @@ import ts from 'typescript';
 import sharp from 'sharp';
 const PALETTES=JSON.parse(fs.readFileSync('prototypes/punchies/src/render/paletteCatalog.ts','utf8').split('= ')[1].replace(/;\s*$/,''));
 const exports={};
-vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/skinPalette.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:()=>({PALETTES})});
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/skinPalette.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:p=>p.includes('materialMasks')?(()=>{const e={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/materialMasks.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:e});return e;})():({PALETTES})});
 const output=process.argv[2];if(output)fs.mkdirSync(output,{recursive:true});
 const root='public/prototypes/punchies/assets/loose';
 const mirrorPath=`${root}/part-mirrors.json`;

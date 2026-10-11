@@ -1,5 +1,5 @@
 const coreUnits:Record<string,string>={hp:'HP',stamina:'stamina points',stun:'stun points',speed:'px/s',regen:'stamina points/s'};
-const punchUnits:Record<string,string>={counterStartup:'flag',counterRecovery:'flag',damage:'HP damage',staminaCost:'stamina points',staminaDamage:'stamina damage',stunBuild:'stun damage',reach:'px',hitRadius:'px',pushHit:'px',pushBlock:'px',startup:'frames',sourEarly:'frames',sweet:'frames',sour:'frames',recovery:'frames',whiffRecovery:'frames',fatigueBars:'fatigue bars',fatigueSpeedPerBar:'ratio/bar',fatigueDamagePerBar:'ratio/bar',startReachFrac:'ratio (0-1)',guardChipMult:'multiplier',crossDamageMult:'multiplier'};
+const punchUnits:Record<string,string>={starRequirement:'stars',hitStun:'frames',blockStun:'frames',sourStun:'frames',counterStartup:'flag',counterWhiff:'flag',damage:'HP damage',staminaCost:'stamina points',staminaDamage:'stamina damage',stunBuild:'stun damage',reach:'px',hitRadius:'px',pushHit:'px',pushBlock:'px',startup:'frames',sourEarly:'frames',sweet:'frames',sour:'frames',recovery:'frames',whiffRecovery:'frames',fatigueBars:'fatigue bars',fatigueSpeedPerBar:'ratio/bar',fatigueDamagePerBar:'ratio/bar',startReachFrac:'ratio (0-1)',guardChipMult:'multiplier',crossDamageMult:'multiplier'};
 const sharedUnits:Record<string,string>={
  'health.max':'HP','stamina.max':'stamina points','stamina.regenIdlePerSec':'stamina points/s','stamina.regenActivePerSec':'stamina points/s',
  'stun.threshold':'stun points','stun.decayPerSec':'stun points/s','stun.overflowFramesPerPoint':'frames/stun point',
@@ -12,8 +12,9 @@ const sharedUnits:Record<string,string>={
 export function storedUnit(path:string):string {
  const parts=path.split('.'),key=parts[parts.length-1];
  if(path.startsWith('body.proportions.'))return 'multiplier (Base = 1)';
+ if(key==='starRequirement')return 'stars';
  if(parts[0]==='characters')return ['startup','recovery'].includes(key)?'added frames':key==='fatigueBars'?'added fatigue bars':'multiplier';
- if(parts[0]==='punches'&&['counterStartup','counterRecovery'].includes(key))return 'flag (0 = off, 1 = on)';
+ if(parts[0]==='punches'&&['counterStartup','counterWhiff'].includes(key))return 'flag (0 = off, 1 = on)';
  if(parts[0]==='punches'&&punchUnits[key])return punchUnits[key];
  if(sharedUnits[path])return sharedUnits[path];
  if(key.endsWith('Frames')||key==='frames'||key==='iFrames')return 'frames';

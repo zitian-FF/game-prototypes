@@ -5,6 +5,7 @@ import {createCompanion,TUNE_PATH} from './punchies-github-server.mjs';
 const bundle=await build({entryPoints:['prototypes/punchies-tuner/src/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const model=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 let remote=model.defaults(),sha='file-1',branch='trunk',writes=0,race=false,failWrite=false;
+delete remote.balanceWorkshop?.baseHistory;
 const api=async(endpoint,body)=>{
   if(endpoint==='')return{default_branch:branch};
   if(endpoint.startsWith('actions/runs?'))return{workflow_runs:[{name:'Deploy Pages',status:'completed',conclusion:'success',html_url:'https://github.com/zitian-FF/game-prototypes/actions/runs/123'}]};

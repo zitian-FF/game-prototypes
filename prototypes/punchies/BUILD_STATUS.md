@@ -1,17 +1,12 @@
 ## Current milestone
-Saved local input layouts completed and validated on proto/punchies/saved-input-layouts from main 9ce9087. Ready for the live merge and normal WIP deployment.
-
+Recalibrated roster stat display approved for live release.
 ## What was implemented
-Settings > Input Setup > Local Inputs offers Touch, Keyboard 1/2 and Controller 1/2 editors. Save commits the selected profile; Cancel discards it; Reset defaults stages a reset. Touch buttons and the joystick hint can be dragged in a preview; Jab/Cross move together. Keyboard bindings use rounded keycaps, and controller bindings use Xbox labels and face-button colours. Runtime controls and tutorial prompts read saved bindings immediately, including after resuming a paused fight. Combat rules pass (owner approved): each punch now has counterStartup and counterRecovery flags in tune (jab 0/0, cross 1/1, hook 1/1, uppercut 0/1); post-dodge, guard-release and dodge-tail still counter with any punch. Exhausted fighters can guard (no perfect guard window, free, chipped by jab/cross/hook at guard.exhaustedChipMult 0.5, uppercut still ignores guard) and dodge at dodge.exhaustedEfficacy 0.5 of the invincible frames and distance with no stamina cost; they keep half-damage punches. New test-punchies-states.mjs; states, emergency and geometry tests added to the deploy workflow.
-
+Five Base-relative bars: Durability, Endurance, Speed, Power and Reach. Fixed piecewise ranges place Base at 60% fill and amplify small differences. Durability combines 70% HP and 30% stun threshold; Endurance combines stamina capacity, regeneration and ordinary-punch efficiency. Speed uses movement and full ordinary-punch cycles; Power and Reach exclude uppercuts. Bars show exact rounded Base-relative percentages. Separate lines show actual HP/stun threshold and uppercut stars/HP damage. All six languages include the new labels and matching placeholders.
 ## Key technical decisions
-Extended the registered punchies:localInputs:v1 save without breaking device assignments or old saves. Profiles remain independent. Physical keyboard codes, duplicate rejection, selected-controller rising edges, trigger threshold, held-input suppression and fixed menu navigation prevent capture leakage. Touch positions are normalized and constrained to safe areas without disc overlap; preview, runtime drawing, icons, labels and hit testing share geometry. The joystick retains its tuned radius and floating behaviour. No combat, tune, art, dependency or networking changes.
-
+Display only: no combat tuning changes. Compare against neutral Base, including unit body proportions, never Marco. Stable ranges do not depend on roster min/max. Uppercuts are separate because per-fighter charge costs make their raw averages misleading. Keep portrait and details inside the selection panel.
 ## Open questions
-None for the requested scope. A non-exhausted fighter with 0 to 17 stamina cannot dodge while an exhausted one can (half efficacy), an inversion to review after playtest. Bot and AI logic do not yet use exhausted guard or dodge. Guard and dodge exposed-window values (24 frames each) are still under discussion. Animation and effect suggestions for every fighter state are with Codex pending owner permission.
-
+Human playtesting should review readability across screen sizes and languages.
 ## Known issues
-No failing checks. Root passed typecheck, production build, input-layout/UI-input/game-menu/FirstFight/localization/portal checks and WIP release regressions. Standard and compact web builds pass budget checks and asset parity. Brave screenshots inspected at 1280x720 and 640x360: keyboard Jab remapped to Z and survived reload; controller pointer remap cancelled correctly; touch Hook dragging survived reload, applied in training and redrew immediately after saving from pause; clicking its new location performed the move. Captured browser error log is empty. Physical Xbox hardware was not connected, so controller capture, holds and disconnects were verified through automated fixtures rather than hardware.
-
+Existing machine-translated copy is not native-reviewed. Compact delivery retains its mandatory 10 MB gate.
 ## Next proposed step
-Merge the verified PR and confirm the WIP itch.io upload. Follow up with a physical Xbox controller check when hardware is available. Profile/progression screens remain separate pending work. Playtest the counter flags and exhausted guard and dodge on a phone, then decide the guard and dodge exposure values.
+Verify live deployment and review the recalibrated roster in-game.

@@ -1,3 +1,4 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { itemName } from '../shop/itemText';
@@ -10,6 +11,7 @@ import type { ShopItem } from '../shop/draft';
 import { reducedMotion } from './presentation';
 import { bindButtonFeedback, cartoonButton } from './cartoonChrome';
 import { navRegister } from './menuNav';
+import { rarityLabel, styleRarity } from './rewardRarity';
 
 /** Reward is already saved before this presentation starts. */
 export class RewardReveal {
@@ -45,7 +47,7 @@ export class RewardReveal {
         left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);
       }
       if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
-      const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left));
+      const scale=Math.min(VIEW.height*cfg.portraitHeight/(bottom-top),VIEW.width*.88/(right-left))*portraitScaleFactor(item.boxer??'');
       portrait.x-=(item.boxer==='tyke'?-1:1)*((left+right)/2-canvas.width/2)*scale;
       portrait.y+=(canvas.height-bottom)*scale;
       this.root.add(portrait.setScale(scale*(motion?cfg.entryScale:1)).setAlpha(motion?0:1));
@@ -62,7 +64,8 @@ export class RewardReveal {
       if(this.destroyed)return;
       const band=scene.add.rectangle(VIEW.cx,VIEW.bottom-70,VIEW.width,140,0x030711,.85);
       this.root.add(band);
-      const title=this.label(VIEW.cx,VIEW.bottom-103,item.kind==='skins'?t('reveal.new_skin'):t('reveal.new_fighter'),14,'#ffd261');
+      const title=this.label(VIEW.cx,VIEW.bottom-103,rarityLabel(item),14,'#ffffff');
+      styleRarity(scene,title,item);
       const name=this.label(VIEW.cx,VIEW.bottom-75,itemName(item),32,'#fff3db');
       name.setScale(Math.min(1,VIEW.width*.9/name.width));
       title.setAlpha(0);name.setAlpha(0);

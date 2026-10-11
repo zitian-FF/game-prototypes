@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
+import { reducedMotion } from './presentation';
 import { t } from '../i18n';
 import type { IntentLayer, TapIntent } from '../input/intents';
 import { tune } from '../sim/tune';
-import { punchCfg } from '../sim/character';
+import { punchCfg, uppercutStars } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { fatigueLevel } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -232,7 +233,7 @@ export class TouchControls {
       if (!this.isShown(b.id)) continue;
       const flashing = (this.flash.get(b.id) ?? 0) > 0 || (b.id === 'guard' && this.isGuardHeld());
       if (b.id === 'uppercut') {
-        this.drawUppercut(b, f.stars, flashing);
+        this.drawUppercut(b, f.stars, uppercutStars(f), flashing);
         continue;
       }
       const color = b.id === 'guard' ? 0x3ab0a0 : b.id === 'dodge' ? 0x8a6ad0 : 0xc28a3a;
@@ -264,9 +265,8 @@ export class TouchControls {
 
   // Uppercut button doubles as the Star Power meter: one pip per star,
   // lit gold and pulsing once all stars are banked.
-  private drawUppercut(b: ArcButton, stars: number, flashing: boolean): void {
+  private drawUppercut(b: ArcButton, stars: number, max: number, flashing: boolean): void {
     const g = this.g;
-    const max = tune.stars.max;
     const ready = stars >= max;
     const pulse = ready ? 0.6 + 0.3 * Math.sin(this.scene.time.now / 120) : 0.3;
     this.disc(b.x,b.y,b.r,flashing?0xfff0bc:ready?0xffbc32:0x596b87);
@@ -279,7 +279,10 @@ export class TouchControls {
       g.fillStyle(i < stars ? 0xffe03a : 0x222222, 1);
       g.fillCircle(px, py, 4);
     }
-    this.labels[this.labels.length - 1].setAlpha(ready ? 1 : 0.5);
+    const label=this.labels[this.labels.length - 1];
+    const glowPulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
+    label.setAlpha(ready?1:.5).setColor(ready?'#fff3a1':'#fff6dc')
+      .setShadow(0,0,'#ffce32',ready?8+8*glowPulse:0,ready,ready);
   }
 }
 

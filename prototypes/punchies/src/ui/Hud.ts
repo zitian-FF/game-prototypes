@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { tune } from '../sim/tune';
-import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
+import { maxHealth, maxStamina, stunThreshold, uppercutStars } from '../sim/character';
 import type { Fighter, SimState } from '../sim/types';
 import type { SeriesState } from '../sim/series';
 import { remainingSeconds } from '../sim/sim';
@@ -71,17 +71,19 @@ export class Hud {
       const showUpper=this.resourceRow.includes(i)&&show('uppercut');
       if(showUpper)this.drawResources(f,i);
       const ready=this.upperReady[i];
-      ready.setVisible(showUpper&&f.stars>=tune.stars.max);
+      ready.setVisible(showUpper&&f.stars>=uppercutStars(f));
       const pulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
-      ready.setAlpha(.65+.35*pulse).setScale(1+.08*pulse);
+      ready.setAlpha(.9+.1*pulse).setScale(1.08+.12*pulse)
+        .setColor('#fff3a1').setStroke('#8a4600',2)
+        .setShadow(0,0,'#ffce32',8+8*pulse,true,true);
     }
     this.timer.setText(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--').setVisible(show('timer'));
   }
   private drawResources(f:Fighter,side:number):void{
     const g=this.g,sign=side===0?-1:1;
-    const ready=f.stars>=tune.stars.max;
+    const ready=f.stars>=uppercutStars(f);
     const starAlpha=ready?.25:1;
-    for(let i=0;i<3;i++){
+    for(let i=0;i<uppercutStars(f);i++){
       const x=VIEW.cx+sign*(VIEW.width*.20+17+i*21),y=VIEW.top+70;
       const star=(radius:number)=>Array.from({length:10},(_,k)=>{
         const angle=-Math.PI/2+k*Math.PI/5,r=k%2?radius*.46:radius;

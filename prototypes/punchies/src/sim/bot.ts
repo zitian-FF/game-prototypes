@@ -1,5 +1,5 @@
 import { tune } from './tune';
-import { punchCfg } from './character';
+import { punchCfg, uppercutStars } from './character';
 import { normalHurtRadius } from './geometry';
 import { fatigueLevel, phaseOf } from './sim';
 import { EasyAI } from './ai';
@@ -309,7 +309,7 @@ export class ScriptedBot implements Bot {
   // The best punch for this range, lowest fatigue first. Uppercut when
   // charged. `open` = the foe is exposed: prefer the heaviest hit.
   private pickPunch(me: SimState['fighters'][number], foe: SimState['fighters'][number], dist: number, open: boolean): PunchType | null {
-    if (me.stars >= tune.stars.max) {
+    if (me.stars >= uppercutStars(me)) {
       const up = punchCfg(me, 'uppercut');
       if (dist <= connect(up, foe)) return 'uppercut';
     }

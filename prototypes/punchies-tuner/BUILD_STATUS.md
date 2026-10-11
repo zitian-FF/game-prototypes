@@ -1,20 +1,17 @@
 ## Current milestone
-Workshop includes per-punch counter flags and exhausted guard/dodge tuning from main PR #306. PR #270 remains open.
+PR #270 conflicts resolved against main 09d62d8; remains open for review.
 
 ## What was implemented
-- Counter Startup and Counter Recovery on all four punch tabs, with explicit 0/off and 1/on units and shared-rule descriptions.
-- Exhausted Chip Mult in Block and Exhausted Efficacy in Dodge, using current metadata ranges and defaults.
-- Save/roundtrip/conflict and unit coverage tests for the new fields.
-- Typecheck, production build, model/unit/history/HTTP/display/tune-guard checks passed. Brave verified counter controls and both exhausted settings with no console errors.
+Preserved local GitHub saves, Base history and units while incorporating the current ten-fighter roster, counterWhiff, uppercut charge and push-derived stun fields. Updated workshop stat previews to the current 60% Base benchmark and durability formulas. Regression fixtures now tolerate existing Base history.
 
 ## Key technical decisions
-Counter flags remain shared punch rules and compare with Base. All new numeric fields participate in selective saves and Base history. Preserved owner-approved tune values, history and archetypes. No state-readability production work.
+Preserved main game UI, localisation and all owner tuning values. Workshop preview is read-only and tested against current roster formulas. Save verification uses a mock server without actual GitHub tuning writes.
 
 ## Open questions
 None.
 
 ## Known issues
-Native file-picker permissions remain manual; published workshop awaits the PR merge.
+Native file-picker permissions remain manual. Existing build chunk-size warnings remain.
 
 ## Next proposed step
-Review the updated workshop and tune counter/exhausted rules.
+Review PR #270; merging and deployment remain separate actions.

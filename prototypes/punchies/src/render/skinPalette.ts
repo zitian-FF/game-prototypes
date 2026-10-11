@@ -13,63 +13,60 @@ function rgb(h:number,s:number,v:number):[number,number,number]{
   const a=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
   return a.map(n=>Math.round((n+m)*255)) as [number,number,number];
 }
-export function recolourStarter(data:Uint8ClampedArray,char:string,name:string,width:number,height:number):void{
-  const portrait=name.startsWith('portrait_'),head=name.endsWith('_head'),tail=name.includes('ponytail');
+
+import { PALETTES } from './paletteCatalog';
+import { portraitRegion } from './materialMasks';
+
+/** Broad material membership avoids excluding noisy/antialiased source shades. */
+function coloured(char:string,h:number,s:number):boolean {
+  if(s<.08)return false;
+  return char==='marco'?h>=175&&h<=285:char==='mia'||char==='dragon'||char==='tee'?h>=335||h<=10:char==='bruno'?h>=72&&h<=180:char==='tyke'?h>=28&&h<=80:char==='longan'?h>=60&&h<=180:false;
+}
+function tint(h:number,s:number,v:number,target:number):[number,number,number] {
+  const [th,ts,tv]=hsv(target>>16&255,target>>8&255,target&255);
+  // Keep local luminance/shading; low-saturation highlights stay pale.
+  return rgb(th,ts*Math.min(1,s/.65),Math.min(1,v*Math.max(.72,tv)));
+}
+export function recolourStarter(data:Uint8ClampedArray,char:string,name:string,width:number,height:number):void {
+  const id=char==='marco'?'skin-marco-cyan':char==='mia'?'skin-mia-violet':'skin-bruno-gold';
+  recolourPalette(data,char,id,name,width,height);
+}
+/** Semantic masks protect skin, hair, trim, tattoos and source navy outlines. */
+export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,name:string,width:number,height:number):void {
+  const palette=PALETTES[skin];if(!palette||palette.boxer!==char)return;
+  const starter=STARTER_SKINS.includes(skin),portrait=name.startsWith('portrait_');
+  const head=name.endsWith('_head'),tail=name.includes('ponytail'),glove=name.includes('glove'),boot=name.includes('boot'),torso=name.endsWith('_torso');
   for(let i=0;i<data.length;i+=4){
     if(!data[i+3])continue;
-    const [h,s,v]=hsv(data[i],data[i+1],data[i+2]);
-    if(s<.22||v<.16)continue;
-    const x=(i/4%width)/width,y=Math.floor(i/4/width)/height;
+    const r=data[i],g=data[i+1],b=data[i+2],[h,s,v]=hsv(r,g,b);
+    if(Math.max(r,g,b)<40)continue; // authored navy outline stays exact
+    const x=(i/4%width+.5)/width,y=(Math.floor(i/4/width)+.5)/height;
+    // The exposed face wedge is not helmet material, including its compressed
+    // reddish/grey edge pixels. Hair recolouring must never spill into it.
+    if(head&&['marco','mia'].includes(char)&&x>.88&&y>.28&&y<.68)continue;
+    if(portrait&&char==='mia'&&portraitRegion(char,'skin',x,y)&&r>g&&g>=b&&g/r>.45)continue;
+    const hair=portrait?portraitRegion(char,'hair',x,y):tail||(head&&(char==='marco'?x<.83:char==='mia'?x<.85:true));
+    const trim=portrait&&portraitRegion(char,'trim',x,y)&&s<.3;
     let out:[number,number,number]|null=null;
-    if(char==='marco'){
-      if(h>=185&&h<=270)out=rgb(188,s,v);
-      else if(h>=12&&h<=48&&((portrait&&x>.43&&y>.14&&y<.35)||(head&&x<.72)))out=rgb(225,s*.18,v*.40);
-    }else if(char==='mia'){
-      if(h>=335||h<=12)out=rgb(278,s,v);
-      else if(h>=35&&h<=65&&(head||tail||(portrait&&y<.58)))out=rgb(25,Math.max(.5,s*.85),v*.55);
-    }else if(char==='bruno'){
-      if(h>=85&&h<=175)out=rgb(48,s,v);
-      // Exclude copper hair/beard: their orange hues overlap skin.
-      else if(h>=12&&h<=38&&v>.38&&((head&&x>.79)||(portrait&&!(x>.33&&x<.65&&(y<.23||(y>.31&&y<.55&&x<.61))))))out=rgb(h,s,v*.82);
+    if(starter&&char==='marco'&&hair&&!trim&&(h<85||s<.18)&&v<.88){
+      // The whole brown/grey hair material, including its low-saturation shading.
+      out=rgb(225,s*.15,v*.4);
+    }else if(starter&&char==='mia'&&hair&&!trim&&h>=25&&h<=85&&!(portrait&&portraitRegion(char,'skin',x,y))){
+      out=rgb(25,Math.max(.35,s*.85),v*.55);
+    }else if(starter&&char==='bruno'&&!trim&&h>=8&&h<=48&&s>.12&&v>.2&&
+      (portrait?portraitRegion(char,'skin',x,y)&&!hair:torso||(head&&x>.82&&y>.25&&y<.54))){
+      out=rgb(h,s,v*.82);
+    }else if(!trim&&coloured(char,h,s)&&!(char==='tyke'&&(head||(torso&&x>.25)))){
+      const gear=portrait?(char==='dragon'||portraitRegion(char,'glove',x,y)?'glove':['marco','mia','bruno'].includes(char)||portraitRegion(char,'kit',x,y)?'kit':null):
+        glove?'glove':(torso||boot||head||tail)?'kit':null;
+      if(gear)out=tint(h,s,v,gear==='glove'||char==='dragon'?palette.gloves:palette.kit);
+    }else if(!trim&&s<.22&&v>.22&&['tee','tyke','dragon','longan'].includes(char)){
+      // Neutral garments/wraps have explicit regions; white hair and faces never qualify.
+      const kit=portrait?portraitRegion(char,'kit',x,y)&&!hair:torso||boot;
+      const wraps=char==='longan'&&(glove||(portrait&&portraitRegion(char,'glove',x,y)));
+      const darkGlove=char==='tee'&&(glove||(portrait&&portraitRegion(char,'glove',x,y)))&&v<.65;
+      if(kit||wraps||darkGlove){const target=wraps||darkGlove?palette.gloves:palette.kit;const [th,ts,tv]=hsv(target>>16&255,target>>8&255,target&255);out=rgb(th,ts,Math.min(1,v*tv));}
     }
     if(out){data[i]=out[0];data[i+1]=out[1];data[i+2]=out[2];}
-  }
-}
-import { PALETTES } from './paletteCatalog';
-
-/** Material masks exclude skin, hair, tattoos, outlines and transparent pixels. */
-export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,name:string,width:number,height:number):void {
-  const palette=PALETTES[skin]; if(!palette||palette.boxer!==char)return;
-  if(STARTER_SKINS.includes(skin)){recolourStarter(data,char,name,width,height);return;}
-  const portrait=name.startsWith('portrait_'),head=name.endsWith('_head'),tail=name.includes('ponytail');
-  if((head||tail)&&char==='tee')return;
-  const glove=name.includes('glove'),boot=name.includes('boot'),torso=name.endsWith('_torso');
-  // Connected material islands prevent rectangular colour seams through a glove or garment.
-  const mask=new Uint8Array(width*height),visited=new Uint8Array(mask.length);
-  for(let pixel=0;pixel<mask.length;pixel++){
-    const i=pixel*4,[h,s,v]=hsv(data[i],data[i+1],data[i+2]);if(!data[i+3]||v<.17)continue;
-    const red=(h>=335||h<=12)&&s>.25;
-    const coloured=char==='marco'?h>=185&&h<=270&&s>.25:char==='mia'?red:char==='bruno'?h>=85&&h<=175&&s>.25:char==='tee'?red:char==='tyke'?h>=32&&h<=75&&s>.28:char==='dragon'?red:char==='longan'?h>=65&&h<=175&&s>.22:false;
-    const neutral=s<.20&&v>.22&&(torso||glove||boot||portrait)&&['tee','tyke','dragon','longan'].includes(char);
-    if(coloured)mask[pixel]=1;else if(neutral)mask[pixel]=2;
-  }
-  for(let seed=0;seed<mask.length;seed++){
-    if(!mask[seed]||visited[seed])continue;
-    const island=[seed];visited[seed]=1;let sumX=0,sumY=0,minY=height;
-    for(let k=0;k<island.length;k++){
-      const p=island[k],x=p%width,y=Math.floor(p/width);sumX+=x;sumY+=y;minY=Math.min(minY,y);
-      for(const q of [x>0?p-1:-1,x<width-1?p+1:-1,y>0?p-width:-1,y<height-1?p+width:-1])if(q>=0&&!visited[q]&&mask[q]===mask[seed]){visited[q]=1;island.push(q);}
-    }
-    const x=sumX/island.length/width,y=sumY/island.length/height;
-    if(mask[seed]===2&&portrait){
-      if(char==='dragon'&&y<.33)continue;
-      if(char==='tee'&&(minY/height<.34||x<.3||x>.8))continue;
-      if(char==='tyke'&&y<.84)continue;
-      if(char==='longan'&&y<.32)continue;
-    }
-    const portraitGlove=portrait&&(char==='marco'?((x<.47&&y<.34)||(x>.65&&y>.39&&y<.74)):char==='mia'?((x>.61&&y>.43&&y<.72)||(x>.34&&x<.68&&y>.64&&y<.91)):char==='bruno'?((x>.66&&y>.22&&y<.63)||(x<.44&&y>.65)):char==='tyke'?y<.84:char==='dragon'?mask[seed]===1:char==='longan'?y<.82:((x<.5&&y>.58&&y<.83)||(x>.6&&y>.4&&y<.69)));
-    const target=glove||portraitGlove||((char==='dragon'||char==='tyke')&&mask[seed]===1)?palette.gloves:palette.kit;
-    const [th,ts,tv]=hsv(target>>16&255,target>>8&255,target&255);
-    for(const pixel of island){const i=pixel*4,[,s,v]=hsv(data[i],data[i+1],data[i+2]);const out=rgb(th,ts*Math.min(1,s>.2?s/.75:1),Math.min(1,v*(s>.2?Math.max(.7,tv):tv)));data[i]=out[0];data[i+1]=out[1];data[i+2]=out[2];}
   }
 }

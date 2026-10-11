@@ -1,5 +1,6 @@
+import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
-import { t } from '../i18n';
+import { getLanguage, t } from '../i18n';
 import { skinTexture } from '../render/skins';
 import { artKey, artImage } from '../render/art';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -38,8 +39,8 @@ export class MatchIntro {
           left=Math.min(left,px);top=Math.min(top,y);right=Math.max(right,px+1);bottom=Math.max(bottom,y+1);
         }
         if(right<=left||bottom<=top){left=0;top=0;right=canvas.width;bottom=canvas.height;}
-        const height=VIEW.height*({bruno:0.98,marco:0.91,mia:0.83,tee:.83}[id]??0.7);
-        const k=Math.min(height/(bottom-top),VIEW.width*0.43/(right-left));
+        const height=VIEW.height*.88;
+        const k=Math.min(height/(bottom-top),VIEW.width*0.43/(right-left))*portraitScaleFactor(id);
         portrait.setScale(k);
         portrait.x-=((side===1)!==(id==='tyke')?-1:1)*((left+right)/2-canvas.width/2)*k;
         portrait.y+=(canvas.height-bottom)*k;
@@ -83,22 +84,38 @@ export class MatchIntro {
     this.cover.setAlpha(1);
     this.flames.clear();
     if(impact<=0)return;
-    for(let i=0;i<7;i++){
-      const x=VIEW.cx-54+i*18;
-      const wave=motion?Math.sin(elapsedMs/85+i*2.4):0;
-      const h=60+(i%3)*20+wave*9;
-      const y=VIEW.cy+44;
-      const points=[[-14,0],[-17,-h*0.30],[-8,-h*0.60],[4+wave*4,-h],
-        [3,-h*0.54],[15,-h*0.29],[14,0]].map(([dx,dy])=>new Phaser.Math.Vector2(x+dx,y+dy));
-      this.flames.fillStyle(i%2?0xff6a21:0xffb22e,0.88)
-        .fillPoints(new Phaser.Curves.Spline(points).getPoints(32),true);
-      this.flames.fillStyle(0xffe77d,0.9).fillEllipse(x,y-18,12,39);
+    const fireScale=1+exit*.8;
+    for(let i=0;i<9;i++){
+      const x=VIEW.cx+(i-4)*17*fireScale,y=VIEW.cy+48*fireScale;
+      const wave=motion?Math.sin(elapsedMs/(cfg.vibrateMs*5)+i*1.8):0;
+      const h=(72+(i%3)*19+wave*12)*fireScale;
+      const flame=(k:number)=>new Phaser.Curves.Spline([
+        [-14,0],[-19,-h*.28/fireScale],[-11,-h*.57/fireScale],
+        [wave*8+5,-h/fireScale],[7,-h*.55/fireScale],[19,-h*.30/fireScale],[14,0]
+      ].map(([dx,dy])=>new Phaser.Math.Vector2(x+dx*k*fireScale,y+dy*k*fireScale))).getPoints(24);
+      const outer=flame(1);
+      this.flames.lineStyle(4,0x542332,1).strokePoints(outer,true);
+      this.flames.fillStyle(0xef4523,1).fillPoints(outer,true);
+      this.flames.fillStyle(0xff9d26,1).fillPoints(flame(.76),true);
+      this.flames.fillStyle(0xffed93,1).fillPoints(flame(.46),true);
+    }
+    // Outlined rising ember shards give the flames motion without smoke obscuring portraits.
+    for(let i=0;i<12;i++){
+      const life=motion?((elapsedMs/cfg.impactMs*.24+i/12)%1):i/12;
+      const x=VIEW.cx+Math.sin(i*2.3)*85,y=VIEW.cy+20-life*155;
+      const r=2+(i%3);
+      const p=[{x,y:y-r*2},{x:x+r,y},{x,y:y+r*2},{x:x-r,y}];
+      this.flames.lineStyle(1.5,0x6e2631,1-life).strokePoints(p,true);
+      this.flames.fillStyle(i%2?0xffd355:0xff7c2b,1-life).fillPoints(p,true);
     }
   }
 }
 
 export function knockoutWords(scene: Phaser.Scene): () => void {
-  return impactWords(scene,[t('fight.knock'),t('fight.out')],tune.view.fightPresentation.koHoldMs);
+  const labels = getLanguage() === 'en' || getLanguage() === 'pseudo'
+    ? [t('fight.knock'), t('fight.out')]
+    : [t('fight.knockout')];
+  return impactWords(scene, labels, tune.view.fightPresentation.koHoldMs);
 }
 
 export function fightWord(scene: Phaser.Scene): void {

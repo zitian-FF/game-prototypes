@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { availableLanguages, getLanguage, t } from '../i18n';
+import { languageFlag } from '../ui/languageFlag';
 import { LANGUAGES } from '../i18n/languages';
 import { chooseLanguage } from '../i18n/init';
 import { isDebug } from '../debug/debugPanel';
@@ -89,16 +90,22 @@ export class MenuScene extends Phaser.Scene {
     }
   }
 
-  private openLanguagePopup(): void {
-    const p = this.popup(t('menu.language'));
-    availableLanguages(isDebug()).forEach((lang, i) => {
-      const x = VIEW.cx + (i % 2 === 0 ? -90 : 90);
+  private openLanguagePopup(returnToSettings = false): void {
+    const p = this.popup(t('menu.language'), returnToSettings ? () => this.openSettings() : undefined);
+    const languages = availableLanguages(isDebug());
+    languages.forEach((lang, i) => {
+      const x = VIEW.cx + (languages.length === 1 ? 0 : i % 2 === 0 ? -90 : 90);
       const y = VIEW.cy - 45 + Math.floor(i / 2) * 38;
-      const pick = titleButton(this, x, y, 160, 30, lang.native, () => {
+      const pick = titleButton(this, x, y, 160, 30, `      ${lang.native}`, () => {
         p.close();
-        void chooseLanguage(lang.code).then(() => startScreen(this, 'Menu'));
+        void chooseLanguage(lang.code).then(() => {
+          // GameMenu overlays a live match: never restart its source scene.
+          if (this.scene.key === 'Menu') startScreen(this, 'Menu');
+          else this.openSettings();
+        });
       }, false, 402, lang.code === getLanguage() ? 'green' : 'default');
       p.items.push(pick, pick.getData('bg'));
+      p.items.push(languageFlag(this,lang.code,x-57,y,403));
     });
   }
 
@@ -125,7 +132,7 @@ export class MenuScene extends Phaser.Scene {
 
   private openShop(): void { startScreen(this, 'Shop'); }
 
-  protected openSettings(): void { audioSettingsPanel(this, () => this.openInputPopup(), () => this.openCredits()); }
+  protected openSettings(): void { audioSettingsPanel(this, () => this.openInputPopup(), () => this.openCredits(), () => this.openLanguagePopup(true)); }
 
   private openOnlinePopup(): void {
     const p=this.popup(t('common.online'));

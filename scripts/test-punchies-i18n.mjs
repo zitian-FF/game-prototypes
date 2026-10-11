@@ -151,6 +151,8 @@ assert.equal(i18n.tweakTextStyle({}).rtl, undefined);
 execFileSync('node', ['scripts/i18n-sheet.mjs', 'check']);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'i18n-'));
 fs.cpSync(localesDir, tmp, { recursive: true });
+// Round-trip fixtures start empty independently of shipped translation coverage.
+for (const lang of ['ja','ko','zh','es','ar']) fs.writeFileSync(path.join(tmp, lang + '.json'), '{}');
 const env = { ...process.env, I18N_DIR: tmp };
 const csv = path.join(tmp, 'sheet.csv');
 execFileSync('node', ['scripts/i18n-sheet.mjs', 'export', csv, '--formulas'], { env });

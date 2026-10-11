@@ -5,11 +5,11 @@ const load=async(options={})=>{
   const bundle=await build({stdin:{contents:`export * from './prototypes/punchies-tuner/src/model'; export * from './prototypes/punchies-tuner/src/fileIO'; export {tune,validateTuneJson} from './prototypes/punchies/src/sim/tune';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,...options});
   return import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 };
-const m=await load(),original=m.defaults(),draft=m.defaults();
+const m=await load(),raw=m.defaults(),original=m.defaults();delete original.balanceWorkshop?.baseHistory;const draft=structuredClone(original);
 m.set(draft,'health.max',120);m.set(draft,'punches.jab.damage',6);
 assert.equal(m.effective(draft,'mia','core','hp'),102,'Base HP feeds fighter multiplier');
 assert.equal(m.effective(draft,'marco','jab','damage'),6*draft.characters.marco.jab.damage);
-assert.deepEqual(m.defaults(),original,'Effective calculations must not mutate bundled defaults');
+assert.deepEqual(m.defaults(),raw,'Effective calculations must not mutate bundled defaults');
 const v1=m.mergeSave(original,draft,original);assert.equal(m.baseVersion(v1),1);
 assert.equal(v1.balanceWorkshop.baseHistory.initial['health.max'],100);
 assert.deepEqual(v1.balanceWorkshop.baseHistory.versions[0].changes,[{path:'punches.jab.damage',before:4,after:6},{path:'health.max',before:100,after:120}]);
@@ -30,5 +30,5 @@ const rebuilt=await load({plugins:[{name:'bundled-history-fixture',setup(builder
 assert.equal(rebuilt.tune.balanceWorkshop,undefined,'History excluded from simulation object');
 assert.equal(rebuilt.validateTuneJson(JSON.stringify(v2)).ok,true,'Game validates a saved history-bearing tune after rebuild');
 assert.equal(rebuilt.baseVersion(rebuilt.parse(JSON.stringify(original))),0,'Workshop still accepts older history-free files after rebuild');
-assert.deepEqual(original,JSON.parse(await readFile('prototypes/punchies/tune.json','utf8')),'Real tuning unchanged');
+assert.deepEqual(raw,JSON.parse(await readFile('prototypes/punchies/tune.json','utf8')),'Real tuning unchanged');
 console.log('PASS: raw Base inheritance, versioned previous values, roundtrip, no-op/fighter-only, concurrency, failed saves, immutable log and history-bearing rebuild compatibility');

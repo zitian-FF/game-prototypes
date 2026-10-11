@@ -1,3 +1,4 @@
+import { WalkMotion } from './legMotion';
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import { coreRadius } from '../sim/geometry';
@@ -145,8 +146,7 @@ export class FighterView {
   private flashAlt = 0xff4a4a;
   private flashStart = 0;
   // Walk cycle, driven by how far the body moves between frames.
-  private lastX = NaN;
-  private lastY = NaN;
+  private gait = new WalkMotion();
   private walk = 0;
   private stride = 0;
 
@@ -232,14 +232,9 @@ export class FighterView {
     const alpha = stance === 'dodging' ? 0.35 : 1;
     const k = this.scale;
 
-    const dxm = Number.isNaN(this.lastX) ? 0 : f.x - this.lastX;
-    const dym = Number.isNaN(this.lastX) ? 0 : f.y - this.lastY;
-    const moved = Math.hypot(dxm, dym);
-    this.lastX = f.x;
-    this.lastY = f.y;
-    const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
-    if (walking) this.walk += moved * tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1);
-    this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+    const walking = this.gait.update(f, now, tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1));
+    this.walk = this.gait.phase;
+    this.stride = this.gait.stride;
 
     if (f.anchored && this.dummy.draw(f, now, k)) {
       this.sprite.setVisible(false);
@@ -252,7 +247,7 @@ export class FighterView {
     }
     this.dummy.hide();
 
-    if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
+    if (!f.anchored && this.drawPuppet(f, now, stance, this.gait.direction)) {
       this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;

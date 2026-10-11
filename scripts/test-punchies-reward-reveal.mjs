@@ -6,20 +6,21 @@ import ts from 'typescript';
 const cfg=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).view.menu.rewardReveal;
 class Obj {
  constructor(kind,args){this.kind=kind;this.args=args;this.list=[];this.width=240;this.alpha=1;this.handlers={};}
- add(o){this.list.push(o);return this;}setDepth(v){this.depth=v;return this;}setInteractive(){this.interactive=true;return this;}setAlpha(v){this.alpha=v;return this;}setScale(v){this.scale=v;return this;}setOrigin(){return this;}setDisplaySize(){return this;}on(k,fn){this.handlers[k]=fn;return this;}destroy(){this.destroyed=true;for(const o of this.list)o.destroy();}
+ add(o){this.list.push(o);return this;}setColor(v){this.color=v;return this;}setTint(){return this;}once(k,fn){this.handlers[k]=fn;return this;}setDepth(v){this.depth=v;return this;}setInteractive(){this.interactive=true;return this;}setAlpha(v){this.alpha=v;return this;}setScale(v){this.scale=v;return this;}setOrigin(){return this;}setDisplaySize(){return this;}on(k,fn){this.handlers[k]=fn;return this;}destroy(){this.handlers.destroy?.();this.destroyed=true;for(const o of this.list)o.destroy();}
 }
 function run(reduced=false){
  const objects=[],timers=[],tweens=[],nav=[];let closed=0;
  const make=kind=>(...args)=>{const o=new Obj(kind,args);objects.push(o);return o;};
  const scene={add:{container:make('container'),rectangle:make('rectangle'),text:make('text'),image:make('image'),graphics:make('graphics')},
- textures:{exists:()=>false},time:{delayedCall:(delay,fn)=>{const t={delay,fn,remove(){this.removed=true;}};timers.push(t);return t;}},tweens:{add:t=>tweens.push(t),killTweensOf:()=>{}},events:{once(){},off(){}}};
- const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/rewardReveal.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:p=>{
+ textures:{exists:()=>false},time:{delayedCall:(delay,fn)=>{const t={delay,fn,remove(){this.removed=true;}};timers.push(t);return t;}},tweens:{addCounter:()=>({remove(){}}),add:t=>tweens.push(t),killTweensOf:()=>{}},events:{once(){},off(){}}};
+ const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/rewardReveal.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:function mockedRequire(p){
  if(p.includes('i18n'))return i18nStub;
  if(p.includes('itemText'))return{itemName:i=>i.name};
- if(p==='phaser')return{default:{GameObjects:{Container:Obj}}};
+ if(p==='phaser')return{default:{GameObjects:{Container:Obj},Display:{Color:{HSVToRGB:()=>({color:0xffffff})}}}};
+ if(p.includes('rewardRarity')){const e={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/rewardRarity.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:e,require:mockedRequire});return e;}
  if(p.includes('render/art'))return{artKey:()=>null};
  if(p.includes('pixelRatio'))return{PIXEL_RATIO:1,VIEW:{cx:422,cy:195,width:844,height:390,bottom:390}};
- if(p.includes('sim/tune'))return{tune:{view:{menu:{rewardReveal:cfg}}}};
+ if(p.includes('sim/tune'))return{tune:{view:{menu:{rewardReveal:cfg,shopRayRotationMs:18000}}}};
  if(p.includes('presentation'))return{reducedMotion:()=>reduced};
  if(p.includes('audio/stingers'))return{playStinger(){return()=>{};}};
  if(p.includes('cartoonChrome'))return{cartoonPanel(){},cartoonButton(){},bindButtonFeedback(){}};

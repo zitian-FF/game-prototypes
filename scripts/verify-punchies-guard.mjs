@@ -48,7 +48,7 @@ const release = fresh(); step(release, [guard, neutral]); incoming(release);
 const hit = step(release, [neutral, neutral]).find(e => e.kind === 'hit');
 assert(hit, 'jab must land during release');
 assert.equal(hit.row, 'vulnerable');
-assert.equal(hit.damage, punchCfg(release.fighters[1], 'jab').damage * tune.hit.counterDamageMult, 'sweet outer-ring hit during penalty takes full damage plus the punish counter');
+assert.equal(hit.damage, punchCfg(release.fighters[1], 'jab').damage, 'sweet outer-ring hit during penalty takes full damage but is not a counter');
 
 const reraised = fresh(); step(reraised, [guard, neutral]); step(reraised, [neutral, neutral]);
 while (reraised.fighters[0].guardPenalty > 0) step(reraised, [neutral, neutral]);
@@ -67,4 +67,4 @@ for (let i = 0; i < 50; i++) {
 const bots = fresh(), ai = makeBot('hard', 0, 123);
 for (let i = 0; i < 180; i++) step(bots, [ai.think(bots), neutral]);
 assert.equal('perfectCooldownFrames' in tune.guard, false);
-console.log('PASS: guard release vulnerability/full damage, exact lockout, fresh three-frame perfect windows, punch/dodge cancels, hit-stop, deterministic rollback replay, and bot compatibility.');
+console.log('PASS: guard release vulnerability/full damage, exact lockout, fresh perfect-guard windows, punch/dodge cancels, hit-stop, deterministic rollback replay, and bot compatibility.');

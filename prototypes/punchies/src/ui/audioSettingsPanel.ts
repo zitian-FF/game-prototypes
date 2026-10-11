@@ -6,7 +6,7 @@ import { getNav } from './menuNav';
 import { titleButton } from './titleButton';
 import { resetSavePanel } from './resetSavePanel';
 
-export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, credits: () => void): void {
+export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, credits: () => void, language: () => void): void {
   const items: Phaser.GameObjects.GameObject[] = [];
   const D = 410;
   items.push(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x071020, .85).setDepth(D).setInteractive());
@@ -36,7 +36,8 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
   });
   const refreshMute = () => mute.setText(t('settings.mute_all', { state: getAudioSettings().muted ? t('settings.on') : t('settings.off') }));
   refreshMute();
-  button(VIEW.cx, VIEW.cy + 63, 250, t('settings.input_setup'), () => { close(); inputs(); });
+  button(VIEW.cx - 90, VIEW.cy + 63, 170, t('settings.input_setup'), () => { close(); inputs(); });
+  button(VIEW.cx + 90, VIEW.cy + 63, 170, t('menu.language'), () => { close(); language(); });
   button(VIEW.cx - 120, VIEW.cy + 118, 112, t('common.credits'), () => { close(); credits(); });
   button(VIEW.cx, VIEW.cy + 118, 112, t('settings.reset_save'), () => resetSavePanel(scene), 'confirm', 'red');
   button(VIEW.cx + 120, VIEW.cy + 118, 112, t('common.back'), close, 'back');

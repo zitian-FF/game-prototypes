@@ -41,11 +41,11 @@ Verification: `npm run test:tuner:github` exercises the full HTTP protocol with 
 
 ## Perceived stats and archetypes
 
-The coloured Health, Endurance, Speed, Power and Reach preview uses the same formulas as the game character selection screen. Base is the 80% benchmark for every bar; other characters scale against Base and bars cap at 100%. Numerical controls update the preview immediately. Base controls continue to show raw values.
+The coloured Health, Endurance, Speed, Power and Reach preview uses the same formulas as the game character selection screen. Base is the 60% benchmark for every bar; other characters scale against Base and bars cap at 100%. Numerical controls update the preview immediately. Base controls continue to show raw values.
 
 The Character archetype textbox edits the fixed localisation key shown beside it (`char.base.nick` or the fighter's existing `char.<id>.nick`). Saved text lives in `balanceWorkshop.archetypes`, survives file/download/GitHub saves, and becomes the game's English fallback after tune sync or rebuild. The translation-sheet export includes these English overrides; existing translations remain unchanged and need review after wording changes. Text-only saves do not create a numeric Base revision. Same-key concurrent text edits are rejected; unrelated changes are preserved.
 
-Run `npm run test:tuner:preview` for formula parity, the 80% benchmark, bar capping, text validation, merge conflicts, snapshot/restore and translation export checks.
+Run `npm run test:tuner:preview` for formula parity, the 60% benchmark, bar capping, text validation, merge conflicts, snapshot/restore and translation export checks.
 
 ## Tune schema sync (2026-10-10)
 

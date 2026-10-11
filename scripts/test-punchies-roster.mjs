@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 const store=new Map();
 const storage={getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)};
-const ids=['marco','mia','bruno','tee','tyke','dragon','longan'];
+const ids=Object.keys(JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')).characters);
 const character={CHARACTER_IDS:ids,isCharId:id=>ids.includes(id)};
 const portalStore={store:{getItem:k=>storage.getItem(k)??null,setItem:(k,v)=>storage.setItem(k,v),removeItem:k=>storage.removeItem?.(k)}};
 const portalKeys={KEYS:{audio:'punchies:audio:v1',shop:'punchies:shop-preview:v1',tutorial:'punchies:tutorial:v1',chars:'punchies:chars:v1',localInputs:'punchies:localInputs:v1'}};
@@ -23,9 +23,11 @@ assert(!roster.availableFighters(state).includes('tee'),'Tee is locked until pul
 state={...state,owned:[...state.owned,'skin-mia','skin-marco-unique']};draft.saveShopDraft(state);
 assert.deepEqual(Array.from(roster.ownedSkins(state,'mia')),['default','skin-mia']);assert.equal(roster.equippedSkin(state,'marco','skin-mia'),'default');assert.equal(roster.equippedSkin(state,'mia','missing'),'default');
 prefs.saveCharPrefs({skins:{p1:{mia:'skin-mia'},p2:{mia:'default'}}});assert.equal(prefs.loadCharPrefs().skins.p1.mia,'skin-mia');assert.equal(prefs.loadCharPrefs().skins.p2.mia,'default');
+const rosterLayout=module('prototypes/punchies/src/ui/rosterLayout.ts',()=>character);
 let started=null;
 const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
  if(p==='phaser')return{default:{Scene:class{}}};
+ if(p.includes('rosterLayout'))return rosterLayout;
  if(p.includes('shop/roster'))return roster;if(p.includes('shop/draft'))return draft;
  if(p.includes('sim/character'))return character;if(p.includes('charPrefs'))return prefs;
  if(p.includes('render/skins'))return{skinReady:(_s,_c,skin)=>!skin.endsWith('-unique')};
@@ -82,7 +84,7 @@ console.log('Training: fixed dummy ignores opponent input; selected owned boxer/
 
 const fresh=draft.newShopDraft();
 for(const id of palette.STARTER_SKINS){assert(draft.availablePool(fresh,"skins").some(i=>i.id===id));assert(!roster.ownedSkins(fresh,id.split("-")[1]).includes(id));}
-for(const id of ["tyke","dragon","longan"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}
+for(const id of ["tyke","dragon","longan","captain","roxy","nadia"]){assert(!roster.availableFighters(fresh).includes(id));const item=draft.SHOP_ITEMS.find(i=>i.kind==="fighters"&&i.boxer===id);assert(item);assert(roster.availableFighters({...fresh,owned:[item.id]}).includes(id));}
 assert(draft.availablePool(fresh,"skins").some(i=>i.id==="skin-mia-flaming-kunoichi"&&i.skinType==="unique"));
 console.log("New fighters and alternate skins locked until acquired; unique Kunoichi reward in pool passed");
 
@@ -91,5 +93,7 @@ assert.equal(classic.skinType,'unique');assert.equal(classic.rigGroup,'marco_mcc
 assert(!roster.ownedSkins(fresh,'marco').includes(classic.id));
 assert(roster.ownedSkins({...fresh,owned:[classic.id]},'marco').includes(classic.id));
 const tune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'));
-assert.deepEqual(tune.characters.longan,tune.characters.marco);
-console.log('Outsource content: Longan acquisition, McClassic ownership and provisional baseline stats passed');
+for(const id of ['roxy','nadia'])assert.deepEqual(Object.keys(tune.characters[id]).sort(),Object.keys(tune.characters.marco).sort());
+assert.deepEqual(Object.keys(tune.characters.longan).sort(),Object.keys(tune.characters.marco).sort());
+for(const value of Object.values(tune.characters.longan))if(typeof value==='number')assert(Number.isFinite(value));
+console.log('Outsource content: Longan acquisition, McClassic ownership and independently tunable fighter schema passed');
