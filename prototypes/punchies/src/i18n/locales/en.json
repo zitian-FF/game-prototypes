@@ -230,7 +230,7 @@
   "pause.your_current_round_will_end": "Your current round will end.",
   "pause.your_practice_session_will_end": "Your practice session will end.",
   "survival.heading": "ZOMBIE SURVIVAL",
-  "survival.menu": "Zombie Survival",
+  "survival.menu": "Zombies",
   "survival.instructions": "Survive each timed wave. Defeat zombies to recover health between waves.",
   "survival.boss_every": "A roster boss joins every {n} waves.",
   "survival.selection_hint": "Choose your fighter and skin.\n\nSurvive the timer.\nFight zombies and roster bosses.\nSave between waves.",
@@ -418,7 +418,7 @@
   "charselect.durability_details": "HP {hp} · STUN RESIST {stun}",
   "rating.loading": "Loading points…",
   "rating.points": "{points} POINTS",
-  "rating.unavailable": "Points unavailable · casual match",
+  "rating.unavailable": "Points unavailable",
   "rating.pending": "Points awaiting confirmation",
   "rating.result": "{points} POINTS ({delta})",
   "rating.unsettled": "Result unconfirmed · points unchanged",
@@ -458,5 +458,7 @@
   "profile.space": "Space",
   "profile.track_complete": "TRACK COMPLETE",
   "profile.unlock_level": "Unlock at Lv. {level}",
-  "profile.xp": "{xp} / {total} XP"
+  "profile.xp": "{xp} / {total} XP",
+  "menu.online_casual": "Online (Casual)",
+  "menu.online_ranked": "Online (Ranked)"
 }

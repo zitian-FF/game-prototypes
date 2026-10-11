@@ -1,4 +1,5 @@
 import { blendedFootStep, bootCollar } from './legMotion';
+import {cosmeticTorsoScale} from './cosmeticTorso';
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { limbSkin } from './skinPalette';
@@ -273,7 +274,7 @@ export class Puppet {
     this.torso
       .setPosition(tpos.x, tpos.y)
       .setRotation(th + twist + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
-      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
+      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * cosmeticTorsoScale(f.char,a.skin) * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
