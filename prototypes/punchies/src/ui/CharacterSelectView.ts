@@ -134,6 +134,19 @@ export class CharacterSelectView {
   const bars=this.graphics(parent),colors=[0xf451b8,0x5ce38b,0x37d4ee,0xffc449,0xb583f5];if(!p.dummy)p.stats.forEach(([label,value,score],i)=>{const y=108+i*13;this.text(parent,x+5,y+5,label,9).setOrigin(0,.5);bars.fillStyle(0x050a18).fillRoundedRect(x+89,y,102,10,3);const width=Math.max(0,Math.min(1,value))*98;if(width>0){bars.fillStyle(colors[i]).fillRoundedRect(x+91,y+1,width,8,Math.min(3,width/2));bars.fillStyle(0xffffff,.25).fillRoundedRect(x+92,y+2,Math.max(0,width-2),2,1);}bars.lineStyle(1,0x8ba0c8).strokeRoundedRect(x+89,y,102,10,3);this.text(parent,x+140,y+5,Math.round(score*100)+'%',8,'#ffffff').setStroke('#050a18',2);});
   if(!p.dummy&&p.durability)this.text(parent,centre,176,t('charselect.durability_details',{hp:Number(p.durability.hp.toFixed(1)),stun:Number(p.durability.stun.toFixed(1))}),8,'#dbe9fa');
   if(!p.dummy&&p.uppercut)this.text(parent,centre,188,t('charselect.uppercut_stats',{stars:p.uppercut.stars,damage:Number(p.uppercut.damage.toFixed(1))}),9,'#ffdf83');
-  if(p.selected&&p.available&&!p.dummy){this.text(parent,centre,356,p.skinName+' '+p.skinIndex+'/'+p.skinCount,8,'#fff1a8');[-1,1].forEach(d=>{const a=this.text(parent,centre+d*89,356,d<0?'‹':'›',19);a.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.callbacks.skin(s,d));});}
+  if(p.selected&&p.available&&!p.dummy){
+   const tray=this.graphics(parent);tray.fillStyle(0x09182b,.95).fillRoundedRect(x,351,198,38,8);
+   const name=this.text(parent,centre,362,p.skinName,10,'#fff1a8');
+   if(name.width>100)name.setScale(100/name.width);
+   this.text(parent,centre,379,p.skinIndex+'/'+p.skinCount,11,'#fff7e6');
+   [-1,1].forEach(d=>{
+    const bx=centre+d*76,enabled=p.skinCount>1,g=this.graphics(parent);
+    const hit=this.scene.add.rectangle(bx,370,44,38,0,0);parent.add(hit);
+    const arrow=this.text(parent,bx,368,d<0?'‹':'›',29,enabled?'#ffffff':'#8896ac').setStroke('#23415a',0);
+    const draw=(pressed=false,hover=false)=>{g.clear();cartoonButton(g,bx-22,351+(pressed?2:0),44,38,enabled?0x397dc2:0x28374d,8);if(hover)g.fillStyle(0xffffff,.12).fillRoundedRect(bx-22,351,44,38,8);arrow.y=368+(pressed?2:0);};
+    draw();
+    if(enabled){hit.setInteractive({useHandCursor:true});bindButtonFeedback(hit,state=>draw(state==='pressed',state==='hover'));hit.on('pointerup',()=>{if(hit.getData('buttonReleasedInside'))this.callbacks.skin(s,d);});}
+   });
+  }
  }
 }
