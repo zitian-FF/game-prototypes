@@ -174,6 +174,14 @@ tune.view.fightPresentation.impactMs=originalImpact;
 const {Rollback,hashState}=load(path.resolve(root,'../net/rollback.ts'));
 const peers=[0,1].map(i=>new Rollback(i,3,12,1,()=>{},()=>{},['mia','bruno'],{showcase:true}));
 assert.equal(hashState(peers[0].sim),hashState(peers[1].sim),'both peers use the same frozen intro timing');
+const onlineStates=[0,1].map(()=>createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{char:'bruno'}]}));
+for(let tick=0;tick<=onlineStates[0].fightStartTick+Math.ceil(fightCueTiming().fadeMs*TICK_RATE/1000);tick++){
+ const inputs=[{...NEUTRAL_INPUT,mx:1},NEUTRAL_INPUT];
+ const events=onlineStates.map(state=>step(state,inputs));
+ assert.equal(hashState(onlineStates[0]),hashState(onlineStates[1]),'both peers retain identical entrance/fade ready gates');
+ assert.equal(JSON.stringify(events[0]),JSON.stringify(events[1]),'both peers emit identical cue/go events');
+}
+
 assert.ok(tune.view.fightPresentation.koHoldMs+tune.view.fightPresentation.fadeMs<=Math.min(tune.ko.dropMs,tune.ko.flyMs+tune.ko.sitMs)+tune.ko.resultDelayMs,'KO title finishes before result/round splash');
 console.log('First-round showcase timing, delayed ROUND/FIGHT, full combat freeze, online peer hashes and KO/result ordering passed');
 
