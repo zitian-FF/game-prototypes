@@ -1,7 +1,7 @@
 ## Current milestone
-Roxy and Nadia have owner-approved distinct balance and archetype descriptions.
+Every fighter and Base have playstyle descriptions matching the current owner-approved balance.
 ## What was implemented
-Roxy is a close-range brawler with stronger, costlier hooks. Nadia has a lighter, faster Cross with five fatigue bars and unchanged maximum fatigue penalties. The tuner edits and selectively merges archetype descriptions, and English game labels use the saved localisation keys. Long character-select descriptions fit their available width.
+Roxy is a close-range brawler with stronger, costlier hooks. Nadia has a lighter, faster Cross with five fatigue bars and unchanged maximum fatigue penalties. All ten fighters and Base have consistent saved archetype text and English localisation defaults. The tuner edits and selectively merges archetype descriptions, and English game labels use the saved localisation keys. Long character-select descriptions fit their available width.
 ## Key technical decisions
 Preserve Base, all other fighter tuning, body proportions and workshop history. Archetype text is validated separately from numeric simulation data. Independent text changes merge without overwriting unrelated changes; conflicting edits are rejected.
 ## Open questions

@@ -16,14 +16,14 @@ export type CharId = (typeof CHARACTER_IDS)[number];
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
   roxy: { name: 'Roxy', nick: 'Firecracker', style: 'Close-range brawler: heavy hooks, costly swings.' },
   nadia: { name: 'Nadia', nick: 'Rising Star', style: 'Fast, light Cross pressure with extra fatigue capacity.' },
-  captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst attacker; quick disengagement, low durability' },
-  longan: { name: 'Longan', nick: 'Still Waters', style: 'Sustained pressure; efficient jab and hook, shorter reach' },
-  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Committed finisher; heavy blows, slow movement and costly recovery' },
-  dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Precision outboxer; longer jab and Cross, slower commitments' },
-  tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst damage; fragile with limited endurance' },
-  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Reliable fundamentals with a modest Cross advantage' },
-  mia: { name: 'Mia Tanaka', nick: 'Flicker', style: 'Fast hands and feet, shorter reach' },
-  bruno: { name: 'Bruno Kowalski', nick: 'Brick', style: 'Tough and heavy-handed, slow' },
+  captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst fighter: quick recovery, costly pressure and lower durability.' },
+  longan: { name: 'Longan', nick: 'Still Waters', style: 'Endurance specialist: efficient jab and hooks, lighter blows and short reach.' },
+  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: crushing Cross and uppercut, slow and stamina-hungry.' },
+  dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Long-range outboxer: extended jab and Cross, slower follow-through.' },
+  tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst attacker: heavy Cross and hooks, fragile with low stamina.' },
+  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder: stronger Cross, balanced speed and endurance.' },
+  mia: { name: 'Mia Tanaka', nick: 'Flicker', style: 'Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.' },
+  bruno: { name: 'Bruno Kowalski', nick: 'Brick', style: 'Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.' },
 };
 
 // Short display name (first name, upper case).
