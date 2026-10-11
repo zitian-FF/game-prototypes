@@ -1,10 +1,11 @@
 import {ratingStatus,reportRating} from '../net/rating';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
+import { sideProfiles } from '../progress/profile';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import { setGameplay } from '../portal/gameplay';
-import { awardMatch } from '../progress/progress';
+import { awardMatch,progressView } from '../progress/progress';
 import Phaser from 'phaser';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
@@ -124,7 +125,7 @@ export class MatchScene extends Phaser.Scene {
       data.localIdx === 0 ? [t('match.you_host', { name: nm(0) }), t('match.opponent_name', { name: nm(1) })] : [t('match.opponent_name', { name: nm(0) }), t('match.you_name', { name: nm(1) })];
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
-    this.stage = new FightStage(this, names, data.localIdx,true,data.skins);
+    this.stage = new FightStage(this, names, data.localIdx,true,data.skins,sideProfiles(data.localIdx,data.session.peer));
     this.stage.setSeries(this.series);
 
     this.events.on('menuReturn',()=>this.leave());
@@ -309,10 +310,11 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner],title:r.winner===this.match.localIdx?progressView().title:this.match.session.peer.title}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
   }
 
   private async showRating(score?:0|.5|1):Promise<void>{
+    if(!this.match.session.rated)return;
     const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
     const label=status.label;
     status.set(ratingLabel({phase:'pending'},t));
@@ -335,7 +337,7 @@ export class MatchScene extends Phaser.Scene {
   private tryRematch(): void {
     if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
     this.advancing = true;
-    if(!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
+    if(this.match.session.rated&&!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
     this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
   }
 

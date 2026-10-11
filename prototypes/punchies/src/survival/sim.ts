@@ -25,11 +25,11 @@ function pair(r: SurvivalRun, enemy: Fighter): SimState {
   return { tick: r.tick, fighters: [r.player, enemy], timed: false, hitstop: r.hitstop, fightStartTick: 0, result: null };
 }
 function face(f: Fighter, other: Fighter): void {
-  if (f.punch) return;
+  if (f.punch || f.dodge) return;
   const dx = other.x - f.x, dy = other.y - f.y, d = Math.hypot(dx, dy);
   if (d > 0) { f.fx = dx / d; f.fy = dy / d; }
 }
-function closest(r: SurvivalRun): SurvivalEnemy | undefined {
+export function closestEnemy(r: SurvivalRun): SurvivalEnemy | undefined {
   let best: SurvivalEnemy | undefined, distance = Infinity;
   for (const e of r.enemies) {
     if (e.fighter.health <= 0) continue;
@@ -75,7 +75,9 @@ function spawn(r: SurvivalRun, kind: 'boss' | 'zombie', events: SurvivalEvent[])
     placed = true; break;
   }
   if (!placed) return false; // Defer, never spawn on top of a fighter.
-  const hp = maxHealth(f) * (kind === 'zombie' ? config.zombieHpRatio + (r.wave - 1) * config.zombieHpGrowthPerWave : 1);
+  const hp = kind === 'zombie'
+    ? config.zombieMinHp + Math.floor(random(r) * (config.zombieMaxHp - config.zombieMinHp + 1))
+    : maxHealth(f);
   f.health = hp;
   const enemy: SurvivalEnemy = {
     id: `enemy-${r.nextEnemyId++}`, kind, visualId: kind === 'zombie' ? 'zombie' : char,
@@ -144,10 +146,11 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
   if (r.status !== 'active') return [];
   const out: SurvivalEvent[] = [];
   if (r.player.health <= 0) return endRun(r, 'defeat');
-  const target = closest(r);
+  const target = closestEnemy(r);
   const anchor = target?.fighter ?? combat.createFighter(r.player.x + 1, r.player.y, { anchored: true });
   const primary = pair(r, anchor);
   for (const f of [r.player, ...r.enemies.map(e => e.fighter)]) if (!f.infiniteStamina && f.stamina <= 0) { f.exhausted = true; f.regenWait = 0; }
+  if (target) face(r.player, anchor);
   if (r.hitstop > 0) {
     r.hitstop--;
     for (const f of [r.player, ...r.enemies.map(e => e.fighter)]) if (f.exhausted) combat.gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
@@ -155,7 +158,6 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     if (req && !combat.rejectAction(r.player, 0, req, events)) { r.player.buffered = req; r.player.bufferFrames = tune.input.bufferFrames; }
     wrap(events, target?.id ?? '', out);
   } else {
-    if (target) face(r.player, anchor);
     const oldPunch = r.player.punch, inputEvents: SimEvent[] = [];
     combat.processInput(primary, 0, input, inputEvents);
     if (r.player.punch !== oldPunch) r.swingHits = [];
@@ -174,6 +176,9 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       return intent;
     });
     separate(r);
+    // Walking and crowd separation may switch the closest target this tick.
+    const movedTarget = closestEnemy(r);
+    if (movedTarget) face(r.player, movedTarget.fighter);
     // Snapshot all defensive states before any simultaneous contact resolves.
     const snapshots = r.enemies.map(e => [r.player, e.fighter].map(f => ({
       stance: stanceOf(f), startup: !!f.punch && phaseOf(f.punch) === 'startup', exhausted: f.exhausted,

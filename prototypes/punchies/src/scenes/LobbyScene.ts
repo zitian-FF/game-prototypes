@@ -40,6 +40,7 @@ export class LobbyScene extends Phaser.Scene {
   private status!: Phaser.GameObjects.Text;
   private timeout?: Phaser.Time.TimerEvent;
   private handedOff = false;
+  private rated = false;
   private diag!: Phaser.GameObjects.Text;
   private turnServers = 0;
   private startedAt = 0;
@@ -48,11 +49,12 @@ export class LobbyScene extends Phaser.Scene {
     super('Lobby');
   }
 
-  create(data: { role: Role; code?: string }): void {
+  create(data: { role: Role; code?: string; rated?:boolean }): void {
     applyCameraPixelRatio(this);
     backdrop(this);
     cartoonPanel(this.add.graphics().setDepth(-1),VIEW.cx-235,VIEW.cy-143,470,286,0x28517d,15);
     this.handedOff = false;
+    this.rated = data.rated===true;
     this.session = null;
     this.status = this.add
       .text(VIEW.cx, VIEW.bottom - 60, '', { fontFamily: 'Arial', fontSize: '17px', color: '#fff1d1', align: 'center', resolution: PIXEL_RATIO })
@@ -70,12 +72,14 @@ export class LobbyScene extends Phaser.Scene {
       this.timeout?.remove();
       if (!this.handedOff) this.session?.leave();
     });
+    if(this.rated){
     const points=ratingStatusText(this,VIEW.cx,VIEW.top+50,Math.min(440,VIEW.width-100),2);
     const unsubscribe=onRatingState(state=>points.set(ratingLabel(
       state.status==='ready'?{phase:'available',rating:state.rating}:
       {phase:state.status==='loading'?'loading':'unavailable'},t)));
     this.events.once('shutdown',unsubscribe);
     void loadRating();
+    }
     addVersionStamp(this);
     if (data.role === 'host') void this.host();
     else void this.join(data.code ?? '');
@@ -103,12 +107,12 @@ export class LobbyScene extends Phaser.Scene {
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
-    const s = new NetSession(code, 'host', ice);
+    const s = new NetSession(code, 'host', ice,this.rated);
     this.session = s;
     s.onRejected = () => {
       // Someone else is hosting this code: pick another.
       s.leave();
-      this.scene.restart({ role: 'host' });
+      this.scene.restart({ role: 'host',rated:this.rated });
     };
     s.onPaired = () => {
       track('online', 'host', 'connected');
@@ -122,7 +126,7 @@ export class LobbyScene extends Phaser.Scene {
     this.add
       .text(VIEW.cx - 110, VIEW.cy - 20, code, { fontFamily: 'Arial', fontSize: '64px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    const url = roomUrl(code);
+    const url = roomUrl(code,this.rated);
     this.add
       .text(VIEW.cx - 110, VIEW.cy + 30, t('lobby.scan_the_qr_code_or'), { fontFamily: 'Arial', fontSize: '15px', color: '#dbe9fa', align: 'center', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
@@ -176,7 +180,7 @@ export class LobbyScene extends Phaser.Scene {
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
-    const s = new NetSession(code, 'guest', ice);
+    const s = new NetSession(code, 'guest', ice,this.rated);
     this.session = s;
     s.onRejected = () => {
       track('online', 'guest', 'failed', { reason: 'room_full' });

@@ -10,6 +10,8 @@ import { getNav } from './menuNav';
 import { skinTexture } from '../render/skins';
 import { portraitBounds } from '../render/portraitBounds';
 import { winnerName, winnerQuote, type ResultWinner } from './winnerQuotes';
+import {equippedTitle} from './progressionChrome';
+import {resultProgress} from './resultProgress';
 let splashSerial = 0;
 
 // Freeze the round scene while a short logo splash dissolves over the arena.
@@ -82,22 +84,25 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     portrait.setFlipX(winner!.char==='tyke').setOrigin(winner!.char==='tyke'?1-(bounds.left+bounds.right)/2/portrait.width:(bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
   }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
-  const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.cy-46,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',
+  const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.top+VIEW.height*.2,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.28:VIEW.cy+5,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
+  if(score)scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.28:VIEW.top+VIEW.height*.32,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
     color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
   if(hasWinner){
-    scene.add.text(textX,VIEW.top+VIEW.height*.37,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
-    scene.add.text(textX,VIEW.top+VIEW.height*.48,`“${winnerQuote(winner!.char)}”`,{fontFamily:'Arial',fontSize:'20px',fontStyle:'italic',color:'#fff1d5',align:'center',wordWrap:{width:width-24},padding:{left:4,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
+    scene.add.text(textX,VIEW.top+VIEW.height*.34,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
+    if(winner!.title)equippedTitle(scene,textX,VIEW.top+VIEW.height*.39,winner!.title,width-24,150);
+    const quote=scene.add.text(textX,VIEW.top+VIEW.height*.465,`“${winnerQuote(winner!.char)}”`,{fontFamily:'Arial',fontSize:'18px',fontStyle:'italic',color:'#fff1d5',align:'center',wordWrap:{width:width-24},padding:{left:4,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
+    if(quote.height>28)quote.setScale(28/quote.height);
   }
   const rematch=titleButton(scene,textX,VIEW.bottom-126,280,38,t('match.rematch'),actions.rematch,false,150,'green');
   const change=titleButton(scene,textX,VIEW.bottom-78,280,38,t('match.change_boxer'),actions.changeBoxer,false,150);
   const menu=titleButton(scene,textX,VIEW.bottom-30,280,38,t('match.main_menu'),actions.menu,false,150,'red','back');
+  resultProgress(scene,textX,width);
   if(!reducedMotion()){
     let alive=true;scene.events.once('shutdown',()=>{alive=false;});
     const details=scene.children.list.filter(o=>!before.has(o)&&o!==panel&&o!==shield&&o!==portrait&&o!==heading) as Phaser.GameObjects.Image[];
-    const hits=[rematch,change,menu].map(t=>t.getData('bg') as Phaser.GameObjects.Rectangle);
+    const hits=scene.children.list.filter(o=>!before.has(o)&&o instanceof Phaser.GameObjects.Rectangle&&o!==shield&&o.input?.enabled) as Phaser.GameObjects.Rectangle[];
     details.forEach(o=>o.setAlpha(0).setVisible(false));hits.forEach(hit=>hit.disableInteractive());
     const reveal=()=>{
       if(!alive)return;

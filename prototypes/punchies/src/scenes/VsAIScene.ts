@@ -1,4 +1,4 @@
-import { awardMatch } from '../progress/progress';
+import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -96,6 +96,6 @@ export class VsAIScene extends Phaser.Scene {
       rematch: () => this.scene.restart({ chars: this.chars, skins:this.skins, level: this.level }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'vsai' }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.chars[r.winner],skin:this.skins[r.winner]}, r.winner===null?'draw':r.winner===0?'victory':'defeat');
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.chars[r.winner],skin:this.skins[r.winner],title:r.winner===0?progressView().title:undefined}, r.winner===null?'draw':r.winner===0?'victory':'defeat');
   }
 }

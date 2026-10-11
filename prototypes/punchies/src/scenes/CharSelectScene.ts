@@ -408,6 +408,7 @@ export class CharSelectScene extends Phaser.Scene {
         if (this.data0.localIdx === 0 && this.bothLocked()) this.hostStart();
       }
       if (m.k === 'start' && this.data0.localIdx === 1) {
+        if((m.rated===true)!==s.rated)return;
         const check = validateTuneJson(m.tune);
         if (!check.ok) {
           s.leave();
@@ -416,7 +417,7 @@ export class CharSelectScene extends Phaser.Scene {
         }
         const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
-        if(m.ratingNonce)void s.beginRating(m.ratingNonce);
+        if(s.rated&&m.ratingNonce)void s.beginRating(m.ratingNonce);
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
@@ -443,8 +444,8 @@ export class CharSelectScene extends Phaser.Scene {
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;
-    const ratingNonce=crypto.randomUUID();void s.beginRating(ratingNonce);
-    s.send({ k: 'start', ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
+    const ratingNonce=s.rated?crypto.randomUUID():undefined;if(ratingNonce)void s.beginRating(ratingNonce);
+    s.send({ k: 'start', rated:s.rated,ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
     this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }
 

@@ -8,7 +8,7 @@ import {charName,type CharId} from '../sim/character';
 import {createSimState} from '../sim/sim';
 import {tune,TICK_RATE} from '../sim/tune';
 import type {SimState} from '../sim/types';
-import {survivalView} from '../survival/sim';
+import {survivalView,closestEnemy} from '../survival/sim';
 import {SurvivalStore} from '../survival/save';
 import type {SurvivalRun,SurvivalEvent,SurvivalEnemy} from '../survival/types';
 import {store as portalStore} from '../portal/store';
@@ -95,7 +95,7 @@ export class SurvivalScene extends Phaser.Scene {
   }
   const view=survivalView(this.run);
   this.stage.inputBlocked=view.status!=='active'||this.saveFailed;
-  this.stage.survivalHud(view.secondsLeft);this.stage.draw(this.displayPair(this.run.enemies[0]),time,false);
+  this.stage.survivalHud(view.secondsLeft);this.stage.draw(this.displayPair(closestEnemy(this.run)),time,false);
   this.syncViews();for(const enemy of this.run.enemies)this.views.get(enemy.id)!.draw(enemy.fighter,time,false);
   this.waveText.setText(t('survival.wave',{wave:view.wave}));
   this.killsText.setText(t('survival.kills',{kills:view.waveKills}));
