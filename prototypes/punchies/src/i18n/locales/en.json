@@ -372,7 +372,7 @@
   "tutorial.step_progress": "STEP {n}/{total} · {title}",
   "tutorial.taking_hits_fills_the_stun": "Taking hits fills the stun meter (thin bar). Full = stunned: open to anything. The dummy is nearly there. Finish it!",
   "tutorial.tap_button": "Tap {button}",
-  "tutorial.the_blue_bar_is_stamina": "The blue bar is stamina. Punches, dodges and guarding spend it. At 0, emergency recovery fills the red bar at standing-still speed. All hits are headshots; punches are free but deal half damage. Guard and dodge are disabled until full. Punch until it is below half.",
+  "tutorial.the_blue_bar_is_stamina": "The blue bar is stamina. Punches, dodges and guarding spend it. At 0 you are exhausted: the red bar refills at standing-still speed, every hit on you is a headshot, punches are free but deal half damage, guard lets half the damage through and dodge is half as strong. Punch until it is below half.",
   "tutorial.the_joystick_left_side": "the joystick (left side)",
   "tutorial.the_left_stick": "the left stick",
   "tutorial.tutorial_complete": "TUTORIAL COMPLETE",

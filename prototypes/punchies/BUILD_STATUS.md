@@ -9,4 +9,4 @@ Automatic approval review blocked aligning legacy char.*.nick Sheet cells with C
 ## Known issues
 Compact package has 29,455 bytes headroom. Existing localized archetype nicknames still need alignment with main's new playstyle descriptions; no speculative translations included.
 ## Next proposed step
-Merge, monitor deployment and verify the live build; align the Sheet when approved.
+Merge, monitor deployment and verify the live build; align the Sheet when approved. The English tutorial stamina text now matches the exhausted rules (guard and dodge work at half strength); the five translated versions still describe the old rule until the Google Sheet row tutorial.the_blue_bar_is_stamina is updated and re-imported.
