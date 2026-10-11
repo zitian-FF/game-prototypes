@@ -5,7 +5,8 @@ export const farmFactor=(gap:number)=>gap<=100?1:gap>=300?.1:1-.9*(gap-100)/200;
 /** One symmetric K and one rounding operation; clamp the transfer, not each total. */
 export function ratingChange(a:Player,b:Player,score:Score):[number,number]{
  const expected=1/(1+10**((b.rating-a.rating)/400));
- const raw=Math.round(Math.max(kFactor(a),kFactor(b))*(score-expected)*farmFactor(Math.abs(a.rating-b.rating)));
+ const transfer=Math.max(kFactor(a),kFactor(b))*(score-expected)*farmFactor(Math.abs(a.rating-b.rating));
+ const raw=Math.sign(transfer)*Math.round(Math.abs(transfer));
  const delta=Math.max(-a.rating,Math.min(b.rating,raw));
  return [delta,-delta];
 }

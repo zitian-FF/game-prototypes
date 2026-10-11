@@ -311,11 +311,11 @@ export class MatchScene extends Phaser.Scene {
     }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
   }
 
-  private async showRating(score:0|.5|1):Promise<void>{
+  private async showRating(score?:0|.5|1):Promise<void>{
     const label=this.add.text(VIEW.left+12,VIEW.bottom-18,t('rating.pending'),{fontFamily:'Arial',fontSize:'15px',color:'#ffe08b',resolution:PIXEL_RATIO}).setDepth(155);
     const matchPromise=this.match.session.ratingMatch;
     const id=await matchPromise;if(!id){if(this.scene.isActive())label.setText(t('rating.unavailable'));return;}
-    let result=await reportRating(id,score);if(!this.scene.isActive())return;
+    let result=score===undefined?await ratingStatus(id):await reportRating(id,score);if(!this.scene.isActive())return;
     const alive=()=>this.scene.isActive()&&label.active;
     const refresh=()=>{if(!alive())return;if(result?.state==='settled')label.setText(t('rating.result',{points:result.rating,delta:(result.delta>0?'+':'')+result.delta}));else label.setText(!result?t('rating.unavailable'):result.state==='expired'?t('rating.unsettled'):t('rating.pending'));};refresh();
     if(result?.state!=='settled'&&result?.state!=='expired'){
@@ -346,6 +346,9 @@ export class MatchScene extends Phaser.Scene {
     if(this.departed)return;
     this.departed=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;
     this.time.removeAllEvents();
+    if(!this.over||this.nextSeries)void this.showRating(forfeited?1:undefined);
+    // A remote disappearance is not a voluntary local quit, including Bo3 breaks.
+    this.nextSeries=undefined;
     this.cancelSplash?.();
     this.cancelSplash = undefined;
     getNav(this).engage();

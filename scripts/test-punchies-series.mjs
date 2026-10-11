@@ -75,6 +75,9 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,
   if (id === '../i18n') return i18nStub;
   if (id === '../portal/gameplay') return { setGameplay() {}, trackFightScene() {} };
   if (id === '../portal/analytics') return { track() {} };
+  if (id === '../ui/menuNav') return { getNav:()=>({engage(){}}) };
+  if (id === './FightStage') return {makeButton(){}};
+  if (id === '../render/pixelRatio') return {VIEW:{cx:422,cy:195},PIXEL_RATIO:1};
   if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }) };
   return {};
 } });
@@ -115,6 +118,17 @@ final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
+
+for(const forfeited of [false,true]){
+ const disconnected=online(newSeries(3),0),claims=[];let ownQuits=0;
+ disconnected.over=true;disconnected.nextSeries={bestOf:3,roundNumber:2,wins:[1,0]};
+ disconnected.time.removeAllEvents=()=>{};disconnected.showRating=score=>claims.push(score);
+ const label={setOrigin(){return this;},setDepth(){return this;}};disconnected.add={text:()=>label};
+ disconnected.match.session.forfeit=async()=>ownQuits++;disconnected.match.session.leave=()=>{};
+ disconnected.opponentLeft(forfeited);assert.equal(claims.length,1);assert.equal(claims[0],forfeited?1:undefined);
+ await disconnected.leave();assert.equal(ownQuits,0,'returning after remote disconnect must never self-report a loss');
+}
+console.log('Explicit peer quit displays settlement; remote disappearance polls status without a win claim or local forfeit');
 
 // First-match showcase runs before the ordinary round countdown, not combat.
 const showcase=createSimState({timed:true,showcase:true,fighters:[{char:'mia'},{char:'bruno'}]});
