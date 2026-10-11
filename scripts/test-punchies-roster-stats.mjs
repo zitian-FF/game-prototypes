@@ -14,7 +14,7 @@ try{
  for(const score of Object.values(rosterScores('marco')))near(score,1);
  const before=rosterScores('marco');Object.assign(tune.characters.marco.uppercut,{damage:1.8,startup:9,recovery:20,staminaCost:2,reach:2,starRequirement:4});assert.deepEqual(rosterScores('marco'),before);
  tune.characters.marco=original;
- near(rosterUppercut('longan').damage,8);assert.equal(rosterUppercut('longan').stars,1);near(rosterUppercut('tyke').damage,36);assert.equal(rosterUppercut('tyke').stars,4);
+ near(rosterUppercut('longan').damage,6);assert.equal(rosterUppercut('longan').stars,1);near(rosterUppercut('tyke').damage,36);assert.equal(rosterUppercut('tyke').stars,4);
  const old=rosterScores('mia').endurance;tune.characters.mia.stun=1.9;near(rosterScores('mia').endurance,old);
  console.log('PASS: fixed ranges, clamps, Base 60%, minor differences, durability weighting, neutral Base ratios and uppercut separation');
 }catch(e){console.error(e.message);process.exitCode=1;}

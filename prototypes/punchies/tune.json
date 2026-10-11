@@ -754,7 +754,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.4,
+        "damage": 0.3,
         "staminaCost": 0.6666666666666666,
         "stunBuild": 0.4266666666666667,
         "push": 1,
