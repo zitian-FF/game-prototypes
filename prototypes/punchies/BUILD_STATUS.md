@@ -7,6 +7,6 @@ CrazyGames adapter checked against the real SDK v3.8.0 in its local demo mode (`
 ## Open questions
 Does online play ship on CrazyGames at all (third-party relays and a Worker)? Which launch scope (basic launch with 3 fighters) and when. Art launch work (thumbnails, cover, screenshots, trailer) must be discussed with the owner first; Codex has been told. Guard/dodge exposure windows (24 frames) and the stamina inversion (1 to 17 stamina cannot dodge, 0 can) are undecided.
 ## Known issues
-Non-English tutorial copy is stale until Codex re-translates the 13 changed keys. Bots do not use the hit/block lock or exhausted guard and dodge rules. The tutorial panel overlaps the ring's lower edge slightly on some aspect ratios. PR #270 (tuner workshop) was reported rebased by Codex but is not merged; PRs #335 and #336 await owner approval.
+Non-English tutorial copy is stale until Codex re-translates the 13 changed keys. Bots do not use the hit/block lock or exhausted guard and dodge rules. The tutorial panel overlaps the ring's lower edge slightly on some aspect ratios. PR #270 (tuner workshop) was reported rebased by Codex but is not merged; PRs #335 and #336 were approved by the owner and merged.
 ## Next proposed step
 Run the CrazyGames build in CrazyGames' QA tool, then decide launch scope and the online-mode question.
