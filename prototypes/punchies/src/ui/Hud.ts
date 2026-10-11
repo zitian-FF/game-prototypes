@@ -1,3 +1,5 @@
+import type { WireProfile } from '../progress/alias';
+import { titleName } from '../progress/titles';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { tune } from '../sim/tune';
@@ -22,10 +24,11 @@ export class Hud {
   showRoundSockets = true;
 
   private names: Phaser.GameObjects.Text[] = [];
+  private titles: Phaser.GameObjects.Text[] = [];
   private upperReady: Phaser.GameObjects.Text[] = [];
   private meterLabels: {text:Phaser.GameObjects.Text;part:string}[]=[];
 
-  constructor(private scene: Phaser.Scene, names: [string, string]) {
+  constructor(private scene: Phaser.Scene, names: [string, string], profiles: [WireProfile|null,WireProfile|null]=[null,null]) {
     this.g=scene.add.graphics().setDepth(90);
     const text=(x:number,y:number,s:string,size:number,color:string)=>scene.add.text(x,y,s,{fontFamily:'Arial',fontSize:`${size}px`,fontStyle:'bold',color,stroke:'#061020',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(92);
     this.timer=text(VIEW.cx,VIEW.top+20,'99',29,'#fff1d1').setStroke('#030816',3).setFontFamily('Impact, Arial Black, sans-serif');
@@ -37,6 +40,9 @@ export class Hud {
       const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
       name.setScale(Math.min(1,VIEW.width*.18/name.width));
       this.names.push(name);
+      const title=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+83,profiles[i]?titleName(profiles[i]!.title):'',10,'#caa2ff');
+      title.setScale(Math.min(1,VIEW.width*.18/Math.max(1,title.width)));
+      this.titles.push(title);
       this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,t('common.upper'),10,'#ffdf55').setVisible(false));
     }
   }
@@ -61,6 +67,7 @@ export class Hud {
     }
     this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)));
     this.names.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
+    this.titles.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
     for(let i=0;i<2;i++){
       if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);continue;}
       const f=s.fighters[i],left=i===0;

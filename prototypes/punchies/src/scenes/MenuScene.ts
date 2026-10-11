@@ -21,6 +21,7 @@ import { inputLayoutEditor } from '../ui/inputLayoutEditor';
 import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
+import { progressView } from '../progress/progress';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -84,6 +85,7 @@ export class MenuScene extends Phaser.Scene {
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
+    titleButton(this,VIEW.right-110,VIEW.top+70,190,38,t('profile.menu',{level:progressView().level}),()=>startScreen(this,'Profile'),false,130,'purple');
     // Language picker on the landing screen. Only shown once a second language has translations (always in debug, to test).
     if (availableLanguages(isDebug()).length > 1) {
       const current = LANGUAGES.find((l) => l.code === getLanguage())?.native ?? getLanguage();

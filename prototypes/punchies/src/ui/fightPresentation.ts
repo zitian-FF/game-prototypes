@@ -1,3 +1,5 @@
+import type { WireProfile } from '../progress/alias';
+import { titleName } from '../progress/titles';
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { getLanguage, t } from '../i18n';
@@ -15,7 +17,7 @@ export class MatchIntro {
   private vs: Phaser.GameObjects.Text;
   private complete = false;
 
-  constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default']) {
+  constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default'],profiles:[WireProfile|null,WireProfile|null]=[null,null]) {
     this.cover = scene.add.container().setDepth(320);
     this.cover.add(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x081326, 0.97).setInteractive());
     const gym=artImage(scene,'gym_background',VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0);
@@ -51,6 +53,14 @@ export class MatchIntro {
         stroke:'#071326',strokeThickness:4,resolution:PIXEL_RATIO}).setOrigin(0.5);
       if(name.width>VIEW.width*0.40)name.setScale(VIEW.width*0.40/name.width);
       group.add(name);
+      const profile=profiles[side];
+      if(profile){
+        for(const [y,label,color] of [[64,`${profile.alias} · ${t('profile.level',{level:profile.level})}`,'#fff1d1'],[86,titleName(profile.title),'#caa2ff']] as const){
+          const status=scene.add.text(x,VIEW.top+y,label,{fontFamily:'Arial',fontSize:'14px',fontStyle:'bold',color,stroke:'#071326',strokeThickness:3,resolution:PIXEL_RATIO}).setOrigin(.5);
+          status.setScale(Math.min(1,VIEW.width*.32/Math.max(1,status.width)));
+          group.add(status);
+        }
+      }
       this.cover.add(group);this.portraits.push(group);
     });
     this.flames=scene.add.graphics();this.cover.add(this.flames);

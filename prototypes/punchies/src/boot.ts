@@ -10,6 +10,7 @@ import { computeView, PIXEL_RATIO, refitCamera, setPendingView, updateRenderScal
 import { GameMenuScene } from './scenes/GameMenuScene';
 import { TrainingScene } from './scenes/TrainingScene';
 import { MenuScene } from './scenes/MenuScene';
+import { ProfileScene } from './scenes/ProfileScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { MatchScene } from './scenes/MatchScene';
 import { VsAIScene } from './scenes/VsAIScene';
@@ -47,7 +48,7 @@ installMusic(game);
 // keeps running (restarting it would break online play): its ring stays
 // centred and the extra space is simply shown.
 let resizeTimer = 0;
-const MENU_SCENES = ['Menu', 'CharSelect', 'Shop', 'SurvivalEntry'];
+const MENU_SCENES = ['Menu', 'CharSelect', 'Shop', 'Profile', 'SurvivalEntry'];
 function onScreenShape(): void {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
@@ -81,6 +82,7 @@ game.scene.add('ScreenTransition', ScreenTransition, false);
 game.scene.add('Menu', MenuScene, false);
 game.scene.add('SurvivalEntry', SurvivalEntryScene, false);
 game.scene.add('Survival', SurvivalScene, false);
+game.scene.add('Profile', ProfileScene, false);
 game.scene.add('GameMenu', GameMenuScene, false);
 game.scene.add('Shop', ShopScene, false);
 game.scene.add('Training', TrainingScene, false);
