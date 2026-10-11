@@ -40,8 +40,8 @@ wave has one randomly selected existing fighter using seeded Easy AI. Spawns
 retry bounded safe edge positions, never overlap existing fighters, never exceed
 the active cap; a blocked boss spawn is retried later, taking priority over zombies.
 
-Facing tracks the nearest living enemy only while no punch exists. Full swings
-lock facing through recovery. Each swing may contact multiple enemies but only
+Facing tracks the nearest living enemy whenever no punch or dodge is committed, including neutral hitstop and final movement/separation positions. Full swings
+lock facing through recovery; dodges keep their committed facing. The production scene uses that closest enemy for its stage context. Each swing may contact multiple enemies but only
 once per enemy; perfect guard can cancel the remaining swing. Each defender gets
 individual stun and knockback. Separation is independent of pair combat. No core
 boxing step changes; the new adapter exports existing operations for opt-in use.
@@ -64,3 +64,8 @@ simulation can be cloned/replayed deterministically, but cannot be persisted as 
   `proto/punchies/casual-elo`. No deployed rating API, ranks, global queue or leaderboard.
 - Do not label ranked matchmaking available or imply Survival grants XP. Future
   approved reward integration can use runId + clearedWave for deduplication.
+
+## Owner correction (2026-10-11)
+Ordinary Zombie health is a seeded inclusive integer draw from `zombieMinHp:5` through `zombieMaxHp:10`, at every wave. This supersedes the earlier durability growth rule. Only speed/spawn pacing continue their existing wave growth. Boss health remains its selected fighter’s roster HP. Changes invalidate old versioned checkpoints through the existing config hash.
+
+QA: `test-punchies-survival.mjs` covers deterministic replay, all six HP values across seeds and waves 1/2/5/50, boss health, nearest switches, neutral hitstop, punch recovery and dodge locks. `tools/survival-target-review.html?screen=active` uses the actual production Survival scene and sim with explicit test-position/input controls and mock saves, never player saves. The Test jab control moves the closest target during the swing and asserts retained direction through recovery, then reacquisition. Brave evidence: outputs/ranked-survival-fixes/target-lock-reacquire.png, no console errors.

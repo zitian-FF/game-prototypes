@@ -16,7 +16,7 @@ function load(file) {
   return exports;
 }
 const root = path.resolve('prototypes/punchies/src');
-const {createRun, stepSurvival, startNextWave, survivalView, survivalBalanceVersion, survivalConfig:c} = load(root+'/survival/sim.ts');
+const {createRun, stepSurvival, startNextWave, survivalView, survivalBalanceVersion, survivalConfig:c, closestEnemy} = load(root+'/survival/sim.ts');
 const {SurvivalStore} = load(root+'/survival/save.ts');
 const {arenaCombat, punchPoint, createSimState, step} = load(root+'/sim/sim.ts');
 const {NEUTRAL_INPUT:N} = load(root+'/sim/types.ts');
@@ -102,7 +102,7 @@ for(let t=0;t<2200;t++){
   for(const e of crowd.enemies){const f=e.fighter,rad=normalHurtRadius(f);assert.ok(f.x>=tune.ring.left+rad-1e-7&&f.x<=tune.ring.right-rad+1e-7);assert.ok(f.y>=tune.ring.top+rad-1e-7&&f.y<=tune.ring.bottom-rad+1e-7);assert.equal(e.visualId,'zombie');assert.equal(f.char,'marco');}
 }
 const grow=fresh();const hp=grow.enemies[0].maxHealth,speed=grow.enemies[0].speedRatio;grow.status='intermission';startNextWave(grow);
-assert.ok(grow.enemies[0].maxHealth>hp&&grow.enemies[0].speedRatio>speed);
+assert.ok(grow.enemies[0].maxHealth>=c.zombieMinHp&&grow.enemies[0].maxHealth<=c.zombieMaxHp);assert.ok(grow.enemies[0].speedRatio>speed);
 
 // Automatic checkpoint, balance mismatch, consumption, PB and invalid save.
 const data=new Map(),adapter={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
@@ -131,3 +131,30 @@ for(let i=0;i<2;i++){arenaCombat.processInput(manual,i,inputs[i],[]);arenaCombat
 assert.equal(JSON.stringify(regular.fighters),JSON.stringify(manual.fighters));
 assert.ok(!fs.readFileSync(root+'/survival/sim.ts','utf8').includes('awardMatch'));
 console.log('PASS Survival: deterministic zombies/bosses, 60s waves, defeat, kill healing, swing facing, multi-hit dedupe, spawn cap/bounds, checkpoint/version/PB and boxing adapter regression');
+
+// Nearest acquisition refreshes at final movement positions, including neutral hitstop.
+const aim=fresh();aim.enemies=aim.enemies.slice(0,2);aim.spawnWait=9999;
+aim.enemies.forEach(e=>{e.fighter.anchored=true;e.attackWait=9999;});
+const [east,north]=aim.enemies;east.fighter.x=aim.player.x+100;east.fighter.y=aim.player.y;
+north.fighter.x=aim.player.x;north.fighter.y=aim.player.y-130;
+stepSurvival(aim,N);assert.equal(closestEnemy(aim).id,east.id);assert.ok(aim.player.fx>.99);
+north.fighter.y=aim.player.y-80;stepSurvival(aim,N);assert.equal(closestEnemy(aim).id,north.id);assert.ok(aim.player.fy<-.99);
+aim.hitstop=2;east.fighter.x=aim.player.x+70;stepSurvival(aim,N);assert.ok(aim.player.fx>.99,'neutral hitstop does not freeze target facing');
+stepSurvival(aim,N);stepSurvival(aim,{...N,dodge:true,mx:0,my:100});const dodgeFacing=[aim.player.fx,aim.player.fy];
+north.fighter.y=aim.player.y-60;stepSurvival(aim,N);assert.deepEqual([aim.player.fx,aim.player.fy],dodgeFacing,'committed dodge keeps facing');
+// Ordinary HP is a seeded inclusive integer range, independent of wave. Boss remains roster HP.
+const hpSeen=new Set();for(let seed=0;seed<80;seed++)for(const wave of [1,2,5,50]){
+ const r=createRun({...options,seed});if(wave>1){r.status='intermission';r.wave=wave-1;startNextWave(r);}
+ for(const e of r.enemies){if(e.kind==='zombie'){assert.ok(Number.isInteger(e.maxHealth)&&e.maxHealth>=5&&e.maxHealth<=10);hpSeen.add(e.maxHealth);}else assert.equal(e.maxHealth,maxHealth(e.fighter));}
+}
+assert.deepEqual([...hpSeen].sort((a,b)=>a-b),[5,6,7,8,9,10]);
+console.log('PASS closest target switches, hitstop acquisition, dodge lock and seeded 5–10 HP at early/late waves');
+
+const walking=fresh();walking.enemies=walking.enemies.slice(0,2);walking.spawnWait=99999;
+walking.enemies.forEach(e=>{e.fighter.anchored=true;e.attackWait=99999;});
+walking.enemies[0].fighter.x=walking.player.x+120;walking.enemies[0].fighter.y=walking.player.y;
+walking.enemies[1].fighter.x=walking.player.x-121;walking.enemies[1].fighter.y=walking.player.y;
+assert.equal(closestEnemy(walking).id,walking.enemies[0].id);
+stepSurvival(walking,{...N,mx:-100});assert.equal(closestEnemy(walking).id,walking.enemies[1].id);
+assert.ok(walking.player.fx<-.99,'face nearest at final walking position in the same tick');
+walking.enemies[1].fighter.health=0;stepSurvival(walking,N);assert.ok(walking.player.fx>.99,'dead enemy is excluded from acquisition');
