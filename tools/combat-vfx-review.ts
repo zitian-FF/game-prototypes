@@ -13,6 +13,7 @@ import {applyCameraPixelRatio,VIEW,PIXEL_RATIO} from '../prototypes/punchies/src
 const params=new URLSearchParams(location.search),mode=params.get('mode')??'sweet',zoom=Number(params.get('zoom')??1);
 let rounds=0;let restartRemaining=0;let drawCalls=0;let lastDrawCalls=0;let peakDrawCalls=0;
 class TrainingReview extends TrainingScene {
+ create(){super.create();this.scene.stop('Menu');}
  private lastHealth:number|null=null;
  update(time:number,delta:number){
   super.update(time,delta);const sim=(this as any).sim as SimState|undefined;if(!sim)return;
@@ -28,7 +29,7 @@ class TrainingReview extends TrainingScene {
 class Review extends Phaser.Scene {
  private stage!:FightStage;private sim!:SimState;private built=false;private age=0;private intro?:MatchIntro;
  constructor(){super('VfxReview');}
- create(){applyCameraPixelRatio(this);this.built=false;this.age=0;whenGroupsReady(this,fighterGroups(['marco','mia']),()=>{
+ create(){this.scene.stop('Menu');applyCameraPixelRatio(this);this.built=false;this.age=0;whenGroupsReady(this,fighterGroups(['marco','mia']),()=>{
   this.sim=createSimState({timed:false,fighters:[{char:'marco'},{char:'mia'}]});this.sim.tick=1000;this.sim.fightStartTick=0;
   this.stage=new FightStage(this,['MARCO','MIA'],-1,false);
   this.stage.draw(this.sim,1000);(this.stage as any).persp.beginRound(this.time.now-tune.view.arena.roundZoomMs*zoom);
