@@ -381,8 +381,6 @@
   "tutorial.your_fist_travels_out_too": "تمتد قبضتك إلى الأمام. إذا كنت قريبًا جدًا، تكون الضربة ضعيفة. عند امتداد الذراع بالكامل، تكون الإصابة دقيقة. تراجع قليلًا وسدد إصابة دقيقة.",
   "ui.back_hint": "Esc / B: رجوع",
   "charselect.durability": "الصلابة",
-  "charselect.uppercut_stats": "صاعدة: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "صحة {hp} · مقاومة صعق {stun}",
   "rating.loading": "نقاط التحميل…",
   "rating.points": "{points} نقاط",
   "rating.unavailable": "النقاط غير متاحة",
@@ -460,5 +458,6 @@
   "profile.unlock_level": "يُفتح عند المستوى {level}",
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "عبر الإنترنت (بشكل غير رسمي)",
-  "menu.online_ranked": "عبر الإنترنت (مصنف)"
+  "menu.online_ranked": "عبر الإنترنت (مصنف)",
+  "charselect.uppercut_stars": "صاعدة: {stars} ★"
 }

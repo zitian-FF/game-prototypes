@@ -3916,7 +3916,7 @@
     "cat": "Characters",
     "desc": "Tyke uppercut: damage multiplier.",
     "min": 0.25,
-    "max": 2,
+    "max": 3,
     "step": 0.05
   },
   "characters.dragon.uppercut.damage": {

@@ -381,8 +381,6 @@
   "tutorial.your_fist_travels_out_too": "拳は前に伸びます。近すぎると弱いヒットになり、腕を伸ばし切るとクリーンヒットになります。少し下がってクリーンヒットを当てましょう。",
   "ui.back_hint": "Esc / B: 戻る",
   "charselect.durability": "耐久力",
-  "charselect.uppercut_stats": "アッパー: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · 気絶耐性 {stun}",
   "rating.loading": "ロードポイント…",
   "rating.points": "{points} ポイント",
   "rating.unavailable": "ポイントは利用できません",
@@ -460,5 +458,6 @@
   "profile.unlock_level": "レベル{level}でアンロック",
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "オンライン（カジュアル）",
-  "menu.online_ranked": "オンライン（ランキング）"
+  "menu.online_ranked": "オンライン（ランキング）",
+  "charselect.uppercut_stars": "アッパー: {stars} ★"
 }

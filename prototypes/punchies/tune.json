@@ -466,7 +466,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1.0,
+        "damage": 1.55,
         "staminaCost": 1.0,
         "stunBuild": 1.0,
         "push": 1,
@@ -514,7 +514,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.6,
+        "damage": 0.8,
         "staminaCost": 0.8333333333333334,
         "stunBuild": 0.5866666666666667,
         "push": 1,
@@ -562,7 +562,7 @@
         "fatigueBars": 1
       },
       "uppercut": {
-        "damage": 1.1,
+        "damage": 1.7,
         "staminaCost": 1.0833333333333333,
         "stunBuild": 1.12,
         "push": 1.1,
@@ -610,7 +610,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.65,
+        "damage": 0.9,
         "staminaCost": 1.0833333333333333,
         "stunBuild": 0.5866666666666667,
         "push": 1,
@@ -658,7 +658,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1.8,
+        "damage": 2.4,
         "staminaCost": 1.6666666666666667,
         "stunBuild": 1.2,
         "push": 1,
@@ -706,7 +706,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.95,
+        "damage": 1.45,
         "staminaCost": 1.0,
         "stunBuild": 0.9333333333333333,
         "push": 1,
@@ -802,7 +802,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.6,
+        "damage": 0.85,
         "staminaCost": 1.0,
         "stunBuild": 0.5866666666666667,
         "push": 1,
@@ -850,7 +850,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1.15,
+        "damage": 1.75,
         "staminaCost": 1.25,
         "stunBuild": 1.0666666666666667,
         "push": 1,
@@ -898,7 +898,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 0.55,
+        "damage": 0.75,
         "staminaCost": 0.8333333333333334,
         "stunBuild": 0.5333333333333333,
         "push": 1,

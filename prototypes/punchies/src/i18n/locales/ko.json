@@ -381,8 +381,6 @@
   "tutorial.your_fist_travels_out_too": "주먹은 앞으로 뻗어 나갑니다. 너무 가까우면 약한 타격이 되고, 팔이 완전히 뻗었을 때는 정타가 됩니다. 조금 뒤로 물러나 정타를 맞히세요.",
   "ui.back_hint": "Esc / B: 뒤로",
   "charselect.durability": "내구력",
-  "charselect.uppercut_stats": "어퍼: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · 기절 저항 {stun}",
   "rating.loading": "로딩 지점…",
   "rating.points": "{points} 포인트",
   "rating.unavailable": "포인트 사용 불가",
@@ -460,5 +458,6 @@
   "profile.unlock_level": "레벨 {level}에서 잠금 해제",
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "온라인 (캐주얼)",
-  "menu.online_ranked": "온라인 (랭킹)"
+  "menu.online_ranked": "온라인 (랭킹)",
+  "charselect.uppercut_stars": "어퍼: {stars} ★"
 }

@@ -414,8 +414,6 @@
   "tutorial.your_fist_travels_out_too": "Your fist travels out. Too close = SOUR (weak); full extension = SWEET. Land a SWEET hit.",
   "ui.back_hint": "Esc / B: Back",
   "charselect.durability": "DURABILITY",
-  "charselect.uppercut_stats": "UPPER: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · STUN RESIST {stun}",
   "rating.loading": "Loading points…",
   "rating.points": "{points} POINTS",
   "rating.unavailable": "Points unavailable",
@@ -460,5 +458,6 @@
   "profile.unlock_level": "Unlock at Lv. {level}",
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "Online (Casual)",
-  "menu.online_ranked": "Online (Ranked)"
+  "menu.online_ranked": "Online (Ranked)",
+  "charselect.uppercut_stars": "UPPER: {stars} ★"
 }
