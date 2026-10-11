@@ -313,6 +313,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private async showRating(score?:0|.5|1):Promise<void>{
+    if(!this.match.session.rated)return;
     const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
     const label=status.label;
     status.set(ratingLabel({phase:'pending'},t));
@@ -335,7 +336,7 @@ export class MatchScene extends Phaser.Scene {
   private tryRematch(): void {
     if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
     this.advancing = true;
-    if(!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
+    if(this.match.session.rated&&!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
     this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
   }
 

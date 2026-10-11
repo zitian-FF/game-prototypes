@@ -117,6 +117,11 @@ final.match.session.beginRating=()=>{};final.match.localIdx=0;
 final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');
+const casualResult=online(newSeries(1),0);
+await sceneExports.MatchScene.prototype.showRating.call(casualResult,1);
+await sceneExports.MatchScene.prototype.showRating.call(casualResult,undefined);
+// No add/label/API mocks exist here: any casual rating work would throw.
+console.log('Casual result and disconnect do not create rating UI or requests');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
 
 for(const forfeited of [false,true]){

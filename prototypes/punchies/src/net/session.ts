@@ -28,13 +28,13 @@ export function relayStatus(): { open: number; total: number } {
 }
 
 export type CtlMessage =
-  | { k: 'hello'; role: Role; profile?: WireProfile; rating?:{id:string;points:number} }
+  | { k: 'hello'; role: Role; rated?:boolean; profile?: WireProfile; rating?:{id:string;points:number} }
   | { k: 'ratingSet';nonce:string }
-  | { k:'paired';profile?:WireProfile;rating?:{id:string;points:number} }
+  | { k:'paired';rated?:boolean;profile?:WireProfile;rating?:{id:string;points:number} }
   | { k: 'full' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
-  | { k: 'start'; round: number; delay: number; tune: string; chars: [string, string];skins?:[string,string];ratingNonce?:string }
+  | { k: 'start'; rated?:boolean; round: number; delay: number; tune: string; chars: [string, string];skins?:[string,string];ratingNonce?:string }
   | { k: 'pick'; char: string | null;hover?:string;skin?:string;available?:string[] }
   | { k: 'rematch'; round: number }
   | { k: 'reselect'; round: number }
@@ -60,8 +60,8 @@ export class NetSession {
   private candidates=new Map<string,CtlMessage & {k:'hello'}>();
   private pairingTimer:ReturnType<typeof setTimeout>|undefined;
   private closed=false;
-  async beginRating(nonce:string){this.ratingMatch=this.peerRating?createRatingMatch(this.peerRating.id,nonce):Promise.resolve(null);return this.ratingMatch;}
-  async report(score:0|.5|1,quit=false){const id=await this.ratingMatch;return id?reportRating(id,score,quit):null;}
+  async beginRating(nonce:string){this.ratingMatch=this.rated&&this.peerRating?createRatingMatch(this.peerRating.id,nonce):Promise.resolve(null);return this.ratingMatch;}
+  async report(score:0|.5|1,quit=false){if(!this.rated)return null;const id=await this.ratingMatch;return id?reportRating(id,score,quit):null;}
 
   /** The opponent's alias, title and level, validated. Safe defaults until their hello arrives (older clients send none). */
   peer: WireProfile = peerProfile(null);
@@ -77,8 +77,9 @@ export class NetSession {
     readonly code: string,
     readonly role: Role,
     iceServers: RTCIceServer[] | undefined,
+    readonly rated = false,
   ) {
-    this.room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAY_URLS }, turnConfig: iceServers }, `room-${code}`);
+    this.room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAY_URLS }, turnConfig: iceServers }, `${this.rated?'ranked-room':'room'}-${code}`);
     this.ctl = this.room.makeAction('ctl') as unknown as Channel<CtlMessage>;
     this.inp = this.room.makeAction('inp') as unknown as Channel<InputPacket>;
     this.hsh = this.room.makeAction('hsh') as unknown as Channel<HashPacket>;
@@ -92,7 +93,7 @@ export class NetSession {
     };
 
     this.room.onPeerJoin = (id: string) => {
-      void loadRating().then(me=>{if(this.closed)return;return this.ctl.send({ k:'hello',role:this.role,profile:localWireProfile(),...(me?{rating:{id:me.myId,points:me.rating}}:{})},{target:id});}).catch(()=>{});
+      void (this.rated?loadRating():Promise.resolve(null)).then(me=>{if(this.closed)return;return this.ctl.send({ k:'hello',role:this.role,rated:this.rated,profile:localWireProfile(),...(me?{rating:{id:me.myId,points:me.rating}}:{})},{target:id});}).catch(()=>{});
     };
     this.room.onPeerLeave = (id: string) => {
       this.candidates.delete(id);
@@ -108,7 +109,8 @@ export class NetSession {
     if(this.closed||!m||typeof m!=='object')return;
     if (m.k === 'hello') {
       if(m.role!=='host'&&m.role!=='guest')return;
-      m={...m,rating:peerRating(m.rating)??undefined};
+      if((m.rated===true)!==this.rated)return;
+      m={...m,rating:this.rated?peerRating(m.rating)??undefined:undefined};
       if (m.role === this.role) {
         // Two hosts on one code: the room code collided.
         if (this.role === 'host' && !this.peerId) this.onRejected('collision');
@@ -123,7 +125,7 @@ export class NetSession {
           this.candidates.set(from,m);
           if(!this.pairingTimer)this.pairingTimer=setTimeout(()=>{
             this.pairingTimer=undefined;
-            const mine=currentRating()?.rating??1000;
+            const mine=this.rated?currentRating()?.rating??1000:1000;
             const entries=[...this.candidates.entries()].sort((a,b)=>Math.abs((a[1].rating?.points??1000)-mine)-Math.abs((b[1].rating?.points??1000)-mine));
             const chosen=entries[0];this.candidates.clear();if(!chosen)return;
             this.pair(chosen[0],chosen[1]);
@@ -133,22 +135,22 @@ export class NetSession {
       }
       return;
     }
-    if(m.k==='paired'&&this.role==='guest'&&!this.peerId&&this.candidates.has(from)){this.candidates.clear();this.pair(from,{...m,k:'hello',role:'host'});return;}
+    if(m.k==='paired'&&this.role==='guest'&&!this.peerId&&this.candidates.has(from)&&(m.rated===true)===this.rated){this.candidates.clear();this.pair(from,{...m,k:'hello',role:'host'});return;}
     if (m.k === 'full') {
       if (!this.peerId) this.onRejected('full');
       return;
     }
     if (from === this.peerId) {
       // Bind rematch rating identity even while scenes are transitioning.
-      if(m.k==='ratingSet'&&this.role==='guest'&&typeof m.nonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.nonce))void this.beginRating(m.nonce);
+      if(this.rated&&m.k==='ratingSet'&&this.role==='guest'&&typeof m.nonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.nonce))void this.beginRating(m.nonce);
       this.onCtl(m);
     }
   }
 
   private pair(from:string,m:CtlMessage & {k:'hello'}){
     this.peerId=from;this.peer=peerProfile(m.profile);
-    this.peerRating=peerRating(m.rating);
-    if(this.role==='host')void this.ctl.send({k:'paired',profile:localWireProfile(),...(currentRating()?{rating:{id:currentRating()!.myId,points:currentRating()!.rating}}:{})},{target:from});
+    this.peerRating=this.rated?peerRating(m.rating):null;
+    if(this.role==='host')void this.ctl.send({k:'paired',rated:this.rated,profile:localWireProfile(),...(this.rated&&currentRating()?{rating:{id:currentRating()!.myId,points:currentRating()!.rating}}:{})},{target:from});
     this.onPaired();
   }
   send(m: CtlMessage): void {
