@@ -6,6 +6,7 @@ const fill = (s, p) => (p ? s.replace(/\{(\w+)\}/g, (w, n) => (n in p ? String(p
 export const i18nStub = {
   t: (key, params) => fill(en[key] ?? key, params),
   tOr: (key, fallback, params) => fill(en[key] ?? fallback, params),
+  setEnglishOverrides: () => {},
   getLanguage: () => 'en',
   isRtl: () => false,
 };

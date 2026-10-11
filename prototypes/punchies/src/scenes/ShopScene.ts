@@ -7,6 +7,7 @@ import { isDebug } from '../debug/debugPanel';
 import { TEST_BUILD, TEST_TOKENS } from '../testBuild';
 import { sfx } from '../audio/sfx';
 import { RewardReveal } from '../ui/rewardReveal';
+import { rarityLabel, styleRarity } from '../ui/rewardRarity';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { artKey, backdrop } from '../render/art';
 import { skinTexture } from '../render/skins';
@@ -107,7 +108,9 @@ export class ShopScene extends Phaser.Scene {
       else {const g=this.add.graphics().fillStyle(item.accent,.6).fillCircle(x+40,y+17,8).fillRoundedRect(x+27,y+28,26,23,7);this.root.add(g);}
       this.text(x+70,y+7,itemName(item),11).setWordWrapWidth(225);
       const probability=rewards.find(r=>r.item.id===item.id)?.probability??0;
-      this.text(x+70,y+26,`${item.kind==='fighters'?t('shop.fighter'):unique?t('shop.unique'):t('shop.palette_swap')} · ${Math.round(probability*100)}%${this.state.owned.includes(item.id)?t('shop.owned'):''}`,11,'#ffdc72');
+      const rarity=this.text(x+70,y+26,rarityLabel(item),11);
+      styleRarity(this,rarity,item);
+      this.text(x+76+rarity.width,y+26,`· ${Math.round(probability*100)}%${this.state.owned.includes(item.id)?t('shop.owned'):''}`,11,'#dbe9fa');
     });
     if(!offers.length)this.text(x+162,155,t('common.collection_complete'),14).setOrigin(.5);
     if(kind==='fighters')this.text(x+16,193,t('shop.guaranteed_fighter_of_the_day'),11,'#a8c1d8').setWordWrapWidth(289);

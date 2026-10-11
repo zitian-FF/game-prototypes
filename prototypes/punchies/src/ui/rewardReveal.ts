@@ -11,6 +11,7 @@ import type { ShopItem } from '../shop/draft';
 import { reducedMotion } from './presentation';
 import { bindButtonFeedback, cartoonButton } from './cartoonChrome';
 import { navRegister } from './menuNav';
+import { rarityLabel, styleRarity } from './rewardRarity';
 
 /** Reward is already saved before this presentation starts. */
 export class RewardReveal {
@@ -63,7 +64,8 @@ export class RewardReveal {
       if(this.destroyed)return;
       const band=scene.add.rectangle(VIEW.cx,VIEW.bottom-70,VIEW.width,140,0x030711,.85);
       this.root.add(band);
-      const title=this.label(VIEW.cx,VIEW.bottom-103,item.kind==='skins'?t('reveal.new_skin'):t('reveal.new_fighter'),14,'#ffd261');
+      const title=this.label(VIEW.cx,VIEW.bottom-103,rarityLabel(item),14,'#ffffff');
+      styleRarity(scene,title,item);
       const name=this.label(VIEW.cx,VIEW.bottom-75,itemName(item),32,'#fff3db');
       name.setScale(Math.min(1,VIEW.width*.9/name.width));
       title.setAlpha(0);name.setAlpha(0);

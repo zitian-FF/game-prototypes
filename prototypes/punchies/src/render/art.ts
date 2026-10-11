@@ -24,6 +24,18 @@ const textureKey = (name: string) => `punchies:${name}`;
 // Texture key of a loaded loose art file (e.g. portrait_marco), or null.
 export function artKey(scene: Phaser.Scene, name: string): string | null {
   const k = textureKey(name);
+  // This unique portrait was authored to the thigh; all portrait consumers
+  // share a waist-framed texture, preserving the original source asset.
+  if(name==='portrait_mia_flaming_kunoichi'&&scene.textures.exists(k)){
+    const framed=k+':waist';
+    if(!scene.textures.exists(framed)){
+      const source=scene.textures.get(k).getSourceImage() as HTMLImageElement;
+      const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=Math.round(source.height*.75);
+      canvas.getContext('2d')!.drawImage(source,0,0);
+      scene.textures.addCanvas(framed,canvas);
+    }
+    return framed;
+  }
   return scene.textures.exists(k) ? k : null;
 }
 const hashOf = (path: string) => index.manifest.find((f) => f.path === path)?.hash ?? '';

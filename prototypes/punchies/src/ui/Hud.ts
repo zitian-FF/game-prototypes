@@ -73,7 +73,9 @@ export class Hud {
       const ready=this.upperReady[i];
       ready.setVisible(showUpper&&f.stars>=uppercutStars(f));
       const pulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
-      ready.setAlpha(.65+.35*pulse).setScale(1+.08*pulse);
+      ready.setAlpha(.9+.1*pulse).setScale(1.08+.12*pulse)
+        .setColor('#fff3a1').setStroke('#8a4600',2)
+        .setShadow(0,0,'#ffce32',8+8*pulse,true,true);
     }
     this.timer.setText(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--').setVisible(show('timer'));
   }

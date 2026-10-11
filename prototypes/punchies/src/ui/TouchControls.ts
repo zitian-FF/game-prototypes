@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { reducedMotion } from './presentation';
 import { t } from '../i18n';
 import type { IntentLayer, TapIntent } from '../input/intents';
 import { tune } from '../sim/tune';
@@ -278,7 +279,10 @@ export class TouchControls {
       g.fillStyle(i < stars ? 0xffe03a : 0x222222, 1);
       g.fillCircle(px, py, 4);
     }
-    this.labels[this.labels.length - 1].setAlpha(ready ? 1 : 0.5);
+    const label=this.labels[this.labels.length - 1];
+    const glowPulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
+    label.setAlpha(ready?1:.5).setColor(ready?'#fff3a1':'#fff6dc')
+      .setShadow(0,0,'#ffce32',ready?8+8*glowPulse:0,ready,ready);
   }
 }
 

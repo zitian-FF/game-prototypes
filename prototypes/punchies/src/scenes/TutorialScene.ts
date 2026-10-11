@@ -290,8 +290,8 @@ export class TutorialScene extends Phaser.Scene {
     this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
     this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
     this.stage.hideInfoButton();
-    // Keep the full HUD above the lesson; actions share its heading row.
-    const panelTop = VIEW.top + 92;
+    // Dock the lesson at the screen top to keep the ring visible.
+    const panelTop = VIEW.top + 8;
     this.lessonPanel = this.add.graphics().setDepth(129);
     titleButton(this,VIEW.cx+173,panelTop+18,66,30,t('tutorial.skip'),()=>this.advance());
     titleButton(this,VIEW.cx+247,panelTop+18,66,30,t('tutorial.exit'),()=>startScreen(this,'Menu'),false,130,'red','back');
@@ -409,7 +409,7 @@ export class TutorialScene extends Phaser.Scene {
     this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: STEPS.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
     this.body.setText(st.text(binder()));
     this.lessonPanel.clear();
-    cartoonPanel(this.lessonPanel,VIEW.cx-290,VIEW.top+92,580,Math.max(85,54+this.body.height),0x28517d,12);
+    cartoonPanel(this.lessonPanel,VIEW.cx-290,VIEW.top+8,580,Math.max(85,54+this.body.height),0x28517d,12);
 
     if (!this.finished) {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);

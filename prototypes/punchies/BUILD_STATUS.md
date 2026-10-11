@@ -1,12 +1,12 @@
 ## Current milestone
-Fighter-specific single-charge uppercuts approved for live release.
+Validated presentation release, ready to merge and deploy.
 ## What was implemented
-Each fighter fills a one-, two-, three- or four-star meter for one uppercut; firing empties it. Longan earns a weak one-star uppercut (8 HP damage). Tyke earns a four-star finisher (36 HP damage, 6-frame startup, 26-frame recovery). All ten fighters have uppercut stats matching their playstyles. AI, HUD and touch controls use the fighter requirement; the tuner exposes whole-star requirements. Tutorial copy describes the single-charge rule in all six languages.
+Epic/Legendary reward labels; settings language flags; higher tutorial panel; charged Uppercut glow; outlined hit sparks with subdued sour hits; layered pre-fight flames; shared Kunoichi waist crop; no repeated selection clash on confirmation; Nadia's approved V-sign portrait in both R2 art profiles. Approved combat terminology is regenerated from the private Sheet.
 ## Key technical decisions
-Retain normal-guard bypass and existing Perfect Guard/dodge defenses. Preserve Base's three-star benchmark and all other punch/core tuning. Requirements are integer stars from 1 to 4. Uppercuts earn no replacement stars. Add real-simulation charge, cap, consumption, damage and guard-bypass tests to deployment verification.
+Preserved main's tuning and individual Uppercut charges. Lossless build-index packing reconstructs exact frame names and retains full asset hashes. Sources and prior R2 bundles remain recoverable outside Git. Standard package 17,192,088 bytes; compact 9,970,545 bytes. Nadia standard portrait 187,768 bytes, compact 80,568 bytes.
 ## Open questions
-Human playtesting should evaluate frequent Longan pressure and Tyke's earned burst across matchups.
+Automatic approval review blocked aligning legacy char.*.nick Sheet cells with Claude's playstyle descriptions and adding two new base/tutorial rows; owner approval requested. Further editorial term changes remain unapproved.
 ## Known issues
-Existing machine-translated copy is not native-reviewed. Compact delivery retains its mandatory 10 MB gate.
+Compact package has 29,455 bytes headroom. Existing localized archetype nicknames still need alignment with main's new playstyle descriptions; no speculative translations included.
 ## Next proposed step
-Verify live deployment, then playtest the experimental roster and refine uppercut values in the tuner.
+Merge, monitor deployment and verify the live build; align the Sheet when approved.

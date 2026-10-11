@@ -89,8 +89,8 @@ export class CharacterSelectView {
   g.fillStyle(0x080d20,.78).fillRoundedRect(218,98,408,233,12);
   state.panels.forEach((p,s)=>{
    this.panelHits[s].input!.enabled=!p.dummy;
-   const key=JSON.stringify([p.dummy,p.id,p.hidden,p.stats,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
-   if(key!==this.panelKeys[s]){const changed=this.panelKeys[s]!=='';this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
+   const key=JSON.stringify([!!p.dummy,p.id,p.hidden,p.stats,p.skin,p.selected,p.skinIndex,p.skinCount,p.status]);
+   if(key!==this.panelKeys[s]){const previous=this.panelKeys[s]?JSON.parse(this.panelKeys[s]):null;const changed=!!previous&&(previous[0]!==!!p.dummy||previous[1]!==p.id||previous[2]!==p.hidden||previous[4]!==p.skin);this.panelKeys[s]=key;this.buildPanel(s,p);const c=this.content[s];this.scene.tweens.killTweensOf(c);c.setPosition(0,0).setAlpha(1);
     if(changed&&!reducedMotion()){
      const cfg=tune.view.menu;c.x=(s===0?-1:1)*cfg.characterSlideDistance;c.setAlpha(.25);
      this.scene.tweens.add({targets:c,x:0,alpha:1,duration:cfg.characterSlideMs,ease:cfg.characterSlideEase,onComplete:()=>{
