@@ -1,4 +1,5 @@
 import {ratingStatus,reportRating} from '../net/rating';
+import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -312,12 +313,16 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private async showRating(score?:0|.5|1):Promise<void>{
-    const label=this.add.text(VIEW.left+12,VIEW.bottom-18,t('rating.pending'),{fontFamily:'Arial',fontSize:'15px',color:'#ffe08b',resolution:PIXEL_RATIO}).setDepth(155);
+    const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
+    const label=status.label;
+    status.set(ratingLabel({phase:'pending'},t));
     const matchPromise=this.match.session.ratingMatch;
-    const id=await matchPromise;if(!id){if(this.scene.isActive())label.setText(t('rating.unavailable'));return;}
+    const id=await matchPromise;if(!id){if(this.scene.isActive())status.set(ratingLabel({phase:'unavailable'},t));return;}
     let result=score===undefined?await ratingStatus(id):await reportRating(id,score);if(!this.scene.isActive())return;
     const alive=()=>this.scene.isActive()&&label.active;
-    const refresh=()=>{if(!alive())return;if(result?.state==='settled')label.setText(t('rating.result',{points:result.rating,delta:(result.delta>0?'+':'')+result.delta}));else label.setText(!result?t('rating.unavailable'):result.state==='expired'?t('rating.unsettled'):t('rating.pending'));};refresh();
+    const refresh=()=>{if(!alive())return;status.set(ratingLabel(result?.state==='settled'
+      ?{phase:'settled',rating:result.rating,delta:result.delta}
+      :{phase:!result?'unavailable':result.state==='expired'?'expired':'pending'},t));};refresh();
     if(result?.state!=='settled'&&result?.state!=='expired'){
       let busy=false;
       const poll=this.time.addEvent({delay:2000,repeat:299,callback:()=>{

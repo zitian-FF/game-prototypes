@@ -136,8 +136,8 @@ export class MenuScene extends Phaser.Scene {
 
   private openOnlinePopup(): void {
     const p=this.popup(t('common.online'));
-    const host=titleButton(this,VIEW.cx,VIEW.cy-25,250,38,t('menu.host_game'),()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
-    const join=titleButton(this,VIEW.cx,VIEW.cy+24,250,38,t('menu.join_with_code'),()=>{p.close();this.join();},false,402);
+    const host=titleButton(this,VIEW.cx,VIEW.cy-24,250,40,t('menu.host_game'),()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
+    const join=titleButton(this,VIEW.cx,VIEW.cy+26,250,40,t('menu.join_with_code'),()=>{p.close();this.join();},false,402);
     p.items.push(host,host.getData('bg'),join,join.getData('bg'));
   }
 

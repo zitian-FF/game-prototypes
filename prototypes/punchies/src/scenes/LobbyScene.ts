@@ -1,4 +1,5 @@
-import {loadRating} from '../net/rating';
+import {loadRating,onRatingState} from '../net/rating';
+import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -8,7 +9,8 @@ import { cartoonPanel } from '../ui/cartoonChrome';
 import QRCode from 'qrcode';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { makeButton } from './FightStage';
+import {titleButton} from '../ui/titleButton';
+import {getNav} from '../ui/menuNav';
 import { NetSession, relayStatus, type Role } from '../net/session';
 import { fetchTurnIceServers } from '../net/turn';
 import { randomRoomCode, roomUrl } from '../net/roomCode';
@@ -62,13 +64,18 @@ export class LobbyScene extends Phaser.Scene {
       .text(VIEW.cx, VIEW.bottom - 36, '', { fontFamily: 'Arial', fontSize: '10px', color: '#7f8fa5', resolution: PIXEL_RATIO })
       .setOrigin(0.5).setVisible(isDebug());
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateDiag() });
-    makeButton(this, VIEW.left + 50, VIEW.top + 24, 70, t('common.back'), () => this.back());
+    const back=titleButton(this,VIEW.left+64,VIEW.top+28,100,38,t('common.back'),()=>this.back(),false,130,'default','back');
+    getNav(this).modalBack(back.getData('bg'),()=>this.back());
     this.events.once('shutdown', () => {
       this.timeout?.remove();
       if (!this.handedOff) this.session?.leave();
     });
-    const points=this.add.text(VIEW.cx,VIEW.top+50,t('rating.loading'),{fontFamily:'Arial',fontSize:'16px',color:'#ffe08b',resolution:PIXEL_RATIO}).setOrigin(.5);
-    void loadRating().then(me=>{if(this.scene.isActive())points.setText(me?t('rating.points',{points:me.rating}):t('rating.unavailable'));});
+    const points=ratingStatusText(this,VIEW.cx,VIEW.top+50,Math.min(440,VIEW.width-100),2);
+    const unsubscribe=onRatingState(state=>points.set(ratingLabel(
+      state.status==='ready'?{phase:'available',rating:state.rating}:
+      {phase:state.status==='loading'?'loading':'unavailable'},t)));
+    this.events.once('shutdown',unsubscribe);
+    void loadRating();
     addVersionStamp(this);
     if (data.role === 'host') void this.host();
     else void this.join(data.code ?? '');
