@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {t} from '../i18n';
 import {applyCameraPixelRatio,VIEW} from '../render/pixelRatio';
-import {FighterView} from '../render/FighterView';
+import {SurvivalViews} from '../render/survivalViews';
 import {mainLook} from '../render/characterLook';
 import {fighterGroups,whenGroupsReady} from '../render/art';
 import {charName,type CharId} from '../sim/character';
@@ -24,8 +24,8 @@ export class SurvivalScene extends Phaser.Scene {
  private run!:SurvivalRun;
  private stage!:FightStage;
  private display!:SimState;
- private views=new Map<string,FighterView>();
- private spare:FighterView[]=[];
+ private enemyViews!:SurvivalViews;
+
  private waveText!:Phaser.GameObjects.Text;
  private killsText!:Phaser.GameObjects.Text;
  private bossText!:Phaser.GameObjects.Text;
@@ -33,7 +33,7 @@ export class SurvivalScene extends Phaser.Scene {
  private panel: string|null=null;private closePanel:(()=>void)|null=null;
  constructor(){super('Survival');}
  create(data:SurvivalData):void {
-  applyCameraPixelRatio(this);this.store=new SurvivalStore(portalStore);this.built=false;this.acc=0;this.views.clear();this.spare=[];this.panel=null;this.closePanel=null;this.saveFailed=false;
+  applyCameraPixelRatio(this);this.store=new SurvivalStore(portalStore);this.built=false;this.acc=0;this.panel=null;this.closePanel=null;this.saveFailed=false;
   try{
    this.run=data.run??this.store.begin({fighter:data.char??'marco',skin:data.skin??'default',seed:crypto.getRandomValues(new Uint32Array(1))[0],runId:crypto.randomUUID()});
    if(data.resume&&this.run.status==='intermission')this.store.advance(this.run);
@@ -55,30 +55,21 @@ export class SurvivalScene extends Phaser.Scene {
    survivalOverlay(this,t('survival.unavailable'),[t('survival.unavailable_detail')],[{label:t('common.back'),run:()=>startScreen(this,'SurvivalEntry'),back:true}]);return;
   }
   this.display=createSimState({timed:false,fighters:[{char:this.run.fighter},{char:'marco'}]});this.display.fightStartTick=0;
-  this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default']);this.stage.hideOpponent=true;
+  this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default']);this.stage.hideOpponent=true;this.enemyViews=new SurvivalViews(this,color=>this.stage.createFighterView(color));
   this.waveText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+23,'',17,VIEW.width*.34,'#fff1d1',93,22);
   this.killsText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+47,'',13,VIEW.width*.34,'#8edfff',93,19);
   this.bossText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+71,'',12,VIEW.width*.34,'#ffe38b',93,19);
   this.built=true;setGameplay(this.run.status==='active');
- }
- private syncViews():void {
-  const ids=new Set(this.run.enemies.map(e=>e.id));
-  for(const [id,view] of this.views)if(!ids.has(id)){view.clear();this.views.delete(id);this.spare.push(view);}
-  for(const enemy of this.run.enemies){
-   if(!this.views.has(enemy.id))this.views.set(enemy.id,this.spare.pop()??new FighterView(this,0x9dbc61));
-   const view=this.views.get(enemy.id)!,look=mainLook(enemy.fighter.char);
-   view.visualId=enemy.visualId;view.skin='default';view.setLook(enemy.kind==='zombie'?0x9dbc61:look.color,look.scale,enemy.kind==='boss'&&look.ponytail);
-  }
  }
  private displayPair(enemy?:SurvivalEnemy):SimState {
   return {...this.display,tick:this.run.tick,hitstop:this.run.hitstop,result:null,fighters:[this.run.player,enemy?.fighter??this.display.fighters[1]]};
  }
  private handleSurvivalEvents(events:SurvivalEvent[],before:Map<string,SurvivalEnemy>):void {
   for(const item of events){
-   if(item.kind!=='combat')continue;
+   if(item.kind==='kill'){this.enemyViews.kill(item,this.time.now);continue;}if(item.kind!=='combat')continue;
    const enemy=this.run.enemies.find(e=>e.id===item.entityIds[1])??before.get(item.entityIds[1]);
    this.stage.handleEvents([item.event],this.displayPair(enemy));
-   if(item.event.kind==='hit'&&item.event.attacker===0)this.views.get(item.entityIds[1])?.flash(0xffffff,this.time.now,tune.view.flashMs,item.event.row==='vulnerable'?'head':'body');
+   if(item.event.kind==='hit'&&item.event.attacker===0)this.enemyViews.flash(item.entityIds[1],this.time.now,item.event.row==='vulnerable'?'head':'body');
   }
  }
  update(time:number,delta:number):void {
@@ -96,7 +87,7 @@ export class SurvivalScene extends Phaser.Scene {
   const view=survivalView(this.run);
   this.stage.inputBlocked=view.status!=='active'||this.saveFailed;
   this.stage.survivalHud(view.secondsLeft);this.stage.draw(this.displayPair(closestEnemy(this.run)),time,false);
-  this.syncViews();for(const enemy of this.run.enemies)this.views.get(enemy.id)!.draw(enemy.fighter,time,false);
+  this.enemyViews.draw(this.run.enemies,time);
   this.waveText.setText(t('survival.wave',{wave:view.wave}));
   this.killsText.setText(t('survival.kills',{kills:view.waveKills}));
   this.bossText.setText(view.bossChar?t('survival.boss',{name:charName(view.bossChar)}):'');
