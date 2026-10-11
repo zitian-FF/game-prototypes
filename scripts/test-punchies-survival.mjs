@@ -73,7 +73,8 @@ const lock=fresh();lock.enemies=lock.enemies.slice(0,1);lock.enemies[0].fighter.
 lock.enemies[0].fighter.x=lock.player.x+130;lock.enemies[0].fighter.y=lock.player.y;
 stepSurvival(lock,{...N,jab:true});assert.ok(lock.player.punch);
 const facing=[lock.player.fx,lock.player.fy];lock.enemies[0].fighter.x=lock.player.x;lock.enemies[0].fighter.y=lock.player.y+130;
-while(lock.player.punch){stepSurvival(lock,N);assert.deepEqual([lock.player.fx,lock.player.fy],facing);}
+while(lock.player.punch){stepSurvival(lock,N);if(lock.player.punch)assert.deepEqual([lock.player.fx,lock.player.fy],facing);}
+assert.ok(lock.player.fy>.9,'finished action reacquires before render');
 stepSurvival(lock,N);assert.ok(lock.player.fy>0.9,'reacquire after full recovery');
 
 // Build a real sweet swing with two separate intersecting targets.
@@ -165,3 +166,22 @@ assert.equal(closestEnemy(walking).id,walking.enemies[0].id);
 stepSurvival(walking,{...N,mx:-100});assert.equal(closestEnemy(walking).id,walking.enemies[1].id);
 assert.ok(walking.player.fx<-.99,'face nearest at final walking position in the same tick');
 walking.enemies[1].fighter.health=0;stepSurvival(walking,N);assert.ok(walking.player.fx>.99,'dead enemy is excluded from acquisition');
+
+// The visible hook passes off the old straight ray on later active frames.
+// Resolve the actual glove point without changing duel geometry or radius tuning.
+const {survivalPunchPoint}=load(root+'/survival/sim.ts');
+const pathState=createSimState({timed:false,fighters:[{char:'marco'},{char:'marco'}]});
+const [pathAtt,pathDef]=pathState.fighters;pathAtt.x=300;pathAtt.y=200;pathAtt.fx=1;pathAtt.fy=0;
+arenaCombat.processInput(pathState,0,{...N,hook:true},[]);
+pathAtt.punch.frame=pathAtt.punch.startup+pathAtt.punch.sourEarly+2;
+const glove=survivalPunchPoint(pathAtt,pathAtt.punch),ray=punchPoint(pathAtt,pathAtt.punch);
+assert.ok(Math.hypot(glove.x-ray.x,glove.y-ray.y)>10,'fixture catches visible arc versus old ray');
+const oldBody=tune.body.hurtRadius,oldCore=tune.body.coreRadius,oldHit=tune.punches.hook.hitRadius;
+tune.body.hurtRadius=1;tune.body.coreRadius=1;tune.punches.hook.hitRadius=1;
+pathDef.x=glove.x;pathDef.y=glove.y;
+assert.equal(arenaCombat.detectContacts(pathState,[],survivalPunchPoint).length,1,'visible hook glove connects');
+assert.equal(arenaCombat.detectContacts(pathState,[]).length,0,'duel ray is unchanged');
+pathDef.x=ray.x;pathDef.y=ray.y;
+assert.equal(arenaCombat.detectContacts(pathState,[],survivalPunchPoint).length,0,'empty straight ray is not a ghost hit');
+tune.body.hurtRadius=oldBody;tune.body.coreRadius=oldCore;tune.punches.hook.hitRadius=oldHit;
+console.log('PASS Survival actual glove path: arc contact and no straight-ray ghost hit, duel defaults preserved');
