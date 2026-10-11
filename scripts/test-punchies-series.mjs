@@ -78,12 +78,12 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,
   if (id === '../ui/menuNav') return { getNav:()=>({engage(){}}) };
   if (id === './FightStage') return {makeButton(){}};
   if (id === '../render/pixelRatio') return {VIEW:{cx:422,cy:195},PIXEL_RATIO:1};
-  if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }) };
+  if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }), progressView: () => ({title:'rookie'}) };
   return {};
 } });
 function online(series, winner) {
   const scene = new sceneExports.MatchScene();
-  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { send: m => sent.push(m) } },
+  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { peer:{title:'rookie'}, send: m => sent.push(m) } },
     ls: { confirmedResult: () => ({ winner }) }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
     registry: { set() {} }, scene: { restart: data => transitions.push({ key: 'restart', data }) } });
@@ -117,6 +117,11 @@ final.match.session.beginRating=()=>{};final.match.localIdx=0;
 final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');
+const casualResult=online(newSeries(1),0);
+await sceneExports.MatchScene.prototype.showRating.call(casualResult,1);
+await sceneExports.MatchScene.prototype.showRating.call(casualResult,undefined);
+// No add/label/API mocks exist here: any casual rating work would throw.
+console.log('Casual result and disconnect do not create rating UI or requests');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
 
 for(const forfeited of [false,true]){

@@ -1,3 +1,6 @@
+import {loadRating,onRatingState} from '../net/rating';
+import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
+import {zombieHandIcon} from '../ui/zombieHandIcon';
 import Phaser from 'phaser';
 import { availableLanguages, getLanguage, t } from '../i18n';
 import { languageFlag } from '../ui/languageFlag';
@@ -21,6 +24,7 @@ import { inputLayoutEditor } from '../ui/inputLayoutEditor';
 import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
+import { progressView } from '../progress/progress';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -46,7 +50,12 @@ export class MenuScene extends Phaser.Scene {
     if (!logo) this.add
       .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
-    titleButton(this, menuX, top + 105, w, 45, t('common.single_player'), () => startScreen(this, 'CharSelect', { mode: 'vsai' }), true);
+    const zombieW=82,soloW=w-zombieW-8;
+    titleButton(this,menuX-(zombieW+8)/2,top+105,soloW,45,t('common.single_player'),()=>startScreen(this,'CharSelect',{mode:'vsai'}),true);
+    const zx=menuX+(soloW+8)/2;
+    const zombie=titleButton(this,zx,top+105,zombieW,45,t('survival.menu'),()=>startScreen(this,'SurvivalEntry'),false,130,'green');
+    zombie.setX(zx+11).setScale(Math.min(zombie.scaleX,43/zombie.width));
+    zombieHandIcon(this,zx-25,top+105,22,132);
     const category = (y: number, label: string) => {
       this.add.text(menuX,y,label,{fontFamily:'Arial',fontSize:'11px',fontStyle:'bold',color:'#a6c5e8',resolution:PIXEL_RATIO}).setOrigin(0.5);
       const g=this.add.graphics().lineStyle(1,0x789ecb,0.65);
@@ -79,11 +88,11 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(bx, by, '!', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(134);
     }
 
-    titleButton(this,VIEW.left+VIEW.width*.665,VIEW.bottom-33,210,40,t('survival.menu'),()=>startScreen(this,'SurvivalEntry'),false,130,'green');
     this.msg = this.add
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
+    titleButton(this,VIEW.right-110,VIEW.top+70,190,38,t('profile.menu',{level:progressView().level}),()=>startScreen(this,'Profile'),false,130,'purple');
     // Language picker on the landing screen. Only shown once a second language has translations (always in debug, to test).
     if (availableLanguages(isDebug()).length > 1) {
       const current = LANGUAGES.find((l) => l.code === getLanguage())?.native ?? getLanguage();
@@ -137,8 +146,19 @@ export class MenuScene extends Phaser.Scene {
 
   private openOnlinePopup(): void {
     const p=this.popup(t('common.online'));
-    const host=titleButton(this,VIEW.cx,VIEW.cy-24,250,40,t('menu.host_game'),()=>{p.close();startScreen(this,'Lobby',{role:'host'});},false,402);
-    const join=titleButton(this,VIEW.cx,VIEW.cy+26,250,40,t('menu.join_with_code'),()=>{p.close();this.join();},false,402);
+    const casual=titleButton(this,VIEW.cx,VIEW.cy-24,280,40,t('menu.online_casual'),()=>{p.close();this.openOnlineRooms(false);},false,402,'blue');
+    const ranked=titleButton(this,VIEW.cx,VIEW.cy+26,280,40,t('menu.online_ranked'),()=>{p.close();this.openOnlineRooms(true);},false,402,'purple');
+    p.items.push(casual,casual.getData('bg'),ranked,ranked.getData('bg'));
+  }
+  private openOnlineRooms(rated:boolean):void {
+    const p=this.popup(rated?t('menu.online_ranked'):t('menu.online_casual'),()=>this.openOnlinePopup());
+    if(rated){
+      const status=ratingStatusText(this,VIEW.cx,VIEW.cy-46,340,402);p.items.push(status.label);
+      const off=onRatingState(state=>{if(!status.label.active)return;status.set(ratingLabel(state.status==='ready'?{phase:'available',rating:state.rating}:state.status==='loading'?{phase:'loading'}:{phase:'unavailable'},t));});
+      status.label.once('destroy',off);void loadRating();
+    }
+    const host=titleButton(this,VIEW.cx,VIEW.cy-3,250,34,t('menu.host_game'),()=>{p.close();startScreen(this,'Lobby',{role:'host',rated});},false,402);
+    const join=titleButton(this,VIEW.cx,VIEW.cy+38,250,34,t('menu.join_with_code'),()=>{p.close();this.join(rated);},false,402);
     p.items.push(host,host.getData('bg'),join,join.getData('bg'));
   }
 
@@ -207,7 +227,7 @@ export class MenuScene extends Phaser.Scene {
   // swallows touch-end on Android and leaves the joystick stuck). Only
   // characters that can appear in a room code are offered. A physical
   // keyboard can type too.
-  private join(): void {
+  private join(rated=false): void {
     const items: Phaser.GameObjects.GameObject[] = [];
     const D = 300;
     let code = '';
@@ -267,7 +287,7 @@ export class MenuScene extends Phaser.Scene {
         return;
       }
       close();
-      startScreen(this, 'Lobby', { role: 'guest', code: c });
+      startScreen(this, 'Lobby', { role: 'guest', code: c, rated });
     };
     const type = (ch: string) => {
       if (code.length >= 3) return;

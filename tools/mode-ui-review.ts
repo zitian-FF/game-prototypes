@@ -3,6 +3,7 @@ import {portal} from '../prototypes/punchies/src/portal/select';
 import {store as storage} from '../prototypes/punchies/src/portal/store';
 import {SurvivalStore} from '../prototypes/punchies/src/survival/save';
 import {NEUTRAL_INPUT} from '../prototypes/punchies/src/sim/types';
+import {ProfileScene} from '../prototypes/punchies/src/scenes/ProfileScene';
 import {MenuScene} from '../prototypes/punchies/src/scenes/MenuScene';
 import {CharSelectScene} from '../prototypes/punchies/src/scenes/CharSelectScene';
 import {SurvivalEntryScene} from '../prototypes/punchies/src/scenes/SurvivalEntryScene';
@@ -31,7 +32,7 @@ setLocaleLoader(async code=>({...locales[code],...(lang==='long'?Object.fromEntr
 await setLanguage((lang==='long'?'es':lang) as any);installTextLocale(Phaser);
 class Boot extends ArtBootScene {create(){super.create();for(const s of this.game.scene.getScenes(true))if(s.scene.key!=='ArtBoot')s.scene.stop();if(screen==='menu')this.scene.launch('Menu');else if(screen==='select')this.scene.launch('CharSelect',{mode:'survival'});else if(['active','intermission','defeat','save-error'].includes(screen))this.scene.launch('Survival',{run});else this.scene.launch('SurvivalEntry');document.querySelector('#status')!.textContent='Ready · mock saves';}}
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'app',backgroundColor:'#081426',input:{activePointers:4},fps:{forceSetTimeOut:true,target:60},scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:VIEW.width*PIXEL_RATIO,height:VIEW.height*PIXEL_RATIO}});
-for(const [key,scene] of [['ScreenTransition',ScreenTransition],['Menu',MenuScene],['CharSelect',CharSelectScene],['SurvivalEntry',SurvivalEntryScene],['Survival',SurvivalScene],['GameMenu',GameMenuScene]] as const)game.scene.add(key,scene,false);
+for(const [key,scene] of [['ScreenTransition',ScreenTransition],['Menu',MenuScene],['Profile',ProfileScene],['CharSelect',CharSelectScene],['SurvivalEntry',SurvivalEntryScene],['Survival',SurvivalScene],['GameMenu',GameMenuScene]] as const)game.scene.add(key,scene,false);
 game.scene.add('ArtBoot',Boot,true);game.events.once('ready',()=>{game.canvas.tabIndex=0;game.canvas.focus();game.events.removeAllListeners(Phaser.Core.Events.HIDDEN);game.loop.resume();});window.setInterval(()=>game.loop.resume(),500);
 const pad={buttons:Array.from({length:16},()=>({pressed:false,touched:false,value:0})),axes:[0,0],connected:true,index:0,id:'Xbox mock',mapping:'standard',timestamp:0};Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});
 for(const [label,index] of [['Pad ↓',13],['Pad A',0],['Pad B',1],['Pad Start',9]] as const){const button=document.createElement('button');button.textContent=label;button.onclick=()=>{pad.buttons[index].pressed=true;pad.buttons[index].value=1;window.setTimeout(()=>{pad.buttons[index].pressed=false;pad.buttons[index].value=0;},120);};document.querySelector('header')!.append(button);}

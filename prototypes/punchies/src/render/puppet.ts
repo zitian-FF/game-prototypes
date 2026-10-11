@@ -1,4 +1,6 @@
+import {drawUppercutFlame} from './combatVfx';
 import { blendedFootStep, bootCollar } from './legMotion';
+import {cosmeticTorsoScale} from './cosmeticTorso';
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { limbSkin } from './skinPalette';
@@ -273,7 +275,7 @@ export class Puppet {
     this.torso
       .setPosition(tpos.x, tpos.y)
       .setRotation(th + twist + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
-      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
+      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * cosmeticTorsoScale(f.char,a.skin) * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
@@ -416,41 +418,8 @@ export class Puppet {
     return true;
   }
 
-  private uppercutFlame(root: Pt, fist: Pt, intensity: number, now: number, k: number): void {
-    if (intensity <= 0) return;
-    const rig = tune.view.puppet;
-    const len = Math.hypot(fist.x - root.x, fist.y - root.y) || 1;
-    const dx = (fist.x - root.x) / len, dy = (fist.y - root.y) / len;
-    const flicker = 1 + 0.12 * Math.sin(now * rig.uppercutFireFlickerHz * Math.PI * 2 / 1000);
-    const width = rig.uppercutFireWidth * k * intensity * flicker;
-    const length = rig.uppercutFireLength * k * intensity;
-    const point = (u: number, v: number): Pt => ({ x: fist.x + dx * u - dy * v, y: fist.y + dy * u + dx * v });
-    const shape = (scale: number): Phaser.Math.Vector2[] => {
-      const outline = [
-      { x: root.x + (fist.x - root.x) * (1 - scale), y: root.y + (fist.y - root.y) * (1 - scale) },
-      point(-8 * k, width * 0.75 * scale), point(length * 0.55 * scale, width * scale),
-      point(4 * k, width * 0.35 * scale), point(length * scale, width * 0.1 * scale),
-      point(5 * k, -width * 0.35 * scale), point(length * 0.45 * scale, -width * 0.85 * scale),
-      point(-8 * k, -width * 0.7 * scale),
-      ];
-      const curve = new Phaser.Curves.Spline([...outline, outline[0]].map(p => new Phaser.Math.Vector2(p.x, p.y)));
-      return curve.getPoints(48);
-    };
-    const outer = shape(1);
-    this.fx.fillStyle(0xff5424, Math.min(1, intensity * 2));
-    this.fx.fillPoints(outer, true);
-    this.fx.lineStyle(1.5 * k, NAVY, intensity);
-    this.fx.strokePoints(outer, true, true);
-    this.fx.fillStyle(0xffc83a, intensity);
-    this.fx.fillPoints(shape(0.72), true);
-    this.fx.fillStyle(0xfff4ce, intensity);
-    this.fx.fillPoints(shape(0.4), true);
-    for (let i = 0; i < 3; i++) {
-      const t = (now * rig.uppercutFireFlickerHz / 1000 + i / 3) % 1;
-      const ember = point(length * (0.6 + t), width * (i - 1) * 0.55);
-      this.fx.fillStyle(i === 1 ? 0xfff4ce : 0xffb52a, intensity * (1 - t));
-      this.fx.fillCircle(ember.x, ember.y, (1.5 + i % 2) * k);
-    }
+  private uppercutFlame(root:Pt,fist:Pt,intensity:number,now:number,k:number):void {
+    drawUppercutFlame(this.fx,root,fist,intensity,now,k,tune.view.puppet);
   }
 
 }

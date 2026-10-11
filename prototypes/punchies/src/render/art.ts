@@ -246,7 +246,7 @@ export class ArtBootScene extends Phaser.Scene {
     }
     const room = roomFromUrl();
     // launch (not start): this scene keeps running as the background loader.
-    if (room) this.scene.launch('Lobby', { role: 'guest', code: room });
+    if (room) this.scene.launch('Lobby', { role: 'guest', code: room, rated:new URLSearchParams(location.search).get('ranked')==='1' });
     else this.scene.launch(needsFirstRun() ? 'FirstFight' : 'Menu');
   }
 }

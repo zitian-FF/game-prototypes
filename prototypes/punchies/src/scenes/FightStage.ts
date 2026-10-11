@@ -1,3 +1,5 @@
+import type { WireProfile } from '../progress/alias';
+import { sideProfiles } from '../progress/profile';
 import Phaser from 'phaser';
 import { cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -71,6 +73,7 @@ export class FightStage {
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
     private skins:[string,string]=['default','default'],
+    private profiles:[WireProfile|null,WireProfile|null]=sideProfiles(localIdx===-1?0:localIdx,null),
   ) {
     const gym=backdrop(scene, 0.15, 'gym_background');
     alignGymFloor(scene,gym);
@@ -99,7 +102,7 @@ export class FightStage {
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
-    this.hud = new Hud(scene, names);
+    this.hud = new Hud(scene, names,this.profiles);
     // P1 / P2 tags over each boxer at the start of a round.
     this.tags = [0, 1].map((i) =>
       scene.add
@@ -186,7 +189,7 @@ export class FightStage {
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
     if(!this.introChecked){
       this.introChecked=true;
-      if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins);
+      if(showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles);
     }
     this.matchIntro?.draw(s.tick*1000/TICK_RATE);
     // Character looks are slot-independent; floor indicators identify the players.

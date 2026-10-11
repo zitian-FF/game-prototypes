@@ -1,13 +1,17 @@
 ## Current milestone
-Owner-authorized complete Zombie Survival and casual Elo release; combined local checks passed, publication pending.
+Validated combat VFX and replacement pre-match VS fire, following the correction release.
+
 ## What was implemented
-Pending balance PR: approved uppercut reward targets (Longan 6; two-star 15–18; three-star 29–35; Tyke four-star 48 HP damage). Roster details show only uppercut stars; raw HP, stun and uppercut damage are removed in all six locales. Production code build and balance/display/localisation tests pass. Leave this PR unmerged until the owner requests merging.
-Casual private-room Elo client, bounded status presentation and SQLite Durable Object service; complete Zombie Survival entry, solo roster/skin choice, timed combat, independent Zombie rig, boss waves, healing, checkpoint resume, save failure/retry and pause controls. Existing combat tuning is unchanged.
+Directional sweet/sour sparks use a fixed eight-Graphics pool with bounded rays/flecks and shutdown cleanup. Uppercut fire follows the existing glove attachment. VS fire uses seven asymmetric layered tongues, a continuous bed and twelve drifting embers on one existing Graphics. Review harness now stops the queued boot Menu so it cannot obscure VFX proof.
+
 ## Key technical decisions
-Integrate only Survival production UI and rig commits, excluding obsolete Ranked and unrelated progression. Rating identity and pending reports use registered portal storage. Both art profiles preserve existing entries and share identical Zombie parts and mirror aliases. Deploy Worker first, capture its actual URL and rebuild clients afterward. VFX remains a subsequent isolated release.
+No textures, particles, VFX tweens, audio, tuning, timing or simulation changes. Integrated Art3058f40 and VFXbed5a37 on corrected main, preserving Marco cosmetic proportions and progression titles. Standard/compact inventory and content parity remain intact.
+
 ## Open questions
-The 33 Survival translations use English fallback while reviewed Sheet formulas resolve. A deployed two-peer fight remains a release smoke requirement.
+Physical-mobile performance benchmarking and full played two-peer Ranked KO/rematch remain outstanding.
+
 ## Known issues
-Anonymous storage reset loses the rating identity. Agreed fake results and unreported disconnects remain accepted casual-rating limitations. Local review harness mocks saves and controller buttons; it is not physical-device or live-service evidence.
+Native-speaker translation review remains outstanding. Existing anonymous Elo and disconnect service limitations remain. Local Vite must restart after repacking assets to refresh its compile-time art index; release builds use a fresh index.
+
 ## Next proposed step
-Merge the reviewed combined release, deploy and validate the rating Worker, configure the actual service URL, publish clients and verify the live game before continuing VFX.
+Deploy VFX, then merge the explicitly authorized uppercut balancing PR344 after combined validation.

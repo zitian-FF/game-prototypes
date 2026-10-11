@@ -1,4 +1,4 @@
-import { awardMatch } from '../progress/progress';
+import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -95,6 +95,6 @@ export class LocalVsScene extends Phaser.Scene {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),
       changeBoxer: () => startScreen(this, 'CharSelect', { mode: 'localvs', inputs: this.inputs }),
       menu: () => startScreen(this, 'Menu'),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.sim.fighters[r.winner].char,skin:this.inputs.skins?.[r.winner]}, r.winner===null?'draw':'victory');
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.sim.fighters[r.winner].char,skin:this.inputs.skins?.[r.winner],title:r.winner===0?progressView().title:undefined}, r.winner===null?'draw':'victory');
   }
 }

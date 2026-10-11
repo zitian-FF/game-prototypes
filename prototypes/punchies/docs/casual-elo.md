@@ -1,12 +1,12 @@
-# Casual online rating contract
+# Ranked online rating contract
 
-This branch implements owner-approved casual Elo in private Trystero rooms.
+Elo applies only to the explicit Ranked mode. Casual/private Online does not load/register a rating identity, create a rated match, report/poll a result, or settle quits/rematches. Ranked initially uses private Trystero room pairing; no global queue is claimed.
 No global queue, ranks, seasons, leaderboard, accounts or replay verification.
 Survival is separate (PR339) and never reports to this service.
 
 ## Pair and settle
 
-Anonymous identity and bearer token persist in localStorage under
+Anonymous identity and bearer token persist through registered portal storage under
 `punchies:rating:v1`, alongside retryable result reports. Never send the token
 to peers or analytics. The Worker is authoritative for points and match counts.
 
@@ -102,3 +102,13 @@ actual workerd SQLite Durable Object. Brave showed Lobby1000, unilateral result
 pending1000, agreed result1020 (+20), and1020 after Worker/browser restart; no
 console errors. One existing Nostr relay emitted rate-limit/banned warnings during
 the Lobby wait; a complete live two-peer fight remains a release smoke requirement.
+
+## Ranked-only mode contract (owner correction, 2026-10-11)
+- Menu calls Lobby with `{role,code,rated:true}` only for Ranked; absent/false means Casual. `new NetSession(code,role,ice,rated=false)` exposes readonly `session.rated`, which persists through CharSelect, Match and rematch.
+- Casual uses the existing `room-CODE` relay namespace. Ranked uses `ranked-room-CODE`. Both hello and paired validate the explicit mode; legacy packets default to Casual. Casual discards rating payloads and ignores ratingSet. Mixed modes cannot pair or promote an existing casual room into Ranked.
+- Ranked hello alone calls loadRating; beginRating/report are session-gated. CharSelect sends rated and a nonce only for Ranked, validates mode before applying host tuning, and Match suppresses all rating UI, reporting, polling and rematch nonce generation for Casual.
+- `roomUrl(code,rated)` includes `ranked=1` only for Ranked; ArtBoot carries that flag into the guest Lobby so QR joins retain mode.
+- Existing stored points are retained; no migration/reset. Previously settled private-room results are historical and are not reversed.
+- Actual production Worker: https://punchies-rating.tianz-88.workers.dev, configured in release 143. This correction does not change or redeploy the Worker.
+- Automated session tests verify zero Casual registration/match/report calls (including legacy and existing spoofed rating payloads), quit/rematch gating, mode mismatch and Ranked nonce/settlement. Series tests exercise the actual Match method with no Casual rating UI/API dependencies.
+- Brave actual Lobby QA (`tools/ranked-lobby-review.html`) records rating endpoint requests while leaving fetch unchanged: fresh Casual zero requests/no points; Ranked /register and 1000 points from the live Worker; returning Casual no additional requests/no points. Evidence outputs/ranked-survival-fixes/{casual-no-rating-requests,ranked-live-points,casual-after-ranked-no-new-requests}.png. This is actual Lobby/client with no fake settlement, but does not claim a full Ranked knockout/rematch browser match.
