@@ -416,6 +416,7 @@ export class CharSelectScene extends Phaser.Scene {
         }
         const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
+        if(m.ratingNonce)void s.beginRating(m.ratingNonce);
         this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
@@ -442,7 +443,8 @@ export class CharSelectScene extends Phaser.Scene {
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;
-    s.send({ k: 'start', round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
+    const ratingNonce=crypto.randomUUID();void s.beginRating(ratingNonce);
+    s.send({ k: 'start', ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
     this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }
 

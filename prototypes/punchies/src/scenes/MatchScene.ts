@@ -1,3 +1,4 @@
+import {ratingStatus,reportRating} from '../net/rating';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -110,6 +111,7 @@ export class MatchScene extends Phaser.Scene {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
       if (m.k === 'reselect' && m.round === data.round) { this.remoteReselect = true; this.changeBoxer(); }
+      if(m.k==='ratingSet'&&data.localIdx===1&&/^[a-f0-9-]{36}$/.test(m.nonce))void s.beginRating(m.nonce);
       if (m.k === 'rematch' && m.round === data.round + 1) {
         this.rematchRemote = true;
         this.tryRematch();
@@ -289,6 +291,7 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
+    void this.showRating(r.winner===null?.5:r.winner===this.match.localIdx?1:0);
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     this.registry.set('lastAward', awardMatch({ kind: 'online', win: r.winner === this.match.localIdx }));
@@ -309,9 +312,26 @@ export class MatchScene extends Phaser.Scene {
     }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner]}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
   }
 
+  private async showRating(score:0|.5|1):Promise<void>{
+    const label=this.add.text(VIEW.left+12,VIEW.bottom-18,t('rating.pending'),{fontFamily:'Arial',fontSize:'15px',color:'#ffe08b',resolution:PIXEL_RATIO}).setDepth(155);
+    const matchPromise=this.match.session.ratingMatch;
+    const id=await matchPromise;if(!id){if(this.scene.isActive())label.setText(t('rating.unavailable'));return;}
+    let result=await reportRating(id,score);if(!this.scene.isActive())return;
+    const alive=()=>this.scene.isActive()&&label.active;
+    const refresh=()=>{if(!alive())return;if(result?.state==='settled')label.setText(t('rating.result',{points:result.rating,delta:(result.delta>0?'+':'')+result.delta}));else label.setText(!result?t('rating.unavailable'):result.state==='expired'?t('rating.unsettled'):t('rating.pending'));};refresh();
+    if(result?.state!=='settled'&&result?.state!=='expired'){
+      let busy=false;
+      const poll=this.time.addEvent({delay:2000,repeat:299,callback:()=>{
+        if(!alive()){poll.remove();return;}if(busy)return;busy=true;
+        void ratingStatus(id).then(next=>{result=next;refresh();if(next?.state==='settled'||next?.state==='expired')poll.remove();}).finally(()=>busy=false);
+      }});
+      this.events.once('shutdown',()=>poll.remove());
+    }
+  }
   private tryRematch(): void {
     if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
     this.advancing = true;
+    if(!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
     this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
   }
 

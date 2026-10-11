@@ -63,7 +63,7 @@ const sceneFile = path.resolve(root, '../scenes/MatchScene.ts');
 const sceneCode = ts.transpileModule(fs.readFileSync(sceneFile, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-vm.runInNewContext(sceneCode, { exports: sceneExports, performance, console, require: (id) => {
+vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,performance, console, require: (id) => {
   if (id === 'phaser') return { default: { Scene: class {} } };
   if (id === '../sim/series') return { newSeries, finishRound };
   if (id === '../sim/tune') return { tune, TICK_RATE };
@@ -105,10 +105,12 @@ late.tryRematch();
 assert.equal(splashes.length, 1);
 splashes.pop()();
 const final = online({ bestOf: 3, roundNumber: 2, wins: [1, 0] }, 0);
-final.showResult();
+let ratingReports=0;final.showRating=()=>{ratingReports++;};
+final.showResult();assert.equal(ratingReports,1,'rating submitted once after the full set');
 assert.equal(splashes.length, 0, 'series completion stays on the result');
 resultActions.rematch();
 final.rematchRemote = true;
+final.match.session.beginRating=()=>{};final.match.localIdx=0;
 final.tryRematch();
 splashes.pop()();
 assert.equal(transitions.at(-1).data.series, undefined, 'online rematch creates a fresh series');

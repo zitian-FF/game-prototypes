@@ -382,5 +382,11 @@
   "ui.back_hint": "Esc / B: رجوع",
   "charselect.durability": "الصلابة",
   "charselect.uppercut_stats": "صاعدة: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "صحة {hp} · مقاومة صعق {stun}"
+  "charselect.durability_details": "صحة {hp} · مقاومة صعق {stun}",
+  "rating.loading": "جارٍ تحميل النقاط…",
+  "rating.points": "{points} نقطة",
+  "rating.unavailable": "النقاط غير متاحة · مباراة عادية",
+  "rating.pending": "في انتظار تأكيد النتيجة",
+  "rating.result": "{points} نقطة ({delta})",
+  "rating.unsettled": "النتيجة غير مؤكدة · النقاط دون تغيير"
 }

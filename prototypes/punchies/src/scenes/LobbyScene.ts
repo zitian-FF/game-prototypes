@@ -1,3 +1,4 @@
+import {loadRating} from '../net/rating';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -66,6 +67,8 @@ export class LobbyScene extends Phaser.Scene {
       this.timeout?.remove();
       if (!this.handedOff) this.session?.leave();
     });
+    const points=this.add.text(VIEW.cx,VIEW.top+50,t('rating.loading'),{fontFamily:'Arial',fontSize:'16px',color:'#ffe08b',resolution:PIXEL_RATIO}).setOrigin(.5);
+    void loadRating().then(me=>{if(this.scene.isActive())points.setText(me?t('rating.points',{points:me.rating}):t('rating.unavailable'));});
     addVersionStamp(this);
     if (data.role === 'host') void this.host();
     else void this.join(data.code ?? '');

@@ -382,5 +382,11 @@
   "ui.back_hint": "Esc / B: 戻る",
   "charselect.durability": "耐久力",
   "charselect.uppercut_stats": "アッパー: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · 気絶耐性 {stun}"
+  "charselect.durability_details": "HP {hp} · 気絶耐性 {stun}",
+  "rating.loading": "ポイントを読み込み中…",
+  "rating.points": "{points} ポイント",
+  "rating.unavailable": "ポイント取得不可 · カジュアル対戦",
+  "rating.pending": "結果の確認待ち",
+  "rating.result": "{points} ポイント ({delta})",
+  "rating.unsettled": "結果未確認 · ポイント変更なし"
 }

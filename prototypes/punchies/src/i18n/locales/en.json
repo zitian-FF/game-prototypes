@@ -382,5 +382,11 @@
   "ui.back_hint": "Esc / B: Back",
   "charselect.durability": "DURABILITY",
   "charselect.uppercut_stats": "UPPER: {stars} ★ · {damage} HP",
-  "charselect.durability_details": "HP {hp} · STUN RESIST {stun}"
+  "charselect.durability_details": "HP {hp} · STUN RESIST {stun}",
+  "rating.loading": "Loading points…",
+  "rating.points": "{points} POINTS",
+  "rating.unavailable": "Points unavailable · casual match",
+  "rating.pending": "Points awaiting confirmation",
+  "rating.result": "{points} POINTS ({delta})",
+  "rating.unsettled": "Result unconfirmed · points unchanged"
 }

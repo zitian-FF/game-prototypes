@@ -1,0 +1,8 @@
+{
+ "name":"punchies-rating",
+ "main":"src/index.ts",
+ "compatibility_date":"2026-10-11",
+ "workers_dev":true,
+ "durable_objects":{"bindings":[{"name":"RATINGS","class_name":"RatingStore"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["RatingStore"]}]
+}
