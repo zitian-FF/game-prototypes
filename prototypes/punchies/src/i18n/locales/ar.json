@@ -1,4 +1,5 @@
 {
+  "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
   "char.bruno.nick": "دبابة",
   "char.captain.nick": "أقصى سرعة",
   "char.dragon.nick": "القبضة العمياء",
@@ -375,7 +376,7 @@
   "tutorial.the_joystick_left_side": "عصا التحكم (الجانب الأيسر)",
   "tutorial.the_left_stick": "عصا التحكم اليسرى",
   "tutorial.tutorial_complete": "شرح كامل",
+  "tutorial.uppercut_charge_text": "تملأ الضربات الدقيقة عداد نجوم مقاتلك. املأ جميع الخانات لتجهيز لكمة صاعدة واحدة تتجاوز الحراسة: {btn}. استخدامها يفرغ العداد. أصب بها الخصم.",
   "tutorial.your_fist_travels_out_too": "تتحرك قبضتك للخارج. إذا كانت قريبة جدًا = ضعيفة. عند مدها بالكامل = قوية. تراجع قليلًا وسدد ضربة قوية.",
-  "ui.back_hint": "Esc / B: رجوع",
-  "tutorial.uppercut_charge_text": "تملأ الضربات الدقيقة عداد نجوم مقاتلك. املأ جميع الخانات لتجهيز لكمة صاعدة واحدة تتجاوز الحراسة: {btn}. استخدامها يفرغ العداد. أصب بها الخصم."
+  "ui.back_hint": "Esc / B: رجوع"
 }

@@ -1,4 +1,5 @@
 {
+  "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
   "char.bruno.nick": "タンク",
   "char.captain.nick": "全開",
   "char.dragon.nick": "盲目の拳",
@@ -375,7 +376,7 @@
   "tutorial.the_joystick_left_side": "ジョイスティック（左側）",
   "tutorial.the_left_stick": "左スティック",
   "tutorial.tutorial_complete": "チュートリアル完了",
+  "tutorial.uppercut_charge_text": "スイートヒットでファイターの星メーターがたまります。すべての枠を満たすと、ガード不能のアッパーカットが1回使えます：{btn}。使うとメーターは空になります。命中させましょう。",
   "tutorial.your_fist_travels_out_too": "拳を前に突き出す。近すぎると弱々しい（SOUR）パンチになる。完全に突き出すと甘いパンチになる。少し後ろに下がって、甘いパンチを繰り出そう。",
-  "ui.back_hint": "Esc / B: 戻る",
-  "tutorial.uppercut_charge_text": "スイートヒットでファイターの星メーターがたまります。すべての枠を満たすと、ガード不能のアッパーカットが1回使えます：{btn}。使うとメーターは空になります。命中させましょう。"
+  "ui.back_hint": "Esc / B: 戻る"
 }

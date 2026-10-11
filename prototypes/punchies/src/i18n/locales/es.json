@@ -1,4 +1,5 @@
 {
+  "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
   "char.bruno.nick": "Tanque",
   "char.captain.nick": "Aceleración máxima",
   "char.dragon.nick": "El puño ciego",
@@ -375,7 +376,7 @@
   "tutorial.the_joystick_left_side": "el joystick (lado izquierdo)",
   "tutorial.the_left_stick": "el joystick izquierdo",
   "tutorial.tutorial_complete": "TUTORIAL COMPLETADO",
+  "tutorial.uppercut_charge_text": "Los golpes precisos llenan el medidor de estrellas de tu luchador. Llena todos los espacios para preparar un uppercut que atraviesa la guardia: {btn}. Usarlo vacía el medidor. Acerta uno.",
   "tutorial.your_fist_travels_out_too": "Tu puño se extiende. Demasiado cerca = FRUTO (débil). Con la extensión completa = BUENO. Retrocede un poco y conecta un golpe BUENO.",
-  "ui.back_hint": "Esc / B: Atrás",
-  "tutorial.uppercut_charge_text": "Los golpes precisos llenan el medidor de estrellas de tu luchador. Llena todos los espacios para preparar un uppercut que atraviesa la guardia: {btn}. Usarlo vacía el medidor. Acerta uno."
+  "ui.back_hint": "Esc / B: Atrás"
 }
