@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 const bundle=await build({entryPoints:['prototypes/punchies-tuner/src/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
-const {defaults:liveDefaults,parse,changes,set,effective,delta,mergeSave,characters,names,meta}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const {defaults:liveDefaults,parse,changes,set,effective,delta,mergeSave,characters,names,meta,archetypeValue,setArchetype}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 // Test formula behavior with controlled inputs; production balance values are editable.
 parse(JSON.stringify(liveDefaults()));
 function defaults(){
@@ -41,3 +41,5 @@ for(const p of ['jab','cross','hook','uppercut']){assert(meta['punches.'+p+'.cou
 assert.equal(effective(base,'bruno','cross','hitStun'),Math.round(base.punches.cross.hitStun*base.characters.bruno.cross.push));
 assert(meta['movement.lockMoveMult']);assert(!meta['hit.pushLockFrames']);
 console.log('PASS: current counter keys, push-derived hit stun and movement lock metadata');
+
+const textDraft=defaults();setArchetype(textDraft,'char.nadia.nick','Fast Cross pressure; sustained fatigue capacity.');const textSaved=mergeSave(base,textDraft,base);assert.equal(archetypeValue(textSaved,'char.nadia.nick'),'Fast Cross pressure; sustained fatigue capacity.');const textLatest=defaults();setArchetype(textLatest,'char.nadia.nick','Other editor');assert.throws(()=>mergeSave(base,textDraft,textLatest),/same fields/);

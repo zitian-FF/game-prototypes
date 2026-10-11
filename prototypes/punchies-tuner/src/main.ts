@@ -1,5 +1,5 @@
 import './style.css';
-import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta } from './model';
+import { defaults,characters,names,punches,meta,get,set,parse,changes,effective,delta,archetypeValue,setArchetype,archetypeChanges } from './model';
 import {saveOpened,type TuneFile as Handle} from './fileIO';
 type PickerWindow=Window&{showOpenFilePicker?: (options:unknown)=>Promise<Handle[]>};
 let base=defaults(),draft=defaults(),handle:Handle|null=null;
@@ -11,7 +11,7 @@ let refreshRows:(()=>void)[]=[];
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string){const node=document.createElement(tag);if(text)node.textContent=text;return node;}
 function button(text:string,action:()=>void|Promise<void>,className=''){const b=el('button',text);b.className=className;b.onclick=()=>{void Promise.resolve(action()).catch(e=>{message=e instanceof Error?e.message:String(e);status();});};return b;}
 function remember(){try{localStorage.setItem(storageKey,JSON.stringify({base,draft}));}catch{/* Editing still works if storage is unavailable. */}}
-function status(){const target=document.querySelector('#status');if(target)target.textContent=message;const dirty=document.querySelector('#dirty');if(dirty)dirty.textContent=`${changes(base,draft).length} edited values`;}
+function status(){const target=document.querySelector('#status');if(target)target.textContent=message;const dirty=document.querySelector('#dirty');if(dirty)dirty.textContent=`${changes(base,draft).length+archetypeChanges(base,draft).length} edited values`;}
 const format=(v:number)=>Number.isInteger(v)?String(v):String(Number(v.toFixed(4)));
 const label=(s:string)=>({hp:'HP',stamina:'Stamina',stun:'Stun resistance',speed:'Move speed',regen:'Standing recovery',staminaCost:'Stamina cost',stunBuild:'Stun build',fatigueBars:'Fatigue bars',startup:'Startup',recovery:'Recovery',pushHit:'Hit push',pushBlock:'Block push'} as Record<string,string>)[s]??s.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase());
 async function load(text:string,name:string,fileHandle:Handle|null){const next=parse(text);base=structuredClone(next);draft=next;source=name;handle=fileHandle;message=`Loaded ${name}. Nothing is uploaded to a server.`;remember();render();}
@@ -52,6 +52,7 @@ function render(){
   sidebar.append(button('Restore saved draft',()=>{const saved=localStorage.getItem(storageKey);if(!saved)throw Error('No saved draft');const data=JSON.parse(saved);base=parse(JSON.stringify(data.base));draft=parse(JSON.stringify(data.draft));handle=null;source='Restored browser draft';message='Draft restored. Open a file before saving directly, or download this copy.';render();}));
   sidebar.append(button('Reset all edits',()=>{if(confirm('Reset all edits to the opened file?')){draft=structuredClone(base);remember();render();}}));layout.append(sidebar);
   const main=el('main');const heading=el('div');heading.className='section-heading';heading.append(el('h2',shared?'Shared rules':names[selected].name),el('span',shared?'Applies to every fighter':names[selected].style));main.append(heading);
+  if(!shared){const key=`char.${selected}.nick`,field=el('input');field.type='text';field.maxLength=80;field.value=archetypeValue(draft,key);field.setAttribute('aria-label','Character archetype');field.oninput=()=>{try{setArchetype(draft,key,field.value);field.setCustomValidity('');remember();status();}catch(e){field.setCustomValidity(String(e));}};main.append(el('label','Character archetype'),field,el('small',`Localisation key: ${key}`));}
   const nav=el('nav');nav.setAttribute('aria-label','Stat categories');for(const cat of ['core',...punches,'guard','dodge'])nav.append(button(cat==='core'?'Core':cat==='guard'?'Block':label(cat),()=>{section=cat;render();},section===cat?'selected':''));main.append(nav);
   const table=makeTable();
   if(shared){
@@ -67,9 +68,9 @@ function render(){
     const cfgKeys=['damage','staminaCost','reach','startup','recovery','stunBuild','pushHit','pushBlock','hitStun','blockStun','sourStun','fatigueBars','sourEarly','sweet','sour','whiffRecovery','hitRadius','staminaDamage','startReachFrac','fatigueSpeedPerBar','fatigueDamagePerBar'];
     for(const key of cfgKeys){const override=key==='pushHit'||key==='pushBlock'?'push':key;const path=`characters.${selected}.${section}.${override}`;row(table,key,meta[path]?path:null,effective(draft,selected,section,key),effective(draft,'marco',section,key));}main.append(table);
   }else{main.append(el('p','Block and dodge currently share the same rules for every fighter. Edits here apply to everyone; differences from Marco are therefore 0%.'));globalRows(table,section);main.append(table);}
-  const changed=changes(base,draft);if(changed.length){const details=el('details');details.append(el('summary',`Review ${changed.length} edits`));const list=el('ul');for(const path of changed)list.append(el('li',`${path}: ${format(get(base,path))} → ${format(get(draft,path))}`));details.append(list);main.append(details);}
+  const changed=changes(base,draft),textChanged=archetypeChanges(base,draft);if(changed.length+textChanged.length){const details=el('details');details.append(el('summary',`Review ${changed.length+textChanged.length} edits`));const list=el('ul');for(const path of changed)list.append(el('li',`${path}: ${format(get(base,path))} → ${format(get(draft,path))}`));for(const key of textChanged)list.append(el('li',`${key}: ${archetypeValue(base,key)} → ${archetypeValue(draft,key)}`));details.append(list);main.append(details);}
   layout.append(main);app.append(layout);const footer=el('footer','Files and drafts stay in this browser. No uploads, account access, or automatic GitHub commits. Save checks for conflicting edits.');app.append(footer);status();
 }
-window.addEventListener('beforeunload',event=>{if(changes(base,draft).length){event.preventDefault();event.returnValue='';}});
+window.addEventListener('beforeunload',event=>{if(changes(base,draft).length+archetypeChanges(base,draft).length){event.preventDefault();event.returnValue='';}});
 render();
 

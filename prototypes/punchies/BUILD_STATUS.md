@@ -1,12 +1,12 @@
 ## Current milestone
-Roxy, Nadia and all six language choices prepared for live deployment.
+Roxy and Nadia have owner-approved distinct balance and archetype descriptions.
 ## What was implemented
-Roxy and Nadia have independent portraits and overhead rigs, mirrored glove/foot aliases, locked fighter-pool entries, tuning metadata and the reserved second-row roster positions. Settings now offers English, Japanese, Korean, Chinese, Spanish and Arabic through 382-string frozen locale tables imported from the private translation Sheet. Longer shop and button labels fit their available widths.
+Roxy is a close-range brawler with stronger, costlier hooks. Nadia has a lighter, faster Cross with five fatigue bars and unchanged maximum fatigue penalties. The tuner edits and selectively merges archetype descriptions, and English game labels use the saved localisation keys. Long character-select descriptions fit their available width.
 ## Key technical decisions
-Preserve all existing owner tuning and workshop history. New fighter balance starts from Marco pending owner tuning; Nadia uses petite proportions. Verify both R2 art uploads by SHA-256. Pack repetitive tune metadata and locale tables without changing runtime values; standalone packages omit editor-only history and duplicate embedded art indexes. Keep source masters and recoverable source archives outside Git and shipping bundles.
+Preserve Base, all other fighter tuning, body proportions and workshop history. Archetype text is validated separately from numeric simulation data. Independent text changes merge without overwriting unrelated changes; conflicting edits are rejected.
 ## Open questions
-Native-language copy review and distinct Roxy/Nadia balancing remain future work.
+Human playtesting should confirm matchup fairness and fatigue pacing.
 ## Known issues
-Remaining machine-translated copy is not native-reviewed. The private Sheet is not published or exposed for automated unauthenticated imports. Compact delivery has little budget headroom and must retain its mandatory 10 MB gate.
+Remaining machine-translated copy is not native-reviewed. Updated playstyle descriptions are English; existing translated nicknames remain. Compact delivery retains its mandatory 10 MB gate.
 ## Next proposed step
-Merge the validated release, verify itch.io deployment and the published tuning roster, then hand off native copy review and fighter balancing.
+Merge and verify the game and tuner deployments, then playtest the approved builds.
