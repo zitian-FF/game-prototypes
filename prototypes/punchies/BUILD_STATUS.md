@@ -1,12 +1,12 @@
 ## Current milestone
-Recalibrated roster stat display approved for live release.
+Mobile skin-selector polish is validated in PR335; merge approval pending.
 ## What was implemented
-Five Base-relative bars: Durability, Endurance, Speed, Power and Reach. Fixed piecewise ranges place Base at 60% fill and amplify small differences. Durability combines 70% HP and 30% stun threshold; Endurance combines stamina capacity, regeneration and ordinary-punch efficiency. Speed uses movement and full ordinary-punch cycles; Power and Reach exclude uppercuts. Bars show exact rounded Base-relative percentages. Separate lines show actual HP/stun threshold and uppercut stars/HP damage. All six languages include the new labels and matching placeholders.
+Selected fighters show a dedicated skin strip, large previous/next buttons with press feedback, a larger name and separate X/N counter. One-skin arrows are disabled.
 ## Key technical decisions
-Display only: no combat tuning changes. Compare against neutral Base, including unit body proportions, never Marco. Stable ranges do not depend on roster min/max. Uppercuts are separate because per-fighter charge costs make their raw averages misleading. Keep portrait and details inside the selection panel.
+44 by 38 logical-pixel hit areas replace glyph-only targets. Preserved latest main stat readouts and tuning. No new localization keys.
 ## Open questions
-Human playtesting should review readability across screen sizes and languages.
+Explicit approval to merge PR335 and deploy is required by automatic review.
 ## Known issues
-Existing machine-translated copy is not native-reviewed. Compact delivery retains its mandatory 10 MB gate.
+This selector change is not live yet.
 ## Next proposed step
-Verify live deployment and review the recalibrated roster in-game.
+Merge and deploy once approved. Typecheck/build/localization checks pass; Brave 640 by 360 preview verified Default 1/2 to Hotshot 2/2 pointer cycling and clean console.
