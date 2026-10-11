@@ -193,6 +193,7 @@ export class FightStage {
   private lastDrawTick: number | null = null;
   draw(s: SimState, time: number, koAllowed = true): void {
     this.movementSound.update(s);
+    this.fx.draw(s);
     if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
     this.lastDrawTick=s.tick;
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));

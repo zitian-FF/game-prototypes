@@ -61,7 +61,8 @@ export class CombatSparks {
    g.fillStyle(p[1],fade*.8).fillPoints(quad(Math.cos(angle)*dist,Math.sin(angle)*dist,3*s,1*s,angle+.5),true);
   }
  }
- diagnostics(){return {sparkCapacity:this.pool.length,activeSparks:this.pool.filter(b=>b.duration>0).length,peakSparks:this.peak,sparkTweens:0,sparkTextures:0};}
+ diagnostics(){return {sparkCapacity:this.pool.length,activeSparks:this.pool.filter(b=>b.duration>0).length,peakSparks:this.peak,sparkTweens:0,sparkTextures:0,
+  sparkDisposed:this.disposed,sparkAlive:this.pool.filter(b=>!!b.g.scene).length,sparkWorldParented:this.pool.filter(b=>!!b.g.parentContainer).length};}
  destroy():void {
   if(this.disposed)return;this.disposed=true;
   this.scene.events.off('update',this.update,this);

@@ -1,5 +1,31 @@
 import type Phaser from 'phaser';
 
+const FIRE_ATLAS='punchies:clash-fire-frames-v1';
+const CELL=240,FRAMES=16;
+/** Rasterise the authored contours once; the runtime clash draws one quad. */
+export function clashFireImage(scene:Phaser.Scene):Phaser.GameObjects.Image {
+  if(!scene.textures.exists(FIRE_ATLAS)){
+    const g=scene.make.graphics({x:0,y:0});
+    for(let i=0;i<FRAMES;i++){
+      // drawClashFire clears, so bake each cell into a temporary canvas and pack.
+      drawClashFire(g,120,180,i*1000/FRAMES,1,true);
+      const key=`${FIRE_ATLAS}-scratch`;
+      g.generateTexture(key,CELL,CELL);
+      if(i===0)scene.textures.createCanvas(FIRE_ATLAS,CELL*4,CELL*4);
+      const atlas=scene.textures.get(FIRE_ATLAS) as Phaser.Textures.CanvasTexture;
+      atlas.context.drawImage(scene.textures.get(key).getSourceImage() as HTMLCanvasElement,i%4*CELL,Math.floor(i/4)*CELL);
+      scene.textures.remove(key);
+      atlas.add(i.toString(),0,i%4*CELL,Math.floor(i/4)*CELL,CELL,CELL);
+    }
+    (scene.textures.get(FIRE_ATLAS) as Phaser.Textures.CanvasTexture).refresh();g.destroy();
+  }
+  return scene.add.image(0,0,FIRE_ATLAS,'0').setOrigin(.5,.75);
+}
+export function animateClashFire(image:Phaser.GameObjects.Image,x:number,y:number,ms:number,scale:number,motion:boolean,reveal:number):void {
+  image.setPosition(x,y).setScale(scale).setAlpha(reveal).setVisible(reveal>0)
+    .setFrame(String(motion?Math.floor(ms*FRAMES/1000)%FRAMES:0));
+}
+
 // One scene-owned Graphics object, no emitters, textures or per-flame tweens.
 // The stepped contours deliberately read like the roster's inked cartoon art.
 export function drawClashFire(g: Phaser.GameObjects.Graphics, x: number, y: number,
