@@ -12,6 +12,8 @@ type Table = Record<string, string>;
 export type Coverage = Partial<Record<LangCode, number>>;
 
 const english = en as Table;
+let englishOverrides:Table={};
+export function setEnglishOverrides(values:Table):void{englishOverrides={...values};}
 let table: Table = english;
 let current: LangCode | typeof PSEUDO = 'en';
 let loader: (code: LangCode) => Promise<Table> = async () => ({});
@@ -29,7 +31,8 @@ function fill(text: string, params?: Params): string {
 }
 
 export function t(key: string, params?: Params): string {
-  const raw = current === PSEUDO ? (english[key] ?? key) : (table[key] ?? english[key] ?? key);
+  const fallback=englishOverrides[key]??english[key]??key;
+  const raw = current === PSEUDO || current==='en' ? fallback : ((table===english?undefined:table[key]) ?? fallback);
   const out = fill(raw, params);
   // Right-to-left languages: an RTL embedding makes the canvas place punctuation and numbers correctly
   // without changing where the text sits (no layout mirroring).

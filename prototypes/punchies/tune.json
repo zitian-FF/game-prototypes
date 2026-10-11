@@ -806,59 +806,59 @@
     },
     "roxy": {
       "hp": 1,
-      "stamina": 1,
-      "regen": 1,
+      "stamina": 0.95,
+      "regen": 0.95,
       "stun": 1,
-      "speed": 1,
+      "speed": 0.97,
       "jab": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.95,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.1,
+        "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
-        "reach": 1,
+        "reach": 0.95,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1,
-        "staminaCost": 1,
-        "stunBuild": 1,
+        "damage": 1.2,
+        "staminaCost": 1.15,
+        "stunBuild": 1.1,
         "push": 1,
         "reach": 1,
-        "startup": 0,
-        "recovery": 0,
+        "startup": 1,
+        "recovery": 2,
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
-        "staminaCost": 1,
+        "damage": 1.05,
+        "staminaCost": 1.1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": 0,
-        "recovery": 0,
+        "recovery": 2,
         "fatigueBars": 0
       }
     },
     "nadia": {
-      "hp": 1,
-      "stamina": 1,
-      "regen": 1,
-      "stun": 1,
-      "speed": 1,
+      "hp": 0.9,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.95,
+      "speed": 1.05,
       "jab": {
-        "damage": 1,
+        "damage": 0.9,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -868,17 +868,17 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.1,
+        "damage": 0.9,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
-        "startup": 0,
-        "recovery": 0,
-        "fatigueBars": 0
+        "startup": -2,
+        "recovery": -1,
+        "fatigueBars": 2
       },
       "hook": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -888,7 +888,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
+        "damage": 0.95,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -1140,7 +1140,9 @@
     "archetypes": {
       "char.marco.nick": "Steady all-rounder with a heavy Cross",
       "char.mia.nick": "Fast hands and feet, shorter reach",
-      "char.tyke.nick": "Heavyweight champion"
+      "char.tyke.nick": "Heavyweight champion",
+      "char.roxy.nick": "Close-range brawler: heavy hooks, costly swings.",
+      "char.nadia.nick": "Fast, light Cross pressure with extra fatigue capacity."
     }
   }
 }

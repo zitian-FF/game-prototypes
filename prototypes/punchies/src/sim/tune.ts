@@ -1,5 +1,7 @@
 import tuneJson from '../../tune.json';
 import tuneMeta from '../../tune.meta.json';
+import {readArchetypes} from './workshopText';
+import {setEnglishOverrides} from '../i18n';
 
 // Single live tune object. The debug panel binds to this same object, so
 // edits made in Tweakpane apply to the running sim immediately.
@@ -13,6 +15,8 @@ import tuneMeta from '../../tune.meta.json';
 export type Tune = Omit<typeof tuneJson, 'balanceWorkshop'>;
 const {balanceWorkshop: _history, ...gameTune}=tuneJson as typeof tuneJson & {balanceWorkshop?:unknown};
 export const tune: Tune = gameTune;
+let archetypes=readArchetypes(tuneJson);
+setEnglishOverrides(archetypes);
 
 export const TICK_RATE = 60;
 
@@ -102,11 +106,13 @@ export function validateTuneJson(json: string): TuneCheck {
 
 // Online: adopt the host's tune for the match. Call validateTuneJson first.
 export function applyTuneJson(json: string): void {
-  assignKnown(tune as unknown as Obj, JSON.parse(json) as Obj);
+  const parsed=JSON.parse(json),texts=readArchetypes(parsed);
+  assignKnown(tune as unknown as Obj,parsed as Obj);
+  archetypes=texts;setEnglishOverrides(archetypes);
 }
 
 export function snapshotTune(): string {
-  return JSON.stringify(tune);
+  return JSON.stringify({...tune,balanceWorkshop:{archetypes}});
 }
 
 export function restoreTune(snapshot: string): void {
@@ -128,7 +134,9 @@ export async function syncTuneFromGitHub(): Promise<{ ok: true; applied: number 
     if (!parsed || typeof parsed !== 'object') return { ok: false, error: 'tune.json on GitHub is empty' };
     const check = validateTuneJson(JSON.stringify(parsed));
     if (!check.ok) return { ok: false, error: `tune.json on GitHub rejected: ${check.error}` };
+    const texts=readArchetypes(check.value);
     const applied = assignKnown(tune as unknown as Obj, check.value);
+    archetypes=texts;setEnglishOverrides(archetypes);
     baseline = structuredClone(tune);
     source = `GitHub ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     for (const cb of listeners) cb();
