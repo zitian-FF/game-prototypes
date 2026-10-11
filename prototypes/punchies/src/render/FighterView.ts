@@ -229,9 +229,10 @@ export class FighterView {
     this.clear();this.gait=new WalkMotion();this.walk=0;this.stride=0;
     this.presentationLimp=false;
     this.flashHeadUntil=this.flashBodyUntil=this.flashUntil=this.flashStart=0;
-    for(const o of this.objects)(o as Phaser.GameObjects.Image).setAlpha(1);
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;if(a.alpha!==1)a.setAlpha(1);}
   }
   setPresentationAlpha(alpha:number):void {
+    if(alpha>=1)return;
     for(const o of this.objects){const a=o as Phaser.GameObjects.Image;a.setAlpha(a.alpha*alpha);}
   }
 
@@ -240,7 +241,7 @@ export class FighterView {
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
-    for(const o of this.objects)(o as Phaser.GameObjects.Image).setAlpha(1);
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;if(a.alpha!==1)a.setAlpha(1);}
     const g = this.g;
     g.clear();
     this.fx.clear();
