@@ -7,6 +7,7 @@ import {GameMenuScene} from '../prototypes/punchies/src/scenes/GameMenuScene';
 import {ScreenTransition} from '../prototypes/punchies/src/ui/presentation';
 import {createSimState} from '../prototypes/punchies/src/sim/sim';
 import type {SimState} from '../prototypes/punchies/src/sim/types';
+import {MatchIntro} from '../prototypes/punchies/src/ui/fightPresentation';
 import {tune} from '../prototypes/punchies/src/sim/tune';
 import {applyCameraPixelRatio,VIEW,PIXEL_RATIO} from '../prototypes/punchies/src/render/pixelRatio';
 const params=new URLSearchParams(location.search),mode=params.get('mode')??'sweet',zoom=Number(params.get('zoom')??1);
@@ -25,18 +26,18 @@ class TrainingReview extends TrainingScene {
  }
 }
 class Review extends Phaser.Scene {
- private stage!:FightStage;private sim!:SimState;private built=false;private age=0;
+ private stage!:FightStage;private sim!:SimState;private built=false;private age=0;private intro?:MatchIntro;
  constructor(){super('VfxReview');}
  create(){applyCameraPixelRatio(this);this.built=false;this.age=0;whenGroupsReady(this,fighterGroups(['marco','mia']),()=>{
   this.sim=createSimState({timed:false,fighters:[{char:'marco'},{char:'mia'}]});this.sim.tick=1000;this.sim.fightStartTick=0;
   this.stage=new FightStage(this,['MARCO','MIA'],-1,false);
   this.stage.draw(this.sim,1000);(this.stage as any).persp.beginRound(this.time.now-tune.view.arena.roundZoomMs*zoom);
   if(mode==='upper')this.sim.fighters[0].punch={type:'uppercut',frame:12,startup:8,sourEarly:3,sweet:5,sour:4,recovery:20,whiffFrames:0,reach:45,startReach:18,damageMult:1,resolved:false,connected:false,buffed:false,hand:0};
-  this.built=true;this.emitHit();
+  this.intro=mode==='vs'?new MatchIntro(this,['marco','mia']):undefined;this.built=true;this.emitHit();
  });}
- private emitHit(){if(mode==='upper')return;const target=this.sim.fighters[1];this.stage.handleEvents([{kind:'hit',attacker:0,x:target.x-8,y:target.y,punch:'cross',sweet:mode!=='sour',counter:false,row:'normal',damage:mode==='sour'?3:12,buffed:false}],this.sim);}
+ private emitHit(){if(mode==='upper'||mode==='vs')return;const target=this.sim.fighters[1];this.stage.handleEvents([{kind:'hit',attacker:0,x:target.x-8,y:target.y,punch:'cross',sweet:mode!=='sour',counter:false,row:'normal',damage:mode==='sour'?3:12,buffed:false}],this.sim);}
  update(time:number,delta:number){if(!this.built)return;this.stage.draw(this.sim,1000);this.age+=delta;
-  if(mode==='stress'){
+  if(mode==='vs'){this.intro?.draw(this.age);if(this.age>=Number(params.get('at')??1000)){this.updateStatus();this.scene.pause();}}else if(mode==='stress'){
    if(this.age<1000)this.emitHit();
    if(this.age>2400){this.updateStatus();if(restartRemaining>0){restartRemaining--;rounds++;this.age=0;this.scene.restart();}else this.scene.pause();}
   }else if(this.age>=48){this.updateStatus();if(restartRemaining>0){restartRemaining--;rounds++;this.scene.restart();}else this.scene.pause();}
