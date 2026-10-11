@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import EventEmitter from 'eventemitter3';
 const exports={},ring={left:250,right:594,top:95,bottom:325};
-vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/survivalViews.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,structuredClone,require:p=>p.includes('characterLook')?{mainLook:()=>({color:1,scale:1})}:{tune:{ring,view:{flashMs:110}}}});
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/survivalViews.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,structuredClone,require:p=>p.includes('characterLook')?{mainLook:()=>({color:1,scale:1})}:{tune:{ring,view:{flashMs:110}}}});
 for(let i=0;i<360;i++){const d={x:Math.cos(i),y:Math.sin(i)},p=exports.deathRopePoint({x:422,y:210},d,ring);assert(p.x>=268&&p.x<=576&&p.y>=113&&p.y<=307);assert(Math.abs((p.x-422)*d.y-(p.y-210)*d.x)<.0001,'flight follows final hit');}
 const events=new EventEmitter(),created=[];
 const factory=()=>{const v={reset(){this.hidden=true;this.presentationLimp=false;},setLook(){},clear(){},flash(){},draw(f){this.hidden=false;this.position={x:f.x,y:f.y};},setPresentationAlpha(a){assert(a>=0&&a<=1);this.alpha=a;}};created.push(v);return v;};
