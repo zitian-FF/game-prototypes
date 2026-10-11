@@ -37,6 +37,7 @@ jobs:
       - name: Build selected profile and portal
         env:
           TARGET_PORTAL: ${{ inputs.portal || 'crazygames' }}
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
         run: npm run build:punchies:${{ matrix.profile }} -- --portal "$TARGET_PORTAL"
       - name: Verify profile isolation and inventory
         env:

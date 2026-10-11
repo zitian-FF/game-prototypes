@@ -20,4 +20,9 @@ assert(sent.some(s=>s.data.k==='full'&&s.options.target==='far'));assert(sent.so
 const nonce=crypto.randomUUID();await host.beginRating(nonce);assert.deepEqual(matches[0],[near,nonce]);await host.forfeit(1);assert.deepEqual(reports[0],['match',0,true]);
 const guest=new out.NetSession('ABC','guest');guest.handleCtl({k:'hello',role:'host'},'host');assert.equal(guest.peerId,null,'guests wait for selection');
 guest.handleCtl({k:'paired',rating:{id:me.myId,points:1000}},'host');assert.equal(guest.peerId,'host');
+const nextNonce=crypto.randomUUID();guest.handleCtl({k:'ratingSet',nonce:nextNonce},'host');await guest.ratingMatch;assert.deepEqual(matches.at(-1),[me.myId,nextNonce]);
+const count=matches.length;guest.handleCtl({k:'ratingSet',nonce:crypto.randomUUID()},'stranger');assert.equal(matches.length,count);
+const invalid=new out.NetSession('ABC','host');invalid.handleCtl({k:'hello',role:'guest',rating:{id:'not-an-id',points:-100}},'bad');timers.pop()();assert.equal(invalid.peerRating,null);
+const spoof=new out.NetSession('ABC','guest');spoof.handleCtl({k:'paired',rating:{id:me.myId,points:1000}},'stranger');assert.equal(spoof.peerId,null);
+guest.leave();guest.handleCtl({k:'ratingSet',nonce:crypto.randomUUID()},'host');assert.equal(matches.length,count);
 console.log('PASS: nearest waiting peer, selected guest handshake, nonce binding and self-reported forfeit');

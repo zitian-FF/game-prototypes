@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Casual Elo integration QA</title>
+<style>body{font:18px system-ui;background:#111e30;color:#fff;margin:28px}button{padding:14px;margin:6px}#state{white-space:pre-wrap}</style>
+<h1>Casual Elo integration QA — local service</h1>
+<p>Uses actual rating.ts and Worker. Test opponent submits through the same endpoints.</p>
+<button id="load">Load rating</button><button id="match">New test match</button><button id="win">Report my win</button><button id="agree">Opponent agrees</button><button id="refresh">Refresh settlement</button>
+<pre id="state"></pre>
+<script type="module">
+import {loadRating,currentRating,onRatingState,createRatingMatch,reportRating,ratingStatus} from '../prototypes/punchies/src/net/rating';
+const url=import.meta.env.VITE_PUNCHIES_RATING_URL;
+let opponent=null,matchId=null,result=null;
+const text=document.querySelector('#state');
+function show(state){text.textContent=JSON.stringify({service:state??{},points:currentRating()?.rating,matches:currentRating()?.matches,hasMatch:!!matchId,result},null,2);}
+onRatingState(show);
+async function call(path,body){const r=await fetch(url+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw Error(`HTTP ${r.status}`);return r.json();}
+document.querySelector('#load').onclick=async()=>{await loadRating();};
+document.querySelector('#match').onclick=async()=>{await loadRating();const myId=crypto.randomUUID();opponent={myId,...await call('/register',{myId})};matchId=await createRatingMatch(myId,crypto.randomUUID());result=null;show();};
+document.querySelector('#win').onclick=async()=>{result=await reportRating(matchId,1);show();};
+document.querySelector('#agree').onclick=async()=>{await call('/report',{myId:opponent.myId,token:opponent.token,matchId,score:0,quit:false});result=await ratingStatus(matchId);show();};
+document.querySelector('#refresh').onclick=async()=>{result=await ratingStatus(matchId);show();};
+await loadRating();
+</script></html>

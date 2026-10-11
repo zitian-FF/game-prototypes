@@ -111,7 +111,6 @@ export class MatchScene extends Phaser.Scene {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
       if (m.k === 'reselect' && m.round === data.round) { this.remoteReselect = true; this.changeBoxer(); }
-      if(m.k==='ratingSet'&&data.localIdx===1&&/^[a-f0-9-]{36}$/.test(m.nonce))void s.beginRating(m.nonce);
       if (m.k === 'rematch' && m.round === data.round + 1) {
         this.rematchRemote = true;
         this.tryRematch();

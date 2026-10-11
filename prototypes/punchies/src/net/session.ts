@@ -138,7 +138,11 @@ export class NetSession {
       if (!this.peerId) this.onRejected('full');
       return;
     }
-    if (from === this.peerId) this.onCtl(m);
+    if (from === this.peerId) {
+      // Bind rematch rating identity even while scenes are transitioning.
+      if(m.k==='ratingSet'&&this.role==='guest'&&typeof m.nonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.nonce))void this.beginRating(m.nonce);
+      this.onCtl(m);
+    }
   }
 
   private pair(from:string,m:CtlMessage & {k:'hello'}){

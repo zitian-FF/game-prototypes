@@ -20,11 +20,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/test-punchies-rating.mjs
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
       - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.143.0'
-          workingDirectory: prototypes/punchies/server
-          command: deploy
+          command: deploy --config prototypes/punchies/server/wrangler.jsonc
