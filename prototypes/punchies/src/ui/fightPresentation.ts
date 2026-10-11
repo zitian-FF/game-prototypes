@@ -9,6 +9,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { charName } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
+import { drawClashFire } from './clashFire';
 
 export class MatchIntro {
   private cover: Phaser.GameObjects.Container;
@@ -92,32 +93,7 @@ export class MatchIntro {
     this.portraits.forEach(p=>p.setAlpha(1-exit));
     // Oversized VS covers the frame, then cuts away into the arena.
     this.cover.setAlpha(1);
-    this.flames.clear();
-    if(impact<=0)return;
-    const fireScale=1+exit*.8;
-    for(let i=0;i<9;i++){
-      const x=VIEW.cx+(i-4)*17*fireScale,y=VIEW.cy+48*fireScale;
-      const wave=motion?Math.sin(elapsedMs/(cfg.vibrateMs*5)+i*1.8):0;
-      const h=(72+(i%3)*19+wave*12)*fireScale;
-      const flame=(k:number)=>new Phaser.Curves.Spline([
-        [-14,0],[-19,-h*.28/fireScale],[-11,-h*.57/fireScale],
-        [wave*8+5,-h/fireScale],[7,-h*.55/fireScale],[19,-h*.30/fireScale],[14,0]
-      ].map(([dx,dy])=>new Phaser.Math.Vector2(x+dx*k*fireScale,y+dy*k*fireScale))).getPoints(24);
-      const outer=flame(1);
-      this.flames.lineStyle(4,0x542332,1).strokePoints(outer,true);
-      this.flames.fillStyle(0xef4523,1).fillPoints(outer,true);
-      this.flames.fillStyle(0xff9d26,1).fillPoints(flame(.76),true);
-      this.flames.fillStyle(0xffed93,1).fillPoints(flame(.46),true);
-    }
-    // Outlined rising ember shards give the flames motion without smoke obscuring portraits.
-    for(let i=0;i<12;i++){
-      const life=motion?((elapsedMs/cfg.impactMs*.24+i/12)%1):i/12;
-      const x=VIEW.cx+Math.sin(i*2.3)*85,y=VIEW.cy+20-life*155;
-      const r=2+(i%3);
-      const p=[{x,y:y-r*2},{x:x+r,y},{x,y:y+r*2},{x:x-r,y}];
-      this.flames.lineStyle(1.5,0x6e2631,1-life).strokePoints(p,true);
-      this.flames.fillStyle(i%2?0xffd355:0xff7c2b,1-life).fillPoints(p,true);
-    }
+    drawClashFire(this.flames,VIEW.cx,VIEW.cy+12,elapsedMs,1+exit*.8,motion,impact);
   }
 }
 

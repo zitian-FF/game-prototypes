@@ -1,3 +1,4 @@
+import {CombatSparks} from './combatVfx';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import type { SimEvent, SimState } from '../sim/types';
@@ -10,6 +11,7 @@ import { fightWord } from '../ui/fightPresentation';
 // flash, block/perfect-guard rings, callout labels. Presentation only.
 export class Effects {
   roundNumber = 1;
+  private sparks: CombatSparks;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -17,6 +19,7 @@ export class Effects {
   onFighterFlash: (idx: number, color: number, zone: 'head' | 'body') => void = () => {};
 
   constructor(private scene: Phaser.Scene) {
+    this.sparks=new CombatSparks(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
       .setDepth(80);
@@ -81,45 +84,9 @@ export class Effects {
     if (e.punch === 'uppercut') this.shakyLabel(e.x, e.y - 52, t('fx.uppercut'), '#ffc83a', 18);
   }
 
-  // Tekken-style hit spark: a hot core flash plus streaks sprayed forward in
-  // a cone along the punch direction, and a few embers.
-  private directionalSpark(x: number, y: number, dx: number, dy: number, size: number, palette: number[], streaks: number): void {
-    const base = Math.atan2(dy, dx);
-    const core = this.scene.add.graphics({x,y}).setDepth(61);
-    const burst=Array.from({length:16},(_,i)=>{
-      const a=base+i*Math.PI/8,r=(i%2?3:10+(i%3)*3)*size;
-      return {x:Math.cos(a)*r,y:Math.sin(a)*r};
-    });
-    core.lineStyle(3,0x843416).strokePoints(burst,true);
-    core.fillStyle(palette[2]).fillPoints(burst,true);
-    core.fillStyle(palette[0]).fillPoints(burst.map(p=>({x:p.x*.6,y:p.y*.6})),true);
-    this.scene.tweens.add({ targets: core, scale: 1.7, alpha: 0, duration: 120, onComplete: () => core.destroy() });
-    for (let i = 0; i < streaks; i++) {
-      const a = base + (Math.random() - 0.5) * 1.3;
-      const len = (10 + Math.random() * 16) * size;
-      const dist = (22 + Math.random() * 30) * size;
-      const g = this.scene.add.graphics().setDepth(60);
-      const w=2*size,ux=Math.cos(a),uy=Math.sin(a);
-      const shard=[{x:-uy*w,y:ux*w},{x:ux*len,y:uy*len},{x:uy*w,y:-ux*w}];
-      g.lineStyle(1.5,0x9a451a).strokePoints(shard,true);
-      g.fillStyle(palette[i%palette.length]).fillPoints(shard,true);
-      g.setPosition(x, y);
-      this.scene.tweens.add({
-        targets: g,
-        x: x + Math.cos(a) * dist,
-        y: y + Math.sin(a) * dist,
-        alpha: 0,
-        duration: 140 + Math.random() * 120,
-        ease: 'Cubic.easeOut',
-        onComplete: () => g.destroy(),
-      });
-    }
-    for (let i = 0; i < Math.round(streaks / 2); i++) {
-      const a = base + (Math.random() - 0.5) * 2.2;
-      const d = (14 + Math.random() * 26) * size;
-      const c = this.scene.add.circle(x, y, 1.5 + Math.random() * 1.5, palette[1], 1).setDepth(60);
-      this.scene.tweens.add({ targets: c, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, duration: 260, onComplete: () => c.destroy() });
-    }
+  // Shared pooled world-space burst; receives the existing strike direction/intensity.
+  private directionalSpark(x:number,y:number,dx:number,dy:number,size:number,palette:number[],streaks:number):void {
+    this.sparks.burst(x,y,dx,dy,size,palette,streaks);
   }
 
   // Big and bold: pops in above the defender's head, holds, then floats

@@ -34,6 +34,15 @@ class ObjectStub extends EventEmitter {
   setScale(x, y = x) { this.scaleX = x; this.scaleY = y; return this; }
   setPosition(x, y) { this.x = x; this.y = y; return this; }
   setPostPipeline() { return this; }
+  setVisible(visible) { this.visible=visible;return this; }
+  setAlpha() { return this; }
+  setRotation() { return this; }
+  clear() { return this; }
+  fillStyle() { return this; }
+  lineStyle() { return this; }
+  fillPoints() { return this; }
+  strokePoints() { return this; }
+  destroy() { this.scene=null;this.active=false; }
   resetPostPipeline() { return this; }
   sort() { this.list.sort((a, b) => a.depth - b.depth); }
   add(objects) {
@@ -58,10 +67,15 @@ for (const webgl of [false, true]) {
     // Real factories add first; caller chains setDepth after ADDED_TO_SCENE.
     return obj.setDepth(depth);
   };
-  scene.add = { container: () => spawn(0) };
+  scene.add = { container: () => spawn(0),graphics:()=>{const g=spawn(0);g.pooledSpark=true;return g;} };
   const perspective = new exports.RingPerspective(scene);
   const fighter = spawn(10);
   perspective.take([fighter]);
+  const combatExports={};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/combatVfx.ts','utf8'),
+    {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:combatExports});
+  const sparks=new combatExports.CombatSparks(scene);
+  sparks.burst(400,200,1,0,1.25,[0xffffff,0xfff27a,0xffc83a],10);
   const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));
   const overlay = spawn(76);
   const flash = spawn(80);
@@ -72,6 +86,10 @@ for (const webgl of [false, true]) {
   const otherContainer = new ObjectStub(scene);
   otherContainer.add(owned);
   await new Promise((resolve) => queueMicrotask(resolve));
+  const pooled=perspective.world.list.filter(o=>o.pooledSpark);
+  assert.equal(pooled.length,8,'all pooled sparks must join the fitted world');
+  const activeSpark=pooled.find(o=>o.visible);
+  effects.push(activeSpark);
   for (const effect of effects) assert.equal(effect.parentContainer, perspective.world, `depth ${effect.depth} detached`);
   for (const item of [overlay, flash, hud, dead]) assert.equal(item.parentContainer, null);
   assert.equal(owned.parentContainer, otherContainer);
@@ -92,6 +110,7 @@ for (const webgl of [false, true]) {
   // the perspective listener, without pretending to be a full GameObject.
   scene.children.shutdown = () => {};
   events.emit('shutdown');
+  assert.equal(events.listenerCount('update'),0,'pooled spark update listener leaked');
   const afterShutdown = spawn(60);
   await new Promise((resolve) => queueMicrotask(resolve));
   assert.equal(afterShutdown.parentContainer, null, 'listener leaked after shutdown');
