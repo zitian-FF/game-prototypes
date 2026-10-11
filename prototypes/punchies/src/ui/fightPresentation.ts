@@ -1,3 +1,4 @@
+import { fightCueTiming } from '../sim/fightCue';
 import type { WireProfile } from '../progress/alias';
 import { titleName } from '../progress/titles';
 import { portraitScaleFactor } from '../render/portraitScale';
@@ -9,12 +10,12 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { charName } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { drawClashFire } from './clashFire';
+import { clashFireImage,animateClashFire } from './clashFire';
 
 export class MatchIntro {
   private cover: Phaser.GameObjects.Container;
   private portraits: Phaser.GameObjects.Container[] = [];
-  private flames: Phaser.GameObjects.Graphics;
+  private flames: Phaser.GameObjects.Image;
   private vs: Phaser.GameObjects.Text;
   private complete = false;
 
@@ -64,7 +65,7 @@ export class MatchIntro {
       }
       this.cover.add(group);this.portraits.push(group);
     });
-    this.flames=scene.add.graphics();this.cover.add(this.flames);
+    this.flames=clashFireImage(scene);this.cover.add(this.flames);
     this.vs=scene.add.text(VIEW.cx,VIEW.cy,'VS',{
       fontFamily:'Impact, Arial Black, sans-serif',fontSize:'88px',fontStyle:'bold italic',color:'#fff0ab',
       stroke:'#581721',strokeThickness:9,padding:{left:14,right:30,top:12,bottom:12},resolution:PIXEL_RATIO}).setOrigin(0.5).setAngle(-8);
@@ -93,7 +94,7 @@ export class MatchIntro {
     this.portraits.forEach(p=>p.setAlpha(1-exit));
     // Oversized VS covers the frame, then cuts away into the arena.
     this.cover.setAlpha(1);
-    drawClashFire(this.flames,VIEW.cx,VIEW.cy+12,elapsedMs,1+exit*.8,motion,impact);
+    animateClashFire(this.flames,VIEW.cx,VIEW.cy+12,elapsedMs,1+exit*.8,motion,impact);
   }
 }
 
@@ -104,11 +105,12 @@ export function knockoutWords(scene: Phaser.Scene): () => void {
   return impactWords(scene, labels, tune.view.fightPresentation.koHoldMs);
 }
 
-export function fightWord(scene: Phaser.Scene): void {
-  impactWords(scene,[t('common.fight')],tune.view.fightPresentation.fightHoldMs,tune.view.fightPresentation.fightFadeMs);
+export function fightWord(scene: Phaser.Scene) {
+  const timing=fightCueTiming();
+  return impactWords(scene,[t('common.fight')],timing.entranceMs,timing.fadeMs,true);
 }
 
-function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number, fadeMs = tune.view.fightPresentation.fadeMs): () => void {
+function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number, fadeMs = tune.view.fightPresentation.fadeMs, manual=false): (() => void) & {draw:(age:number)=>void} {
   const cfg=tune.view.fightPresentation;
   const cover=scene.add.container().setDepth(150);
   const paint=scene.add.graphics();cover.add(paint);
@@ -128,7 +130,7 @@ function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number, fade
   });
   paint.setAlpha(0);
   const strokeTargets: object[]=[];
-  const timers=words.map((text,i)=>scene.time.delayedCall(i*cfg.koWordGapMs,()=>{
+  const timers=manual?[]:words.map((text,i)=>scene.time.delayedCall(i*cfg.koWordGapMs,()=>{
     paint.setAlpha(1);text.setAlpha(1).setScale(reducedMotion()?1:1.6);
     scene.tweens.add({targets:text,scale:1,duration:reducedMotion()?0:cfg.impactMs,ease:'Cubic.Out'});
     if(!reducedMotion()){
@@ -137,16 +139,26 @@ function impactWords(scene: Phaser.Scene, labels: string[], holdMs: number, fade
         onUpdate:()=>text.setCrop(0,0,stroke.width,text.height),onComplete:()=>text.setCrop()});
     }
   }));
-  scene.tweens.add({targets:cover,alpha:0,delay:holdMs,duration:fadeMs});
+  if(!manual)scene.tweens.add({targets:cover,alpha:0,delay:holdMs,duration:fadeMs});
   let cleaned=false;
   const cleanup=()=>{
     if(cleaned)return;
     cleaned=true;
-    expiry.remove(false);
+    expiry?.remove(false);
     timers.forEach(timer=>timer.remove(false));
     scene.tweens.killTweensOf([cover,...words,...strokeTargets]);
     cover.destroy(true);
   };
-  const expiry=scene.time.delayedCall(holdMs+fadeMs,cleanup);
-  return cleanup;
+  const expiry=manual?null:scene.time.delayedCall(holdMs+fadeMs,cleanup);
+  const draw=(age:number)=>{
+    if(cleaned)return;
+    if(age>=holdMs+fadeMs){cleanup();return;}
+    const progress=Math.max(0,Math.min(1,age/Math.max(1,cfg.impactMs)));
+    paint.setAlpha(1);cover.setAlpha(age<holdMs?1:Math.max(0,1-(age-holdMs)/Math.max(1,fadeMs)));
+    for(const word of words){
+      word.setAlpha(1).setScale(reducedMotion()?1:1+.6*Math.pow(1-progress,3));
+      if(reducedMotion()||progress>=1)word.setCrop();else word.setCrop(0,0,word.width*progress,word.height);
+    }
+  };
+  return Object.assign(cleanup,{draw});
 }

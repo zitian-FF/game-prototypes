@@ -26,7 +26,7 @@ import { setupOrientation } from './orientation/orientation';
 mountDebugPanelIfRequested();
 installTextLocale(Phaser);
 
-const game = new Phaser.Game({
+export const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#111111',
