@@ -3,7 +3,7 @@ import {build} from 'esbuild';
 const result=await build({stdin:{contents:`export * from './prototypes/punchies/src/sim/sim'; export * from './prototypes/punchies/src/sim/character'; export * from './prototypes/punchies/src/sim/tune'; export * from './prototypes/punchies/src/sim/types';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false});
 const {createSimState,step,NEUTRAL_INPUT:N,uppercutStars,punchCfg,tune,validateTuneJson}=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
 Object.assign(tune.ring,{left:0,top:0,right:1200,bottom:800});
-const builds={marco:[3,20],mia:[2,12],bruno:[3,22],tee:[2,13],tyke:[4,36],dragon:[3,19],longan:[1,8],captain:[2,12],roxy:[3,23],nadia:[2,11]};
+const builds={marco:[3,20],mia:[2,12],bruno:[3,22],tee:[2,13],tyke:[4,36],dragon:[3,19],longan:[1,6],captain:[2,12],roxy:[3,23],nadia:[2,11]};
 function state(id,type='uppercut'){
  const s=createSimState({timed:false,fighters:[{char:id},{char:'marco',anchored:true}]});
  const [a,b]=s.fighters; a.x=200;a.y=b.y=210;
