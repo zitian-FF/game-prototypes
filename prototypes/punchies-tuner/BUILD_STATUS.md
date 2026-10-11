@@ -1,12 +1,17 @@
 ## Current milestone
-Update live tuning workshop to the seven-fighter game roster.
+PR #270 conflicts resolved against main 09d62d8; remains open for review.
+
 ## What was implemented
-Workshop roster uses the game's canonical fighter list: Marco, Mia, Bruno, G.P. Tee, Tyke, Dragon and Longan. Existing categories and Marco comparisons remain available for all fighters. Added roster, metadata and editable Longan baseline regression.
+Preserved local GitHub saves, Base history and units while incorporating the current ten-fighter roster, counterWhiff, uppercut charge and push-derived stun fields. Updated workshop stat previews to the current 60% Base benchmark and durability formulas. Regression fixtures now tolerate existing Base history.
+
 ## Key technical decisions
-Unique and palette skins are cosmetic and share their fighter's stats. Longan's starting stats are provisional Marco values. No tuning values changed in this update.
+Preserved main game UI, localisation and all owner tuning values. Workshop preview is read-only and tested against current roster formulas. Save verification uses a mock server without actual GitHub tuning writes.
+
 ## Open questions
 None.
+
 ## Known issues
-Native local-file picker/permission flow still needs manual testing. Drafts based on older schemas may require reloading the current tune file.
+Native file-picker permissions remain manual. Existing build chunk-size warnings remain.
+
 ## Next proposed step
-Deploy the approved game stack and workshop to live; verify both deployment workflows and seven-fighter sidebar.
+Review PR #270; merging and deployment remain separate actions.
