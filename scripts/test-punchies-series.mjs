@@ -78,12 +78,12 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,
   if (id === '../ui/menuNav') return { getNav:()=>({engage(){}}) };
   if (id === './FightStage') return {makeButton(){}};
   if (id === '../render/pixelRatio') return {VIEW:{cx:422,cy:195},PIXEL_RATIO:1};
-  if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }) };
+  if (id === '../progress/progress') return { awardMatch: () => ({ xpGained: 0, levelUps: [], capped: false }), progressView: () => ({title:'rookie'}) };
   return {};
 } });
 function online(series, winner) {
   const scene = new sceneExports.MatchScene();
-  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { send: m => sent.push(m) } },
+  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { peer:{title:'rookie'}, send: m => sent.push(m) } },
     ls: { confirmedResult: () => ({ winner }) }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
     registry: { set() {} }, scene: { restart: data => transitions.push({ key: 'restart', data }) } });

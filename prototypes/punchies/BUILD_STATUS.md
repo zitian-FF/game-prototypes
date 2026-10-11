@@ -1,12 +1,17 @@
 ## Current milestone
-Owner corrections ready for Build integration: Zombie nearest targeting/5–10 HP and Ranked-only Elo.
+Combined owner corrections ready: Ranked-only Elo, Zombie targeting/health, accessible Profile progression and slimmer Marco cosmetic torsos.
+
 ## What was implemented
-Survival reacquires closest living enemies during neutral hitstop and after movement/separation, preserves committed punch/dodge facing, and uses the closest enemy for stage context. Ordinary HP is a seeded inclusive 5–10 range at every wave; boss roster HP remains unchanged. Casual defaults unrated; only explicit Ranked can register, bind, report or display Elo.
+Online exposes Casual and Ranked choices. Casual does not register or present Elo; Ranked retains settlement, rematch and quit guards. Profile exposes saved XP, levels, titles and reward records. Zombies occupy the practice menu with a hand icon. Ordinary Zombies have seeded inclusive 5–10 HP at every wave; nearest targeting refreshes during neutral hitstop and after movement while attacks/dodges keep facing. Marco cosmetic torso scale is .88; regular Marco, other fighters, source pixels and hitboxes retain prior behavior. Selectively applied 78 validated Sheet keys across six locales and updated coverage metadata.
+
 ## Key technical decisions
-Readonly session.rated survives all scene transitions. Separate relay room namespaces plus validated hello/paired/start modes preserve legacy Casual behavior. QR links retain Ranked mode. Existing points remain. Latest HP range supersedes prior Zombie durability scaling; existing speed growth remains. Art owns menu entry/Profile/Marco integration; Build owns combined release.
+Integrated Logic f4e5c1b/a8ee397 then Art 3579855/3f1e9b1 from deployed main. Retained profile titles and Ranked guards in MatchScene. No Worker or R2 changes. Both quality profiles default to CrazyGames with explicit portal overrides. Combat VFX remains separate.
+
 ## Open questions
-Full played Ranked KO and rematch browser verification remains outstanding. Ranked uses code pairing initially; there is no global matchmaking queue.
+Full played two-peer Ranked KO/rematch remains browser-unverified; session regression tests cover the flow. Ranked uses room-code pairing.
+
 ## Known issues
-Anonymous identity reset loses points; agreed fake claims and unreported disconnects remain accepted service limitations. Browser fixture saves/position controls are explicitly mocked; Lobby rating requests use the actual deployed Worker. No direct live changes or Worker deployment performed for these corrections.
+Anonymous identity reset loses points; agreed fake claims and unreported disconnects remain service limitations. Translations passed Sheet completeness/placeholder checks; no native-speaker review is claimed. Art/Logic fixture checks use explicit mock saves where documented. Both packages pass inventory/parity and 40 MB/20 MB budgets.
+
 ## Next proposed step
-Integrate ordered Logic commits with Art's 3579855 and 3f1e9b1, rerun combined UI/logic/profile gates and publish through Build after review.
+Complete combined Brave proof and deploy corrections, then integrate separately validated VFX after its final handoff.
