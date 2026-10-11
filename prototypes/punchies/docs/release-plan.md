@@ -269,11 +269,11 @@ Gap to fill: the `offensive` list in `alias.json` is empty. It should be filled 
 
 ## 8b. Test scaffold to remove for the final build
 
-The itch.io Current WIP slot is a test build. Testing aids that a real player must not see are gated behind one flag, `TEST_BUILD` in `src/testBuild.ts`. For the final build set it to `false` (or delete the file and its imports) and check this list.
+The itch.io Current WIP slot is a test build. Testing aids that a real player must not see are gated behind one flag, `TEST_BUILD` in `src/testBuild.ts`. `TEST_BUILD` is true only for the default `web` build (itch.io). Every portal build (`PORTAL=crazygames|poki|playgama`) turns it off automatically, so the CrazyGames build has no test scaffold. Check this list when a final itch build is needed.
 
 | Scaffold | Where | Visible when |
 |---|---|---|
-| "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | test build, or `?debug=1` |
+| "TEST: 999 TOKENS" shop button | `ShopScene.ts`, `TEST_BUILD` and `TEST_TOKENS` | default `web` build only (not portal builds, not `?debug=1`) |
 | Debug and tuning panel, hitboxes | `src/debug/debugPanel.ts` | `?debug=1` only (also fine to keep hidden in the final build) |
 | Reset save panel | `src/ui/resetSavePanel.ts` | Settings; decide whether the final build keeps it |
 
@@ -307,5 +307,6 @@ The 2026-10-11 content build freezes 382 strings in each of Japanese, Korean, Si
 - 2026-10-09: profile and alias logic built, PR 2 of 2 (Claude): alias rules, handshake fields, peer validation. Offensive word list still empty.
 - 2026-10-09: ShopItem.earnOnly added so Veteran skins stay out of chests (Claude).
 - 2026-10-09: skin chest pool now only offers skins for fighters the player owns (Claude). Note for the inventory: a fighter's skins only become obtainable after the fighter is owned.
+- 2026-10-11: CrazyGames adapter checked against the real SDK v3.8.0 in local demo mode (`scripts/test-punchies-crazygames-sdk.mjs`); `loadingStart` now sent; Basic Launch ad errors map to unavailable; scaffold off in portal builds (Claude).
 - 2026-10-10: test-build scaffold flag added (Claude): `TEST_BUILD` shows a 999 token shop button on itch without `?debug=1`; removal list in section 8b.
 - 2026-10-10: translations are packed into the build from the sheet's CSV on release builds or on request (Claude). A runtime live-sheet loader was tried and reverted: the game never reads the sheet at runtime.
