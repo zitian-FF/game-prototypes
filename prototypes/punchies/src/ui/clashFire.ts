@@ -1,83 +1,83 @@
 import type Phaser from 'phaser';
 
-const FIRE_ATLAS='punchies:clash-fire-frames-v1';
+const FIRE_ATLAS='punchies:clash-fire-collision-v2';
 const CELL=240,FRAMES=16;
-/** Rasterise the authored contours once; the runtime clash draws one quad. */
-export function clashFireImage(scene:Phaser.Scene):Phaser.GameObjects.Image {
+export interface ClashFlames {root:Phaser.GameObjects.Container;left:Phaser.GameObjects.Image;right:Phaser.GameObjects.Image;flare:Phaser.GameObjects.Image}
+
+/** Two opposing curled trails, not an upright wall of flames. Shared 3.52MiB atlas. */
+export function clashFireImage(scene:Phaser.Scene):ClashFlames {
   if(!scene.textures.exists(FIRE_ATLAS)){
     const g=scene.make.graphics({x:0,y:0});
+    const atlas=scene.textures.createCanvas(FIRE_ATLAS,CELL*4,CELL*4)!;
     for(let i=0;i<FRAMES;i++){
-      // drawClashFire clears, so bake each cell into a temporary canvas and pack.
-      drawClashFire(g,120,180,i*1000/FRAMES,1,true);
-      const key=`${FIRE_ATLAS}-scratch`;
-      g.generateTexture(key,CELL,CELL);
-      if(i===0)scene.textures.createCanvas(FIRE_ATLAS,CELL*4,CELL*4);
-      const atlas=scene.textures.get(FIRE_ATLAS) as Phaser.Textures.CanvasTexture;
-      atlas.context.drawImage(scene.textures.get(key).getSourceImage() as HTMLCanvasElement,i%4*CELL,Math.floor(i/4)*CELL);
-      scene.textures.remove(key);
-      atlas.add(i.toString(),0,i%4*CELL,Math.floor(i/4)*CELL,CELL,CELL);
+      if(i<12)drawClashFire(g,120,120,i*1000/12,1,true);else drawCollision(g,120,120,(i-12)/3);
+      const scratch=FIRE_ATLAS+'-scratch';g.generateTexture(scratch,CELL,CELL);
+      atlas.context.drawImage(scene.textures.get(scratch).getSourceImage() as HTMLCanvasElement,i%4*CELL,Math.floor(i/4)*CELL);
+      scene.textures.remove(scratch);atlas.add(String(i),0,i%4*CELL,Math.floor(i/4)*CELL,CELL,CELL);
     }
-    (scene.textures.get(FIRE_ATLAS) as Phaser.Textures.CanvasTexture).refresh();g.destroy();
+    atlas.refresh();g.destroy();
   }
-  return scene.add.image(0,0,FIRE_ATLAS,'0').setOrigin(.5,.75);
-}
-export function animateClashFire(image:Phaser.GameObjects.Image,x:number,y:number,ms:number,scale:number,motion:boolean,reveal:number):void {
-  image.setPosition(x,y).setScale(scale).setAlpha(reveal).setVisible(reveal>0)
-    .setFrame(String(motion?Math.floor(ms*FRAMES/1000)%FRAMES:0));
+  const root=scene.add.container();
+  const left=scene.add.image(0,0,FIRE_ATLAS,'0');
+  const right=scene.add.image(0,0,FIRE_ATLAS,'6').setFlipX(true).setFlipY(true);
+  const flare=scene.add.image(0,0,FIRE_ATLAS,'12').setVisible(false);
+  root.add([left,right,flare]);return {root,left,right,flare};
 }
 
-// One scene-owned Graphics object, no emitters, textures or per-flame tweens.
-// The stepped contours deliberately read like the roster's inked cartoon art.
-export function drawClashFire(g: Phaser.GameObjects.Graphics, x: number, y: number,
-  ms: number, scale: number, motion: boolean, reveal = 1): void {
+export function animateClashFire(f:ClashFlames,x:number,y:number,ms:number,slideMs:number,exit:number,motion:boolean,span:number):void {
+  const travel=motion?1-Math.pow(1-Math.min(1,ms/Math.max(1,slideMs)),3):1;
+  const age=Math.max(0,ms-slideMs),impact=motion?Math.min(1,age/400):1;
+  const distance=18+span*(1-travel)+exit*span*.6,scale=.68+travel*.22+exit*.45;
+  const frame=String(motion?Math.floor(ms*12/1000)%12:0);
+  f.root.setPosition(x,y).setAlpha(1-exit).setVisible(exit<1);
+  f.left.setPosition(-distance,-5).setScale(scale).setRotation(-.16+impact*.12).setFrame(frame);
+  f.right.setPosition(distance,5).setScale(scale).setRotation(-.16+impact*.12).setFrame(frame);
+  const collision=travel===1&&age<400&&motion;
+  f.flare.setVisible(collision).setScale(.65+impact*.85).setAlpha((1-impact)*.85)
+    .setFrame(String(12+Math.min(3,Math.floor(impact*4))));
+}
+
+function polygon(g:Phaser.GameObjects.Graphics,points:number[][],x:number,y:number,scale:number,color:number,outline=false,alpha=1){
+  const p:{x:number;y:number}[]=[];
+  points.forEach(([dx,dy],i)=>{
+    const prev=points[(i+points.length-1)%points.length],next=points[(i+1)%points.length];
+    const tip=i%5===0,round=tip?.06:.28;
+    const ax=dx+(prev[0]-dx)*round,ay=dy+(prev[1]-dy)*round;
+    const bx=dx+(next[0]-dx)*round,by=dy+(next[1]-dy)*round;
+    for(let j=0;j<=4;j++){const t=j/4,u=1-t;p.push({x:x+(u*u*ax+2*u*t*dx+t*t*bx)*scale,y:y+(u*u*ay+2*u*t*dy+t*t*by)*scale});}
+  });
+  g.fillStyle(color,alpha).fillPoints(p,true);
+  if(outline)g.lineStyle(3*scale,0x562331,alpha).strokePoints(p,true);
+}
+
+/** Broad swooping crescent with hooked tips and a clear central negative space. */
+export function drawClashFire(g:Phaser.GameObjects.Graphics,x:number,y:number,ms:number,scale:number,motion:boolean,reveal=1):void {
+  g.clear();if(reveal<=0)return;
+  const p=motion?ms*Math.PI*2/1000:0,w=Math.sin(p)*5,c=Math.cos(p)*4;
+  const paint=(pts:number[][],color:number,outline=false,alpha=1)=>polygon(g,pts,x,y,scale,color,outline,alpha*reveal);
+  paint([[-109,76],[-72,37],[-101,11],[-103,-25],[-87,-61],[-60,-83],[-17,-95],[26,-89],
+    [58,-71],[85+w,-35],[100,-9],[62,-29],[68,-54],
+    [35,-52],[-1,-50],[-31,-28],[-41,1],[-31,26],[-11,44],[-56,40],[-34,66],[-76,58]],0xdf3427,true);
+  paint([[-96,63],[-65,32],[-87,7],[-88,-26],[-72,-54],[-40,-72],[0,-79],[35,-69],[55,-48],
+    [79+w,-25],[48,-37],[26,-38],[-10,-38],[-33,-13],[-30,15],[-9,34],[-48,26],[-35,46],[-67,46]],0xff7f24);
+  paint([[-70,30],[-74,5],[-73,-24],[-49,-52],[-17,-64],[18,-62],[42,-46],
+    [23,-49],[-4,-47],[-33,-25],[-44,2],[-31,22],[-51,16]],0xffcb45);
+  paint([[-63,-5],[-57,-28],[-33,-46],[-7,-51],[11,-48],[-20,-40],[-42,-21],[-48,1]],0xfff1b3);
+  // Broken trailing tongues make the silhouette directional, rather than seven vertical spikes.
+  paint([[-103,90],[-91,72],[-67,65],[-77,83],[-96,96]],0xff9a26,true);
+  paint([[-100,-70],[-88,-87],[-67,-96],[-76,-78]],0xf15a25,true);
+  for(let i=0;i<5;i++){
+    const a=p*.28+i*1.05,dx=Math.cos(a)*98,dy=Math.sin(a)*97;
+    paint([[dx-3,dy+3],[dx+c*.3,dy-7],[dx+4,dy-1],[dx+1,dy+5]],i%2?0xffd862:0xff8730,true,.65);
+  }
+}
+function drawCollision(g:Phaser.GameObjects.Graphics,x:number,y:number,phase:number):void {
   g.clear();
-  if (reveal <= 0) return;
-  const phase = motion ? ms * .006 : 0;
-  const paint = (points: number[][], color: number, outline = false, alpha = 1) => {
-    // Round the shoulders with short quadratic joins, retaining pointed tips.
-    const p: {x:number;y:number}[] = [];
-    points.forEach(([dx,dy],i)=>{
-      const prev=points[(i+points.length-1)%points.length],next=points[(i+1)%points.length];
-      const a=[dx+(prev[0]-dx)*.22,dy+(prev[1]-dy)*.22];
-      const b=[dx+(next[0]-dx)*.22,dy+(next[1]-dy)*.22];
-      for(let j=0;j<=4;j++){
-        const t=j/4,u=1-t;
-        p.push({x:x+(u*u*a[0]+2*u*t*dx+t*t*b[0])*scale,
-          y:y+(u*u*a[1]+2*u*t*dy+t*t*b[1])*scale});
-      }
-    });
-    g.fillStyle(color, alpha * reveal).fillPoints(p, true);
-    if (outline) g.lineStyle(3 * scale, 0x562331, alpha * reveal).strokePoints(p, true);
-  };
-  // A continuous bed connects the tongues; no picket-fence gaps at their roots.
-  paint([[-107,40],[-92,12],[-67,19],[-43,-3],[-13,8],[20,-6],[49,14],
-    [79,4],[111,35],[86,57],[-76,57]], 0xd92c2c, true);
-  const heights = [75,112,91,151,123,164,102];
-  for (let i = 0; i < heights.length; i++) {
-    const root = (i - 3) * 27;
-    const sway = Math.sin(phase + i * 1.7) * 9;
-    const h = heights[i] + Math.sin(phase * 1.3 + i * 2.1) * 8;
-    const curl = (i % 2 ? -1 : 1) * (15 + Math.cos(phase + i) * 5);
-    // Broad base, scooped shoulder and hooked tip. Each nested contour is authored
-    // separately so the cream core does not simply duplicate the outer silhouette.
-    paint([[root-24,40],[root-30,14],[root-24,-h*.25],[root-10,-h*.48],
-      [root-8+sway,-h*.72],[root+curl+sway,-h],
-      [root+curl+sway+3,-h*.77],[root+4+sway,-h*.57],
-      [root+20,-h*.39],[root+15,-h*.16],[root+27,16],[root+21,43]],0xf04a23,true);
-    paint([[root-16,36],[root-21,8],[root-14,-h*.26],[root+2+sway,-h*.55],
-      [root+curl*.6+sway,-h*.83],[root+13+sway,-h*.58],
-      [root+9,-h*.32],[root+19,-h*.09],[root+13,37]],0xff9b25);
-    paint([[root-8,34],[root-12,12],[root-5,-h*.14],[root+7,-h*.38],
-      [root+5,-h*.12],[root+12,10],[root+7,36]],0xffdc59);
-    paint([[root-4,32],[root-6,17],[root+2,-h*.13],[root+7,17],[root+4,33]],0xfff2bd);
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4+.16,inner=18+phase*12,outer=86+Math.sin(i*4)*15;
+    const point=(r:number,offset:number)=>[Math.cos(a+offset)*r,Math.sin(a+offset)*r];
+    polygon(g,[point(inner,-.25),point(outer,0),point(inner,.25),point(inner*.55,0)],x,y,1,0xffbd39,true);
   }
-  // Twelve bounded teardrop embers: curved drift, shrink and fade as they rise.
-  for (let i = 0; i < 12; i++) {
-    const life = motion ? ((ms * .00065 + i / 12) % 1) : i / 12;
-    const dx = Math.sin(i * 2.4) * 98 + Math.sin(phase*.5+i)*life*17;
-    const dy = 18 - life * (135 + i%3 * 20);
-    const r = (3 + i%3) * (1-life*.65);
-    paint([[dx-r,dy+r],[dx-r*.5,dy-r],[dx+r,dy-r*2.5],
-      [dx+r*.7,dy+r*.4],[dx,dy+r*1.4]],i%2?0xffd65b:0xff8b27,true,1-life);
-  }
+  polygon(g,[[-42,4],[-26,-22],[-5,-20],[11,-42],[21,-17],[44,-8],[23,14],[17,39],[-8,21],[-37,26]],x,y,1,0xffed9a,true);
+  polygon(g,[[-21,3],[-6,-15],[7,-8],[21,0],[6,19],[-13,15]],x,y,1,0xfff9df);
 }
