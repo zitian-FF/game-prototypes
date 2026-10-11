@@ -13,6 +13,8 @@ import {SurvivalStore} from '../survival/save';
 import type {SurvivalRun,SurvivalEvent,SurvivalEnemy} from '../survival/types';
 import {store as portalStore} from '../portal/store';
 import {setGameplay} from '../portal/gameplay';
+import {loadShopDraft} from '../shop/draft';
+import {availableFighters,equippedSkin} from '../shop/roster';
 import {getNav} from '../ui/menuNav';
 import {survivalText,survivalOverlay,fitSurvivalText} from '../ui/survivalChrome';
 import {startScreen} from '../ui/presentation';
@@ -35,7 +37,8 @@ export class SurvivalScene extends Phaser.Scene {
  create(data:SurvivalData):void {
   applyCameraPixelRatio(this);this.store=new SurvivalStore(portalStore);this.built=false;this.acc=0;this.panel=null;this.closePanel=null;this.saveFailed=false;
   try{
-   this.run=data.run??this.store.begin({fighter:data.char??'marco',skin:data.skin??'default',seed:crypto.getRandomValues(new Uint32Array(1))[0],runId:crypto.randomUUID()});
+   const owned=loadShopDraft(),fighter=availableFighters(owned).includes(data.char??'marco')?(data.char??'marco'):'marco';
+   this.run=data.run??this.store.begin({fighter,skin:equippedSkin(owned,fighter,data.skin),seed:crypto.getRandomValues(new Uint32Array(1))[0],runId:crypto.randomUUID()});
    if(data.resume&&this.run.status==='intermission')this.store.advance(this.run);
   }catch{this.showInitialError();return;}
   whenGroupsReady(this,fighterGroups([this.run.fighter,'marco']),()=>this.build());
@@ -62,7 +65,7 @@ export class SurvivalScene extends Phaser.Scene {
   this.built=true;setGameplay(this.run.status==='active');
  }
  private displayPair(enemy?:SurvivalEnemy):SimState {
-  return {...this.display,tick:this.run.tick,hitstop:this.run.hitstop,result:null,fighters:[this.run.player,enemy?.fighter??this.display.fighters[1]]};
+  return {...this.display,tick:this.run.tick,fightStartTick:this.run.fightStartTick,hitstop:this.run.hitstop,result:null,fighters:[this.run.player,enemy?.fighter??this.display.fighters[1]]};
  }
  private handleSurvivalEvents(events:SurvivalEvent[],before:Map<string,SurvivalEnemy>):void {
   for(const item of events){
@@ -75,6 +78,8 @@ export class SurvivalScene extends Phaser.Scene {
  update(time:number,delta:number):void {
   if(!this.built)return;
   this.stage.pollDevices();
+  this.stage.setSeries({bestOf:1,roundNumber:this.run.wave,wins:[0,0]});
+  this.stage.inputBlocked=this.run.tick<this.run.fightStartTick||this.run.status!=='active'||this.saveFailed;
   if(this.run.status==='active'&&!this.saveFailed){
    this.acc=Math.min(this.acc+delta,1000/TICK_RATE*5);
    while(this.acc>=1000/TICK_RATE){
@@ -85,7 +90,8 @@ export class SurvivalScene extends Phaser.Scene {
    }
   }
   const view=survivalView(this.run);
-  this.stage.inputBlocked=view.status!=='active'||this.saveFailed;
+  this.stage.inputBlocked=view.ready||view.status!=='active'||this.saveFailed;
+  this.stage.setSeries({bestOf:1,roundNumber:this.run.wave,wins:[0,0]});
   this.stage.survivalHud(view.secondsLeft);this.stage.draw(this.displayPair(closestEnemy(this.run)),time,false);
   this.enemyViews.draw(this.run.enemies,time);
   this.waveText.setText(t('survival.wave',{wave:view.wave}));
@@ -118,7 +124,8 @@ export class SurvivalScene extends Phaser.Scene {
   if(this.panel==='defeat')return;
   this.panel='defeat';getNav(this).fightMode=false;setGameplay(false);
   this.closePanel=survivalOverlay(this,t('survival.run_ended'),[
-   t('survival.highest',{wave:this.run.clearedWave}),t('survival.total_kills',{kills:this.run.totalKills}),t('survival.best',{wave:this.store.best()?.clearedWave??0}),
+   t('survival.highest',{wave:this.run.clearedWave}),t('survival.total_kills',{kills:this.run.totalKills}),
+   t('survival.run_stats',{zombies:this.run.totalZombieKills,dealt:Number(this.run.damageDealt.toFixed(1)),received:Number(this.run.damageReceived.toFixed(1))}),t('survival.best',{wave:this.store.best()?.clearedWave??0}),
   ],[{label:t('survival.try_again'),accent:'green',run:()=>this.scene.restart({char:this.run.fighter,skin:this.run.skin})},
    {label:t('survival.choose_fighter'),run:()=>startScreen(this,'CharSelect',{mode:'survival'})},
    {label:t('pause.return_to_main_menu_2'),back:true,run:()=>startScreen(this,'Menu')}]);

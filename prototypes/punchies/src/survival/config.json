@@ -1,6 +1,6 @@
 {
-  "waveSeconds": 60,
-  "bossEveryWaves": 5,
+  "waveSeconds": 30,
+  "bossEveryWaves": 3,
   "initialZombies": 3,
   "maxActiveEnemies": 12,
   "spawnIntervalFrames": 180,
@@ -10,7 +10,7 @@
   "spawnPlayerDistance": 145,
   "spawnEdgeInset": 8,
   "separationPasses": 4,
-  "zombieMinHp": 5,
+  "zombieMinHp": 6,
   "zombieMaxHp": 10,
   "zombieSpeedRatio": 0.35,
   "zombieSpeedGrowthPerWave": 0.025,
@@ -18,5 +18,14 @@
   "zombieDamageMultiplier": 0.35,
   "zombieAttackCooldownFrames": 150,
   "zombieAttackChance": 0.16,
-  "healPerZombieKill": 3
+  "healPerZombieKill": 3,
+  "zombieAttackChanceGrowthPerWave": 0.015,
+  "zombieMaxAttackChance": 0.55,
+  "zombieAttackCooldownReductionPerWave": 4,
+  "zombieMinAttackCooldownFrames": 60,
+  "bossAttackChanceRatio": 0.45,
+  "bossAttackChanceGrowthPerWave": 0.025,
+  "bossMaxAttackChanceRatio": 0.85,
+  "coordinationCycleFrames": 120,
+  "bossAttackWindowFrames": 40
 }

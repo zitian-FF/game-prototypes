@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "온라인 (캐주얼)",
   "menu.online_ranked": "온라인 (랭킹)",
-  "charselect.uppercut_stars": "어퍼: {stars} ★"
+  "charselect.uppercut_stars": "어퍼: {stars} ★",
+  "survival.run_stats": "처치한 좀비: {zombies}\n입힌 피해: {dealt}\n받은 피해: {received}",
+  "ranked.searching": "상대를 찾는 중…",
+  "ranked.connecting": "상대에게 연결 중…",
+  "ranked.search_ended": "검색이 종료되었습니다. 다시 시도하세요.",
+  "ranked.unavailable": "매치메이킹을 이용할 수 없습니다. 다시 시도하세요."
 }

@@ -1,4 +1,4 @@
-import {loadRating,onRatingState} from '../net/rating';
+import {rankedQueue,loadRating,onRatingState,type QueueResult} from '../net/rating';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
@@ -41,6 +41,7 @@ export class LobbyScene extends Phaser.Scene {
   private timeout?: Phaser.Time.TimerEvent;
   private handedOff = false;
   private rated = false;
+  private queueEpoch=0;private queueTicket?:string;private queueCancelled=false;private queuePoll?:ReturnType<typeof setTimeout>;
   private diag!: Phaser.GameObjects.Text;
   private turnServers = 0;
   private startedAt = 0;
@@ -53,7 +54,7 @@ export class LobbyScene extends Phaser.Scene {
     applyCameraPixelRatio(this);
     backdrop(this);
     cartoonPanel(this.add.graphics().setDepth(-1),VIEW.cx-235,VIEW.cy-143,470,286,0x28517d,15);
-    this.handedOff = false;
+    this.handedOff = false;this.queueEpoch++;this.queueCancelled=false;this.queueTicket=undefined;
     this.rated = data.rated===true;
     this.session = null;
     this.status = this.add
@@ -69,7 +70,8 @@ export class LobbyScene extends Phaser.Scene {
     const back=titleButton(this,VIEW.left+64,VIEW.top+28,100,38,t('common.back'),()=>this.back(),false,130,'default','back');
     getNav(this).modalBack(back.getData('bg'),()=>this.back());
     this.events.once('shutdown', () => {
-      this.timeout?.remove();
+      this.timeout?.remove();this.queueCancelled=true;if(this.queuePoll)clearTimeout(this.queuePoll);
+      if(!this.handedOff&&this.queueTicket)void rankedQueue('cancel',this.queueTicket).catch(()=>{});
       if (!this.handedOff) this.session?.leave();
     });
     if(this.rated){
@@ -81,7 +83,8 @@ export class LobbyScene extends Phaser.Scene {
     void loadRating();
     }
     addVersionStamp(this);
-    if (data.role === 'host') void this.host();
+    if(this.rated)void this.matchmake();
+    else if (data.role === 'host') void this.host();
     else void this.join(data.code ?? '');
   }
 
@@ -98,9 +101,47 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private back(message?: string): void {
+    if(this.rated){this.queueCancelled=true;if(this.queuePoll)clearTimeout(this.queuePoll);if(this.queueTicket)void rankedQueue('cancel',this.queueTicket).catch(()=>{});}
     startScreen(this, 'Menu', { message });
   }
 
+
+  private async matchmake():Promise<void>{
+    const epoch=this.queueEpoch;this.status.setText(t('ranked.searching'));
+    try{
+      const result=await rankedQueue(this.queueTicket?'poll':'join',this.queueTicket);
+      if(epoch!==this.queueEpoch){if((result.status==='waiting'||result.status==='paired')&&result.ticket!==this.queueTicket)void rankedQueue('cancel',result.ticket).catch(()=>{});return;}
+      if(result.status==='waiting'||result.status==='paired')this.queueTicket=result.ticket;
+      if(this.queueCancelled||!this.scene.isActive()){if(this.queueTicket)void rankedQueue('cancel',this.queueTicket).catch(()=>{});return;}
+      if(result.status==='waiting'){this.queuePoll=setTimeout(()=>void this.matchmake(),2500);return;}
+      if(result.status!=='paired'){this.back(t('ranked.search_ended'));return;}
+      await this.connectRanked(result);
+    }catch{if(epoch===this.queueEpoch&&!this.queueCancelled)this.back(t('ranked.unavailable'));}
+  }
+  private async connectRanked(pair:Extract<QueueResult,{status:'paired'}>):Promise<void>{
+    const epoch=this.queueEpoch;const current=()=>epoch===this.queueEpoch&&!this.queueCancelled&&this.scene.isActive();
+    this.status.setText(t('ranked.connecting'));
+    const ice=await fetchTurnIceServers();if(!current())return;
+    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId});this.session=s;
+    s.onRejected=()=>this.back(t('ranked.search_ended'));
+    s.onPeerLeft=()=>this.back(t('ranked.search_ended'));
+    s.onCtl=m=>{if(m.k==='ping')s.send({k:'pong',t:m.t});};
+    s.onPaired=()=>{
+      if(!current())return;
+      if(this.queuePoll)clearTimeout(this.queuePoll);
+      void (async()=>{try{await rankedQueue('complete',pair.ticket);if(!current())return;
+        if(pair.role==='host')await this.hostHandshake(s);
+        else{this.handedOff=true;startScreen(this,'CharSelect',{mode:'online',session:s,localIdx:1});}
+      }catch{if(current())this.back(t('ranked.unavailable'));}})();
+    };
+    const monitor=async()=>{
+      if(!current()||this.handedOff||s.peerId)return;
+      try{const state=await rankedQueue('poll',pair.ticket);if(!current())return;if(state.status!=='paired'){this.back(t('ranked.search_ended'));return;}}
+      catch{if(current())this.back(t('ranked.unavailable'));return;}
+      if(current()&&!this.handedOff&&!s.peerId)this.queuePoll=setTimeout(()=>void monitor(),2500);
+    };this.queuePoll=setTimeout(()=>void monitor(),2500);
+    this.timeout=this.time.delayedCall(40000,()=>{if(!this.handedOff)this.back(t('ranked.search_ended'));});
+  }
   private async host(): Promise<void> {
     const code = randomRoomCode();
     this.status.setText(t('lobby.creating_room'));
@@ -160,7 +201,7 @@ export class LobbyScene extends Phaser.Scene {
       };
       tick();
     });
-    if (!s.peerId || !this.scene.isActive()) return;
+    if (!s.peerId || !this.scene.isActive() || this.session!==s || (this.rated&&this.queueCancelled)) return;
     rtts.sort((a, b) => a - b);
     const rtt = rtts.length ? rtts[Math.floor(rtts.length / 2)] : 200;
     const oneWayFrames = Math.ceil(rtt / 2 / (1000 / TICK_RATE));

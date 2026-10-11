@@ -444,7 +444,7 @@ export class CharSelectScene extends Phaser.Scene {
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;
-    const ratingNonce=s.rated?crypto.randomUUID():undefined;if(ratingNonce)void s.beginRating(ratingNonce);
+    const ratingNonce=s.rated?s.nextRatingNonce():undefined;if(ratingNonce)void s.beginRating(ratingNonce);
     s.send({ k: 'start', rated:s.rated,ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
     this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }

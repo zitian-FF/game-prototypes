@@ -151,6 +151,7 @@ export class MenuScene extends Phaser.Scene {
     p.items.push(casual,casual.getData('bg'),ranked,ranked.getData('bg'));
   }
   private openOnlineRooms(rated:boolean):void {
+    if(rated){startScreen(this,'Lobby',{role:'host',rated:true});return;}
     const p=this.popup(rated?t('menu.online_ranked'):t('menu.online_casual'),()=>this.openOnlinePopup());
     if(rated){
       const status=ratingStatusText(this,VIEW.cx,VIEW.cy-46,340,402);p.items.push(status.label);

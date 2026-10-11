@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "En línea (informal)",
   "menu.online_ranked": "En línea (Clasificación)",
-  "charselect.uppercut_stars": "UPPER: {stars} ★"
+  "charselect.uppercut_stars": "UPPER: {stars} ★",
+  "survival.run_stats": "Zombis derrotados: {zombies}\nDaño infligido: {dealt}\nDaño recibido: {received}",
+  "ranked.searching": "Buscando rival…",
+  "ranked.connecting": "Conectando con tu rival…",
+  "ranked.search_ended": "La búsqueda terminó. Inténtalo de nuevo.",
+  "ranked.unavailable": "El emparejamiento no está disponible. Inténtalo de nuevo."
 }
