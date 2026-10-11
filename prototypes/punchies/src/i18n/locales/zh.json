@@ -376,6 +376,7 @@
   "tutorial.the_joystick_left_side": "操纵杆（左侧）",
   "tutorial.the_left_stick": "左摇杆",
   "tutorial.tutorial_complete": "教程完成",
+  "tutorial.uppercut_charge_text": "精准命中可填充拳手的星星槽。填满所有格子后，可使用一次无法被普通防御挡住的上勾拳：{btn}。使用后槽会清空。试着命中一次。",
   "tutorial.your_fist_travels_out_too": "你的拳头挥出去。距离太近=威力不足（软弱无力）。完全伸展=威力十足（甜蜜无比）。稍微后退一步，就能打出甜蜜的一击。",
   "ui.back_hint": "Esc / B：返回"
 }

@@ -478,8 +478,8 @@
   "punches.uppercut.startup": {
     "cat": "Attack",
     "desc": "Uppercut: frames before the fist moves. Lower = faster.",
-    "min": 1,
-    "max": 30,
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "punches.uppercut.sourEarly": {
@@ -506,8 +506,8 @@
   "punches.uppercut.recovery": {
     "cat": "Attack",
     "desc": "Uppercut: frames to recover after the active frames (Vulnerable).",
-    "min": 1,
-    "max": 60,
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "punches.uppercut.whiffRecovery": {
@@ -548,7 +548,7 @@
   "punches.uppercut.stunBuild": {
     "cat": "Attack",
     "desc": "Uppercut: stun meter added to the defender on a direct hit.",
-    "min": 0,
+    "min": 0.25,
     "max": 100,
     "step": 1
   },
@@ -1486,7 +1486,7 @@
   "characters.marco.uppercut.damage": {
     "cat": "Characters",
     "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1500,7 +1500,7 @@
   "characters.marco.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1520,16 +1520,16 @@
   },
   "characters.marco.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Marco uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.marco.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Marco uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.marco.uppercut.fatigueBars": {
@@ -1745,7 +1745,7 @@
   "characters.mia.uppercut.damage": {
     "cat": "Characters",
     "desc": "Mia uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1759,7 +1759,7 @@
   "characters.mia.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Mia uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -1779,16 +1779,16 @@
   },
   "characters.mia.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Mia uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Mia uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.mia.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Mia uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Mia uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.mia.uppercut.fatigueBars": {
@@ -2004,7 +2004,7 @@
   "characters.bruno.uppercut.damage": {
     "cat": "Characters",
     "desc": "Bruno uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -2018,7 +2018,7 @@
   "characters.bruno.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Bruno uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -2038,16 +2038,16 @@
   },
   "characters.bruno.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Bruno uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Bruno uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.bruno.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Bruno uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Bruno uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.bruno.uppercut.fatigueBars": {
@@ -3264,7 +3264,7 @@
   "characters.tee.uppercut.damage": {
     "cat": "Characters",
     "desc": "G.P. Tee uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -3278,7 +3278,7 @@
   "characters.tee.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "G.P. Tee uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -3298,16 +3298,16 @@
   },
   "characters.tee.uppercut.startup": {
     "cat": "Characters",
-    "desc": "G.P. Tee uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tee uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.tee.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "G.P. Tee uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tee uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.tee.uppercut.fatigueBars": {
@@ -3907,112 +3907,112 @@
   },
   "characters.tyke.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Tyke uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Dragon uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Tyke uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Dragon uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Tyke uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.dragon.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Dragon uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.tyke.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Tyke uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.dragon.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Dragon uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.tyke.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Tyke uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.dragon.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Dragon uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.tyke.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tyke uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.dragon.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Dragon uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.tyke.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Tyke uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.dragon.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Dragon uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.tyke.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Tyke uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
   },
   "characters.dragon.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Dragon uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
@@ -4223,7 +4223,7 @@
   "characters.longan.uppercut.damage": {
     "cat": "Characters",
     "desc": "Longan (provisional) uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4237,7 +4237,7 @@
   "characters.longan.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Longan (provisional) uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4257,16 +4257,16 @@
   },
   "characters.longan.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Longan (provisional) uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Longan uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.longan.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Longan (provisional) uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Longan uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.longan.uppercut.fatigueBars": {
@@ -4496,7 +4496,7 @@
   "characters.captain.uppercut.damage": {
     "cat": "Characters",
     "desc": "Captain Eagle uppercut: damage multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4510,7 +4510,7 @@
   "characters.captain.uppercut.stunBuild": {
     "cat": "Characters",
     "desc": "Captain Eagle uppercut: stun build multiplier.",
-    "min": 0.5,
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
@@ -4530,16 +4530,16 @@
   },
   "characters.captain.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Captain Eagle uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Captain uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.captain.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Captain Eagle uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Captain uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.captain.uppercut.fatigueBars": {
@@ -4810,56 +4810,56 @@
   },
   "characters.roxy.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Roxy uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.roxy.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Roxy uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.roxy.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Roxy uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.roxy.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Roxy uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.roxy.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Roxy uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.roxy.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Roxy uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.roxy.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Roxy uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.roxy.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Roxy uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
@@ -5069,56 +5069,56 @@
   },
   "characters.nadia.uppercut.damage": {
     "cat": "Characters",
-    "desc": "Marco uppercut: damage multiplier.",
-    "min": 0.5,
+    "desc": "Nadia uppercut: damage multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.nadia.uppercut.staminaCost": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stamina cost multiplier.",
+    "desc": "Nadia uppercut: stamina cost multiplier.",
     "min": 0.5,
     "max": 2,
     "step": 0.05
   },
   "characters.nadia.uppercut.stunBuild": {
     "cat": "Characters",
-    "desc": "Marco uppercut: stun build multiplier.",
-    "min": 0.5,
+    "desc": "Nadia uppercut: stun build multiplier.",
+    "min": 0.25,
     "max": 2,
     "step": 0.05
   },
   "characters.nadia.uppercut.push": {
     "cat": "Characters",
-    "desc": "Marco uppercut: pushback multiplier.",
+    "desc": "Nadia uppercut: pushback multiplier.",
     "min": 0,
     "max": 3,
     "step": 0.05
   },
   "characters.nadia.uppercut.reach": {
     "cat": "Characters",
-    "desc": "Marco uppercut: reach multiplier.",
+    "desc": "Nadia uppercut: reach multiplier.",
     "min": 0.7,
     "max": 1.3,
     "step": 0.01
   },
   "characters.nadia.uppercut.startup": {
     "cat": "Characters",
-    "desc": "Marco uppercut: startup frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Nadia uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
     "step": 1
   },
   "characters.nadia.uppercut.recovery": {
     "cat": "Characters",
-    "desc": "Marco uppercut: recovery frames added (keep within -2..+2).",
-    "min": -2,
-    "max": 2,
+    "desc": "Nadia uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
     "step": 1
   },
   "characters.nadia.uppercut.fatigueBars": {
     "cat": "Characters",
-    "desc": "Marco uppercut: extra fatigue bars before max penalty.",
+    "desc": "Nadia uppercut: extra fatigue bars before max penalty.",
     "min": -2,
     "max": 2,
     "step": 1
@@ -5136,5 +5136,75 @@
     "min": 0.6,
     "max": 1.5,
     "step": 0.01
+  },
+  "characters.marco.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Marco: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.mia.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Mia: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.bruno.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Bruno: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tee.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Tee: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tyke.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Tyke: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.dragon.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Dragon: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.longan.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Longan: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.captain.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Captain: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.roxy.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Roxy: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.nadia.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Nadia: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
   }
 }

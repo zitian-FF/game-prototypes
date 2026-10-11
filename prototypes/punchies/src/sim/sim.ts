@@ -14,7 +14,7 @@ import type {
   Stance,
 } from './types';
 import { FATIGUED_PUNCHES } from './types';
-import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold } from './character';
+import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold, uppercutStars } from './character';
 
 // Deterministic fight simulation, stepped at a fixed 60 Hz. Only uses
 // + - * / and Math.sqrt/round/min/max/abs (all exactly specified by IEEE
@@ -293,7 +293,7 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
   }
   // Stunned fighters may move and dodge but never attack.
   if (f.stunTimer > 0) return false;
-  if (action === 'uppercut' && f.stars < tune.stars.max) return false;
+  if (action === 'uppercut' && f.stars < uppercutStars(f)) return false;
   startPunch(s, idx, action, events);
   return true;
 }
@@ -421,9 +421,9 @@ function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): 
 
 function addStar(s: SimState, idx: number, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  if (f.stars >= tune.stars.max) return;
+  if (f.stars >= uppercutStars(f)) return;
   f.stars++;
-  if (f.stars === tune.stars.max) events.push({ kind: 'starsReady', fighter: idx });
+  if (f.stars === uppercutStars(f)) events.push({ kind: 'starsReady', fighter: idx });
 }
 
 interface Contact {

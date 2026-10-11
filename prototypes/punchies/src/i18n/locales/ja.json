@@ -367,7 +367,6 @@
   "tutorial.repeating_one_punch_tires_it": "同じパンチを繰り返すと疲れてしまいます。赤いゲージが溜まり、動きが遅くなり、弱くなります（「疲れている」状態）。パンチの種類を変えてみましょう！ゲージが2つ点灯するまで、同じパンチを繰り出してください。",
   "tutorial.right_after_a_dodge_you": "回避行動の直後、体が黄色く光ります。次のパンチのダメージが1.5倍になります。ダミーに向かって回避し、すぐにパンチを繰り出すと、強力な一撃が放たれます。",
   "tutorial.skip": "スキップ",
-  "tutorial.stars_text": "STUNの横にある3つの星型ソケットに甘いヒットが入ります。3になると、UPPERがパルスし、アッパーカットの準備が整います：{btn}。ブロックできません。1回ヒットします。",
   "tutorial.stars_uppercut": "スターズ＆アッパーカット",
   "tutorial.step_progress": "ステップ{n}/{total}・{title}",
   "tutorial.taking_hits_fills_the_stun": "攻撃を受けるとスタンゲージ（細いバー）が溜まります。満タンになるとスタン状態になり、あらゆる攻撃を受けやすくなります。ダミーはもうすぐ満タンです。トドメを刺しましょう！",
@@ -377,5 +376,6 @@
   "tutorial.the_left_stick": "左スティック",
   "tutorial.tutorial_complete": "チュートリアル完了",
   "tutorial.your_fist_travels_out_too": "拳を前に突き出す。近すぎると弱々しい（SOUR）パンチになる。完全に突き出すと甘いパンチになる。少し後ろに下がって、甘いパンチを繰り出そう。",
-  "ui.back_hint": "Esc / B: 戻る"
+  "ui.back_hint": "Esc / B: 戻る",
+  "tutorial.uppercut_charge_text": "スイートヒットでファイターの星メーターがたまります。すべての枠を満たすと、ガード不能のアッパーカットが1回使えます：{btn}。使うとメーターは空になります。命中させましょう。"
 }

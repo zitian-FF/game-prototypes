@@ -1,12 +1,16 @@
 import initial from '../../punchies/tune.json';
+import {archetypeKeys,defaultArchetypes,readArchetypes} from '../../punchies/src/sim/workshopText';
 import metadata from '../../punchies/tune.meta.json';
 import { applyTuneJson, validateTuneJson } from '../../punchies/src/sim/tune';
 import { punchCfg, CHARACTER_INFO, CHARACTER_IDS, type CharId } from '../../punchies/src/sim/character';
 
-export type Doc = typeof initial;
+export type Doc = Omit<typeof initial,'balanceWorkshop'> & {balanceWorkshop?:Partial<Omit<NonNullable<typeof initial.balanceWorkshop>,'archetypes'>> & {archetypes?:Record<string,string>}};
+export const archetypeValue=(doc:Doc,key:string):string=>readArchetypes(doc)[key]??defaultArchetypes[key]??'';
+export function setArchetype(doc:Doc,key:string,value:string){const texts={...readArchetypes(doc),[key]:value.trim()};readArchetypes({balanceWorkshop:{archetypes:texts}});doc.balanceWorkshop={...doc.balanceWorkshop,archetypes:texts};}
+export const archetypeChanges=(base:Doc,draft:Doc)=>archetypeKeys.filter(key=>archetypeValue(base,key)!==archetypeValue(draft,key));
 const template = structuredClone(initial);
 const {balanceWorkshop: _history,...gameSchema}=template as typeof template & {balanceWorkshop?:unknown};
-export const defaults = () => structuredClone(template);
+export const defaults = ():Doc => structuredClone(template);
 export const characters = [...CHARACTER_IDS];
 export const names = CHARACTER_INFO;
 export const punches = ['jab','cross','hook','uppercut'] as const;
@@ -15,6 +19,7 @@ export const get = (doc:Doc,path:string):number => path.split('.').reduce<unknow
 export function set(doc:Doc,path:string,value:number):void {
   const range=meta[path];
   if(!range||!Number.isFinite(value)||value<range.min||value>range.max)throw Error(`Allowed range: ${range?.min} to ${range?.max}`);
+  if(path.endsWith('.starRequirement')&&!Number.isInteger(value))throw Error('Use whole stars');
   const parts=path.split('.'),key=parts.pop()!;
   const parent=parts.reduce<unknown>((o,k)=>(o as Record<string,unknown>)[k],doc) as Record<string,unknown>;
   if(typeof parent[key]!=='number')throw Error('Unknown tuning value');
@@ -30,7 +35,7 @@ export function parse(text:string):Doc {
       walk(v,(value as Record<string,unknown>)[key],`${path}${key}.`);
     }
   }
-  walk(gameSchema,candidate,'');return candidate;
+  walk(gameSchema,candidate,'');readArchetypes(candidate);return candidate;
 }
 export function changes(base:Doc,draft:Doc):string[] {
   return Object.keys(meta).filter(path=>typeof getSafe(base,path)==='number'&&getSafe(base,path)!==getSafe(draft,path));
@@ -40,8 +45,10 @@ function getSafe(doc:Doc,path:string):unknown {return path.split('.').reduce<unk
 export function mergeSave(base:Doc,draft:Doc,latest:Doc):Doc {
   const merged=structuredClone(latest);
   const conflicting=changes(base,draft).filter(path=>get(latest,path)!==get(base,path)&&get(latest,path)!==get(draft,path));
+  conflicting.push(...archetypeChanges(base,draft).filter(key=>archetypeValue(latest,key)!==archetypeValue(base,key)&&archetypeValue(latest,key)!==archetypeValue(draft,key)));
   if(conflicting.length)throw Error(`File changed in the same fields: ${conflicting.join(', ')}. Reopen the file before saving; your draft remains available to download.`);
   for(const path of changes(base,draft))set(merged,path,get(draft,path));
+  for(const key of archetypeChanges(base,draft))setArchetype(merged,key,archetypeValue(draft,key));
   return parse(JSON.stringify(merged));
 }
 export function effective(doc:Doc,char:CharId,section:string,key:string):number {

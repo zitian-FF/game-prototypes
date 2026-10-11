@@ -167,6 +167,7 @@ jobs:
           node scripts/test-punchies-portal.mjs
           node scripts/verify-punchies-tune-guard.mjs
           node scripts/test-punchies-states.mjs
+          node scripts/test-punchies-uppercut-charges.mjs
           node scripts/test-punchies-emergency.mjs
           node scripts/test-punchies-geometry.mjs
           node scripts/test-punchies-i18n.mjs

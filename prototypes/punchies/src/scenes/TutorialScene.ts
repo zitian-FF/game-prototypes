@@ -180,7 +180,7 @@ const STEPS: Step[] = [
   },
   {
     get title() { return t('tutorial.stars_uppercut'); },
-    text: (b) => t('tutorial.stars_text', { btn: b('upper') }),
+    text: (b) => t('tutorial.uppercut_charge_text', { btn: b('upper') }),
     adds: ['uppercut'],
     dummy: 'idle',
     goal: 1,

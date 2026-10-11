@@ -1,18 +1,12 @@
 ## Current milestone
-Epic and Legendary reward presentation implemented locally.
+Release validation of recent presentation and localisation changes.
 ## What was implemented
-Chest reward previews and pull reveals classify palette swaps as Epic in purple and fighters/unique skins as Legendary with animated prismatic lettering.
+Epic and Legendary labels, language flags, higher tutorial banner, charged Uppercut glow, outlined sweet/sour hit sparks, improved pre-fight flames, Kunoichi waist framing and selection confirmation without repeated card clash. Approved localisation corrections regenerated from the private Sheet.
 ## Key technical decisions
-Shared rarity mapping and styling keep both surfaces consistent. Reduced motion uses a static prismatic gradient. Animation is removed when its label is destroyed. Existing odds, prices and tuning are unchanged.
+Preserve latest main fighter tuning, descriptions and individual Uppercut charge requirements. Preserve art masters; frame Kunoichi through a shared runtime texture. Reduced motion keeps static rarity styling.
 ## Open questions
-None for rarity classification.
+Further editorial translations remain subject to owner approval.
 ## Known issues
-Rarity terms use English fallback until added through the translation Sheet. This change is not deployed yet.
+Release build and dual-profile validation in progress.
 ## Next proposed step
-Include the validated rarity presentation in the next release.
-
-Language settings: added compact canvas country flags for all six language options; verified layout in Brave with no console errors. Typecheck and build pass. Not deployed.
-
-Tutorial: moved instruction panel from top+92 to top+8, keeping heading, body and skip/exit controls together. Verified ring clearance in Brave; build/typecheck pass. No text changes.
-
-Selection fixes: confirmation/status changes no longer trigger card clash; fighter and skin art changes still do. Flaming Kunoichi uses one shared waist-framed runtime texture in all portrait screens, preserving source masters. Waist crop verified in Brave with no errors; build passes. Combat VFX now uses outlined bursts with weaker sour sparks and layered pre-fight flames; flame preview verified, full combat motion validation pending. Localisation approved corrections are frozen in Sheet and regenerated, with Cross=摆拳 and Epic/Legendary translated. Pending deployment.
+Merge validated release and verify deployment.
