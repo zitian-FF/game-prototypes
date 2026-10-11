@@ -258,13 +258,6 @@
     "max": 620,
     "step": 5
   },
-  "view.spriteSize": {
-    "cat": "View",
-    "desc": "Fighter sprite size (logical px).",
-    "min": 60,
-    "max": 260,
-    "step": 5
-  },
   "view.hitFlashFrames": {
     "cat": "View",
     "desc": "Hit flash length (frames).",
@@ -285,5 +278,145 @@
     "min": 0,
     "max": 3000,
     "step": 50
+  },
+  "view.knockSpinDeg": {
+    "cat": "View",
+    "desc": "Spin of a knocked off enemy (degrees per frame).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "view.rig.scale": {
+    "cat": "View",
+    "desc": "Overall fighter size multiplier.",
+    "min": 0.5,
+    "max": 3,
+    "step": 0.05
+  },
+  "view.rig.torsoHeight": {
+    "cat": "View",
+    "desc": "Torso image size across the body (rig units).",
+    "min": 20,
+    "max": 80,
+    "step": 1
+  },
+  "view.rig.headHeight": {
+    "cat": "View",
+    "desc": "Head image size (rig units).",
+    "min": 10,
+    "max": 50,
+    "step": 1
+  },
+  "view.rig.gloveHeight": {
+    "cat": "View",
+    "desc": "Glove image length (rig units).",
+    "min": 8,
+    "max": 40,
+    "step": 1
+  },
+  "view.rig.bootWidth": {
+    "cat": "View",
+    "desc": "Boot image length (rig units).",
+    "min": 6,
+    "max": 30,
+    "step": 1
+  },
+  "view.rig.shoulderSpread": {
+    "cat": "View",
+    "desc": "Shoulder distance from the body centre line (rig units).",
+    "min": 4,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.hipSpread": {
+    "cat": "View",
+    "desc": "Hip distance from the centre line (rig units).",
+    "min": 2,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.bootSpread": {
+    "cat": "View",
+    "desc": "Boot distance from the centre line (rig units).",
+    "min": 2,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.leadBootForward": {
+    "cat": "View",
+    "desc": "Lead boot forward offset at rest (rig units).",
+    "min": -20,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.rearBootForward": {
+    "cat": "View",
+    "desc": "Rear boot offset at rest (rig units).",
+    "min": -30,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.headForward": {
+    "cat": "View",
+    "desc": "Head forward offset from the torso (rig units).",
+    "min": -10,
+    "max": 15,
+    "step": 0.5
+  },
+  "view.rig.guardU": {
+    "cat": "View",
+    "desc": "Guard fist forward position (rig units).",
+    "min": 4,
+    "max": 40,
+    "step": 0.5
+  },
+  "view.rig.guardV": {
+    "cat": "View",
+    "desc": "Guard fist distance from the centre line (rig units).",
+    "min": 2,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.jabReach": {
+    "cat": "View",
+    "desc": "Jab fist travel at full extension (rig units).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "view.rig.crossReach": {
+    "cat": "View",
+    "desc": "Cross fist travel at full extension (rig units).",
+    "min": 20,
+    "max": 120,
+    "step": 1
+  },
+  "view.rig.enemyReach": {
+    "cat": "View",
+    "desc": "Enemy punch fist travel (rig units).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "view.rig.torsoTwistDeg": {
+    "cat": "View",
+    "desc": "Torso twist while punching (degrees).",
+    "min": 0,
+    "max": 45,
+    "step": 1
+  },
+  "view.rig.strideAmp": {
+    "cat": "View",
+    "desc": "Foot travel while walking (rig units).",
+    "min": 0,
+    "max": 16,
+    "step": 0.5
+  },
+  "view.rig.walkHz": {
+    "cat": "View",
+    "desc": "Walk cycles per second.",
+    "min": 0.5,
+    "max": 5,
+    "step": 0.1
   }
 }

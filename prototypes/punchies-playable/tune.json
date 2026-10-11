@@ -49,9 +49,30 @@
   "view": {
     "unitPx": 1.2,
     "playerY": 480,
-    "spriteSize": 242,
     "hitFlashFrames": 10,
     "popupMs": 700,
-    "endDelayMs": 600
+    "endDelayMs": 600,
+    "knockSpinDeg": 14,
+    "rig": {
+      "scale": 1.5,
+      "torsoHeight": 40,
+      "headHeight": 24,
+      "gloveHeight": 19,
+      "bootWidth": 16,
+      "shoulderSpread": 13.5,
+      "hipSpread": 6,
+      "bootSpread": 9,
+      "leadBootForward": 9,
+      "rearBootForward": -7,
+      "headForward": 2.5,
+      "guardU": 16,
+      "guardV": 11,
+      "jabReach": 46,
+      "crossReach": 62,
+      "enemyReach": 44,
+      "torsoTwistDeg": 22,
+      "strideAmp": 7,
+      "walkHz": 2.2
+    }
   }
 }

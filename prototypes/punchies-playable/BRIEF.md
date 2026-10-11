@@ -19,9 +19,10 @@ total; real network limits to be checked later).
 - Enemies spawn off the top on a fixed timer (gap 1.5 to 2.0 s, `tune.json`)
   and walk down the lane toward the player. They may overlap on screen: only
   the front-most (closest) enemy can be hit or attacks the player, the others
-  queue behind it. Enemies use the Bruno art set, rotated to face down toward
-  the player. `guard` is the enemy wind-up pose, `hit_light` is the player
-  taking a punch, `ko` is the knocked off enemy.
+  queue behind it. Enemies are zombies (art refresh, 2026-10-11), facing down
+  toward the player. Wind-up is the right fist pulling back, the player taking
+  a punch is a flinch and red flash, a knocked off enemy goes limp and spins
+  away.
 - Only two on-screen buttons: JAB and CROSS (bottom of the screen, thumb
   reachable). Keyboard keys are a bonus (J jab, K cross), still through the
   intent layer.
@@ -82,13 +83,20 @@ No version stamp (see Exceptions).
   converts to WebP: `marco_{idle,walk,jab,cross,guard,hit_light,ko}` and
   `bruno_{...}` (or `dummy_{...}`). No new R2 object is required unless the
   user prefers one.
-- Sprite art confirmed by the user (2026-10-08). R2 is reachable from the
-  build environment (`punchies_assets.zip`, about 25 MB), so the trimming
-  script can run in CI and locally.
-- Frame animations from the packed atlas, not the main game's code-drawn
-  puppet rig (it needs loose part images and 500 lines of code). The hit flash
-  idea (short white or red strobe on the struck fighter) is copied in small
-  form.
+- Art refresh (2026-10-11): the Punchies art zip in R2 was trimmed and the main
+  game now draws boxers as a puppet rig from loose parts (head, torso, glove,
+  boot; arms and legs drawn in code), so the old composited frame animations
+  were dated. The playable builds a small copy of that rig (`src/view/Rig.ts`,
+  own tune values in `tune.json`) using Marco for the player and the zombie
+  parts for enemies. Left glove and boot are the right ones flipped, as in the
+  art's `part-mirrors.json`.
+- Scene art: gym floor portrait crop as the backdrop, the ring rope down both
+  lane edges, a ring mat drawn in code, glove icons on the buttons and as HP,
+  and the Punchies logo on the end screen. Hit effects (starburst, flash,
+  popups) are drawn in code.
+- `scripts/prepare-art.mjs` copies only those pieces from the fetched zip
+  (about 140 KB, WebP). Without art the same rig runs on generated coloured
+  placeholder shapes.
 - devicePixelRatio sharpness per CLAUDE.md (capped buffer scale, camera zoom,
   Text `resolution`).
 - Keep dependencies to what the stack already has (Phaser 3, Tweakpane for the
@@ -141,3 +149,6 @@ retry flow, analytics, ad network SDK wiring, single file HTML inlining
 3. Cross head band widened to 105 to 117.
 4. Enemy is Bruno. Poses as listed above.
 5. Art: sprites, trimmed from the existing `punchies_assets.zip`.
+6. Art refresh (2026-10-11, user request): puppet-rig fighters from the new
+   loose parts, zombies as enemies, new scene art. Supersedes the Bruno and
+   frame animation decisions above.

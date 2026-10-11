@@ -63,7 +63,7 @@ async function arrange(d, windup = 99999) {
 const settle = (frames = 70) => page.waitForFunction((n) => window.__playable.state().frame >= n, frames, { timeout: 30000 });
 
 await load('');
-const hasArt = await page.evaluate(() => window.__playable.scene.textures.exists('marco'));
+const hasArt = await page.evaluate(() => window.__playable.scene.artLoaded);
 check(process.env.EXPECT_NO_ART ? 'placeholder build has no art' : 'sprite art loaded', hasArt === !process.env.EXPECT_NO_ART);
 check('canvas buffer follows devicePixelRatio', await page.evaluate(() => document.querySelector('canvas').width) === 720);
 
@@ -86,6 +86,14 @@ s = await st(); check('no input costs 1 HP', s.score === 0 && s.hp === 2, JSON.s
 // Keyboard binding goes through the same intents.
 await arrange(80); await page.keyboard.press('KeyJ'); await settle();
 s = await st(); check('keyboard J jab scores 2', s.score === 2, JSON.stringify(s));
+
+// Action shot: a jab at full extension against a parked zombie, and one knocked off.
+await arrange(80);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); p.advance(1, { jab: true }); p.advance(10); });
+await page.screenshot({ path: path.join(shots, 'action.png') });
+await page.evaluate(() => window.__playable.advance(8));
+await page.screenshot({ path: path.join(shots, 'knock.png') });
+await page.evaluate(() => window.__playable.pause(false));
 
 // Mid-run screenshot with enemies in the lane.
 await page.evaluate(() => { const p = window.__playable; p.tune.run.firstSpawnSec = 0.2; p.tune.enemy.walkSpeed = 150; p.tune.enemy.windupFrames = 20; p.restart(); p.advance(150); });
