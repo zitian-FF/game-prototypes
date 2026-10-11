@@ -58,3 +58,28 @@ export function inPolygon(x: number, y: number, p: Polygon): boolean {
 export function portraitRegion(char: string, material: Material, x: number, y: number): boolean {
   return PORTRAIT_MATERIALS[char]?.[material]?.some(p=>inPolygon(x,y,p)) ?? false;
 }
+
+const materials:Material[]=['kit','glove','hair','skin','trim'];
+const masks=new Map<string,Uint8Array>();
+/** Exact source-pixel membership, computed by scanline once per portrait size.
+ * Bounded cache: at most eight prepared portrait masks; no GPU textures. */
+export function portraitMaterialMask(char:string,width:number,height:number):Uint8Array {
+  const key=char+':'+width+'x'+height,existing=masks.get(key);if(existing)return existing;
+  const mask=new Uint8Array(width*height);
+  for(let m=0;m<materials.length;m++)for(const polygon of PORTRAIT_MATERIALS[char]?.[materials[m]]??[]){
+    for(let row=0;row<height;row++){
+      const y=(row+.5)/height,cuts:number[]=[];
+      for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+        const [xi,yi]=polygon[i],[xj,yj]=polygon[j];
+        if((yi>y)!==(yj>y))cuts.push((xj-xi)*(y-yi)/(yj-yi)+xi);
+      }
+      cuts.sort((a,b)=>a-b);
+      for(let i=0;i+1<cuts.length;i+=2){
+        const left=Math.max(0,Math.ceil(cuts[i]*width-.5)),right=Math.min(width,Math.ceil(cuts[i+1]*width-.5));
+        for(let x=left;x<right;x++)mask[row*width+x]|=1<<m;
+      }
+    }
+  }
+  if(masks.size>=8)masks.delete(masks.keys().next().value!);
+  masks.set(key,mask);return mask;
+}

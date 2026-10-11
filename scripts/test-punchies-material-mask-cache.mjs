@@ -1,0 +1,4 @@
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';
+const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/materialMasks.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports});const {portraitMaterialMask,portraitRegion}=exports;
+for(const char of ['marco','mia','bruno','tee','tyke','dragon','longan','nadia'])for(const [w,h] of [[31,37],[103,97]]){const mask=portraitMaterialMask(char,w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)['kit','glove','hair','skin','trim'].forEach((m,b)=>assert.equal(!!(mask[y*w+x]&(1<<b)),portraitRegion(char,m,(x+.5)/w,(y+.5)/h),`${char}/${m}/${x}/${y}`));}
+console.log('PASS: scanline mask equals original polygon membership at every sampled pixel for eight characters and two resolutions');
