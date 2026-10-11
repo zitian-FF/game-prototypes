@@ -289,7 +289,7 @@
     "counterStunMult": 1.2
   },
   "guard": {
-    "perfectFrames": 3,
+    "perfectFrames": 8,
     "exhaustedChipMult": 0.5,
     "staminaDrainPerSec": 7.2,
     "perfectGuardStaminaGain": 12,

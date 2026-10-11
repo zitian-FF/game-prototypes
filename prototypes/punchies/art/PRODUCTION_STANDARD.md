@@ -146,7 +146,8 @@ match. Normal WIP stays standard; compact exports target web portals as selected
 - Listen to new compressed music alongside its source and check playback/loops.
   Decoder success alone is not a listening-quality verdict. Check bright edges,
   faces and text-like icon detail for ringing, blur and alpha halos.
-- The package budgets are 20,000,000 bytes standard and 10,000,000 bytes compact,
+- The package budgets are 40,000,000 bytes standard and 20,000,000 bytes compact
+  (raised by the owner on 2026-10-11 from 20,000,000 and 10,000,000),
   including every shipped art/audio/code/provenance file. These are project
   budgets, not promises of acceptance by every portal. Run the budget script on
   the complete package and report uncompressed bytes separately from ZIP bytes.

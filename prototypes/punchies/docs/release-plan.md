@@ -96,6 +96,8 @@ Size budget: CrazyGames wants an initial download of 50 MB or less, and 20 MB or
 mobile homepage placement. The game is about 12 MB plus about 12.5 MB of music in production
 builds. Music can be streamed after the first screen if the mobile placement matters.
 
+Package budgets (owner decision, 2026-10-11): 40,000,000 bytes for the standard build and 20,000,000 bytes for the compact build (previously 20 and 10 MB). The standard build was 17.2 MB and compact 10.0 MB when raised. The compact cap sits on CrazyGames' 20 MB mobile homepage line, so keep compact at or below it if that placement matters; standard can grow past 20 MB but must stay under CrazyGames' 50 MB initial download limit.
+
 ## 5. Content inventory (Codex keeps this current)
 
 Art status columns: portrait, rig (the sprite set used in fights), palette swap (cheap recolour in code).

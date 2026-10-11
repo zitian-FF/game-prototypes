@@ -67,4 +67,4 @@ for (let i = 0; i < 50; i++) {
 const bots = fresh(), ai = makeBot('hard', 0, 123);
 for (let i = 0; i < 180; i++) step(bots, [ai.think(bots), neutral]);
 assert.equal('perfectCooldownFrames' in tune.guard, false);
-console.log('PASS: guard release vulnerability/full damage, exact lockout, fresh three-frame perfect windows, punch/dodge cancels, hit-stop, deterministic rollback replay, and bot compatibility.');
+console.log('PASS: guard release vulnerability/full damage, exact lockout, fresh perfect-guard windows, punch/dodge cancels, hit-stop, deterministic rollback replay, and bot compatibility.');
