@@ -175,7 +175,7 @@ export class CharacterSelectView {
   this.levelButtons=[this.level,this.button(672,75,27,27,'‹',()=>callbacks.level(-1)),this.button(816,75,27,27,'›',()=>callbacks.level(1))];
 
   this.hint=this.text(this.root,422,334,'',11,'#bbcce3').setWordWrapWidth(408);
-  this.hintRows=[controlHint(scene,290,334,0,'navigate',this.root,120),controlHint(scene,422,334,0,'confirm',this.root,120),controlHint(scene,554,334,0,'back',this.root,120)];
+  this.hintRows=[controlHint(scene,258,334,0,'navigate',this.root,100),controlHint(scene,368,334,0,'skins',this.root,100),controlHint(scene,478,334,0,'confirm',this.root,100),controlHint(scene,588,334,0,'back',this.root,100)];
   const refreshHints=()=>{const controls=inputModality.kind!=='touch'&&!this.noticeActive;this.hint.setVisible(!controls);this.hintRows.forEach(row=>row.setVisible(controls));};
   scene.events.on('update',refreshHints);scene.events.once('shutdown',()=>scene.events.off('update',refreshHints));refreshHints();
   this.formatControlHint=controlHint(scene,80,97,0,'format',this.root);
