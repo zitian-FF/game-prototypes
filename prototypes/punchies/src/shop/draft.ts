@@ -1,3 +1,4 @@
+import {stagingShopAllowance} from './stagingCurrency';
 import { PALETTES } from '../render/paletteCatalog';
 import {STAGING_BUILD} from '../buildFlags';
 import { store } from '../portal/store';
@@ -67,18 +68,25 @@ export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{
   const boxers=ownedBoxers(state);
   return SHOP_ITEMS.filter(i=>i.kind===kind&&!i.earnOnly&&!i.artPending&&!state.owned.includes(i.id)&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));
 }
-/** Freeze today's offers so buying an item cannot reroll the storefront. */
+/** One deterministic daily shuffle over all eligible unowned items, no rarity quota. */
 export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraftState{
-  const s=normalizeShopDraft(state,now),day=shopDay(now);
-  if(s.offerDay===day&&s.offerIds&&s.offerSchema===8)return s;
-  const seed=Math.floor(now/86400000);
-  const pick=(kind:ShopKind,count:number)=>{const pool=availablePool(s,kind);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
-  const skins=availablePool(s,'skins');
-  const pickSkins=(unique:boolean,count:number)=>{const pool=skins.filter(i=>(i.skinType==='unique')===unique);if(!pool.length)return [];const start=((seed%pool.length)+pool.length)%pool.length;return Array.from({length:Math.min(count,pool.length)},(_,i)=>pool[(start+i)%pool.length].id);};
-  // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
-  return {...s,offerDay:day,offerSchema:8,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
+ const s=normalizeShopDraft(state,now),day=shopDay(now);
+ if(s.offerDay===day&&s.offerIds&&s.offerSchema===9)return s;
+ const pick=(kind:ShopKind)=>{
+   const pool=availablePool(s,kind).map(item=>item.id);let seed=(Math.floor(now/86400000)^(kind==='skins'?0x534b494e:0x46494748))>>>0;
+   for(let i=pool.length-1;i>0;i--){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const j=seed%(i+1);[pool[i],pool[j]]=[pool[j],pool[i]];}
+   return pool.slice(0,3);
+ };
+ return {...s,offerDay:day,offerSchema:9,offerIds:[...pick('skins'),...pick('fighters')]};
 }
-export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&!i.earnOnly&&!i.artPending&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
+/** Staging entry allowance only; transactions still spend and can exhaust candidates. */
+export function prepareShopEntry(state:ShopDraftState,now=Date.now()):ShopDraftState{
+ const s=stagingShopAllowance(state);return refreshDailyOffers(STAGING_BUILD?{...s,offerDay:''}:s,now);
+}
+export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{
+ const eligible=new Set(availablePool(state,kind).map(item=>item.id)),seen=new Set<string>();
+ return (state.offerIds??[]).flatMap(id=>{const item=SHOP_ITEMS.find(i=>i.id===id);if(!item||!eligible.has(id)||seen.has(id)||seen.size>=3)return [];seen.add(id);return [item];});
+}
 export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
   const pool=dailyOffers(state,kind).filter(i=>!state.owned.includes(i.id));
   return pool.map(item=>({item,probability:1/pool.length}));
@@ -94,8 +102,8 @@ export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,n
   if(!free&&s.tokens<cost)return {ok:false,reason:`Need ${cost-s.tokens} more tokens.`,reasonKey:'shop.err.need_tokens',reasonParams:{n:cost-s.tokens},state:s};
   const roll=Number.isFinite(random)?Math.max(0,Math.min(.999999,random)):0;
   const item=pool[Math.floor(roll*pool.length)].item;
-  if(free)return {ok:true,item,state:{...s,...(kind==='skins'?{freeSkinChests:freeCount-1}:{freeFighterChests:freeCount-1}),owned:[...s.owned,item.id]}};
-  return {ok:true,item,state:{...s,tokens:s.tokens-cost,owned:[...s.owned,item.id],purchasedChests:[...(s.purchasedChests??[]),kind]}};
+  const next:ShopDraftState=free?{...s,...(kind==='skins'?{freeSkinChests:freeCount-1}:{freeFighterChests:freeCount-1}),owned:[...s.owned,item.id]}:{...s,tokens:s.tokens-cost,owned:[...s.owned,item.id],purchasedChests:[...(s.purchasedChests??[]),kind]};
+  return {ok:true,item,state:STAGING_BUILD?refreshDailyOffers({...next,offerDay:''},now):next};
 }
 export function previewAdReward(state:ShopDraftState,now=Date.now()):ShopResult{
   const s=normalizeShopDraft(state,now);
@@ -106,3 +114,5 @@ const KEY=KEYS.shop;
 export function shopPreviewBalance():number{try{const raw=store.getItem(KEY);return raw?normalizeShopDraft(JSON.parse(raw)).tokens:0;}catch{return 0;}}
 export function loadShopDraft():ShopDraftState{try{return normalizeShopDraft(JSON.parse(store.getItem(KEY)??'null'));}catch{return newShopDraft();}}
 export function saveShopDraft(s:ShopDraftState):boolean{try{store.setItem(KEY,JSON.stringify(s));return true;}catch{return false;}}
+
+

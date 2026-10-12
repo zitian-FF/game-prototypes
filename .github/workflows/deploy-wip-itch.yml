@@ -199,6 +199,8 @@ jobs:
           node scripts/test-punchies-ranked-lobby.mjs
           node scripts/test-punchies-rating-session.mjs
           node scripts/test-punchies-shop.mjs
+          node scripts/test-punchies-shop-candidates.mjs
+          node scripts/test-punchies-shop-three-ui.mjs
           node scripts/test-punchies-progress.mjs
           node scripts/test-punchies-alias.mjs
           node scripts/test-punchies-starter-skins.mjs

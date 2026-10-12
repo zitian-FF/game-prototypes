@@ -1,17 +1,17 @@
 ## Current milestone
-Authorized focused title/profile entry follow-up after live121026r0151. No additional gameplay scope.
+Urgent authorized shop hotfix: publish staging999 allowance first, then shared uniform candidate rules to compact itch. Title121026r0152 is live.
 
 ## What was implemented
-The top-right260x72 card shows the owned saved avatar, actual alias, level/title and XP; one interactive target opens Profile. The136x32 native language/flag selector is anchored bottom-right. Removed obsolete profile.menu text and duplicate entry. Readiness callbacks are generation guarded and refresh on resume without per-frame rebuilding.
+Both chests show up to3 eligible unowned candidates and draw exactly from that list at uniform1/N odds (33/50/100%). Empty candidates disable the transaction before tokens/vouchers. Production daily paid caps/frozen offers and voucher exceptions remain; staging refills999 on Shop entry, bypasses daily caps and refreshes remaining offers after each success. Existing collection and stable reset receipt are preserved.
 
 ## Key technical decisions
-Art1b392b1 integrated on live151. Preserve exact stable web reset epoch punchies-reset-2026-10-12-super-v1, production staging/QAoff, stage isolated keys and ratedplay disabled. No new ZIPs/assets/compression/tuning changes. Strict476-key locale check and Sheet roundtrip pass; Logic verified obsolete nativeSheet row deletion and surrounding rows/formulas.
+Logic17c2688+006930e and Art7533285+footerfix3e670b8 integrated on live152. Offer schema9 migrates deterministic snapshots without a player reset. The literal staging allowance branch is erased from production compilation. Keep exact reset epoch punchies-reset-2026-10-12-super-v1 and existing production/staging/debug/rating flags. Asset catalog VM loads the actual new currency dependency.
 
 ## Open questions
-Physical controller, touch hardware and Android/mobile60fps remain unproven. Synthetic Xbox fixture is explicitly labeled; seeded identity/progress verifies rendering and refresh, not earned progression.
+Physical controller/Android/mobile60fps remain unproven. Controlled collection fixtures are explicit QA setup, not earned collection or balances.
 
 ## Known issues
-Existing cold palette limitation remains; pending approved palette/Kai/Ranked/CodeX/VS work is outside this focused batch. Actual Brave WebGL desktop and640x360 six-locale captures, saved Tee avatar, real Profile picker/return, keyboard activation, synthetic XboxA/B, alias/title/XP refresh and native language popup pass with no console errors.
+Existing cold palette limitation remains. Actual640x360 WebGL caught footer wrapping overlap; fixed and12skin/fighter popups across6locales reviewed. Three skin pulls cost15, three fighter pulls cost30, every award matched displayed candidates, no duplicates; empty skins/fighters retained tokens and2vouchers. Real production save/cap/no999 and real existing staged0save allowance are next artifact/public gates.
 
 ## Next proposed step
-Build one combined compact production/stage pair, verify existing save receipts preserve state, then publish the authorized follow-up and verify exact automatic version, bytes/profile, stagingSHA and live title layout. Future CodeX/newmechanic work stays stage-first after ownersREADY and Main trigger.
+Build one compact production/stage pair; verify no reset/production allowance leak and publish staging hotfix before shared production rule release. Tee indexed-mask/firelessVS and CodeX/Buffalo/Kai/Ranked work remain separate from this itch batch; new mechanics are stage-first only after their own readiness/compatibility gates.

@@ -17,7 +17,7 @@ import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
 import { getNav, navRegister } from '../ui/menuNav';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
-import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests,dailyChestLocked, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
+import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, prepareShopEntry, chestRewards, buyDailyChest, freeChests,dailyChestLocked, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
 
 /** Local storefront draft. No ad provider or production unlocks are connected. */
 export class ShopScene extends Phaser.Scene {
@@ -30,7 +30,7 @@ export class ShopScene extends Phaser.Scene {
   private adSeen=false;
   private notice='';
   constructor(){super('Shop');}
-  create(){track('shop','shop','open');this.notice=t('shop.tap_a_chest_to_inspect');this.adSeen=false;sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=refreshDailyOffers(loadShopDraft());this.persist();this.render();}
+  create(){track('shop','shop','open');this.notice=t('shop.tap_a_chest_to_inspect');this.adSeen=false;sfx.shopOpen();this.reveal=null;applyCameraPixelRatio(this);backdrop(this,.78,'gym_background');this.popupKind=null;this.state=prepareShopEntry(loadShopDraft());this.persist();this.render();}
   update(){for(const ray of this.rays)ray.rotation=reducedMotion()?0:this.time.now/tune.view.menu.shopRayRotationMs*Math.PI*2;if(!this.reveal&&this.state&&this.state.offerDay!==new Date().toISOString().slice(0,10)){this.state=refreshDailyOffers(this.state);this.persist();this.render();}}
   private persist(){if(!saveShopDraft(this.state))this.notice=t('shop.storage_unavailable_this_preview_will');}
   private text(x:number,y:number,label:string,size=14,color='#fff3da',maxWidth?:number){
@@ -99,24 +99,27 @@ export class ShopScene extends Phaser.Scene {
     const x=kind==='skins'?270:490,w=324,color=kind==='skins'?0x693da0:0x967022;
     const tail=this.add.graphics().fillStyle(color).fillTriangle(x+140,342,x+168,342,x+154,357);this.root.add(tail);this.panel(x,70,w,277,color);
     this.root.add(this.add.rectangle(x+w/2,208,w,277,0,0).setInteractive());
-    this.text(x+15,82,kind==='skins'?t('shop.today_s_skins'):t('shop.today_s_fighter'),16);this.button(x+w-84,79,70,t('shop.close'),()=>{this.popupKind=null;this.render();},true,300,'blue');
-    controlHint(this,x+w-90,330,302,'back',this.root);
-    const rewards=chestRewards(this.state,kind),offers=dailyOffers(this.state,kind);
-    offers.forEach((item,i)=>{
-      const y=kind==='skins'?120+i*62:123;this.panel(x+12,y,w-24,57,0x102034);
+    this.text(x+15,82,kind==='skins'?t('shop.today_s_skins'):t('shop.today_s_fighters'),16,'#fff3da',w-110);this.button(x+w-84,79,70,t('shop.close'),()=>{this.popupKind=null;this.render();},true,300,'blue');
+    controlHint(this,x+w-52,336,302,'back',this.root,90);
+    const rewards=chestRewards(this.state,kind);
+    rewards.forEach(({item,probability},i)=>{
+      const y=120+i*62;this.panel(x+12,y,w-24,57,0x102034);
       const unique=item.skinType==='unique',key=item.boxer?(unique?artKey(this,item.portraitKey!):skinTexture(this,item.boxer,item.kind==='skins'?item.id:'default',`portrait_${item.boxer}`)):null;
       if(key&&this.textures.exists(key)){const image=this.add.image(x+40,y+53,key).setOrigin(.5,1);image.setScale(Math.min(43/image.width,49/image.height));this.root.add(image);}
       else {const g=this.add.graphics().fillStyle(item.accent,.6).fillCircle(x+40,y+17,8).fillRoundedRect(x+27,y+28,26,23,7);this.root.add(g);}
-      this.text(x+70,y+7,itemName(item),11).setWordWrapWidth(225);
-      const probability=rewards.find(r=>r.item.id===item.id)?.probability??0;
-      const rarity=this.text(x+70,y+26,rarityLabel(item),11);
+      const name=this.text(x+70,y+5,itemName(item),11).setWordWrapWidth(214,true);
+      name.setScale(Math.min(1,214/Math.max(1,name.width),26/Math.max(1,name.height)));
+      const rarity=this.text(x+70,y+35,rarityLabel(item),11);
+      rarity.setScale(Math.min(1,132/Math.max(1,rarity.width)));
       styleRarity(this,rarity,item);
-      this.text(x+76+rarity.width,y+26,`· ${Math.round(probability*100)}%${this.state.owned.includes(item.id)?t('shop.owned'):''}`,11,'#dbe9fa');
+      this.text(x+w-24,y+35,`· ${Math.round(probability*100)}%${this.state.owned.includes(item.id)?t('shop.owned'):''}`,11,'#dbe9fa',62).setOrigin(1,0);
     });
-    if(!offers.length)this.text(x+162,155,t('common.collection_complete'),14).setOrigin(.5);
-    if(kind==='fighters')this.text(x+16,193,t('shop.guaranteed_fighter_of_the_day'),11,'#a8c1d8').setWordWrapWidth(289);
-    else this.text(x+16,311,t('shop.equal_odds_across_remaining_rewards'),10,'#a8c1d8');
-    if(kind==='fighters')this.text(x+16,273,STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.each_chest_can_be_opened'),11,'#a8c1d8');
+    if(!rewards.length)this.text(x+162,155,t('common.collection_complete'),14).setOrigin(.5);
+    // Two distinct single-line bands; never wrap the first into the context row.
+    const oddsCaption=this.text(x+16,311,t('shop.equal_odds_across_remaining_rewards'),10,'#a8c1d8');
+    oddsCaption.setScale(Math.min(1,(w-32)/Math.max(1,oddsCaption.width),14/Math.max(1,oddsCaption.height)));
+    const context=this.text(x+16,330,STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.each_chest_can_be_opened'),9,'#a8c1d8');
+    context.setScale(Math.min(1,198/Math.max(1,context.width),14/Math.max(1,context.height)));
   }
   private render(){
     this.rays=[];this.root?.destroy(true);const scale=Math.min(VIEW.width/844,VIEW.height/390);this.root=this.add.container(VIEW.cx-422*scale,VIEW.cy-195*scale).setScale(scale).setDepth(100);
@@ -136,7 +139,7 @@ export class ShopScene extends Phaser.Scene {
     this.button(39,291,234,!portal.ads.available?t('shop.ads_unavailable'):portal.ads.kind==='preview'?t('shop.preview_ad_1_token'):t('shop.watch_ad_1_token'),()=>void this.watchAd(),portal.ads.available&&!this.adBusy&&this.state.adsToday<shopConfig.dailyAdLimit);
     this.chest('skins',422);this.chest('fighters',688);
     this.text(25,346,this.notice,11,'#ffdc8a').setWordWrapWidth(790);
-    this.text(25,373,t('shop.purple_one_random_skin_gold'),10,'#91abc3');
+    this.text(25,373,t('shop.chest_candidate_rules'),10,'#91abc3');
     if(this.popupKind)this.bubble(this.popupKind);
   }
 }
