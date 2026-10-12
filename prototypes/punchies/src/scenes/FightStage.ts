@@ -1,3 +1,4 @@
+import type {RankedPlayers} from '../ui/rankedIdentityCapsule';
 import type { WireProfile } from '../progress/alias';
 import { sideProfiles } from '../progress/profile';
 import Phaser from 'phaser';
@@ -74,6 +75,7 @@ export class FightStage {
     private touchEnabled = true,
     private skins:[string,string]=['default','default'],
     private profiles:[WireProfile|null,WireProfile|null]=sideProfiles(localIdx===-1?0:localIdx,null),
+    private rankedPlayers?:RankedPlayers,
   ) {
     const gym=backdrop(scene, 0.15, 'gym_background');
     alignGymFloor(scene,gym);
@@ -102,7 +104,7 @@ export class FightStage {
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
-    this.hud = new Hud(scene, names,this.profiles);
+    this.hud = new Hud(scene, names,this.profiles,this.rankedPlayers);
     // P1 / P2 tags over each boxer at the start of a round.
     this.tags = [0, 1].map((i) =>
       scene.add
