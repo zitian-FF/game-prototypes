@@ -19,15 +19,23 @@ export function applyIndexedPortraitMask(base:Uint8ClampedArray,tinted:Uint8Clam
  }return true;
 }
 const decoded=new WeakMap<object,IndexedPortraitMask|null>();
+const decodeStats={successfulDecodeCount:0,cacheHits:0,lastDecodeMs:0,totalDecodeMs:0,lastDecodedMaterialBytes:0,lastDecodedCoverageBytes:0};
+const decodeClock=()=>typeof performance!=='undefined'&&typeof performance.now==='function'?performance.now():Date.now();
+/** Staging QA only: immutable snapshot, no source pixels, no reset or per-frame listener. */
+export function stagingIndexedMaskDiagnostics(){return STAGING_BUILD?Object.freeze({...decodeStats}):null;}
+
 export function stagingTeePortraitMask(scene:Phaser.Scene,width:number,height:number):IndexedPortraitMask|null {
  if(!STAGING_BUILD||!scene.textures.exists('punchies:materialmask_tee'))return null;
  const source=scene.textures.get('punchies:materialmask_tee').getSourceImage() as HTMLImageElement;
  // Never resize/index-interpolate a mismatched compact source. Packaging must preserve canonical geometry.
  if(source.width!==width||source.height!==height)return null;
- if(decoded.has(source))return decoded.get(source)!;
+ if(decoded.has(source)){const cached=decoded.get(source)!;if(cached)decodeStats.cacheHits++;return cached;}
+ const started=decodeClock();
  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d',{willReadFrequently:true});
  if(!ctx){decoded.set(source,null);return null;}ctx.drawImage(source,0,0);
- const mask=decodeIndexedPortraitMask(ctx.getImageData(0,0,width,height).data,width,height);decoded.set(source,mask);return mask;
+ const mask=decodeIndexedPortraitMask(ctx.getImageData(0,0,width,height).data,width,height);decoded.set(source,mask);
+ if(mask){const elapsed=Math.max(0,decodeClock()-started);decodeStats.successfulDecodeCount++;decodeStats.lastDecodeMs=elapsed;decodeStats.totalDecodeMs+=elapsed;decodeStats.lastDecodedMaterialBytes=mask.material.byteLength;decodeStats.lastDecodedCoverageBytes=mask.coverage.byteLength;}
+ return mask;
 }
 
 /** Put the one-time decode under the existing boot splash, never first roster motion. */
