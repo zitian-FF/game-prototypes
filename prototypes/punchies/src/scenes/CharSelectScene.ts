@@ -468,10 +468,12 @@ export class CharSelectScene extends Phaser.Scene {
       training:(this.data0.mode==='training'||this.data0.mode==='survival'),
       bestOf: tune.match.bestOf,
       formatEditable: this.data0.mode !== 'online' || this.data0.localIdx === 0,
+      rosterSide:online?(this.data0.localIdx??0):this.active,
       panels: this.sides.map((side, s) => ({
         dummy:this.data0.mode==='training'&&s===1,
         survival:this.data0.mode==='survival'&&s===1,
         id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
+        rosterAvailable:side.src==='remote'?this.remoteAvailable:availableFighters(loadShopDraft()),
         cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
         hidden: side.src === 'remote', locked: side.locked,
         focused: !ready && (local ? !side.locked : this.active === s),
