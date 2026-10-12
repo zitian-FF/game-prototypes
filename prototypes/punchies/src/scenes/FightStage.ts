@@ -202,7 +202,7 @@ export class FightStage {
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
     if(!this.introChecked){
       this.introChecked=true;
-      if(s.timed&&showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles);
+      if(s.timed&&showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles,this.rankedPlayers);
     }
     this.matchIntro?.draw(s.tick*1000/TICK_RATE);
     // Character looks are slot-independent; floor indicators identify the players.

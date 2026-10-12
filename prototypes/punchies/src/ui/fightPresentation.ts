@@ -11,6 +11,7 @@ import { charName } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
 import { createVsStamp, vsStampFrame } from './vsStamp';
+import { rankedIdentityCapsule, type RankedPlayers } from './rankedIdentityCapsule';
 
 export class MatchIntro {
   private cover: Phaser.GameObjects.Container;
@@ -19,7 +20,7 @@ export class MatchIntro {
   private vsBaseScale=1;
   private complete = false;
 
-  constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default'],profiles:[WireProfile|null,WireProfile|null]=[null,null]) {
+  constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default'],profiles:[WireProfile|null,WireProfile|null]=[null,null],rankedPlayers?:RankedPlayers) {
     this.cover = scene.add.container().setDepth(320);
     this.cover.add(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x081326, 0.97).setInteractive());
     const gym=artImage(scene,'gym_background',VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0);
@@ -57,7 +58,10 @@ export class MatchIntro {
       if(name.width>VIEW.width*0.40)name.setScale(VIEW.width*0.40/name.width);
       group.add(name);
       const profile=profiles[side];
-      if(profile){
+      if(rankedPlayers){
+        const capsule=rankedIdentityCapsule(scene,{x:x-VIEW.width*.20,y:VIEW.top+52,width:VIEW.width*.40,height:44},side as 0|1,rankedPlayers[side]);
+        group.add(capsule.root);
+      }else if(profile){
         for(const [y,label,color] of [[64,`${profile.alias} · ${t('profile.level',{level:profile.level})}`,'#fff1d1'],[86,titleName(profile.title),'#caa2ff']] as const){
           const status=scene.add.text(x,VIEW.top+y,label,{fontFamily:'Arial',fontSize:'14px',fontStyle:'bold',color,stroke:'#071326',strokeThickness:3,resolution:PIXEL_RATIO}).setOrigin(.5);
           status.setScale(Math.min(1,VIEW.width*.32/Math.max(1,status.width)));
