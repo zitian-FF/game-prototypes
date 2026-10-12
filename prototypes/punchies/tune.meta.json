@@ -5283,5 +5283,33 @@
     "min": 1,
     "max": 4,
     "step": 1
+  },
+  "characters.kai.hook.freeUses": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: Exact number of consecutive unpenalized Hook throws. All throws still spend stamina.",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "characters.kai.dodge.speedMult": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: Multiplier on shared dodge movement speed.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.dodge.iFramesMult": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: Multiplier on shared dodge invincible frames, capped by dodge duration.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.dodge.framesMult": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: Multiplier on shared dodge duration.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
   }
 }
