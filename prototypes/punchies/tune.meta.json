@@ -5213,5 +5213,75 @@
     "min": 1,
     "max": 4,
     "step": 1
+  },
+  "characters.marco.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "marco: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.mia.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "mia: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.bruno.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "bruno: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tee.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "tee: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.tyke.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "tyke: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.dragon.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "dragon: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.longan.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "longan: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.captain.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "captain: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.roxy.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "roxy: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.nadia.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "nadia: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
   }
 }
