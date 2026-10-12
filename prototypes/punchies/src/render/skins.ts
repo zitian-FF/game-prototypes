@@ -1,3 +1,4 @@
+import { kaiTexture } from './kaiTextures';
 import Phaser from 'phaser';
 import { skinItem } from '../shop/roster';
 import { recolourPalette } from './skinPalette';
@@ -7,6 +8,7 @@ export function skinReady(scene:Phaser.Scene,char:string,skin:string):boolean{
  const item=skinItem(char,skin);return !item||item.skinType!=='unique'||['head','torso','glove_left','glove_right','boot_left','boot_right'].every(p=>scene.textures.exists('punchies:part_'+item.rigGroup+'_'+p))&&scene.textures.exists('punchies:'+item.portraitKey);
 }
 export function skinTexture(scene:Phaser.Scene,char:string,skin:string,name:string):string{
+ if(char==='kai')return kaiTexture(scene,skin,name);
  const item=skinItem(char,skin),base='punchies:'+name;
  if(!item)return base;
  if(item.skinType==='unique'){

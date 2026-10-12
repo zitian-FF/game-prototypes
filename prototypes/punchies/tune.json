@@ -177,7 +177,8 @@
       "longan": 1,
       "captain": 1,
       "roxy": 1,
-      "nadia": 0.88
+      "nadia": 0.88,
+      "kai": 0.9
     }
   },
   "punches": {
@@ -918,6 +919,61 @@
         "starRequirement": 2,
         "referenceStarCost": 2
       }
+    },
+    "kai": {
+      "hp": 0.85,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.8,
+      "speed": 0.9,
+      "jab": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1.2857142857142858,
+        "staminaCost": 1.1,
+        "stunBuild": 1.05,
+        "push": 1,
+        "reach": 1.25,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 0,
+        "freeUses": 6
+      },
+      "uppercut": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 0.6,
+        "push": 1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 0,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
+      },
+      "dodge": {
+        "speedMult": 1.15,
+        "iFramesMult": 1.25,
+        "framesMult": 1
+      }
     }
   },
   "balanceWorkshop": {
@@ -1169,7 +1225,8 @@
       "char.longan.nick": "Endurance specialist: efficient pressure and a weak one-star uppercut.",
       "char.captain.nick": "Mobile burst fighter: quick recovery, costly pressure and lower durability.",
       "char.roxy.nick": "Close-range brawler: heavy hooks, costly swings.",
-      "char.nadia.nick": "Fast, light Cross pressure with extra fatigue capacity."
+      "char.nadia.nick": "Fast, light Cross pressure with extra fatigue capacity.",
+      "char.kai.nick": "Slow courier: strong hooks, weak Jab and Cross, longer dash."
     }
   }
 }
