@@ -1,23 +1,21 @@
-# Punchies staging
+# Punchies stage and approved promotion
 
 Public preview: https://zitian-ff.github.io/game-prototypes/staging/punchies/
 
-Local preview: http://127.0.0.1:5310/
+Build may publish completed frozen batches directly to STAGING after compile, boot/assets, staging/rating safety and focused risky-logic checks. No additional Main trigger or exhaustive visual/gamefeel playthrough is required; the owner reviews those. New requests belong to the next frozen batch. Production fixes and experimental Super/mask batches stay separate.
 
-Run `scripts/Build-Punchies-Staging.ps1`, then `scripts/Start-Punchies-Staging.ps1`. Stop with `scripts/Stop-Punchies-Staging.ps1`. The launchers use the isolated sibling checkout `work/punchies-local-staging` and `outputs/staging/site`; the server binds only localhost and runs in a hidden Windows process. Starting does not build or publish. Rebuild then refresh to see current local staging.
+Pages checks out the exact `.github/punchies-staging-ref`. The wrapper shows the full source SHA, source version stamp (explicitly not an itch release), and a bounded What changed list from that source. The in-game stamp says STAGE plus SHA. SHA paths prevent mixing cached builds. Compact/web stages disable rating and use the existing fixed reset epoch `punchies-reset-2026-10-12-super-v1`.
 
-Pages checks out the exact commit in `.github/punchies-staging-ref`, builds compact/web and adds it beneath `dist/staging/punchies`. Main contains infrastructure and the hub link only; SUPER source remains on `staging/punchies-super`. Updating the public stage requires selecting a reviewed commit in the pin and merging its infrastructure change. This does not trigger itch publication.
+Open **Staging QA panel** in the wrapper. Expand punchies tune, then Staging review. Choose a fighter and skin and select **Preview in Training (no unlocks)** from Menu, Training or offline onboarding. Picks last only for that Training scene; no ownership/currency/preferences are granted. **Reset staging test saves** removes only the eleven registered staging player keys, preserves the epoch receipt and unrelated/production saves, then reloads. Debug controls remain opt-in and are excluded from production's module graph.
 
-The wrapper labels commit, branch, build time and profile. Game and assets use `builds/<full SHA>/game/` URLs, avoiding stale asset reuse across builds; local responses are no-store. Pages controls public cache headers, so the hub also supplies a revision query. There is no service worker. All delivered files are same-origin on Pages; runtime asset CORS configuration is unnecessary. Existing R2 ZIPs are fetched and hash-verified at build time, not extracted by the browser. No bucket, domain or access changes.
+Itch ALWAYS requires explicit owner approval of the exact reviewed source. Stage READY is not approval. After approval, run:
 
-The default staged game has no rating endpoint compiled, preventing live-rated registration, matchmaking and result submission. AI/local play is available; no separate test Worker is provisioned. Casual room play uses existing peer signaling and is not isolated matchmaking infrastructure.
+```powershell
+./scripts/Promote-Punchies-Reviewed.ps1 -ReviewedSha <full-public-stage-SHA> -OwnerApproved
+```
 
-Optional effect review is a controlled contact fixture behind `PUNCHIES_STAGING_QA=1`. The normal production build excludes its HTML, JS entry and diagnostic marker; the staging builder verifies exclusion before generating the opted-in package. QA does not alter the default game. No fixtures are added to the itch release.
+This dispatches the promotion workflow; it never merges experimental source into main. The SHA must equal current public staging and the repeated owner-approved SHA. CI checks out that exact source, uses committed translations, and rebuilds compact/web with STAGING off, QA off and the unchanged save epoch. Required release checks, QA/debug/currency/experimental-mask exclusion and network compatibility checks run before upload. The production rating URL comes from the existing configured variable. A differing Worker source blocks promotion until a separately approved compatible Worker rollout is recorded on main; this tooling never deploys a Worker. The successful upload increments only main's counter and records the source SHA. No counter is consumed on a failed upload. Concurrent itch workflows share one queue.
 
-Pending Marco balance PR350 remains open and untouched; this preview uses live150 balance plus reference costs that preserve current damage. Unique Supers, Kai, title-screen redesign and Ranked identity changes are excluded. Physical mobile/controller and difficulty balance validation remain separate.
+The command is not an automatic promoter and is not invoked by stage publication. Existing explicit release authorizations remain valid within their exact scope. The current experimental batch has staging permission only.
 
-Current reviewed staging pin354e702 includes the combined reset/SUPER/single-confirm release. Build production with STAGINGoff, QA0 and STAGING_QA0; stage uses STAGINGon, QA1 and STAGING_QA1. Both use the stable web reset epoch punchies-reset-2026-10-12-super-v1; staging keys are isolated. Never derive reset IDs from a commit or build counter. Production paid chest caps remain; stage removes only daily paid caps, preserving costs/ownership/pools. Local audit setup is outside all delivered artifacts. Pages excludes the packager's sibling production review directory.
-
-Title/profile follow-up reviewed source6e68859 updates the public pin. It uses the exact existing reset epoch, preserving production and staging saves. The stage source stamp is the pre-upload counter; its wrapper SHA is authoritative for feature contents. Top-right card and bottom-right language entry add no art/audio archive changes. Future gameplay candidates remain separate until owner handoffs and Main trigger; new mechanics are stage-first before itch review.
-
-Urgent reviewed shop staging sourcec3b4a67 refills999 tokens on Shop entry, preserves the collection/reset receipt, removes only staging daily caps and refreshes remaining eligible candidates after pulls. Both chests use up to3uniform candidate rewards. This pin change publishes staging first; shared production rule publication follows separately. No mask/VS/newmechanic adoption is included.
+Local scripts Build/Start/Stop-Punchies-Staging use the isolated sibling checkout and localhost5310. Starting neither builds nor publishes. Keep requested public/local previews available; close owned temporary tabs and servers after checks.

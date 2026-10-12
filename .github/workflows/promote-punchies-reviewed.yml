@@ -1,0 +1,318 @@
+name: Promote reviewed Punchies source to itch
+
+# The "Current WIP" itch.io slot (the itch project formerly used for suits).
+# Deploys whichever prototype is named in .github/wip-prototype. To point
+# the slot at another prototype, change that file (and the hub link label
+# in index.html).
+
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: Exact public staging source SHA
+        required: true
+        type: string
+      owner_approved_sha:
+        description: Repeat SHA only after explicit owner itch approval
+        required: true
+        type: string
+
+concurrency:
+  group: itch-wip
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.reviewed_sha }}
+
+      - name: Validate explicit reviewed-source approval
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          OWNER_APPROVED_SHA: ${{ inputs.owner_approved_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$REVIEWED_SHA" =~ ^[a-f0-9]{40}$ ]] && [ "$REVIEWED_SHA" = "$OWNER_APPROVED_SHA" ] || { echo "Exact owner-approved SHA required"; exit 1; }
+          [ "$(git rev-parse HEAD)" = "$REVIEWED_SHA" ] || exit 1
+          live=$(curl -fsS "https://zitian-ff.github.io/game-prototypes/staging/punchies/stage.json?promotion=$REVIEWED_SHA" | jq -r .sha)
+          [ "$live" = "$REVIEWED_SHA" ] || { echo "Reviewed source is not current public staging"; exit 1; }
+          git fetch origin main
+          if ! git diff --quiet origin/main HEAD -- prototypes/punchies/server; then
+            echo "::error::Source requires a separately approved compatible Worker rollout before itch promotion"; exit 1
+          fi
+          deployed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-punchies-rating.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          [ -n "$deployed" ] || { echo "::error::No successful Worker deployment receipt"; exit 1; }
+          git fetch origin "$deployed"
+          if ! git diff --quiet "$deployed" HEAD -- prototypes/punchies/server prototypes/punchies/src/net/rules.ts; then
+            echo "::error::Reviewed source is incompatible with the recorded live Worker source/protocol; approve and deploy the Worker separately"; exit 1
+          fi
+          [ "$(tr -d '[:space:]' < .github/wip-prototype)" = punchies ] || exit 1
+
+      - name: Read WIP target
+        id: target
+        run: echo "name=$(tr -d '[:space:]' < .github/wip-prototype)" >> "$GITHUB_OUTPUT"
+
+      - name: Read Punchies WIP quality
+        id: quality
+        run: |
+          profile=$(tr -d '[:space:]' < .github/punchies-wip-profile)
+          case "$profile" in standard|compact) ;; *) echo "Invalid Punchies WIP profile" >&2; exit 1 ;; esac
+          echo "profile=$profile" >> "$GITHUB_OUTPUT"
+
+      # The path filter above has to cover every prototype since the target
+      # is dynamic. Skip the deploy (and the version bump) when a push only
+      # touched some other prototype.
+      - name: Check whether this push affects the WIP target
+        id: relevant
+        env:
+          BEFORE: ${{ github.event.before }}
+          TARGET: ${{ steps.target.outputs.name }}
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qvE '^prototypes/' \
+            || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -q "^prototypes/$TARGET/"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.relevant.outputs.run == 'true'
+        run: npm ci
+
+      - name: Typecheck
+        if: steps.relevant.outputs.run == 'true'
+        run: npm run typecheck
+
+      - name: Get Punchies art ETag
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        id: punchies-art
+        run: |
+          url="https://pub-415572b047994ab8807f76b8462eda45.r2.dev/punchies_assets.zip"
+          status=$(curl -sS -o /dev/null -D /tmp/punchies-art-headers -w '%{http_code}' -I "$url")
+          if [ "$status" = "404" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Punchies art absent; build procedural fallback"
+          elif [ "$status" = "200" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            etag=$(awk 'tolower($1)=="etag:" {gsub(/[\r"]/, "", $2); print $2}' /tmp/punchies-art-headers)
+            echo "etag=$etag" >> "$GITHUB_OUTPUT"
+          else
+            echo "Art endpoint returned HTTP $status" >&2; exit 1
+          fi
+
+      - name: Cache Punchies source art by ETag
+        if: steps.punchies-art.outputs.available == 'true' && steps.punchies-art.outputs.etag != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            prototypes/punchies/assets-src
+            .cache/punchies.etag
+          key: punchies-art-${{ steps.punchies-art.outputs.etag }}
+
+      - name: Fetch and pack Punchies art
+        if: steps.punchies-art.outputs.available == 'true'
+        run: |
+          npm run fetch:assets punchies
+          npm run pack:assets punchies
+
+      - name: Fetch verified Punchies music
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        run: node scripts/fetch-punchies-music.mjs
+
+      # Translations are built into the game, never fetched at runtime. A release build (TEST_BUILD is
+      # false in prototypes/punchies/src/testBuild.ts) or a run started with "pull_translations" downloads
+      # the reviewed Google Sheet as CSV and writes locales/*.json into the workspace before the tests and
+      # the build, so they are packed with the game. The pulled files are not committed; open the "Pull
+      # Punchies translations" workflow to freeze them into the repository. If the download fails, a
+      # Configured Sheet pull failures stop a release. If no URL is configured,
+      # use the explicitly reviewed committed snapshot and record its source SHA.
+      - name: Verify exact reviewed committed translations
+        run: |
+          node scripts/i18n-sheet.mjs check
+          node scripts/test-punchies-i18n.mjs
+
+      - name: Verify Punchies audio and roster
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        run: |
+          node scripts/test-punchies-audio.mjs
+          node scripts/test-punchies-combat-audio.mjs
+          node scripts/test-punchies-music.mjs
+          node scripts/test-punchies-stingers.mjs
+          node scripts/test-punchies-feedback.mjs
+          node scripts/test-punchies-ui-input.mjs
+          node scripts/test-punchies-input-layouts.mjs
+          node scripts/test-punchies-input-modality.mjs
+          node scripts/test-punchies-staging-reset.mjs
+          node scripts/test-punchies-debug-exclusion.mjs
+          node scripts/test-punchies-staging-controls.mjs
+          node scripts/test-punchies-rules-compatibility.mjs
+          node scripts/test-punchies-rating-snapshots.mjs
+          node scripts/test-punchies-super.mjs
+          node scripts/test-punchies-super-feedback.mjs
+          node scripts/test-punchies-super-meter-vfx.mjs
+          node scripts/test-punchies-super-meter-layout.mjs
+          node scripts/test-punchies-nadia-torso.mjs
+          node scripts/test-punchies-marco-torso.mjs
+          node scripts/test-punchies-touch-editor-navigation.mjs
+          node scripts/test-punchies-game-menu.mjs
+          node scripts/test-punchies-reward-reveal.mjs
+          node scripts/test-punchies-reward-accents.mjs
+          node scripts/test-punchies-clash-fire.mjs
+          node scripts/test-punchies-fight-cue-visual.mjs
+          node scripts/test-punchies-roster.mjs
+          node scripts/test-punchies-roster-stats.mjs
+          node scripts/test-punchies-roster-animation.mjs
+          node scripts/test-punchies-roster-confirm.mjs
+          node scripts/test-punchies-roster-headshots.mjs
+          node scripts/test-punchies-ground-labels.mjs
+          node scripts/test-punchies-survival.mjs
+          node scripts/test-punchies-survival-views.mjs
+          node scripts/test-punchies-boss-hud.mjs
+          node scripts/test-punchies-survival-cjk-wrap.mjs
+          node scripts/test-punchies-profile-avatar.mjs
+          node scripts/test-punchies-title-profile-entry.mjs
+          node scripts/test-punchies-profile-avatar-art.mjs
+          node scripts/test-punchies-profile-zombie-ui.mjs
+          node scripts/test-punchies-ranked-lobby.mjs
+          node scripts/test-punchies-rating-session.mjs
+          node scripts/test-punchies-shop.mjs
+          node scripts/test-punchies-shop-candidates.mjs
+          node scripts/test-punchies-shop-three-ui.mjs
+          node scripts/test-punchies-progress.mjs
+          node scripts/test-punchies-alias.mjs
+          node scripts/test-punchies-starter-skins.mjs
+          node scripts/test-punchies-material-masks.mjs
+          node scripts/test-punchies-leg-motion.mjs
+          node scripts/test-punchies-portal.mjs
+          node scripts/verify-punchies-tune-guard.mjs
+          node scripts/test-punchies-states.mjs
+          node scripts/test-punchies-uppercut-charges.mjs
+          node scripts/test-punchies-emergency.mjs
+          node scripts/test-punchies-geometry.mjs
+          node scripts/test-punchies-i18n.mjs
+          node scripts/test-punchies-json-packing.mjs
+          if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
+            node scripts/test-punchies-asset-optimization.mjs
+            node scripts/test-punchies-tyke-gloves.mjs
+            node scripts/test-punchies-tee-materials.mjs
+            node scripts/test-punchies-palette-roster.mjs
+          fi
+
+      # Bumps the target's deploy counter (see "Version stamping" in root
+      # CLAUDE.md) without committing yet - committed only after a
+      # successful push to itch.io, so a failed deploy doesn't burn a number.
+      - name: Bump version stamp counter
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          git show origin/main:prototypes/punchies/version.json > prototypes/punchies/version.json
+          node scripts/bump-version.js punchies
+
+      - name: Build (relative base for itch.io)
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name != 'punchies'
+        env:
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+        run: npx vite build --base ./
+
+      # Owner requested compact quality for the current WIP assessment. Portal
+      # choice remains web for itch, independently of the profile CLI default.
+      - name: Build selected Punchies WIP quality
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        env:
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+          PUNCHIES_STAGING: 'off'
+          PUNCHIES_QA: '0'
+          PUNCHIES_STAGING_QA: '0'
+          PUNCHIES_SAVE_RESET_ID: 'punchies-reset-2026-10-12-super-v1'
+          PROFILE: ${{ steps.quality.outputs.profile }}
+        run: |
+          [ -n "$VITE_PUNCHIES_RATING_URL" ] || { echo "::error::Production rating URL is not configured"; exit 1; }
+          npm run build:punchies:$PROFILE -- --portal web --fresh
+          node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
+          node scripts/test-punchies-production-package.mjs "dist/punchies-$PROFILE-web"
+          if [ "$PROFILE" = compact ]; then
+            PUNCHIES_COMPACT_LOOSE=.cache/punchies-profiles/compact/public/prototypes/punchies/assets/loose node scripts/test-punchies-tee-materials.mjs
+          fi
+          echo "ITCH_UPLOAD_DIR=dist/punchies-$PROFILE-web" >> "$GITHUB_ENV"
+
+      # Keep only the target prototype's page plus shared assets/, so the
+      # upload has exactly one HTML file for itch.io to auto-select.
+      - name: Prune build to the WIP target only
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name != 'punchies'
+        env:
+          TARGET: ${{ steps.target.outputs.name }}
+        run: |
+          rm -f dist/index.html
+          for d in dist/prototypes/*/; do
+            [ "$(basename "$d")" = "$TARGET" ] || rm -rf "$d"
+          done
+          ls dist/prototypes
+          echo "ITCH_UPLOAD_DIR=dist" >> "$GITHUB_ENV"
+
+      - name: Enforce Punchies package budget
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        env:
+          PROFILE: ${{ steps.quality.outputs.profile }}
+        run: |
+          if [ "$PROFILE" = compact ]; then export PUNCHIES_BUDGET_LIMIT_BYTES=20000000; else export PUNCHIES_BUDGET_LIMIT_BYTES=40000000; fi
+          node scripts/check-punchies-budget.mjs "$ITCH_UPLOAD_DIR"
+
+      - name: Set up butler
+        if: steps.relevant.outputs.run == 'true'
+        uses: jdno/setup-butler@v1
+
+      - name: Wait for coordinated matchmaking Worker deployment
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          # A frontend-only follow-up can use the previously deployed compatible
+          # Worker. A server-changing release must wait for its exact SHA.
+          if ! git diff --name-only "${{ github.event.before }}" "$RELEASE_SHA" | grep -q '^prototypes/punchies/server/'; then exit 0; fi
+          for attempt in $(seq 1 60); do
+            result=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-punchies-rating.yml/runs?head_sha=$RELEASE_SHA" --jq '.workflow_runs[0] | [.status, .conclusion] | @tsv')
+            if [ "$result" = $'completed\tsuccess' ]; then exit 0; fi
+            if [[ "$result" == completed* ]]; then echo "::error::Matchmaking Worker deployment failed: $result"; exit 1; fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for matchmaking Worker deployment"; exit 1
+
+      - name: Push to itch.io
+        if: steps.relevant.outputs.run == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push "$ITCH_UPLOAD_DIR" zitian-ff/suits:html5
+
+      - name: Record promoted source and commit version counter only
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+        run: |
+          cp prototypes/punchies/version.json /tmp/promoted-version.json
+          git reset --hard
+          git checkout --detach origin/main
+          cp /tmp/promoted-version.json prototypes/punchies/version.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add prototypes/punchies/version.json
+          git commit -m "Bump Punchies after approved promotion $REVIEWED_SHA"
+          git push origin HEAD:main
+          echo "Promoted exact reviewed source $REVIEWED_SHA with production flags" >> "$GITHUB_STEP_SUMMARY"
