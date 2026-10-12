@@ -21,7 +21,7 @@ import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
 import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
-import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
+import { NEUTRAL_INPUT, type Fighter, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio, sfx } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
@@ -127,6 +127,7 @@ export class FightStage {
 
   // Runtime Survival enemies/corpses must share the player's ring camera.
   // The constructor's initial snapshot cannot include objects created later.
+  setCodeXRenderSources(sources:()=>readonly Fighter[]):void{this.fx.codeXSources=sources;}
   createFighterView(color: number): FighterView {
     const before = new Set(this.scene.children.list);
     const view = new FighterView(this.scene, color);

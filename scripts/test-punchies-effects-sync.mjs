@@ -37,6 +37,7 @@ class ObjectStub extends EventEmitter {
   setVisible(visible) { this.visible=visible;return this; }
   setAlpha() { return this; }
   setRotation() { return this; }
+  setOrigin() { return this; }
   setFrame() { return this; }
   clear() { return this; }
   fillStyle() { return this; }
@@ -68,7 +69,7 @@ for (const webgl of [false, true]) {
     // Real factories add first; caller chains setDepth after ADDED_TO_SCENE.
     return obj.setDepth(depth);
   };
-  scene.add = { container: () => spawn(0),graphics:()=>{const g=spawn(0);g.pooledSpark=true;return g;},image:()=>{const o=spawn(0);o.pooledSymbol=true;return o;} };
+  scene.add = { container: () => spawn(0),graphics:()=>{const g=spawn(0);g.pooledSpark=true;return g;},image:(_x,_y,_k,frame)=>{const o=spawn(0);o.pooledSymbol=frame==='sweet-star'||frame==='charge-lost-bolt';return o;} };
   scene.textures={exists:()=>true};
   const perspective = new exports.RingPerspective(scene);
   const fighter = spawn(10);
@@ -80,6 +81,8 @@ for (const webgl of [false, true]) {
   sparks.burst(400,200,1,0,1.25,[0xffffff,0xfff27a,0xffc83a],10);
   const symbolExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/combatSymbols.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:symbolExports,require:()=>({reducedMotion:()=>false})});
   const symbols=new symbolExports.CombatSymbols(scene);symbols.sweet(400,204);
+  const shadowExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/codeXShadows.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:shadowExports,require:id=>id.includes('codeXShadowSheet')?{codeXTrailTexture:()=> 'trail'}:{}});
+  const shadowBefore=new Set(scene.children.list),shadows=new shadowExports.CodeXShadows(scene),shadowObjects=scene.children.list.filter(o=>!shadowBefore.has(o));perspective.take(shadowObjects);assert.equal(shadowObjects.length,24);assert(shadowObjects.every(o=>o.parentContainer===perspective.world),'all cached shadow tracks share ring world');
   const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));
   const overlay = spawn(76);
   const flash = spawn(80);

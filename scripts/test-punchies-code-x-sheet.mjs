@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';
+const code=ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/codeXShadowSheet.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+for(const renderer of [1,2]){
+ let constructors=0,draws=0,destroyed=0,rasterDraws=0;const textures=new Map(),registry=new Map(),frames=[];
+ class View{constructor(){constructors++;this.skin='';this.objects=[{x:100,y:120,depth:10,type:'Image',visible:true,getBounds:()=>({left:60,top:90,right:190,bottom:170}),destroy:()=>destroyed++}];this.puppet={visible:true,gloveR:{x:170,y:128}};}setLook(color,scale,ponytail){assert.equal(color,0x34343f);assert.equal(scale,1.35);assert.equal(ponytail,true);}draw(){draws++;}}
+ const exp={};vm.runInNewContext(code,{exports:exp,Math,require:id=>id.endsWith('characterLook')?{mainLook:()=>({color:0x34343f,scale:1.35,ponytail:true})}:id.endsWith('FighterView')?{FighterView:View}:id.endsWith('/skins')?{skinTexture:(_s,_c,_skin,key)=>key}:id.endsWith('/sim')?{arenaCombat:{createFighter:(x,y)=>({x,y}),processInput:(_s,_i,_input)=>{_s.fighters[0].punch={startup:4,sourEarly:2,sweet:6};}}}:{NEUTRAL_INPUT:{}}});
+ const tex=()=>({add:(...args)=>frames.push(args),draw:(_entries,x,y)=>{assert.equal(x,undefined,'first bake preserves each part position');assert.equal(y,undefined);rasterDraws++;},beginDraw(){},batchDraw(o,x,y){assert.equal(x,o.x+256,'second cell offsets each part, not all parts to same position');assert.equal(y,o.y);},endDraw(){rasterDraws++;},getSourceImage:()=>({}),context:{drawImage(){},fillRect(){},createLinearGradient:()=>({addColorStop(){}})},refresh(){}});
+ const scene={game:{renderer:{type:renderer}},registry:{get:k=>registry.get(k),set:(k,v)=>registry.set(k,v)},textures:{exists:k=>k.startsWith('part_tee_')||textures.has(k),remove:k=>textures.delete(k),addDynamicTexture(k,w,h){assert.equal(w*h*4,524288);const t=tex();textures.set(k,t);return t;},createCanvas(k,w,h){const t=tex();textures.set(k,t);return t;}}};
+ let result;for(let i=0;i<20;i++)result=exp.codeXShadowSheet(scene);
+ assert.equal(constructors,1);assert.equal(draws,2);assert.equal(rasterDraws,2);assert.equal(destroyed,1);assert.equal(result.pivotX,(170-48)/154);assert.equal(result.pivotY,(128-78)/104);
+ assert(frames.every(f=>f[4]===154&&f[5]===104),'frames trim transparent overdraw');assert.equal(textures.size,renderer===1?3:1);
+ const missing={...scene,registry:{get:()=>null},textures:{...scene.textures,exists:()=>false}};assert.equal(exp.codeXShadowSheet(missing),null);assert.equal(constructors,1,'missing assets never build a puppet each frame');
+}
+console.log('PASS: actual rig snapshot path2draws only, cached20reuse, correct glove/crop registration, Canvas3mask palettes/WebGLsharedsheet and no transient rig leaks');

@@ -60,6 +60,7 @@ export class SurvivalScene extends Phaser.Scene {
   }
   this.display=createSimState({timed:false,fighters:[{char:this.run.fighter},{char:'marco'}]});this.display.fightStartTick=0;
   this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default']);this.stage.hideOpponent=true;this.enemyViews=new SurvivalViews(this,color=>this.stage.createFighterView(color));
+  this.stage.setCodeXRenderSources(()=>this.run.status==='active'&&this.run.tick>=this.run.fightStartTick?[this.run.player,...this.run.enemies.filter(e=>e.kind==='boss'&&e.fighter.codeX&&e.fighter.health>0).map(e=>e.fighter)]:[]);
   this.bossWaveMode=false;
   this.waveText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+23,'',17,VIEW.width*.34,'#fff1d1',93,22);
   this.killsText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+47,'',13,VIEW.width*.34,'#8edfff',93,19);
