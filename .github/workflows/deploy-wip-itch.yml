@@ -194,6 +194,9 @@ jobs:
           node scripts/test-punchies-json-packing.mjs
           if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
             node scripts/test-punchies-asset-optimization.mjs
+            node scripts/test-punchies-tyke-gloves.mjs
+            node scripts/test-punchies-tee-materials.mjs
+            node scripts/test-punchies-palette-roster.mjs
           fi
 
       # Bumps the target's deploy counter (see "Version stamping" in root
@@ -219,6 +222,9 @@ jobs:
         run: |
           npm run build:punchies:$PROFILE -- --portal web --fresh
           node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
+          if [ "$PROFILE" = compact ]; then
+            PUNCHIES_COMPACT_LOOSE=.cache/punchies-profiles/compact/public/prototypes/punchies/assets/loose node scripts/test-punchies-tee-materials.mjs
+          fi
           echo "ITCH_UPLOAD_DIR=dist/punchies-$PROFILE-web" >> "$GITHUB_ENV"
 
       # Keep only the target prototype's page plus shared assets/, so the

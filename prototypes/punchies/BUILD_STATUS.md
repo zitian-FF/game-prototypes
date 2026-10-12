@@ -1,17 +1,17 @@
 ## Current milestone
-Validated compact quality assessment release on live148 base; Main explicitly authorized merge/deploy.
+Focused Tyke/Tee compact release validated on live149 main; Main explicitly authorized release.
 
 ## What was implemented
-Survival 30-second waves, bosses every third wave, READY/FIGHT each wave, edge 6–10 HP zombies, bounded progression/boss coordination and cumulative run statistics/save. Removed stale Tee welcome auto-grant while preserving legitimate ownership. Automatic Ranked queue with private WebRTC rooms; Casual retains manual host/code. Portrait-only roster movement, persistent static UI/stat fills, dimmed lock cards/headshots and sharp floor labels. Opposing fire trails/collision, rarity pull accents and restrained victory effects. Normalized escaped Survival hint line breaks.
+Tyke keeps canonical left/right assets and uses hand-aware diagonal cuff axis/distance so wrists meet the authored cuffs during guard and punches. Tee uses explicit jacket, clothing and glove material regions with protected hair/skin/red accents/highlights. Continuous shade/tint rolloffs retain the existing exact dark-outline invariant. Broad palette fixture loads the real material module and rejects unknown dependencies. Added affected rig/material checks to the WIP gate.
 
 ## Key technical decisions
-Integrated Logic a015fc2, VFX c23eb75, Art b069dcf, focused fixture ef48dde and formatting39f743e only. Preserved current main tuning and shared FIGHT entrance/fade-start unlock. WIP quality selected by .github/punchies-wip-profile=compact; itch portal remains web. Explicit profile commands/CI default CrazyGames. Worker deployment must succeed for the same server-changing release SHA before frontend upload. No new downloadable art/R2 changes. Compact assets freshly verified; inventory and parity against recoverable live148 standard pass.
+Integrated Art c0f9232 and follow-up8d791c9 as f325620/634159f on current main. No source bitmap/R2/asset-profile/tune/Worker changes. Compact remains the WIP profile, portal web. Actual Brave production Training/FightStage rendering captured24 Tyke frames across4skins and12 Tee frames across default+3palettes, using explicit injected FrameInputs and exact POST_RENDER WebGL frame exports plus portrait inset. Initial asynchronous compositor captures were superseded by exact-frame evidence.
 
 ## Open questions
-Physical Android spark behavior/mobile60fps and native-speaker translations remain unverified. Tee actual appearance-writer root cause unproven; ownership-isolation regression passes. Future Ranked snapshots dddecf0 and unapproved identity/redesign mockups are excluded.
+Physical Android and real hardware input validation unavailable. Future dynamic input hints/navigation work and Ranked snapshots/redesigns are outside this release.
 
 ## Known issues
-Old Survival checkpoints cannot resume under the changed configuration. Cold palette work still peaks around88ms in owner evidence. Compact uses smaller/lossier portraits/backgrounds/arena and64kbps AAC music; no visually lossless or subjective listening-quality claim. Browser result/rematch evidence uses real clients/Worker with an explicitly injected result, not a fully played KO. Ranked remains anonymous/self-reported with legacy endpoint, no anti-cheat guarantee.
+Desktop controlled input captures are not physical Android or mobile60fps proof. Existing cold palette work remains a limitation. New authored art would need corresponding semantic regions; mask bundling is excluded. No added download assets or altered gameplay dimensions.
 
 ## Next proposed step
-Merge and deploy this complete compact batch, verify exact CI artifact bytes/live version and Worker receipt, then obtain owner's quality assessment. Evidence: outputs/compact-wave-release in Build workspace; all combined checks passed after focused fixes.
+Merge and deploy the focused compact build, verify live version/profile/CI and exact package bytes, publish the receipt/screenshots and keep future batches held for Main trigger.
