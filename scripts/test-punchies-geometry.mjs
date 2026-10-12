@@ -22,11 +22,12 @@ function load(file) {
 const { createSimState, step, hurtRadius } = load(root + '/sim.ts');
 const { NEUTRAL_INPUT } = load(root + '/types.ts');
 const { tune } = load(root + '/tune.ts');
-const { punchCfg } = load(root + '/character.ts');
+const { fighterSuper } = load(root + '/super.ts');
+const { punchCfg, uppercutStars } = load(root + '/character.ts');
 const { fighterScale, normalHurtRadius, coreRadius, separation } = load(root + '/geometry.ts');
 const { lookFor } = load(root + '/../render/characterLook.ts');
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
-const ids = ['marco', 'mia', 'bruno', 'tee'];
+const ids = ['marco', 'mia', 'bruno', 'tee', 'tyke'];
 near(fighterScale('tee'),fighterScale('mia'));
 // Isolate reach boundaries from rope clamping at the largest debug scale.
 Object.assign(tune.ring, { left: 0, top: 0, right: 1000, bottom: 600 });
@@ -35,13 +36,15 @@ for (const scale of [1, 1.5, 2]) {
   for (const attacker of ids) for (const defender of ids) {
     near(lookFor([attacker, defender], 0).scale, fighterScale(attacker));
     for (const type of ['jab', 'cross', 'hook', 'uppercut']) {
-      const cfg = punchCfg(attacker, type);
+      // The input slot remains uppercut; unique Supers activate as Jab/Hook.
+      const activation=type==='uppercut'?fighterSuper(attacker).mechanic:type;
+      const cfg = punchCfg(attacker, activation);
       const reach = cfg.reach + cfg.hitRadius + normalHurtRadius(defender);
       for (const delta of [-0.01, 0.01]) {
         const sim = createSimState({ timed: false, fighters: [{ char: attacker }, { char: defender, anchored: true }] });
         const [a, b] = sim.fighters;
         a.x = 310; a.y = b.y = 210; b.x = a.x + reach + delta;
-        a.stars = tune.stars.max;
+        a.stars = uppercutStars(a);
         const health = b.health;
         for (let tick = 0; tick < cfg.startup + cfg.sourEarly + cfg.sweet + cfg.sour + 2; tick++) {
           step(sim, [tick === 0 ? { ...NEUTRAL_INPUT, [type]: true } : NEUTRAL_INPUT, NEUTRAL_INPUT]);
@@ -54,14 +57,14 @@ for (const scale of [1, 1.5, 2]) {
         const [a, b] = sim.fighters;
         a.x = 310; a.y = b.y = 210;
         b.x = a.x + cfg.reach + cfg.hitRadius + coreRadius(b) + delta;
-        a.stars = tune.stars.max;
+        a.stars = uppercutStars(a);
         let hit;
         for (let tick = 0; tick < cfg.startup + cfg.sourEarly + cfg.sweet + cfg.sour + 2; tick++) {
           hit ??= step(sim, [tick === 0 ? { ...NEUTRAL_INPUT, [type]: true } : NEUTRAL_INPUT, NEUTRAL_INPUT])
             .find(event => event.kind === 'hit');
         }
         assert.ok(hit, `${attacker}/${defender} ${type} core boundary must still connect`);
-        assert.equal(hit.row, type === 'uppercut' || delta < 0 ? 'vulnerable' : 'normal',
+        assert.equal(hit.row, activation === 'uppercut' || delta < 0 ? 'vulnerable' : 'normal',
           `${attacker}/${defender} ${type} scale ${scale}: head/body spacing boundary`);
       }
     }
@@ -81,4 +84,4 @@ for (const scale of [1, 1.5, 2]) {
     near(a.y, tune.ring.top + normalHurtRadius(a));
   }
 }
-console.log('Shared render/sim scale, all character/punch contact boundaries, vulnerable/core radii, anchored dummy spacing and rope clearance passed at 1x, 1.5x and 2x');
+console.log('Shared render/sim scale, standard punch and authoritative SUPER activation contact boundaries, vulnerable/core radii, anchored dummy spacing and rope clearance passed at 1x, 1.5x and 2x');
