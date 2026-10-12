@@ -31,6 +31,7 @@ const MAX_STEPS_PER_FRAME = 5;
 
 export class MatchScene extends Phaser.Scene {
   private match!: MatchData;
+  private ratingMatchPromise:Promise<string|null>|undefined;
   private ls!: Rollback;
   private stage!: FightStage;
   private acc = 0;
@@ -70,6 +71,9 @@ export class MatchScene extends Phaser.Scene {
   create(data: MatchData): void {
     applyCameraPixelRatio(this);
     this.match = data;
+    this.ratingMatchPromise=data.session.ratingMatch;
+    data.session.onRejected=reason=>{if(reason==='incompatible'){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
+    if(data.session.markMatchStarted&&!data.session.markMatchStarted()){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});return;}
     this.series = data.series ?? newSeries(tune.match.bestOf);
     this.nextSeries = undefined;
     this.remoteReselect = false;
@@ -279,6 +283,7 @@ export class MatchScene extends Phaser.Scene {
   private showResult(): void {
     setGameplay(false);
     this.over = true;
+    this.match.session.markRoundEnded?.();
     this.waiting.setVisible(false);
     const r = this.ls.confirmedResult()!;
     const outcome = finishRound(this.series, r.winner);
@@ -318,7 +323,7 @@ export class MatchScene extends Phaser.Scene {
     const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
     const label=status.label;
     status.set(ratingLabel({phase:'pending'},t));
-    const matchPromise=this.match.session.ratingMatch;
+    const matchPromise=this.ratingMatchPromise??this.match.session.ratingMatch;
     const id=await matchPromise;if(!id){if(this.scene.isActive())status.set(ratingLabel({phase:'unavailable'},t));return;}
     let result=score===undefined?await ratingStatus(id):await reportRating(id,score);if(!this.scene.isActive())return;
     const alive=()=>this.scene.isActive()&&label.active;

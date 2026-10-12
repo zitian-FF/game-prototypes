@@ -477,5 +477,6 @@
   "super.code_x": "코드 X",
   "super.code_x_description": "잽 적중 시 그림자가 크로스 2회. 그림자는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다.",
   "super.buffalo_hook": "버팔로 훅",
-  "super.buffalo_hook_description": "막히지 않은 훅 적중 시 어퍼로 연계. 어퍼는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다."
+  "super.buffalo_hook_description": "막히지 않은 훅 적중 시 어퍼로 연계. 어퍼는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다.",
+  "online.rules_mismatch": "게임 규칙이 일치하지 않습니다. 양쪽 게임을 업데이트한 후 다시 시도하세요."
 }

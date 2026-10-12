@@ -1,0 +1,5 @@
+import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import ts from 'typescript';
+const cache=new Map();function load(file){file=path.resolve(file);if(!fs.existsSync(file)&&file.endsWith('.ts'))file=path.join(file.slice(0,-3),'index.ts');if(cache.has(file))return cache.get(file);if(file.endsWith('.json'))return {default:JSON.parse(fs.readFileSync(file,'utf8'))};const exports={};cache.set(file,exports);vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,structuredClone,require:id=>id.endsWith('/i18n')?{setEnglishOverrides(){},t:key=>key}:load(path.resolve(path.dirname(file),id.endsWith('.json')?id:id+'.ts'))});return exports;}
+export const rulesMock=load('prototypes/punchies/src/net/rules.ts');
+export const tuneValidationMock=load('prototypes/punchies/src/sim/tune.ts');
+export const compatibleTune=fs.readFileSync('prototypes/punchies/tune.json','utf8');
