@@ -1,3 +1,6 @@
+import {KAI_MILESTONES} from '../progress/kaiRewards';
+import {itemName} from '../shop/itemText';
+import {SHOP_ITEMS} from '../shop/draft';
 import type Phaser from 'phaser';
 import {t} from '../i18n';
 import {PIXEL_RATIO,VIEW} from '../render/pixelRatio';
@@ -27,6 +30,7 @@ export function xpMeter(scene:Phaser.Scene,x:number,y:number,width:number,depth=
  return {object:g,draw};
 }
 export function rewardName(reward:Reward):string {
+ if(reward.kind==='fighter'||(reward.kind==='skin'&&KAI_MILESTONES.some(i=>i.id===reward.id))){const item=SHOP_ITEMS.find(i=>i.id===reward.id)??KAI_MILESTONES.find(i=>i.id===reward.id);if(item)return itemName(item);}
  if(reward.kind==='title')return t('profile.reward_title',{title:titleName(reward.id)});
  if(reward.kind==='skin')return t('profile.reward_veteran');
  return reward.kind==='skinChest'?t('profile.reward_skin_chest'):t('profile.reward_fighter_chest');
