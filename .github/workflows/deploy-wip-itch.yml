@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - '.github/wip-prototype'
+      - '.github/punchies-wip-profile'
       - 'prototypes/**'
       - 'scripts/generate-versions.js'
       - 'scripts/bump-version.js'
@@ -33,6 +34,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   deploy:
@@ -46,6 +48,13 @@ jobs:
       - name: Read WIP target
         id: target
         run: echo "name=$(tr -d '[:space:]' < .github/wip-prototype)" >> "$GITHUB_OUTPUT"
+
+      - name: Read Punchies WIP quality
+        id: quality
+        run: |
+          profile=$(tr -d '[:space:]' < .github/punchies-wip-profile)
+          case "$profile" in standard|compact) ;; *) echo "Invalid Punchies WIP profile" >&2; exit 1 ;; esac
+          echo "profile=$profile" >> "$GITHUB_OUTPUT"
 
       # The path filter above has to cover every prototype since the target
       # is dynamic. Skip the deploy (and the version bump) when a push only
@@ -157,8 +166,18 @@ jobs:
           node scripts/test-punchies-input-layouts.mjs
           node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
+          node scripts/test-punchies-reward-accents.mjs
+          node scripts/test-punchies-clash-fire.mjs
+          node scripts/test-punchies-fight-cue-visual.mjs
           node scripts/test-punchies-roster.mjs
           node scripts/test-punchies-roster-stats.mjs
+          node scripts/test-punchies-roster-animation.mjs
+          node scripts/test-punchies-roster-headshots.mjs
+          node scripts/test-punchies-ground-labels.mjs
+          node scripts/test-punchies-survival.mjs
+          node scripts/test-punchies-survival-views.mjs
+          node scripts/test-punchies-ranked-lobby.mjs
+          node scripts/test-punchies-rating-session.mjs
           node scripts/test-punchies-shop.mjs
           node scripts/test-punchies-progress.mjs
           node scripts/test-punchies-alias.mjs
@@ -185,15 +204,27 @@ jobs:
         run: node scripts/bump-version.js "${{ steps.target.outputs.name }}"
 
       - name: Build (relative base for itch.io)
-        if: steps.relevant.outputs.run == 'true'
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name != 'punchies'
         env:
           VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
         run: npx vite build --base ./
 
+      # Owner requested compact quality for the current WIP assessment. Portal
+      # choice remains web for itch, independently of the profile CLI default.
+      - name: Build selected Punchies WIP quality
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+        env:
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+          PROFILE: ${{ steps.quality.outputs.profile }}
+        run: |
+          npm run build:punchies:$PROFILE -- --portal web --fresh
+          node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
+          echo "ITCH_UPLOAD_DIR=dist/punchies-$PROFILE-web" >> "$GITHUB_ENV"
+
       # Keep only the target prototype's page plus shared assets/, so the
       # upload has exactly one HTML file for itch.io to auto-select.
       - name: Prune build to the WIP target only
-        if: steps.relevant.outputs.run == 'true'
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name != 'punchies'
         env:
           TARGET: ${{ steps.target.outputs.name }}
         run: |
@@ -202,20 +233,42 @@ jobs:
             [ "$(basename "$d")" = "$TARGET" ] || rm -rf "$d"
           done
           ls dist/prototypes
+          echo "ITCH_UPLOAD_DIR=dist" >> "$GITHUB_ENV"
 
       - name: Enforce Punchies package budget
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
-        run: node scripts/check-punchies-budget.mjs
+        env:
+          PROFILE: ${{ steps.quality.outputs.profile }}
+        run: |
+          if [ "$PROFILE" = compact ]; then export PUNCHIES_BUDGET_LIMIT_BYTES=20000000; else export PUNCHIES_BUDGET_LIMIT_BYTES=40000000; fi
+          node scripts/check-punchies-budget.mjs "$ITCH_UPLOAD_DIR"
 
       - name: Set up butler
         if: steps.relevant.outputs.run == 'true'
         uses: jdno/setup-butler@v1
 
+      - name: Wait for coordinated matchmaking Worker deployment
+        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          # A frontend-only follow-up can use the previously deployed compatible
+          # Worker. A server-changing release must wait for its exact SHA.
+          if ! git diff --name-only "${{ github.event.before }}" "$RELEASE_SHA" | grep -q '^prototypes/punchies/server/'; then exit 0; fi
+          for attempt in $(seq 1 60); do
+            result=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-punchies-rating.yml/runs?head_sha=$RELEASE_SHA" --jq '.workflow_runs[0] | [.status, .conclusion] | @tsv')
+            if [ "$result" = $'completed\tsuccess' ]; then exit 0; fi
+            if [[ "$result" == completed* ]]; then echo "::error::Matchmaking Worker deployment failed: $result"; exit 1; fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for matchmaking Worker deployment"; exit 1
+
       - name: Push to itch.io
         if: steps.relevant.outputs.run == 'true'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist zitian-ff/suits:html5
+        run: butler push "$ITCH_UPLOAD_DIR" zitian-ff/suits:html5
 
       - name: Commit version stamp bump
         if: steps.relevant.outputs.run == 'true'
