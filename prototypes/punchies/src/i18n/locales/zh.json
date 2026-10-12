@@ -22,9 +22,7 @@
   "charselect.fight": "开战！ ›",
   "charselect.host_sent_invalid_settings": "主机发送了无效设置",
   "charselect.host_sets_format": "主机集匹配格式",
-  "charselect.left_right_skins_confirm_to": "左/右：皮肤 · 确认准备就绪",
   "charselect.locked_fighter_daily_chest": "已锁定战士 · 从每日战士宝箱中解锁。",
-  "charselect.locked_in_left_right_skins": "✓ 已锁定 · 左/右：皮肤",
   "charselect.locked_shop_daily_chest": "已锁定 · 每日战士宝箱",
   "charselect.opponent_left": "对手已离开",
   "charselect.pick_a_boxer_then_confirm": "选择一名拳击手，然后确认。\n\n方向键 + 回车键 / 方向键 + A",
@@ -32,7 +30,6 @@
   "charselect.power": "力量",
   "charselect.reach": "攻击距离",
   "charselect.ready": "准备就绪 ›",
-  "charselect.select_boxer": "选择拳手 ›",
   "charselect.speed": "速度",
   "charselect.unready": "取消准备",
   "charselect.waiting_for_opponent": "等待对手……",
@@ -52,7 +49,6 @@
   "common.hook": "勾拳",
   "common.hp": "HP",
   "common.jab": "刺拳",
-  "common.left_right_chooses_a_skin": "左右键选择皮肤。确认锁定。",
   "common.menu": "菜单",
   "common.online": "联机",
   "common.opponent": "对手",
@@ -478,5 +474,6 @@
   "super.rising_upper": "腾升上勾拳",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "测试环境 · 可重复抽取",
-  "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。"
+  "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。",
+  "ui.skins": "皮肤"
 }

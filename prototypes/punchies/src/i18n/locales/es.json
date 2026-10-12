@@ -22,9 +22,7 @@
   "charselect.fight": "¡LUCHA! ›",
   "charselect.host_sent_invalid_settings": "El host envió una configuración no válida.",
   "charselect.host_sets_format": "El anfitrión establece el formato del partido",
-  "charselect.left_right_skins_confirm_to": "IZQUIERDA / DERECHA: APARIENCIAS · CONFIRMAR QUE ESTÁ LISTO",
   "charselect.locked_fighter_daily_chest": "Luchador bloqueado · Desbloquéalo desde el cofre diario de luchadores.",
-  "charselect.locked_in_left_right_skins": "✓ BLOQUEADO · IZQUIERDA / DERECHA: ASPECTOS",
   "charselect.locked_shop_daily_chest": "BLOQUEADO · COFRE DIARIO DE LUCHADOR",
   "charselect.opponent_left": "El rival se ha ido",
   "charselect.pick_a_boxer_then_confirm": "Elige un boxeador y confirma.\n\nFlechas + Enter / Cruceta + A",
@@ -32,7 +30,6 @@
   "charselect.power": "FUERZA",
   "charselect.reach": "ALCANCE",
   "charselect.ready": "LISTO ›",
-  "charselect.select_boxer": "ELIGE BOXEADOR ›",
   "charselect.speed": "VELOCIDAD",
   "charselect.unready": "CANCELAR LISTO",
   "charselect.waiting_for_opponent": "Esperando al oponente…",
@@ -52,7 +49,6 @@
   "common.hook": "GANCHO",
   "common.hp": "HP",
   "common.jab": "JAB",
-  "common.left_right_chooses_a_skin": "Izquierda/derecha selecciona un aspecto. Confirma para guardar.",
   "common.menu": "MENÚ",
   "common.online": "EN LÍNEA",
   "common.opponent": "RIVAL",
@@ -478,5 +474,6 @@
   "super.rising_upper": "Upper ascendente",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "PRUEBAS · tiradas repetidas",
-  "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta."
+  "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
+  "ui.skins": "Aspectos"
 }

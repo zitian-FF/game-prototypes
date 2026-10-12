@@ -22,9 +22,7 @@
   "charselect.fight": "ファイト！ ›",
   "charselect.host_sent_invalid_settings": "ホストが無効な設定を送信しました",
   "charselect.host_sets_format": "ホストセットマッチフォーマット",
-  "charselect.left_right_skins_confirm_to": "左／右：スキン · 準備完了を確認",
   "charselect.locked_fighter_daily_chest": "ロックされたファイター · デイリーファイターチェストからロックを解除します。",
-  "charselect.locked_in_left_right_skins": "✓ ロックイン · 左 / 右: スキン",
   "charselect.locked_shop_daily_chest": "ロック済み · デイリーファイターチェスト",
   "charselect.opponent_left": "相手が退出しました",
   "charselect.pick_a_boxer_then_confirm": "ボクサーを選んで確定してください。\n\n矢印キー + Enter / 方向キー + A",
@@ -32,7 +30,6 @@
   "charselect.power": "力",
   "charselect.reach": "リーチ",
   "charselect.ready": "準備完了 ›",
-  "charselect.select_boxer": "ボクサー選択 ›",
   "charselect.speed": "スピード",
   "charselect.unready": "準備を解除",
   "charselect.waiting_for_opponent": "対戦相手を待っている…",
@@ -52,7 +49,6 @@
   "common.hook": "フック",
   "common.hp": "HP",
   "common.jab": "ジャブ",
-  "common.left_right_chooses_a_skin": "左/右でスキンを選択します。確定すると選択が確定します。",
   "common.menu": "メニュー",
   "common.online": "オンライン",
   "common.opponent": "相手",
@@ -478,5 +474,6 @@
   "super.rising_upper": "ライジングアッパー",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "ステージング · 連続開封",
-  "super.rising_upper_description": "通常ガードを突破。パーフェクトガードや回避で防げます。"
+  "super.rising_upper_description": "通常ガードを突破。パーフェクトガードや回避で防げます。",
+  "ui.skins": "スキン"
 }
