@@ -10,7 +10,7 @@ import {tune} from './src/sim/tune';
 import {NEUTRAL_INPUT,type SimEvent} from './src/sim/types';
 import {applyCameraPixelRatio,VIEW,PIXEL_RATIO} from './src/render/pixelRatio';
 import {initLanguage} from './src/i18n/init';
-await initLanguage();
+void initLanguage().then(()=>{
 const params=new URLSearchParams(location.search);
 let mode=params.get('mode')??'lost',review:Review,ready=false,captured=false;
 class Review extends Phaser.Scene {
@@ -45,4 +45,7 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('button[data-mo
 const capture=Number(params.get('at')??220);
 game.events.on(Phaser.Core.Events.POST_RENDER,()=>{if(ready&&!captured&&review.age>=capture){captured=true;review.scene.pause();let frame=document.querySelector<HTMLImageElement>('#captured-frame');if(!frame){frame=document.createElement('img');frame.id='captured-frame';frame.alt='Actual rendered staging QA frame';frame.style.position='fixed';frame.style.inset='0';frame.style.width='100%';frame.style.height='100%';frame.style.objectFit='contain';frame.style.pointerEvents='none';document.body.append(frame)}frame.src=game.canvas.toDataURL('image/png')}});
 
+
+
+});
 
