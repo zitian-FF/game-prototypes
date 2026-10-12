@@ -112,6 +112,15 @@ export interface ProgressView {
   nextRewards: LevelUp[]; matches: number; wins: number;
 }
 
+export interface RewardLadderStep extends LevelUp {reached:boolean;current:boolean;totalXpRequired:number}
+/** Complete read-only track, including levels without rewards. No claim/grant side effects. */
+export function rewardLadder(cfg:ProgressConfig,state:ProgressState,day:string):RewardLadderStep[]{
+ const level=levelFromXp(cfg,normalizeProgress(state,day,cfg).totalXp);let totalXpRequired=0;
+ return Array.from({length:cfg.maxLevel},(_,i)=>{const n=i+1;if(n>1)totalXpRequired+=xpForLevel(cfg,n-1);
+  return {level:n,rewards:rewardsForLevel(cfg,n),reached:n<=level,current:n===level,totalXpRequired};
+ });
+}
+
 export function progressView(cfg: ProgressConfig, state: ProgressState, day: string): ProgressView {
   const s = normalizeProgress(state, day, cfg);
   const level = levelFromXp(cfg, s.totalXp);

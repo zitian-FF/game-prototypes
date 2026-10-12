@@ -76,7 +76,7 @@ export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraf
   // Preserve the one-unique/two-palette mix. Exhausted categories shrink the pool.
   return {...s,offerDay:day,offerSchema:8,offerIds:[...pickSkins(true,1),...pickSkins(false,2),...pick('fighters',1)]};
 }
-export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&!i.artPending&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
+export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{const boxers=ownedBoxers(state);return (state.offerIds??[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)!).filter(i=>i&&!i.earnOnly&&!i.artPending&&i.kind===kind&&(kind!=='skins'||(i.boxer!==null&&boxers.includes(i.boxer))));}
 export function chestRewards(state:ShopDraftState,kind:ShopKind):{item:ShopItem;probability:number}[]{
   const pool=dailyOffers(state,kind).filter(i=>!state.owned.includes(i.id));
   return pool.map(item=>({item,probability:1/pool.length}));
