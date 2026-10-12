@@ -11,7 +11,7 @@ import type { Fighter, PunchType } from './types';
 // fatigue rules) stays global so every character reads the same.
 // Deterministic: the sim only reads tune + the fighter's character id.
 
-const ALL_CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia', 'kai'] as const;
+export const ALL_CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia', 'kai'] as const;
 export type CharId = (typeof ALL_CHARACTER_IDS)[number];
 export const CHARACTER_IDS:readonly CharId[]=ALL_CHARACTER_IDS.filter(id=>id!=='kai'||STAGING_BUILD);
 
