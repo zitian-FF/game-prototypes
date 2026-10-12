@@ -7,7 +7,7 @@ import {waistPortrait} from './profileAvatar';
 import type {SurvivalRun} from '../survival/types';
 import {getNav} from './menuNav';
 export function survivalText(scene:Phaser.Scene,x:number,y:number,label:string,size:number,width:number,color='#fff1d1',depth=132,maxHeight=size*3):Phaser.GameObjects.Text {
- const o=scene.add.text(x,y,label,{fontFamily:'Arial',fontSize:size,fontStyle:'bold',color,align:'center',wordWrap:{width},padding:{left:6,right:6,top:4,bottom:4},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(depth);
+ const o=scene.add.text(x,y,label,{fontFamily:'Arial',fontSize:size,fontStyle:'bold',color,align:'center',wordWrap:{width:Math.max(1,width-12),useAdvancedWrap:true},padding:{left:6,right:6,top:4,bottom:4},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(depth);
  o.setData('fitWidth',width).setData('fitHeight',maxHeight);fitSurvivalText(o);return o;
 }
 export function fitSurvivalText(o:Phaser.GameObjects.Text):void {o.setScale(1);o.setScale(Math.min(1,o.getData('fitWidth')/Math.max(1,o.width),o.getData('fitHeight')/Math.max(1,o.height)));}
