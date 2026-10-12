@@ -625,10 +625,10 @@
       "hp": 1.05,
       "stamina": 1,
       "regen": 0.9,
-      "stun": 1.1,
+      "stun": 0.4,
       "speed": 0.85,
       "jab": {
-        "damage": 1.5,
+        "damage": 2,
         "staminaCost": 1.15,
         "stunBuild": 1,
         "push": 1,
@@ -648,14 +648,14 @@
         "fatigueBars": 0
       },
       "hook": {
-        "damage": 1,
+        "damage": 1.4285714285714286,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 0.9,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": -2
       },
       "uppercut": {
         "damage": 2.4,
@@ -1154,7 +1154,7 @@
       "char.mia.nick": "Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.",
       "char.bruno.nick": "Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.",
       "char.tee.nick": "Fast burst attacker: heavy Cross and hooks, fragile with low stamina.",
-      "char.tyke.nick": "Precision powerhouse: heavy blows, limited jab endurance, punishing mistakes.",
+      "char.tyke.nick": "Precision powerhouse: crushing blows, tires quickly, easily stunned.",
       "char.dragon.nick": "Long-range outboxer: extended jab and Cross, slower follow-through.",
       "char.longan.nick": "Endurance specialist: efficient pressure and a weak one-star uppercut.",
       "char.captain.nick": "Mobile burst fighter: quick recovery, costly pressure and lower durability.",
