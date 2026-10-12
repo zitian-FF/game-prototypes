@@ -484,5 +484,7 @@
   "shop.item.fighter-kai.name": "KAI CHEN",
   "shop.item.skin-kai-kangaroo-turquoise.name": "KAI · KANGAROO TURQUOISE",
   "shop.item.skin-kai-grabber-green.name": "KAI · GRABBER GREEN",
-  "shop.item.skin-kai-panda-pink.name": "KAI · PANDA PINK"
+  "shop.item.skin-kai-panda-pink.name": "KAI · PANDA PINK",
+  "ranked.next_match": "FIND NEXT MATCH",
+  "rating.transition": "{before} → {after} ({delta})"
 }

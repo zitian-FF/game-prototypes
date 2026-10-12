@@ -1,4 +1,5 @@
-import {ratingStatus,reportRating} from '../net/rating';
+import {ratingStatus,reportRating,ratingConfigured} from '../net/rating';
+import {rankedPlayers,rankedResultBinding} from '../net/rankedResult';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { sideProfiles } from '../progress/profile';
 import { startScreen } from '../ui/presentation';
@@ -129,7 +130,9 @@ export class MatchScene extends Phaser.Scene {
       data.localIdx === 0 ? [t('match.you_host', { name: nm(0) }), t('match.opponent_name', { name: nm(1) })] : [t('match.opponent_name', { name: nm(0) }), t('match.you_name', { name: nm(1) })];
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
-    this.stage = new FightStage(this, names, data.localIdx,true,data.skins,sideProfiles(data.localIdx,data.session.peer));
+    const profiles=sideProfiles(data.localIdx,data.session.peer);
+    this.stage = new FightStage(this, names, data.localIdx,true,data.skins,profiles,
+      data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined);
     this.stage.setSeries(this.series);
 
     this.events.on('menuReturn',()=>this.leave());
@@ -297,11 +300,19 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
-    void this.showRating(r.winner===null?.5:r.winner===this.match.localIdx?1:0);
+    const score=r.winner===null?.5:r.winner===this.match.localIdx?1:0;
+    if(!this.match.session.rated)void this.showRating(score);
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     this.registry.set('lastAward', awardMatch({ kind: 'online', win: r.winner === this.match.localIdx }));
-    if (this.remoteReselect) { this.changeBoxer(); return; }
+    if (this.remoteReselect) { void this.showRating(score);this.changeBoxer(); return; }
+    const rating=this.match.session.rated?rankedResultBinding({
+      players:rankedPlayers(sideProfiles(this.match.localIdx,this.match.session.peer),this.match.localIdx,ratingConfigured(),this.match.session.assignment?.baseline),
+      localIdx:this.match.localIdx,configured:ratingConfigured(),match:this.ratingMatchPromise??this.match.session.ratingMatch,
+      report:id=>reportRating(id,score),status:ratingStatus,
+      schedule:callback=>{const timer=this.time.delayedCall(2000,callback);return ()=>timer.remove();},
+    }):undefined;
+    if(rating)this.events.once('shutdown',()=>rating.dispose());
     const rem = matchResult(this, text, {
       rematch: () => {
         if (this.rematchLocal) return;
@@ -315,7 +326,17 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner],title:r.winner===this.match.localIdx?progressView().title:this.match.session.peer.title}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner],title:r.winner===this.match.localIdx?progressView().title:this.match.session.peer.title}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat',
+      rating?{players:rating.players,localIdx:this.match.localIdx,subscribe:update=>rating.subscribe(update),nextMatch:()=>{rating.dispose();this.findNextMatch();}}:undefined);
+  }
+
+  private findNextMatch():void {
+    if(!this.match.session.rated||!this.over||this.nextSeries||this.advancing)return;
+    this.advancing=true;this.departed=true;
+    this.cancelSplash?.();this.cancelSplash=undefined;
+    this.match.session.leave();
+    if(this.match.restoreTune)restoreTune(this.match.restoreTune);
+    startScreen(this,'Lobby',{role:'host',rated:true});
   }
 
   private async showRating(score?:0|.5|1):Promise<void>{

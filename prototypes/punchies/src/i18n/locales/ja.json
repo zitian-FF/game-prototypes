@@ -484,5 +484,7 @@
   "shop.item.fighter-kai.name": "カイ・チェン",
   "shop.item.skin-kai-kangaroo-turquoise.name": "カイ · ターコイズカンガルー",
   "shop.item.skin-kai-grabber-green.name": "カイ · グラバーグリーン",
-  "shop.item.skin-kai-panda-pink.name": "カイ · ピンクパンダ"
+  "shop.item.skin-kai-panda-pink.name": "カイ · ピンクパンダ",
+  "ranked.next_match": "次の対戦を探す",
+  "rating.transition": "{before} → {after}（{delta}）"
 }
