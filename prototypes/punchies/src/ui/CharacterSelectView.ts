@@ -231,7 +231,7 @@ export class CharacterSelectView {
 
    this.panelHits[s].input!.enabled=!p.dummy&&!p.survival;
 
-   const key=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status,p.label,p.skinName,p.available]);
+   const key=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status,p.label,p.skinName,p.available,p.focused,p.locked]);
 
    if(key!==this.panelKeys[s]){
 
@@ -299,17 +299,17 @@ export class CharacterSelectView {
   const superDescription=this.text(normal,centre,202,'',9,'#d4dff0').setAlign('center').setWordWrapWidth(184,true);
   const tray=this.scene.add.container();normal.add(tray);
 
-  this.graphics(tray).fillStyle(0x09182b,.95).fillRoundedRect(x,351,198,38,8);
+  this.graphics(tray).fillStyle(0x09182b,.95).fillRoundedRect(x,350,198,40,8);
 
   const skinName=this.text(tray,centre,362,'',10,'#fff1a8'),skinIndex=this.text(tray,centre,379,'',11),skinButtons:Phaser.GameObjects.Rectangle[]=[],skinDraws:(()=>void)[]=[];
 
   for(const d of [-1,1]){
 
-   const bx=centre+d*76,g=this.graphics(tray),hit=this.scene.add.rectangle(bx,370,44,38,0,0).setInteractive({useHandCursor:true});tray.add(hit);skinButtons.push(hit);
+   const bx=centre+d*74,g=this.graphics(tray),hit=this.scene.add.rectangle(bx,370,48,40,0,0).setInteractive({useHandCursor:true});tray.add(hit);skinButtons.push(hit);
 
    const arrow=this.text(tray,bx,368,d<0?'‹':'›',29).setStroke('#23415a',0);
 
-   const draw=(state='idle')=>{const enabled=hit.input?.enabled!==false,pressed=enabled&&state==='pressed';g.clear();cartoonButton(g,bx-22,351+(pressed?2:0),44,38,enabled?0x397dc2:0x28374d,8);if(enabled&&state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(bx-22,351,44,38,8);arrow.y=368+(pressed?2:0);arrow.setColor(enabled?'#ffffff':'#8896ac');};skinDraws.push(()=>draw());bindButtonFeedback(hit,draw);
+   const draw=(state='idle')=>{const enabled=hit.input?.enabled!==false,pressed=enabled&&state==='pressed';g.clear();cartoonButton(g,bx-24,350+(pressed?2:0),48,40,enabled?0x397dc2:0x28374d,8);if(enabled&&state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(bx-24,350,48,40,8);arrow.y=368+(pressed?2:0);arrow.setColor(enabled?'#ffffff':'#8896ac');};skinDraws.push(()=>draw());bindButtonFeedback(hit,draw);
 
    hit.on('pointerup',()=>{if(hit.input?.enabled&&hit.getData('buttonReleasedInside'))this.callbacks.skin(s,d);});
 
@@ -333,9 +333,9 @@ export class CharacterSelectView {
 
   ui.hiddenLabel.setText(p.label);ui.hiddenStatus.setText(p.status);
 
-  const showTray=!!(p.selected&&p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
+  const showTray=!!(p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
 
-  ui.skinButtons.forEach((hit,i)=>{hit.input!.enabled=showTray&&p.skinCount>1;ui.skinDraws[i]();});
+  ui.skinButtons.forEach((hit,i)=>{hit.input!.enabled=showTray&&!p.locked&&p.focused&&p.skinCount>1;ui.skinDraws[i]();});
 
   if(p.survival||(p.hidden&&!p.dummy))return;
 
@@ -375,7 +375,7 @@ export class CharacterSelectView {
   ui.superDescription.setText(!p.dummy?t('super.rising_upper_description'):'').setScale(1);
   ui.superDescription.setScale(Math.min(1,184/Math.max(1,ui.superDescription.width),30/Math.max(1,ui.superDescription.height)));
 
-  ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,100/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);
+  ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,88/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);
 
   if(ui.fillProgress<0)this.drawStatFills(s,currentFill);
 
