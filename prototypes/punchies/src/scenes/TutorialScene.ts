@@ -234,7 +234,7 @@ function binder(): (a: Action) => string {
   const press = (key: string) => t('tutorial.press_key', { key });
   const tap = (name: string) => t('tutorial.tap_button', { button: name });
   const names: Record<'touch' | 'keyboard' | 'gamepad', Record<Action, string>> = {
-    touch: { move: t('tutorial.the_joystick_left_side'), jab: tap(t('common.jab')), cross: tap(t('common.cross')), hook: tap(t('common.hook')), guard: t('common.guard'), dodge: tap(t('common.dodge')), upper: tap(t('common.upper')) },
+    touch: { move: t('tutorial.the_joystick_left_side'), jab: tap(t('common.jab')), cross: tap(t('common.cross')), hook: tap(t('common.hook')), guard: t('common.guard'), dodge: tap(t('common.dodge')), upper: tap(t('common.super')) },
     keyboard: { move, jab: press(binding('jab')), cross: press(binding('cross')), hook: press(binding('hook')), guard: binding('guard'), dodge: press(binding('dodge')), upper: press(binding('uppercut')) },
     gamepad: { move: t('tutorial.the_left_stick') + ' / ' + move, jab: press(binding('jab')), cross: press(binding('cross')), hook: press(binding('hook')), guard: binding('guard'), dodge: press(binding('dodge')), upper: press(binding('uppercut')) },
   };
