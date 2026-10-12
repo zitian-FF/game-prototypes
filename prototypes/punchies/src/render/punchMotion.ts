@@ -31,6 +31,11 @@ export function uppercutFireIntensity(p: PunchState): number {
 export function gloveRegistration(char:string,width:number,height:number,k:number,skin='default',hand=0):{scale:number;axis:number;cuff:number;originX?:number;originY?:number} {
   const rig=tune.view.puppet;
   const h=rig.gloveHeight*k*(char==='tee'?rig.teeHandScale:1);
+  if(char==='kai'){
+    const scale=14*k/height,originX=.52,originY=.5;
+    const dx=(.10-originX)*width*scale,dy=(hand===0?-.03:.03)*height*scale;
+    return {scale,axis:Math.atan2(dy,-dx),cuff:Math.hypot(dx,dy),originX,originY};
+  }
   // Actual gold mitt landmarks: main knuckle centre(.44/.56,.33),
   // cuff centre(.70/.30,.82). Centre-of-canvas sat on the thumb fold and
   // rolled the hand around the wrong pivot, despite a numerically joined cuff.

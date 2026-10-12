@@ -1,3 +1,4 @@
+import { STAGING_BUILD } from '../buildFlags';
 import { tune } from './tune';
 import { fighterScale } from './geometry';
 import type { Fighter, PunchType } from './types';
@@ -10,10 +11,12 @@ import type { Fighter, PunchType } from './types';
 // fatigue rules) stays global so every character reads the same.
 // Deterministic: the sim only reads tune + the fighter's character id.
 
-export const CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia'] as const;
-export type CharId = (typeof CHARACTER_IDS)[number];
+const ALL_CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia', 'kai'] as const;
+export type CharId = (typeof ALL_CHARACTER_IDS)[number];
+export const CHARACTER_IDS:readonly CharId[]=ALL_CHARACTER_IDS.filter(id=>id!=='kai'||STAGING_BUILD);
 
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
+  kai: {name:'Kai Chen',nick:'Courier',style:'Slow courier: strong hooks, weak Jab and Cross, longer dash.'},
   roxy: { name: 'Roxy', nick: 'Firecracker', style: 'Close-range brawler: heavy hooks, costly swings.' },
   nadia: { name: 'Nadia', nick: 'Rising Star', style: 'Fast, light Cross pressure with extra fatigue capacity.' },
   captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst fighter: quick recovery, costly pressure and lower durability.' },
