@@ -141,9 +141,9 @@
   },
   "enemy.walkSpeed": {
     "cat": "Enemy",
-    "desc": "Enemy walk speed (lane units per second).",
+    "desc": "Walk speed of the first zombie (lane units per second). Speed rises steadily to walkSpeedEnd.",
     "min": 20,
-    "max": 300,
+    "max": 600,
     "step": 5
   },
   "enemy.attackDistance": {
@@ -400,17 +400,10 @@
   },
   "run.zombieCount": {
     "cat": "Run",
-    "desc": "Zombies spawned in every run (fixed so every run is the same).",
+    "desc": "Zombies spawned in every run (fixed so every run is the same). Maximum 50.",
     "min": 1,
-    "max": 40,
+    "max": 50,
     "step": 1
-  },
-  "run.lastSpawnSec": {
-    "cat": "Run",
-    "desc": "Time of the last zombie spawn (seconds). Spawns are spread evenly from the first to this one.",
-    "min": 1,
-    "max": 60,
-    "step": 0.5
   },
   "enemy.lanes": {
     "cat": "Enemy",
@@ -439,5 +432,61 @@
     "min": 0.02,
     "max": 1,
     "step": 0.01
+  },
+  "run.startGapSec": {
+    "cat": "Run",
+    "desc": "Gap between the first spawns (seconds). The gap shrinks steadily to endGapSec, so the pace builds.",
+    "min": 0.1,
+    "max": 5,
+    "step": 0.05
+  },
+  "run.endGapSec": {
+    "cat": "Run",
+    "desc": "Gap between the last spawns (seconds).",
+    "min": 0.1,
+    "max": 5,
+    "step": 0.05
+  },
+  "enemy.walkSpeedEnd": {
+    "cat": "Enemy",
+    "desc": "Walk speed of the last zombie (lane units per second).",
+    "min": 20,
+    "max": 600,
+    "step": 5
+  },
+  "enemy.hp": {
+    "cat": "Enemy",
+    "desc": "Zombie hit points.",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "enemy.staggerPush": {
+    "cat": "Enemy",
+    "desc": "A sweet hit that does not defeat a zombie pushes it back this far and interrupts its punch (lane units).",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punch.sourDamageMult": {
+    "cat": "Punch",
+    "desc": "Sour hits do this fraction of the punch damage (sweet hits do full damage).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punch.jab.damage": {
+    "cat": "Punch",
+    "desc": "Jab: damage to a zombie on a sweet hit.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
+  },
+  "punch.cross.damage": {
+    "cat": "Punch",
+    "desc": "Cross: damage to a zombie on a sweet hit.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
   }
 }

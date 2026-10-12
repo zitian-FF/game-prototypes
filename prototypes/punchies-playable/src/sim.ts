@@ -14,6 +14,9 @@ export interface Enemy {
   id: number;
   d: number; // distance from the player along the approach line (lane units)
   ang: number; // bearing from straight above the player, radians, fixed per zombie
+  hp: number;
+  speed: number; // walk speed, lane units per second, fixed at spawn (later zombies are faster)
+  hurt: number; // frames left of the hit reaction
   state: EnemyState;
   frame: number;
   side: number; // which way it moves off after punching, -1 or 1
@@ -32,8 +35,8 @@ export interface Input {
 }
 
 export type SimEvent =
-  | { kind: 'sweet'; zone: 'head' | 'body'; points: number; enemy: number; d: number }
-  | { kind: 'sour'; enemy: number; d: number }
+  | { kind: 'sweet'; zone: 'head' | 'body'; points: number; dmg: number; hp: number; killed: boolean; enemy: number; d: number }
+  | { kind: 'sour'; dmg: number; hp: number; killed: boolean; enemy: number; d: number }
   | { kind: 'whiff'; type: PunchType }
   | { kind: 'playerHit'; enemy: number }
   | { kind: 'spawn'; enemy: number; ang: number }
@@ -55,12 +58,23 @@ export interface SimState {
 export const FPS = 60;
 
 // Fixed spawn plan, the same every run so every player gets the same fight:
-// zombieCount spawns spread evenly from firstSpawnSec to lastSpawnSec, entering
-// from `lanes` off-screen positions in a set shuffled order.
+// zombieCount spawns from firstSpawnSec, with the gap between spawns shrinking
+// steadily from startGapSec to endGapSec so the pace builds. They enter from
+// `lanes` off-screen positions in a set shuffled order.
 export function spawnFrame(tune: Tune, i: number): number {
   const n = tune.run.zombieCount;
-  const span = n > 1 ? (tune.run.lastSpawnSec - tune.run.firstSpawnSec) / (n - 1) : 0;
-  return Math.round((tune.run.firstSpawnSec + i * span) * FPS);
+  const { startGapSec: g0, endGapSec: g1 } = tune.run;
+  // Sum of the first i gaps, gap j = g0 + (g1 - g0) * j / (n - 2).
+  const slope = n > 2 ? (g1 - g0) / (n - 2) : 0;
+  const t = tune.run.firstSpawnSec + i * g0 + (slope * i * (i - 1)) / 2;
+  return Math.round(t * FPS);
+}
+
+// Walk speed for zombie i: rises steadily from walkSpeed to walkSpeedEnd.
+export function spawnSpeed(tune: Tune, i: number): number {
+  const n = tune.run.zombieCount;
+  const u = n > 1 ? i / (n - 1) : 0;
+  return tune.enemy.walkSpeed + (tune.enemy.walkSpeedEnd - tune.enemy.walkSpeed) * u;
 }
 
 export function spawnBearing(tune: Tune, i: number): number {
@@ -145,16 +159,30 @@ export function createSim(tune: Tune) {
         const t = frontEnemy(s);
         if (t) {
           const v = phase === 'early' ? (t.d < c.sourBelow ? 'sour' : 'out') : classify(tune, p.type, t.d);
-          if (v === 'sour') {
+          if (v === 'sour' || v === 'head' || v === 'body') {
             p.resolved = true;
-            ev.push({ kind: 'sour', enemy: t.id, d: t.d });
-          } else if (v === 'head' || v === 'body') {
-            p.resolved = true;
-            const points = tune.points[v];
-            s.score += points;
-            t.state = 'knocked';
-            t.frame = 0;
-            ev.push({ kind: 'sweet', zone: v, points, enemy: t.id, d: t.d });
+            // Sweet hits do full damage and score, sour hits do reduced damage and no score.
+            const sweet = v !== 'sour';
+            const dmg = c.damage * (sweet ? 1 : tune.punch.sourDamageMult);
+            t.hp -= dmg;
+            t.hurt = tune.view.hitFlashFrames;
+            const killed = t.hp <= 0;
+            if (killed) {
+              t.state = 'knocked';
+              t.frame = 0;
+            } else if (sweet) {
+              // A sweet hit that does not defeat the zombie staggers it: pushed back, punch interrupted.
+              t.d = Math.min(tune.enemy.spawnDistance, t.d + tune.enemy.staggerPush);
+              t.state = 'walk';
+              t.frame = 0;
+            }
+            if (sweet) {
+              const points = tune.points[v];
+              s.score += points;
+              ev.push({ kind: 'sweet', zone: v, points, dmg, hp: Math.max(0, t.hp), killed, enemy: t.id, d: t.d });
+            } else {
+              ev.push({ kind: 'sour', dmg, hp: Math.max(0, t.hp), killed, enemy: t.id, d: t.d });
+            }
           }
         }
       }
@@ -175,7 +203,7 @@ export function createSim(tune: Tune) {
     // Spawning: a fixed number of zombies on a fixed schedule. They may overlap.
     while (s.spawned < tune.run.zombieCount && s.frame >= spawnFrame(tune, s.spawned)) {
       const ang = spawnBearing(tune, s.spawned);
-      const e: Enemy = { id: s.nextId++, d: tune.enemy.spawnDistance, ang, state: 'walk', frame: 0, side: ang >= 0 ? 1 : -1 };
+      const e: Enemy = { id: s.nextId++, d: tune.enemy.spawnDistance, ang, hp: tune.enemy.hp, speed: spawnSpeed(tune, s.spawned), hurt: 0, state: 'walk', frame: 0, side: ang >= 0 ? 1 : -1 };
       s.enemies.push(e);
       s.spawned++;
       ev.push({ kind: 'spawn', enemy: e.id, ang });
@@ -186,8 +214,9 @@ export function createSim(tune: Tune) {
     let ahead: Enemy | null = null;
     for (const e of order) {
       e.frame++;
+      if (e.hurt > 0) e.hurt--;
       if (e.state === 'walk') {
-        let d = e.d - tune.enemy.walkSpeed / FPS;
+        let d = e.d - e.speed / FPS;
         if (ahead) d = Math.max(d, ahead.d + tune.enemy.minGap);
         if (d <= tune.enemy.attackDistance) {
           d = tune.enemy.attackDistance;

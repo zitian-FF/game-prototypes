@@ -18,10 +18,11 @@ export class PlayScene extends Phaser.Scene {
   private acc = 0;
   private player!: Rig;
   private views = new Map<number, Rig>();
+  private bars = new Map<number, Phaser.GameObjects.Graphics>();
   private scoreText!: Phaser.GameObjects.Text;
   private pips: Phaser.GameObjects.GameObject[] = [];
   private timeBar!: Phaser.GameObjects.Rectangle;
-  private hurtEdge!: Phaser.GameObjects.Rectangle;
+  private hurtEdge!: Phaser.GameObjects.Graphics;
   private endShown = false;
   private endTimer = 0;
   private overlay: Phaser.GameObjects.GameObject[] = [];
@@ -119,7 +120,13 @@ export class PlayScene extends Phaser.Scene {
     }
     this.add.rectangle(W / 2, 3, W, 6, NAVY).setDepth(49);
     this.timeBar = this.add.rectangle(0, 3, W, 6, GOLD).setOrigin(0, 0.5).setDepth(50);
-    this.hurtEdge = this.add.rectangle(W / 2, H / 2, W, H, 0xff0000, 0).setDepth(60);
+    // Red vignette on the screen edges, flashed when the player is hit.
+    this.hurtEdge = this.add.graphics().setDepth(60).setAlpha(0);
+    const band = 70;
+    this.hurtEdge.fillGradientStyle(0xff2020, 0xff2020, 0xff2020, 0xff2020, 0.45, 0.45, 0, 0).fillRect(0, 0, W, band);
+    this.hurtEdge.fillGradientStyle(0xff2020, 0xff2020, 0xff2020, 0xff2020, 0, 0, 0.45, 0.45).fillRect(0, H - band, W, band);
+    this.hurtEdge.fillGradientStyle(0xff2020, 0xff2020, 0xff2020, 0xff2020, 0.45, 0, 0.45, 0).fillRect(0, 0, band, H);
+    this.hurtEdge.fillGradientStyle(0xff2020, 0xff2020, 0xff2020, 0xff2020, 0, 0.45, 0, 0.45).fillRect(W - band, 0, band, H);
 
     // Touch buttons: JAB and CROSS.
     this.makeButton(W * 0.25, H - 52, 160, 84, 'JAB', 0x3a78d0, 'jab', 'icon_jab');
@@ -156,6 +163,8 @@ export class PlayScene extends Phaser.Scene {
     this.clearOverlay();
     for (const v of this.views.values()) v.destroy();
     this.views.clear();
+    for (const b of this.bars.values()) b.destroy();
+    this.bars.clear();
     this.sim = createSim(tune);
     this.endShown = false;
     this.endTimer = 0;
@@ -219,18 +228,19 @@ export class PlayScene extends Phaser.Scene {
       this.views.get(e.enemy)?.flash(0xffffff, now, 200);
       this.spark(p.x, p.y + 20, e.zone === 'head' ? GOLD : 0xffffff);
       this.popup(p.x, p.y, e.zone === 'head' ? `+${e.points} HEAD!` : `+${e.points} BODY`, e.zone === 'head' ? '#ffc84a' : '#fff1d1');
-      this.cameras.main.shake(70, 0.004);
+      this.cameras.main.shake(e.killed ? 110 : 70, e.killed ? 0.007 : 0.004);
     } else if (e.kind === 'sour') {
       const en = target(e.enemy);
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
+      this.views.get(e.enemy)?.flash(0xff8a4a, now, 140);
       this.popup(p.x, p.y, 'SOUR', '#ff8a4a');
     } else if (e.kind === 'whiff') {
       this.popup(W / 2, tune.view.playerY - 110, 'MISS', '#9aa6c8');
     } else if (e.kind === 'playerHit') {
-      this.player.flash(0xff4a4a, now, 260);
+      this.player.flash(0xff6a6a, now, 260, false);
       this.cameras.main.shake(140, 0.012);
-      this.hurtEdge.setFillStyle(0xff0000, 0.35);
-      this.tweens.add({ targets: this.hurtEdge, fillAlpha: 0, duration: 300 });
+      this.hurtEdge.setAlpha(1);
+      this.tweens.add({ targets: this.hurtEdge, alpha: 0, duration: 350 });
     }
   }
 
@@ -299,7 +309,7 @@ export class PlayScene extends Phaser.Scene {
       // Zombies face the player along their approach line.
       const face = 90 + (e.ang * 180) / Math.PI;
       v.root.setPosition(p.x, p.y).setDepth(10 - e.d / 100).setAngle(face).setAlpha(1);
-      const pose: RigPose = { time: now + e.id * 137, stride: 0, hand: null, ext: 0, reach: rig.enemyReach, raise: 1, limp: false, hurt: 0 };
+      const pose: RigPose = { time: now + e.id * 137, stride: 0, hand: null, ext: 0, reach: rig.enemyReach, raise: 1, limp: false, hurt: e.hurt / tune.view.hitFlashFrames };
       if (e.state === 'walk' || e.state === 'leave') pose.stride = 1;
       else if (e.state === 'windup') {
         pose.hand = (e.id % 2) as 0 | 1;
@@ -318,13 +328,33 @@ export class PlayScene extends Phaser.Scene {
       // Wind-up tell: the front enemy about to punch pulses.
       v.root.setScale(e === front && e.state === 'windup' ? 1 + 0.06 * Math.sin(now / 40) : 1);
       v.update(pose, now);
+      this.drawBar(e, p);
     }
     for (const [id, v] of this.views) {
       if (!seen.has(id)) {
         v.destroy();
         this.views.delete(id);
+        this.bars.get(id)?.destroy();
+        this.bars.delete(id);
       }
     }
+  }
+
+  // Small HP bar above a zombie (hidden once it is knocked off).
+  private drawBar(e: Enemy, p: { x: number; y: number }): void {
+    let g = this.bars.get(e.id);
+    if (!g) {
+      g = this.add.graphics().setDepth(55);
+      this.bars.set(e.id, g);
+    }
+    g.clear();
+    if (e.state === 'knocked') return;
+    const w = 44;
+    const frac = Math.max(0, Math.min(1, e.hp / tune.enemy.hp));
+    const x = p.x - w / 2;
+    const y = p.y - 56;
+    g.fillStyle(NAVY, 0.85).fillRoundedRect(x - 2, y - 2, w + 4, 10, 4);
+    g.fillStyle(frac > 0.5 ? 0x6fd16f : frac > 0.25 ? GOLD : 0xe5453d, 1).fillRoundedRect(x, y, Math.max(2, w * frac), 6, 3);
   }
 
   private showEnd(): void {
