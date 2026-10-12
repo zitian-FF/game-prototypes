@@ -3,6 +3,8 @@
 // same next state, which is what the rollback netcode relies on.
 
 export type PunchType = 'jab' | 'cross' | 'hook' | 'uppercut';
+export type SuperId='rising-upper';
+export type SuperCancelReason='startupHit'|'stun'|'perfectGuard';
 export type FatiguedPunch = 'jab' | 'cross' | 'hook';
 export const FATIGUED_PUNCHES: readonly FatiguedPunch[] = ['jab', 'cross', 'hook'];
 
@@ -128,6 +130,10 @@ export type KoStyle = 'drop' | 'fly';
 export type Stance = 'dodging' | 'perfectGuard' | 'guard' | 'normal' | 'vulnerable';
 
 export type SimEvent =
+  | {kind:'sweetImpact';attacker:number;x:number;y:number;punch:PunchType}
+  | {kind:'superCharged';fighter:number;superId:SuperId;starCost:number}
+  | {kind:'superCancelled';fighter:number;superId:SuperId;starCost:number;reason:SuperCancelReason}
+  | {kind:'superChargeLost';fighter:number;superId:SuperId;starCost:number;reason:'sweetHit'}
   | { kind: 'staminaRejected'; fighter: number }
   | {
       kind: 'hit';

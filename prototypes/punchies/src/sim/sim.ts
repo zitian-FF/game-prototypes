@@ -16,6 +16,8 @@ import type {
 } from './types';
 import { FATIGUED_PUNCHES } from './types';
 import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold, uppercutStars } from './character';
+import {fighterSuper,superReady} from './super';
+import type {SuperCancelReason} from './types';
 
 // Deterministic fight simulation, stepped at a fixed 60 Hz. Only uses
 // + - * / and Math.sqrt/round/min/max/abs (all exactly specified by IEEE
@@ -294,7 +296,7 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
   }
   // Stunned fighters may move and dodge but never attack.
   if (f.stunTimer > 0) return false;
-  if (action === 'uppercut' && f.stars < uppercutStars(f)) return false;
+  if (action === 'uppercut' && !superReady(f)) return false;
   startPunch(s, idx, action, events);
   return true;
 }
@@ -405,6 +407,12 @@ function separateAndClamp(s: SimState): void {
   }
 }
 
+function cancelPunch(f:Fighter,idx:number,reason:SuperCancelReason,events:SimEvent[]):void {
+  if(f.punch?.type==='uppercut'&&!f.punch.connected&&phaseOf(f.punch)!=='recovery'){
+    const ability=fighterSuper(f);events.push({kind:'superCancelled',fighter:idx,superId:ability.id,starCost:ability.starCost,reason});
+  }
+  f.punch=null;
+}
 function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): void {
   const f = s.fighters[idx];
   f.stun += amount;
@@ -413,7 +421,7 @@ function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): 
     const overflow = f.stun - stunThreshold(f);
     f.stunTimer = tune.stun.baseFrames + Math.round(overflow * tune.stun.overflowFramesPerPoint);
     f.stunFromMeter = true;
-    f.punch = null;
+    cancelPunch(f,idx,'stun',events);
     lowerGuard(f);
     f.stars = 0;
     events.push({ kind: 'stunned', fighter: idx });
@@ -424,7 +432,7 @@ function addStar(s: SimState, idx: number, events: SimEvent[]): void {
   const f = s.fighters[idx];
   if (f.stars >= uppercutStars(f)) return;
   f.stars++;
-  if (f.stars === uppercutStars(f)) events.push({ kind: 'starsReady', fighter: idx });
+  if (f.stars === uppercutStars(f)) {events.push({ kind: 'starsReady', fighter: idx });const ability=fighterSuper(f);events.push({kind:'superCharged',fighter:idx,superId:ability.id,starCost:ability.starCost});}
 }
 
 interface Contact {
@@ -498,6 +506,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
+  const wasSuperCharged=superReady(def);
   const p = att.punch;
   if (!p) return;
   p.resolved = true;
@@ -518,7 +527,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
 
   if (stance === 'perfectGuard') {
     gainStamina(def, tune.guard.perfectGuardStaminaGain);
-    att.punch = null;
+    cancelPunch(att,c.attacker,'perfectGuard',events);
     att.stars = 0;
     if (att.stunTimer < tune.guard.perfectGuardAttackerStunFrames) {
       att.stunTimer = tune.guard.perfectGuardAttackerStunFrames;
@@ -556,7 +565,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' ? 'normal' : 'vulnerable';
   const baseDamage =
     p.type === 'uppercut'
-      ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * cfg.damage
+      ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * fighterSuper(att).damageMultiplier
       : cfg.damage;
   const full = baseDamage * damageMult;
   const reduced = full * tune.hit.reducedDamageMult;
@@ -591,10 +600,13 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     def.health = Math.max(0, def.health - damage);
     def.lastBlow = { punch: p.type, sweet: c.sweet, chip: false, dx: att.fx, dy: att.fy };
     // Only a sweet hit breaks the defender's star chain; sour keeps it.
-    if (c.sweet) def.stars = 0;
+    if (c.sweet) {
+      def.stars = 0;
+      if(wasSuperCharged&&!superReady(def)){const ability=fighterSuper(def);events.push({kind:'superChargeLost',fighter:defIdx,superId:ability.id,starCost:ability.starCost,reason:'sweetHit'});}
+    }
     def.framesSinceHit = 0;
     // Any damaging hit interrupts a punch still in startup (jab included).
-    if (def.punch && phaseOf(def.punch) === 'startup') def.punch = null;
+    if (def.punch && phaseOf(def.punch) === 'startup') cancelPunch(def,defIdx,'startupHit',events);
     const stunAmount = cfg.stunBuild * (c.sweet ? 1 : tune.hit.sourStunMult) * (counter ? tune.hit.counterDamageMult : 1);
     addStun(s, defIdx, stunAmount, events);
     const stop = tune.hit.hitstopFrames * (counter ? 2 : 1);
@@ -619,6 +631,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     damage,
     buffed: p.buffed,
   });
+  if(c.sweet&&damage>0)events.push({kind:'sweetImpact',attacker:c.attacker,x:c.x,y:c.y,punch:p.type});
 }
 
 function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimEvent[]): void {
