@@ -38,11 +38,11 @@ const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
 }).CharSelectScene;
 const s=new Scene();s.data0={mode:'vsai'};s.sides=[{sel:3,src:'any',locked:false},{sel:0,src:'any',locked:false}];
 draft.saveShopDraft(draft.newShopDraft());s.confirm(0);assert.equal(s.sides[0].locked,false);assert(!s.sides[0].selected);assert.match(s.notice,/locked/i);
-draft.saveShopDraft(state);s.confirm(0);assert(s.sides[0].selected);assert.equal(s.sides[0].locked,false);s.confirm(0);assert(s.sides[0].locked);assert.equal(s.active,1);
-s.sides[1].sel=1;s.confirm(1);s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia');s.move(1,1);assert.equal(s.sides[1].sel,1);assert.equal(s.sides[1].skin,'default');s.cycleSkin(1,1);s.confirm(1);s.fight();assert.equal(started.name,'VsAI');assert.deepEqual(Array.from(started.data.chars),['tee','mia']);assert.deepEqual(Array.from(started.data.skins),['default','skin-mia']);
+draft.saveShopDraft(state);s.confirm(0);assert(s.sides[0].selected);assert(s.sides[0].locked,'one confirmation commits fighter and skin');assert.equal(s.active,1);
+s.sides[1].sel=1;s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia','skin available before confirm');s.move(1,1);assert.equal(s.sides[1].sel,2,'navigation changes fighter, not skin');s.move(1,-1);assert.equal(s.sides[1].skin,'skin-mia','return restores equipped skin');s.confirm(1);s.cycleSkin(1,1);assert.equal(s.sides[1].skin,'skin-mia','committed skin does not change');s.fight();assert.equal(started.name,'VsAI');assert.deepEqual(Array.from(started.data.chars),['tee','mia']);assert.deepEqual(Array.from(started.data.skins),['default','skin-mia']);
 s.back(1);assert(!s.sides[1].selected);s.move(1,1);assert.equal(s.sides[1].sel,2);
 s.data0={mode:'online',localIdx:1};assert.equal(s.prefSide(1),'p1');
-console.log('Roster: Tee lock/unlock, per-player skin persistence, ownership isolation, select/skin/ready/back flow, skin handoff, missing unique art exclusion, and guest preference slot passed');
+console.log('Roster: Tee lock/unlock, per-player skin persistence, ownership isolation, single-confirm/skin/navigation/back flow, skin handoff, missing unique art exclusion, and guest preference slot passed');
 
 // A peer's locked fighter is independent of the local collection. Invalid or
 // unavailable peer picks cannot make the host start; cosmetic IDs match the boxer.
@@ -74,7 +74,7 @@ const dummyBefore=JSON.stringify(training.sides[1]);
 training.move(1,1);training.cycleSkin(1,1);training.tapPanel(1);training.confirm(1);
 assert.equal(JSON.stringify(training.sides[1]),dummyBefore);
 assert.equal(training.active,0);
-training.confirm(0);training.confirm(0);training.fightButton();
+training.confirm(0); // One confirmation starts training immediately.
 assert.equal(started.name,'Training');assert.equal(started.data.char,'marco');
 assert.equal(started.data.skin,'skin-marco-cyan');
 assert.equal(prefs.loadCharPrefs().p1,'marco');
