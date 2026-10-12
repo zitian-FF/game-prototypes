@@ -127,23 +127,9 @@
   },
   "run.firstSpawnSec": {
     "cat": "Run",
-    "desc": "Delay before the first enemy appears (seconds).",
+    "desc": "Time of the first zombie spawn (seconds).",
     "min": 0,
     "max": 5,
-    "step": 0.1
-  },
-  "run.spawnMinSec": {
-    "cat": "Run",
-    "desc": "Shortest gap between enemy spawns (seconds).",
-    "min": 0.3,
-    "max": 6,
-    "step": 0.1
-  },
-  "run.spawnMaxSec": {
-    "cat": "Run",
-    "desc": "Longest gap between enemy spawns (seconds).",
-    "min": 0.3,
-    "max": 6,
     "step": 0.1
   },
   "enemy.spawnDistance": {
@@ -211,14 +197,14 @@
   },
   "enemy.knockFrames": {
     "cat": "Enemy",
-    "desc": "Frames the knocked off animation lasts.",
+    "desc": "Frames from the final blow until the zombie is gone (flight, one full spin, then fade).",
     "min": 4,
     "max": 120,
     "step": 1
   },
   "enemy.knockSpeed": {
     "cat": "Enemy",
-    "desc": "Speed of the knock off (screen px per second).",
+    "desc": "Speed along the final blow direction (screen px per second).",
     "min": 100,
     "max": 2000,
     "step": 10
@@ -278,13 +264,6 @@
     "min": 0,
     "max": 3000,
     "step": 50
-  },
-  "view.knockSpinDeg": {
-    "cat": "View",
-    "desc": "Spin of a knocked off enemy (degrees per frame).",
-    "min": 0,
-    "max": 60,
-    "step": 1
   },
   "view.rig.scale": {
     "cat": "View",
@@ -418,5 +397,47 @@
     "min": 0.5,
     "max": 5,
     "step": 0.1
+  },
+  "run.zombieCount": {
+    "cat": "Run",
+    "desc": "Zombies spawned in every run (fixed so every run is the same).",
+    "min": 1,
+    "max": 40,
+    "step": 1
+  },
+  "run.lastSpawnSec": {
+    "cat": "Run",
+    "desc": "Time of the last zombie spawn (seconds). Spawns are spread evenly from the first to this one.",
+    "min": 1,
+    "max": 60,
+    "step": 0.5
+  },
+  "enemy.lanes": {
+    "cat": "Enemy",
+    "desc": "Number of off-screen entry positions (spread across the top and sides).",
+    "min": 1,
+    "max": 9,
+    "step": 1
+  },
+  "enemy.maxBearingDeg": {
+    "cat": "Enemy",
+    "desc": "Widest entry angle from straight above the player (degrees).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "enemy.knockFadeFrames": {
+    "cat": "Enemy",
+    "desc": "Last frames of the knock off spent fading out.",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "view.playerTurn": {
+    "cat": "View",
+    "desc": "How fast the player turns to face the front zombie (fraction per frame).",
+    "min": 0.02,
+    "max": 1,
+    "step": 0.01
   }
 }

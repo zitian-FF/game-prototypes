@@ -25,7 +25,8 @@ export class PlayScene extends Phaser.Scene {
   private endShown = false;
   private endTimer = 0;
   private overlay: Phaser.GameObjects.GameObject[] = [];
-  private seed = 1;
+  private playerAngle = -90;
+  retryEnabled = false;
   private keysBound = false;
   paused = false; // test hook: freezes the sim so a frame can be captured
 
@@ -40,7 +41,6 @@ export class PlayScene extends Phaser.Scene {
   create(): void {
     applyCameraPixelRatio(this);
     this.input.addPointer(2);
-    this.seed = Number(new URLSearchParams(location.search).get('seed')) || Math.floor(Math.random() * 2 ** 32);
     const index = __HAS_ART__ ? (this.cache.json.get('artIndex') as { keys: string[] } | undefined) : undefined;
     if (index) {
       for (const key of index.keys) this.load.image(key, `art/${key}.webp`);
@@ -53,6 +53,8 @@ export class PlayScene extends Phaser.Scene {
 
   private begin(art: boolean): void {
     this.artLoaded = art;
+    // Retry is for the testing build only (build switch PLAYABLE_RETRY, see vite.config.ts).
+    this.retryEnabled = __RETRY__ && new URLSearchParams(location.search).get('retry') !== '0';
     ensureParts(this); // coloured placeholders for any part the art did not provide
     this.buildStage();
     this.startRun();
@@ -101,7 +103,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.player = new Rig(this, 'marco', tune);
-    this.player.root.setAngle(-90).setPosition(W / 2, tune.view.playerY).setDepth(5);
+    this.player.root.setAngle(this.playerAngle).setPosition(W / 2, tune.view.playerY).setDepth(5);
 
     // HUD
     this.add.rectangle(W / 2, 0, W, 78, NAVY, 0.55).setOrigin(0.5, 0).setDepth(48);
@@ -154,7 +156,7 @@ export class PlayScene extends Phaser.Scene {
     this.clearOverlay();
     for (const v of this.views.values()) v.destroy();
     this.views.clear();
-    this.sim = createSim(tune, this.seed);
+    this.sim = createSim(tune);
     this.endShown = false;
     this.endTimer = 0;
     this.acc = 0;
@@ -162,7 +164,6 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private restart(): void {
-    this.seed = Math.floor(Math.random() * 2 ** 32);
     this.startRun();
   }
 
@@ -191,15 +192,20 @@ export class PlayScene extends Phaser.Scene {
     for (const e of this.sim.step(input)) this.onEvent(e);
   }
 
+  // Zombies walk a straight line to the player: e.ang is the bearing from straight
+  // above, e.d the distance along it. Knocked zombies fly on along that same line,
+  // the direction of the final blow.
   private enemyPos(e: Enemy): { x: number; y: number } {
     const u = tune.view.unitPx;
-    let x = W / 2;
-    let y = tune.view.playerY - e.d * u;
+    const sx = Math.sin(e.ang);
+    const cy = Math.cos(e.ang);
+    let x = W / 2 + sx * e.d * u;
+    let y = tune.view.playerY - cy * e.d * u;
     if (e.state === 'leave') x += e.side * tune.enemy.leaveSpeed * (e.frame / FPS);
     if (e.state === 'knocked') {
-      const k = tune.enemy.knockSpeed * (e.frame / FPS);
-      x += e.side * k * 0.6;
-      y -= k * 0.8;
+      const flight = tune.enemy.knockSpeed * (Math.min(e.frame, tune.enemy.knockFrames) / FPS);
+      x += sx * flight;
+      y -= cy * flight;
     }
     return { x, y };
   }
@@ -269,6 +275,11 @@ export class PlayScene extends Phaser.Scene {
       idle.ext = this.extension(s.punch);
       idle.reach = s.punch.type === 'jab' ? rig.jabReach : rig.crossReach;
     }
+    // Marco turns toward the front zombie (position stays fixed).
+    const front = frontEnemy(s);
+    const target = -90 + (front && !s.ended ? (front.ang * 180) / Math.PI : 0);
+    this.playerAngle += (target - this.playerAngle) * tune.view.playerTurn;
+    this.player.root.setAngle(this.playerAngle);
     this.player.update(idle, now);
     this.scoreText.setText(String(s.score));
     this.pips.forEach((p, i) => (p as Phaser.GameObjects.Image).setAlpha(i < s.hp ? 1 : 0.22));
@@ -276,18 +287,18 @@ export class PlayScene extends Phaser.Scene {
 
     // Enemies (zombies): arms forward while walking, right fist pulls back in
     // the wind-up and strikes, limp when knocked off.
-    const front = frontEnemy(s);
     const seen = new Set<number>();
     for (const e of s.enemies) {
       seen.add(e.id);
       let v = this.views.get(e.id);
       if (!v) {
         v = new Rig(this, 'zombie', tune);
-        v.root.setAngle(90);
         this.views.set(e.id, v);
       }
       const p = this.enemyPos(e);
-      v.root.setPosition(p.x, p.y).setDepth(10 - e.d / 100);
+      // Zombies face the player along their approach line.
+      const face = 90 + (e.ang * 180) / Math.PI;
+      v.root.setPosition(p.x, p.y).setDepth(10 - e.d / 100).setAngle(face).setAlpha(1);
       const pose: RigPose = { time: now + e.id * 137, stride: 0, hand: null, ext: 0, reach: rig.enemyReach, raise: 1, limp: false, hurt: 0 };
       if (e.state === 'walk' || e.state === 'leave') pose.stride = 1;
       else if (e.state === 'windup') {
@@ -297,9 +308,12 @@ export class PlayScene extends Phaser.Scene {
         pose.hand = (e.id % 2) as 0 | 1;
         pose.ext = -0.5 + 1.5 * Math.min(1, e.frame / tune.enemy.strikeFrames);
       } else {
+        // Knocked off: limp, one full 360 spin during the flight, then fade out.
         pose.limp = true;
         pose.raise = 0;
-        v.root.setAngle(90 + e.side * e.frame * tune.view.knockSpinDeg);
+        const flight = Math.max(1, tune.enemy.knockFrames - tune.enemy.knockFadeFrames);
+        v.root.setAngle(face + 360 * Math.min(1, e.frame / flight));
+        v.root.setAlpha(e.frame <= flight ? 1 : Math.max(0, 1 - (e.frame - flight) / tune.enemy.knockFadeFrames));
       }
       // Wind-up tell: the front enemy about to punch pulses.
       v.root.setScale(e === front && e.state === 'windup' ? 1 + 0.06 * Math.sin(now / 40) : 1);
@@ -328,18 +342,35 @@ export class PlayScene extends Phaser.Scene {
     const g = add(this.add.graphics().setDepth(101));
     const draw = (pressed: boolean) => {
       g.clear();
-      g.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 128, 430, 256, 90, 26);
-      g.fillStyle(pressed ? 0xfff1d1 : GOLD, 1).fillRoundedRect(W / 2 - 122, 436, 244, 78, 22);
-      g.fillStyle(0xffffff, pressed ? 0 : 0.3).fillRoundedRect(W / 2 - 112, 441, 224, 24, 12);
+      g.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 128, 365, 256, 90, 26);
+      g.fillStyle(pressed ? 0xfff1d1 : GOLD, 1).fillRoundedRect(W / 2 - 122, 371, 244, 78, 22);
+      g.fillStyle(0xffffff, pressed ? 0 : 0.3).fillRoundedRect(W / 2 - 112, 376, 224, 24, 12);
     };
     draw(false);
-    add(this.txt(W / 2, 475, CTA_LABEL, 30, '#101b32').setStroke('#ffffff', 0).setDepth(102));
-    const zone = add(this.add.zone(W / 2, 475, 270, 100).setInteractive().setDepth(103));
+    add(this.txt(W / 2, 410, CTA_LABEL, 30, '#101b32').setStroke('#ffffff', 0).setDepth(102));
+    const zone = add(this.add.zone(W / 2, 410, 270, 100).setInteractive().setDepth(103));
     zone.on('pointerdown', () => {
       draw(true);
       onCtaPressed();
     });
     zone.on('pointerup', () => draw(false));
     zone.on('pointerout', () => draw(false));
+
+    if (this.retryEnabled) {
+      const rg = add(this.add.graphics().setDepth(101));
+      const drawRetry = (pressed: boolean) => {
+        rg.clear();
+        rg.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 88, 482, 176, 62, 22);
+        rg.fillStyle(pressed ? 0xffffff : 0x4a5d86, 1).fillRoundedRect(W / 2 - 83, 487, 166, 52, 18);
+      };
+      drawRetry(false);
+      add(this.txt(W / 2, 513, 'RETRY', 24).setDepth(102));
+      const rz = add(this.add.zone(W / 2, 513, 190, 76).setInteractive().setDepth(103));
+      rz.on('pointerdown', () => {
+        drawRetry(true);
+        this.restart();
+      });
+      rz.on('pointerout', () => drawRetry(false));
+    }
   }
 }

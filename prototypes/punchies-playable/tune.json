@@ -2,9 +2,9 @@
   "run": {
     "durationSec": 30,
     "playerHp": 3,
-    "firstSpawnSec": 0.2,
-    "spawnMinSec": 1.5,
-    "spawnMaxSec": 2
+    "firstSpawnSec": 0.5,
+    "zombieCount": 12,
+    "lastSpawnSec": 22
   },
   "enemy": {
     "spawnDistance": 520,
@@ -16,8 +16,11 @@
     "damage": 1,
     "leaveFrames": 32,
     "leaveSpeed": 480,
-    "knockFrames": 36,
-    "knockSpeed": 700
+    "knockFrames": 44,
+    "knockSpeed": 700,
+    "lanes": 5,
+    "maxBearingDeg": 22,
+    "knockFadeFrames": 14
   },
   "points": {
     "head": 2,
@@ -52,7 +55,6 @@
     "hitFlashFrames": 10,
     "popupMs": 700,
     "endDelayMs": 600,
-    "knockSpinDeg": 14,
     "rig": {
       "scale": 1.5,
       "torsoHeight": 40,
@@ -73,6 +75,7 @@
       "torsoTwistDeg": 22,
       "strideAmp": 7,
       "walkHz": 2.2
-    }
+    },
+    "playerTurn": 0.25
   }
 }
