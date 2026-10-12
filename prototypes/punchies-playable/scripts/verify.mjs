@@ -63,6 +63,7 @@ async function arrange(d, windup = 99999) {
 const settle = (frames = 70) => page.waitForFunction((n) => window.__playable.state().frame >= n, frames, { timeout: 30000 });
 
 await load('');
+await page.screenshot({ path: path.join(shots, 'start.png') });
 const hasArt = await page.evaluate(() => window.__playable.scene.artLoaded);
 check(process.env.EXPECT_NO_ART ? 'placeholder build has no art' : 'sprite art loaded', hasArt === !process.env.EXPECT_NO_ART);
 check('canvas buffer follows devicePixelRatio', await page.evaluate(() => document.querySelector('canvas').width) === 720);
@@ -94,6 +95,13 @@ const mid = await page.evaluate(() => { const e = window.__playable.state().enem
 check('first jab leaves the zombie at 2 HP, still up', mid.hp === 2 && mid.state !== 'knocked', JSON.stringify(mid));
 await tap(...JAB); await settle(140);
 s = await st(); check('second jab defeats it (2 + 1 points) and it is gone', s.score === 3 && s.enemies === 0, JSON.stringify(s));
+
+// Combo HUD and call-out (forced so the capture is stable).
+await arrange(80);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); const sc = p.scene; sc.tweens.killAll(); p.state().combo = 5; p.state().bestCombo = 5; p.state().score = 14; p.advance(0); sc.banner('GREAT!', '#ffc84a', 38, 8000); });
+await page.waitForTimeout(400);
+await page.screenshot({ path: path.join(shots, 'combo.png') });
+await page.evaluate(() => { window.__playable.scene.tweens.killAll(); window.__playable.pause(false); });
 
 // Player hit look: red tint on Marco and a red edge vignette (captured right after the hit lands).
 await arrange(80, 12);
@@ -136,11 +144,11 @@ await page.evaluate(() => { const p = window.__playable; p.tune.run.playerHp = 9
 await page.waitForTimeout(1200);
 s = await st(); check('30 s ends the run', s.ended === 'time' && s.frame === 1800, JSON.stringify(s));
 await page.screenshot({ path: path.join(shots, 'end-time.png') });
-await tap(180, 410); await page.waitForTimeout(200);
+await tap(180, 450); await page.waitForTimeout(200);
 check('CTA tap does nothing (no navigation)', page.url().startsWith(base));
 // Retry (testing build): tapping RETRY starts a fresh run.
 await page.screenshot({ path: path.join(shots, 'end-time-retry.png') });
-await tap(180, 513); await page.waitForTimeout(300);
+await tap(180, 539); await page.waitForTimeout(300);
 s = await st(); check('RETRY starts a fresh run', s.ended === null && s.score === 0 && s.hp === 99 && s.frame < 120, JSON.stringify(s));
 // ?retry=0 leaves the button out.
 await load('&retry=0');

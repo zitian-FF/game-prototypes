@@ -86,6 +86,22 @@ that starts a fresh run; it is a build switch (`PLAYABLE_RETRY`, on by default,
 `PLAYABLE_RETRY=0` for an ad build) and `?retry=0` hides it for a preview.
 The ad build has no retry.
 
+## Presentation (added 2026-10-12 from playable-ad research)
+Visual feedback only, no rule changes and no audio:
+- Opening call-out "DEFEAT THE ZOMBIES!" for about a second (states the goal,
+  not a tutorial), the first zombies arrive quickly (`run.firstSpawnSec` 0.1 s).
+- Combo counter (consecutive sweet hits, broken by a sour hit, a miss or taking
+  a punch) in the top right, with call-outs GOOD, GREAT, AWESOME, UNSTOPPABLE
+  and LEGENDARY at 3, 5, 8, 12 and 20. It does not change the score.
+- Floating damage numbers, score pop, a short hit-stop on a defeat
+  (`view.hitStopMs`), a red danger marker above a zombie that is about to punch,
+  banners HORDE INCOMING and FINAL RUSH at half and 80 percent of the wave.
+- End card: result, score, zombies defeated, best combo, a goal "Can you reach
+  N?" (next multiple of 10), a pulsing PLAY NOW, and RETRY in the testing build.
+- Slight purple night tint on the gym floor.
+Still out of scope: audio, a hint hand, a tutorial, fake-fail tricks and
+analytics events.
+
 ## HUD
 Score at the top of the screen, HP (3 pips) and a thin time bar or counter.
 No version stamp (see Exceptions).
@@ -167,12 +183,14 @@ retry flow (except the testing-build RETRY button above), analytics, ad network 
 4. Enemy is Bruno. Poses as listed above.
 5. Art: sprites, trimmed from the existing `punchies_assets.zip`.
 6. Art refresh (2026-10-11, user request): puppet-rig fighters from the new
-   loose parts, zombies as enemies, new scene art. 2026-10-12: boxing ring
-   removed, gym floor only.
+   loose parts, zombies as enemies, new scene art. Supersedes the Bruno and
+   frame animation decisions above. 2026-10-12: boxing ring removed, gym floor
+   only.
 7. 2026-10-12 (user request): fixed zombie count on an even schedule from
    several off-screen entry positions, defeated zombies fly along the blow
    direction with one 360 spin then fade, RETRY button in the testing build.
 8. 2026-10-12 (user request): zombies have 4 HP, jab 2 damage and cross 4 (sweet
    full, sour half), faster cross, 50 zombies with spawn pace and walk speed
-   building through the run. Supersedes the Bruno and
-   frame animation decisions above.
+   building through the run.
+9. 2026-10-12 (user request: improvements from the ad research): the Presentation
+   section above.

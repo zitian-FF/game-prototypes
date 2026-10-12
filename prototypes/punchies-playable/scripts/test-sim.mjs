@@ -33,6 +33,16 @@ function throwPunch(sim, type, frames = 80) {
 }
 const park = (t) => { t.enemy.windupFrames = 9999; t.enemy.walkSpeed = 0; };
 
+// Combo: consecutive sweet hits, broken by a sour hit, a miss or taking a punch. Kills and best combo are tracked.
+{ const { sim } = setup(park); const e = addEnemy(sim, 80); throwPunch(sim, 'jab'); throwPunch(sim, 'jab');
+  check('two sweet jabs build a combo of 2 and one kill', sim.state.combo === 2 && sim.state.bestCombo === 2 && sim.state.kills === 1, `combo=${sim.state.combo} kills=${sim.state.kills}`);
+  const e2 = addEnemy(sim, 80); e2.id = 100; const ev = throwPunch(sim, 'cross');
+  check('a sour cross breaks the combo, best combo stays', sim.state.combo === 0 && sim.state.bestCombo === 2 && ev.some((x) => x.kind === 'sour')); }
+{ const { sim } = setup(park); addEnemy(sim, 80); throwPunch(sim, 'jab'); const before = sim.state.combo; throwPunch(sim, 'jab', 3); sim.state.enemies.length = 0; throwPunch(sim, 'jab', 40);
+  check('a whiff breaks the combo', before === 1 && sim.state.combo === 0); }
+{ const { sim } = setup((t) => { t.enemy.windupFrames = 10; t.enemy.walkSpeed = 0; }); sim.state.combo = 3; addEnemy(sim, 80, 'windup'); for (let i = 0; i < 40; i++) sim.step(NONE);
+  check('taking a punch breaks the combo', sim.state.combo === 0 && sim.state.hp === 2); }
+
 // Bands (centre distance, lane units).
 check('band jab head', classify(tuneBaseline(), 'jab', 80) === 'head');
 check('band jab body', classify(tuneBaseline(), 'jab', 100) === 'body');
@@ -87,7 +97,7 @@ check('band cross body', classify(tuneBaseline(), 'cross', 120) === 'body');
   const before = sim.state.frame; sim.step(NONE); check('sim frozen after end', sim.state.frame === before); }
 // Fixed zombie plan: the same count, pacing, speeds and entry positions every run.
 { const runOnce = () => { const t = tuneBaseline(); t.run.playerHp = 999; const sim = createSim(t); const spawns = [];
-    for (let i = 0; i < 30 * FPS; i++) for (const e of sim.step(NONE)) if (e.kind === 'spawn') spawns.push({ frame: sim.state.frame, ang: e.ang });
+    for (let i = 0; i < 30 * FPS; i++) for (const e of sim.step(NONE)) if (e.kind === 'spawn') spawns.push({ frame: sim.state.frame, ang: e.ang, index: e.index });
     return { t, spawns, speeds: sim.state.enemies.map((e) => e.speed) }; };
   const a = runOnce(), b = runOnce(), n = a.t.run.zombieCount;
   check('the maximum is 50 zombies', n === 50);
@@ -100,6 +110,7 @@ check('band cross body', classify(tuneBaseline(), 'cross', 120) === 'body');
   check('the last spawn leaves time to reach the player', a.spawns[n - 1].frame / FPS < a.t.run.durationSec - 2, `last spawn ${(a.spawns[n - 1].frame / FPS).toFixed(1)} s`);
   check('zombies get faster through the run', spawnSpeed(a.t, 0) === a.t.enemy.walkSpeed && spawnSpeed(a.t, n - 1) === a.t.enemy.walkSpeedEnd && a.t.enemy.walkSpeedEnd > a.t.enemy.walkSpeed);
   const deg = a.spawns.map((x) => Math.round((x.ang * 180) / Math.PI));
+  check('spawn events carry their index 0..n-1 in order', a.spawns.every((x, i) => x.index === i));
   check('entry angles use several positions and stay within the limit', new Set(deg).size >= 5 && deg.every((d) => Math.abs(d) <= a.t.enemy.maxBearingDeg), [...new Set(deg)].sort((x, y) => x - y).join(','));
   check('both sides are used', deg.some((d) => d < 0) && deg.some((d) => d > 0));
   check('bearing helper matches the sim', a.spawns.every((x, i) => Math.abs(x.ang - spawnBearing(a.t, i)) < 1e-9)); }
