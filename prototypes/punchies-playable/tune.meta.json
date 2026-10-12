@@ -491,9 +491,9 @@
   },
   "view.hitStopMs": {
     "cat": "View",
-    "desc": "Brief freeze when a zombie is defeated, for impact (milliseconds).",
+    "desc": "Freeze when a zombie is defeated, for impact (milliseconds).",
     "min": 0,
-    "max": 200,
+    "max": 250,
     "step": 5
   },
   "audio.master": {
@@ -502,5 +502,40 @@
     "min": 0,
     "max": 1,
     "step": 0.05
+  },
+  "fx.intensity": {
+    "cat": "FX",
+    "desc": "Overall strength of the screen effects. 1 is the over-the-top default, 0 turns them off, up to 2.",
+    "min": 0,
+    "max": 2,
+    "step": 0.05
+  },
+  "fx.shake": {
+    "cat": "FX",
+    "desc": "Camera shake multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.particles": {
+    "cat": "FX",
+    "desc": "Particle count multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.flash": {
+    "cat": "FX",
+    "desc": "Screen flash multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.zoomPunch": {
+    "cat": "FX",
+    "desc": "Camera zoom punch on hits (fraction of zoom).",
+    "min": 0,
+    "max": 0.2,
+    "step": 0.005
   }
 }

@@ -84,9 +84,16 @@
       "walkHz": 2.2
     },
     "playerTurn": 0.25,
-    "hitStopMs": 45
+    "hitStopMs": 70
   },
   "audio": {
     "master": 0.7
+  },
+  "fx": {
+    "intensity": 1,
+    "shake": 1,
+    "particles": 1,
+    "flash": 1,
+    "zoomPunch": 0.05
   }
 }

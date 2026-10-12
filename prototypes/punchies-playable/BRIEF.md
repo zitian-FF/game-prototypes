@@ -102,6 +102,27 @@ Visual feedback only, no rule changes (sound is in the Audio section below):
 Still out of scope: a hint hand, a tutorial, fake-fail tricks and analytics
 events.
 
+## Over-the-top effects (user request, 2026-10-12)
+Screen effects are deliberately big, all drawn in code (a few generated particle
+textures, no art files), presentation only:
+- Sweet hit: layered starburst, expanding shockwave ring, streak lines along the
+  blow direction, flying zombie goo and sparks, smoke, a comic word (POW! body,
+  BAM! head, K.O.!! on a defeat), screen flash, camera shake, zoom punch and a
+  small rotation jolt. A defeat is the biggest, with a second ring, more
+  particles and a longer hit-stop (70 ms). Sour hits get a small puff and ring.
+- Zombies flying off leave a smoke and spark trail.
+- Taking a punch: red embers, ring and burst, OUCH!, red flash, strong shake,
+  80 ms hit-stop, red screen edges.
+- Each punch draws whoosh streaks (heavier for the cross).
+- Combo call-outs get bigger and brighter by tier (colour, size, confetti from
+  both sides, flash, shake). The combo counter changes colour by tier.
+- HORDE INCOMING and FINAL RUSH pulse the screen edges red.
+- End card: confetti for a finished run, embers and a red flash for an overrun.
+- Call-out text shrinks to fit the screen width.
+`tune.json` has an `fx` block (`intensity`, `shake`, `particles`, `flash`,
+`zoomPunch`) so the strength can be dialled in the debug panel, 0 to switch off
+and up to 2. Particle counts are capped for phones.
+
 ## Audio (in scope from 2026-10-12, user override)
 Generated sound effects only: every sound is synthesised in code with Web Audio
 (oscillators, filtered noise, short envelopes), so there are no audio files and
@@ -210,3 +231,5 @@ SDK wiring, single file HTML inlining (later), deployment.
 10. 2026-10-12 (user override): audio is in scope, using generated sounds (the
    Audio section above). The earlier "no audio" and out-of-scope audio items no
    longer apply.
+11. 2026-10-12 (user request): the effects are made over the top (the
+   Over-the-top effects section above).

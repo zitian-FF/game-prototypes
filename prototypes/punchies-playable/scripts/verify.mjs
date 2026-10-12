@@ -116,6 +116,28 @@ check('first jab leaves the zombie at 2 HP, still up', mid.hp === 2 && mid.state
 await tap(...JAB); await settle(140);
 s = await st(); check('second jab defeats it (2 + 1 points) and it is gone', s.score === 3 && s.enemies === 0, JSON.stringify(s));
 
+// Over-the-top effects, frozen mid-explosion so they can be inspected (the scene is paused ~100 ms after the event).
+const freeze = async (name) => {
+  await page.waitForTimeout(110);
+  await page.evaluate(() => window.__playable.scene.scene.pause());
+  await page.screenshot({ path: path.join(shots, name) });
+  await page.evaluate(() => window.__playable.scene.scene.resume());
+};
+await arrange(110);
+await page.evaluate(() => { const p = window.__playable; p.state().enemies[0].ang = 0.3; p.pause(true); p.advance(1, { cross: true }); p.advance(12); });
+const alive = await page.evaluate(() => window.__playable.fxAlive());
+check('a defeat spawns a burst of particles', alive > 30, `alive=${alive}`);
+await freeze('fx-kill.png');
+await page.evaluate(() => window.__playable.pause(false));
+await arrange(80, 12);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); p.advance(19); });
+await freeze('fx-hurt.png');
+await page.evaluate(() => { window.__playable.pause(false); });
+await arrange(80);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); const sc = p.scene; sc.banner('UNSTOPPABLE!', '#ff4aa0', 62, 4000); sc.fx.combo(3); p.state().combo = 12; p.state().score = 40; p.advance(0); });
+await freeze('fx-combo.png');
+await page.evaluate(() => { window.__playable.scene.fx.reset(); window.__playable.pause(false); });
+
 // Combo HUD and call-out (forced so the capture is stable).
 await arrange(80);
 await page.evaluate(() => { const p = window.__playable; p.pause(true); const sc = p.scene; sc.tweens.killAll(); p.state().combo = 5; p.state().bestCombo = 5; p.state().score = 14; p.advance(0); sc.banner('GREAT!', '#ffc84a', 38, 8000); });
