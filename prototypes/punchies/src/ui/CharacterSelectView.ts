@@ -1,3 +1,4 @@
+import {fighterSuper} from '../sim/super';
 import { rosterHeadFrame } from '../render/portraitHeadshots';
 
 import { portraitScaleFactor } from '../render/portraitScale';
@@ -38,7 +39,7 @@ interface PanelView {
 
  normal:Phaser.GameObjects.Container; portrait:Phaser.GameObjects.Container; image:Phaser.GameObjects.Image;
 
- title:Phaser.GameObjects.Text; archetype:Phaser.GameObjects.Text; upper:Phaser.GameObjects.Text;
+ title:Phaser.GameObjects.Text; archetype:Phaser.GameObjects.Text; upper:Phaser.GameObjects.Text; superDescription:Phaser.GameObjects.Text;
 
  stats:Phaser.GameObjects.Container; fills:Phaser.GameObjects.Graphics; labels:Phaser.GameObjects.Text[]; scores:Phaser.GameObjects.Text[];
 
@@ -174,7 +175,7 @@ export class CharacterSelectView {
   this.levelButtons=[this.level,this.button(672,75,27,27,'‹',()=>callbacks.level(-1)),this.button(816,75,27,27,'›',()=>callbacks.level(1))];
 
   this.hint=this.text(this.root,422,334,'',11,'#bbcce3').setWordWrapWidth(408);
-  this.hintRows=[controlHint(scene,290,334,0,'navigate',this.root,120),controlHint(scene,422,334,0,'confirm',this.root,120),controlHint(scene,554,334,0,'back',this.root,120)];
+  this.hintRows=[controlHint(scene,258,334,0,'navigate',this.root,100),controlHint(scene,368,334,0,'skins',this.root,100),controlHint(scene,478,334,0,'confirm',this.root,100),controlHint(scene,588,334,0,'back',this.root,100)];
   const refreshHints=()=>{const controls=inputModality.kind!=='touch'&&!this.noticeActive;this.hint.setVisible(!controls);this.hintRows.forEach(row=>row.setVisible(controls));};
   scene.events.on('update',refreshHints);scene.events.once('shutdown',()=>scene.events.off('update',refreshHints));refreshHints();
   this.formatControlHint=controlHint(scene,80,97,0,'format',this.root);
@@ -230,7 +231,7 @@ export class CharacterSelectView {
 
    this.panelHits[s].input!.enabled=!p.dummy&&!p.survival;
 
-   const key=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status,p.label,p.skinName,p.available]);
+   const key=JSON.stringify([!!p.dummy,!!p.survival,p.id,p.hidden,p.stats,p.uppercut,p.skin,p.selected,p.skinIndex,p.skinCount,p.status,p.label,p.skinName,p.available,p.focused,p.locked]);
 
    if(key!==this.panelKeys[s]){
 
@@ -276,7 +277,7 @@ export class CharacterSelectView {
 
   const parent=this.content[s],x=s===0?6:640,centre=x+99;
 
-  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,94,7).fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,181,198,155,8);
+  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,122,7).fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,225,198,111,8);
 
   const container=()=>{const c=this.scene.add.container();parent.add(c);return c;};
 
@@ -294,19 +295,21 @@ export class CharacterSelectView {
 
   for(let i=0;i<5;i++)scores.push(this.text(stats,x+140,113+i*13,'',8,'#ffffff').setStroke('#050a18',2));
 
-  const upper=this.text(normal,centre,180,'',9,'#ffdf83'),tray=this.scene.add.container();normal.add(tray);
+  const upper=this.text(normal,centre,180,'',9,'#ffdf83');
+  const superDescription=this.text(normal,centre,202,'',9,'#d4dff0').setAlign('center').setWordWrapWidth(184,true);
+  const tray=this.scene.add.container();normal.add(tray);
 
-  this.graphics(tray).fillStyle(0x09182b,.95).fillRoundedRect(x,351,198,38,8);
+  this.graphics(tray).fillStyle(0x09182b,.95).fillRoundedRect(x,350,198,40,8);
 
   const skinName=this.text(tray,centre,362,'',10,'#fff1a8'),skinIndex=this.text(tray,centre,379,'',11),skinButtons:Phaser.GameObjects.Rectangle[]=[],skinDraws:(()=>void)[]=[];
 
   for(const d of [-1,1]){
 
-   const bx=centre+d*76,g=this.graphics(tray),hit=this.scene.add.rectangle(bx,370,44,38,0,0).setInteractive({useHandCursor:true});tray.add(hit);skinButtons.push(hit);
+   const bx=centre+d*74,g=this.graphics(tray),hit=this.scene.add.rectangle(bx,370,48,40,0,0).setInteractive({useHandCursor:true});tray.add(hit);skinButtons.push(hit);
 
    const arrow=this.text(tray,bx,368,d<0?'‹':'›',29).setStroke('#23415a',0);
 
-   const draw=(state='idle')=>{const enabled=hit.input?.enabled!==false,pressed=enabled&&state==='pressed';g.clear();cartoonButton(g,bx-22,351+(pressed?2:0),44,38,enabled?0x397dc2:0x28374d,8);if(enabled&&state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(bx-22,351,44,38,8);arrow.y=368+(pressed?2:0);arrow.setColor(enabled?'#ffffff':'#8896ac');};skinDraws.push(()=>draw());bindButtonFeedback(hit,draw);
+   const draw=(state='idle')=>{const enabled=hit.input?.enabled!==false,pressed=enabled&&state==='pressed';g.clear();cartoonButton(g,bx-24,350+(pressed?2:0),48,40,enabled?0x397dc2:0x28374d,8);if(enabled&&state==='hover')g.fillStyle(0xffffff,.12).fillRoundedRect(bx-24,350,48,40,8);arrow.y=368+(pressed?2:0);arrow.setColor(enabled?'#ffffff':'#8896ac');};skinDraws.push(()=>draw());bindButtonFeedback(hit,draw);
 
    hit.on('pointerup',()=>{if(hit.input?.enabled&&hit.getData('buttonReleasedInside'))this.callbacks.skin(s,d);});
 
@@ -318,7 +321,7 @@ export class CharacterSelectView {
 
   survivalHeading.setScale(Math.min(1,42/survivalHeading.height));survivalBody.setScale(Math.min(1,126/survivalBody.height));
 
-  return {normal,portrait,image,title,archetype,upper,stats,fills,labels,scores,tray,skinName,skinIndex,skinButtons,skinDraws,hidden,hiddenLabel,hiddenStatus,survival,survivalHeading,survivalBody,textureKey:'',statsKey:'',values:[],motion:{progress:1},fillProgress:-1};
+  return {normal,portrait,image,title,archetype,upper,superDescription,stats,fills,labels,scores,tray,skinName,skinIndex,skinButtons,skinDraws,hidden,hiddenLabel,hiddenStatus,survival,survivalHeading,survivalBody,textureKey:'',statsKey:'',values:[],motion:{progress:1},fillProgress:-1};
 
  }
 
@@ -330,9 +333,9 @@ export class CharacterSelectView {
 
   ui.hiddenLabel.setText(p.label);ui.hiddenStatus.setText(p.status);
 
-  const showTray=!!(p.selected&&p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
+  const showTray=!!(p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
 
-  ui.skinButtons.forEach((hit,i)=>{hit.input!.enabled=showTray&&p.skinCount>1;ui.skinDraws[i]();});
+  ui.skinButtons.forEach((hit,i)=>{hit.input!.enabled=showTray&&!p.locked&&p.focused&&p.skinCount>1;ui.skinDraws[i]();});
 
   if(p.survival||(p.hidden&&!p.dummy))return;
 
@@ -350,7 +353,7 @@ export class CharacterSelectView {
 
     if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(boundsKey,b);}
 
-    const scale=Math.min((p.dummy?130:110)/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id)),flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;
+    const scale=Math.min((p.dummy?90:82)/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id)),flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;
 
    }
 
@@ -366,9 +369,13 @@ export class CharacterSelectView {
 
   if(statsKey!==ui.statsKey){ui.statsKey=statsKey;ui.values=p.stats.slice(0,5).map(([,value])=>Math.max(0,Math.min(1,value)));ui.fillProgress=-1;for(let i=0;i<5;i++){const row=p.stats[i];ui.labels[i].setText(row?.[0]??'');ui.scores[i].setText(row?Math.round(row[2]*100)+'%':'');}}
 
-  ui.upper.setText(!p.dummy&&p.uppercut?t('charselect.uppercut_stars',{stars:p.uppercut.stars}):'');
+  const superMove=fighterSuper(p.id);
+  ui.upper.setText(!p.dummy&&p.uppercut?t('charselect.super_cost',{name:t('super.rising_upper'),stars:superMove.starCost}):'').setScale(1);
+  ui.upper.setScale(Math.min(1,186/Math.max(1,ui.upper.width),16/Math.max(1,ui.upper.height)));
+  ui.superDescription.setText(!p.dummy?t('super.rising_upper_description'):'').setScale(1);
+  ui.superDescription.setScale(Math.min(1,184/Math.max(1,ui.superDescription.width),30/Math.max(1,ui.superDescription.height)));
 
-  ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,100/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);
+  ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,88/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);
 
   if(ui.fillProgress<0)this.drawStatFills(s,currentFill);
 

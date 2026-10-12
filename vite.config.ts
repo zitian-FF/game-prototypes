@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { punchiesDebugGate } from './scripts/punchies-debug-gate';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
@@ -16,7 +17,10 @@ function getGitSha(): string {
 }
 
 function getPrototypeEntries(): Record<string, string> {
-  if (process.env.PUNCHIES_ASSET_PROFILE) return { punchies: path.resolve(__dirname, 'prototypes/punchies/index.html') };
+  if (process.env.PUNCHIES_ASSET_PROFILE) return {
+    punchies: path.resolve(__dirname, 'prototypes/punchies/index.html'),
+    ...(process.env.PUNCHIES_STAGING === 'on' && process.env.PUNCHIES_QA === '1' && process.env.PUNCHIES_STAGING_QA === '1' ? {stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html')} : {}),
+  };
   const entries: Record<string, string> = {
     main: path.resolve(__dirname, 'index.html'),
   };
@@ -33,6 +37,10 @@ function getPrototypeEntries(): Record<string, string> {
 
 generateVersionStamps(__dirname);
 const assetProfile = process.env.PUNCHIES_ASSET_PROFILE;
+const stagingBuild=process.env.PUNCHIES_STAGING==='on';
+const qaBuild=process.env.PUNCHIES_QA==='1';
+const saveResetId=process.env.PUNCHIES_SAVE_RESET_ID??'';
+if(saveResetId&&(process.env.PORTAL??'web')!=='web')throw new Error('The save reset is authorized for web/itch and staging builds only');
 if (assetProfile) {
   if (!['standard', 'compact'].includes(assetProfile) || !process.env.PUNCHIES_PUBLIC_DIR) throw new Error('Use the Punchies profile build scripts to prepare isolated assets');
   const record = JSON.parse(fs.readFileSync(path.join(process.env.PUNCHIES_PUBLIC_DIR, 'prototypes/punchies/asset-profile.json'), 'utf8'));
@@ -52,7 +60,7 @@ export default defineConfig(({ command }) => ({
   root: assetProfile ? path.resolve(__dirname, 'prototypes/punchies') : __dirname,
   base: '/game-prototypes/',
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
-    plugins: [react(), tailwindcss(), {
+    plugins: [punchiesDebugGate(stagingBuild, qaBuild), react(), tailwindcss(), {
       name: 'punchies-art-index', enforce:'pre', apply:'build',
       resolveId(id) { if(id==='virtual:punchies-art')return '\0punchies-art'; },
       load(id) { if(id==='\0punchies-art')return `export default ${packArtIndex(punchiesArtIndex() as Parameters<typeof packArtIndex>[0])};`; },
@@ -81,6 +89,10 @@ export default defineConfig(({ command }) => ({
   }],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
+    __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
+    __PUNCHIES_QA__:JSON.stringify(qaBuild),
+    __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
+    __PUNCHIES_STAGING_QA__: JSON.stringify(process.env.PUNCHIES_STAGING_QA === '1'),
       __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),
@@ -95,3 +107,4 @@ export default defineConfig(({ command }) => ({
     },
   },
 }));
+

@@ -3,12 +3,15 @@ import { titleName } from '../progress/titles';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { tune } from '../sim/tune';
-import { maxHealth, maxStamina, stunThreshold, uppercutStars } from '../sim/character';
+import { maxHealth, maxStamina, stunThreshold } from '../sim/character';
 import type { Fighter, SimState } from '../sim/types';
 import type { SeriesState } from '../sim/series';
 import { remainingSeconds } from '../sim/sim';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { reducedMotion } from './presentation';
+import {superMeterLayout} from './superMeterLayout';
+import {SuperMeterLightning} from './superMeterLightning';
+import {fighterSuper,superReady} from '../sim/super';
 
 
 export interface SurvivalBossHud { key:string; name:string; health:number|null; maxHealth:number|null; }
@@ -34,6 +37,7 @@ export class Hud {
   private names: Phaser.GameObjects.Text[] = [];
   private titles: Phaser.GameObjects.Text[] = [];
   private upperReady: Phaser.GameObjects.Text[] = [];
+  private superLightning:SuperMeterLightning[]=[];
   private meterLabels: {text:Phaser.GameObjects.Text;part:string}[]=[];
 
   constructor(private scene: Phaser.Scene, names: [string, string], profiles: [WireProfile|null,WireProfile|null]=[null,null]) {
@@ -53,7 +57,8 @@ export class Hud {
       const title=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+83,profiles[i]?titleName(profiles[i]!.title):'',10,'#caa2ff');
       title.setScale(Math.min(1,VIEW.width*.18/Math.max(1,title.width)));
       this.titles.push(title);
-      this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,t('common.upper'),10,'#ffdf55').setVisible(false));
+      this.superLightning.push(new SuperMeterLightning(scene,superMeterLayout(VIEW,i,3).bounds));
+      this.upperReady.push(text(VIEW.cx+sign*(VIEW.width*.20+38),VIEW.top+70,t('common.super'),10,'#fff3a1').setStroke('#8a4600',2).setShadow(0,0,'#ffce32',12,true,true).setVisible(false));
     }
   }
   setSeries(series:SeriesState):void{this.series=series;}
@@ -79,7 +84,7 @@ export class Hud {
     this.names.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
     this.titles.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
     for(let i=0;i<2;i++){
-      if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);continue;}
+      if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);this.superLightning[i].setReady(false);continue;}
       const f=s.fighters[i],left=i===0;
       this.shownHealth[i]=this.shownHealth[i]<0?f.health:Math.max(f.health,this.shownHealth[i]-.4);
       if(show('health'))this.bar(left,34,14,.40,f.health/maxHealth(f),this.shownHealth[i]/maxHealth(f),0xef4db6,0,true);
@@ -91,12 +96,12 @@ export class Hud {
 
       const showUpper=this.resourceRow.includes(i)&&show('uppercut');
       if(showUpper)this.drawResources(f,i);
-      const ready=this.upperReady[i];
-      ready.setVisible(showUpper&&f.stars>=uppercutStars(f));
+      const ready=this.upperReady[i],layout=superMeterLayout(VIEW,i,fighterSuper(f).starCost);
+      ready.setPosition(layout.cx,layout.cy);
+      ready.setVisible(showUpper&&superReady(f));
+      this.superLightning[i].setBounds(layout.bounds);this.superLightning[i].setReady(showUpper&&superReady(f));
       const pulse=reducedMotion()?1:(1+Math.sin(this.scene.time.now*2*Math.PI/Math.max(1,tune.view.fightPresentation.upperPulseMs)))/2;
-      ready.setAlpha(.9+.1*pulse).setScale(1.08+.12*pulse)
-        .setColor('#fff3a1').setStroke('#8a4600',2)
-        .setShadow(0,0,'#ffce32',8+8*pulse,true,true);
+      ready.setAlpha(.9+.1*pulse).setScale(Math.min(1,(layout.bounds.width-18)/Math.max(1,ready.width*1.2))*(1.08+.12*pulse));
     }
     const boss=this.survivalBoss;
     const bossShown=!!boss&&show('health');
@@ -121,11 +126,11 @@ export class Hud {
 
   }
   private drawResources(f:Fighter,side:number):void{
-    const g=this.g,sign=side===0?-1:1;
-    const ready=f.stars>=uppercutStars(f);
+    const g=this.g,layout=superMeterLayout(VIEW,side,fighterSuper(f).starCost);
+    const ready=superReady(f);
     const starAlpha=ready?.25:1;
-    for(let i=0;i<uppercutStars(f);i++){
-      const x=VIEW.cx+sign*(VIEW.width*.20+17+i*21),y=VIEW.top+70;
+    for(let i=0;i<layout.count;i++){
+      const {x,y}=layout.sockets[i];
       const star=(radius:number)=>Array.from({length:10},(_,k)=>{
         const angle=-Math.PI/2+k*Math.PI/5,r=k%2?radius*.46:radius;
         return {x:x+Math.cos(angle)*r,y:y+Math.sin(angle)*r};

@@ -37,6 +37,7 @@ class ObjectStub extends EventEmitter {
   setVisible(visible) { this.visible=visible;return this; }
   setAlpha() { return this; }
   setRotation() { return this; }
+  setFrame() { return this; }
   clear() { return this; }
   fillStyle() { return this; }
   lineStyle() { return this; }
@@ -67,7 +68,8 @@ for (const webgl of [false, true]) {
     // Real factories add first; caller chains setDepth after ADDED_TO_SCENE.
     return obj.setDepth(depth);
   };
-  scene.add = { container: () => spawn(0),graphics:()=>{const g=spawn(0);g.pooledSpark=true;return g;} };
+  scene.add = { container: () => spawn(0),graphics:()=>{const g=spawn(0);g.pooledSpark=true;return g;},image:()=>{const o=spawn(0);o.pooledSymbol=true;return o;} };
+  scene.textures={exists:()=>true};
   const perspective = new exports.RingPerspective(scene);
   const fighter = spawn(10);
   perspective.take([fighter]);
@@ -76,6 +78,8 @@ for (const webgl of [false, true]) {
     {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:combatExports});
   const sparks=new combatExports.CombatSparks(scene);
   sparks.burst(400,200,1,0,1.25,[0xffffff,0xfff27a,0xffc83a],10);
+  const symbolExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/combatSymbols.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:symbolExports,require:()=>({reducedMotion:()=>false})});
+  const symbols=new symbolExports.CombatSymbols(scene);symbols.sweet(400,204);
   const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));
   const overlay = spawn(76);
   const flash = spawn(80);
@@ -90,6 +94,7 @@ for (const webgl of [false, true]) {
   assert.equal(pooled.length,8,'all pooled sparks must join the fitted world');
   const activeSpark=pooled.find(o=>o.visible);
   effects.push(activeSpark);
+  const pooledSymbols=perspective.world.list.filter(o=>o.pooledSymbol);assert.equal(pooledSymbols.length,12,'all sweet/charge-loss slots share fitted world');effects.push(pooledSymbols.find(o=>o.visible));
   for (const effect of effects) assert.equal(effect.parentContainer, perspective.world, `depth ${effect.depth} detached`);
   for (const item of [overlay, flash, hud, dead]) assert.equal(item.parentContainer, null);
   assert.equal(owned.parentContainer, otherContainer);

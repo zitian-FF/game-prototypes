@@ -1,6 +1,6 @@
 import {drawUppercutFlame} from './combatVfx';
 import { blendedFootStep, bootCollar } from './legMotion';
-import {cosmeticTorsoScale} from './cosmeticTorso';
+import {cosmeticTorsoScale,cosmeticShoulderScale} from './cosmeticTorso';
 import Phaser from 'phaser';
 import { skinTexture } from './skins';
 import { limbSkin } from './skinPalette';
@@ -316,7 +316,7 @@ export class Puppet {
     [this.gloveL, this.gloveR].forEach((glove, i) => {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
-      const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * k * side + v.bodyOffsetY };
+      const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side + v.bodyOffsetY };
       // Register the art actually bound, including base fallback after a failed load.
       const gloveSkin=glove.texture.key.startsWith('punchies:part_marco_rising_star_')?'skin-marco-unique':'default';
       const registration=gloveRegistration(f.char,glove.width,glove.height,k,gloveSkin,i);
@@ -343,7 +343,7 @@ export class Puppet {
       const p = f.punch;
       const intensity = uppercutFireIntensity(p);
       const side = p.hand === 0 ? 1 : -1;
-      this.uppercutFlame(P(k, rig.shoulderSpread * k * side, v.bodyOffsetY), fists[p.hand], intensity, now, k);
+      this.uppercutFlame(P(k, rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side, v.bodyOffsetY), fists[p.hand], intensity, now, k);
     }
 
     // ---- tints: head and torso flash separately when hit ----

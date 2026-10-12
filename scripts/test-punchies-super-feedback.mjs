@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';
+const exp={},symbols=[],labels=[],sounds=[],damage=[];
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/Effects.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:exp,navigator:{},require:p=>p.includes('audio/sfx')?{sfx:new Proxy({},{get:(_t,k)=>(...args)=>sounds.push([k,...args])})}:p.includes('sim/tune')?{tune:{view:{cameraShakeScale:.2}}}:p.includes('i18n')?{t:k=>k}:{}});
+const fx=Object.create(exp.Effects.prototype);Object.assign(fx,{scene:{cameras:{main:{shake(){}}}},symbols:{sweet:(...p)=>symbols.push(['sweet',...p]),chargeLost:(...p)=>symbols.push(['chargeLost',...p])},sparks:{burst(){}},onFighterFlash(){},wasExhausted:null});
+fx.label=(...p)=>labels.push(p);fx.shakyLabel=(...p)=>labels.push(p);fx.damageNumber=(...p)=>damage.push(p);fx.redEdges=()=>{};fx.screenFlash=()=>{};
+const state={result:null,fighters:[{x:300,y:200,fx:1,fy:0,exhausted:false},{x:340,y:200,fx:-1,fy:0,exhausted:false}]};
+const hit={kind:'hit',attacker:0,x:329,y:200,punch:'jab',sweet:true,counter:false,row:'normal',damage:5,buffed:false};
+fx.handle([hit],state,0);assert.equal(symbols.length,0,'hit does not duplicate canonical sweetImpact');assert.equal(labels.length,0,'sweet label removed');assert.equal(damage.length,1,'numeric damage retained');
+fx.handle([{kind:'sweetImpact',attacker:0,x:329,y:200,punch:'jab'}],state,0);assert.deepEqual(symbols,[['sweet',329,200]]);
+fx.handle([{...hit,sweet:false},{kind:'whiff',attacker:0,punch:'jab'},{kind:'whiff',attacker:0,punch:'uppercut'}],state,0);assert.equal(labels.length,0,'sour and whiff/exposed labels removed');assert.equal(symbols.length,1);
+const audit={kind:'superCancelled',fighter:1,superId:'rising-upper',starCost:3,reason:'startupHit'};
+fx.handle([audit,{...audit,reason:'stun'},{...audit,reason:'perfectGuard'}],state,0);assert.equal(symbols.length,1,'ordinary attack interruptions never show charge-loss cue');
+const loss={kind:'superChargeLost',fighter:1,superId:'rising-upper',starCost:3,reason:'sweetHit'};
+const soundCount=sounds.length;fx.handle([loss],state,-1);assert.deepEqual(symbols[1],['chargeLost',378,200]);assert.equal(sounds.length,soundCount,'charge-loss visual adds no sound');
+fx.handle([{kind:'block',attacker:0,x:329,y:200,sweet:true,chip:0}],state,0);assert.equal(symbols.length,2,'block has no sweet star or fizzle');assert(labels.some(p=>p[2]==='fx.block'),'block callout preserved');
+console.log('PASS: canonical one-star dispatch, no sweet/sour/whiff labels, charge-loss event only, generic cancellations/blocks ignored, damage/block/audio preserved');

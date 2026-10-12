@@ -1,0 +1,8 @@
+{
+  "defaultSuper": {
+    "id": "rising-upper",
+    "nameKey": "super.rising_upper",
+    "mechanic": "uppercut",
+    "descriptionKey": "super.rising_upper_description"
+  }
+}

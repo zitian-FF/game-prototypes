@@ -1,17 +1,17 @@
 ## Current milestone
-Approved combined compact release: Profile/Zombie UI, boss pressure and statistics, input navigation, and Tyke/Tee materials. Main cleared the polish hold after approved UI completion.
+Authorized combined compact/web reset and SUPER release, with completed single-confirm roster controls. Candidate r0151; no publication claim until upload and live verification.
 
 ## What was implemented
-Owned avatar selection persists without changing alias, titles, collection, or peer payload. Profile displays rating availability, XP and a passive 50-level ladder. Zombie entry preserves checkpoint confirmation; intermission/results display actual run partitions, damage, applied healing and personal best. Ordinary waves remain timed; bosses use actual scaled HP and end on defeat with bounded pressure progression. Hints follow meaningful last input and saved keys; touch editor handles/footer share one navigation layer. Tyke cuffs are hand-aware and Tee palettes protect hair, skin, red accents and highlights.
+Shared SUPER timing, star feedback/meter effects and localized descriptions; Nadia torso0.79 and Marco base torso0.88; one Confirm commits fighter and current owned/render-ready skin. Saved combat bindings provide contextual keyboard skin/difficulty/format controls, with dedicated Confirm/Back and device ownership. Xbox uses A/B, LT/RT skins, X/Y difficulty and RB format.
 
 ## Key technical decisions
-Original owner dependencies973c24f/8b9da1/6c44f99/1599735/UI1609380 integrated atop materials/input and latestmain. Owner fixes address localization literals, avatar restart lifecycle and CJK wrapping. Compact/web AAC/M4A selected; source bitmaps/compression pins/tune.json/tune.meta.json/Worker unchanged. Final local package10,133,861bytes148files: art3,460,285 audio4,345,153 code2,328,423 under20,000,000. Inventory and geometry/part parity pass against preserved standard companion.
+Stable web-only save reset epoch punchies-reset-2026-10-12-super-v1 clears the11 registered player keys once, preserves its receipt and unrelated data, and runs after preload before audio/language boot. Production STAGINGoff/QA0; staging STAGINGon/QA1/STAGING_QA1 with isolated saves and paid daily-cap bypass only. Production debug module is replaced at resolution time. Local production9985759bytes148files; staging10149833bytes152files. Art3460285/audio4345153 unchanged; compression pins unchanged. Locale mode frozen-reviewed-committed-locales when Sheet URL absent; strict477-key checks remain.
 
 ## Open questions
-Physical Android, touchscreen/controller and mobile60fps validation unavailable. Controlled browser simulations validate transitions/presentation, not difficulty balance or played boss wins. KaiChen/proposed title-screen layout/Ranked followups excluded pending separate approvals.
+Physical controller, touchscreen/Android and mobile60fps not proven. Browser input includes explicitly synthetic Xbox. Marco balance PR350 remains separate.
 
 ## Known issues
-Existing cold palette work remains a limitation. Browser avatar blank and CJK single-line shrink corrected/retested. QA uses real Brave WebGL production scenes with explicit fixture inputs/state injection; locale forced result transitions are layout evidence, not earned results. No new downloadable assets.
+Existing cold palette limitation persists. Controlled WebGL fixtures prove render/input/reset behavior, not difficulty balance or earned combat outcomes. Six locale actual roster frames synchronized to rendered language;21 actual Training pose frames cover Nadia base and Marco base/Rising Star with real texture keys. Actual production reset, second-boot persistence, paid purchase and stage isolation/repeat pulls pass.
 
 ## Next proposed step
-Merge/deploy one validated compact release; verify automatic version, exact CI bytes/profile, workflows and live itch boot. Publish consolidated receipt/screenshots and preserve material evidence/source/tuning constraints.
+Merge the reviewed release and verify exact automatic itch version, CI sizes and public staging SHA354e702. Keep palette architecture/title mockup/Kai/unique Supers/Ranked identity work excluded. Preserve reset epoch across retries and later builds until another explicitly authorized reset.

@@ -1,4 +1,5 @@
 import {controlHint} from '../ui/controlHint';
+import {STAGING_BUILD} from '../buildFlags';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { itemName } from '../shop/itemText';
@@ -16,7 +17,7 @@ import { punchToken } from '../ui/punchToken';
 import { tune } from '../sim/tune';
 import { getNav, navRegister } from '../ui/menuNav';
 import { cartoonPanel, cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
-import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
+import { loadShopDraft, saveShopDraft, shopConfig, SHOP_ITEMS, previewAdReward, refreshDailyOffers, dailyOffers, chestRewards, buyDailyChest, freeChests,dailyChestLocked, type ShopDraftState, type ShopKind, type ShopResult } from '../shop/draft';
 
 /** Local storefront draft. No ad provider or production unlocks are connected. */
 export class ShopScene extends Phaser.Scene {
@@ -87,9 +88,9 @@ export class ShopScene extends Phaser.Scene {
     else{const g=this.add.graphics();g.fillStyle(kind==='skins'?0x8256be:0xeebf43).fillRoundedRect(x-57,134,114,77,12);g.lineStyle(5,0x081428).strokeRoundedRect(x-57,134,114,77,12);this.root.add(g);}
     this.hit(x-88,116,176,122,()=>{this.popupKind=kind;this.render();});
     const freeChest=freeChests(this.state,kind)>0;
-    const pool=chestRewards(this.state,kind),purchased=!freeChest&&this.state.purchasedChests?.includes(kind);
+    const pool=chestRewards(this.state,kind),purchased=dailyChestLocked(this.state,kind);
     this.text(x,247,purchased?t('shop.opened_today'):pool.length?t('shop.tap_to_see_rewards'):t('common.collection_complete'),12,purchased?'#91dbb4':'#a8c1d8').setOrigin(.5,0);
-    this.text(x,268,freeChest?t('shop.free_chest_ready'):t('shop.one_chest_per_day'),10,freeChest?'#fff3a8':'#a8c1d8').setOrigin(.5,0);
+    this.text(x,268,freeChest?t('shop.free_chest_ready'):STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.one_chest_per_day'),10,freeChest?'#fff3a8':'#a8c1d8').setOrigin(.5,0);
     const cost=kind==='skins'?shopConfig.skinPullCost:shopConfig.fighterPullCost;
     this.button(x-117,291,234,purchased?t('shop.come_back_tomorrow'):freeChest?t('shop.open_chest_free'):t('shop.open_chest_tokens',{cost}),()=>this.act(buyDailyChest(this.state,kind,Math.random())),!purchased&&pool.length>0&&(freeChest||this.state.tokens>=cost),0,kind==='skins'?'purple':'gold');
   }
@@ -115,7 +116,7 @@ export class ShopScene extends Phaser.Scene {
     if(!offers.length)this.text(x+162,155,t('common.collection_complete'),14).setOrigin(.5);
     if(kind==='fighters')this.text(x+16,193,t('shop.guaranteed_fighter_of_the_day'),11,'#a8c1d8').setWordWrapWidth(289);
     else this.text(x+16,311,t('shop.equal_odds_across_remaining_rewards'),10,'#a8c1d8');
-    if(kind==='fighters')this.text(x+16,273,t('shop.each_chest_can_be_opened'),11,'#a8c1d8');
+    if(kind==='fighters')this.text(x+16,273,STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.each_chest_can_be_opened'),11,'#a8c1d8');
   }
   private render(){
     this.rays=[];this.root?.destroy(true);const scale=Math.min(VIEW.width/844,VIEW.height/390);this.root=this.add.container(VIEW.cx-422*scale,VIEW.cy-195*scale).setScale(scale).setDepth(100);
