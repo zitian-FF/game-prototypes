@@ -301,7 +301,7 @@ export class CharacterSelectView {
 
   const hidden=container(),hiddenLabel=this.text(hidden,centre,251,'',17),hiddenStatus=this.text(hidden,centre,276,'',9,'#aebbd0');
 
-  const survival=container(),survivalHeading=this.text(survival,centre,135,t('survival.heading'),16,'#9ee7b5').setWordWrapWidth(182,true),survivalBody=this.text(survival,centre,224,t('survival.selection_hint'),14,'#dbe9fa').setWordWrapWidth(178,true);
+  const survival=container(),survivalHeading=this.text(survival,centre,135,t('survival.heading'),16,'#9ee7b5').setWordWrapWidth(182,true),survivalBody=this.text(survival,centre,224,t('survival.selection_hint').replace(/\\n/g,'\n'),14,'#dbe9fa').setWordWrapWidth(178,true);
 
   survivalHeading.setScale(Math.min(1,42/survivalHeading.height));survivalBody.setScale(Math.min(1,126/survivalBody.height));
 
