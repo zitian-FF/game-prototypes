@@ -475,5 +475,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "PRUEBAS · tiradas repetidas",
   "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
-  "ui.skins": "Aspectos"
+  "ui.skins": "Aspectos",
+  "super.code_x": "CÓDIGO X",
+  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos."
 }

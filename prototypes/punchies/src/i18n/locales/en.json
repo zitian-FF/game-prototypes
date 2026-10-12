@@ -475,5 +475,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "STAGING · repeat pulls",
   "super.rising_upper_description": "Breaks normal guard. Dodges and Perfect Guard stop it.",
-  "ui.skins": "Skins"
+  "ui.skins": "Skins",
+  "super.code_x": "CODE X",
+  "super.code_x_description": "Land the jab for two shadow Cross hits. Shadows ignore guard and Perfect Guard; dodge to evade."
 }

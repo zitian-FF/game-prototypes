@@ -475,5 +475,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "ステージング · 連続開封",
   "super.rising_upper_description": "通常ガードを突破。パーフェクトガードや回避で防げます。",
-  "ui.skins": "スキン"
+  "ui.skins": "スキン",
+  "super.code_x": "コードX",
+  "super.code_x_description": "ジャブ命中で影が2回クロス。影は通常・パーフェクトガードを突破。回避で避けよう。"
 }
