@@ -476,5 +476,7 @@
   "survival.no_xp": "Supervivencia zombi no otorga XP de progresión.",
   "common.super": "SUPER",
   "super.rising_upper": "Upper ascendente",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "PRUEBAS · tiradas repetidas",
+  "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta."
 }

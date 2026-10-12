@@ -451,8 +451,8 @@
   "ranked.connecting": "상대에게 연결 중…",
   "ranked.search_ended": "검색이 종료되었습니다. 다시 시도하세요.",
   "ranked.unavailable": "매치메이킹을 이용할 수 없습니다. 다시 시도하세요.",
-  "ui.match_format": "경기 형식",
-  "ui.bot_difficulty": "봇 난이도",
+  "ui.match_format": "형식",
+  "ui.bot_difficulty": "난이도",
   "ui.navigate": "이동",
   "ui.confirm": "확인",
   "ui.adjust_touch_control": "컨트롤을 이동하세요. 확인 또는 뒤로로 완료하세요.",
@@ -476,5 +476,7 @@
   "survival.no_xp": "좀비 생존에서는 진행 XP를 얻지 않습니다.",
   "common.super": "슈퍼",
   "super.rising_upper": "라이징 어퍼",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "스테이징 · 반복 뽑기",
+  "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다."
 }

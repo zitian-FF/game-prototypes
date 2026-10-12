@@ -43,6 +43,7 @@ const root = 'prototypes/punchies/src/audio/';
 const load = loader(), mixer = load(root + 'mixer.ts'), { sfx, unlockAudio, stopCombatSounds } = load(root + 'sfx.ts');
 assert.equal(mixer.getAudioSettings().sfx, .7);
 mixer.setAudioSettings({ bgm: .2, sfx: .5 });
+const restoredAfterPreload=loader()(root+'mixer.ts');restoredAfterPreload.reloadAudioSettings();assert.equal(restoredAfterPreload.getAudioSettings().bgm,.2);assert.equal(restoredAfterPreload.getAudioSettings().sfx,.5);stored.delete('punchies:audio:v1');restoredAfterPreload.reloadAudioSettings();assert.equal(restoredAfterPreload.getAudioSettings().bgm,.35,'reset reload removes stale cached preferences');mixer.setAudioSettings({bgm:.2,sfx:.5});
 unlockAudio();
 const ctx = mixer.unlockMixer();
 assert.equal(ctx.state, 'running');

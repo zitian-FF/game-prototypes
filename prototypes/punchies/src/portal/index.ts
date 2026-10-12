@@ -1,4 +1,5 @@
-import { suspendAudioForAd } from '../audio/mixer';
+import { suspendAudioForAd,reloadAudioSettings } from '../audio/mixer';
+import {applySaveReset,type SaveResetReceipt} from './saveReset';
 import { setGameplay } from './gameplay';
 import { KEYS } from './keys';
 import { portal } from './select';
@@ -6,12 +7,15 @@ import type { RewardedResult } from './types';
 
 export { portal } from './select';
 export { store } from './store';
+let resetReceipt:SaveResetReceipt|null=null;
+export const saveResetReceipt=()=>resetReceipt?{...resetReceipt,keys:[...resetReceipt.keys]}:null;
 
 /** Start the SDK and load saved data. Never rejects, and never blocks boot for long. */
 export async function initPortal(timeoutMs = 10000): Promise<void> {
   const work = (async () => { await portal.init(); await portal.storage.preload(Object.values(KEYS)); })();
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
   try { await Promise.race([work, timeout]); } catch { /* boot anyway */ }
+  resetReceipt=applySaveReset(portal.storage);reloadAudioSettings();
 }
 
 let loaded = false;

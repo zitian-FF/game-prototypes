@@ -8,12 +8,14 @@ function load(): AudioSettings {
   try { const v = JSON.parse(store.getItem(KEY) ?? '{}'); return { bgm: level(v.bgm, defaults.bgm), sfx: level(v.sfx, defaults.sfx), muted: v.muted === true }; }
   catch { return { ...defaults }; }
 }
-let settings = load();
+// Portal boot reloads after preload/reset, before any gameplay scene initializes.
+let settings = { ...defaults };
 let context: AudioContext | null = null;
 let soundBus: GainNode | null = null;
 let musicBus: GainNode | null = null;
 const listeners = new Set<(settings: AudioSettings) => void>();
 export function getAudioSettings(): AudioSettings { return { ...settings }; }
+export function reloadAudioSettings():void {settings=load();apply();listeners.forEach(fn=>fn(getAudioSettings()));}
 let adSuspended = false;
 // While a rewarded ad plays the game is silent. This does not touch the saved settings.
 export function suspendAudioForAd(on: boolean): void { adSuspended = on; apply(); }

@@ -1,7 +1,8 @@
 // Every persisted key, in one place. The portal preloads these before the first
 // scene runs, so any new saved key must be added here (test-punchies-portal.mjs
 // fails if a key is read from the store without being listed).
-export const KEYS = {
+import {stagingStorageKey} from '../buildFlags';
+const playerKeys = {
   audio: 'punchies:audio:v1',
   shop: 'punchies:shop-preview:v1',
   tutorial: 'punchies:tutorial:v1',
@@ -14,3 +15,7 @@ export const KEYS = {
   survival: 'punchies:survival:v1',
   rating: 'punchies:rating:v1',
 } as const;
+export const KEYS=Object.fromEntries(Object.entries({...playerKeys,resetReceipt:'punchies:save-reset:v1'}).map(([name,key])=>[name,stagingStorageKey(key)])) as {[K in keyof typeof playerKeys|'resetReceipt']:string};
+export const GAME_SAVE_KEYS=Object.freeze(Object.keys(playerKeys).map(name=>KEYS[name as keyof typeof playerKeys]));
+/** Developer preferences are isolated in staging but are not player-save data. */
+export const DEV_KEYS={debug:stagingStorageKey('punchies:debug:v1'),unlock:stagingStorageKey('punchies:debug:unlock:v1')};

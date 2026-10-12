@@ -451,8 +451,8 @@
   "ranked.connecting": "جارٍ الاتصال بمنافسك…",
   "ranked.search_ended": "انتهى البحث. يُرجى المحاولة مجددًا.",
   "ranked.unavailable": "المطابقة غير متاحة. يُرجى المحاولة مجددًا.",
-  "ui.match_format": "نظام المباراة",
-  "ui.bot_difficulty": "صعوبة الخصم",
+  "ui.match_format": "النظام",
+  "ui.bot_difficulty": "الصعوبة",
   "ui.navigate": "التنقل",
   "ui.confirm": "تأكيد",
   "ui.adjust_touch_control": "حرّك عنصر التحكم. أكّد أو ارجع للإنهاء.",
@@ -476,5 +476,7 @@
   "survival.no_xp": "طور الزومبي لا يمنح خبرة التقدّم.",
   "common.super": "الضربة الخارقة",
   "super.rising_upper": "اللكمة الصاعدة",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "اختبار · سحوبات متكررة",
+  "super.rising_upper_description": "تتجاوز الحراسة العادية. يوقفها التفادي أو الصد المثالي."
 }

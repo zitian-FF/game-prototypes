@@ -52,7 +52,7 @@ if(profile==='standard'){
   await archive(settings.audioUrl,settings.audioSha256,staging,name=>/^music\/(title\.m4a|charselect\.m4a|gameplay\.m4a|credits\.md|SOURCE-MAPPING\.md)$/.test(name)||name==='music/');
   fs.cpSync(path.join(staging,'music'),path.join(target,'audio'),{recursive:true});
 }
-const profileRecord={profile,portal,musicExtension:settings.musicExtension,artSha256:settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256};
+const profileRecord={profile,portal,musicExtension:settings.musicExtension,artSha256:settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256,staging:process.env.PUNCHIES_STAGING==='on',saveResetId:process.env.PUNCHIES_SAVE_RESET_ID??''};
 fs.writeFileSync(path.join(target,'asset-profile.json'),JSON.stringify(profileRecord,null,2));
 const outDir=path.join(root,'dist',`punchies-${profile}-${portal}`);
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--outDir',outDir,'--emptyOutDir','--base','./'],{stdio:'inherit',env:{...process.env,PUNCHIES_ASSET_PROFILE:profile,PUNCHIES_PUBLIC_DIR:publicDir,PORTAL:portal}});

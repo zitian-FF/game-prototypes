@@ -451,8 +451,8 @@
   "ranked.connecting": "Connecting to your opponent…",
   "ranked.search_ended": "Search ended. Please try again.",
   "ranked.unavailable": "Matchmaking unavailable. Please try again.",
-  "ui.match_format": "Match format",
-  "ui.bot_difficulty": "Bot difficulty",
+  "ui.match_format": "Format",
+  "ui.bot_difficulty": "Difficulty",
   "ui.navigate": "Navigate",
   "ui.confirm": "Confirm",
   "ui.adjust_touch_control": "Move the control. Confirm or go back to finish.",
@@ -476,5 +476,7 @@
   "survival.no_xp": "Zombie Survival does not award progression XP.",
   "common.super": "SUPER",
   "super.rising_upper": "Rising Upper",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "STAGING · repeat pulls",
+  "super.rising_upper_description": "Breaks normal guard. Dodges and Perfect Guard stop it."
 }
