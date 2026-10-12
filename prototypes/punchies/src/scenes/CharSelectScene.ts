@@ -1,3 +1,5 @@
+import {rosterKey,PAD_ROSTER,type RosterCommand,type KeyboardProfile} from '../input/rosterMenu';
+import {setRosterHintContext} from '../ui/controlHint';
 import {rosterScores,statFill,type RosterStat} from '../sim/rosterStats';
 import {inputModality,installInputModality,pollInputModality} from '../input/modality';
 import {loadLayouts} from '../input/layouts';
@@ -131,6 +133,7 @@ export class CharSelectScene extends Phaser.Scene {
       action: () => this.fightButton(), back: () => this.back(-1, true),
       level: (d) => this.cycleLevel(d),
     });
+    setRosterHintContext(this,{local:data.mode==='localvs',profile:'kb1',owned:this.sides.flatMap(side=>side.src==='kb1'||side.src==='kb2'?[side.src]:[]) as KeyboardProfile[]});
     this.bindKeys();
     this.events.once('shutdown', () => {
       if (data.mode === 'online' && !this.handedOff) {
@@ -163,38 +166,27 @@ export class CharSelectScene extends Phaser.Scene {
 
   // Which side a key belongs to: in Local VS each keyboard half drives its
   // own side; otherwise every key drives the active side.
-  private keySide(code: string): number {
-    if (this.data0.mode !== 'localvs') return this.active;
-    const kb2 = Object.values(loadLayouts().kb2).some(keys=>keys.includes(code)) || code === 'Enter' || code === 'Backspace' || code === 'F6' || code === 'F7';
-    const want: InputSource = kb2 ? 'kb2' : 'kb1';
-    const s = this.sides.findIndex((x) => x.src === want);
-    // A side on touch / a pad still takes the other keyboard half's keys
-    // only if no side owns that half.
-    return s;
+  private onKey(e: KeyboardEvent): void {
+    if(!this.scene.isActive()||this.input.enabled===false||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||e.repeat)return;
+    const target=e.target as HTMLElement|null;if(target?.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(target?.tagName??''))return;
+    const local=this.data0.mode==='localvs',layouts=loadLayouts();
+    const profile:KeyboardProfile=inputModality.source==='kb2'?'kb2':'kb1';
+    const owned=this.sides.flatMap(side=>side.src==='kb1'||side.src==='kb2'?[side.src]:[]) as KeyboardProfile[];
+    const resolved=rosterKey(e.code,layouts,local,profile,owned);if(!resolved)return;
+    const side=local?this.sides.findIndex(x=>x.src===resolved.profile):this.active;if(side<0||!this.editable(side))return;
+    e.preventDefault?.();setRosterHintContext(this,{local,profile:resolved.profile,owned});this.menuCommand(side,resolved.command);
   }
 
-  private onKey(e: KeyboardEvent): void {
-    if(!this.scene.isActive()||this.input.enabled===false||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
-    const target=e.target as HTMLElement|null;if(target?.isContentEditable||['INPUT','TEXTAREA'].includes(target?.tagName??''))return;
-    if(e.repeat&&!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))return;
-    const c = e.code;
-    // Format belongs to the shared match, independent of keyboard half.
-    const mappings=loadLayouts(),movementBound=[mappings.kb1,mappings.kb2].some(keys=>(['up','down','left','right'] as const).some(a=>keys[a].includes(c)));
-    if(c==='F1'||(c==='KeyF'&&!movementBound)) { e.preventDefault?.();this.cycleFormat(); return; }
-    if(c==='F2'||(c==='KeyQ'&&!movementBound)){e.preventDefault?.();this.cycleLevel(-1);return;}if(c==='F3'||(c==='KeyE'&&!movementBound)){e.preventDefault?.();this.cycleLevel(1);return;}
-    if(['F4','F5','F6','F7'].includes(c) && !movementBound){
-      const side=this.data0.mode==='localvs'?this.sides.findIndex(x=>x.src===(c==='F6'||c==='F7'?'kb2':'kb1')):this.active;
-      if(side>=0){e.preventDefault?.();this.cycleSkin(side,c==='F4'||c==='F6'?-1:1);}return;
-    }
-    const s = this.keySide(c);
-    if (s < 0) return;
-    const source=this.sides[s].src;const keys=loadLayouts()[source==='kb2'||(source==='any'&&inputModality.source==='kb2')?'kb2':'kb1'];
-    if (c === 'ArrowUp' || keys.up.includes(c)) this.moveVertical(s, -1);
-    else if (c === 'ArrowDown' || keys.down.includes(c)) this.moveVertical(s, 1);
-    else if (c === 'ArrowLeft' || keys.left.includes(c)) this.move(s, -1);
-    else if (c === 'ArrowRight' || keys.right.includes(c)) this.move(s, 1);
-    else if (['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'Numpad1'].includes(c)) this.confirm(s);
-    else if (['Escape', 'Backspace', 'Numpad0'].includes(c)) this.back(s);
+  private menuCommand(s:number,command:RosterCommand):void {
+    if(!this.editable(s))return;
+    if(command==='back'){this.back(s);return;}
+    if(command==='confirm'){this.confirm(s);return;}
+    if(this.sides[s].locked)return;
+    if(command==='format'){this.cycleFormat();return;}
+    if(command==='difficultyPrev'||command==='difficultyNext'){this.cycleLevel(command==='difficultyPrev'?-1:1);return;}
+    if(command==='skinPrev'||command==='skinNext'){this.cycleSkin(s,command==='skinPrev'?-1:1);return;}
+    if(command==='up'||command==='down')this.moveVertical(s,command==='up'?-1:1);
+    else this.move(s,command==='left'?-1:1);
   }
 
   private pollPads(): void {
@@ -216,13 +208,10 @@ export class CharSelectScene extends Phaser.Scene {
       const edge = (n: number) => {
         return !!edges[n];
       };
-      if (edge(3)) this.cycleFormat();
-      if (edge(12)) this.moveVertical(s,-1);
-      if (edge(13)) this.moveVertical(s,1);
-      if(edge(4))this.cycleLevel(-1);if(edge(5))this.cycleLevel(1);
-      if(edge(6))this.cycleSkin(s,-1);if(edge(7))this.cycleSkin(s,1);
-      if (edge(14)) this.move(s, -1);
-      if (edge(15)) this.move(s, 1);
+      // One edge is one command; Back/Confirm win over contextual buttons.
+      const commandOrder=[1,0,6,7,5,2,3,12,13,14,15];
+      const button=commandOrder.find(edge);
+      if(button!==undefined){this.menuCommand(s,PAD_ROSTER[button]);return;}
       const ax = p.axes[0] ?? 0;
       const ay = p.axes[1] ?? 0;
       if (Math.abs(ax) > 0.6 && this.time.now - this.stickAt[i] > 220) {
@@ -232,8 +221,7 @@ export class CharSelectScene extends Phaser.Scene {
         this.stickAt[i]=this.time.now;
         this.moveVertical(s,Math.sign(ay));
       }
-      if (edge(1)) {this.back(s);return;}
-      if (edge(0) || edge(9)) this.confirm(s);
+
     });
   }
 
@@ -510,5 +498,6 @@ export class CharSelectScene extends Phaser.Scene {
     });
   }
 }
+
 
 
