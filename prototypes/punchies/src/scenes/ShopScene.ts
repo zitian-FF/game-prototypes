@@ -100,7 +100,7 @@ export class ShopScene extends Phaser.Scene {
     const tail=this.add.graphics().fillStyle(color).fillTriangle(x+140,342,x+168,342,x+154,357);this.root.add(tail);this.panel(x,70,w,277,color);
     this.root.add(this.add.rectangle(x+w/2,208,w,277,0,0).setInteractive());
     this.text(x+15,82,kind==='skins'?t('shop.today_s_skins'):t('shop.today_s_fighters'),16,'#fff3da',w-110);this.button(x+w-84,79,70,t('shop.close'),()=>{this.popupKind=null;this.render();},true,300,'blue');
-    controlHint(this,x+w-52,330,302,'back',this.root,90);
+    controlHint(this,x+w-52,336,302,'back',this.root,90);
     const rewards=chestRewards(this.state,kind);
     rewards.forEach(({item,probability},i)=>{
       const y=120+i*62;this.panel(x+12,y,w-24,57,0x102034);
@@ -115,8 +115,11 @@ export class ShopScene extends Phaser.Scene {
       this.text(x+w-24,y+35,`· ${Math.round(probability*100)}%${this.state.owned.includes(item.id)?t('shop.owned'):''}`,11,'#dbe9fa',62).setOrigin(1,0);
     });
     if(!rewards.length)this.text(x+162,155,t('common.collection_complete'),14).setOrigin(.5);
-    this.text(x+16,311,t('shop.equal_odds_across_remaining_rewards'),10,'#a8c1d8',202).setWordWrapWidth(202,true);
-    this.text(x+16,330,STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.each_chest_can_be_opened'),9,'#a8c1d8',198);
+    // Two distinct single-line bands; never wrap the first into the context row.
+    const oddsCaption=this.text(x+16,311,t('shop.equal_odds_across_remaining_rewards'),10,'#a8c1d8');
+    oddsCaption.setScale(Math.min(1,(w-32)/Math.max(1,oddsCaption.width),14/Math.max(1,oddsCaption.height)));
+    const context=this.text(x+16,330,STAGING_BUILD?t('shop.staging_repeat_pulls'):t('shop.each_chest_can_be_opened'),9,'#a8c1d8');
+    context.setScale(Math.min(1,198/Math.max(1,context.width),14/Math.max(1,context.height)));
   }
   private render(){
     this.rays=[];this.root?.destroy(true);const scale=Math.min(VIEW.width/844,VIEW.height/390);this.root=this.add.container(VIEW.cx-422*scale,VIEW.cy-195*scale).setScale(scale).setDepth(100);
