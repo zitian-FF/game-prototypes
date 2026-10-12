@@ -4,7 +4,7 @@ import {inputModality} from '../input/modality';
 import {inputGlyph,keyLabel,padLabel} from './inputGlyph';
 import {loadLayouts} from '../input/layouts';
 /** Passive hints use existing keycaps/Xbox glyphs. Caller owns row visibility. */
-export function controlHint(scene:Phaser.Scene,x:number,y:number,depth:number,action:'back'|'format'|'difficulty'|'navigate'|'confirm',parent?:Phaser.GameObjects.Container){
+export function controlHint(scene:Phaser.Scene,x:number,y:number,depth:number,action:'back'|'format'|'difficulty'|'navigate'|'confirm',parent?:Phaser.GameObjects.Container,maxWidth=140){
  const row=scene.add.container(x,y).setDepth(depth);parent?.add(row);let previous='';
  const update=()=>{
   if(!row.active)return;
@@ -18,7 +18,7 @@ export function controlHint(scene:Phaser.Scene,x:number,y:number,depth:number,ac
   const glyphWidth=widths.reduce((sum,w)=>sum+w,0)+Math.max(0,widths.length-1)*4;
   const total=glyphWidth+(widths.length?8:0)+text.width;let cursor=-total/2;
   if(kind!=='touch')keys.forEach((key,i)=>{row.add(inputGlyph(scene,cursor+widths[i]/2,0,key,depth).setScale(.75));cursor+=widths[i]+4;});
-  text.setX(-total/2+glyphWidth+(widths.length?8:0));row.setScale(Math.min(1,140/Math.max(1,total)));
+  text.setX(-total/2+glyphWidth+(widths.length?8:0));row.setScale(Math.min(1,maxWidth/Math.max(1,total)));
  };
  scene.events.on('update',update);row.once('destroy',()=>scene.events.off('update',update));update();return row;
 }
