@@ -17,11 +17,16 @@ function catalog(file, require = () => { throw new Error(`Unexpected catalog imp
 }
 const { CHARACTER_IDS } = catalog('prototypes/punchies/src/sim/character.ts', () => ({}));
 const palettes = catalog('prototypes/punchies/src/render/paletteCatalog.ts');
+const buildFlags = catalog('prototypes/punchies/src/buildFlags.ts');
 const { SHOP_ITEMS } = catalog('prototypes/punchies/src/shop/draft.ts', id => {
+  if (id === '../buildFlags') return buildFlags;
   if (id === '../render/paletteCatalog') return palettes;
   if (id === './draft-config.json') return { default: JSON.parse(fs.readFileSync('prototypes/punchies/src/shop/draft-config.json', 'utf8')) };
   if (id === '../portal/store') return {};
-  if (id === '../portal/keys') return catalog('prototypes/punchies/src/portal/keys.ts');
+  if (id === '../portal/keys') return catalog('prototypes/punchies/src/portal/keys.ts', dependency => {
+    if (dependency === '../buildFlags') return buildFlags;
+    throw new Error(`Unexpected portal keys import: ${dependency}`);
+  });
   throw new Error(`Unexpected shop catalog import: ${id}`);
 });
 const uniqueSkins = SHOP_ITEMS.filter(item => item.skinType === 'unique' && !item.artPending);
