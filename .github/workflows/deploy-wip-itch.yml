@@ -193,6 +193,7 @@ jobs:
           node scripts/test-punchies-boss-hud.mjs
           node scripts/test-punchies-survival-cjk-wrap.mjs
           node scripts/test-punchies-profile-avatar.mjs
+          node scripts/test-punchies-title-profile-entry.mjs
           node scripts/test-punchies-profile-avatar-art.mjs
           node scripts/test-punchies-profile-zombie-ui.mjs
           node scripts/test-punchies-ranked-lobby.mjs

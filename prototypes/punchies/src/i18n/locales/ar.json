@@ -427,7 +427,6 @@
   "profile.level": "المستوى {level}",
   "profile.level_up": "ارتقِ بمستواك · {level}",
   "profile.max": "المستوى الأقصى",
-  "profile.menu": "الملف الشخصي · المستوى {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches} مباراة · {wins} فوز",
   "profile.result_xp": "+{xp} XP · المستوى {level}",
