@@ -254,7 +254,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
           const applied=Math.max(0,Math.min(beforeHp,beforeHp-defender.health));
           if(hit.attacker===0)r.damageDealt+=applied;else r.damageReceived+=applied;
         }
-        if (hit.attacker === 0) r.swingHits.push(e.id);
+        if (hit.attacker === 0) {if(hit.sourcePunch&&r.player.punch!==hit.sourcePunch)r.swingHits=[];else if(!r.swingHits.includes(e.id))r.swingHits.push(e.id);}
       }
       r.hitstop = Math.max(r.hitstop, s.hitstop); wrap(events, e.id, out);
     });
@@ -269,6 +269,11 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       r.damageReceived+=Math.max(0,Math.min(playerHp,playerHp-r.player.health));
       r.hitstop=Math.max(r.hitstop,s.hitstop);wrap(events,enemy.id,out);
     }
+    const chained=r.player.punch,chainEvents:SimEvent[]=[];
+    combat.flushBuffaloFollowup(primary,0,chainEvents);
+    if(chained!==r.player.punch)r.swingHits=[];
+    wrap(chainEvents,target?.id??'',out);
+    for(const enemy of r.enemies){const events:SimEvent[]=[];combat.flushBuffaloFollowup(pair(r,enemy.fighter),1,events);wrap(events,enemy.id,out);}
     const timerEvents: SimEvent[] = [];
     combat.advanceTimers(primary, 0, input, timerEvents); wrap(timerEvents, target?.id ?? '', out);
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });

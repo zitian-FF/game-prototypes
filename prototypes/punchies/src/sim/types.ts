@@ -3,7 +3,7 @@
 // same next state, which is what the rollback netcode relies on.
 
 export type PunchType = 'jab' | 'cross' | 'hook' | 'uppercut';
-export type SuperId='rising-upper'|'code-x';
+export type SuperId='rising-upper'|'code-x'|'buffalo-hook';
 export interface CodeXTrack {startX:number;startY:number;endX:number;endY:number;startFrame:number}
 export interface CodeXState {activationId:number;frame:number;endFrame:number;targetId:string;targetX:number;targetY:number;tracks:[CodeXTrack,CodeXTrack];buffed:boolean;crossFatigueMult:number;hitIds:[string[],string[]]}
 
@@ -40,6 +40,7 @@ export const NEUTRAL_INPUT: FrameInput = {
 export interface PunchState {
   codeXActivation?:{fx:number;fy:number};
   shadowSuper?:boolean;
+  baseDamage?:number;buffaloActivation?:boolean;buffaloUpper?:boolean;buffaloConfirm?:{targetId:string;x:number;y:number};
   type: PunchType;
   frame: number;
   startup: number;
@@ -136,6 +137,7 @@ export type KoStyle = 'drop' | 'fly';
 export type Stance = 'dodging' | 'perfectGuard' | 'guard' | 'normal' | 'vulnerable';
 
 export type SimEvent =
+  | {kind:'buffaloFollowup';attacker:number;targetId:string;x:number;y:number}
   | {kind:'codeXLaunched';attacker:number;activationId:number;endFrame:number;targetId:string;targetX:number;targetY:number;tracks:[CodeXTrack,CodeXTrack]}
   | {kind:'codeXFinished';attacker:number;activationId:number}
   | {kind:'codeXContact';attacker:number;activationId:number;shadow:0|1;victimId:string;x:number;y:number;outcome:'hit'|'dodged'}

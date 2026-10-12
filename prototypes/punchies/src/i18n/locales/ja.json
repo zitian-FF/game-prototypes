@@ -478,5 +478,7 @@
   "ui.skins": "スキン",
   "super.code_x": "コードX",
   "super.code_x_description": "ジャブ命中で影が2回クロス。影は通常・パーフェクトガードを突破。回避で避けよう。",
+  "super.buffalo_hook": "バッファローフック",
+  "super.buffalo_hook_description": "ガードされないフック命中でアッパーへ。アッパーは通常・パーフェクトガードを突破。回避で避けよう。",
   "online.rules_mismatch": "ゲームのルールが一致しません。両方のゲームを更新して、もう一度お試しください。"
 }
