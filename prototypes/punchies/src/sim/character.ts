@@ -18,7 +18,7 @@ export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style:
   nadia: { name: 'Nadia', nick: 'Rising Star', style: 'Fast, light Cross pressure with extra fatigue capacity.' },
   captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst fighter: quick recovery, costly pressure and lower durability.' },
   longan: { name: 'Longan', nick: 'Still Waters', style: 'Endurance specialist: efficient pressure and a weak one-star uppercut.' },
-  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: heavy Cross and devastating four-star uppercut, slow recovery.' },
+  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Precision powerhouse: heavy blows, limited jab endurance, punishing mistakes.' },
   dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Long-range outboxer: extended jab and Cross, slower follow-through.' },
   tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst attacker: heavy Cross and hooks, fragile with low stamina.' },
   marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder: stronger Cross, balanced speed and endurance.' },
