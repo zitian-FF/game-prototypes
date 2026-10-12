@@ -16,12 +16,20 @@ total; real network limits to be checked later).
 ## Core loop
 - Portrait, phone first. The player boxer (Marco) stands fixed at the bottom
   centre, facing up. 3 HP.
-- Enemies spawn off the top on a fixed timer (gap 1.5 to 2.0 s, `tune.json`)
-  and walk down the lane toward the player. They may overlap on screen: only
-  the front-most (closest) enemy can be hit or attacks the player, the others
-  queue behind it. Enemies use the Bruno art set, rotated to face down toward
-  the player. `guard` is the enemy wind-up pose, `hit_light` is the player
-  taking a punch, `ko` is the knocked off enemy.
+- A fixed number of zombies (`run.zombieCount`, default 12) spawn in every run,
+  evenly spaced from `run.firstSpawnSec` to `run.lastSpawnSec` (default 0.5 s
+  to 22 s) so even the last one can reach Marco and be dealt with before the
+  30 s end. They enter from off-screen at several positions (`enemy.lanes`
+  entry angles across the top and sides, up to `enemy.maxBearingDeg`) in a set
+  shuffled order, so every run is identical and fair, and walk a straight line
+  to Marco. They may overlap on screen: only the front-most (closest) one can
+  be hit or attacks, the others queue behind it. Marco stays at the bottom
+  centre and turns to face the front zombie. Zombies face Marco. Wind-up is the
+  right fist pulling back, the player taking a punch is a flinch and red
+  flash.
+- A defeated zombie flies off along the direction of the final blow (away from
+  Marco along its approach line), makes one full 360 degree spin, fades out and
+  is removed (`enemy.knockFrames`, `enemy.knockFadeFrames`).
 - Only two on-screen buttons: JAB and CROSS (bottom of the screen, thumb
   reachable). Keyboard keys are a bonus (J jab, K cross), still through the
   intent layer.
@@ -67,7 +75,10 @@ early 3, sweet 6, recovery 20, whiff recovery 12; 60 Hz frames).
 Shown when the 30 s timer ends or HP hits 0: final score, a short result line,
 and one CTA button. The CTA does nothing yet: a single clearly named
 placeholder (`onCtaPressed` in one file, marked `TODO: CTA destination`). The
-destination is decided later. No retry button unless the user asks.
+destination is decided later. The testing build (itch) also has a RETRY button
+that starts a fresh run; it is a build switch (`PLAYABLE_RETRY`, on by default,
+`PLAYABLE_RETRY=0` for an ad build) and `?retry=0` hides it for a preview.
+The ad build has no retry.
 
 ## HUD
 Score at the top of the screen, HP (3 pips) and a thin time bar or counter.
@@ -82,20 +93,28 @@ No version stamp (see Exceptions).
   converts to WebP: `marco_{idle,walk,jab,cross,guard,hit_light,ko}` and
   `bruno_{...}` (or `dummy_{...}`). No new R2 object is required unless the
   user prefers one.
-- Sprite art confirmed by the user (2026-10-08). R2 is reachable from the
-  build environment (`punchies_assets.zip`, about 25 MB), so the trimming
-  script can run in CI and locally.
-- Frame animations from the packed atlas, not the main game's code-drawn
-  puppet rig (it needs loose part images and 500 lines of code). The hit flash
-  idea (short white or red strobe on the struck fighter) is copied in small
-  form.
+- Art refresh (2026-10-11): the Punchies art zip in R2 was trimmed and the main
+  game now draws boxers as a puppet rig from loose parts (head, torso, glove,
+  boot; arms and legs drawn in code), so the old composited frame animations
+  were dated. The playable builds a small copy of that rig (`src/view/Rig.ts`,
+  own tune values in `tune.json`) using Marco for the player and the zombie
+  parts for enemies. Left glove and boot are the right ones flipped, as in the
+  art's `part-mirrors.json`.
+- Scene art: the gym floor as the backdrop (middle slice of the landscape
+  image, no boxing ring, ropes or mat, per the user 2026-10-12), glove icons on
+  the buttons and as HP, and the Punchies logo on the end screen. Hit effects
+  (starburst, flash, popups) are drawn in code.
+- `scripts/prepare-art.mjs` copies only those pieces from the fetched zip,
+  byte for byte (no resizing or re-encoding, as `prototypes/punchies/art/
+  PRODUCTION_STANDARD.md` asks for prepared art), about 200 KB. Without art the
+  same rig runs on generated coloured placeholder shapes.
 - devicePixelRatio sharpness per CLAUDE.md (capped buffer scale, camera zoom,
   Text `resolution`).
 - Keep dependencies to what the stack already has (Phaser 3, Tweakpane for the
   debug panel). Report the built size in `BUILD_STATUS.md`.
 
 ## Tuning and debug
-All feel values live in `tune.json` (spawn gap, enemy walk speed, attack
+All feel values live in `tune.json` (zombie count and spawn window, enemy walk speed, attack
 distance, wind-up frames, exit speed, run length, HP, punch timings, bands,
 points). `tune.meta.json` describes ranges for the Tweakpane panel. The panel
 is hidden unless the page is opened with `?debug=1` (remembered per browser,
@@ -129,7 +148,7 @@ buttons are the primary binding.
 ## Out of scope (binding)
 Audio, menus, tutorial, hint hand, shop, netcode, character select, settings,
 multiple levels, powerups, guard or dodge, hooks and uppercuts, progression,
-retry flow, analytics, ad network SDK wiring, single file HTML inlining
+retry flow (except the testing-build RETRY button above), analytics, ad network SDK wiring, single file HTML inlining
 (later), deployment.
 
 ## Decisions (2026-10-08)
@@ -141,3 +160,10 @@ retry flow, analytics, ad network SDK wiring, single file HTML inlining
 3. Cross head band widened to 105 to 117.
 4. Enemy is Bruno. Poses as listed above.
 5. Art: sprites, trimmed from the existing `punchies_assets.zip`.
+6. Art refresh (2026-10-11, user request): puppet-rig fighters from the new
+   loose parts, zombies as enemies, new scene art. 2026-10-12: boxing ring
+   removed, gym floor only.
+7. 2026-10-12 (user request): fixed zombie count on an even schedule from
+   several off-screen entry positions, defeated zombies fly along the blow
+   direction with one 360 spin then fade, RETRY button in the testing build. Supersedes the Bruno and
+   frame animation decisions above.

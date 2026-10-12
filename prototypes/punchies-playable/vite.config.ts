@@ -9,12 +9,15 @@ import { fileURLToPath } from 'node:url';
 // Build: npm run build:punchies-playable
 const here = path.dirname(fileURLToPath(import.meta.url));
 const hasArt = fs.existsSync(path.join(here, 'public/art/index.json'));
+// The end screen has a RETRY button in the testing build (itch). A future ad build
+// sets PLAYABLE_RETRY=0 to leave it out.
+const retry = process.env.PLAYABLE_RETRY !== '0';
 
 export default defineConfig({
   root: path.join(here, 'app'),
   base: './',
   publicDir: path.join(here, 'public'),
-  define: { __HAS_ART__: JSON.stringify(hasArt) },
+  define: { __HAS_ART__: JSON.stringify(hasArt), __RETRY__: JSON.stringify(retry) },
   server: { fs: { allow: [here, path.resolve(here, '../..')] } },
   build: { outDir: path.join(here, 'dist'), emptyOutDir: true, chunkSizeWarningLimit: 2000 },
 });
