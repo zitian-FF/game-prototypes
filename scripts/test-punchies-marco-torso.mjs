@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import {build} from 'esbuild';import sharp from 'sharp';
 const b=await build({stdin:{contents:"export * from './prototypes/punchies/src/render/cosmeticTorso';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false});const {cosmeticTorsoScale,cosmeticShoulderScale}=await import('data:text/javascript;base64,'+Buffer.from(b.outputFiles[0].text).toString('base64'));
 for(const skin of ['default','skin-marco-cyan','skin-marco-night','skin-marco-unique','skin-marco-mcclassic'])assert.equal(cosmeticTorsoScale('marco',skin),.88,'same approved size budget across base/palette/unique');assert.equal(cosmeticShoulderScale('marco'),1,'Marco root stays fixed');
-const {data,info}=await sharp('C:/Users/Zitian/Documents/Codex/2026-10-09/punchies-optimiser/work/game-prototypes/public/prototypes/punchies/assets/loose/part_marco_torso.webp').ensureAlpha().raw().toBuffer({resolveWithObject:true}),scale=35.2/info.height;
+const {data,info}=await sharp('public/prototypes/punchies/assets/loose/part_marco_torso.webp').ensureAlpha().raw().toBuffer({resolveWithObject:true}),scale=35.2/info.height;
 for(const snap of [0,1.5,2.5])for(const side of [-1,1]){const x=Math.round(info.width/2+(1+snap)/scale),y=Math.round(info.height/2+13.5*side/scale);assert(data[(y*info.width+x)*4+3]>=128,'unchanged root stays under opaque shoulder cap');}
 console.log('PASS Marco base/palette/unique approved35.2px torso budget, unchanged shoulder roots retain actual alpha overlap; no head/limb/hitbox changes');
