@@ -21,7 +21,7 @@ export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style:
   tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: heavy Cross and devastating four-star uppercut, slow recovery.' },
   dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Long-range outboxer: extended jab and Cross, slower follow-through.' },
   tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst attacker: heavy Cross and hooks, fragile with low stamina.' },
-  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder: stronger Cross, balanced speed and endurance.' },
+  marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady fundamentals: reliable timing, modest power, limited sustained pressure.' },
   mia: { name: 'Mia Tanaka', nick: 'Flicker', style: 'Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.' },
   bruno: { name: 'Bruno Kowalski', nick: 'Brick', style: 'Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.' },
 };
