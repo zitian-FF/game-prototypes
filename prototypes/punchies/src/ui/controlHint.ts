@@ -9,7 +9,7 @@ export function controlHint(scene:Phaser.Scene,x:number,y:number,depth:number,ac
  const update=()=>{
   if(!row.active)return;
   const kind=inputModality.kind,bindings=loadLayouts()[inputModality.source==='kb2'?'kb2':'kb1'];
-  const label=t(action==='back'?'common.back':action==='format'?'ui.match_format':action==='difficulty'?'ui.bot_difficulty':action==='navigate'?'ui.navigate':'ui.confirm');
+  const label=action==='back'?t('common.back'):action==='format'?t('ui.match_format'):action==='difficulty'?t('ui.bot_difficulty'):action==='navigate'?t('ui.navigate'):t('ui.confirm');
   const signature=kind+label+JSON.stringify(bindings);if(signature===previous)return;previous=signature;row.removeAll(true);
   const keys:(string|number)[]=action==='navigate'?(kind==='gamepad'?[10]:(['up','left','down','right'] as const).map(a=>bindings[a][0])):action==='confirm'?[kind==='gamepad'?0:'Enter']:action==='back'?[kind==='gamepad'?1:'Escape']:action==='format'?[kind==='gamepad'?3:'F1']:kind==='gamepad'?[4,5]:['F2','F3'];
   const value=kind==='touch'?t('tutorial.tap_button',{button:label}):label;
