@@ -23,6 +23,34 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal){
   const manifestPath=path.join(assets,'manifest.json');
   const manifest=JSON.parse(fs.readFileSync(manifestPath)).filter(entry=>!entry.path.startsWith('loose/materialmask_tee.'));
   manifest.push({path:metadata.target,hash:metadata.sha256},{path:'loose/materialmask_tee.json',hash:hash(preparedMetadata)});
+  const kaiRoot=path.join(patchRoot,'kai'),kaiManifestPath=path.join(kaiRoot,'manifest.json');
+  let kai;
+  if(fs.existsSync(kaiManifestPath)){
+    const sourceManifest=fs.readFileSync(kaiManifestPath),payload=JSON.parse(sourceManifest);
+    const expected=['kai_emblems.webp','part_kai_boot_right.webp','part_kai_glove_right.webp','part_kai_head.webp','part_kai_torso.webp','portrait_kai.webp'];
+    if(payload.character!=='kai'||!Array.isArray(payload.assets)||payload.assets.length!==expected.length||new Set(payload.assets.map(file=>file.name)).size!==expected.length||payload.assets.some(file=>!expected.includes(file.name)))throw Error('Kai stage payload must contain exactly the reviewed canonical files');
+    const files=[];
+    for(const file of payload.assets){
+      const data=fs.readFileSync(path.join(kaiRoot,file.name));
+      if(data.length!==file.bytes||hash(data)!==file.sha256)throw Error(`Kai stage source hash mismatch: ${file.name}`);
+      const image=await sharp(data).metadata();
+      if(!image.hasAlpha||image.width!==file.dimensions?.[0]||image.height!==file.dimensions?.[1])throw Error(`Kai geometry/alpha mismatch: ${file.name}`);
+      if(file.name==='portrait_kai.webp'&&Math.max(image.width,image.height)>768)throw Error('Kai compact portrait exceeds reviewed 768px limit');
+      if(file.name==='kai_emblems.webp'&&(image.width!==256||image.height!==64))throw Error('Kai badge atlas registration changed');
+      const target=`loose/${file.name}`;
+      fs.copyFileSync(path.join(kaiRoot,file.name),path.join(assets,target));
+      const old=manifest.findIndex(entry=>entry.path===target);if(old>=0)manifest.splice(old,1);
+      manifest.push({path:target,hash:file.sha256});files.push({path:target,bytes:data.length,sha256:file.sha256});
+    }
+    const mirrorPath=path.join(assets,'loose/part-mirrors.json'),mirrors=JSON.parse(fs.readFileSync(mirrorPath));
+    // Canonical authored right parts supply the opposite hand/boot without duplicate bitmaps.
+    mirrors.part_kai_glove_left={source:'part_kai_glove_right',axis:'y'};
+    mirrors.part_kai_boot_left={source:'part_kai_boot_right',axis:'y'};
+    const mirrorBytes=Buffer.from(JSON.stringify(mirrors));fs.writeFileSync(mirrorPath,mirrorBytes);
+    const mirrorEntry=manifest.find(entry=>entry.path==='loose/part-mirrors.json');
+    if(!mirrorEntry)throw Error('Base art manifest lacks mirror aliases');mirrorEntry.hash=hash(mirrorBytes);
+    kai={sourceManifestSha256:hash(sourceManifest),files,totalBytes:files.reduce((sum,file)=>sum+file.bytes,0)};
+  }
   manifest.sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0);
   const manifestBytes=Buffer.from(JSON.stringify(manifest));fs.writeFileSync(manifestPath,manifestBytes);
   // A deterministic stored ZIP records the exact stage payload without changing R2.
@@ -36,5 +64,5 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal){
   const archive=zip.toBuffer(),archiveSha256=hash(archive),archivePath=path.join(cache,`tee-stage-art-${archiveSha256}.zip`);
   fs.writeFileSync(archivePath,archive);
   if(!new AdmZip(archive).getEntry(metadata.target).getData().equals(bytes))throw Error('Staging ZIP altered mask bytes');
-  return {scope:'tee-indexed-staging-pilot',baseArtSha256,archiveSha256,archiveBytes:archive.length,maskSha256:metadata.sha256,maskBytes:bytes.length,manifestSha256:hash(manifestBytes),preparedBase};
+  return {scope:kai?'tee-indexed-and-kai-staging-preview':'tee-indexed-staging-pilot',baseArtSha256,archiveSha256,archiveBytes:archive.length,maskSha256:metadata.sha256,maskBytes:bytes.length,manifestSha256:hash(manifestBytes),preparedBase,...(kai?{kai}: {})};
 }
