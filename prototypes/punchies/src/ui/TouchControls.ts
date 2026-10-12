@@ -32,7 +32,7 @@ export class TouchControls {
   private resolved = resolveTouch(this.layout, VIEW);
   private get main() { return this.resolved.main; }
   private get arcs(): ArcButton[] {
-    const labels = { hook: t('common.hook'), guard: t('common.guard'), dodge: t('common.dodge'), uppercut: t('common.upper') };
+    const labels = { hook: t('common.hook'), guard: t('common.guard'), dodge: t('common.dodge'), uppercut: t('common.super') };
     return (['hook', 'guard', 'dodge', 'uppercut'] as const).map(id => ({ id, ...this.resolved[id], label: labels[id] }));
   }
   private get hint() { return this.resolved.stick; }
