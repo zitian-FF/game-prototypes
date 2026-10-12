@@ -18,7 +18,12 @@ function catalog(file, require = () => { throw new Error(`Unexpected catalog imp
 const { CHARACTER_IDS } = catalog('prototypes/punchies/src/sim/character.ts', () => ({}));
 const palettes = catalog('prototypes/punchies/src/render/paletteCatalog.ts');
 const buildFlags = catalog('prototypes/punchies/src/buildFlags.ts');
+const stagingCurrency = catalog('prototypes/punchies/src/shop/stagingCurrency.ts', id => {
+  if (id === '../buildFlags') return buildFlags;
+  throw new Error(`Unexpected staging currency import: ${id}`);
+});
 const { SHOP_ITEMS } = catalog('prototypes/punchies/src/shop/draft.ts', id => {
+  if (id === './stagingCurrency') return stagingCurrency;
   if (id === '../buildFlags') return buildFlags;
   if (id === '../render/paletteCatalog') return palettes;
   if (id === './draft-config.json') return { default: JSON.parse(fs.readFileSync('prototypes/punchies/src/shop/draft-config.json', 'utf8')) };
