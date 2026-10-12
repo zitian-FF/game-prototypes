@@ -1,5 +1,6 @@
 import config from './config.json';
 import { tune, TICK_RATE } from '../sim/tune';
+import {superBalanceConfig} from '../sim/super';
 import { fightCueTiming } from '../sim/fightCue';
 import { CHARACTER_IDS, maxHealth, maxStamina, punchCfg, regenMult } from '../sim/character';
 import { punchFist } from '../sim/fistPath';
@@ -13,7 +14,7 @@ export { default as survivalConfig } from './config.json';
 
 export function survivalBalanceVersion(): string {
   let hash = 2166136261;
-  for (const ch of JSON.stringify([tune, config])) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0;
+  for (const ch of JSON.stringify([tune, config,superBalanceConfig])) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0;
   return `survival-v2-${hash.toString(16)}`;
 }
 function random(r: SurvivalRun): number {

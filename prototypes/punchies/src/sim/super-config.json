@@ -1,0 +1,5 @@
+{
+  "defaultSuper": { "id": "rising-upper", "nameKey": "super.rising_upper", "mechanic": "uppercut" },
+  "referenceStarCost": 3,
+  "referenceStarCosts": { "marco": 3, "mia": 2, "bruno": 3, "tee": 2, "tyke": 4, "dragon": 3, "longan": 1, "captain": 2, "roxy": 3, "nadia": 2 }
+}
