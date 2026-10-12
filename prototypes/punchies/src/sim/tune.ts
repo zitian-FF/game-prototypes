@@ -96,6 +96,7 @@ export function validateTuneJson(json: string): TuneCheck {
         if (!Number.isFinite(v)) return `${at} is not a finite number`;
         if (!r || typeof r.min !== 'number' || typeof r.max !== 'number') return `${at} has no allowed range`;
         if ((at.endsWith('.starRequirement')||at.endsWith('.referenceStarCost')) && !Number.isInteger(v)) return `${at} must be whole stars`;
+        if (at.startsWith('characters.') && at.endsWith('.freeUses') && !Number.isInteger(v)) return `${at} must be whole throws`;
         if (v < r.min || v > r.max) return `${at} is out of range`;
       }
     }
