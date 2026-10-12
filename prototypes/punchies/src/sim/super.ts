@@ -1,5 +1,5 @@
 import config from './super-config.json';
-import {isCharId,punchCfg,uppercutStars} from './character';
+import {charTune,punchCfg,uppercutStars} from './character';
 import type {Fighter,SuperId} from './types';
 export {default as superBalanceConfig} from './super-config.json';
 export interface Super {
@@ -11,7 +11,7 @@ export interface Super {
  * Input/save/tune identifiers remain uppercut for compatibility. */
 export function fighterSuper(fighter:Fighter|string):Super {
  const id=typeof fighter==='string'?fighter:fighter.char;
- const referenceStarCost=isCharId(id)?config.referenceStarCosts[id]:config.referenceStarCost;
+ const referenceStarCost=charTune(id).uppercut.referenceStarCost;
  const starCost=uppercutStars(fighter),legacyPower=punchCfg(fighter,'uppercut').damage;
  return {...config.defaultSuper,id:config.defaultSuper.id as SuperId,nameKey:config.defaultSuper.nameKey as Super['nameKey'],mechanic:'uppercut',
   starCost,referenceStarCost,powerPerStar:legacyPower/referenceStarCost,damageMultiplier:legacyPower*(starCost/referenceStarCost)};
