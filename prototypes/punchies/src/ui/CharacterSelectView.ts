@@ -39,7 +39,7 @@ interface PanelView {
 
  normal:Phaser.GameObjects.Container; portrait:Phaser.GameObjects.Container; image:Phaser.GameObjects.Image;
 
- title:Phaser.GameObjects.Text; archetype:Phaser.GameObjects.Text; upper:Phaser.GameObjects.Text;
+ title:Phaser.GameObjects.Text; archetype:Phaser.GameObjects.Text; upper:Phaser.GameObjects.Text; superDescription:Phaser.GameObjects.Text;
 
  stats:Phaser.GameObjects.Container; fills:Phaser.GameObjects.Graphics; labels:Phaser.GameObjects.Text[]; scores:Phaser.GameObjects.Text[];
 
@@ -277,7 +277,7 @@ export class CharacterSelectView {
 
   const parent=this.content[s],x=s===0?6:640,centre=x+99;
 
-  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,94,7).fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,181,198,155,8);
+  const panel=this.graphics(parent);panel.fillStyle(0x081022,.88).fillRoundedRect(x,103,198,122,7).fillStyle(s===0?0x173b65:0x4e233c,.7).fillRoundedRect(x,225,198,111,8);
 
   const container=()=>{const c=this.scene.add.container();parent.add(c);return c;};
 
@@ -295,7 +295,9 @@ export class CharacterSelectView {
 
   for(let i=0;i<5;i++)scores.push(this.text(stats,x+140,113+i*13,'',8,'#ffffff').setStroke('#050a18',2));
 
-  const upper=this.text(normal,centre,180,'',9,'#ffdf83'),tray=this.scene.add.container();normal.add(tray);
+  const upper=this.text(normal,centre,180,'',9,'#ffdf83');
+  const superDescription=this.text(normal,centre,202,'',9,'#d4dff0').setAlign('center').setWordWrapWidth(184,true);
+  const tray=this.scene.add.container();normal.add(tray);
 
   this.graphics(tray).fillStyle(0x09182b,.95).fillRoundedRect(x,351,198,38,8);
 
@@ -319,7 +321,7 @@ export class CharacterSelectView {
 
   survivalHeading.setScale(Math.min(1,42/survivalHeading.height));survivalBody.setScale(Math.min(1,126/survivalBody.height));
 
-  return {normal,portrait,image,title,archetype,upper,stats,fills,labels,scores,tray,skinName,skinIndex,skinButtons,skinDraws,hidden,hiddenLabel,hiddenStatus,survival,survivalHeading,survivalBody,textureKey:'',statsKey:'',values:[],motion:{progress:1},fillProgress:-1};
+  return {normal,portrait,image,title,archetype,upper,superDescription,stats,fills,labels,scores,tray,skinName,skinIndex,skinButtons,skinDraws,hidden,hiddenLabel,hiddenStatus,survival,survivalHeading,survivalBody,textureKey:'',statsKey:'',values:[],motion:{progress:1},fillProgress:-1};
 
  }
 
@@ -351,7 +353,7 @@ export class CharacterSelectView {
 
     if(!b){const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(this.scene.textures.get(texture).getSourceImage()as HTMLImageElement,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;b={left:image.width,top:image.height,right:0,bottom:0};for(let y=0;y<canvas.height;y++)for(let px=0;px<canvas.width;px++)if(pixels[(y*canvas.width+px)*4+3]>=16){b.left=Math.min(b.left,px);b.top=Math.min(b.top,y);b.right=Math.max(b.right,px+1);b.bottom=Math.max(b.bottom,y+1);}if(b.right<=b.left)b={left:0,top:0,right:image.width,bottom:image.height};this.bounds.set(boundsKey,b);}
 
-    const scale=Math.min((p.dummy?130:110)/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id)),flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;
+    const scale=Math.min((p.dummy?90:82)/(b.bottom-b.top),198/(b.right-b.left))*(p.dummy?1:portraitScaleFactor(p.id)),flip=(s===1)!==(!p.dummy&&p.id==='tyke');image.setScale(scale).setFlipX(flip);image.x-=(flip?-1:1)*((b.left+b.right)/2-image.width/2)*scale;image.y+=(image.height-b.bottom)*scale;
 
    }
 
@@ -369,7 +371,9 @@ export class CharacterSelectView {
 
   const superMove=fighterSuper(p.id);
   ui.upper.setText(!p.dummy&&p.uppercut?t('charselect.super_cost',{name:t('super.rising_upper'),stars:superMove.starCost}):'').setScale(1);
-  ui.upper.setScale(Math.min(1,186/Math.max(1,ui.upper.width),20/Math.max(1,ui.upper.height)));
+  ui.upper.setScale(Math.min(1,186/Math.max(1,ui.upper.width),16/Math.max(1,ui.upper.height)));
+  ui.superDescription.setText(!p.dummy?t('super.rising_upper_description'):'').setScale(1);
+  ui.superDescription.setScale(Math.min(1,184/Math.max(1,ui.superDescription.width),30/Math.max(1,ui.superDescription.height)));
 
   ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,100/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);
 
