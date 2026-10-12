@@ -6,6 +6,7 @@ import { W, H, PIXEL_RATIO, applyCameraPixelRatio } from '../pixelRatio';
 import { Rig, ensureParts, type RigPose } from '../view/Rig';
 import { CTA_LABEL, onCtaPressed } from '../cta';
 import { debugUnlocked, mountDebugPanel } from '../debug';
+import { Sfx, renderSound, renderSoundData, SOUNDS as SOUNDS_FOR_TEST, type SoundName } from '../audio';
 
 const NAVY = 0x101b32;
 const GOLD = 0xffc84a;
@@ -36,6 +37,8 @@ export class PlayScene extends Phaser.Scene {
   private hitStopUntil = 0;
   private endTween: Phaser.Tweens.Tween | null = null;
   private banners = new Set<Phaser.GameObjects.Text>();
+  private sfx = new Sfx();
+  private muteIcon!: Phaser.GameObjects.Graphics;
   retryEnabled = false;
   private keysBound = false;
   paused = false; // test hook: freezes the sim so a frame can be captured
@@ -70,6 +73,8 @@ export class PlayScene extends Phaser.Scene {
     this.startRun();
     if (!this.keysBound) {
       bindKeyboard(this.intents);
+      this.sfx.bindGestures();
+      this.sfx.setMuted(new URLSearchParams(location.search).get('mute') === '1');
       this.keysBound = true;
     }
     if (debugUnlocked()) void mountDebugPanel(() => this.restart());
@@ -84,6 +89,10 @@ export class PlayScene extends Phaser.Scene {
         },
         state: () => this.sim.state,
         restart: () => this.restart(),
+        sfxLog: () => [...this.sfx.log],
+        sfxRender: (n: SoundName) => renderSound(n),
+        sfxSamples: async (n: SoundName) => Array.from(await renderSoundData(n)),
+        sfxNames: () => Object.keys(SOUNDS_FOR_TEST),
         pause: (v: boolean) => { this.paused = v; },
       };
     }
@@ -130,6 +139,7 @@ export class PlayScene extends Phaser.Scene {
         : this.add.rectangle(x, 34, 20, 20, 0xe5453d).setStrokeStyle(2, NAVY);
       this.pips.push(pip.setDepth(50));
     }
+    this.makeMuteButton(24, 66);
     this.add.rectangle(W / 2, 3, W, 6, NAVY).setDepth(49);
     this.timeBar = this.add.rectangle(0, 3, W, 6, GOLD).setOrigin(0, 0.5).setDepth(50);
     // Red vignette on the screen edges, flashed when the player is hit.
@@ -143,6 +153,30 @@ export class PlayScene extends Phaser.Scene {
     // Touch buttons: JAB and CROSS.
     this.makeButton(W * 0.25, H - 52, 160, 84, 'JAB', 0x3a78d0, 'jab', 'icon_jab');
     this.makeButton(W * 0.75, H - 52, 160, 84, 'CROSS', 0xd04a4a, 'cross', 'icon_cross');
+  }
+
+  // Small speaker toggle. Sound is on by default; ?mute=1 starts muted. Not saved between visits.
+  private makeMuteButton(x: number, y: number): void {
+    this.muteIcon = this.add.graphics({ x, y }).setDepth(51);
+    this.drawMute();
+    const zone = this.add.zone(x, y, 44, 36).setInteractive().setDepth(52);
+    zone.on('pointerdown', () => {
+      this.sfx.setMuted(!this.sfx.muted);
+      this.drawMute();
+      if (!this.sfx.muted) this.sfx.play('ui');
+    });
+  }
+
+  private drawMute(): void {
+    const g = this.muteIcon;
+    g.clear();
+    g.fillStyle(NAVY, 0.7).fillRoundedRect(-17, -13, 34, 26, 8);
+    g.fillStyle(0xfff1d1, 1).fillRect(-10, -4, 5, 8).fillTriangle(-5, -4, -5, 4, 1, 9).fillTriangle(-5, -4, 1, -9, 1, 9);
+    if (this.sfx.muted) {
+      g.lineStyle(3, 0xff5a4a, 1).lineBetween(4, -5, 13, 5).lineBetween(13, -5, 4, 5);
+    } else {
+      g.lineStyle(2.5, 0xfff1d1, 1).beginPath().arc(2, 0, 6, -0.9, 0.9).strokePath().beginPath().arc(2, 0, 10, -0.9, 0.9).strokePath();
+    }
   }
 
   private drawButton(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, pressed: boolean): void {
@@ -191,6 +225,7 @@ export class PlayScene extends Phaser.Scene {
     this.acc = 0;
     this.render(performance.now());
     this.banner('DEFEAT THE\nZOMBIES!', '#ffc84a', 34, 1100);
+    this.sfx.play('ready');
   }
 
   private restart(): void {
@@ -245,7 +280,10 @@ export class PlayScene extends Phaser.Scene {
   private onEvent(e: SimEvent): void {
     const now = performance.now();
     const target = (id: number) => this.sim.state.enemies.find((n) => n.id === id);
-    if (e.kind === 'sweet') {
+    if (e.kind === 'punch') {
+      this.sfx.play(e.type === 'jab' ? 'whoosh_jab' : 'whoosh_cross');
+    } else if (e.kind === 'sweet') {
+      this.sfx.play(e.killed ? 'kill' : e.zone === 'head' ? 'hit_head' : 'hit_body');
       const en = target(e.enemy);
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
       this.views.get(e.enemy)?.flash(0xffffff, now, 200);
@@ -255,8 +293,12 @@ export class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(e.killed ? 110 : 70, e.killed ? 0.007 : 0.004);
       if (e.killed) this.hitStopUntil = this.time.now + tune.view.hitStopMs;
       const word = COMBO_WORDS.find(([n]) => n === e.combo);
-      if (word) this.banner(word[1], '#ffc84a', 38, 650);
+      if (word) {
+        this.banner(word[1], '#ffc84a', 38, 650);
+        this.sfx.play(`combo_${Math.min(4, COMBO_WORDS.indexOf(word) + 1)}` as SoundName);
+      }
     } else if (e.kind === 'sour') {
+      this.sfx.play('sour');
       const en = target(e.enemy);
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
       this.views.get(e.enemy)?.flash(0xff8a4a, now, 140);
@@ -266,9 +308,15 @@ export class PlayScene extends Phaser.Scene {
       this.popup(W / 2, tune.view.playerY - 110, 'MISS', '#9aa6c8');
     } else if (e.kind === 'spawn') {
       const n = tune.run.zombieCount;
-      if (e.index === Math.round(n * 0.5)) this.banner('HORDE INCOMING!', '#ff6a5a', 30, 900);
-      else if (e.index === Math.round(n * 0.8)) this.banner('FINAL RUSH!', '#ff6a5a', 36, 900);
+      if (e.index === Math.round(n * 0.5)) {
+        this.banner('HORDE INCOMING!', '#ff6a5a', 30, 900);
+        this.sfx.play('horde');
+      } else if (e.index === Math.round(n * 0.8)) {
+        this.banner('FINAL RUSH!', '#ff6a5a', 36, 900);
+        this.sfx.play('horde');
+      }
     } else if (e.kind === 'playerHit') {
+      this.sfx.play('hurt');
       this.player.flash(0xff6a6a, now, 260, false);
       this.cameras.main.shake(140, 0.012);
       this.hurtEdge.setAlpha(1);
@@ -423,6 +471,7 @@ export class PlayScene extends Phaser.Scene {
     }
     this.banners.clear();
     const s = this.sim.state;
+    this.sfx.play(s.ended === 'dead' ? 'end_lose' : 'end_win');
     const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
       this.overlay.push(o);
       return o;
@@ -453,6 +502,7 @@ export class PlayScene extends Phaser.Scene {
     const zone = add(this.add.zone(W / 2, 450, 270, 100).setInteractive().setDepth(103));
     zone.on('pointerdown', () => {
       draw(true);
+      this.sfx.play('ui');
       onCtaPressed();
     });
     zone.on('pointerup', () => draw(false));
@@ -470,6 +520,7 @@ export class PlayScene extends Phaser.Scene {
       const rz = add(this.add.zone(W / 2, 539, 190, 76).setInteractive().setDepth(103));
       rz.on('pointerdown', () => {
         drawRetry(true);
+        this.sfx.play('ui');
         this.restart();
       });
       rz.on('pointerout', () => drawRetry(false));

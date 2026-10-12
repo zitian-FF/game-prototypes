@@ -37,6 +37,7 @@ export interface Input {
 export type SimEvent =
   | { kind: 'sweet'; zone: 'head' | 'body'; points: number; dmg: number; hp: number; killed: boolean; combo: number; enemy: number; d: number }
   | { kind: 'sour'; dmg: number; hp: number; killed: boolean; enemy: number; d: number }
+  | { kind: 'punch'; type: PunchType }
   | { kind: 'whiff'; type: PunchType }
   | { kind: 'playerHit'; enemy: number }
   | { kind: 'spawn'; enemy: number; ang: number; index: number }
@@ -138,8 +139,10 @@ export function createSim(tune: Tune) {
     kills: 0,
   };
 
+  let started: PunchType | null = null; // reported as a 'punch' event at the end of the step
   const startPunch = (type: PunchType) => {
     s.punch = { type, frame: 0, resolved: false, whiff: false };
+    started = type;
   };
 
   function step(input: Input): SimEvent[] {
@@ -254,6 +257,11 @@ export function createSim(tune: Tune) {
     s.enemies = s.enemies.filter(
       (e) => !((e.state === 'leave' && e.frame >= tune.enemy.leaveFrames) || (e.state === 'knocked' && e.frame >= tune.enemy.knockFrames)),
     );
+
+    if (started) {
+      ev.push({ kind: 'punch', type: started });
+      started = null;
+    }
 
     if (s.hp <= 0) {
       s.ended = 'dead';

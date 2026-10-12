@@ -68,9 +68,29 @@ const hasArt = await page.evaluate(() => window.__playable.scene.artLoaded);
 check(process.env.EXPECT_NO_ART ? 'placeholder build has no art' : 'sprite art loaded', hasArt === !process.env.EXPECT_NO_ART);
 check('canvas buffer follows devicePixelRatio', await page.evaluate(() => document.querySelector('canvas').width) === 720);
 
+// Generated sounds: render each one offline and check it has real signal and does not clip.
+const names = await page.evaluate(() => window.__playable.sfxNames());
+const bad = [];
+for (const n of names) {
+  const r = await page.evaluate((n) => window.__playable.sfxRender(n), n);
+  if (!(r.peak > 0.05 && r.peak <= 0.95 && r.rms > 0.005 && r.nonFinite === 0 && r.seconds > 0.05)) bad.push(`${n}: ${JSON.stringify(r)}`);
+}
+check(`all ${names.length} generated sounds render with signal, peak 0.05 to 0.95 (headroom), no NaN`, bad.length === 0 && names.length >= 15, bad.join(' | '));
+
 // Scoring through real taps.
 await arrange(80); await tap(...JAB); await settle();
 let s = await st(); check('tap JAB at head range scores 2', s.score === 2 && s.hp === 3, JSON.stringify(s));
+// The right sounds fire for real taps: whoosh on the punch, a hit sound on the sweet hit.
+await page.evaluate(() => { window.__playable.restart(); });
+const log0 = await page.evaluate(() => window.__playable.sfxLog().length);
+await arrange(80); await tap(...JAB); await settle(50);
+const heard = await page.evaluate((n) => window.__playable.sfxLog().slice(n), log0);
+check('tap JAB plays the jab whoosh then a head hit sound', heard.includes('whoosh_jab') && heard.includes('hit_head') && heard.indexOf('whoosh_jab') < heard.indexOf('hit_head'), heard.join(','));
+await arrange(110); await tap(...CROSS); await settle(50);
+const heard2 = await page.evaluate((n) => window.__playable.sfxLog().slice(n), log0);
+check('tap CROSS plays the cross whoosh and the defeat sound', heard2.includes('whoosh_cross') && heard2.includes('kill'));
+await arrange(80, 12); await settle(60);
+check('taking a punch plays the hurt sound', (await page.evaluate((n) => window.__playable.sfxLog().slice(n), log0)).includes('hurt'));
 await arrange(100); await tap(...JAB); await settle();
 s = await st(); check('tap JAB at body range scores 1', s.score === 1, JSON.stringify(s));
 await arrange(110); await tap(...CROSS); await settle();
@@ -153,6 +173,13 @@ s = await st(); check('RETRY starts a fresh run', s.ended === null && s.score ==
 // ?retry=0 leaves the button out.
 await load('&retry=0');
 check('?retry=0 hides the retry button', await page.evaluate(() => window.__playable.scene.retryEnabled === false));
+
+// Mute: ?mute=1 starts muted, and the speaker toggle flips it.
+await load('&mute=1');
+check('?mute=1 starts muted', await page.evaluate(() => window.__playable.scene.sfx.muted === true));
+await tap(24, 66);
+check('speaker toggle unmutes', await page.evaluate(() => window.__playable.scene.sfx.muted === false));
+await page.screenshot({ path: path.join(shots, 'mute.png') });
 
 // Debug panel hidden by default, shown with ?debug=1.
 check('debug panel hidden by default', await page.evaluate(() => !document.querySelector('.tp-dfwv')));

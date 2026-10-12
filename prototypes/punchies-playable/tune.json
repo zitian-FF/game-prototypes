@@ -85,5 +85,8 @@
     },
     "playerTurn": 0.25,
     "hitStopMs": 45
+  },
+  "audio": {
+    "master": 0.7
   }
 }
