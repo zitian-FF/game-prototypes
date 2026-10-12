@@ -19,3 +19,5 @@ This dispatches the promotion workflow; it never merges experimental source into
 The command is not an automatic promoter and is not invoked by stage publication. Existing explicit release authorizations remain valid within their exact scope. The current experimental batch has staging permission only.
 
 Local scripts Build/Start/Stop-Punchies-Staging use the isolated sibling checkout and localhost5310. Starting neither builds nor publishes. Keep requested public/local previews available; close owned temporary tabs and servers after checks.
+
+Quickfix batch integrates translations ba2a85b9d9cf93af5898046028c03627dd5729f4, Tyke glove pivot b93930c77423fd268a5992f148bd75b0020b3d2e and approved Tyke tune restoration6484cb2d9eb72f48f7495d0d9e07808c31a710b1. Existing experimental features remain staging-only. MarcoPR350 remains open/unmerged; Kai remains a separate feature batch. Focused tune guard, roster stats, Buffalo/Survival,80 actualPuppetposes,480locales and compile pass. Owner reviews final appearance/gamefeel.
