@@ -43,6 +43,11 @@ const park = (t) => { t.enemy.windupFrames = 9999; t.enemy.walkSpeed = 0; };
 { const { sim } = setup((t) => { t.enemy.windupFrames = 10; t.enemy.walkSpeed = 0; }); sim.state.combo = 3; addEnemy(sim, 80, 'windup'); for (let i = 0; i < 40; i++) sim.step(NONE);
   check('taking a punch breaks the combo', sim.state.combo === 0 && sim.state.hp === 2); }
 
+// A punch start is reported once per punch (used for the whoosh sound), including buffered punches.
+{ const { sim } = setup(park); const first = sim.step({ jab: true, cross: false }).filter((x) => x.kind === 'punch');
+  let more = 0; for (let i = 0; i < 60; i++) more += sim.step({ jab: i === 19, cross: false }).filter((x) => x.kind === 'punch').length;
+  check('one punch event per punch start (buffered punch starts when the first ends)', first.length === 1 && first[0].type === 'jab' && more === 1, `first=${first.length} later=${more}`); }
+
 // Bands (centre distance, lane units).
 check('band jab head', classify(tuneBaseline(), 'jab', 80) === 'head');
 check('band jab body', classify(tuneBaseline(), 'jab', 100) === 'body');

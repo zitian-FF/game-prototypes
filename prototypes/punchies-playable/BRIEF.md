@@ -87,7 +87,7 @@ that starts a fresh run; it is a build switch (`PLAYABLE_RETRY`, on by default,
 The ad build has no retry.
 
 ## Presentation (added 2026-10-12 from playable-ad research)
-Visual feedback only, no rule changes and no audio:
+Visual feedback only, no rule changes (sound is in the Audio section below):
 - Opening call-out "DEFEAT THE ZOMBIES!" for about a second (states the goal,
   not a tutorial), the first zombies arrive quickly (`run.firstSpawnSec` 0.1 s).
 - Combo counter (consecutive sweet hits, broken by a sour hit, a miss or taking
@@ -99,8 +99,19 @@ Visual feedback only, no rule changes and no audio:
 - End card: result, score, zombies defeated, best combo, a goal "Can you reach
   N?" (next multiple of 10), a pulsing PLAY NOW, and RETRY in the testing build.
 - Slight purple night tint on the gym floor.
-Still out of scope: audio, a hint hand, a tutorial, fake-fail tricks and
-analytics events.
+Still out of scope: a hint hand, a tutorial, fake-fail tricks and analytics
+events.
+
+## Audio (in scope from 2026-10-12, user override)
+Generated sound effects only: every sound is synthesised in code with Web Audio
+(oscillators, filtered noise, short envelopes), so there are no audio files and
+no added download. No music. Sounds: jab and cross whoosh on each punch, head
+hit, body hit, defeat, sour thud, player hurt, combo chimes (4 tiers), horde and
+final rush rumble, opening ping, end jingle (win or lose) and a UI tick. Browsers
+block sound until the first tap or key press, so the audio starts then. A small
+speaker toggle (top left, under the HP gloves) mutes it, `?mute=1` starts muted,
+and it is not saved between visits. Master volume is `audio.master` in
+`tune.json`. Sound is paused while the page is hidden.
 
 ## HUD
 Score at the top of the screen, HP (3 pips) and a thin time bar or counter.
@@ -168,10 +179,12 @@ buttons are the primary binding.
 - No persistence (no localStorage save); only the debug unlock flag is stored.
 
 ## Out of scope (binding)
-Audio, menus, tutorial, hint hand, shop, netcode, character select, settings,
+Music and recorded audio (generated effects are in scope, see Audio), menus,
+tutorial, hint hand, shop, netcode, character select, settings (except the
+speaker mute toggle),
 multiple levels, powerups, guard or dodge, hooks and uppercuts, progression,
-retry flow (except the testing-build RETRY button above), analytics, ad network SDK wiring, single file HTML inlining
-(later), deployment.
+retry flow (except the testing-build RETRY button above), analytics, ad network
+SDK wiring, single file HTML inlining (later), deployment.
 
 ## Decisions (2026-10-08)
 1. mp-console slot: REPLACE. The playable deploys to mp-console's itch.io
@@ -194,3 +207,6 @@ retry flow (except the testing-build RETRY button above), analytics, ad network 
    building through the run.
 9. 2026-10-12 (user request: improvements from the ad research): the Presentation
    section above.
+10. 2026-10-12 (user override): audio is in scope, using generated sounds (the
+   Audio section above). The earlier "no audio" and out-of-scope audio items no
+   longer apply.
