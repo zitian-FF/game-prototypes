@@ -12,7 +12,7 @@ const source=path.resolve('dist/punchies-compact-web');
 function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 const excluded=files(source).every(f=>!/staging-review|ranked-review/.test(f)&&(!f.endsWith('.js')||!fs.readFileSync(f,'utf8').includes('PUNCHIES_STAGE_QA_ONLY')));
 if(!excluded)throw Error('QA leaked into the production artifact');
-const forbidden=['SYNC TUNE','debug=1','tp-dfwv','PUNCHIES_STAGE_QA_ONLY','PUNCHIES_RANKED_STAGE_QA_ONLY'];
+const forbidden=['SYNC TUNE','debug=1','tp-dfwv','PUNCHIES_STAGE_QA_ONLY','PUNCHIES_RANKED_STAGE_QA_ONLY','PUNCHIES_RANKED_FICTIONAL_QA_ONLY'];
 const debugExcluded=files(source).filter(f=>f.endsWith('.js')).every(f=>forbidden.every(marker=>!fs.readFileSync(f,'utf8').includes(marker)));
 if(!debugExcluded||files(source).filter(f=>f.endsWith('.html')).length!==1)throw Error('Production contains debug/scaffold routes');
 const productionFiles=files(source).length;

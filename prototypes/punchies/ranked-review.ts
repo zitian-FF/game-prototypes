@@ -26,7 +26,7 @@ void initLanguage().then(()=>{
  class Review extends Phaser.Scene {
   private hud?:Hud;private sim=createSimState({timed:true,fighters:[{char:'marco'},{char:'bruno'}]});
   constructor(){super('RankedUiReview');}
-  preload(){this.load.image('punchies:portrait_marco','./assets/loose/portrait_marco.webp');this.load.image('punchies:gym_background','./assets/loose/gym_background.webp');}
+  preload(){this.load.image('punchies:portrait_marco','./prototypes/punchies/assets/loose/portrait_marco.webp');this.load.image('punchies:gym_background','./prototypes/punchies/assets/loose/gym_background.webp');}
   create(){applyCameraPixelRatio(this);this.hud=undefined;
    if(this.textures.exists('punchies:gym_background'))this.add.image(VIEW.cx,VIEW.cy,'punchies:gym_background').setDisplaySize(VIEW.width,VIEW.height).setTint(0x424e68);
    const p=players();
