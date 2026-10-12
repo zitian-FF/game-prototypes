@@ -10,8 +10,6 @@ import { debugUnlocked, mountDebugPanel } from '../debug';
 const NAVY = 0x101b32;
 const GOLD = 0xffc84a;
 const FONT = 'Arial Black, Arial, sans-serif';
-const LANE_L = 60;
-const LANE_R = 300;
 
 export class PlayScene extends Phaser.Scene {
   private sim!: Sim;
@@ -90,19 +88,16 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private buildStage(): void {
-    // Gym floor, then the ring mat as the lane with a red rope down each side.
-    if (this.has('gym_bg')) this.add.image(W / 2, H / 2, 'gym_bg').setDisplaySize(W, H);
-    else this.add.rectangle(W / 2, H / 2, W, H, 0x16213f);
-    // Ring mat drawn in code (flat blue canvas, darker toward the ropes, centre circle
-    // where the fighters meet) so there is no tiling seam.
-    const mat = this.add.graphics().setDepth(1);
-    mat.fillStyle(0x3e5880, 1).fillRect(LANE_L, 0, LANE_R - LANE_L, H);
-    mat.fillStyle(0x2c4268, 0.55).fillRect(LANE_L, 0, 18, H).fillRect(LANE_R - 18, 0, 18, H);
-    mat.lineStyle(3, 0x9fb6e0, 0.35).strokeCircle(W / 2, 400, 68);
-    mat.lineStyle(3, 0x9fb6e0, 0.3).lineBetween(W / 2 - 14, 400, W / 2 + 14, 400).lineBetween(W / 2, 386, W / 2, 414);
-    for (const x of [LANE_L, LANE_R]) {
-      if (this.has('ring_rope')) this.add.image(x, H / 2, 'ring_rope').setAngle(90).setScale(H / 652).setDepth(3);
-      else this.add.rectangle(x, H / 2, 8, H, 0xd04a4a).setDepth(3);
+    // Gym floor only. The backdrop is landscape, so show its middle slice (floor tiles,
+    // props at the far edges cropped out) filling the portrait screen.
+    if (this.has('gym_background')) {
+      const tex = this.textures.get('gym_background');
+      const src = tex.getSourceImage() as HTMLImageElement;
+      const cropW = Math.round((src.height * W) / H);
+      if (!tex.has('mid')) tex.add('mid', 0, Math.round((src.width - cropW) / 2), 0, cropW, src.height);
+      this.add.image(W / 2, H / 2, 'gym_background', 'mid').setDisplaySize(W, H);
+    } else {
+      this.add.rectangle(W / 2, H / 2, W, H, 0x16213f);
     }
 
     this.player = new Rig(this, 'marco', tune);
