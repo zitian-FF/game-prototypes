@@ -1,0 +1,15 @@
+# Shared Super foundation (future combat batch)
+
+All fighters receive data-default Rising Upper (id rising-upper, nameKey super.rising_upper, mechanic uppercut). super-config.json defines metadata and fixed reference star costs. sim/super exports fighterSuper(f|string) {id,nameKey,mechanic,starCost,referenceStarCost,powerPerStar,damageMultiplier} and superReady(f) charge state only. Existing uppercut input/save/binding/tune identifiers unchanged; no unique abilities.
+
+Damage before = global Cross damage * upper.crossDamageMult * legacy upper.damage * existing fatigue/emergency/dodge/counter multipliers. Damage now adds only currentStarCost/referenceStarCost. Legacy upper.damage already budgeted for cost; never multiply by raw cost again. At current costs ratio1 gives exact existing full sweet damage: Marco31,Mia16,Bruno34,Tee18,Tyke48,Dragon29,Longan6,Captain17,Roxy35,Nadia15. Frozen references3,2,3,2,4,3,1,2,3,2 respectively. Future cost-only changes scale linearly; legacy upper.damage remains fighter power override. powerPerStar exposed = legacy upper.damage/referencecost, but computation uses ratio1 exactly to avoid rounding baseline changes. Balancer review requested; no tune values edited.
+
+Explicit deterministic events:
+- sweetImpact {attacker,x,y,punch}: once per damaging sweet contact, not blocks/zero-damage/sour.
+- superCharged {fighter,superId,starCost}: once threshold fills, alongside existing starsReady audio event for compatibility; HUD reads superReady for ongoing state.
+- superChargeLost {fighter,superId,starCost,reason:sweetHit}: owner-requested DROP VFX cue ONLY when fully charged in actual pre-contact state and a damaging sweet hit clears charge below cost. Body sweet included. No partial/sour/block/nondepleting/spent-before-contact cue.
+- superCancelled {fighter,superId,starCost,reason:startupHit|stun|perfectGuard}: separate mechanics audit of real unresolved startup/active punch removal. NOT the owner-requested drop VFX; VFX ignores it. Already-connected effect/recovery/whiff/refusal is not cancellation. Duplicate stun after startup interruption emits one audit event.
+
+Existing rules preserved: full charge and stamina consumed on activation, no refunds. Sweet damaging hit resets defender stars; stun/perfect guard still have existing resource effects. No invented KO cancellation. Readiness loss without active Super is not attack cancellation. Survival generic combat event wrapper and entity mapping forwards all events; Super metadata included in Survival balance hash. No new Fighter/FrameInput fields, rollback state format unchanged.
+
+Focused Super tests: all10baseline costs/damages, cost-only scaling ratio, ready edge/cap, cancellation reasons and no refunds/false cancellation, charge-loss everycost/full/partial/body/sour/block/spent/duplicate, sweet-only impact. Existing uppercut charge regression and Survival suite plusTypeScript passed. VFX owns Effects floating sweet/sour/whiff removal and rising star/drop cue; Art owns HUD/roster/action display. No build/release trigger; localized semantics separate follow-up.
