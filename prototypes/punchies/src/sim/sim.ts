@@ -15,7 +15,7 @@ import type {
   Stance,
 } from './types';
 import { FATIGUED_PUNCHES } from './types';
-import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold, uppercutStars } from './character';
+import { maxHealth, maxStamina, moveSpeed, punchCfg, regenMult, stunThreshold, uppercutStars, characterDodge, punchFreeUses } from './character';
 import {fighterSuper,superReady} from './super';
 import type {SuperCancelReason} from './types';
 
@@ -125,7 +125,7 @@ export function dodgeEfficacy(f: Fighter): number {
   return f.exhausted ? tune.dodge.exhaustedEfficacy : 1;
 }
 export function dodgeIFrames(f: Fighter): number {
-  return Math.round(tune.dodge.iFrames * dodgeEfficacy(f));
+  return Math.round(characterDodge(f).iFrames * dodgeEfficacy(f));
 }
 
 export function isVulnerable(f: Fighter): boolean {
@@ -157,7 +157,7 @@ export function hurtRadius(f: Fighter): number {
 
 export function fatigueLevel(f: Fighter, type: PunchType): number {
   if (type === 'uppercut') return 0;
-  const raw = f.fatigue[type] - tune.fatigue.freeUses;
+  const raw = f.fatigue[type] - punchFreeUses(f, type);
   return Math.max(0, Math.min(punchCfg(f, type).fatigueBars, raw));
 }
 
@@ -348,7 +348,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     }
   }
   if (f.dodge) {
-    const speed = tune.dodge.speed * dodgeEfficacy(f);
+    const speed = characterDodge(f).speed * dodgeEfficacy(f);
     f.x += f.dodge.dx * speed * dt;
     f.y += f.dodge.dy * speed * dt;
     return;
@@ -655,7 +655,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   if (f.dodge) {
     f.dodge.frame++;
-    if (f.dodge.frame >= tune.dodge.frames) {
+    if (f.dodge.frame >= characterDodge(f).frames) {
       f.dodge = null;
       const mult = f.stunTimer > 0 ? tune.dodge.stunnedVulnerableMult : 1;
       f.postDodgeVulnerable = Math.round(tune.dodge.vulnerableFrames * mult);

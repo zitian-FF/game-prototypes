@@ -59,6 +59,20 @@ export const regenMult = (f: Fighter) => ct(f).regen;
 export const stunThreshold = (f: Fighter) => tune.stun.threshold * ct(f).stun;
 export const moveSpeed = (f: Fighter) => tune.movement.speed * ct(f).speed;
 
+/** Optional character draft overrides; existing fighters keep the shared rules. */
+export function characterDodge(f: Fighter): { speed: number; frames: number; iFrames: number } {
+  const o = ct(f) as CharTune & { dodge?: { speedMult: number; framesMult: number; iFramesMult: number } };
+  const frames = Math.max(1, Math.round(tune.dodge.frames * (o.dodge?.framesMult ?? 1)));
+  return { speed: tune.dodge.speed * (o.dodge?.speedMult ?? 1), frames,
+    iFrames: Math.min(frames, Math.max(0, Math.round(tune.dodge.iFrames * (o.dodge?.iFramesMult ?? 1)))) };
+}
+export function punchFreeUses(f: Fighter, type: PunchType): number {
+  const o = ct(f)[type] as { freeUses?: number };
+  // Fatigue is sampled before incrementing the throw counter. The optional
+  // override means exactly N unpenalized throws; preserve legacy global timing.
+  return o.freeUses === undefined ? tune.fatigue.freeUses : Math.max(0, o.freeUses - tune.fatigue.perUse);
+}
+
 export interface PunchCfg {
   starRequirement: number;
   startup: number;
