@@ -292,7 +292,6 @@
   "shop.err.need_tokens": "Need {n} more tokens.",
   "shop.fighter_chest": "FIGHTER CHEST",
   "shop.free_chest_ready": "FREE CHEST READY",
-  "shop.guaranteed_fighter_of_the_day": "Guaranteed fighter of the day.\nPortrait, rig and stats are draft placeholders.",
   "shop.item.fighter-captain.name": "CAPTAIN EAGLE",
   "shop.item.fighter-dragon.name": "DRAGON",
   "shop.item.fighter-four.name": "G.P. TEE",
@@ -335,7 +334,6 @@
   "shop.owned": " · OWNED",
   "shop.preview_ad_1_token": "PREVIEW AD · +1 TOKEN",
   "shop.punchies_shop": "PUNCHIES SHOP",
-  "shop.purple_one_random_skin_gold": "Purple: one random skin. Gold: guaranteed daily fighter.",
   "shop.rarity.epic": "Epic",
   "shop.rarity.legendary": "Legendary",
   "shop.rewards_today": "{n}/{max} rewards today",
@@ -344,7 +342,6 @@
   "shop.tap_a_chest_to_inspect": "Tap a chest to inspect today’s rewards and pull odds.",
   "shop.tap_to_see_rewards": "TAP TO SEE REWARDS",
   "shop.the_ad_did_not_finish": "The ad did not finish, so no token was given.",
-  "shop.today_s_fighter": "TODAY’S FIGHTER",
   "shop.today_s_skins": "TODAY’S SKINS",
   "shop.unlocked": "UNLOCKED: {name}",
   "shop.watch_ad_1_token": "WATCH AD · +1 TOKEN",
@@ -474,5 +471,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "STAGING · repeat pulls",
   "super.rising_upper_description": "Breaks normal guard. Dodges and Perfect Guard stop it.",
-  "ui.skins": "Skins"
+  "ui.skins": "Skins",
+  "shop.today_s_fighters": "TODAY’S FIGHTERS",
+  "shop.chest_candidate_rules": "Each chest draws one reward from up to 3 eligible candidates."
 }
