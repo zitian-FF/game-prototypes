@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import { pose } from './art';
+import { PIXEL_RATIO } from './pixelRatio';
 
 // What touches the floor under a boxer: the separate feet layer from the art
 // (`<body key>_feet`, same canvas and registration as the body) plus a soft
@@ -18,7 +19,10 @@ export class GroundLayer {
   constructor(scene: Phaser.Scene, private bodyRadius: number, depth = 9) {
     this.shadow = scene.add.graphics().setDepth(depth);
     this.feet = scene.add.image(0, 0, '__DEFAULT').setDepth(depth).setVisible(false);
-    this.label=scene.add.text(0,0,'',{fontFamily:'Arial Black, Arial',fontSize:9,color:'#ffffff',stroke:'#10223c',strokeThickness:2}).setOrigin(.5).setDepth(depth+.05).setVisible(false);
+    this.label=scene.add.text(0,0,'',{fontFamily:'Arial Black, Arial, sans-serif',fontStyle:'bold',fontSize:9,color:'#ffffff',stroke:'#10223c',strokeThickness:2,resolution:Math.max(2,Math.min(6,PIXEL_RATIO*2)),padding:{left:1,right:1,top:1,bottom:1}}).setOrigin(.5).setDepth(depth+.05).setVisible(false);
+    // The fitted ring and camera enlarge this tiny text. Back it at twice the
+    // render density; retain smooth filtering and fractional world movement.
+    this.label.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
   setIndicator(color:number,label:string):void{this.indicator={color,label};}
   private drawShadow(x:number,y:number,scale:number,alpha:number):void{

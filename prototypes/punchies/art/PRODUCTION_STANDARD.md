@@ -130,7 +130,11 @@ original audio and attribution in the archive.
 
 Do not bypass the compact stale-source check. A standard art update is incomplete
 for dual-profile release until its compact assets and recorded source identity
-match. Normal WIP stays standard; compact exports target web portals as selected.
+match. WIP quality is selected in `.github/punchies-wip-profile`, independently
+of portal integration. The owner requested compact for the next live quality
+assessment on 2026-10-12; the file is currently `compact`. Set it to `standard`
+for a later approved return to standard quality. Itch WIP uses portal `web`;
+both explicit profile commands and profile CI still default to CrazyGames.
 
 ## Review and release evidence
 

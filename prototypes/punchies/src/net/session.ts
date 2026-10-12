@@ -59,8 +59,9 @@ export class NetSession {
   ratingMatch:Promise<string|null>=Promise.resolve(null);
   private candidates=new Map<string,CtlMessage & {k:'hello'}>();
   private pairingTimer:ReturnType<typeof setTimeout>|undefined;
-  private closed=false;
-  async beginRating(nonce:string){this.ratingMatch=this.rated&&this.peerRating?createRatingMatch(this.peerRating.id,nonce):Promise.resolve(null);return this.ratingMatch;}
+  private closed=false;private initialQueueNonceUsed=false;
+  nextRatingNonce():string {if(this.assignment&&!this.initialQueueNonceUsed){this.initialQueueNonceUsed=true;return this.assignment.nonce;}return crypto.randomUUID();}
+  async beginRating(nonce:string){this.ratingMatch=this.rated&&this.peerRating?(this.assignment?createRatingMatch(this.peerRating.id,nonce,this.assignment.pairId):createRatingMatch(this.peerRating.id,nonce)):Promise.resolve(null);return this.ratingMatch;}
   async report(score:0|.5|1,quit=false){if(!this.rated)return null;const id=await this.ratingMatch;return id?reportRating(id,score,quit):null;}
 
   /** The opponent's alias, title and level, validated. Safe defaults until their hello arrives (older clients send none). */
@@ -78,6 +79,7 @@ export class NetSession {
     readonly role: Role,
     iceServers: RTCIceServer[] | undefined,
     readonly rated = false,
+    readonly assignment?:{opponent:string;nonce:string;pairId:string},
   ) {
     this.room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAY_URLS }, turnConfig: iceServers }, `${this.rated?'ranked-room':'room'}-${code}`);
     this.ctl = this.room.makeAction('ctl') as unknown as Channel<CtlMessage>;
@@ -111,6 +113,7 @@ export class NetSession {
       if(m.role!=='host'&&m.role!=='guest')return;
       if((m.rated===true)!==this.rated)return;
       m={...m,rating:this.rated?peerRating(m.rating)??undefined:undefined};
+      if(this.assignment&&m.rating?.id!==this.assignment.opponent)return;
       if (m.role === this.role) {
         // Two hosts on one code: the room code collided.
         if (this.role === 'host' && !this.peerId) this.onRejected('collision');
@@ -135,6 +138,7 @@ export class NetSession {
       }
       return;
     }
+    if(m.k==='paired'&&this.assignment&&m.rating?.id!==this.assignment.opponent)return;
     if(m.k==='paired'&&this.role==='guest'&&!this.peerId&&this.candidates.has(from)&&(m.rated===true)===this.rated){this.candidates.clear();this.pair(from,{...m,k:'hello',role:'host'});return;}
     if (m.k === 'full') {
       if (!this.peerId) this.onRejected('full');

@@ -32,9 +32,9 @@ export function normalizeShopDraft(value:unknown,now=Date.now()):ShopDraftState{
   if(!value||typeof value!=='object')return newShopDraft(now);
   const s=value as Partial<ShopDraftState>;
   if(s.version!==1||!Number.isSafeInteger(s.tokens)||s.tokens!<0||typeof s.welcomeClaimed!=='boolean'||!Array.isArray(s.owned)||!Number.isSafeInteger(s.adsToday)||s.adsToday!<0||typeof s.adDay!=='string')return newShopDraft(now);
-  const claimed=s.welcomeClaimed||s.owned.includes(WELCOME_FIGHTER);
+  // Ownership comes only from reward item IDs, never a legacy UI flag.
+  const claimed=s.owned.includes(WELCOME_FIGHTER);
   const owned=[...new Set(s.owned.filter(id=>SHOP_ITEMS.some(item=>item.id===id)))];
-  if(claimed&&!owned.includes(WELCOME_FIGHTER))owned.push(WELCOME_FIGHTER);
   return {version:1,freeSkinChests:Math.max(Number.isSafeInteger(s.freeSkinChests)&&s.freeSkinChests!>0?s.freeSkinChests!:0,s.freeSkinChest===true?1:0),freeFighterChests:Number.isSafeInteger(s.freeFighterChests)&&s.freeFighterChests!>0?s.freeFighterChests!:0,firstGiftDone:s.firstGiftDone===true,tokens:s.tokens!,welcomeClaimed:claimed,owned,adDay:shopDay(now),adsToday:s.adDay===shopDay(now)?Math.min(s.adsToday!,config.dailyAdLimit):0,offerDay:s.offerDay,offerIds:Array.isArray(s.offerIds)?s.offerIds.filter(id=>SHOP_ITEMS.some(item=>item.id===id)):undefined,offerSchema:s.offerSchema,purchasedDay:shopDay(now),purchasedChests:s.purchasedDay===shopDay(now)&&Array.isArray(s.purchasedChests)?[...new Set(s.purchasedChests.filter(k=>k==='skins'||k==='fighters'))]:[]};
 }
 /** First launch gift: the Rising Star skin, plus one free skin chest. Granted once. */

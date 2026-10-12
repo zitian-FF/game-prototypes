@@ -70,3 +70,13 @@ assert(d.SHOP_ITEMS.filter(i=>i.skinType==='unique').every(i=>i.boxer&&i.portrai
 assert(!d.availablePool(d.newShopDraft(day),'skins').some(i=>i.artPending),'unfinished art cannot be pulled');
 assert.equal(d.dailyOffers({...d.newShopDraft(day),offerIds:['skin-bruno-unique']},'skins').length,0,'stale unfinished offers are hidden');
 console.log('Shop chests: 33/33/33 skin rolls, one unique, 100% fighter, per-chest daily locks, independent purchases, reload persistence, next-day reset, 50/50 and 100% depleted odds, insufficient funds and full collection passed');
+
+// A stale legacy welcome UI flag is not an ownership grant. Actual item grants survive reload.
+const stale=d.normalizeShopDraft({...d.newShopDraft(day),welcomeClaimed:true},day);
+assert(!stale.owned.includes(d.WELCOME_FIGHTER));assert.equal(stale.welcomeClaimed,false);
+const legitimatelyClaimed=d.normalizeShopDraft({...d.newShopDraft(day),owned:[d.WELCOME_FIGHTER]},day);
+assert(legitimatelyClaimed.owned.includes(d.WELCOME_FIGHTER));assert(legitimatelyClaimed.welcomeClaimed);
+const teeOffer={...d.refreshDailyOffers(d.newShopDraft(day),day),offerIds:[d.WELCOME_FIGHTER],tokens:10};
+const teePull=d.buyDailyChest(teeOffer,'fighters',0,day);assert(teePull.ok);d.saveShopDraft(teePull.state);assert(d.loadShopDraft().owned.includes(d.WELCOME_FIGHTER));
+assert(!d.grantFirstGift(d.newShopDraft(day)).state.owned.includes(d.WELCOME_FIGHTER),'current first gift grants skin, not Tee');
+console.log('PASS ownership requires reward item, stale welcome flag cannot grant Tee, legitimate pull persists');

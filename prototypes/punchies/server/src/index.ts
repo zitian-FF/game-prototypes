@@ -1,3 +1,4 @@
+import {RankedQueue} from './queue';
 import {agreedScore,ratingChange,type Player,type Report,type Score} from './rating';
 interface SQL {exec<T=Record<string,unknown>>(sql:string,...args:unknown[]):Iterable<T>}
 interface State {storage:{sql:SQL;transactionSync<T>(fn:()=>T):T}}
@@ -8,8 +9,9 @@ const json=(v:unknown,status=200)=>Response.json(v,{status});
 const first=<T>(rows:Iterable<T>)=>Array.from(rows)[0];
 export class RatingStore {
  private sql:SQL;
+ private queue:RankedQueue;
  constructor(private state:State){
-  this.sql=state.storage.sql;
+  this.sql=state.storage.sql;this.queue=new RankedQueue(this.sql);
   this.sql.exec('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, token TEXT NOT NULL, rating INTEGER NOT NULL, matches INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, a TEXT NOT NULL,b TEXT NOT NULL,nonce TEXT NOT NULL,expires INTEGER NOT NULL,reports TEXT NOT NULL,settled INTEGER NOT NULL DEFAULT 0,deltas TEXT NOT NULL DEFAULT "[]",UNIQUE(a,b,nonce))');
  }
@@ -28,9 +30,11 @@ export class RatingStore {
    }
    const owner=first(this.sql.exec<{token:string}>('SELECT token FROM players WHERE id=?',id));
    if(!owner||owner.token!==body.token)return json({error:'Invalid identity'},401);
+   if(/^\/queue\/(join|poll|cancel|complete)$/.test(path))return this.state.storage.transactionSync(()=>json(this.queue.action(path.split('/')[2],id,body.ticket)));
    if(path==='/rating')return json(this.player(id));
    if(path==='/match'){
     if(!validId(body.opponent)||body.opponent===id||!validId(body.nonce)||!this.player(body.opponent))return json({error:'Invalid pair'},400);
+    if(body.pairId!==undefined&&(typeof body.pairId!=='string'||!this.queue.authorize(id,body.opponent,body.pairId)))return json({error:'Invalid queue pair'},403);
     const [a,b]=[id,body.opponent].sort(),nonce=body.nonce;
     let match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE a=? AND b=? AND nonce=?',a,b,nonce));
     if(!match){this.sql.exec('INSERT INTO matches(id,a,b,nonce,expires,reports) VALUES(?,?,?,?,?,?)',crypto.randomUUID(),a,b,nonce,Date.now()+600000,'{}');match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE a=? AND b=? AND nonce=?',a,b,nonce));}

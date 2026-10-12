@@ -1,17 +1,17 @@
 ## Current milestone
-Complete Main-approved bug/performance batch validated against live147.
+Validated compact quality assessment release on live148 base; Main explicitly authorized merge/deploy.
 
 ## What was implemented
-Survival creates all dynamic rigs inside the ring world and uses the visible glove path for contact without expanding hitboxes. Neutral facing reacquires on completed-action ticks. Zombies spawn with a fade and fly in the immutable final-hit direction to an inset red rope before fading; at most 24 reused views. Music queues the selected track and retries on initial readiness, capture-phase gestures and shared audio-context unlock. FIGHT completes its entrance before fade/input unlock using shared deterministic simulation timing. VS fire uses a cached 16-frame runtime atlas; hit text uses 20 reused objects. Fighter identity owns roster clash animation; bounded material masks, shade memo and shared alpha bounds reduce palette work while preserving pixels.
+Survival 30-second waves, bosses every third wave, READY/FIGHT each wave, edge 6–10 HP zombies, bounded progression/boss coordination and cumulative run statistics/save. Removed stale Tee welcome auto-grant while preserving legitimate ownership. Automatic Ranked queue with private WebRTC rooms; Casual retains manual host/code. Portrait-only roster movement, persistent static UI/stat fills, dimmed lock cards/headshots and sharp floor labels. Opposing fire trails/collision, rarity pull accents and restrained victory effects. Normalized escaped Survival hint line breaks.
 
 ## Key technical decisions
-Integrated Logic/VFX86cc07a and Artbebd1c1 on latest main, preserving approved tune values, Ranked Elo and Profile. No new download assets/R2/Worker changes. Verified all 2069 source files against published standard ZIP and freshly downloaded compact hashes. Both profiles default CrazyGames. Packages: standard17315301 bytes (+6784), compact10093454 bytes (+6784) versus live147; 40MB/20MB budgets and parity pass. Cached fire adds3.52MiB runtime RGBA memory, not download assets.
+Integrated Logic a015fc2, VFX c23eb75, Art b069dcf, focused fixture ef48dde and formatting39f743e only. Preserved current main tuning and shared FIGHT entrance/fade-start unlock. WIP quality selected by .github/punchies-wip-profile=compact; itch portal remains web. Explicit profile commands/CI default CrazyGames. Worker deployment must succeed for the same server-changing release SHA before frontend upload. No new downloadable art/R2 changes. Compact assets freshly verified; inventory and parity against recoverable live148 standard pass.
 
 ## Open questions
-Physical Android spark disappearance is unreproduced. Physical mobile performance, full played Ranked KO/rematch and native-speaker translation review remain unverified.
+Physical Android spark behavior/mobile60fps and native-speaker translations remain unverified. Tee actual appearance-writer root cause unproven; ownership-isolation regression passes. Future Ranked snapshots dddecf0 and unapproved identity/redesign mockups are excluded.
 
 ## Known issues
-Desktop controlled profiling shows lower roster stalls and bounded VFX churn; no mobile60fps or broad frame-rate-fix claim. Cold palette upload can still exceed a frame. Browser autoplay may require a valid first gesture; saved mute/volume are preserved. Music signal/playback evidence is instrumented, not subjective listening.
+Old Survival checkpoints cannot resume under the changed configuration. Cold palette work still peaks around88ms in owner evidence. Compact uses smaller/lossier portraits/backgrounds/arena and64kbps AAC music; no visually lossless or subjective listening-quality claim. Browser result/rematch evidence uses real clients/Worker with an explicitly injected result, not a fully played KO. Ranked remains anonymous/self-reported with legacy endpoint, no anti-cheat guarantee.
 
 ## Next proposed step
-Merge and deploy this complete batch, verify live flows, then obtain physical Android reproduction/performance evidence.
+Merge and deploy this complete compact batch, verify exact CI artifact bytes/live version and Worker receipt, then obtain owner's quality assessment. Evidence: outputs/compact-wave-release in Build workspace; all combined checks passed after focused fixes.

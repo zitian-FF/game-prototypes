@@ -7,7 +7,7 @@ let room,loads=0;
 const source=ts.transpileModule(fs.readFileSync('prototypes/punchies/src/net/session.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const out={};
 const me={myId:crypto.randomUUID(),rating:1000};
-vm.runInNewContext(source,{exports:out,setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout(){},require:id=>id==='trystero/nostr'?{
+vm.runInNewContext(source,{exports:out,crypto,setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout(){},require:id=>id==='trystero/nostr'?{
  joinRoom(config,name){joined.push(name);room={makeAction(){return {send:async(data,options)=>sent.push({data,options})};},leave(){}};return room;},getRelaySockets:()=>({})
 }:id==='./rating'?{currentRating:()=>me,loadRating:async()=>{loads++;return me;},createRatingMatch:async(...args)=>{matches.push(args);return 'match';},reportRating:async(...args)=>reports.push(args)}:
  {localWireProfile:()=>({alias:'Test'}),peerProfile:profile=>profile??{}}});
@@ -48,3 +48,9 @@ assert.ok(joined.includes('ranked-room-ABC'));assert.ok(joined.includes('room-DE
 const roomExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/net/roomCode.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:roomExports,location:{origin:'http://localhost:5218',pathname:'/game'},URLSearchParams});
 assert.equal(roomExports.roomUrl('ABC'),'http://localhost:5218/game?room=ABC');
 assert.equal(roomExports.roomUrl('ABC',true),'http://localhost:5218/game?room=ABC&ranked=1');
+
+const assignedNonce=crypto.randomUUID(),pairId=crypto.randomUUID();const automatic=new out.NetSession('private-room','host',undefined,true,{opponent:near,nonce:assignedNonce,pairId});
+automatic.handleCtl({k:'hello',role:'guest',rated:true,rating:{id:far,points:1000}},'intruder');assert.equal(automatic.peerId,null);
+automatic.handleCtl({k:'hello',role:'guest',rated:true,rating:{id:near,points:1000}},'expected');timers.pop()();assert.equal(automatic.peerId,'expected');
+assert.equal(automatic.nextRatingNonce(),assignedNonce);assert.notEqual(automatic.nextRatingNonce(),assignedNonce,'reselect/rematch must not reuse original reward nonce');await automatic.beginRating(assignedNonce);assert.deepEqual(matches.at(-1),[near,assignedNonce,pairId]);
+console.log('PASS authoritative assigned opponent, queue pair rating binding and fresh subsequent-match nonce');

@@ -11,7 +11,8 @@ import type { ShopItem } from '../shop/draft';
 import { reducedMotion } from './presentation';
 import { bindButtonFeedback, cartoonButton } from './cartoonChrome';
 import { navRegister } from './menuNav';
-import { rarityLabel, styleRarity } from './rewardRarity';
+import { PullAccents } from './rewardAccents';
+import { rarityLabel, styleRarity, rewardRarity } from './rewardRarity';
 
 /** Reward is already saved before this presentation starts. */
 export class RewardReveal {
@@ -19,6 +20,7 @@ export class RewardReveal {
   private timers: Phaser.Time.TimerEvent[] = [];
   private destroyed = false;
   private stopStinger: () => void;
+  private accents:PullAccents;
 
   constructor(private scene: Phaser.Scene, item: ShopItem, close: () => void) {
     this.stopStinger = playStinger(scene, 'reward');
@@ -29,6 +31,8 @@ export class RewardReveal {
       .setInteractive(); // Absorb taps until acknowledgement becomes available.
     this.root.add(shade);
     scene.tweens.add({targets:shade,alpha:cfg.darkenAlpha,duration:motion?cfg.fadeMs:0});
+
+    this.accents=new PullAccents(scene,this.root,VIEW.cx,VIEW.cy-20,rewardRarity(item)==='legendary',artKey(scene,item.kind==='skins'?'chest_skin_base':'chest_fighter_base'));
 
     const key = item.boxer
       ? (item.skinType === 'unique' ? artKey(scene,item.portraitKey!)
@@ -51,7 +55,7 @@ export class RewardReveal {
       portrait.x-=(item.boxer==='tyke'?-1:1)*((left+right)/2-canvas.width/2)*scale;
       portrait.y+=(canvas.height-bottom)*scale;
       this.root.add(portrait.setScale(scale*(motion?cfg.entryScale:1)).setAlpha(motion?0:1));
-      scene.tweens.add({targets:portrait,scale,alpha:1,duration:motion?cfg.entryMs:0,ease:'Back.Out'});
+      scene.tweens.add({targets:portrait,scale,alpha:1,delay:motion?180:0,duration:motion?cfg.entryMs:0,ease:'Back.Out'});
     } else {
       // Draft rewards without final art must not impersonate a unique portrait.
       const chest=artKey(scene,item.kind==='skins'?'chest_skin_base':'chest_fighter_base');
@@ -59,6 +63,7 @@ export class RewardReveal {
       this.label(VIEW.cx,VIEW.cy+80,t('reveal.portrait_art_pending'),18,'#b7c5e0');
     }
 
+    this.accents.bringHighlightForward(this.root);
     const titleAt=cfg.entryMs+cfg.portraitHoldMs;
     this.timers.push(scene.time.delayedCall(titleAt,()=>{
       if(this.destroyed)return;
@@ -102,6 +107,7 @@ export class RewardReveal {
     if(this.destroyed)return;
     this.destroyed=true;
     this.stopStinger();
+    this.accents.destroy();
     this.scene.events.off('shutdown',this.destroy,this);
     this.timers.forEach(t=>t.remove(false));
     this.scene.tweens.killTweensOf([this.root,...this.root.list,...this.root.list.flatMap(o=>o instanceof Phaser.GameObjects.Container?o.list:[])]);

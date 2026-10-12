@@ -1,5 +1,6 @@
 import config from './config.json';
 import { tune, TICK_RATE } from '../sim/tune';
+import { fightCueTiming } from '../sim/fightCue';
 import { CHARACTER_IDS, maxHealth, maxStamina, punchCfg, regenMult } from '../sim/character';
 import { punchFist } from '../sim/fistPath';
 import { fighterScale, normalHurtRadius, separation } from '../sim/geometry';
@@ -84,7 +85,7 @@ function spawn(r: SurvivalRun, kind: 'boss' | 'zombie', events: SurvivalEvent[])
   const enemy: SurvivalEnemy = {
     id: `enemy-${r.nextEnemyId++}`, kind, visualId: kind === 'zombie' ? 'zombie' : char,
     fighter: f, attackWait: Math.floor(random(r) * config.zombieAttackCooldownFrames), maxHealth: hp,
-    speedRatio: kind === 'boss' ? 1 : Math.min(config.zombieMaxSpeedRatio, config.zombieSpeedRatio + (r.wave - 1) * config.zombieSpeedGrowthPerWave),
+    speedRatio: kind === 'boss' ? 1 : waveProgression(r.wave).speedRatio,
   };
   r.enemies.push(enemy); face(f, r.player);
   if (kind === 'boss') { r.bossSpawned = true; r.bossAI = new EasyAI(1, r.seed ^ r.wave).snapshot(); }
@@ -92,6 +93,7 @@ function spawn(r: SurvivalRun, kind: 'boss' | 'zombie', events: SurvivalEvent[])
   return true;
 }
 function beginWave(r: SurvivalRun): SurvivalEvent[] {
+  r.waveStartTick=r.tick; r.fightStartTick=r.tick+Math.max(Math.round(tune.match.introSec*TICK_RATE),fightCueTiming().entranceTicks+1);
   r.status = 'active'; r.remainingTicks = config.waveSeconds * TICK_RATE;
   r.waveKills = 0; r.waveZombieKills = 0; r.healing = 0; r.enemies = [];
   r.bossSpawned = false; r.bossAI = null; r.bossChar = r.wave % config.bossEveryWaves === 0 ? CHARACTER_IDS[Math.floor(random(r) * CHARACTER_IDS.length)] : null;
@@ -108,8 +110,8 @@ export function createRun(opts: RunOptions): SurvivalRun {
   const player = combat.createFighter((tune.ring.left + tune.ring.right) / 2, (tune.ring.top + tune.ring.bottom) / 2, { char: opts.fighter });
   const r: SurvivalRun = {
     ...opts, balanceVersion: opts.balanceVersion ?? survivalBalanceVersion(), seed: opts.seed >>> 0, rngState: opts.seed >>> 0,
-    tick: 0, wave: 1, clearedWave: 0, remainingTicks: 0, waveKills: 0, waveZombieKills: 0, totalKills: 0,
-    status: 'active', endReason: null, player, enemies: [], bossChar: null, healing: 0, hitstop: 0,
+    tick: 0, waveStartTick:0, fightStartTick:0, wave: 1, clearedWave: 0, remainingTicks: 0, waveKills: 0, waveZombieKills: 0, totalKills: 0,
+    totalZombieKills:0, damageDealt:0, damageReceived:0, status: 'active', endReason: null, player, enemies: [], bossChar: null, healing: 0, hitstop: 0,
     spawnWait: 0, nextEnemyId: 1, swingHits: [], bossSpawned: false, bossAI: null,
   };
   beginWave(r); return r;
@@ -121,6 +123,22 @@ export function startNextWave(r: SurvivalRun): SurvivalEvent[] {
 function wrap(events: SimEvent[], enemyId: string, out: SurvivalEvent[]): void {
   for (const event of events) out.push({ kind: 'combat', event, entityIds: ['player', enemyId] });
 }
+export function waveProgression(wave:number) {
+ const growth=Math.max(0,wave-1);
+ return {
+  speedRatio:Math.min(config.zombieMaxSpeedRatio,config.zombieSpeedRatio+growth*config.zombieSpeedGrowthPerWave),
+  attackChance:Math.min(config.zombieMaxAttackChance,config.zombieAttackChance+growth*config.zombieAttackChanceGrowthPerWave),
+  attackCooldownFrames:Math.max(config.zombieMinAttackCooldownFrames,config.zombieAttackCooldownFrames-growth*config.zombieAttackCooldownReductionPerWave),
+  bossAttackChanceRatio:Math.min(config.bossMaxAttackChanceRatio,config.bossAttackChanceRatio+growth*config.bossAttackChanceGrowthPerWave),
+ };
+}
+// One bounded shared attack window: boss pressure, then crowd pressure.
+// EasyAI defense/movement/punch selection stay intact; no extra search planner.
+export function attackPermission(r:SurvivalRun,kind:'boss'|'zombie'):boolean {
+ if(!r.enemies.some(e=>e.kind==='boss'&&e.fighter.health>0))return true;
+ const bossWindow=(r.tick-r.fightStartTick)%config.coordinationCycleFrames<config.bossAttackWindowFrames;
+ return kind==='boss'?bossWindow:!bossWindow;
+}
 function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   const f = e.fighter, dx = r.player.x - f.x, dy = r.player.y - f.y, d = Math.hypot(dx, dy);
   const input = { ...NEUTRAL_INPUT };
@@ -128,8 +146,8 @@ function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   if (d > reach && d > 0) { input.mx = Math.round(dx / d * 100 * e.speedRatio); input.my = Math.round(dy / d * 100 * e.speedRatio); }
   if (e.attackWait > 0) e.attackWait--;
   if (!f.punch && !f.dodge && e.attackWait === 0 && d <= reach) {
-    e.attackWait = config.zombieAttackCooldownFrames;
-    input.jab = random(r) < config.zombieAttackChance;
+    e.attackWait = waveProgression(r.wave).attackCooldownFrames;
+    input.jab = attackPermission(r,'zombie') && random(r) < waveProgression(r.wave).attackChance;
   }
   return input;
 }
@@ -148,6 +166,13 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
   if (r.status !== 'active') return [];
   const out: SurvivalEvent[] = [];
   if (r.player.health <= 0) return endRun(r, 'defeat');
+  if(r.tick<r.fightStartTick){
+    if(r.tick===r.waveStartTick)out.push({kind:'combat',event:{kind:'ready'},entityIds:['player','']});
+    r.tick++;
+    if(r.tick===r.fightStartTick-fightCueTiming().entranceTicks)out.push({kind:'combat',event:{kind:'fightCue'},entityIds:['player','']});
+    if(r.tick===r.fightStartTick)out.push({kind:'combat',event:{kind:'go'},entityIds:['player','']});
+    return out;
+  }
   const target = closestEnemy(r);
   const anchor = target?.fighter ?? combat.createFighter(r.player.x + 1, r.player.y, { anchored: true });
   const primary = pair(r, anchor);
@@ -170,6 +195,8 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       let intent: FrameInput;
       if (e.kind === 'boss') {
         const ai = EasyAI.restore(1, r.bossAI!); intent = ai.think(s); r.bossAI = ai.snapshot();
+        if((intent.jab||intent.cross||intent.hook||intent.uppercut)&&(!attackPermission(r,'boss')||random(r)>waveProgression(r.wave).bossAttackChanceRatio))
+          intent={...intent,jab:false,cross:false,hook:false,uppercut:false};
       } else intent = zombieInput(r, e);
       const before = e.fighter.punch, events: SimEvent[] = [];
       combat.processInput(s, 1, intent, events);
@@ -197,7 +224,12 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       const e = r.enemies[i], snap = snapshots[i], events: SimEvent[] = [];
       for (const hit of hits) {
         if (!s.fighters[hit.attacker].punch) continue; // A perfect guard can cancel a crowd swing.
+        const defender=s.fighters[1-hit.attacker],beforeHp=Math.max(0,defender.health),eventStart=events.length;
         combat.resolveContact(s, hit, snap.map(v => v.stance), snap.map(v => v.startup), snap.map(v => v.whiff), snap.map(v => v.exhausted), events);
+        if(events.slice(eventStart).some(e=>e.kind==='hit')){
+          const applied=Math.max(0,Math.min(beforeHp,beforeHp-defender.health));
+          if(hit.attacker===0)r.damageDealt+=applied;else r.damageReceived+=applied;
+        }
         if (hit.attacker === 0) r.swingHits.push(e.id);
       }
       r.hitstop = Math.max(r.hitstop, s.hitstop); wrap(events, e.id, out);
@@ -207,7 +239,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     combat.advanceTimers(primary, 0, input, timerEvents); wrap(timerEvents, target?.id ?? '', out);
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });
     for (const e of r.enemies) if (e.fighter.health <= 0) {
-      r.waveKills++; r.totalKills++; if (e.kind === 'zombie') r.waveZombieKills++;
+      r.waveKills++; r.totalKills++; if (e.kind === 'zombie') {r.waveZombieKills++;r.totalZombieKills++;}
       const fighter = structuredClone(e.fighter);
       const dx = fighter.lastBlow?.dx ?? fighter.x-r.player.x, dy = fighter.lastBlow?.dy ?? fighter.y-r.player.y;
       const length = Math.hypot(dx,dy);
@@ -240,7 +272,7 @@ export function survivalView(r: SurvivalRun) {
     player: r.player, enemies: r.enemies, wave: r.wave, clearedWave: r.clearedWave,
     secondsLeft, timeText: `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`,
     waveKills: r.waveKills, zombieKills: r.waveZombieKills, totalKills: r.totalKills,
-    status: r.status, endReason: r.endReason, bossChar: r.bossChar,
+    ready:r.tick<r.fightStartTick, status: r.status, endReason: r.endReason, bossChar: r.bossChar,
     nextBossWave: (Math.floor(r.wave / config.bossEveryWaves) + 1) * config.bossEveryWaves,
     healing: r.healing, canSave: r.status === 'intermission', xpEnabled: false as const,
     maxHealth: maxHealth(r.player), maxStamina: maxStamina(r.player),

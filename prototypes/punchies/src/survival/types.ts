@@ -15,6 +15,8 @@ export interface SurvivalEnemy {
 export interface SurvivalRun {
   runId: string; fighter: CharId; skin: string; balanceVersion: string;
   seed: number; rngState: number; tick: number; wave: number; clearedWave: number;
+  waveStartTick: number; fightStartTick: number;
+  totalZombieKills:number; damageDealt:number; damageReceived:number;
   remainingTicks: number; waveKills: number; waveZombieKills: number; totalKills: number;
   status: 'active' | 'intermission' | 'ended';
   endReason: 'defeat' | 'abandoned' | null;

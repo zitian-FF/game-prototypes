@@ -42,9 +42,9 @@ export function loadRating():Promise<RatingIdentity|null>{
   }catch{updateState({status:'error'});return null;}
  })().finally(()=>{loading=null;});return loading;
 }
-export async function createRatingMatch(opponent:string,nonce:string):Promise<string|null>{
+export async function createRatingMatch(opponent:string,nonce:string,pairId?:string):Promise<string|null>{
  const me=await loadRating();if(!me||!validId(opponent)||!validId(nonce))return null;
- try{const result=await request<{matchId:string}>('/match',{myId:me.myId,token:me.token,opponent,nonce});return validId(result.matchId)?result.matchId:null;}catch{updateState({status:'error'});return null;}
+ try{const result=await request<{matchId:string}>('/match',{myId:me.myId,token:me.token,opponent,nonce,...(pairId?{pairId}:{})});return validId(result.matchId)?result.matchId:null;}catch{updateState({status:'error'});return null;}
 }
 async function sendReport(p:PendingReport):Promise<RatingResult|null>{
  if(!identity)return null;
@@ -81,4 +81,14 @@ export async function ratingStatus(matchId:string):Promise<RatingResult|null>{
   if(result.state!=='pending')pending=pending.filter(p=>p.matchId!==matchId);
   applyResult(result);return result;
  }catch{updateState({status:'error'});return null;}
+}
+
+export type QueueResult={status:'waiting';ticket:string;waitMs:number}|{status:'paired';ticket:string;pairId:string;room:string;nonce:string;opponent:string;role:'host'|'guest'}|{status:'cancelled'|'timeout'|'full'|'complete'};
+export async function rankedQueue(action:'join'|'poll'|'cancel'|'complete',ticket?:string):Promise<QueueResult>{
+ const me=currentRating()??await loadRating();if(!me)throw Error('Rating unavailable');
+ const result=await request<QueueResult>('/queue/'+action,{myId:me.myId,token:me.token,ticket});
+ if(!result||!['waiting','paired','cancelled','timeout','full','complete'].includes(result.status))throw Error('Invalid queue response');
+ if((result.status==='waiting'||result.status==='paired')&&!validId(result.ticket))throw Error('Invalid queue ticket');
+ if(result.status==='paired'&&(!validId(result.pairId)||!validId(result.room)||!validId(result.nonce)||!validId(result.opponent)||!['host','guest'].includes(result.role)))throw Error('Invalid queue pair');
+ return result;
 }

@@ -10,12 +10,12 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { charName } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { clashFireImage,animateClashFire } from './clashFire';
+import { clashFireImage,animateClashFire, type ClashFlames } from './clashFire';
 
 export class MatchIntro {
   private cover: Phaser.GameObjects.Container;
   private portraits: Phaser.GameObjects.Container[] = [];
-  private flames: Phaser.GameObjects.Image;
+  private flames: ClashFlames;
   private vs: Phaser.GameObjects.Text;
   private complete = false;
 
@@ -65,7 +65,7 @@ export class MatchIntro {
       }
       this.cover.add(group);this.portraits.push(group);
     });
-    this.flames=clashFireImage(scene);this.cover.add(this.flames);
+    this.flames=clashFireImage(scene);this.cover.add(this.flames.root);
     this.vs=scene.add.text(VIEW.cx,VIEW.cy,'VS',{
       fontFamily:'Impact, Arial Black, sans-serif',fontSize:'88px',fontStyle:'bold italic',color:'#fff0ab',
       stroke:'#581721',strokeThickness:9,padding:{left:14,right:30,top:12,bottom:12},resolution:PIXEL_RATIO}).setOrigin(0.5).setAngle(-8);
@@ -94,7 +94,7 @@ export class MatchIntro {
     this.portraits.forEach(p=>p.setAlpha(1-exit));
     // Oversized VS covers the frame, then cuts away into the arena.
     this.cover.setAlpha(1);
-    animateClashFire(this.flames,VIEW.cx,VIEW.cy+12,elapsedMs,1+exit*.8,motion,impact);
+    animateClashFire(this.flames,VIEW.cx,VIEW.cy+10,elapsedMs,cfg.portraitSlideMs,exit,motion,VIEW.width*.32);
   }
 }
 

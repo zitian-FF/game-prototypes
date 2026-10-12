@@ -28,6 +28,7 @@ function validCheckpoint(v: unknown): v is SurvivalRun {
   if (!Number.isSafeInteger(r.tick) || r.tick < 0 || !Number.isSafeInteger(r.nextEnemyId) || r.nextEnemyId < 1) return false;
   if (!Array.isArray(r.enemies) || r.enemies.length || r.bossAI !== null || !Array.isArray(r.swingHits) || !r.swingHits.every(s => typeof s === 'string')) return false;
   if (![r.totalKills, r.waveKills, r.waveZombieKills].every(n => Number.isSafeInteger(n) && n >= 0) || r.waveZombieKills > r.waveKills || r.waveKills > r.totalKills) return false;
+  if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.totalZombieKills)||r.totalZombieKills<0||r.totalZombieKills>r.totalKills||![r.damageDealt,r.damageReceived].every(n=>Number.isFinite(n)&&n>=0)))return false;
   const p = r.player;
   if (!p || p.char !== r.fighter || p.health <= 0 || p.punch || p.dodge || p.guarding || p.buffered) return false;
   // Check complete Fighter shape against a fresh template, including nested counters.

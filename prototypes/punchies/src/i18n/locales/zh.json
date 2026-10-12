@@ -459,5 +459,10 @@
   "profile.xp": "{xp} / {total} XP",
   "menu.online_casual": "在线（休闲）",
   "menu.online_ranked": "在线（排名）",
-  "charselect.uppercut_stars": "上勾拳: {stars} ★"
+  "charselect.uppercut_stars": "上勾拳: {stars} ★",
+  "survival.run_stats": "击败僵尸：{zombies}\n造成伤害：{dealt}\n承受伤害：{received}",
+  "ranked.searching": "正在寻找对手…",
+  "ranked.connecting": "正在连接对手…",
+  "ranked.search_ended": "搜索已结束，请重试。",
+  "ranked.unavailable": "暂时无法匹配，请重试。"
 }

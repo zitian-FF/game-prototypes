@@ -11,7 +11,10 @@ export function survivalOverlay(scene:Phaser.Scene,heading:string,lines:string[]
  const before=new Set(scene.children.list),depth=400,w=Math.min(610,VIEW.width-44);
  const shade=scene.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x050d20,.88).setDepth(depth).setInteractive();
  survivalText(scene,VIEW.cx,VIEW.top+62,heading,28,w,'#fff1d1',depth+2,66);
- lines.forEach((line,i)=>survivalText(scene,VIEW.cx,VIEW.top+119+i*33,line,17,w,i===0?'#8edfff':'#bed2ed',depth+2,30));
+ const body=lines.flatMap(line=>line.split('\n')),bodyTop=VIEW.top+104;
+ const buttonTop=VIEW.bottom-45-(actions.length-1)*51-24;
+ const gap=Math.max(1,Math.min(33,(buttonTop-bodyTop)/Math.max(1,body.length)));
+ body.forEach((line,i)=>survivalText(scene,VIEW.cx,bodyTop+gap*(i+.5),line,17,w,i===0?'#8edfff':'#bed2ed',depth+2,Math.max(1,gap-2)));
  actions.forEach((a,i)=>titleButton(scene,VIEW.cx,VIEW.bottom-45-(actions.length-1-i)*51,Math.min(290,w),42,a.label,a.run,false,depth+1,a.accent??'default',a.back?'back':'confirm'));
  const close=()=>{scene.children.list.filter(o=>!before.has(o)).forEach(o=>o.destroy());onClose?.();};
  const back=actions.find(a=>a.back);if(back)getNav(scene).modalBack(shade,back.run);
