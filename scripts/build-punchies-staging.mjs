@@ -17,10 +17,13 @@ const debugExcluded=files(source).filter(f=>f.endsWith('.js')).every(f=>forbidde
 if(!debugExcluded||files(source).filter(f=>f.endsWith('.html')).length!==1)throw Error('Production contains debug/scaffold routes');
 const productionFiles=files(source).length;
 const productionProfile=JSON.parse(fs.readFileSync(path.join(source,'prototypes/punchies/asset-profile.json')));
+if(productionProfile.stageArtOverlay||files(source).some(file=>file.includes('materialmask_tee')))throw Error('Staging mask leaked into the production review artifact');
 if(productionProfile.staging!==false||productionProfile.saveResetId!==resetId)throw Error('Production flags/reset epoch incorrect');
 const productionOutput=path.join(path.dirname(dest),'production');fs.mkdirSync(productionOutput,{recursive:true});fs.cpSync(source,productionOutput,{recursive:true});
 run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'on',PUNCHIES_QA:'1',PUNCHIES_STAGING_QA:'1',PUNCHIES_SAVE_RESET_ID:resetId,VITE_PUNCHIES_RATING_URL:''});
 if(!fs.existsSync(path.join(source,'staging-review.html')))throw Error('Missing opted-in QA route');
+if(fs.existsSync('scripts/test-punchies-indexed-portrait.mjs'))run(['scripts/test-punchies-indexed-portrait.mjs'],{PUNCHIES_TEE_SOURCE:path.join(source,'prototypes/punchies/assets/loose/portrait_tee.webp')});
+if(fs.existsSync('scripts/test-punchies-vs-stamp.mjs'))run(['scripts/test-punchies-vs-stamp.mjs']);
 const output=path.join(dest,'builds',sha,'game');fs.mkdirSync(output,{recursive:true});fs.cpSync(source,output,{recursive:true});
 const emitted=files(output),bytes=emitted.reduce((sum,f)=>sum+fs.statSync(f).size,0),largest=Math.max(...emitted.map(f=>fs.statSync(f).size));
 if(emitted.filter(f=>f.endsWith('.js')).some(f=>fs.readFileSync(f,'utf8').includes('punchies-rating.tianz-88.workers.dev')))throw Error('Production rating endpoint leaked into staging');
