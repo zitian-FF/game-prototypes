@@ -16,17 +16,20 @@ total; real network limits to be checked later).
 ## Core loop
 - Portrait, phone first. The player boxer (Marco) stands fixed at the bottom
   centre, facing up. 3 HP.
-- A fixed number of zombies (`run.zombieCount`, default 12) spawn in every run,
-  evenly spaced from `run.firstSpawnSec` to `run.lastSpawnSec` (default 0.5 s
-  to 22 s) so even the last one can reach Marco and be dealt with before the
-  30 s end. They enter from off-screen at several positions (`enemy.lanes`
-  entry angles across the top and sides, up to `enemy.maxBearingDeg`) in a set
-  shuffled order, so every run is identical and fair, and walk a straight line
-  to Marco. They may overlap on screen: only the front-most (closest) one can
-  be hit or attacks, the others queue behind it. Marco stays at the bottom
-  centre and turns to face the front zombie. Zombies face Marco. Wind-up is the
-  right fist pulling back, the player taking a punch is a flinch and red
-  flash.
+- A fixed number of zombies (`run.zombieCount`, default and maximum 50) spawn
+  in every run. The pace builds: the gap between spawns shrinks steadily from
+  `run.startGapSec` to `run.endGapSec` (0.7 s to 0.35 s, first spawn at 0.5 s,
+  last at about 26 s), and each later zombie walks faster (`enemy.walkSpeed` to
+  `enemy.walkSpeedEnd`). They enter from off-screen at several positions
+  (`enemy.lanes` entry angles across the top and sides, up to
+  `enemy.maxBearingDeg`) in a set shuffled order, so every run is identical and
+  fair, and walk a straight line to Marco. They may overlap on screen: only the
+  front-most (closest) one can be hit or attacks, the others queue behind it.
+  Marco stays at the bottom centre and turns to face the front zombie. Zombies
+  face Marco. Wind-up is the right fist pulling back, the player taking a punch
+  is a flinch, a red tint on Marco and red screen edges.
+- Zombies have 4 HP (`enemy.hp`) shown by a small bar above them. A jab does 2
+  damage and a cross 4 (`punch.jab.damage`, `punch.cross.damage`).
 - A defeated zombie flies off along the direction of the final blow (away from
   Marco along its approach line), makes one full 360 degree spin, fades out and
   is removed (`enemy.knockFrames`, `enemy.knockFadeFrames`).
@@ -40,17 +43,19 @@ A punch follows the main game's frame structure: startup, early sour (fist
 extending), sweet (full extension), recovery, plus whiff recovery on a miss.
 While the fist is out, it resolves against the front enemy:
 
-- **SWEET** (contact at full extension): the enemy is knocked off screen and
-  scores. Head hit = 2 points, body hit = 1 point.
+- **SWEET** (contact at full extension): full damage and it scores. Head hit =
+  2 points, body hit = 1 point (per sweet hit). A sweet hit that does not defeat
+  the zombie staggers it: pushed back (`enemy.staggerPush`) and its punch
+  interrupted. A sweet hit that defeats it knocks it off screen.
 - **SOUR** (contact while the fist is still extending, i.e. the enemy is too
-  close for that punch): no damage to the enemy, no score. The enemy then
-  punches the player.
+  close for that punch): reduced damage (`punch.sourDamageMult`, half), no
+  score, no stagger. The enemy then punches the player.
 - **MISS or no punch**: the enemy reaches its attack distance, winds up (short
   telegraph) and punches the player.
 - An enemy punch that lands deals 1 damage to the player, then the enemy moves
   off to the side and leaves. There is no player guard and no armour: a punch
   in progress does not stop an incoming enemy punch.
-- A sweet hit during an enemy's wind-up knocks it off before the punch lands.
+- A sweet hit during an enemy's wind-up interrupts it before the punch lands (stagger, or knock off if it defeats the zombie).
 
 ### Head vs body is decided by distance
 Distance is centre to centre between player and enemy. Close = head, farther =
@@ -68,8 +73,9 @@ the same formula the main sim uses: edge of band = punch reach + target radius
 These are starting values in `tune.json`, tunable in the debug panel. The
 numbers are copied, not linked, so later main-game balance changes do not
 affect this prototype. Timing numbers are copied the same way (jab startup 6,
-sour early 3, sweet 2, recovery 8, whiff recovery 4; cross startup 13, sour
-early 3, sweet 6, recovery 20, whiff recovery 12; 60 Hz frames).
+sour early 3, sweet 2, recovery 8, whiff recovery 4; cross startup 8, sour
+early 3, sweet 6, recovery 12, whiff recovery 8, speeded up by the user on
+2026-10-12; 60 Hz frames).
 
 ## End screen
 Shown when the 30 s timer ends or HP hits 0: final score, a short result line,
@@ -165,5 +171,8 @@ retry flow (except the testing-build RETRY button above), analytics, ad network 
    removed, gym floor only.
 7. 2026-10-12 (user request): fixed zombie count on an even schedule from
    several off-screen entry positions, defeated zombies fly along the blow
-   direction with one 360 spin then fade, RETRY button in the testing build. Supersedes the Bruno and
+   direction with one 360 spin then fade, RETRY button in the testing build.
+8. 2026-10-12 (user request): zombies have 4 HP, jab 2 damage and cross 4 (sweet
+   full, sour half), faster cross, 50 zombies with spawn pace and walk speed
+   building through the run. Supersedes the Bruno and
    frame animation decisions above.

@@ -56,7 +56,7 @@ async function arrange(d, windup = 99999) {
     const p = window.__playable;
     p.tune.run.zombieCount = 0; p.tune.enemy.walkSpeed = 0; p.tune.enemy.windupFrames = windup;
     p.restart();
-    p.state().enemies.push({ id: 99, d, ang: 0, state: 'windup', frame: 0, side: 1 });
+    p.state().enemies.push({ id: 99, d, ang: 0, hp: 4, speed: 0, hurt: 0, state: 'windup', frame: 0, side: 1 });
   }, { d, windup });
 }
 // Wait for the sim itself (not wall time: headless rendering can be slow).
@@ -87,6 +87,20 @@ s = await st(); check('no input costs 1 HP', s.score === 0 && s.hp === 2, JSON.s
 await arrange(80); await page.keyboard.press('KeyJ'); await settle();
 s = await st(); check('keyboard J jab scores 2', s.score === 2, JSON.stringify(s));
 
+// Two jab taps defeat a 4 HP zombie (2 damage each); the first one only staggers it.
+await arrange(80); await tap(...JAB);
+await page.waitForFunction(() => window.__playable.state().frame >= 45);
+const mid = await page.evaluate(() => { const e = window.__playable.state().enemies[0]; return { hp: e.hp, state: e.state }; });
+check('first jab leaves the zombie at 2 HP, still up', mid.hp === 2 && mid.state !== 'knocked', JSON.stringify(mid));
+await tap(...JAB); await settle(140);
+s = await st(); check('second jab defeats it (2 + 1 points) and it is gone', s.score === 3 && s.enemies === 0, JSON.stringify(s));
+
+// Player hit look: red tint on Marco and a red edge vignette (captured right after the hit lands).
+await arrange(80, 12);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); p.advance(19); const sc = p.scene; sc.tweens.killAll(); sc.hurtEdge.setAlpha(1); sc.player.flash(0xff6a6a, performance.now(), 60000, false); p.advance(0); });
+await page.screenshot({ path: path.join(shots, 'hit.png') });
+await page.evaluate(() => window.__playable.pause(false));
+
 // Action shot: a jab at full extension against a parked zombie, and one knocked off.
 await arrange(80);
 await page.evaluate(() => { const p = window.__playable; p.pause(true); p.advance(1, { jab: true }); p.advance(10); });
@@ -96,10 +110,10 @@ await page.screenshot({ path: path.join(shots, 'knock.png') });
 await page.evaluate(() => window.__playable.pause(false));
 
 // Diagonal knock-off: the zombie flies along the blow direction, spins and fades.
-await arrange(80);
-await page.evaluate(() => { const p = window.__playable; p.state().enemies[0].ang = 0.38; p.pause(true); p.advance(1, { jab: true }); p.advance(18); });
+await arrange(110);
+await page.evaluate(() => { const p = window.__playable; p.state().enemies[0].ang = 0.38; p.pause(true); p.advance(1, { cross: true }); p.advance(24); });
 await page.screenshot({ path: path.join(shots, 'knock-angle-flight.png') });
-await page.evaluate(() => window.__playable.advance(20));
+await page.evaluate(() => window.__playable.advance(19));
 await page.screenshot({ path: path.join(shots, 'knock-angle-fade.png') });
 const gone = await page.evaluate(() => { const p = window.__playable; p.advance(30); return p.state().enemies.length; });
 check('knocked zombie is removed after the fade', gone === 0, `enemies left ${gone}`);

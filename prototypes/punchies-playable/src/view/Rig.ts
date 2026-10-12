@@ -84,6 +84,7 @@ export class Rig {
   private head: Phaser.GameObjects.Image;
   private flashUntil = 0;
   private flashColor = 0xffffff;
+  private flashFill = true;
 
   constructor(scene: Phaser.Scene, char: Char, private readonly tune: Tune) {
     this.look = LOOKS[char];
@@ -102,7 +103,9 @@ export class Rig {
     this.root = scene.add.container(0, 0, [shadow, this.legs, this.bootL, this.bootR, this.arms, this.torso, this.gloveL, this.gloveR, this.head]);
   }
 
-  flash(color: number, now: number, ms: number): void {
+  // fill: paint the whole silhouette in the colour (white hit flash); otherwise tint the art.
+  flash(color: number, now: number, ms: number, fill = true): void {
+    this.flashFill = fill;
     this.flashColor = color;
     this.flashUntil = now + ms;
   }
@@ -175,8 +178,10 @@ export class Rig {
     });
 
     for (const o of [this.head, this.torso, this.gloveL, this.gloveR, this.bootL, this.bootR]) {
-      if (flashing) o.setTintFill(this.flashColor);
-      else o.clearTint();
+      if (flashing) {
+        if (this.flashFill) o.setTintFill(this.flashColor);
+        else o.setTint(this.flashColor);
+      } else o.clearTint();
     }
   }
 
