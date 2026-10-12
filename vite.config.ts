@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { punchiesDebugGate } from './scripts/punchies-debug-gate';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
@@ -34,6 +35,7 @@ function getPrototypeEntries(): Record<string, string> {
 generateVersionStamps(__dirname);
 const assetProfile = process.env.PUNCHIES_ASSET_PROFILE;
 const stagingBuild=process.env.PUNCHIES_STAGING==='on';
+const qaBuild=process.env.PUNCHIES_QA==='1';
 const saveResetId=process.env.PUNCHIES_SAVE_RESET_ID??'';
 if(saveResetId&&(process.env.PORTAL??'web')!=='web')throw new Error('The save reset is authorized for web/itch and staging builds only');
 if (assetProfile) {
@@ -55,7 +57,7 @@ export default defineConfig(({ command }) => ({
   root: assetProfile ? path.resolve(__dirname, 'prototypes/punchies') : __dirname,
   base: '/game-prototypes/',
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
-    plugins: [react(), tailwindcss(), {
+    plugins: [punchiesDebugGate(stagingBuild, qaBuild), react(), tailwindcss(), {
       name: 'punchies-art-index', enforce:'pre', apply:'build',
       resolveId(id) { if(id==='virtual:punchies-art')return '\0punchies-art'; },
       load(id) { if(id==='\0punchies-art')return `export default ${packArtIndex(punchiesArtIndex() as Parameters<typeof packArtIndex>[0])};`; },
@@ -85,6 +87,7 @@ export default defineConfig(({ command }) => ({
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
+    __PUNCHIES_QA__:JSON.stringify(qaBuild),
     __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
       __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
@@ -100,3 +103,4 @@ export default defineConfig(({ command }) => ({
     },
   },
 }));
+
