@@ -90,6 +90,7 @@ export default defineConfig(({ command }) => ({
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
+    __PUNCHIES_SOURCE_SHA__:JSON.stringify(execSync('git rev-parse HEAD').toString().trim()),
     __PUNCHIES_QA__:JSON.stringify(qaBuild),
     __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
     __PUNCHIES_STAGING_QA__: JSON.stringify(process.env.PUNCHIES_STAGING_QA === '1'),

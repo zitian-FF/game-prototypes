@@ -1,3 +1,6 @@
+import type Phaser from 'phaser';
+import {mountStageReviewControls} from './stagingReviewControls';
+export {qaTrainingPick} from './stagingReviewControls';
 import { DEBUG_TOOLS_BUILD } from '../buildFlags';
 import { Pane, type FolderApi } from 'tweakpane';
 import {DEV_KEYS} from '../portal/keys';
@@ -95,10 +98,12 @@ function setDebug(on: boolean): void {
 }
 
 let bug: HTMLButtonElement | null = null;
+let reviewGame: Phaser.Game | undefined;
 
 // Always-visible red bug button (internal testing). Bottom centre, clear of
 // the touch controls. A debug aid, so it is a plain DOM button like the panel.
-export function mountDebugPanelIfRequested(): void {
+export function mountDebugPanelIfRequested(game:Phaser.Game): void {
+  reviewGame=game;
   if (!debugUnlocked()) return;
   bug = document.createElement('button');
   bug.textContent = '\u{1F41E}';
@@ -121,6 +126,7 @@ function mountPanel(): void {
   panelHost = host;
   if (host) host.style.width = '420px';
   pane.element.style.setProperty('--bld-vw', '230px');
+  if(reviewGame)mountStageReviewControls(pane.addFolder({title:'Staging review',expanded:true}),reviewGame);
   const root = tune as unknown as Obj;
   const entries = meta as Record<string, MetaEntry>;
 
