@@ -467,14 +467,15 @@
       },
       "uppercut": {
         "damage": 1.55,
-        "staminaCost": 1.0,
-        "stunBuild": 1.0,
+        "staminaCost": 1,
+        "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0,
-        "starRequirement": 3
+        "starRequirement": 3,
+        "referenceStarCost": 3
       }
     },
     "mia": {
@@ -522,7 +523,8 @@
         "startup": 0,
         "recovery": -4,
         "fatigueBars": 0,
-        "starRequirement": 2
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
     },
     "bruno": {
@@ -570,7 +572,8 @@
         "startup": 1,
         "recovery": 4,
         "fatigueBars": 0,
-        "starRequirement": 3
+        "starRequirement": 3,
+        "referenceStarCost": 3
       }
     },
     "tee": {
@@ -618,7 +621,8 @@
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0,
-        "starRequirement": 2
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
     },
     "tyke": {
@@ -666,7 +670,8 @@
         "startup": 4,
         "recovery": 10,
         "fatigueBars": 0,
-        "starRequirement": 4
+        "starRequirement": 4,
+        "referenceStarCost": 4
       }
     },
     "dragon": {
@@ -707,14 +712,15 @@
       },
       "uppercut": {
         "damage": 1.45,
-        "staminaCost": 1.0,
+        "staminaCost": 1,
         "stunBuild": 0.9333333333333333,
         "push": 1,
         "reach": 1.1,
         "startup": 1,
         "recovery": 2,
         "fatigueBars": 0,
-        "starRequirement": 3
+        "starRequirement": 3,
+        "referenceStarCost": 3
       }
     },
     "longan": {
@@ -762,7 +768,8 @@
         "startup": 3,
         "recovery": -2,
         "fatigueBars": 0,
-        "starRequirement": 1
+        "starRequirement": 1,
+        "referenceStarCost": 1
       }
     },
     "captain": {
@@ -803,14 +810,15 @@
       },
       "uppercut": {
         "damage": 0.85,
-        "staminaCost": 1.0,
+        "staminaCost": 1,
         "stunBuild": 0.5866666666666667,
         "push": 1,
         "reach": 1,
         "startup": 0,
         "recovery": -4,
         "fatigueBars": 0,
-        "starRequirement": 2
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
     },
     "roxy": {
@@ -858,7 +866,8 @@
         "startup": 1,
         "recovery": 4,
         "fatigueBars": 0,
-        "starRequirement": 3
+        "starRequirement": 3,
+        "referenceStarCost": 3
       }
     },
     "nadia": {
@@ -906,7 +915,8 @@
         "startup": 0,
         "recovery": -2,
         "fatigueBars": 0,
-        "starRequirement": 2
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
     }
   },
