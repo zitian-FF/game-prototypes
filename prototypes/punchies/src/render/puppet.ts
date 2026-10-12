@@ -330,6 +330,7 @@ export class Puppet {
       const dx = fist.x - elbow.x;
       const dy = fist.y - elbow.y;
       glove
+        .setOrigin(registration.originX??.5,registration.originY??.5)
         .setPosition(fist.x, fist.y)
         .setRotation(Math.atan2(dy, dx) + registration.axis)
         .setScale(registration.scale)
