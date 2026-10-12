@@ -12,15 +12,17 @@ const navigator = {getGamepads: () => pads};
 function load(file, mocks) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText,
-    {exports, require: id => mocks[id] ?? {}, window, navigator});
+    {exports, require: id => mocks[id] ?? (id.endsWith('/controlHint')?{controlHint:()=>({destroy(){}})}:{}), window, navigator});
   return exports;
 }
 const sfx = {uiSelect(){}, uiConfirm(){}, uiBack(){}};
-const {MenuNav} = load('prototypes/punchies/src/ui/menuNav.ts', {'../audio/sfx': {sfx}});
+const layoutMock={loadLayouts:()=>({kb1:{up:['KeyW'],down:['KeyS'],left:['KeyA'],right:['KeyD']},kb2:{up:['ArrowUp'],down:['ArrowDown'],left:['ArrowLeft'],right:['ArrowRight']}})};
+const modalityMock={inputModality:{source:'touch'},installInputModality(){},pollInputModality(){}};
+const {MenuNav} = load('prototypes/punchies/src/ui/menuNav.ts', {'../audio/sfx': {sfx},'../input/layouts':layoutMock,'../input/modality':modalityMock});
 class Hit extends EventEmitter {
   constructor(depth, x = 0, y = 0) {super(); Object.assign(this, {depth, x, y, active: true, visible: true, input: {enabled: true}});}
   destroy() {this.active = false; this.emit('destroy');}
-  getBounds() {return {x:this.x,y:this.y,width:60,height:30};}
+  getBounds() {return {x:this.x,y:this.y,width:60,height:30,centerX:this.x+30,centerY:this.y+15};}
 }
 function setup(fight = false) {
   const g = {strokes:0,setDepth(){return this;}, clear(){this.strokes=0;}, lineStyle(){}, strokeRect(){this.strokes++;}};
@@ -96,7 +98,7 @@ for (const depth of [130,150,291]) {
   h.nav.modalBack(inner,()=>{calls.push('inner close');inner.destroy();innerButton.destroy();});
   h.key('Escape');h.key('Escape',true);
   assert.deepEqual(calls,['inner close']); assert.equal(outer.active,true);
-  pads=[pad()];pads[0].buttons[1].pressed=true;pads[0].buttons[0].pressed=true;h.tick();h.tick();
+  pads=[pad()];h.tick();pads[0].buttons[1].pressed=true;pads[0].buttons[0].pressed=true;h.tick();h.tick();
   assert.deepEqual(calls,['inner close','outer close'],'B closes once and simultaneous A cannot activate underneath');
   pads[0].buttons[1].pressed=false;pads[0].buttons[0].pressed=false;h.tick();
   h.key('Enter');assert.equal(calls.at(-1),'second','previous focus restored');
@@ -108,7 +110,7 @@ for (const depth of [130,150,291]) {
   h.nav.add(outerButton,()=>{});h.nav.add(innerButton,()=>{});
   h.nav.modalBack(outer,()=>{calls.push('outer');outer.destroy();outerButton.destroy();});
   h.nav.modalBack(inner,()=>{calls.push('inner');inner.destroy();innerButton.destroy();});
-  pads=[pad(),pad()];pads.forEach(p=>p.buttons[1].pressed=true);h.tick();h.tick();
+  pads=[pad(),pad()];h.tick();pads.forEach(p=>p.buttons[1].pressed=true);h.tick();h.tick();
   assert.deepEqual(calls,['inner'],'simultaneous controller Back closes one panel');
   h.stop();pads=[];
 }
@@ -116,12 +118,12 @@ for (const depth of [130,150,291]) {
   const h=setup(), anchor=new Hit(410), deeper=new Hit(452);let closed=0;
   h.nav.modalBack(anchor,()=>closed++);h.nav.add(deeper,()=>{});h.key('Escape');assert.equal(closed,0,'unowned deeper modal shields underlying Back');
   deeper.destroy();h.nav.textEntry=true;h.key('Escape');assert.equal(closed,0,'room entry owns keyboard Escape');
-  pads=[pad()];pads[0].buttons[1].pressed=true;h.tick();assert.equal(closed,1,'controller B still closes room entry');
+  pads=[pad()];h.tick();pads[0].buttons[1].pressed=true;h.tick();assert.equal(closed,1,'controller B still closes room entry');
   h.stop();pads=[];
 }
 {
   const h=setup(true);h.nav.add(new Hit(220),()=>assert.fail('pause activated'));
-  pads=[pad()];pads[0].buttons[1].pressed=true;h.tick();assert.equal(h.nav.capturing,false,'B remains combat Hook');
+  pads=[pad()];h.tick();pads[0].buttons[1].pressed=true;h.tick();assert.equal(h.nav.capturing,false,'B remains combat Hook');
   h.nav.engage();pads[0].buttons[1].pressed=false;h.tick();pads[0].buttons[1].pressed=true;h.tick();
   assert.equal(h.nav.capturing,true,'B must not toggle practice navigation without a modal');
   const anchor=new Hit(410),button=new Hit(412);let closed=0;
@@ -133,15 +135,15 @@ for (const depth of [130,150,291]) {
 // Exercise the scene's actual format handlers and device ownership.
 const tune={match:{bestOf:3}};
 const {CharSelectScene}=load('prototypes/punchies/src/scenes/CharSelectScene.ts', {
-  phaser:{default:{Scene:class{}}}, '../sim/tune':{tune}, '../audio/sfx':{sfx}, '../i18n':i18nStub,
+  phaser:{default:{Scene:class{}}}, '../sim/bot':{BOT_LEVELS:['easy','medium','hard']},'../sim/charPrefs':{saveCharPrefs(){}},'../input/modality':modalityMock,'../input/layouts':layoutMock,'../sim/tune':{tune}, '../audio/sfx':{sfx}, '../i18n':i18nStub,
 });
 for (const mode of ['vsai','localvs','online','training']) {
-  const s=new CharSelectScene();s.active=0;s.time={now:1000};
+  const s=new CharSelectScene();s.scene={isActive:()=>true};s.input={enabled:true};s.active=0;s.time={now:1000};
   s.sides=[{src:'kb1'},{src:'pad2'}];s.data0={mode,localIdx:0};tune.match.bestOf=3;
   s.onKey({code:'KeyF'});assert.equal(tune.match.bestOf,mode==='training'?3:1);
   s.onKey({code:'KeyF',repeat:true});assert.equal(tune.match.bestOf,mode==='training'?3:1);
   s.sides=[{src:'pad1'},{src:'pad2'}];
-  pads=[pad()];pads[0].buttons[3].pressed=true;s.pollPads();s.pollPads();
+  pads=[pad()];s.pollPads();pads[0].buttons[3].pressed=true;s.pollPads();s.pollPads();
   assert.equal(tune.match.bestOf,3,'Y changes once per press');
   if(mode==='online') {s.data0.localIdx=1;s.onKey({code:'KeyF'});s.cycleFormat();assert.equal(tune.match.bestOf,3,'guest cannot change host format');}
   if(mode==='localvs') {
@@ -183,7 +185,7 @@ assert.match(i18nStub.t('charselect.format_hint'),/F.*Y/);
   first.emit('pointerup');assert.equal(transitions.at(-1),156,'rounded chrome restores idle position');assert.equal(slots[0].text,'2');assert.equal(slots[1].text,'');
   first.emit('pointerdown');first.emit('pointerout');first.emit('pointerup');assert.equal(slots[1].text,'');
   first.emit('pointerdown');first.emit('pointerupoutside');first.emit('pointerup');assert.equal(slots[1].text,'');
-  h.key('ArrowDown');pads=[pad()];pads[0].buttons[0].pressed=true;h.tick();assert.equal(slots[1].text,'2');assert.equal(slots[2].text,'');
+  h.key('ArrowDown');pads=[pad()];h.tick();pads[0].buttons[0].pressed=true;h.tick();assert.equal(slots[1].text,'2');assert.equal(slots[2].text,'');
   h.key('A');assert.equal(slots[2].text,'A');h.key('Backspace');assert.equal(slots[2].text,'');
   menu.input.enabled=false;h.key('B');assert.equal(slots[2].text,'');menu.input.enabled=true;
   h.key('B');h.key('Enter');assert.deepEqual(JSON.parse(JSON.stringify(transitions.at(-1))),{key:'Lobby',data:{role:'guest',code:'22B',rated:false}});
@@ -196,6 +198,8 @@ assert.match(i18nStub.t('charselect.format_hint'),/F.*Y/);
 }
 console.log('UI input: ad/overlay suppression, held controller edges, reveal ownership, rounded keypad release/typing/cleanup, pause exclusion, results/practice navigation, modal priority, focus restoration, gameplay Hook and format ownership passed');
 
+// Difficulty is a side option, reachable independently of selected fighter.
+{const s=new CharSelectScene();s.scene={isActive:()=>true};s.input={enabled:true};s.data0={mode:'vsai'};s.level='easy';s.active=0;s.sides=[{src:'any'}];s.time={now:1000};s.onKey({code:'KeyE'});assert.equal(s.level,'medium');s.onKey({code:'KeyQ'});assert.equal(s.level,'easy');s.onKey({code:'KeyE',repeat:true});assert.equal(s.level,'easy');pads=[pad()];s.pollPads();pads[0].buttons[5].pressed=true;s.pollPads();assert.equal(s.level,'medium');s.pollPads();assert.equal(s.level,'medium');let confirms=0;s.confirm=()=>confirms++;pads[0].buttons[0].pressed=true;pads[0].buttons[2].pressed=true;s.pollPads();s.pollPads();assert.equal(confirms,1);s.data0.mode='training';s.onKey({code:'KeyE'});assert.equal(s.level,'medium');pads=[];}
 // Preserve the existing timeout and its cancellation; diagnostics follow debug mode.
 const netTune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'));
 let debug=false, session, timer, returned;

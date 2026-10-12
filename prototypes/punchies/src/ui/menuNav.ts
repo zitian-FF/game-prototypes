@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import {inputModality,installInputModality,pollInputModality} from '../input/modality';
+import {loadLayouts} from '../input/layouts';
 import { sfx } from '../audio/sfx';
 
 // Keyboard / controller navigation for in-canvas buttons. UI chrome only,
@@ -14,7 +16,7 @@ import { sfx } from '../audio/sfx';
 // itself when a modal or the result screen is up.
 
 interface Item {
-  bg: Phaser.GameObjects.Rectangle;
+  bg: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc;
   onTap: () => void;
 }
 
@@ -33,6 +35,7 @@ export class MenuNav {
   private g: Phaser.GameObjects.Graphics;
   private highlight = false;
   private prevPad: boolean[] = [];
+  private padIds:string[]=[];
   private stickAt = 0;
   // Fight scenes: nav off until toggled or a modal / result appears.
   fightMode = false;
@@ -47,6 +50,7 @@ export class MenuNav {
   }
 
   constructor(private scene: Phaser.Scene) {
+    installInputModality();
     this.g = scene.add.graphics().setDepth(1000);
     const update = () => this.update();
     const pointer = () => {
@@ -67,8 +71,9 @@ export class MenuNav {
     });
   }
 
-  add(bg: Phaser.GameObjects.Rectangle, onTap: () => void): void {
-    this.items.push({ bg, onTap });
+  add(bg: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc, onTap: () => void): void {
+    const item={bg,onTap};this.items.push(item);
+    bg.once('destroy',()=>{this.items=this.items.filter(i=>i!==item);if(this.focus===item)this.focus=null;});
   }
 
   // Explicit Back ownership: closing a nested panel restores its previous focus.
@@ -121,13 +126,13 @@ export class MenuNav {
       if (this.focus) sfx.uiSelect();
       return;
     }
-    const f = this.focus.bg;
+    const f = this.focus.bg.getBounds();
     let best: Item | null = null;
     let bestScore = Infinity;
     for (const c of live) {
       if (c === this.focus) continue;
-      const vx = c.bg.x - f.x;
-      const vy = c.bg.y - f.y;
+      const b=c.bg.getBounds();const vx = b.centerX - f.centerX;
+      const vy = b.centerY - f.centerY;
       const along = vx * dx + vy * dy;
       if (along <= 4) continue;
       const score = along + Math.abs(vx * dy - vy * dx) * 2.5;
@@ -175,14 +180,16 @@ export class MenuNav {
     if (!this.capturing) return;
     const k = e.key;
     const letters = !this.textEntry;
-    if (k === 'ArrowUp' || (letters && (k === 'w' || k === 'W'))) this.move(0, -1);
-    else if (k === 'ArrowDown' || (letters && (k === 's' || k === 'S'))) this.move(0, 1);
-    else if (k === 'ArrowLeft' || (letters && (k === 'a' || k === 'A'))) this.move(-1, 0);
-    else if (k === 'ArrowRight' || (letters && (k === 'd' || k === 'D'))) this.move(1, 0);
+    const keys=loadLayouts()[inputModality.source==='kb2'?'kb2':'kb1'];
+    if (k === 'ArrowUp' || (letters && keys.up.includes(e.code))) this.move(0, -1);
+    else if (k === 'ArrowDown' || (letters && keys.down.includes(e.code))) this.move(0, 1);
+    else if (k === 'ArrowLeft' || (letters && keys.left.includes(e.code))) this.move(-1, 0);
+    else if (k === 'ArrowRight' || (letters && keys.right.includes(e.code))) this.move(1, 0);
     else if ((k === 'Enter' || k === ' ') && !this.textEntry) this.press();
   }
 
   private update(): void {
+    pollInputModality();
     const blocked = this.scene.input.enabled === false || this.scene.registry.get('gameMenu:' + this.scene.scene.key) || !this.scene.scene.isActive();
     this.pollPads(!blocked && !this.bindingOwners);
     const g = this.g;
@@ -214,11 +221,11 @@ export class MenuNav {
     const now = this.scene.time.now;
     // Snapshot all pads before actions: one Back dismisses at most one panel,
     // even if two controllers press it together.
-    const edgesByPad = pads.map((p, i) => p?.buttons.map((button, n) => {
+    const edgesByPad = pads.map((p, i) => {const id=p?.id??'';const changed=this.padIds[i]!==id;this.padIds[i]=id;return p?.buttons.map((button, n) => {
       const key = i * 32 + n, was = this.prevPad[key];
       this.prevPad[key] = button.pressed;
-      return button.pressed && !was;
-    }) ?? []);
+      return !changed&&button.pressed && !was;
+    }) ?? [];});
     // Keep consuming edges during ads / overlays so held buttons cannot fire
     // against the restored scene. Pointer suppression also owns global input.
     if (!allowActions || this.scene.input.enabled === false) {

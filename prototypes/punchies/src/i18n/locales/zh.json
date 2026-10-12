@@ -464,5 +464,10 @@
   "ranked.searching": "正在寻找对手…",
   "ranked.connecting": "正在连接对手…",
   "ranked.search_ended": "搜索已结束，请重试。",
-  "ranked.unavailable": "暂时无法匹配，请重试。"
+  "ranked.unavailable": "暂时无法匹配，请重试。",
+  "ui.match_format": "赛制",
+  "ui.bot_difficulty": "电脑难度",
+  "ui.navigate": "导航",
+  "ui.confirm": "确认",
+  "ui.adjust_touch_control": "移动控件，确认或返回以完成。"
 }

@@ -44,7 +44,8 @@ const cancelled = new LayoutDraft('kb1'); cancelled.value.kb1.jab = ['KeyZ']; ca
 const saved = new LayoutDraft('kb1'); saved.value.kb1.jab = ['KeyZ']; assert.equal(saved.save(), true); equal(loadLayouts().kb1.jab, ['KeyZ']); equal(loadLayouts().kb2, custom.kb2);
 const reset = new LayoutDraft('kb1'); reset.reset(); equal(loadLayouts().kb1.jab, ['KeyZ'], 'Reset stays staged'); reset.save(); equal(loadLayouts().kb1.guard, ['ShiftLeft', 'ShiftRight']);
 
-const input = load('input/devices', { './layouts': layouts, '../i18n': i18nStub, '../sim/types': { NEUTRAL_INPUT: { mx: 0, my: 0, jab: false, cross: false, hook: false, uppercut: false, dodge: false, guard: false } } });
+const modality=load('input/modality',{'./layouts':layouts});
+const input = load('input/devices', { './modality':modality, './layouts': layouts, '../i18n': i18nStub, '../sim/types': { NEUTRAL_INPUT: { mx: 0, my: 0, jab: false, cross: false, hook: false, uppercut: false, dodge: false, guard: false } } });
 const hub = input.devices;
 const key = (code, repeat = false) => keys.emit('keydown', { code, repeat, preventDefault() {}, stopImmediatePropagation() {} });
 const up = code => keys.emit('keyup', { code });
@@ -116,7 +117,7 @@ for (const [char,capacity] of [['longan',1],['tyke',4]]) {
 controls.shown = null; controls.onDown(pointer(1, 668, 236)); sc.events.emit('shutdown'); assert.equal(intents.sample().guard, false); assert.equal(sc.input.listenerCount('pointerdown'), 0);
 
 // The real modal: staging, pointer choices without hardware, keyboard capture, Save / Cancel / Reset and shutdown ownership.
-let owners = 0; const buttons = [], nav = { modalBack(_anchor, fn) { this.back = fn; }, ownBindings() { owners++; let done = false; return () => { if (!done) { done = true; owners--; } }; } };
+let owners = 0; const buttons = [], touchTargets=[], nav = { add(hit,fn){touchTargets.push({hit,fn});}, modalBack(_anchor, fn) { this.back = fn; }, ownBindings() { owners++; let done = false; return () => { if (!done) { done = true; owners--; } }; } };
 const glyph = load('ui/inputGlyph', { '../i18n': i18nStub, '../input/layouts': layouts });
 assert.equal(glyph.keyLabel('KeyQ'), 'Q'); assert.equal(glyph.padLabel(0), 'A'); assert.equal(glyph.padLabel(7), 'RT');
 const { inputLayoutEditor } = load('ui/inputLayoutEditor', { '../i18n': i18nStub, '../input/layouts': layouts, '../input/devices': { devices: hub }, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 },
@@ -141,9 +142,11 @@ ed = scene(); inputLayoutEditor(ed, 'touch'); at(242, 346); at(612, 346); equal(
 ed = scene(); inputLayoutEditor(ed, 'touch'); handle = ed.objects.filter(o => o.kind === 'circle')[1];
 handle.emit('pointerdown', pointer(23, handle.x, handle.y)); ed.input.emit('pointermove', pointer(23, handle.x - 84 * previewScale, handle.y - 64 * previewScale)); at(612, 346);
 equal(loadLayouts().touch, defaults().touch, 'overlapping layout cannot save'); assert.ok(ed.objects.some(o => o.active)); ed.events.emit('shutdown'); assert.equal(ed.input.listenerCount('pointermove'), 0);
+saveLayouts(defaults());ed=scene();inputLayoutEditor(ed,'touch');touchTargets.at(-6).fn();assert.equal(owners,1);key('ArrowRight');key('Enter');assert.equal(owners,0);at(612,346);assert.equal(loadLayouts().touch.stick.x,defaults().touch.stick.x+.01,'keyboard nudges staged touch handle and saves');
+saveLayouts(defaults());pads=[pad()];ed=scene();ed.time={now:1000};inputLayoutEditor(ed,'touch');touchTargets.at(-6).fn();pads[0].buttons[15].pressed=true;ed.events.emit('update');pads[0].buttons[0].pressed=true;ed.events.emit('update');assert.equal(owners,0);at(612,346);assert.equal(loadLayouts().touch.stick.x,defaults().touch.stick.x+.01,'controller nudge and Confirm preserve Save workflow');pads=[];saveLayouts(defaults());
 const tutorial = load('scenes/TutorialScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph,
   '../i18n': i18nStub, '../portal/keys': { KEYS: { tutorial: 'tutorial' } }, '../render/pixelRatio': { VIEW: view, PIXEL_RATIO: 1 }, '../sim/tune': { TICK_RATE: 60 } }, '\nexports.binderForTest = binder;');
-hub.lastSource = 'kb2'; hub.lastDevice = 'keyboard'; custom.kb2.jab = ['KeyZ']; custom.kb2.guard = ['ControlRight']; saveLayouts(custom);
+modality.inputModality.register('kb2'); custom.kb2.jab = ['KeyZ']; custom.kb2.guard = ['ControlRight']; saveLayouts(custom);
 assert.equal(tutorial.binderForTest()('jab'), i18nStub.t('tutorial.press_key', { key: 'Z' })); assert.equal(tutorial.binderForTest()('guard'), glyph.keyLabel('ControlRight'));
 const { FirstFightScene } = load('scenes/FirstFightScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph, '../i18n': i18nStub, '../sim/tune': { TICK_RATE: 60 } });
 const coach = new FirstFightScene(); coach.phase = 'jab'; assert.equal(coach.coachText(), 'Throw JABS: Z');

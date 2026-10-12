@@ -464,5 +464,10 @@
   "ranked.searching": "상대를 찾는 중…",
   "ranked.connecting": "상대에게 연결 중…",
   "ranked.search_ended": "검색이 종료되었습니다. 다시 시도하세요.",
-  "ranked.unavailable": "매치메이킹을 이용할 수 없습니다. 다시 시도하세요."
+  "ranked.unavailable": "매치메이킹을 이용할 수 없습니다. 다시 시도하세요.",
+  "ui.match_format": "경기 형식",
+  "ui.bot_difficulty": "봇 난이도",
+  "ui.navigate": "이동",
+  "ui.confirm": "확인",
+  "ui.adjust_touch_control": "컨트롤을 이동하세요. 확인 또는 뒤로로 완료하세요."
 }

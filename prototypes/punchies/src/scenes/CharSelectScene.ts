@@ -1,4 +1,6 @@
 import {rosterScores,statFill,type RosterStat} from '../sim/rosterStats';
+import {inputModality,installInputModality,pollInputModality} from '../input/modality';
+import {loadLayouts} from '../input/layouts';
 import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
 import { loadShopDraft } from '../shop/draft';
 import { t } from '../i18n';
@@ -70,6 +72,7 @@ export class CharSelectScene extends Phaser.Scene {
   private notice='';
   private handedOff = false;
   private prevPad: boolean[] = [];
+  private padIds:string[]=[];
   private stickAt = [0, 0];
 
   constructor() {
@@ -77,6 +80,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   create(data: CharSelectData): void {
+    installInputModality();
     applyCameraPixelRatio(this);
     backdrop(this, 0.14, 'character_select_background');
     this.data0 = data;
@@ -88,6 +92,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.peerHere = false;this.notice='';this.remoteAvailable=['marco','mia','bruno'];
     this.active = 0;
     this.prevPad = [];
+    this.padIds=[];
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
     this.level = prefs.level;
@@ -143,9 +148,9 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private hint(): string {
-    if (this.data0.mode === 'localvs') return t('charselect.each_player_picks_and_confirms');
-    if (this.data0.mode === 'online') return t('charselect.pick_your_boxer_then_ready');
-    return t('charselect.pick_a_boxer_then_confirm');
+    if (this.data0.mode === 'localvs') return t('charselect.each_player_picks_and_confirms').split('\n')[0];
+    if (this.data0.mode === 'online') return t('charselect.pick_your_boxer_then_ready').split('\n')[0];
+    return t('charselect.pick_a_boxer_then_confirm').split('\n')[0];
   }
 
   // ---- input --------------------------------------------------------------
@@ -160,7 +165,7 @@ export class CharSelectScene extends Phaser.Scene {
   // own side; otherwise every key drives the active side.
   private keySide(code: string): number {
     if (this.data0.mode !== 'localvs') return this.active;
-    const kb2 = code.startsWith('Arrow') || code.startsWith('Numpad') || code === 'Enter' || code === 'Backspace';
+    const kb2 = Object.values(loadLayouts().kb2).some(keys=>keys.includes(code)) || code === 'Enter' || code === 'Backspace';
     const want: InputSource = kb2 ? 'kb2' : 'kb1';
     const s = this.sides.findIndex((x) => x.src === want);
     // A side on touch / a pad still takes the other keyboard half's keys
@@ -169,18 +174,21 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private onKey(e: KeyboardEvent): void {
-    if(e.repeat && e.code==='KeyF')return;
+    if(!this.scene.isActive()||this.input.enabled===false||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
+    const target=e.target as HTMLElement|null;if(target?.isContentEditable||['INPUT','TEXTAREA'].includes(target?.tagName??''))return;
+    if(e.repeat&&!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))return;
     const c = e.code;
     // Format belongs to the shared match, independent of keyboard half.
-    if(c==='KeyF') { this.cycleFormat(); return; }
+    const mappings=loadLayouts(),movementBound=[mappings.kb1,mappings.kb2].some(keys=>(['up','down','left','right'] as const).some(a=>keys[a].includes(c)));
+    if(c==='F1'||(c==='KeyF'&&!movementBound)) { e.preventDefault?.();this.cycleFormat(); return; }
+    if(c==='F2'||(c==='KeyQ'&&!movementBound)){e.preventDefault?.();this.cycleLevel(-1);return;}if(c==='F3'||(c==='KeyE'&&!movementBound)){e.preventDefault?.();this.cycleLevel(1);return;}
     const s = this.keySide(c);
     if (s < 0) return;
-    if (c === 'ArrowUp' || c === 'KeyW') this.moveVertical(s, -1);
-    else if (c === 'ArrowDown' || c === 'KeyS') this.moveVertical(s, 1);
-    else if(c==='KeyQ')this.cycleLevel(-1);
-    else if(c==='KeyE')this.cycleLevel(1);
-    else if (c === 'ArrowLeft' || c === 'KeyA') this.move(s, -1);
-    else if (c === 'ArrowRight' || c === 'KeyD') this.move(s, 1);
+    const source=this.sides[s].src;const keys=loadLayouts()[source==='kb2'||(source==='any'&&inputModality.source==='kb2')?'kb2':'kb1'];
+    if (c === 'ArrowUp' || keys.up.includes(c)) this.moveVertical(s, -1);
+    else if (c === 'ArrowDown' || keys.down.includes(c)) this.moveVertical(s, 1);
+    else if (c === 'ArrowLeft' || keys.left.includes(c)) this.move(s, -1);
+    else if (c === 'ArrowRight' || keys.right.includes(c)) this.move(s, 1);
     else if (['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'Numpad1'].includes(c)) this.confirm(s);
     else if (['Escape', 'Backspace', 'Numpad0'].includes(c)) this.back(s);
   }
@@ -192,17 +200,17 @@ export class CharSelectScene extends Phaser.Scene {
     } catch {
       return;
     }
+    for(let i=0;i<2;i++)if(!pads[i]){this.padIds[i]='';for(let n=0;n<32;n++)this.prevPad[i*32+n]=false;}
     pads.slice(0, 2).forEach((p, i) => {
       if (!p) return;
+      const identity=p.id??'',changed=this.padIds[i]!==identity;this.padIds[i]=identity;
+      const edges=p.buttons.map((b,n)=>{const k=i*32+n,was=this.prevPad[k];this.prevPad[k]=b.pressed;return !changed&&b.pressed&&!was;});
+      if(!this.scene.isActive()||this.input.enabled===false)return;
       let s = this.active;
       if (this.data0.mode === 'localvs') s = this.sides.findIndex((x) => x.src === (i === 0 ? 'pad1' : 'pad2'));
       if (s < 0) return;
       const edge = (n: number) => {
-        const k = i * 32 + n;
-        const now = !!p.buttons[n]?.pressed;
-        const was = this.prevPad[k];
-        this.prevPad[k] = now;
-        return now && !was;
+        return !!edges[n];
       };
       if (edge(3)) this.cycleFormat();
       if (edge(12)) this.moveVertical(s,-1);
@@ -219,9 +227,8 @@ export class CharSelectScene extends Phaser.Scene {
         this.stickAt[i]=this.time.now;
         this.moveVertical(s,Math.sign(ay));
       }
-      if (edge(0) || edge(2)) this.confirm(s);
-      if (edge(1)) this.back(s);
-      if (edge(9)) this.confirm(s);
+      if (edge(1)) {this.back(s);return;}
+      if (edge(0) || edge(2) || edge(9)) this.confirm(s);
     });
   }
 
@@ -457,6 +464,7 @@ export class CharSelectScene extends Phaser.Scene {
   // ---- presentation -------------------------------------------------------
 
   update(): void {
+    pollInputModality();
     this.pollPads();
     const chars = this.picks();
     prefetchGroups(fighterGroups(chars));
@@ -465,6 +473,7 @@ export class CharSelectScene extends Phaser.Scene {
     const ready = this.bothLocked();
     const me = this.data0.localIdx ?? 0;
     this.selectionView.render({
+      notice:!!this.notice,
       training:(this.data0.mode==='training'||this.data0.mode==='survival'),
       bestOf: tune.match.bestOf,
       formatEditable: this.data0.mode !== 'online' || this.data0.localIdx === 0,

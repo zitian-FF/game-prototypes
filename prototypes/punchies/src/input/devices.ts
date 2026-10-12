@@ -1,4 +1,5 @@
 import type { FrameInput } from '../sim/types';
+import {inputModality,installInputModality,pollInputModality} from './modality';
 import { t } from '../i18n';
 import { NEUTRAL_INPUT } from '../sim/types';
 import { loadLayouts, TRIGGER_THRESHOLD, type Bindings } from './layouts';
@@ -34,13 +35,13 @@ export class DeviceHub {
   private padEdges: Set<number>[] = [new Set(), new Set()];
   // Which kind of device the local player touched last (drives hiding the
   // on-screen controls).
-  lastDevice: DeviceKind = 'touch';
+  get lastDevice():DeviceKind{return inputModality.kind;}
 
   private suppressed = 0;
   private identities: (string | null)[] = [null, null];
   private blockedKeys = new Set<string>();
   private blockedPads: Set<number>[] = [new Set(), new Set()];
-  lastSource: InputSource = 'touch';
+  get lastSource():InputSource{return inputModality.source;}
   blockKey(code: string): void { this.blockedKeys.add(code); }
   private blockHeldPads(): void {
     for (let i = 0; i < 2; i++) this.pads()[i]?.buttons.forEach((b, n) => {
@@ -56,21 +57,20 @@ export class DeviceHub {
   }
   pad(source: 'pad1' | 'pad2'): Gamepad | null { return this.pads()[source === 'pad1' ? 0 : 1] ?? null; }
   constructor() {
+    installInputModality();
     window.addEventListener('keydown', (e) => {
       if (this.suppressed) { this.blockedKeys.add(e.code); return; }
       if (this.blockedKeys.has(e.code) || (e.repeat && !this.down.has(e.code)) || !gameKeys().has(e.code)) return;
       e.preventDefault(); // Space/arrows would scroll the page
       if (!this.down.has(e.code)) this.edges.add(e.code);
       this.down.add(e.code);
-      this.lastDevice = 'keyboard';
-      this.lastSource = Object.values(loadLayouts().kb2).some(c => c.includes(e.code)) ? 'kb2' : 'kb1';
     });
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.blockedKeys.delete(e.code); });
     window.addEventListener('blur', () => { this.clear(); this.padPrev = [[], []]; this.identities = [null, null]; this.blockedKeys.clear(); });
     window.addEventListener(
       'pointerdown',
       (e) => {
-        if (e.pointerType === 'touch') { this.lastDevice = 'touch'; this.lastSource = 'touch'; }
+        if (e.pointerType === 'touch') inputModality.register('touch');
       },
       { capture: true, passive: true },
     );
@@ -91,6 +91,7 @@ export class DeviceHub {
   // Call once per rendered frame: records gamepad button presses so a tap
   // between sim ticks is never lost.
   poll(): void {
+    pollInputModality();
     const pads = this.pads();
     for (let i = 0; i < 2; i++) {
       const p = pads[i];
@@ -105,12 +106,9 @@ export class DeviceHub {
         else if (this.suppressed || connected) this.blockedPads[i].add(idx);
         if (!this.suppressed && !connected && !this.blockedPads[i].has(idx) && pressed && !this.padPrev[i][idx]) {
           this.padEdges[i].add(idx);
-          this.lastDevice = 'gamepad';
-          this.lastSource = i === 0 ? 'pad1' : 'pad2';
         }
         this.padPrev[i][idx] = pressed;
       });
-      if (!this.suppressed && (Math.abs(p.axes[0] ?? 0) > 0.5 || Math.abs(p.axes[1] ?? 0) > 0.5)) { this.lastDevice = 'gamepad'; this.lastSource = i === 0 ? 'pad1' : 'pad2'; }
     }
   }
 
