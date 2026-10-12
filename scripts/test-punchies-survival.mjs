@@ -254,3 +254,6 @@ const legacyBoss=structuredClone(boss);legacyBoss.balanceVersion=legacyBoss.bala
 console.log('PASS failed/success/denied cooldown semantics, boss HP cap/selection independence and legacy checkpoint invalidation');
 
 }
+// Presentation totals are a partition of existing counters, not extra saved/granted data.
+{const r=fresh();r.totalKills=7;r.totalZombieKills=5;r.damageDealt=45.5;r.damageReceived=12.25;const before=JSON.stringify(r),v=survivalView(r);assert.equal(v.totalKills,7);assert.equal(v.totalZombieKills,5);assert.equal(v.totalBossKills,2);assert.equal(v.totalKills,v.totalZombieKills+v.totalBossKills);assert.equal(v.damageDealt,45.5);assert.equal(v.damageReceived,12.25);assert.equal(JSON.stringify(r),before,'stats view is read-only');assert.equal(survivalView(boss).totalBossKills,1,'actual boss defeat counted once');}
+console.log('PASS exact defeated/zombie/boss partition and actual damage view without save-schema changes');

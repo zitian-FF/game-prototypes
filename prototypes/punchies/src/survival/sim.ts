@@ -299,6 +299,8 @@ export function survivalView(r: SurvivalRun) {
     player: r.player, enemies: r.enemies, wave: r.wave, clearedWave: r.clearedWave,
     secondsLeft, timeText: `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`,
     waveKills: r.waveKills, zombieKills: r.waveZombieKills, totalKills: r.totalKills,
+    totalZombieKills:r.totalZombieKills,totalBossKills:r.totalKills-r.totalZombieKills,
+    damageDealt:r.damageDealt,damageReceived:r.damageReceived,
     ready:r.tick<r.fightStartTick, status: r.status, endReason: r.endReason, bossChar: r.bossChar,
     waveMode:r.bossChar?'boss' as const:'timed' as const,boss,
     nextBossWave: (Math.floor(r.wave / config.bossEveryWaves) + 1) * config.bossEveryWaves,
