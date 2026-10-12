@@ -16,7 +16,7 @@ import {setGameplay} from '../portal/gameplay';
 import {loadShopDraft} from '../shop/draft';
 import {availableFighters,equippedSkin} from '../shop/roster';
 import {getNav} from '../ui/menuNav';
-import {survivalText,survivalOverlay,fitSurvivalText} from '../ui/survivalChrome';
+import {survivalText,survivalOverlay,survivalRunPanel,fitSurvivalText} from '../ui/survivalChrome';
 import {startScreen} from '../ui/presentation';
 import {FightStage} from './FightStage';
 import {survivalBossHud} from '../ui/survivalBossHud';
@@ -116,20 +116,14 @@ export class SurvivalScene extends Phaser.Scene {
   if(this.panel==='intermission')return;
   this.panel='intermission';getNav(this).fightMode=false;setGameplay(false);
   const view=survivalView(this.run),next=view.wave+1;
-  this.closePanel=survivalOverlay(this,t('survival.wave_clear',{wave:view.wave}),[
-   t('survival.wave_summary',{kills:view.waveKills,healing:Number(view.healing.toFixed(1))}),
-   next===view.nextBossWave?t('survival.next_boss',{wave:next}):t('survival.next_wave',{wave:next}),
-  ],[{label:t('survival.continue'),accent:'green',run:()=>{try{this.store.advance(this.run);this.resetPanel();}catch{this.saveFailed=true;this.showSaveError();}}},
+  this.closePanel=survivalRunPanel(this,this.run,this.store.best()?.clearedWave??0,'intermission',[{label:t('survival.continue'),accent:'green',run:()=>{try{this.store.advance(this.run);this.resetPanel();}catch{this.saveFailed=true;this.showSaveError();}}},
    {label:t('survival.save_exit'),back:true,run:()=>{try{if(this.store.saveAndExit(this.run))startScreen(this,'Menu');else {this.saveFailed=true;this.showSaveError();}}catch{this.saveFailed=true;this.showSaveError();}}}]);
  }
  private showDefeat():void {
   if(this.panel==='defeat')return;
   this.panel='defeat';getNav(this).fightMode=false;setGameplay(false);
-  this.closePanel=survivalOverlay(this,t('survival.run_ended'),[
-   t('survival.highest',{wave:this.run.clearedWave}),t('survival.total_kills',{kills:this.run.totalKills}),
-   t('survival.run_stats',{zombies:this.run.totalZombieKills,dealt:Number(this.run.damageDealt.toFixed(1)),received:Number(this.run.damageReceived.toFixed(1))}),t('survival.best',{wave:this.store.best()?.clearedWave??0}),
-  ],[{label:t('survival.try_again'),accent:'green',run:()=>this.scene.restart({char:this.run.fighter,skin:this.run.skin})},
-   {label:t('survival.choose_fighter'),run:()=>startScreen(this,'CharSelect',{mode:'survival'})},
+  this.closePanel=survivalRunPanel(this,this.run,this.store.best()?.clearedWave??0,'results',[{label:t('survival.try_again'),accent:'green',run:()=>this.scene.restart({char:this.run.fighter,skin:this.run.skin})},
+   {label:t('survival.choose_fighter'),accent:'purple',run:()=>startScreen(this,'CharSelect',{mode:'survival'})},
    {label:t('pause.return_to_main_menu_2'),back:true,run:()=>startScreen(this,'Menu')}]);
  }
 }

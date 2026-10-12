@@ -12,3 +12,5 @@ export function profileLayout(width:number,height:number) {
  const w=Math.min(760,width-32),h=height-116,left=Math.min(282,w*.4),gap=18;
  return {w,h,left,gap,right:w-left-gap,cardW:(w-left-gap-12)/2,cardH:(h-63)/2};
 }
+
+export function profileOverviewLayout(width:number,height:number){const p=profileLayout(width,height);return {...p,h:Math.max(292,height-96)};}
