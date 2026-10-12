@@ -87,10 +87,10 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
     portrait.setFlipX(winner!.char==='tyke').setOrigin(winner!.char==='tyke'?1-(bounds.left+bounds.right)/2/portrait.width:(bounds.left+bounds.right)/2/portrait.width,bounds.bottom/portrait.height).setScale(scale);
   }
   const color=defeat?'#ff879e':draw?'#edf7ff':'#ffe08b';
-  const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.top+VIEW.height*.2,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',
+  const heading=scene.add.text(textX,ranked?VIEW.top+43:hasWinner?VIEW.top+VIEW.height*.16:VIEW.top+VIEW.height*.2,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:ranked?'42px':headline.length>10?'42px':'56px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(textX,ranked?VIEW.top+145:hasWinner?VIEW.top+VIEW.height*.28:VIEW.top+VIEW.height*.32,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
+  if(score)scene.add.text(textX,ranked?VIEW.top+145:hasWinner?VIEW.top+VIEW.height*.28:VIEW.top+VIEW.height*.32,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:ranked?'20px':'28px',fontStyle:'bold',
     color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
   if(hasWinner&&!ranked){
     scene.add.text(textX,VIEW.top+VIEW.height*.34,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
