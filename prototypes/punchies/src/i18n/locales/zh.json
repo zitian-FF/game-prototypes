@@ -478,5 +478,11 @@
   "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。",
   "super.buffalo_hook": "野牛勾拳",
   "super.buffalo_hook_description": "未被防守挡下的勾拳命中后，接续上勾拳。该上勾拳无视防守和完美防守，可用闪避躲开。",
-  "online.rules_mismatch": "游戏规则版本不一致。请更新双方的游戏后重试。"
+  "online.rules_mismatch": "游戏规则版本不一致。请更新双方的游戏后重试。",
+  "char.kai.nick": "慢速快递员：勾拳强、刺拳和摆拳弱，前六次勾拳不累积惩罚，闪避距离更长。",
+  "quote.kai": "特别快递，勾拳签收。",
+  "shop.item.fighter-kai.name": "凯·陈",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "凯 · 青绿袋鼠",
+  "shop.item.skin-kai-grabber-green.name": "凯 · 夺目绿",
+  "shop.item.skin-kai-panda-pink.name": "凯 · 粉红熊猫"
 }

@@ -478,5 +478,11 @@
   "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos.",
   "super.buffalo_hook": "Gancho Búfalo",
   "super.buffalo_hook_description": "Un gancho sin bloquear enlaza un Upper. El Upper ignora guardia y guardia perfecta; esquiva para evitarlo.",
-  "online.rules_mismatch": "Las reglas no coinciden. Actualiza ambos juegos e inténtalo de nuevo."
+  "online.rules_mismatch": "Las reglas no coinciden. Actualiza ambos juegos e inténtalo de nuevo.",
+  "char.kai.nick": "Mensajero lento: ganchos fuertes, Jab/Recto suaves, seis ganchos sin fatiga y esquiva larga.",
+  "quote.kai": "Entrega especial. Firmada con un gancho.",
+  "shop.item.fighter-kai.name": "KAI CHEN",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "KAI · CANGURO TURQUESA",
+  "shop.item.skin-kai-grabber-green.name": "KAI · VERDE ATRAPADOR",
+  "shop.item.skin-kai-panda-pink.name": "KAI · PANDA ROSA"
 }

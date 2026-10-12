@@ -478,5 +478,11 @@
   "super.code_x_description": "Land the jab for two shadow Cross hits. Shadows ignore guard and Perfect Guard; dodge to evade.",
   "super.buffalo_hook": "Buffalo Hook",
   "super.buffalo_hook_description": "An unblocked Hook hit chains into an Upper. The Upper ignores guard and Perfect Guard; dodge to evade.",
-  "online.rules_mismatch": "Game rules don’t match. Update both games and try again."
+  "online.rules_mismatch": "Game rules don’t match. Update both games and try again.",
+  "char.kai.nick": "Slow courier: strong Hooks, light Jab/Cross, six Hooks before fatigue and a longer dodge.",
+  "quote.kai": "Special delivery. Signed with a Hook.",
+  "shop.item.fighter-kai.name": "KAI CHEN",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "KAI · KANGAROO TURQUOISE",
+  "shop.item.skin-kai-grabber-green.name": "KAI · GRABBER GREEN",
+  "shop.item.skin-kai-panda-pink.name": "KAI · PANDA PINK"
 }

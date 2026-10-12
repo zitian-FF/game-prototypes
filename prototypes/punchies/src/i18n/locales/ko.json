@@ -478,5 +478,11 @@
   "super.code_x_description": "잽 적중 시 그림자가 크로스 2회. 그림자는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다.",
   "super.buffalo_hook": "버팔로 훅",
   "super.buffalo_hook_description": "막히지 않은 훅 적중 시 어퍼로 연계. 어퍼는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다.",
-  "online.rules_mismatch": "게임 규칙이 일치하지 않습니다. 양쪽 게임을 업데이트한 후 다시 시도하세요."
+  "online.rules_mismatch": "게임 규칙이 일치하지 않습니다. 양쪽 게임을 업데이트한 후 다시 시도하세요.",
+  "char.kai.nick": "느린 배달원: 강한 훅, 가벼운 잽/크로스, 훅 6회까지 피로 없음, 긴 회피.",
+  "quote.kai": "특별 배송. 훅으로 서명했어.",
+  "shop.item.fighter-kai.name": "카이 첸",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "카이 · 터쿼이즈 캥거루",
+  "shop.item.skin-kai-grabber-green.name": "카이 · 그래버 그린",
+  "shop.item.skin-kai-panda-pink.name": "카이 · 핑크 판다"
 }

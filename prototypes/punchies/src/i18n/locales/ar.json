@@ -478,5 +478,11 @@
   "super.code_x_description": "أصب الجاب لتطلق ضربتي كروس من الظلال. تتجاوز الظلال الحراسة والصد المثالي؛ تفاداها.",
   "super.buffalo_hook": "خطاف الجاموس",
   "super.buffalo_hook_description": "إصابة خطاف غير محجوب تتبعها لكمة صاعدة. تتجاوز الصاعدة الحراسة والصد المثالي؛ تفاداها.",
-  "online.rules_mismatch": "قواعد اللعب غير متطابقة. حدّث اللعبتين ثم حاول مجددًا."
+  "online.rules_mismatch": "قواعد اللعب غير متطابقة. حدّث اللعبتين ثم حاول مجددًا.",
+  "char.kai.nick": "ساعٍ بطيء: خطافات قوية ولكمات سريعة ومستقيمة خفيفة، ستة خطافات بلا عقوبة إرهاق وتفادٍ أطول.",
+  "quote.kai": "توصيل خاص. التوقيع بخطاف.",
+  "shop.item.fighter-kai.name": "كاي تشين",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "كاي · الكنغر الفيروزي",
+  "shop.item.skin-kai-grabber-green.name": "كاي · الأخضر اللافت",
+  "shop.item.skin-kai-panda-pink.name": "كاي · الباندا الوردي"
 }
