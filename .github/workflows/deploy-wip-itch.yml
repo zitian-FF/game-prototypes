@@ -164,6 +164,8 @@ jobs:
           node scripts/test-punchies-feedback.mjs
           node scripts/test-punchies-ui-input.mjs
           node scripts/test-punchies-input-layouts.mjs
+          node scripts/test-punchies-input-modality.mjs
+          node scripts/test-punchies-touch-editor-navigation.mjs
           node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
           node scripts/test-punchies-reward-accents.mjs
@@ -176,6 +178,11 @@ jobs:
           node scripts/test-punchies-ground-labels.mjs
           node scripts/test-punchies-survival.mjs
           node scripts/test-punchies-survival-views.mjs
+          node scripts/test-punchies-boss-hud.mjs
+          node scripts/test-punchies-survival-cjk-wrap.mjs
+          node scripts/test-punchies-profile-avatar.mjs
+          node scripts/test-punchies-profile-avatar-art.mjs
+          node scripts/test-punchies-profile-zombie-ui.mjs
           node scripts/test-punchies-ranked-lobby.mjs
           node scripts/test-punchies-rating-session.mjs
           node scripts/test-punchies-shop.mjs
