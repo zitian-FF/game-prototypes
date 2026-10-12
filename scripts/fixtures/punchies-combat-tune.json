@@ -232,7 +232,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "mia": {
@@ -279,7 +280,8 @@
         "reach": 0.9,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "bruno": {
@@ -326,7 +328,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "tee": {
@@ -373,7 +376,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "tyke": {
@@ -420,7 +424,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "dragon": {
@@ -467,7 +472,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "longan": {
@@ -514,7 +520,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     },
     "captain": {
@@ -561,7 +568,8 @@
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "referenceStarCost": 3
       }
     }
   },
