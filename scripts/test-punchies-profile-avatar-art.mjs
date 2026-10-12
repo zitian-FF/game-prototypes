@@ -1,0 +1,10 @@
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';
+const exports={},textures=new Set(['punchies:portrait_marco']);let actual='punchies:portrait_tee';const seen=[];
+const scene={textures:{exists:key=>textures.has(key)},add:{image:(x,y,key,frame)=>{seen.push({key,frame});return{setDisplaySize(){return this;},setDepth(){return this;}}}}};
+const deps={skinTexture:()=>actual,rosterHeadFrame:(_scene,key,fighter)=>fighter+':'+key};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/profileAvatar.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports,require:()=>deps});
+const a={fighter:'tee',skin:'skin-tee-redline'};
+exports.avatarImage(scene,a,0,0,80,60,132);assert.equal(seen.at(-1).key,'punchies:portrait_marco');assert(seen.at(-1).frame.startsWith('marco:'),'fallback must use Marco head landmarks');
+textures.add('punchies:portrait_tee');actual='punchies:portrait_tee:skin-tee-redline';textures.add(actual);exports.avatarImage(scene,a,0,0,80,60,132);assert.equal(seen.at(-1).key,actual);assert(seen.at(-1).frame.startsWith('tee:'));
+textures.clear();assert.equal(exports.avatarImage(scene,a,0,0,80,60,132),null);assert.deepEqual(a,{fighter:'tee',skin:'skin-tee-redline'});
+console.log('PASS absent source fallback, correct fallback head landmarks, later selected palette readiness and no ownership mutation');

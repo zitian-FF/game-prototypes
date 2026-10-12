@@ -33,8 +33,9 @@ export class ProfileScene extends Phaser.Scene {
   this.add.graphics().setDepth(130).fillStyle(0x234c78,.95).fillRoundedRect(x,y,p.left,p.h,16);
   const avatar=getProfileAvatar();
   const avatarHit=this.add.rectangle(leftX,y+46,90,72,0x14243c).setDepth(130).setInteractive({useHandCursor:true});
-  let image:Phaser.GameObjects.Image|null=null;
-  const refreshAvatar=()=>{if(this.scene.isActive()){image?.destroy();image=avatarImage(this,avatar,leftX,y+46,86,66,132);}};
+  let image:Phaser.GameObjects.Image|null=null,alive=true;
+  this.events.once('shutdown',()=>{alive=false;});
+  const refreshAvatar=()=>{if(alive){image?.destroy();image=avatarImage(this,avatar,leftX,y+46,86,66,132);}};
   refreshAvatar();whenGroupsReady(this,[avatar.fighter],refreshAvatar);
   avatarHit.on('pointerup',()=>this.pickAvatar());getNav(this).add(avatarHit,()=>this.pickAvatar());
   profileText(this,leftX,y+94,getAlias(),22,p.left-22);

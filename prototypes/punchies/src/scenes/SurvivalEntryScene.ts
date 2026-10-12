@@ -27,8 +27,8 @@ export class SurvivalEntryScene extends Phaser.Scene {
   try{resume=store.loadResume();}catch{survivalOverlay(this,t('survival.save_error'),[t('survival.save_error_detail')],[{label:t('common.back'),run:()=>startScreen(this,'Menu'),back:true}]);return;}
   survivalText(this,rx+rw/2,top+25,t('survival.checkpoint'),17,rw-24,'#8edfff');
   if(resume.kind==='ready'){
-   const run=resume.run;avatarImage(this,{fighter:run.fighter,skin:run.skin},rx+rw/2,top+81,106,67,132);
-   if(!this.textures.exists('punchies:portrait_'+run.fighter))whenGroupsReady(this,[run.fighter],()=>{if(this.scene.isActive())avatarImage(this,{fighter:run.fighter,skin:run.skin},rx+rw/2,top+81,106,67,132);});
+   const run=resume.run;let alive=true;this.events.once('shutdown',()=>{alive=false;});avatarImage(this,{fighter:run.fighter,skin:run.skin},rx+rw/2,top+81,106,67,132);
+   if(!this.textures.exists('punchies:portrait_'+run.fighter))whenGroupsReady(this,[run.fighter],()=>{if(alive)avatarImage(this,{fighter:run.fighter,skin:run.skin},rx+rw/2,top+81,106,67,132);});
    survivalText(this,rx+rw/2,top+126,charName(run.fighter),16,rw-24);
    survivalText(this,rx+rw/2,top+155,t('survival.checkpoint_summary',{waves:run.clearedWave,kills:run.totalKills}),13,rw-24,'#bed2ed',132,34);
   }else survivalText(this,rx+rw/2,top+100,resume.kind==='none'?t('survival.no_checkpoint'):({abandoned:t('survival.resume_abandoned'),corrupt:t('survival.resume_corrupt'),incompatible:t('survival.resume_incompatible')})[resume.kind],15,rw-30,'#bed2ed',132,100);
