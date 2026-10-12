@@ -3,6 +3,7 @@ import {ArtBootScene,fighterGroups,whenGroupsReady} from '../prototypes/punchies
 import {FightStage} from '../prototypes/punchies/src/scenes/FightStage';
 import {createSimState,arenaCombat} from '../prototypes/punchies/src/sim/sim';
 import {fighterSuper,superReady} from '../prototypes/punchies/src/sim/super';
+import {tune} from '../prototypes/punchies/src/sim/tune';
 import {NEUTRAL_INPUT,type SimEvent} from '../prototypes/punchies/src/sim/types';
 import {applyCameraPixelRatio,VIEW,PIXEL_RATIO} from '../prototypes/punchies/src/render/pixelRatio';
 import {initLanguage} from '../prototypes/punchies/src/i18n/init';
@@ -12,16 +13,16 @@ let mode=params.get('mode')??'lost',review:Review,ready=false,captured=false;
 class Review extends Phaser.Scene {
  stage!:FightStage;sim=createSimState({timed:false,fighters:[{char:'marco'},{char:'mia'}]});age=0;triggered=false;eventTrace:SimEvent[]=[];
  constructor(){super('SuperVfxReview');}
- create(){review=this;this.scene.stop('Menu');this.scene.stop('FirstFight');applyCameraPixelRatio(this);
+ create(){review=this;ready=false;this.age=0;this.triggered=false;this.eventTrace=[];this.sim=createSimState({timed:false,fighters:[{char:'marco'},{char:'mia'}]});this.scene.stop('Menu');this.scene.stop('FirstFight');applyCameraPixelRatio(this);
   whenGroupsReady(this,fighterGroups(['marco','mia']),()=>{
-   this.sim.fighters.forEach((f,i)=>{f.x=i?485:365;f.y=225;f.fx=i?-1:1;f.fy=0;f.stars=fighterSuper(f).starCost;});
-   this.stage=new FightStage(this,['MARCO','MIA'],0,true);this.stage.hud.resourceRow=[0,1];ready=true;
+   this.sim.fighters.forEach((f,i)=>{f.x=i?425:365;f.y=225;f.fx=i?-1:1;f.fy=0;f.stars=(i===0&&['sweet','sour','interrupted'].includes(mode))||(i===1&&mode==='sweet')?0:fighterSuper(f).starCost;});
+   this.stage=new FightStage(this,['MARCO','MIA'],0,true);this.stage.hud.resourceRow=[0,1];this.sim.tick=100;this.stage.draw(this.sim,this.time.now,false);
+   this.stage.persp.beginRound(this.time.now-tune.view.arena.roundZoomMs);ready=true;
   });
  }
  trigger(){this.triggered=true;const s=this.sim,[a,b]=s.fighters;const events:SimEvent[]=[];
   if(mode==='spent')arenaCombat.processInput(s,1,{...NEUTRAL_INPUT,uppercut:true},events);
   else if(mode!=='charged'){
-   a.stars=0;if(mode==='sweet')b.stars=0;
    if(mode==='interrupted')arenaCombat.processInput(s,1,{...NEUTRAL_INPUT,uppercut:true},events);
    arenaCombat.processInput(s,0,{...NEUTRAL_INPUT,jab:true},events);
    if(mode==='whiff')for(let i=0;i<100;i++)arenaCombat.advanceTimers(s,0,NEUTRAL_INPUT,events);
@@ -29,7 +30,7 @@ class Review extends Phaser.Scene {
   }
   this.eventTrace=events;this.stage.handleEvents(events,s);
  }
- update(_time:number,delta:number){if(!this.stage)return;this.age+=delta;if(!this.triggered&&this.age>=150)this.trigger();this.stage.draw(this.sim,this.time.now,false);
+ update(_time:number,delta:number){if(!ready||!this.stage)return;this.age+=delta;if(!this.triggered&&this.age>=150)this.trigger();this.stage.draw(this.sim,this.time.now,false);
   document.getElementById('status')!.textContent=JSON.stringify({mode,age:Math.round(this.age),eventKinds:this.eventTrace.map(e=>e.kind),stars:this.sim.fighters.map(f=>f.stars),ready:this.sim.fighters.map(superReady),symbol:(this.stage.fx as any).symbols.diagnostics(),lightning:(this.stage.hud as any).superLightning.map((f:any)=>f.diagnostics()),objects:this.children.list.length,world:(this.stage as any).persp.world.list.length,renderer:game.renderer.type,contactFixture:'production resolver with forced contact, not a controller collision test'});
  }
 }
