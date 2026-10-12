@@ -79,7 +79,7 @@ export class NetSession {
     readonly role: Role,
     iceServers: RTCIceServer[] | undefined,
     readonly rated = false,
-    readonly assignment?:{opponent:string;nonce:string;pairId:string},
+    readonly assignment?:{opponent:string;nonce:string;pairId:string;baseline?:{local:number;opponent:number}|null},
   ) {
     this.room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAY_URLS }, turnConfig: iceServers }, `${this.rated?'ranked-room':'room'}-${code}`);
     this.ctl = this.room.makeAction('ctl') as unknown as Channel<CtlMessage>;

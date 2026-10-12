@@ -122,7 +122,7 @@ export class LobbyScene extends Phaser.Scene {
     const epoch=this.queueEpoch;const current=()=>epoch===this.queueEpoch&&!this.queueCancelled&&this.scene.isActive();
     this.status.setText(t('ranked.connecting'));
     const ice=await fetchTurnIceServers();if(!current())return;
-    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId});this.session=s;
+    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId,baseline:pair.baseline});this.session=s;
     s.onRejected=()=>this.back(t('ranked.search_ended'));
     s.onPeerLeft=()=>this.back(t('ranked.search_ended'));
     s.onCtl=m=>{if(m.k==='ping')s.send({k:'pong',t:m.t});};
