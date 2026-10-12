@@ -473,5 +473,11 @@
   "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
   "ui.skins": "Aspectos",
   "shop.today_s_fighters": "LUCHADORES DE HOY",
-  "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles."
+  "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles.",
+  "char.kai.nick": "Mensajero lento: ganchos fuertes, Jab/Recto suaves, seis ganchos sin fatiga y esquiva larga.",
+  "quote.kai": "Entrega especial. Firmada con un gancho.",
+  "shop.item.fighter-kai.name": "KAI CHEN",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "KAI · CANGURO TURQUESA",
+  "shop.item.skin-kai-grabber-green.name": "KAI · VERDE ATRAPADOR",
+  "shop.item.skin-kai-panda-pink.name": "KAI · PANDA ROSA"
 }

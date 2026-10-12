@@ -473,5 +473,11 @@
   "super.rising_upper_description": "تتجاوز الحراسة العادية. يوقفها التفادي أو الصد المثالي.",
   "ui.skins": "المظاهر",
   "shop.today_s_fighters": "مقاتلو اليوم",
-  "shop.chest_candidate_rules": "يمنح كل صندوق مكافأة واحدة من بين ما يصل إلى 3 خيارات متاحة."
+  "shop.chest_candidate_rules": "يمنح كل صندوق مكافأة واحدة من بين ما يصل إلى 3 خيارات متاحة.",
+  "char.kai.nick": "ساعٍ بطيء: خطافات قوية ولكمات سريعة ومستقيمة خفيفة، ستة خطافات بلا عقوبة إرهاق وتفادٍ أطول.",
+  "quote.kai": "توصيل خاص. التوقيع بخطاف.",
+  "shop.item.fighter-kai.name": "كاي تشين",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "كاي · الكنغر الفيروزي",
+  "shop.item.skin-kai-grabber-green.name": "كاي · الأخضر اللافت",
+  "shop.item.skin-kai-panda-pink.name": "كاي · الباندا الوردي"
 }

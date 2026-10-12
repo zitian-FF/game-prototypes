@@ -473,5 +473,11 @@
   "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。",
   "ui.skins": "皮肤",
   "shop.today_s_fighters": "今日拳手",
-  "shop.chest_candidate_rules": "每个宝箱从最多3个可获取候选奖励中抽取1个。"
+  "shop.chest_candidate_rules": "每个宝箱从最多3个可获取候选奖励中抽取1个。",
+  "char.kai.nick": "慢速快递员：勾拳强、刺拳和摆拳弱，前六次勾拳不累积惩罚，闪避距离更长。",
+  "quote.kai": "特别快递，勾拳签收。",
+  "shop.item.fighter-kai.name": "凯·陈",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "凯 · 青绿袋鼠",
+  "shop.item.skin-kai-grabber-green.name": "凯 · 夺目绿",
+  "shop.item.skin-kai-panda-pink.name": "凯 · 粉红熊猫"
 }

@@ -473,5 +473,11 @@
   "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다.",
   "ui.skins": "스킨",
   "shop.today_s_fighters": "오늘의 파이터",
-  "shop.chest_candidate_rules": "각 상자에서 최대 3개의 획득 가능 보상 중 1개를 뽑습니다."
+  "shop.chest_candidate_rules": "각 상자에서 최대 3개의 획득 가능 보상 중 1개를 뽑습니다.",
+  "char.kai.nick": "느린 배달원: 강한 훅, 가벼운 잽/크로스, 훅 6회까지 피로 없음, 긴 회피.",
+  "quote.kai": "특별 배송. 훅으로 서명했어.",
+  "shop.item.fighter-kai.name": "카이 첸",
+  "shop.item.skin-kai-kangaroo-turquoise.name": "카이 · 터쿼이즈 캥거루",
+  "shop.item.skin-kai-grabber-green.name": "카이 · 그래버 그린",
+  "shop.item.skin-kai-panda-pink.name": "카이 · 핑크 판다"
 }
