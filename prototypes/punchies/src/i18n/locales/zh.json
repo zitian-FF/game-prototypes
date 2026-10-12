@@ -477,5 +477,7 @@
   "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。",
   "ui.skins": "皮肤",
   "super.code_x": "代码 X",
-  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。"
+  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。",
+  "super.buffalo_hook": "野牛勾拳",
+  "super.buffalo_hook_description": "未被防守挡下的勾拳命中后，接续上勾拳。该上勾拳无视防守和完美防守，可用闪避躲开。"
 }

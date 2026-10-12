@@ -11,6 +11,14 @@
       "nameKey": "super.code_x",
       "descriptionKey": "super.code_x_description",
       "mechanic": "jab"
+    },
+    "tyke": {
+      "id": "buffalo-hook",
+      "nameKey": "super.buffalo_hook",
+      "descriptionKey": "super.buffalo_hook_description",
+      "mechanic": "hook",
+      "initialDamage": 20,
+      "followupDamage": 30
     }
   },
   "codeXTiming": {
