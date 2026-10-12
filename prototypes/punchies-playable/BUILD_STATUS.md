@@ -1,35 +1,38 @@
 ## Current milestone
-Generated sound effects, on request (the brief's audio limit was lifted by the user on 2026-10-12). On branch `proto/punchies-playable/audio`, stacked on `proto/punchies-playable/presentation` (PR #354), which is stacked on `proto/punchies-playable/waves-and-hp` (PR #353). None of the three is merged; the live itch build is the earlier version (12 zombies, one-hit kills, no sound).
+Over-the-top screen effects, on request. On branch `proto/punchies-playable/vfx`, stacked on `proto/punchies-playable/audio` (PR #355), which sits on `presentation` (PR #354), which sits on `waves-and-hp` (PR #353). None is merged; the live itch build is the earlier version (12 zombies, one-hit kills, no sound, plain effects).
 
 ## What was implemented
-- 16 generated sounds, synthesised with Web Audio when they play (oscillators, filtered noise, short envelopes): jab and cross whoosh, head hit, body hit, defeat, sour thud, player hurt, four combo chimes, horde and final-rush rumble, opening ping, win and lose jingles, UI tick. No audio files, no dependency, no added download.
-- Wired to the game: a whoosh on every punch start (new `punch` sim event), hit sound by outcome, defeat sound, sour thud, hurt sound, combo chime on each call-out, horde sound on the two banners, opening ping, end jingle, UI tick on PLAY NOW, RETRY and the mute toggle.
-- Browsers block sound before a user gesture, so the AudioContext is created on the first tap or key press. Sound pauses while the page is hidden. A cap of 16 simultaneous voices keeps busy waves light.
-- Mute: a small speaker toggle top left under the HP gloves, `?mute=1` starts muted, not saved between visits. Master volume `audio.master` (0.7) is in tune.json and the debug panel.
-- Verification without speakers: the browser check renders every sound offline and requires real signal (peak 0.05 to 0.95, nonzero level, no NaN). This caught `hit_head` clipping (peak 1.11), now fixed. It also checks that tapping JAB plays the whoosh then the head-hit sound, that a cross defeat plays the defeat sound, that taking a punch plays the hurt sound, and the mute toggle and `?mute=1`. Sim test: one `punch` event per punch start, including a buffered punch.
-- Earlier work unchanged: puppet-rig art, gym floor, 4 HP zombies and HP bars, 50 zombie paced wave, combo and call-outs, damage numbers, hit-stop, danger marker, banners, end card with RETRY (testing build), `?debug=1` panel.
-- Built size about 1.8 MB total uncompressed (sound adds a few KB of code, no files).
+- New effects module (`src/fx.ts`), all drawn in code with four generated particle textures, no art files:
+  - Sweet hit: layered starburst, expanding shockwave ring, streak lines along the blow direction, flying zombie goo and sparks, smoke, comic word (POW! body, BAM! head, K.O.!! on a defeat), screen flash, camera shake, zoom punch and a small rotation jolt. A defeat is the biggest (second ring, about 2x particles, 70 ms hit-stop). Sour hits get a small puff and ring.
+  - Smoke and spark trail behind a zombie flying off.
+  - Taking a punch: red embers, ring and burst, OUCH!, red flash, strong shake and an 80 ms hit-stop.
+  - Whoosh streaks on every punch (heavier for the cross).
+  - Combo call-outs scale with tier (colour, size, confetti from both sides, flash, shake); combo counter changes colour by tier; score pop is bigger.
+  - HORDE INCOMING and FINAL RUSH pulse the screen edges red.
+  - End card: confetti for a finish, embers and a red flash for an overrun.
+  - Call-out text shrinks to fit the screen width (found when "UNSTOPPABLE!" ran off the edges).
+- `tune.json` `fx` block (`intensity` 1, `shake`, `particles`, `flash`, `zoomPunch`) and `view.hitStopMs` 70, all in the debug panel. Intensity 0 turns the effects off, 2 doubles them. Particle emitters are capped (220 alive each, 320 for confetti).
+- Browser check adds frozen-frame captures mid-explosion (defeat, taking a punch, a tier-3 combo) and asserts that a defeat produces a burst of particles (79 alive in the test). The scene is paused about 100 ms after the event to inspect it.
+- Earlier work unchanged: generated sound and mute toggle, combo and call-outs, damage numbers, 4 HP zombies, 50 zombie paced wave, puppet-rig art, RETRY (testing build), `?debug=1` panel.
+- Built size about 1.9 MB total uncompressed, no new files.
 
 ## Key technical decisions
-- Generated in code rather than recorded files: zero download, easy to tune, and nothing to license. The trade-off is that synthesised effects sound simpler than recorded ones; swapping in recorded clips later would only change `src/audio.ts`.
-- Sound is presentation only. The sim's only change is the `punch` event, which does not alter any rule.
-- Mute is memory only (no localStorage), keeping the "no persistence" exception.
+- The effects are presentation only: no sim or rule change.
+- One master dial (`fx.intensity`) plus per-kind multipliers, so the over-the-top default can be turned down without code changes if it hurts readability or phone performance.
+- The camera zoom punch and rotation jolt move the whole screen, including the HUD and buttons, for about a quarter second; taps in that window map through the camera transform and are still accurate to a few pixels.
 
 ## Open questions
-- I cannot hear the sounds. A preview WAV of all 16 in play order was rendered for the user to listen to (kept outside the repo); the levels and character (for example the kill thump, combo chimes) are first guesses to adjust by ear. Master volume is in the debug panel.
-- Music is not included (BRIEF.md still lists music and recorded audio as out of scope). A short looping track would be the next audio step if wanted, at some download cost.
-- Combo multiplier or kill-based scoring: per-hit scoring still favours jabs (two jab head hits 4 points vs one cross head kill 2). Not changed without a decision.
-- Sour damage is read as half (`punch.sourDamageMult`); say if it should be different.
-- A hint hand and a fake-fail opening (other research suggestions) remain out of scope until approved.
+- Phone performance is untested. This is the biggest risk of the pass: many particles, additive blending and full-screen flashes on a low-end phone. If it stutters, lower `fx.particles` or `fx.intensity` first; the particle caps are there for this. A real-device check is needed before an ad network build.
+- Readability: at the default strength the comic words and flashes can cover the zombies for a moment during a busy wave. Judge on a phone and dial `fx.intensity` down if needed.
+- Music is still out of scope (BRIEF.md). Combo multiplier or kill-based scoring and sour damage (half) remain undecided; the hint hand and fake-fail opening remain out of scope.
 - The itch Fullscreen setting was handed to Codex (thread 2b50dfe7); result not yet seen.
 
 ## Known issues
-- Not tested on a real phone, and the sounds have not been heard on a real device (iOS Safari in particular needs the first tap to start audio, which is how it is built, but this is untested on iOS).
-- Headless software rendering runs slowly, so the browser check waits on sim frames, not wall time. The 30 s end is verified by fast-forwarding the sim.
-- Hit sparks, popups, banners and the pulse are tween-driven; captures force or hold them where needed.
+- Not tested on a real phone or heard on a real device (iOS Safari audio in particular).
+- Headless software rendering runs slowly, so the browser check waits on sim frames and frames are frozen to inspect effects; the 30 s end is verified by fast-forwarding the sim.
 - Fonts fall back to Arial where Arial Black is missing.
 
 ## Next proposed step
-1. User listens to the preview WAV and the build, and adjusts the mix (or asks for music).
-2. Decisions on the combo multiplier, sour damage and the hint hand.
-3. Merge order: PR #353, then #354, then the audio PR. Merging redeploys to the mp-console itch slot.
+1. User plays the build on a phone and tells me whether the effects are too much, not enough, or slow; adjust `fx.intensity` or the caps.
+2. Decisions on the combo multiplier, sour damage and music.
+3. Merge order: PR #353, #354, #355, then the effects PR. Merging redeploys to the mp-console itch slot.

@@ -6,6 +6,7 @@ import { W, H, PIXEL_RATIO, applyCameraPixelRatio } from '../pixelRatio';
 import { Rig, ensureParts, type RigPose } from '../view/Rig';
 import { CTA_LABEL, onCtaPressed } from '../cta';
 import { debugUnlocked, mountDebugPanel } from '../debug';
+import { Fx, TIER_COLORS } from '../fx';
 import { Sfx, renderSound, renderSoundData, SOUNDS as SOUNDS_FOR_TEST, type SoundName } from '../audio';
 
 const NAVY = 0x101b32;
@@ -38,6 +39,7 @@ export class PlayScene extends Phaser.Scene {
   private endTween: Phaser.Tweens.Tween | null = null;
   private banners = new Set<Phaser.GameObjects.Text>();
   private sfx = new Sfx();
+  private fx!: Fx;
   private muteIcon!: Phaser.GameObjects.Graphics;
   retryEnabled = false;
   private keysBound = false;
@@ -70,6 +72,7 @@ export class PlayScene extends Phaser.Scene {
     this.retryEnabled = __RETRY__ && new URLSearchParams(location.search).get('retry') !== '0';
     ensureParts(this); // coloured placeholders for any part the art did not provide
     this.buildStage();
+    this.fx = new Fx(this, tune);
     this.startRun();
     if (!this.keysBound) {
       bindKeyboard(this.intents);
@@ -89,6 +92,7 @@ export class PlayScene extends Phaser.Scene {
         },
         state: () => this.sim.state,
         restart: () => this.restart(),
+        fxAlive: () => this.fx.alive(),
         sfxLog: () => [...this.sfx.log],
         sfxRender: (n: SoundName) => renderSound(n),
         sfxSamples: async (n: SoundName) => Array.from(await renderSoundData(n)),
@@ -217,6 +221,7 @@ export class PlayScene extends Phaser.Scene {
       b.destroy();
     }
     this.banners.clear();
+    this.fx?.reset();
     this.lastScore = 0;
     this.lastCombo = 0;
     this.hitStopUntil = 0;
@@ -280,21 +285,28 @@ export class PlayScene extends Phaser.Scene {
   private onEvent(e: SimEvent): void {
     const now = performance.now();
     const target = (id: number) => this.sim.state.enemies.find((n) => n.id === id);
+    const blowDir = (id: number) => {
+      const en = target(id);
+      return en ? { x: Math.sin(en.ang), y: -Math.cos(en.ang) } : { x: 0, y: -1 };
+    };
     if (e.kind === 'punch') {
       this.sfx.play(e.type === 'jab' ? 'whoosh_jab' : 'whoosh_cross');
+      const a = (this.playerAngle * Math.PI) / 180;
+      this.fx.swing(W / 2, tune.view.playerY, { x: Math.cos(a), y: Math.sin(a) }, e.type === 'cross');
     } else if (e.kind === 'sweet') {
       this.sfx.play(e.killed ? 'kill' : e.zone === 'head' ? 'hit_head' : 'hit_body');
       const en = target(e.enemy);
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
       this.views.get(e.enemy)?.flash(0xffffff, now, 200);
-      this.spark(p.x, p.y + 20, e.zone === 'head' ? GOLD : 0xffffff);
+      this.fx.hit(p.x, p.y, blowDir(e.enemy), e.zone, e.killed);
       this.popup(p.x, p.y, e.zone === 'head' ? `+${e.points} HEAD!` : `+${e.points} BODY`, e.zone === 'head' ? '#ffc84a' : '#fff1d1');
       this.popup(p.x + 44, p.y + 26, `-${e.dmg}`, '#ffffff', 20);
-      this.cameras.main.shake(e.killed ? 110 : 70, e.killed ? 0.007 : 0.004);
       if (e.killed) this.hitStopUntil = this.time.now + tune.view.hitStopMs;
       const word = COMBO_WORDS.find(([n]) => n === e.combo);
       if (word) {
-        this.banner(word[1], '#ffc84a', 38, 650);
+        const tier = Math.min(4, COMBO_WORDS.indexOf(word));
+        this.banner(word[1], TIER_COLORS[tier], 44 + tier * 6, 700);
+        this.fx.combo(tier);
         this.sfx.play(`combo_${Math.min(4, COMBO_WORDS.indexOf(word) + 1)}` as SoundName);
       }
     } else if (e.kind === 'sour') {
@@ -303,22 +315,26 @@ export class PlayScene extends Phaser.Scene {
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
       this.views.get(e.enemy)?.flash(0xff8a4a, now, 140);
       this.popup(p.x, p.y, 'SOUR', '#ff8a4a');
+      this.fx.sour(p.x, p.y);
       this.popup(p.x + 44, p.y + 26, `-${e.dmg}`, '#ff8a4a', 18);
     } else if (e.kind === 'whiff') {
       this.popup(W / 2, tune.view.playerY - 110, 'MISS', '#9aa6c8');
     } else if (e.kind === 'spawn') {
       const n = tune.run.zombieCount;
       if (e.index === Math.round(n * 0.5)) {
-        this.banner('HORDE INCOMING!', '#ff6a5a', 30, 900);
+        this.banner('HORDE INCOMING!', '#ff6a5a', 36, 900);
         this.sfx.play('horde');
+        this.fx.warn();
       } else if (e.index === Math.round(n * 0.8)) {
-        this.banner('FINAL RUSH!', '#ff6a5a', 36, 900);
+        this.banner('FINAL RUSH!', '#ff6a5a', 44, 900);
         this.sfx.play('horde');
+        this.fx.warn();
       }
     } else if (e.kind === 'playerHit') {
       this.sfx.play('hurt');
       this.player.flash(0xff6a6a, now, 260, false);
-      this.cameras.main.shake(140, 0.012);
+      this.fx.hurt(W / 2, tune.view.playerY);
+      this.hitStopUntil = Math.max(this.hitStopUntil, this.time.now + 80);
       this.hurtEdge.setAlpha(1);
       this.tweens.add({ targets: this.hurtEdge, alpha: 0, duration: 350 });
     }
@@ -328,25 +344,16 @@ export class PlayScene extends Phaser.Scene {
   private banner(text: string, color: string, size: number, holdMs: number): void {
     const t = this.txt(W / 2, 250, text, size, color).setDepth(80).setAlpha(0).setScale(0.4);
     this.banners.add(t);
-    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 180, ease: 'Back.Out' });
+    // Long words shrink to fit the screen width.
+    const fit = Math.min(1, (W - 64) / (t.width * 1.15));
+    this.tweens.add({ targets: t, alpha: 1, scale: 1.15 * fit, duration: 180, ease: 'Back.Out' });
+    this.tweens.add({ targets: t, x: { from: W / 2 - 7, to: W / 2 + 7 }, duration: 45, yoyo: true, repeat: 5, delay: 120 });
     this.tweens.add({ targets: t, alpha: 0, y: 225, delay: 180 + holdMs, duration: 260, onComplete: () => { this.banners.delete(t); t.destroy(); } });
   }
 
   private popup(x: number, y: number, s: string, color: string, size = 24): void {
     const t = this.txt(x, y, s, size, color).setDepth(70);
     this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: tune.view.popupMs, onComplete: () => t.destroy() });
-  }
-
-  // Short starburst at the point of impact.
-  private spark(x: number, y: number, color: number): void {
-    const g = this.add.graphics({ x, y }).setDepth(65);
-    g.lineStyle(4, color, 1);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + 0.2;
-      g.lineBetween(Math.cos(a) * 10, Math.sin(a) * 10, Math.cos(a) * (i % 2 ? 26 : 38), Math.sin(a) * (i % 2 ? 26 : 38));
-    }
-    g.fillStyle(0xffffff, 1).fillCircle(0, 0, 9);
-    this.tweens.add({ targets: g, scale: 1.7, alpha: 0, duration: 260, onComplete: () => g.destroy() });
   }
 
   // 0..1 fist extension for a player punch.
@@ -382,15 +389,17 @@ export class PlayScene extends Phaser.Scene {
     this.scoreText.setText(String(s.score));
     if (s.score !== this.lastScore) {
       this.lastScore = s.score;
-      this.tweens.add({ targets: this.scoreText, scale: { from: 1.4, to: 1 }, duration: 170 });
+      this.tweens.add({ targets: this.scoreText, scale: { from: 1.9, to: 1 }, duration: 220, ease: 'Back.Out' });
     }
     if (s.combo !== this.lastCombo) {
       const grew = s.combo > this.lastCombo;
       this.lastCombo = s.combo;
       const show = s.combo >= 2;
       this.comboLabel.setVisible(show);
-      this.comboNum.setVisible(show).setText(`x${s.combo}`);
-      if (show && grew) this.tweens.add({ targets: this.comboNum, scale: { from: 1.5, to: 1 }, duration: 170 });
+      const tier = s.combo >= 20 ? 4 : s.combo >= 12 ? 3 : s.combo >= 8 ? 2 : s.combo >= 5 ? 1 : 0;
+      this.comboNum.setVisible(show).setText(`x${s.combo}`).setColor(TIER_COLORS[tier]);
+      this.comboLabel.setColor(TIER_COLORS[tier]);
+      if (show && grew) this.tweens.add({ targets: this.comboNum, scale: { from: 2.1, to: 1 }, duration: 240, ease: 'Back.Out' });
     }
     this.pips.forEach((p, i) => (p as Phaser.GameObjects.Image).setAlpha(i < s.hp ? 1 : 0.22));
     this.timeBar.width = W * Math.max(0, 1 - s.frame / (tune.run.durationSec * FPS));
@@ -424,6 +433,7 @@ export class PlayScene extends Phaser.Scene {
         const flight = Math.max(1, tune.enemy.knockFrames - tune.enemy.knockFadeFrames);
         v.root.setAngle(face + 360 * Math.min(1, e.frame / flight));
         v.root.setAlpha(e.frame <= flight ? 1 : Math.max(0, 1 - (e.frame - flight) / tune.enemy.knockFadeFrames));
+        if (e.frame <= flight) this.fx.trail(p.x, p.y);
       }
       // Wind-up tell: the front enemy about to punch pulses.
       v.root.setScale(e === front && e.state === 'windup' ? 1 + 0.06 * Math.sin(now / 40) : 1);
@@ -472,6 +482,7 @@ export class PlayScene extends Phaser.Scene {
     this.banners.clear();
     const s = this.sim.state;
     this.sfx.play(s.ended === 'dead' ? 'end_lose' : 'end_win');
+    this.fx.finish(s.ended !== 'dead');
     const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
       this.overlay.push(o);
       return o;
