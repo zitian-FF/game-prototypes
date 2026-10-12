@@ -431,9 +431,9 @@
   "characters": {
     "marco": {
       "hp": 1,
-      "stamina": 1,
-      "regen": 1,
-      "stun": 1,
+      "stamina": 0.95,
+      "regen": 0.95,
+      "stun": 0.95,
       "speed": 1,
       "jab": {
         "damage": 1,
@@ -446,7 +446,7 @@
         "fatigueBars": 0
       },
       "cross": {
-        "damage": 1.1,
+        "damage": 1.05,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
@@ -466,7 +466,7 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1.55,
+        "damage": 1.4,
         "staminaCost": 1.0,
         "stunBuild": 1.0,
         "push": 1,
@@ -1150,7 +1150,7 @@
     },
     "archetypes": {
       "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
-      "char.marco.nick": "Steady all-rounder: stronger Cross, balanced speed and endurance.",
+      "char.marco.nick": "Steady fundamentals: reliable timing, modest power, limited sustained pressure.",
       "char.mia.nick": "Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.",
       "char.bruno.nick": "Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.",
       "char.tee.nick": "Fast burst attacker: heavy Cross and hooks, fragile with low stamina.",
