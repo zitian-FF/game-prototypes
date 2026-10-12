@@ -1,3 +1,4 @@
+import {CombatSymbols} from './combatSymbols';
 import {CombatText} from './combatText';
 import {CombatSparks} from './combatVfx';
 import Phaser from 'phaser';
@@ -18,6 +19,7 @@ export class Effects {
   draw(s:SimState):void {this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);}
   private sparks: CombatSparks;
   private combatText:CombatText;
+  private symbols:CombatSymbols;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -27,6 +29,7 @@ export class Effects {
   constructor(private scene: Phaser.Scene) {
     scene.events.once('shutdown',()=>{this.fightCue?.();this.fightCue=null;});
     this.sparks=new CombatSparks(scene);
+    this.symbols=new CombatSymbols(scene);
     this.combatText=new CombatText(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
@@ -71,10 +74,6 @@ export class Effects {
       if (e.counter) {
         this.shakyLabel(e.x, e.y - 34, t('fx.counter'), '#ffe03a', 22);
         this.screenFlash(0xffffff, 0.3);
-      } else if (e.sweet) {
-        this.label(e.x, e.y - 26, e.row === 'vulnerable' ? t('fx.sweet') : t('fx.sweet_body'), '#ffe03a', 12);
-      } else {
-        this.label(e.x, e.y - 22, t('fx.sour'), '#bbbbbb', 10);
       }
     } else {
       cam.shake(big ? 220 : 120, (big ? 0.014 : 0.007) * tune.view.cameraShakeScale);
@@ -132,6 +131,14 @@ export class Effects {
           }
           break;
         }
+        case 'sweetImpact':
+          this.symbols.sweet(e.x,e.y);
+          break;
+        case 'superChargeLost': {
+          const f=s.fighters[e.fighter];
+          if(f)this.symbols.chargeLost(f.x-f.fx*38,f.y-f.fy*38);
+          break;
+        }
         case 'hit':
           this.hit(e, s, localIdx);
           break;
@@ -148,11 +155,9 @@ export class Effects {
           this.label(e.x, e.y - 20, 'dodged', '#b89aff', 11);
           sfx.evade();
           break;
-        case 'whiff': {
-          const f = s.fighters[e.attacker];
-          this.label(f.x, f.y - 30, e.punch === 'uppercut' ? t('fx.whiff_exposed') : 'whiff', '#888888', 10);
+        case 'whiff':
+          // Existing recovery/audio stay in the sim; no floating miss label.
           break;
-        }
         case 'stunned': {
           const f = s.fighters[e.fighter];
           this.label(f.x, f.y - 36, t('fx.stunned'), '#ffe03a', 16);
