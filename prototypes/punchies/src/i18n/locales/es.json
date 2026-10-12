@@ -477,5 +477,6 @@
   "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
   "ui.skins": "Aspectos",
   "super.code_x": "CÓDIGO X",
-  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos."
+  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos.",
+  "online.rules_mismatch": "Las reglas no coinciden. Actualiza ambos juegos e inténtalo de nuevo."
 }
