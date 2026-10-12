@@ -44,7 +44,7 @@ export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,n
   for(let i=0;i<data.length;i+=4){
     if(!data[i+3])continue;
     const r=data[i],g=data[i+1],b=data[i+2];
-    if(Math.max(r,g,b)<(teeMask?24:40))continue; // authored navy outline stays exact
+    if(Math.max(r,g,b)<40)continue; // authored navy outline stays exact
     const flags=material?.[i/4]??0,shadeKey=(flags<<24)|(r<<16)|(g<<8)|b;
     const cached=shades?.get(shadeKey);
     if(cached!==undefined){data[i]=cached>>16&255;data[i+1]=cached>>8&255;data[i+2]=cached&255;continue;}
@@ -61,7 +61,7 @@ export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,n
         // neutral. Continuous rolloffs avoid compression-induced colour specks.
         const light=white?1-Math.max(0,(v-.82)/.18)*.8:Math.max(0,1-(v-.48)/.32);
         const neutral=Math.max(0,Math.min(1,(.60-s)/.30));
-        const dark=Math.max(0,Math.min(1,(v-.09)/.13));
+        const dark=Math.max(0,Math.min(1,(v-40/255)/.18));
         const colour=rgb(target[0],target[1]*.65*light*neutral*dark,Math.min(1,v*(white?.96:Math.max(.88,target[2]))));
         out=colour;
       }
