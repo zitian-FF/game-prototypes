@@ -185,6 +185,7 @@ jobs:
           node scripts/test-punchies-roster.mjs
           node scripts/test-punchies-roster-stats.mjs
           node scripts/test-punchies-roster-animation.mjs
+          node scripts/test-punchies-roster-confirm.mjs
           node scripts/test-punchies-roster-headshots.mjs
           node scripts/test-punchies-ground-labels.mjs
           node scripts/test-punchies-survival.mjs
