@@ -1,10 +1,11 @@
+import { DEBUG_TOOLS_BUILD } from '../buildFlags';
 import { Pane, type FolderApi } from 'tweakpane';
 import {DEV_KEYS} from '../portal/keys';
 import { getEventLog } from '../portal/analytics';
 import { tune, tuneBaseline, tuneSource, onTuneReplaced } from '../sim/tune';
 import meta from '../../tune.meta.json';
 
-// Tweakpane panel for every tune.json value, available in production builds
+// Tweakpane panel for tune.json values, available only in explicit staging QA builds
 // (see "Tuning" in root CLAUDE.md). While we are in internal testing a red bug
 // button is always on screen: it toggles debug mode (this panel, the hitbox
 // overlay, the net stats readout). ?debug=1 still starts with it on, and the
@@ -21,6 +22,7 @@ const DEBUG_KEY = DEV_KEYS.debug;
 const UNLOCK_KEY = DEV_KEYS.unlock;
 
 export function debugUnlocked(): boolean {
+  if (!DEBUG_TOOLS_BUILD) return false;
   try {
     const q = new URLSearchParams(location.search).get('debug');
     if (q === '1') localStorage.setItem(UNLOCK_KEY, '1');
@@ -190,3 +192,4 @@ function mountPanel(): void {
   refreshWas();
   onTuneReplaced(refreshWas);
 }
+
