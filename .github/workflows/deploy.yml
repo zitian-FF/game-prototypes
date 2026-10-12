@@ -85,6 +85,27 @@ jobs:
       - name: Build
         run: npm run build
 
+      # SUPER gameplay stays on its isolated preview commit, never on main.
+      - name: Read pinned Punchies staging commit
+        id: staging
+        run: echo "sha=$(cat .github/punchies-staging-ref)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout isolated staging source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.staging.outputs.sha }}
+          path: .staging-source
+
+      - name: Build compact staging and prove production QA exclusion
+        working-directory: .staging-source
+        env:
+          VITE_PUNCHIES_RATING_URL: ''
+        run: |
+          git switch -c staging/punchies-super
+          npm ci
+          npm run build:packages
+          node scripts/build-punchies-staging.mjs ../dist/staging/punchies
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
