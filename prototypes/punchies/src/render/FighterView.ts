@@ -2,7 +2,7 @@ import { WalkMotion } from './legMotion';
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
 import { coreRadius } from '../sim/geometry';
-import { punchCfg } from '../sim/character';
+import { punchCfg, characterDodge } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 import { pose } from './art';
@@ -405,7 +405,7 @@ export class FighterView {
       progress = p.frame < p.startup ? 0.25 * p.frame / p.startup
         : p.frame < end ? 0.25 + 0.3 * (p.frame - p.startup) / Math.max(1, end - p.startup)
         : 0.55 + 0.45 * (p.frame - end) / Math.max(1, p.recovery);
-    } else if (f.dodge) { action = 'dodge'; progress = f.dodge.frame / Math.max(1, tune.dodge.frames); }
+    } else if (f.dodge) { action = 'dodge'; progress = f.dodge.frame / characterDodge(f).frames; }
     else if (f.lastBlow && f.framesSinceHit < 10) {
       action = f.lastBlow.sweet && f.lastBlow.punch !== 'jab' ? 'hit_heavy' : 'hit_light';
       progress = f.framesSinceHit / 10;
