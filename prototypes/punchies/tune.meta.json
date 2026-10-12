@@ -5311,5 +5311,285 @@
     "min": 0.25,
     "max": 2,
     "step": 0.05
+  },
+  "characters.kai.hp": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: max HP multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.kai.stamina": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: max stamina multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.kai.regen": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: stamina regen multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.kai.stun": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: stun threshold multiplier (higher = harder to stun).",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.kai.speed": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: walk speed multiplier.",
+    "min": 0.5,
+    "max": 1.6,
+    "step": 0.01
+  },
+  "characters.kai.jab.damage": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.jab.staminaCost": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.jab.stunBuild": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.jab.push": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.kai.jab.reach": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.kai.jab.startup": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.jab.recovery": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.jab.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Kai staged draft jab: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.cross.damage": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.cross.staminaCost": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.cross.stunBuild": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.cross.push": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.kai.cross.reach": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.kai.cross.startup": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.cross.recovery": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.cross.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Kai staged draft cross: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.hook.damage": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: damage multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.hook.staminaCost": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.hook.stunBuild": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: stun build multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.hook.push": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.kai.hook.reach": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.kai.hook.startup": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: startup frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.hook.recovery": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: recovery frames added (keep within -2..+2).",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.hook.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Kai staged draft hook: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.uppercut.damage": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: damage multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.uppercut.staminaCost": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: stamina cost multiplier.",
+    "min": 0.5,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.uppercut.stunBuild": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: stun build multiplier.",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  "characters.kai.uppercut.push": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: pushback multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "characters.kai.uppercut.reach": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: reach multiplier.",
+    "min": 0.7,
+    "max": 1.3,
+    "step": 0.01
+  },
+  "characters.kai.uppercut.startup": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: startup offset from Base (frames); allowed -1 to +10.",
+    "min": -1,
+    "max": 10,
+    "step": 1
+  },
+  "characters.kai.uppercut.recovery": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: recovery offset from Base (frames); allowed -8 to +20.",
+    "min": -8,
+    "max": 20,
+    "step": 1
+  },
+  "characters.kai.uppercut.fatigueBars": {
+    "cat": "Characters",
+    "desc": "Kai staged draft uppercut: extra fatigue bars before max penalty.",
+    "min": -2,
+    "max": 2,
+    "step": 1
+  },
+  "characters.kai.uppercut.starRequirement": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: stars to fill one uppercut charge (stars). Using it empties the meter.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "characters.kai.uppercut.referenceStarCost": {
+    "cat": "Characters",
+    "desc": "Kai staged draft: fixed Super damage reference star cost. Keep unchanged when adjusting charge cost; rebase only with damage.",
+    "min": 1,
+    "max": 4,
+    "step": 1
+  },
+  "body.proportions.kai": {
+    "cat": "Defense",
+    "desc": "Kai staged draft: visual and combat body proportion.",
+    "min": 0.6,
+    "max": 1.5,
+    "step": 0.01
   }
 }
