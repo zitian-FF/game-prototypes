@@ -60,6 +60,11 @@ export function freeChests(state:ShopDraftState,kind:ShopKind):number{return (ki
 export function dailyChestLocked(state:ShopDraftState,kind:ShopKind):boolean{return !STAGING_BUILD&&freeChests(state,kind)<=0&&!!state.purchasedChests?.includes(kind);}
 /** The three starting boxers plus every fighter the player has pulled. */
 export const STARTING_BOXERS:string[]=['marco','mia','bruno'];
+/** Named progression fighter: only registered, production-ready content. */
+export function grantFighter(state:ShopDraftState,id:string):ShopDraftState|null {
+ if(!SHOP_ITEMS.some(i=>i.id===id&&i.kind==='fighters'&&!i.artPending)||state.owned.includes(id))return null;
+ return {...state,owned:[...state.owned,id]};
+}
 export function ownedBoxers(state:ShopDraftState):string[]{
   return [...STARTING_BOXERS,...SHOP_ITEMS.filter(i=>i.kind==='fighters'&&i.boxer&&state.owned.includes(i.id)).map(i=>i.boxer as string)];
 }
