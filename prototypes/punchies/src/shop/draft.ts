@@ -11,6 +11,10 @@ export interface ShopItem { id:string; name:string; kind:ShopKind; boxer:CharId|
 // G.P. Tee. The id is the old welcome gift id, kept so existing saves stay valid. He is now a normal fighter chest reward.
 export const WELCOME_FIGHTER='fighter-four';
 export const SHOP_ITEMS:ShopItem[]=[
+  {id:'fighter-kai',name:'KAI CHEN',kind:'fighters',boxer:'kai',accent:0xffd21a,earnOnly:true,artPending:!STAGING_BUILD,description:'Level 6 reward. Staging balance draft.'},
+  {id:'skin-kai-kangaroo-turquoise',name:'KAI · KANGAROO TURQUOISE',kind:'skins',boxer:'kai',accent:0x00ccbc,earnOnly:true,artPending:!STAGING_BUILD,skinType:'palette',description:'Level 14 reward. Cosmetic courier palette.'},
+  {id:'skin-kai-grabber-green',name:'KAI · GRABBER GREEN',kind:'skins',boxer:'kai',accent:0x00b14f,earnOnly:true,artPending:!STAGING_BUILD,skinType:'palette',description:'Level 22 reward. Cosmetic courier palette.'},
+  {id:'skin-kai-panda-pink',name:'KAI · PANDA PINK',kind:'skins',boxer:'kai',accent:0xd70f64,earnOnly:true,artPending:!STAGING_BUILD,skinType:'palette',description:'Level 32 reward. Cosmetic courier palette.'},
   {id:'fighter-roxy',name:'ROXY',kind:'fighters',boxer:'roxy',accent:0xff761d,description:'Short orange hair, navy kit and orange gloves. Provisional stats.'},
   {id:'fighter-nadia',name:'NADIA',kind:'fighters',boxer:'nadia',accent:0x7622bf,description:'Petite determined rising star, silver bun, violet kit and emerald gloves. Provisional stats.'},
   {id:'fighter-captain',name:'CAPTAIN EAGLE',kind:'fighters',boxer:'captain',accent:0xffce54,description:'Visored racer with eagle helmet, gold scarf and asymmetric armour. Provisional stats.'},
@@ -61,7 +65,7 @@ export function dailyChestLocked(state:ShopDraftState,kind:ShopKind):boolean{ret
 /** The three starting boxers plus every fighter the player has pulled. */
 export const STARTING_BOXERS:string[]=['marco','mia','bruno'];
 export function ownedBoxers(state:ShopDraftState):string[]{
-  return [...STARTING_BOXERS,...SHOP_ITEMS.filter(i=>i.kind==='fighters'&&i.boxer&&state.owned.includes(i.id)).map(i=>i.boxer as string)];
+  return [...STARTING_BOXERS,...SHOP_ITEMS.filter(i=>i.kind==='fighters'&&!i.artPending&&i.boxer&&state.owned.includes(i.id)).map(i=>i.boxer as string)];
 }
 /** Skins only appear for fighters the player owns; fighters and skins already owned never repeat; earn-only items never appear. */
 export function availablePool(state:ShopDraftState,kind:ShopKind):ShopItem[]{

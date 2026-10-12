@@ -31,6 +31,7 @@ interface CharLook {
 }
 
 const LOOKS: Record<string, CharLook> = {
+  kai: {skin:0xf7b775,headOrigin:.5,headScale:1,torsoScale:1},
   zombie: {skin:0x9dbc61,headOrigin:.49,headScale:1,torsoScale:1},
   roxy: {skin:0xf0a060,headOrigin:.49,headScale:1,torsoScale:1},
   nadia: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
@@ -43,6 +44,9 @@ const LOOKS: Record<string, CharLook> = {
   mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1 },
   bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1 },
 };
+
+const kaiRigs=new WeakMap<object,typeof tune.view.puppet>();
+function kaiRig(base:typeof tune.view.puppet){let rig=kaiRigs.get(base);if(!rig){rig=Object.assign(Object.create(base),{headHeight:22,torsoHeight:32,gloveHeight:14,bootWidth:13,shoulderSpread:11,bootSpread:8,hipSpread:5,headForward:2.5}) as typeof tune.view.puppet;kaiRigs.set(base,rig);}return rig;}
 
 // Art registration follows prepare-assets.mjs; runtime sizes are in tune.view.puppet.
 const PONYTAIL_PIVOT = 0.915;
@@ -201,7 +205,7 @@ export class Puppet {
       return false;
     }
     const v = tune.view;
-    const rig = v.puppet;
+    const rig = f.char==='kai' ? kaiRig(v.puppet) : v.puppet;
     const k = a.k;
     const now = a.now;
     const fx = f.fx;
@@ -242,7 +246,7 @@ export class Puppet {
       const yaw = step.yaw;
       const lift = step.lift;
       const hip = P(-2 * k, rig.hipSpread * k * side, v.bodyOffsetY);
-      const ankle = bootCollar(pos.x,pos.y,th+yaw,rig.bootWidth*k*(1+.14*lift));
+      const ankle = bootCollar(pos.x,pos.y,th+yaw,rig.bootWidth*k*(1+.14*lift),f.char==='kai'?.075:.2);
       feet.push({ pos, yaw, lift, ankle, hip, out: { x: lx * side, y: ly * side } });
     }
     [this.bootL, this.bootR].forEach((boot, i) => {
