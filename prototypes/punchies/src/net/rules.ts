@@ -1,14 +1,14 @@
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
-export const SIM_RULES_VERSION='sim-code-x-1';
+export const SIM_RULES_VERSION='sim-code-x-2';
 export interface RulesStamp {protocol:2;version:string;hash:string}
 function canonical(value:unknown):string {
  if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
  if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical((value as Record<string,unknown>)[k])).join(',')+'}';
  return JSON.stringify(value);
 }
-function hash(value:unknown):string{let h=2166136261;for(const ch of canonical(value))h=Math.imul(h^ch.charCodeAt(0),16777619)>>>0;return h.toString(16).padStart(8,'0');}
+function hash(value:unknown):string{let h=2166136261;const text=canonical(value);for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619)>>>0;return h.toString(16).padStart(8,'0');}
 function simulationData(value:unknown):unknown {
  if(Array.isArray(value))return value.map(simulationData);
  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([key])=>key!=='nameKey'&&key!=='descriptionKey').map(([key,v])=>[key,simulationData(v)]));
