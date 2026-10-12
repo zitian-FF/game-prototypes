@@ -10,7 +10,8 @@ import {tune} from './src/sim/tune';
 import {NEUTRAL_INPUT,type SimEvent} from './src/sim/types';
 import {applyCameraPixelRatio,VIEW,PIXEL_RATIO} from './src/render/pixelRatio';
 import {initLanguage} from './src/i18n/init';
-void initLanguage().then(()=>{
+import {initPortal,saveResetReceipt} from './src/portal/index';
+void initPortal().then(()=>initLanguage()).then(()=>{
 const params=new URLSearchParams(location.search);
 let mode=params.get('mode')??'lost',review:Review,ready=false,captured=false;
 class Review extends Phaser.Scene {
@@ -34,7 +35,7 @@ class Review extends Phaser.Scene {
   this.eventTrace=events;this.stage.handleEvents(events,s);
  }
  update(_time:number,delta:number){if(!ready||!this.stage)return;this.age+=delta;if(!this.triggered&&this.age>=150)this.trigger();this.stage.draw(this.sim,this.time.now,false);
-  document.getElementById('status')!.textContent=JSON.stringify({mode,age:Math.round(this.age),eventKinds:this.eventTrace.map(e=>e.kind),stars:this.sim.fighters.map(f=>f.stars),ready:this.sim.fighters.map(superReady),symbol:((this.stage as any).fx as any).symbols.diagnostics(),lightning:((this.stage as any).hud as any).superLightning.map((f:any)=>f.diagnostics()),objects:this.children.list.length,world:(this.stage as any).persp.world.list.length,renderer:game.renderer.type,contactFixture:'production resolver with forced contact, not a controller collision test'});
+  document.getElementById('status')!.textContent=JSON.stringify({reset:saveResetReceipt(),mode,age:Math.round(this.age),eventKinds:this.eventTrace.map(e=>e.kind),stars:this.sim.fighters.map(f=>f.stars),ready:this.sim.fighters.map(superReady),symbol:((this.stage as any).fx as any).symbols.diagnostics(),lightning:((this.stage as any).hud as any).superLightning.map((f:any)=>f.diagnostics()),objects:this.children.list.length,world:(this.stage as any).persp.world.list.length,renderer:game.renderer.type,contactFixture:'production resolver with forced contact, not a controller collision test'});
  }
 }
 class Boot extends ArtBootScene {create(){super.create();this.scene.launch('SuperVfxReview');}}
@@ -48,4 +49,3 @@ game.events.on(Phaser.Core.Events.POST_RENDER,()=>{if(ready&&!captured&&review.a
 
 
 });
-

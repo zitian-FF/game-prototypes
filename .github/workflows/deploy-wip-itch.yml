@@ -131,7 +131,8 @@ jobs:
       # the reviewed Google Sheet as CSV and writes locales/*.json into the workspace before the tests and
       # the build, so they are packed with the game. The pulled files are not committed; open the "Pull
       # Punchies translations" workflow to freeze them into the repository. If the download fails, a
-      # release build stops; a test build keeps the committed files.
+      # Configured Sheet pull failures stop a release. If no URL is configured,
+      # use the explicitly reviewed committed snapshot and record its source SHA.
       - name: Pull translations from the sheet into the build
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
         env:
@@ -142,8 +143,10 @@ jobs:
           grep -q 'TEST_BUILD = false' prototypes/punchies/src/testBuild.ts && release=true
           if [ "$release" != true ] && [ "$REQUESTED" != true ]; then echo "Using the committed translation files"; exit 0; fi
           if [ -z "$I18N_SHEET_URL" ]; then
-            echo "::error::Set the I18N_SHEET_URL repository variable (the sheet's CSV address) to pack translations"
-            [ "$release" = true ] && exit 1 || exit 0
+            echo "Translation mode: frozen-reviewed-committed-locales; source SHA: $GITHUB_SHA"
+            node scripts/i18n-sheet.mjs check
+            node scripts/test-punchies-i18n.mjs
+            exit 0
           fi
           if node scripts/i18n-sheet.mjs pull && node scripts/i18n-sheet.mjs check; then
             echo "Packed translations from the sheet"
@@ -165,6 +168,14 @@ jobs:
           node scripts/test-punchies-ui-input.mjs
           node scripts/test-punchies-input-layouts.mjs
           node scripts/test-punchies-input-modality.mjs
+          node scripts/test-punchies-staging-reset.mjs
+          node scripts/test-punchies-debug-exclusion.mjs
+          node scripts/test-punchies-super.mjs
+          node scripts/test-punchies-super-feedback.mjs
+          node scripts/test-punchies-super-meter-vfx.mjs
+          node scripts/test-punchies-super-meter-layout.mjs
+          node scripts/test-punchies-nadia-torso.mjs
+          node scripts/test-punchies-marco-torso.mjs
           node scripts/test-punchies-touch-editor-navigation.mjs
           node scripts/test-punchies-game-menu.mjs
           node scripts/test-punchies-reward-reveal.mjs
@@ -225,6 +236,10 @@ jobs:
         if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
         env:
           VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+          PUNCHIES_STAGING: 'off'
+          PUNCHIES_QA: '0'
+          PUNCHIES_STAGING_QA: '0'
+          PUNCHIES_SAVE_RESET_ID: 'punchies-reset-2026-10-12-super-v1'
           PROFILE: ${{ steps.quality.outputs.profile }}
         run: |
           npm run build:punchies:$PROFILE -- --portal web --fresh
