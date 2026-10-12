@@ -1,7 +1,8 @@
 import {store} from '../portal/store';
 import {KEYS} from '../portal/keys';
 export interface RatingIdentity {myId:string;token:string;rating:number;matches:number}
-export interface RatingResult {state:'pending'|'settled'|'expired';rating:number;matches:number;delta:number}
+export interface RatingSnapshot {before:number;after:number;delta:number;matches:number}
+export interface RatingResult {state:'pending'|'settled'|'expired';rating:number;matches:number;delta:number;outcome?:{local:RatingSnapshot;opponent:RatingSnapshot}|null}
 export type RatingServiceState = {status:'unconfigured'|'loading'|'error'} | {status:'ready';rating:number;matches:number};
 interface PendingReport {matchId:string;score:0|.5|1;quit:boolean;expires:number}
 interface SavedIdentity extends RatingIdentity {pending?:PendingReport[]}
@@ -23,7 +24,9 @@ async function request<T>(path:string,body:unknown):Promise<T>{
 }
 const validId=(id:unknown):id is string=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function validIdentity(v:unknown):v is SavedIdentity {const p=v as SavedIdentity;return !!p&&validId(p.myId)&&typeof p.token==='string'&&p.token.length===72&&Number.isSafeInteger(p.rating)&&p.rating>=0&&Number.isSafeInteger(p.matches)&&p.matches>=0;}
-function validResult(r:RatingResult){return !!r&&['pending','settled','expired'].includes(r.state)&&Number.isSafeInteger(r.rating)&&r.rating>=0&&Number.isSafeInteger(r.matches)&&r.matches>=0&&Number.isSafeInteger(r.delta);}
+const points=(n:unknown)=>Number.isSafeInteger(n)&&Number(n)>=0;
+function snapshot(s:RatingSnapshot){return !!s&&points(s.before)&&points(s.after)&&points(s.matches)&&Number.isSafeInteger(s.delta)&&s.after-s.before===s.delta;}
+function validResult(r:RatingResult){return !!r&&['pending','settled','expired'].includes(r.state)&&points(r.rating)&&points(r.matches)&&Number.isSafeInteger(r.delta)&&(r.outcome==null||(r.state==='settled'&&snapshot(r.outcome.local)&&snapshot(r.outcome.opponent)));}
 function save(){if(identity)try{store.setItem(key,JSON.stringify({...identity,pending}));}catch{/* Anonymous identity remains session-only if storage is unavailable. */}}
 function applyResult(r:RatingResult){if(r.matches>=identity!.matches)Object.assign(identity!,{rating:r.rating,matches:r.matches});save();updateState({status:'ready',rating:identity!.rating,matches:identity!.matches});}
 export function currentRating(){return state.status==='ready'?identity:null;}
@@ -83,12 +86,22 @@ export async function ratingStatus(matchId:string):Promise<RatingResult|null>{
  }catch{updateState({status:'error'});return null;}
 }
 
-export type QueueResult={status:'waiting';ticket:string;waitMs:number}|{status:'paired';ticket:string;pairId:string;room:string;nonce:string;opponent:string;role:'host'|'guest'}|{status:'cancelled'|'timeout'|'full'|'complete'};
+/** Bounded polling owned by the caller's scene. Null means unavailable, never zero change. */
+export async function pollRatingOutcome(matchId:string,onResult:(result:RatingResult|null)=>void,signal:AbortSignal,maxAttempts=8):Promise<void>{
+ for(let i=0;i<Math.min(8,Math.max(0,maxAttempts));i++){
+  if(signal.aborted)return;
+  const result=await ratingStatus(matchId);if(signal.aborted)return;
+  onResult(result);if(signal.aborted||!result||result.state!=='pending')return;
+  if(i+1<Math.min(8,maxAttempts))await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);signal.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,1500);signal.addEventListener('abort',done,{once:true});});
+ }
+}
+export type QueueResult={status:'waiting';ticket:string;waitMs:number}|{status:'paired';ticket:string;pairId:string;room:string;nonce:string;opponent:string;role:'host'|'guest';baseline?:{local:number;opponent:number}|null}|{status:'cancelled'|'timeout'|'full'|'complete'};
 export async function rankedQueue(action:'join'|'poll'|'cancel'|'complete',ticket?:string):Promise<QueueResult>{
  const me=currentRating()??await loadRating();if(!me)throw Error('Rating unavailable');
  const result=await request<QueueResult>('/queue/'+action,{myId:me.myId,token:me.token,ticket});
  if(!result||!['waiting','paired','cancelled','timeout','full','complete'].includes(result.status))throw Error('Invalid queue response');
  if((result.status==='waiting'||result.status==='paired')&&!validId(result.ticket))throw Error('Invalid queue ticket');
  if(result.status==='paired'&&(!validId(result.pairId)||!validId(result.room)||!validId(result.nonce)||!validId(result.opponent)||!['host','guest'].includes(result.role)))throw Error('Invalid queue pair');
+ if(result.status==='paired'&&result.baseline!=null&&(!points(result.baseline.local)||!points(result.baseline.opponent)))throw Error('Invalid queue baseline');
  return result;
 }

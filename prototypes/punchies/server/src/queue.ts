@@ -7,8 +7,9 @@ export class RankedQueue {
  constructor(private sql:SQL){
   sql.exec('CREATE TABLE IF NOT EXISTS ranked_queue(ticket TEXT PRIMARY KEY,player TEXT UNIQUE,joined INTEGER,lease INTEGER,rating INTEGER,pair TEXT)');
   sql.exec('CREATE TABLE IF NOT EXISTS ranked_pairs(id TEXT PRIMARY KEY,a TEXT,b TEXT,room TEXT,nonce TEXT,expires INTEGER,started INTEGER)');
+  sql.exec('CREATE TABLE IF NOT EXISTS ranked_baselines(pair TEXT PRIMARY KEY,ratings TEXT NOT NULL)');
  }
- private drop(pair:string){this.sql.exec('DELETE FROM ranked_queue WHERE pair=?',pair);this.sql.exec('DELETE FROM ranked_pairs WHERE id=?',pair);}
+ private drop(pair:string){this.sql.exec('DELETE FROM ranked_queue WHERE pair=?',pair);this.sql.exec('DELETE FROM ranked_baselines WHERE pair=?',pair);this.sql.exec('DELETE FROM ranked_pairs WHERE id=?',pair);}
  private expire(now:number){
   for(const p of this.sql.exec<Pair>('SELECT * FROM ranked_pairs WHERE expires<=?',now))this.drop(p.id);
   for(const q of this.sql.exec<Ticket>('SELECT * FROM ranked_queue WHERE lease<=?',now)){
@@ -19,7 +20,10 @@ export class RankedQueue {
  private response(q:Ticket,now:number){
   if(!q.pair)return {status:'waiting',ticket:q.ticket,waitMs:now-q.joined};
   const p=first(this.sql.exec<Pair>('SELECT * FROM ranked_pairs WHERE id=?',q.pair));
-  return p?{status:'paired',ticket:q.ticket,pairId:p.id,room:p.room,nonce:p.nonce,opponent:q.player===p.a?p.b:p.a,role:q.player===p.a?'host':'guest'}:{status:'cancelled'};
+  const baseline=p&&first(this.sql.exec<{ratings:string}>('SELECT ratings FROM ranked_baselines WHERE pair=?',p.id));
+  const ratings=baseline?JSON.parse(baseline.ratings):null;
+  const opponent=p&&(q.player===p.a?p.b:p.a);
+  return p?{status:'paired',ticket:q.ticket,pairId:p.id,room:p.room,nonce:p.nonce,opponent,role:q.player===p.a?'host':'guest',baseline:ratings?{local:ratings[q.player],opponent:ratings[opponent as string]}:null}:{status:'cancelled'};
  }
  authorize(id:string,opponent:string,pairId:string){const p=first(this.sql.exec<Pair>('SELECT * FROM ranked_pairs WHERE id=?',pairId));return !!p&&p.expires>Date.now()&&((p.a===id&&p.b===opponent)||(p.b===id&&p.a===opponent));}
  action(action:string,id:string,ticket:unknown,now=Date.now()):object{
@@ -51,6 +55,8 @@ export class RankedQueue {
    const other=candidates[0];if(other){
     const [a,b]=[q,other].sort((x,y)=>x.joined-y.joined||x.ticket.localeCompare(y.ticket));
     const pair=crypto.randomUUID();this.sql.exec('INSERT INTO ranked_pairs VALUES(?,?,?,?,?,?,0)',pair,a.player,b.player,crypto.randomUUID(),crypto.randomUUID(),now+queueConfig.pairTimeoutMs);
+    const rating=(id:string)=>first(this.sql.exec<{rating:number}>('SELECT rating FROM players WHERE id=?',id)).rating;
+    this.sql.exec('INSERT INTO ranked_baselines VALUES(?,?)',pair,JSON.stringify({[a.player]:rating(a.player),[b.player]:rating(b.player)}));
     this.sql.exec('UPDATE ranked_queue SET pair=?,lease=? WHERE ticket IN (?,?)',pair,now+queueConfig.leaseMs,q.ticket,other.ticket);q.pair=pair;
    }
   }
