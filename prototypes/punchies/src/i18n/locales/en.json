@@ -467,5 +467,7 @@
   "ui.bot_difficulty": "Bot difficulty",
   "ui.navigate": "Navigate",
   "ui.confirm": "Confirm",
-  "ui.adjust_touch_control": "Move the control. Confirm or go back to finish."
+  "ui.adjust_touch_control": "Move the control. Confirm or go back to finish.",
+  "survival.boss_clock": "BOSS",
+  "survival.boss_incoming": "Incoming…"
 }

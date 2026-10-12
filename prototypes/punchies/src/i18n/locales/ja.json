@@ -467,5 +467,7 @@
   "ui.bot_difficulty": "AIの強さ",
   "ui.navigate": "移動",
   "ui.confirm": "決定",
-  "ui.adjust_touch_control": "コントロールを移動。決定または戻るで終了。"
+  "ui.adjust_touch_control": "コントロールを移動。決定または戻るで終了。",
+  "survival.boss_clock": "ボス",
+  "survival.boss_incoming": "登場待ち…"
 }

@@ -11,7 +11,7 @@ function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(
 const {Hud}=load('prototypes/punchies/src/ui/Hud.ts');
 const {createSimState}=load('prototypes/punchies/src/sim/sim.ts');
 const {tune}=load('prototypes/punchies/src/sim/tune.ts');
-function fixture(){const texts=[],polygons=[],fills=[];let currentColor=0;const graphics=new Proxy({}, {get:(_,method)=>(...args)=>{if(method==='fillStyle'){currentColor=args[0];fills.push(args);}if(method==='fillPoints'){for(const p of args[0])assert(Number.isFinite(p.x)&&Number.isFinite(p.y));polygons.push({color:currentColor,points:args[0]});}return graphics;}});const scene={time:{now:0},add:{graphics:()=>graphics,text:(x,y,text,style)=>{const t={x,y,text,style,width:text.length*8,visible:true,alpha:1,scale:1};for(const m of ['setOrigin','setDepth','setStroke','setFontFamily','setColor','setShadow'])t[m]=()=>t;t.setVisible=v=>(t.visible=v,t);t.setScale=v=>(t.scale=v,t);t.setAlpha=v=>(t.alpha=v,t);t.setText=v=>(t.text=v,t);texts.push(t);return t;}}};return {scene,texts,polygons,fills};}
+function fixture(){const texts=[],polygons=[],fills=[];let currentColor=0;const graphics=new Proxy({}, {get:(_,method)=>(...args)=>{if(method==='fillStyle'){currentColor=args[0];fills.push(args);}if(method==='fillPoints'){for(const p of args[0])assert(Number.isFinite(p.x)&&Number.isFinite(p.y));polygons.push({color:currentColor,points:args[0]});}return graphics;}});const scene={time:{now:0},add:{graphics:()=>graphics,text:(x,y,text,style)=>{const t={x,y,text,style,width:text.length*8,visible:true,alpha:1,scale:1,scaleX:1};for(const m of ['setOrigin','setDepth','setStroke','setFontFamily','setColor','setShadow'])t[m]=()=>t;t.setVisible=v=>(t.visible=v,t);t.setScale=v=>(t.scale=v,t.scaleX=v,t);t.setAlpha=v=>(t.alpha=v,t);t.setText=v=>(t.text=v,t.width=v.length*8,t);t.setFontSize=v=>(t.style.fontSize=v,t);texts.push(t);return t;}}};return {scene,texts,polygons,fills};}
 for(const width of [844,1200]){VIEW.width=width;VIEW.right=width;const f=fixture(),hud=new Hud(f.scene,['A VERY LONG ONLINE NAME','OTHER']);hud.resourceRow=[0,1];const s=createSimState({timed:true,fighters:[{char:'marco'},{char:'mia'}]});s.fighters[0].stars=2;s.fighters[1].stars=3;s.fighters[0].stamina=0;s.fighters[1].exhausted=true;
 hud.setSeries({bestOf:3,roundNumber:3,wins:[1,1]});hud.draw(s);const upper=f.texts.filter(t=>t.text==='UPPER');assert.equal(upper[0].visible,false);assert.equal(upper[1].visible,true);const name=f.texts.find(t=>t.text==='A VERY LONG ONLINE NAME');assert(name.scale*name.width<=VIEW.width*.18);
 s.fighters[1].stars=0;hud.draw(s);assert.equal(upper[1].visible,false,'spending a charge immediately hides UPPER');
@@ -22,3 +22,21 @@ assert(f.fills.some(v=>v[0]===0xef3545),'emergency fill uses red');}
 console.log('HUD: tutorial reveals, zero-meter rejection, emergency red fill, upper charge/spend, long names, wide layouts, reduced-motion steady readiness passed');
 
 
+
+// Boss HUD remains separate from the nearest zombie's normal fighter stats.
+for(const width of [640,844,1200]){
+ VIEW.width=width;VIEW.cx=width/2;VIEW.right=width;
+ const f=fixture(),hud=new Hud(f.scene,['MARCO','ZOMBIE']);hud.sidesShown=[true,false];hud.showRoundSockets=false;
+ const s=createSimState({timed:false,fighters:[{char:'marco'},{char:'mia'}]});
+ const healthBar=()=>f.polygons.filter(p=>p.color===0xef4db6&&p.points.some(v=>v.x>VIEW.cx));
+ hud.timerText='00';hud.survivalBoss={key:'run:3',name:'A VERY LONG LOCALIZED BOSS NAME',health:156,maxHealth:220};hud.draw(s);
+ assert(f.texts.some(o=>o.text==='BOSS'&&o.visible),'boss phase replaces expired countdown');
+ const name=f.texts.find(o=>o.text.startsWith('BOSS · ')),hp=f.texts.find(o=>o.text==='156 / 220 HP');assert(name&&hp&&name.visible&&hp.visible);
+ assert(name.x+name.width*name.scaleX+12<=hp.x-hp.width*hp.scaleX+1e-6,'boss label and HP never overlap');
+ assert(healthBar().length>0,'right pink boss HP wing');
+ hud.survivalBoss={key:'run:6',name:'BRUNO',health:null,maxHealth:null};f.polygons.length=0;hud.draw(s);
+ assert(f.texts.some(o=>o.text==='Incoming…'&&o.visible));assert(!f.texts.some(o=>o.visible&&o.text==='0 / 0 HP'));assert.equal(healthBar().length,0,'incoming boss gets no invented health bar');
+ hud.survivalBoss={key:'run:6',name:'BRUNO',health:0,maxHealth:null};hud.draw(s);assert(!f.texts.some(o=>o.visible&&o.text==='Incoming…'),'defeated boss is not incoming');
+ hud.survivalBoss=null;hud.timerText='29';hud.draw(s);assert(f.texts.some(o=>o.text==='29'&&o.visible&&o.style.fontSize===29),'normal timer font restored');assert.equal(name.visible,false);assert.equal(hp.visible,false);
+}
+console.log('Boss HUD: actual HP wing, incoming no fake HP, defeated state, clock restore and nonoverlapping labels at 640/844/1200 passed');

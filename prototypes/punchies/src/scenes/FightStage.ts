@@ -6,7 +6,7 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
 import { TouchControls } from '../ui/TouchControls';
-import { Hud } from '../ui/Hud';
+import { Hud,type SurvivalBossHud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
 import { addGameMenu } from '../ui/gameMenu';
 import { trackFightScene } from '../portal/gameplay';
@@ -53,9 +53,9 @@ export class FightStage {
   private matchIntro: MatchIntro | null = null;
   hideOpponent = false; // Survival renders additional enemies by entity ID.
   inputBlocked = false;
-  survivalHud(seconds:number):void {
+  survivalHud(seconds:number,boss:SurvivalBossHud|null=null):void {
     this.hud.sidesShown=[true,false];this.hud.showRoundSockets=false;
-    this.hud.timerText=String(seconds).padStart(2,'0');
+    this.hud.timerText=String(seconds).padStart(2,'0');this.hud.survivalBoss=boss;
   }
   private introChecked = false;
 

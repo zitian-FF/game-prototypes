@@ -467,5 +467,7 @@
   "ui.bot_difficulty": "电脑难度",
   "ui.navigate": "导航",
   "ui.confirm": "确认",
-  "ui.adjust_touch_control": "移动控件，确认或返回以完成。"
+  "ui.adjust_touch_control": "移动控件，确认或返回以完成。",
+  "survival.boss_clock": "首领",
+  "survival.boss_incoming": "即将登场…"
 }

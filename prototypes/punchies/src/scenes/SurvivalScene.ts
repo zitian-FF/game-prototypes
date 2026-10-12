@@ -19,6 +19,7 @@ import {getNav} from '../ui/menuNav';
 import {survivalText,survivalOverlay,fitSurvivalText} from '../ui/survivalChrome';
 import {startScreen} from '../ui/presentation';
 import {FightStage} from './FightStage';
+import {survivalBossHud} from '../ui/survivalBossHud';
 
 interface SurvivalData {char?:CharId;skin?:string;run?:SurvivalRun;resume?:boolean}
 export class SurvivalScene extends Phaser.Scene {
@@ -30,7 +31,7 @@ export class SurvivalScene extends Phaser.Scene {
 
  private waveText!:Phaser.GameObjects.Text;
  private killsText!:Phaser.GameObjects.Text;
- private bossText!:Phaser.GameObjects.Text;
+ private bossWaveMode=false;
  private acc=0;private built=false;private saveFailed=false;
  private panel: string|null=null;private closePanel:(()=>void)|null=null;
  constructor(){super('Survival');}
@@ -59,9 +60,9 @@ export class SurvivalScene extends Phaser.Scene {
   }
   this.display=createSimState({timed:false,fighters:[{char:this.run.fighter},{char:'marco'}]});this.display.fightStartTick=0;
   this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default']);this.stage.hideOpponent=true;this.enemyViews=new SurvivalViews(this,color=>this.stage.createFighterView(color));
+  this.bossWaveMode=false;
   this.waveText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+23,'',17,VIEW.width*.34,'#fff1d1',93,22);
   this.killsText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+47,'',13,VIEW.width*.34,'#8edfff',93,19);
-  this.bossText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+71,'',12,VIEW.width*.34,'#ffe38b',93,19);
   this.built=true;setGameplay(this.run.status==='active');
  }
  private displayPair(enemy?:SurvivalEnemy):SimState {
@@ -92,12 +93,13 @@ export class SurvivalScene extends Phaser.Scene {
   const view=survivalView(this.run);
   this.stage.inputBlocked=view.ready||view.status!=='active'||this.saveFailed;
   this.stage.setSeries({bestOf:1,roundNumber:this.run.wave,wins:[0,0]});
-  this.stage.survivalHud(view.secondsLeft);this.stage.draw(this.displayPair(closestEnemy(this.run)),time,false);
+  this.stage.survivalHud(view.secondsLeft,survivalBossHud(view));this.stage.draw(this.displayPair(closestEnemy(this.run)),time,false);
   this.enemyViews.draw(this.run.enemies,time);
-  this.waveText.setText(t('survival.wave',{wave:view.wave}));
-  this.killsText.setText(t('survival.kills',{kills:view.waveKills}));
-  this.bossText.setText(view.bossChar?t('survival.boss',{name:charName(view.bossChar)}):'');
-  [this.waveText,this.killsText,this.bossText].forEach(fitSurvivalText);
+  const bossWave=view.waveMode==='boss';
+  if(bossWave!==this.bossWaveMode){this.bossWaveMode=bossWave;this.waveText.setPosition(VIEW.cx+VIEW.width*.23,VIEW.top+(bossWave?16:23)).setFontSize(bossWave?11:17).setData('fitHeight',bossWave?18:22);}
+  this.waveText.setText(t('survival.wave',{wave:view.wave})+(bossWave?' · '+t('survival.kills',{kills:view.waveKills}):''));
+  this.killsText.setVisible(!bossWave).setText(t('survival.kills',{kills:view.waveKills}));
+  [this.waveText,this.killsText].forEach(fitSurvivalText);
   if(this.saveFailed)this.showSaveError();
   else if(view.status==='intermission')this.showIntermission();
   else if(view.status==='ended')this.showDefeat();

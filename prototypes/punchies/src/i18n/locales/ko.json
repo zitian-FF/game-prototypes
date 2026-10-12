@@ -467,5 +467,7 @@
   "ui.bot_difficulty": "봇 난이도",
   "ui.navigate": "이동",
   "ui.confirm": "확인",
-  "ui.adjust_touch_control": "컨트롤을 이동하세요. 확인 또는 뒤로로 완료하세요."
+  "ui.adjust_touch_control": "컨트롤을 이동하세요. 확인 또는 뒤로로 완료하세요.",
+  "survival.boss_clock": "보스",
+  "survival.boss_incoming": "등장 대기…"
 }
