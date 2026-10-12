@@ -162,7 +162,7 @@ function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   return input;
 }
 function resetMotion(f: Fighter): void {
-  f.punch = null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
+  f.punch = null; f.codeX=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
   f.buffered = null; f.bufferFrames = 0; f.pushX = 0; f.pushY = 0; f.pushFrames = 0;
   f.lock = 0; f.stunTimer = 0; f.stun = 0; f.stunDecayWait = 0; f.stunFromMeter = false;
   f.postDodgeVulnerable = 0; f.guardPenalty = 0; f.dashBuff = 0;
@@ -249,7 +249,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       for (const hit of hits) {
         if (!s.fighters[hit.attacker].punch) continue; // A perfect guard can cancel a crowd swing.
         const defender=s.fighters[1-hit.attacker],beforeHp=Math.max(0,defender.health),eventStart=events.length;
-        combat.resolveContact(s, hit, snap.map(v => v.stance), snap.map(v => v.startup), snap.map(v => v.whiff), snap.map(v => v.exhausted), events);
+        combat.resolveContact(s, {...hit,targetId:hit.attacker===0?e.id:'player'}, snap.map(v => v.stance), snap.map(v => v.startup), snap.map(v => v.whiff), snap.map(v => v.exhausted), events);
         if(events.slice(eventStart).some(e=>e.kind==='hit')){
           const applied=Math.max(0,Math.min(beforeHp,beforeHp-defender.health));
           if(hit.attacker===0)r.damageDealt+=applied;else r.damageReceived+=applied;
@@ -259,6 +259,16 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
       r.hitstop = Math.max(r.hitstop, s.hitstop); wrap(events, e.id, out);
     });
     if (r.player.punch) r.player.punch.resolved = r.swingHits.length > 0;
+    // All living arena targets share each shadow's stable per-victim hit ledger.
+    for(const enemy of r.enemies){
+      const beforeHp=Math.max(0,enemy.fighter.health),s=pair(r,enemy.fighter),events:SimEvent[]=[];
+      combat.resolveCodeX(s,0,[{id:enemy.id,fighter:enemy.fighter}],events);
+      r.damageDealt+=Math.max(0,Math.min(beforeHp,beforeHp-enemy.fighter.health));
+      const playerHp=Math.max(0,r.player.health);
+      combat.resolveCodeX(s,1,[{id:'player',fighter:r.player}],events);
+      r.damageReceived+=Math.max(0,Math.min(playerHp,playerHp-r.player.health));
+      r.hitstop=Math.max(r.hitstop,s.hitstop);wrap(events,enemy.id,out);
+    }
     const timerEvents: SimEvent[] = [];
     combat.advanceTimers(primary, 0, input, timerEvents); wrap(timerEvents, target?.id ?? '', out);
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });

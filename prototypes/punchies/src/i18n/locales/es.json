@@ -473,5 +473,7 @@
   "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
   "ui.skins": "Aspectos",
   "shop.today_s_fighters": "LUCHADORES DE HOY",
-  "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles."
+  "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles.",
+  "super.code_x": "CÓDIGO X",
+  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos."
 }
