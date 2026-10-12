@@ -128,7 +128,7 @@ export class CharacterSelectView {
   if(p.survival){
    const heading=this.text(parent,centre,135,t('survival.heading'),16,'#9ee7b5').setWordWrapWidth(182,true);
    heading.setScale(Math.min(1,42/heading.height));
-   const body=this.text(parent,centre,224,t('survival.selection_hint'),14,'#dbe9fa').setWordWrapWidth(178,true);
+   const body=this.text(parent,centre,224,t('survival.selection_hint').replace(/\\n/g,'\n'),14,'#dbe9fa').setWordWrapWidth(178,true);
    body.setScale(Math.min(1,126/body.height));
    return;
   }
