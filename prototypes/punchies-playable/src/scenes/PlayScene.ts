@@ -10,6 +10,8 @@ import { debugUnlocked, mountDebugPanel } from '../debug';
 const NAVY = 0x101b32;
 const GOLD = 0xffc84a;
 const FONT = 'Arial Black, Arial, sans-serif';
+// Combo call-outs: shown when the combo reaches the count.
+const COMBO_WORDS: [number, string][] = [[3, 'GOOD!'], [5, 'GREAT!'], [8, 'AWESOME!'], [12, 'UNSTOPPABLE!'], [20, 'LEGENDARY!']];
 
 export class PlayScene extends Phaser.Scene {
   private sim!: Sim;
@@ -27,6 +29,13 @@ export class PlayScene extends Phaser.Scene {
   private endTimer = 0;
   private overlay: Phaser.GameObjects.GameObject[] = [];
   private playerAngle = -90;
+  private comboLabel!: Phaser.GameObjects.Text;
+  private comboNum!: Phaser.GameObjects.Text;
+  private lastScore = 0;
+  private lastCombo = 0;
+  private hitStopUntil = 0;
+  private endTween: Phaser.Tweens.Tween | null = null;
+  private banners = new Set<Phaser.GameObjects.Text>();
   retryEnabled = false;
   private keysBound = false;
   paused = false; // test hook: freezes the sim so a frame can be captured
@@ -98,7 +107,8 @@ export class PlayScene extends Phaser.Scene {
       const src = tex.getSourceImage() as HTMLImageElement;
       const cropW = Math.round((src.height * W) / H);
       if (!tex.has('mid')) tex.add('mid', 0, Math.round((src.width - cropW) / 2), 0, cropW, src.height);
-      this.add.image(W / 2, H / 2, 'gym_background', 'mid').setDisplaySize(W, H);
+      // Slight purple night tint for the zombie mood.
+      this.add.image(W / 2, H / 2, 'gym_background', 'mid').setDisplaySize(W, H).setTint(0xa79cd0);
     } else {
       this.add.rectangle(W / 2, H / 2, W, H, 0x16213f);
     }
@@ -110,6 +120,8 @@ export class PlayScene extends Phaser.Scene {
     this.add.rectangle(W / 2, 0, W, 78, NAVY, 0.55).setOrigin(0.5, 0).setDepth(48);
     this.scoreText = this.txt(W / 2, 46, '0', 44).setDepth(50);
     this.txt(W / 2, 14, 'SCORE', 11, '#ffc84a').setDepth(50);
+    this.comboLabel = this.txt(W - 48, 14, 'COMBO', 11, '#ffc84a').setDepth(50).setVisible(false);
+    this.comboNum = this.txt(W - 48, 44, '', 34, '#ffc84a').setDepth(50).setVisible(false);
     this.pips = [];
     for (let i = 0; i < tune.run.playerHp; i++) {
       const x = 26 + i * 30;
@@ -166,10 +178,19 @@ export class PlayScene extends Phaser.Scene {
     for (const b of this.bars.values()) b.destroy();
     this.bars.clear();
     this.sim = createSim(tune);
+    for (const b of this.banners) {
+      this.tweens.killTweensOf(b);
+      b.destroy();
+    }
+    this.banners.clear();
+    this.lastScore = 0;
+    this.lastCombo = 0;
+    this.hitStopUntil = 0;
     this.endShown = false;
     this.endTimer = 0;
     this.acc = 0;
     this.render(performance.now());
+    this.banner('DEFEAT THE\nZOMBIES!', '#ffc84a', 34, 1100);
   }
 
   private restart(): void {
@@ -177,13 +198,15 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private clearOverlay(): void {
+    this.endTween?.stop();
+    this.endTween = null;
     for (const o of this.overlay) o.destroy();
     this.overlay = [];
   }
 
   update(time: number, delta: number): void {
     if (!this.sim) return;
-    if (!this.paused) this.acc += Math.min(delta, 100);
+    if (!this.paused && this.time.now >= this.hitStopUntil) this.acc += Math.min(delta, 100);
     const stepMs = 1000 / FPS;
     while (this.acc >= stepMs) {
       this.acc -= stepMs;
@@ -228,14 +251,23 @@ export class PlayScene extends Phaser.Scene {
       this.views.get(e.enemy)?.flash(0xffffff, now, 200);
       this.spark(p.x, p.y + 20, e.zone === 'head' ? GOLD : 0xffffff);
       this.popup(p.x, p.y, e.zone === 'head' ? `+${e.points} HEAD!` : `+${e.points} BODY`, e.zone === 'head' ? '#ffc84a' : '#fff1d1');
+      this.popup(p.x + 44, p.y + 26, `-${e.dmg}`, '#ffffff', 20);
       this.cameras.main.shake(e.killed ? 110 : 70, e.killed ? 0.007 : 0.004);
+      if (e.killed) this.hitStopUntil = this.time.now + tune.view.hitStopMs;
+      const word = COMBO_WORDS.find(([n]) => n === e.combo);
+      if (word) this.banner(word[1], '#ffc84a', 38, 650);
     } else if (e.kind === 'sour') {
       const en = target(e.enemy);
       const p = en ? this.enemyPos(en) : { x: W / 2, y: H / 2 };
       this.views.get(e.enemy)?.flash(0xff8a4a, now, 140);
       this.popup(p.x, p.y, 'SOUR', '#ff8a4a');
+      this.popup(p.x + 44, p.y + 26, `-${e.dmg}`, '#ff8a4a', 18);
     } else if (e.kind === 'whiff') {
       this.popup(W / 2, tune.view.playerY - 110, 'MISS', '#9aa6c8');
+    } else if (e.kind === 'spawn') {
+      const n = tune.run.zombieCount;
+      if (e.index === Math.round(n * 0.5)) this.banner('HORDE INCOMING!', '#ff6a5a', 30, 900);
+      else if (e.index === Math.round(n * 0.8)) this.banner('FINAL RUSH!', '#ff6a5a', 36, 900);
     } else if (e.kind === 'playerHit') {
       this.player.flash(0xff6a6a, now, 260, false);
       this.cameras.main.shake(140, 0.012);
@@ -244,8 +276,16 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private popup(x: number, y: number, s: string, color: string): void {
-    const t = this.txt(x, y, s, 24, color).setDepth(70);
+  // Big centre call-out that pops in, holds, then fades.
+  private banner(text: string, color: string, size: number, holdMs: number): void {
+    const t = this.txt(W / 2, 250, text, size, color).setDepth(80).setAlpha(0).setScale(0.4);
+    this.banners.add(t);
+    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 180, ease: 'Back.Out' });
+    this.tweens.add({ targets: t, alpha: 0, y: 225, delay: 180 + holdMs, duration: 260, onComplete: () => { this.banners.delete(t); t.destroy(); } });
+  }
+
+  private popup(x: number, y: number, s: string, color: string, size = 24): void {
+    const t = this.txt(x, y, s, size, color).setDepth(70);
     this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: tune.view.popupMs, onComplete: () => t.destroy() });
   }
 
@@ -292,6 +332,18 @@ export class PlayScene extends Phaser.Scene {
     this.player.root.setAngle(this.playerAngle);
     this.player.update(idle, now);
     this.scoreText.setText(String(s.score));
+    if (s.score !== this.lastScore) {
+      this.lastScore = s.score;
+      this.tweens.add({ targets: this.scoreText, scale: { from: 1.4, to: 1 }, duration: 170 });
+    }
+    if (s.combo !== this.lastCombo) {
+      const grew = s.combo > this.lastCombo;
+      this.lastCombo = s.combo;
+      const show = s.combo >= 2;
+      this.comboLabel.setVisible(show);
+      this.comboNum.setVisible(show).setText(`x${s.combo}`);
+      if (show && grew) this.tweens.add({ targets: this.comboNum, scale: { from: 1.5, to: 1 }, duration: 170 });
+    }
     this.pips.forEach((p, i) => (p as Phaser.GameObjects.Image).setAlpha(i < s.hp ? 1 : 0.22));
     this.timeBar.width = W * Math.max(0, 1 - s.frame / (tune.run.durationSec * FPS));
 
@@ -355,30 +407,50 @@ export class PlayScene extends Phaser.Scene {
     const y = p.y - 56;
     g.fillStyle(NAVY, 0.85).fillRoundedRect(x - 2, y - 2, w + 4, 10, 4);
     g.fillStyle(frac > 0.5 ? 0x6fd16f : frac > 0.25 ? GOLD : 0xe5453d, 1).fillRoundedRect(x, y, Math.max(2, w * frac), 6, 3);
+    // Danger marker while a zombie winds up or strikes.
+    if (e.state === 'windup' || e.state === 'strike') {
+      g.fillStyle(NAVY, 1).fillTriangle(p.x - 13, y - 5, p.x + 13, y - 5, p.x, y - 30);
+      g.fillStyle(0xff4a3a, 1).fillTriangle(p.x - 10, y - 7, p.x + 10, y - 7, p.x, y - 26);
+      g.fillStyle(0xffffff, 1).fillRect(p.x - 1.5, y - 21, 3, 8).fillCircle(p.x, y - 10, 1.8);
+    }
   }
 
   private showEnd(): void {
     this.endShown = true;
+    for (const b of this.banners) {
+      this.tweens.killTweensOf(b);
+      b.destroy();
+    }
+    this.banners.clear();
     const s = this.sim.state;
     const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
       this.overlay.push(o);
       return o;
     };
-    add(this.add.rectangle(W / 2, H / 2, W, H, 0x0a1022, 0.84).setDepth(100).setInteractive());
-    if (this.has('logo')) add(this.add.image(W / 2, 78, 'logo').setDisplaySize(250, 78.5).setDepth(101));
-    add(this.txt(W / 2, 170, s.ended === 'dead' ? 'KO!' : "TIME'S UP!", 40, '#ffc84a').setDepth(101));
-    add(this.txt(W / 2, 245, 'SCORE', 18, '#9aa6c8').setDepth(101));
-    add(this.txt(W / 2, 315, String(s.score), 84).setDepth(101));
-    const g = add(this.add.graphics().setDepth(101));
+    add(this.add.rectangle(W / 2, H / 2, W, H, 0x0a1022, 0.86).setDepth(100).setInteractive());
+    if (this.has('logo')) add(this.add.image(W / 2, 66, 'logo').setDisplaySize(230, 72.2).setDepth(101));
+    add(this.txt(W / 2, 140, s.ended === 'dead' ? 'OVERRUN!' : "TIME'S UP!", 38, s.ended === 'dead' ? '#ff6a5a' : '#ffc84a').setDepth(101));
+    add(this.txt(W / 2, 198, 'SCORE', 16, '#9aa6c8').setDepth(101));
+    add(this.txt(W / 2, 258, String(s.score), 72).setDepth(101));
+    add(this.txt(W / 2, 318, `ZOMBIES DEFEATED  ${s.kills}`, 19).setDepth(101));
+    add(this.txt(W / 2, 346, `BEST COMBO  x${s.bestCombo}`, 19, '#ffc84a').setDepth(101));
+    // A goal just above where they ended makes the next try feel winnable.
+    const next = (Math.floor(s.score / 10) + 1) * 10;
+    add(this.txt(W / 2, 384, `Can you reach ${next}?`, 22, '#9fe0ff').setDepth(101));
+
+    // CTA: one button that pulses to draw the thumb.
+    const cta = add(this.add.container(W / 2, 450).setDepth(101));
+    const g = this.add.graphics();
     const draw = (pressed: boolean) => {
       g.clear();
-      g.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 128, 365, 256, 90, 26);
-      g.fillStyle(pressed ? 0xfff1d1 : GOLD, 1).fillRoundedRect(W / 2 - 122, 371, 244, 78, 22);
-      g.fillStyle(0xffffff, pressed ? 0 : 0.3).fillRoundedRect(W / 2 - 112, 376, 224, 24, 12);
+      g.fillStyle(NAVY, 1).fillRoundedRect(-128, -45, 256, 90, 26);
+      g.fillStyle(pressed ? 0xfff1d1 : GOLD, 1).fillRoundedRect(-122, -39, 244, 78, 22);
+      g.fillStyle(0xffffff, pressed ? 0 : 0.3).fillRoundedRect(-112, -34, 224, 24, 12);
     };
     draw(false);
-    add(this.txt(W / 2, 410, CTA_LABEL, 30, '#101b32').setStroke('#ffffff', 0).setDepth(102));
-    const zone = add(this.add.zone(W / 2, 410, 270, 100).setInteractive().setDepth(103));
+    cta.add([g, this.txt(0, 4, CTA_LABEL, 30, '#101b32').setStroke('#ffffff', 0)]);
+    this.endTween = this.tweens.add({ targets: cta, scale: { from: 1, to: 1.06 }, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    const zone = add(this.add.zone(W / 2, 450, 270, 100).setInteractive().setDepth(103));
     zone.on('pointerdown', () => {
       draw(true);
       onCtaPressed();
@@ -390,12 +462,12 @@ export class PlayScene extends Phaser.Scene {
       const rg = add(this.add.graphics().setDepth(101));
       const drawRetry = (pressed: boolean) => {
         rg.clear();
-        rg.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 88, 482, 176, 62, 22);
-        rg.fillStyle(pressed ? 0xffffff : 0x4a5d86, 1).fillRoundedRect(W / 2 - 83, 487, 166, 52, 18);
+        rg.fillStyle(NAVY, 1).fillRoundedRect(W / 2 - 88, 508, 176, 62, 22);
+        rg.fillStyle(pressed ? 0xffffff : 0x4a5d86, 1).fillRoundedRect(W / 2 - 83, 513, 166, 52, 18);
       };
       drawRetry(false);
-      add(this.txt(W / 2, 513, 'RETRY', 24).setDepth(102));
-      const rz = add(this.add.zone(W / 2, 513, 190, 76).setInteractive().setDepth(103));
+      add(this.txt(W / 2, 539, 'RETRY', 24).setDepth(102));
+      const rz = add(this.add.zone(W / 2, 539, 190, 76).setInteractive().setDepth(103));
       rz.on('pointerdown', () => {
         drawRetry(true);
         this.restart();

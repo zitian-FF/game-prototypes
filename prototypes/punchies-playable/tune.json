@@ -2,14 +2,14 @@
   "run": {
     "durationSec": 30,
     "playerHp": 3,
-    "firstSpawnSec": 0.5,
+    "firstSpawnSec": 0.1,
     "zombieCount": 50,
     "startGapSec": 0.7,
     "endGapSec": 0.35
   },
   "enemy": {
     "spawnDistance": 520,
-    "walkSpeed": 200,
+    "walkSpeed": 250,
     "attackDistance": 80,
     "minGap": 70,
     "windupFrames": 20,
@@ -22,7 +22,7 @@
     "lanes": 7,
     "maxBearingDeg": 28,
     "knockFadeFrames": 14,
-    "walkSpeedEnd": 320,
+    "walkSpeedEnd": 340,
     "hp": 4,
     "staggerPush": 25
   },
@@ -83,6 +83,7 @@
       "strideAmp": 7,
       "walkHz": 2.2
     },
-    "playerTurn": 0.25
+    "playerTurn": 0.25,
+    "hitStopMs": 45
   }
 }

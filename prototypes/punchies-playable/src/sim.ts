@@ -35,11 +35,11 @@ export interface Input {
 }
 
 export type SimEvent =
-  | { kind: 'sweet'; zone: 'head' | 'body'; points: number; dmg: number; hp: number; killed: boolean; enemy: number; d: number }
+  | { kind: 'sweet'; zone: 'head' | 'body'; points: number; dmg: number; hp: number; killed: boolean; combo: number; enemy: number; d: number }
   | { kind: 'sour'; dmg: number; hp: number; killed: boolean; enemy: number; d: number }
   | { kind: 'whiff'; type: PunchType }
   | { kind: 'playerHit'; enemy: number }
-  | { kind: 'spawn'; enemy: number; ang: number }
+  | { kind: 'spawn'; enemy: number; ang: number; index: number }
   | { kind: 'end'; reason: 'time' | 'dead' };
 
 export interface SimState {
@@ -53,6 +53,9 @@ export interface SimState {
   spawned: number;
   nextId: number;
   hurtFrames: number;
+  combo: number; // consecutive sweet hits; broken by a sour hit, a miss or taking a punch
+  bestCombo: number;
+  kills: number;
 }
 
 export const FPS = 60;
@@ -130,6 +133,9 @@ export function createSim(tune: Tune) {
     spawned: 0,
     nextId: 1,
     hurtFrames: 0,
+    combo: 0,
+    bestCombo: 0,
+    kills: 0,
   };
 
   const startPunch = (type: PunchType) => {
@@ -167,6 +173,9 @@ export function createSim(tune: Tune) {
             t.hp -= dmg;
             t.hurt = tune.view.hitFlashFrames;
             const killed = t.hp <= 0;
+            if (killed) s.kills++;
+            if (sweet) s.bestCombo = Math.max(s.bestCombo, ++s.combo);
+            else s.combo = 0;
             if (killed) {
               t.state = 'knocked';
               t.frame = 0;
@@ -179,7 +188,7 @@ export function createSim(tune: Tune) {
             if (sweet) {
               const points = tune.points[v];
               s.score += points;
-              ev.push({ kind: 'sweet', zone: v, points, dmg, hp: Math.max(0, t.hp), killed, enemy: t.id, d: t.d });
+              ev.push({ kind: 'sweet', zone: v, points, dmg, hp: Math.max(0, t.hp), killed, combo: s.combo, enemy: t.id, d: t.d });
             } else {
               ev.push({ kind: 'sour', dmg, hp: Math.max(0, t.hp), killed, enemy: t.id, d: t.d });
             }
@@ -188,6 +197,7 @@ export function createSim(tune: Tune) {
       }
       if (!p.resolved && !p.whiff && phase === 'recovery') {
         p.whiff = true;
+        s.combo = 0;
         ev.push({ kind: 'whiff', type: p.type });
       }
       p.frame++;
@@ -206,7 +216,7 @@ export function createSim(tune: Tune) {
       const e: Enemy = { id: s.nextId++, d: tune.enemy.spawnDistance, ang, hp: tune.enemy.hp, speed: spawnSpeed(tune, s.spawned), hurt: 0, state: 'walk', frame: 0, side: ang >= 0 ? 1 : -1 };
       s.enemies.push(e);
       s.spawned++;
-      ev.push({ kind: 'spawn', enemy: e.id, ang });
+      ev.push({ kind: 'spawn', enemy: e.id, ang, index: s.spawned - 1 });
     }
 
     // Enemies, nearest first so the queue holds its spacing.
@@ -233,6 +243,7 @@ export function createSim(tune: Tune) {
         if (e.frame >= tune.enemy.strikeFrames) {
           s.hp = Math.max(0, s.hp - tune.enemy.damage);
           s.hurtFrames = tune.view.hitFlashFrames;
+          s.combo = 0;
           ev.push({ kind: 'playerHit', enemy: e.id });
           e.state = 'leave';
           e.frame = 0;
