@@ -22,6 +22,7 @@ if(productionProfile.staging!==false||productionProfile.saveResetId!==resetId)th
 const productionOutput=path.join(path.dirname(dest),'production');fs.mkdirSync(productionOutput,{recursive:true});fs.cpSync(source,productionOutput,{recursive:true});
 run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'on',PUNCHIES_QA:'1',PUNCHIES_STAGING_QA:'1',PUNCHIES_SAVE_RESET_ID:resetId,VITE_PUNCHIES_RATING_URL:''});
 if(!fs.existsSync(path.join(source,'staging-review.html')))throw Error('Missing opted-in QA route');
+if(JSON.parse(fs.readFileSync(path.join(source,'prototypes/punchies/asset-profile.json'))).stageArtOverlay?.kai)run(['scripts/test-punchies-kai-package.mjs',source]);
 if(fs.existsSync('scripts/test-punchies-indexed-portrait.mjs'))run(['scripts/test-punchies-indexed-portrait.mjs'],{PUNCHIES_TEE_SOURCE:path.join(source,'prototypes/punchies/assets/loose/portrait_tee.webp')});
 if(fs.existsSync('scripts/test-punchies-vs-stamp.mjs'))run(['scripts/test-punchies-vs-stamp.mjs']);
 const output=path.join(dest,'builds',sha,'game');fs.mkdirSync(output,{recursive:true});fs.cpSync(source,output,{recursive:true});
