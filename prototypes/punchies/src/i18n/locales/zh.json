@@ -475,5 +475,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "测试环境 · 可重复抽取",
   "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。",
-  "ui.skins": "皮肤"
+  "ui.skins": "皮肤",
+  "super.code_x": "代码 X",
+  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。"
 }

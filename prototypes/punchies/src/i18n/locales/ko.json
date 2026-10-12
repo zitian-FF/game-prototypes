@@ -475,5 +475,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "스테이징 · 반복 뽑기",
   "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다.",
-  "ui.skins": "스킨"
+  "ui.skins": "스킨",
+  "super.code_x": "코드 X",
+  "super.code_x_description": "잽 적중 시 그림자가 크로스 2회. 그림자는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다."
 }
