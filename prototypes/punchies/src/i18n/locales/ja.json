@@ -477,5 +477,7 @@
   "super.rising_upper_description": "通常ガードを突破。パーフェクトガードや回避で防げます。",
   "ui.skins": "スキン",
   "super.code_x": "コードX",
-  "super.code_x_description": "ジャブ命中で影が2回クロス。影は通常・パーフェクトガードを突破。回避で避けよう。"
+  "super.code_x_description": "ジャブ命中で影が2回クロス。影は通常・パーフェクトガードを突破。回避で避けよう。",
+  "super.buffalo_hook": "バッファローフック",
+  "super.buffalo_hook_description": "ガードされないフック命中でアッパーへ。アッパーは通常・パーフェクトガードを突破。回避で避けよう。"
 }
