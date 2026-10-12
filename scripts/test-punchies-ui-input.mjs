@@ -12,11 +12,11 @@ const navigator = {getGamepads: () => pads};
 function load(file, mocks) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText,
-    {exports, require: id => mocks[id] ?? (id.endsWith('/controlHint')?{controlHint:()=>({destroy(){}})}:{}), window, navigator});
+    {exports, require: id => mocks[id] ?? (id.endsWith('/controlHint')?{controlHint:()=>({destroy(){}}),setRosterHintContext(){}}:{}), window, navigator});
   return exports;
 }
 const sfx = {uiSelect(){}, uiConfirm(){}, uiBack(){}};
-const layoutMock={loadLayouts:()=>({kb1:{up:['KeyW'],down:['KeyS'],left:['KeyA'],right:['KeyD']},kb2:{up:['ArrowUp'],down:['ArrowDown'],left:['ArrowLeft'],right:['ArrowRight']}})};
+const layoutMock={loadLayouts:()=>({kb1:{up:['KeyW'],down:['KeyS'],left:['KeyA'],right:['KeyD'],jab:['KeyJ'],cross:['KeyK'],hook:['KeyL'],uppercut:['KeyI'],dodge:['Space'],guard:['ShiftLeft']},kb2:{up:['ArrowUp'],down:['ArrowDown'],left:['ArrowLeft'],right:['ArrowRight'],jab:['Numpad1'],cross:['Numpad2'],hook:['Numpad3'],uppercut:['Numpad5'],dodge:['Numpad0'],guard:['NumpadEnter']}})};
 const modalityMock={inputModality:{source:'touch'},installInputModality(){},pollInputModality(){}};
 const {MenuNav} = load('prototypes/punchies/src/ui/menuNav.ts', {'../audio/sfx': {sfx},'../input/layouts':layoutMock,'../input/modality':modalityMock});
 class Hit extends EventEmitter {
@@ -135,22 +135,22 @@ for (const depth of [130,150,291]) {
 // Exercise the scene's actual format handlers and device ownership.
 const tune={match:{bestOf:3}};
 const {CharSelectScene}=load('prototypes/punchies/src/scenes/CharSelectScene.ts', {
-  phaser:{default:{Scene:class{}}}, '../sim/bot':{BOT_LEVELS:['easy','medium','hard']},'../sim/charPrefs':{saveCharPrefs(){}},'../input/modality':modalityMock,'../input/layouts':layoutMock,'../sim/tune':{tune}, '../audio/sfx':{sfx}, '../i18n':i18nStub,
+  '../input/rosterMenu':load('prototypes/punchies/src/input/rosterMenu.ts',{}),phaser:{default:{Scene:class{}}}, '../sim/bot':{BOT_LEVELS:['easy','medium','hard']},'../sim/charPrefs':{saveCharPrefs(){}},'../input/modality':modalityMock,'../input/layouts':layoutMock,'../sim/tune':{tune}, '../audio/sfx':{sfx}, '../i18n':i18nStub,
 });
 for (const mode of ['vsai','localvs','online','training']) {
   const s=new CharSelectScene();s.scene={isActive:()=>true};s.input={enabled:true};s.active=0;s.time={now:1000};
   s.sides=[{src:'kb1'},{src:'pad2'}];s.data0={mode,localIdx:0};tune.match.bestOf=3;
-  s.onKey({code:'KeyF'});assert.equal(tune.match.bestOf,mode==='training'?3:1);
-  s.onKey({code:'KeyF',repeat:true});assert.equal(tune.match.bestOf,mode==='training'?3:1);
+  s.onKey({code:'Space'});assert.equal(tune.match.bestOf,mode==='training'?3:1);
+  s.onKey({code:'Space',repeat:true});assert.equal(tune.match.bestOf,mode==='training'?3:1);
   s.sides=[{src:'pad1'},{src:'pad2'}];
-  pads=[pad()];s.pollPads();pads[0].buttons[3].pressed=true;s.pollPads();s.pollPads();
-  assert.equal(tune.match.bestOf,3,'Y changes once per press');
-  if(mode==='online') {s.data0.localIdx=1;s.onKey({code:'KeyF'});s.cycleFormat();assert.equal(tune.match.bestOf,3,'guest cannot change host format');}
+  pads=[pad()];s.pollPads();pads[0].buttons[5].pressed=true;s.pollPads();s.pollPads();
+  assert.equal(tune.match.bestOf,3,'RB changes once per press');
+  if(mode==='online') {s.data0.localIdx=1;s.onKey({code:'Space'});s.cycleFormat();assert.equal(tune.match.bestOf,3,'guest cannot change host format');}
   if(mode==='localvs') {
     s.sides=[{src:'touch'},{src:'kb2'}];
-    pads[0].buttons[3].pressed=false;s.pollPads();pads[0].buttons[3].pressed=true;s.pollPads();
+    pads[0].buttons[5].pressed=false;s.pollPads();pads[0].buttons[5].pressed=true;s.pollPads();
     assert.equal(tune.match.bestOf,3,'unassigned pad cannot change local format');
-    s.onKey({code:'KeyF'});assert.equal(tune.match.bestOf,1,'shared format shortcut works with either keyboard half assigned');
+    s.onKey({code:'Space'});assert.equal(tune.match.bestOf,3,'unowned keyboard cannot change local format');s.onKey({code:'Numpad0'});assert.equal(tune.match.bestOf,1,'saved dodge binding routes to owned second keyboard');
   }
 }
 // Device-specific format glyphs are exercised in test-punchies-input-modality.mjs.
@@ -199,7 +199,7 @@ for (const mode of ['vsai','localvs','online','training']) {
 console.log('UI input: ad/overlay suppression, held controller edges, reveal ownership, rounded keypad release/typing/cleanup, pause exclusion, results/practice navigation, modal priority, focus restoration, gameplay Hook and format ownership passed');
 
 // Difficulty is a side option, reachable independently of selected fighter.
-{const s=new CharSelectScene();s.scene={isActive:()=>true};s.input={enabled:true};s.data0={mode:'vsai'};s.level='easy';s.active=0;s.sides=[{src:'any'}];s.time={now:1000};s.onKey({code:'KeyE'});assert.equal(s.level,'medium');s.onKey({code:'KeyQ'});assert.equal(s.level,'easy');s.onKey({code:'KeyE',repeat:true});assert.equal(s.level,'easy');pads=[pad()];s.pollPads();pads[0].buttons[5].pressed=true;s.pollPads();assert.equal(s.level,'medium');s.pollPads();assert.equal(s.level,'medium');let confirms=0;s.confirm=()=>confirms++;pads[0].buttons[0].pressed=true;pads[0].buttons[2].pressed=true;s.pollPads();s.pollPads();assert.equal(confirms,1);s.data0.mode='training';s.onKey({code:'KeyE'});assert.equal(s.level,'medium');pads=[];}
+{const s=new CharSelectScene();s.scene={isActive:()=>true};s.input={enabled:true};s.data0={mode:'vsai'};s.level='easy';s.active=0;s.sides=[{src:'any'}];s.time={now:1000};s.onKey({code:'KeyI'});assert.equal(s.level,'medium');s.onKey({code:'KeyL'});assert.equal(s.level,'easy');s.onKey({code:'KeyI',repeat:true});assert.equal(s.level,'easy');pads=[pad()];s.pollPads();pads[0].buttons[3].pressed=true;s.pollPads();assert.equal(s.level,'medium');s.pollPads();assert.equal(s.level,'medium');let confirms=0;s.confirm=()=>confirms++;pads[0].buttons[0].pressed=true;pads[0].buttons[2].pressed=true;s.pollPads();s.pollPads();assert.equal(confirms,1);s.data0.mode='training';s.onKey({code:'KeyI'});assert.equal(s.level,'medium');pads=[];}
 // Preserve the existing timeout and its cancellation; diagnostics follow debug mode.
 const netTune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'));
 let debug=false, session, timer, returned;
