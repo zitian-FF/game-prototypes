@@ -33,6 +33,9 @@ function getPrototypeEntries(): Record<string, string> {
 
 generateVersionStamps(__dirname);
 const assetProfile = process.env.PUNCHIES_ASSET_PROFILE;
+const stagingBuild=process.env.PUNCHIES_STAGING==='on';
+const saveResetId=process.env.PUNCHIES_SAVE_RESET_ID??'';
+if(saveResetId&&(process.env.PORTAL??'web')!=='web')throw new Error('The save reset is authorized for web/itch and staging builds only');
 if (assetProfile) {
   if (!['standard', 'compact'].includes(assetProfile) || !process.env.PUNCHIES_PUBLIC_DIR) throw new Error('Use the Punchies profile build scripts to prepare isolated assets');
   const record = JSON.parse(fs.readFileSync(path.join(process.env.PUNCHIES_PUBLIC_DIR, 'prototypes/punchies/asset-profile.json'), 'utf8'));
@@ -81,6 +84,8 @@ export default defineConfig(({ command }) => ({
   }],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
+    __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
+    __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
       __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),

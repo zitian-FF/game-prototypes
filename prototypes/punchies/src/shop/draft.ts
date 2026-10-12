@@ -1,4 +1,5 @@
 import { PALETTES } from '../render/paletteCatalog';
+import {STAGING_BUILD} from '../buildFlags';
 import { store } from '../portal/store';
 import { KEYS } from '../portal/keys';
 import type { CharId } from '../sim/character';
@@ -55,6 +56,7 @@ export function grantSkin(state:ShopDraftState,id:string):ShopDraftState|null{
   return {...state,owned:[...state.owned,id]};
 }
 export function freeChests(state:ShopDraftState,kind:ShopKind):number{return (kind==='skins'?state.freeSkinChests:state.freeFighterChests)??0;}
+export function dailyChestLocked(state:ShopDraftState,kind:ShopKind):boolean{return !STAGING_BUILD&&freeChests(state,kind)<=0&&!!state.purchasedChests?.includes(kind);}
 /** The three starting boxers plus every fighter the player has pulled. */
 export const STARTING_BOXERS:string[]=['marco','mia','bruno'];
 export function ownedBoxers(state:ShopDraftState):string[]{
@@ -85,7 +87,7 @@ export function buyDailyChest(state:ShopDraftState,kind:ShopKind,random:number,n
   const s=refreshDailyOffers(state,now);
   const freeCount=(kind==='skins'?s.freeSkinChests:s.freeFighterChests)??0;
   const free=freeCount>0;
-  if(!free&&s.purchasedChests?.includes(kind))return {ok:false,reason:'This chest has already been opened today.',reasonKey:'shop.err.chest_opened',state:s};
+  if(dailyChestLocked(s,kind))return {ok:false,reason:'This chest has already been opened today.',reasonKey:'shop.err.chest_opened',state:s};
   const pool=chestRewards(s,kind);
   if(!pool.length)return {ok:false,reason:'All rewards in this chest are owned.',reasonKey:'shop.err.all_owned',state:s};
   const cost=kind==='skins'?config.skinPullCost:config.fighterPullCost;

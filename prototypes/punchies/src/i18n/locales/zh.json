@@ -452,7 +452,7 @@
   "ranked.search_ended": "搜索已结束，请重试。",
   "ranked.unavailable": "暂时无法匹配，请重试。",
   "ui.match_format": "赛制",
-  "ui.bot_difficulty": "电脑难度",
+  "ui.bot_difficulty": "难度",
   "ui.navigate": "导航",
   "ui.confirm": "确认",
   "ui.adjust_touch_control": "移动控件，确认或返回以完成。",
@@ -476,5 +476,7 @@
   "survival.no_xp": "僵尸生存模式不提供成长经验。",
   "common.super": "超级技",
   "super.rising_upper": "腾升上勾拳",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "测试环境 · 可重复抽取",
+  "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。"
 }

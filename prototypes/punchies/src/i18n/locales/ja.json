@@ -451,8 +451,8 @@
   "ranked.connecting": "対戦相手に接続中…",
   "ranked.search_ended": "検索が終了しました。もう一度お試しください。",
   "ranked.unavailable": "マッチメイキングを利用できません。もう一度お試しください。",
-  "ui.match_format": "試合形式",
-  "ui.bot_difficulty": "AIの強さ",
+  "ui.match_format": "形式",
+  "ui.bot_difficulty": "難易度",
   "ui.navigate": "移動",
   "ui.confirm": "決定",
   "ui.adjust_touch_control": "コントロールを移動。決定または戻るで終了。",
@@ -476,5 +476,7 @@
   "survival.no_xp": "ゾンビサバイバルでは進行XPを獲得できません。",
   "common.super": "スーパー",
   "super.rising_upper": "ライジングアッパー",
-  "charselect.super_cost": "{name} · {stars} ★"
+  "charselect.super_cost": "{name} · {stars} ★",
+  "shop.staging_repeat_pulls": "ステージング · 連続開封",
+  "super.rising_upper_description": "通常ガードを突破。パーフェクトガードや回避で防げます。"
 }

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { t } from '../i18n';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
-import { KEYS } from '../portal/keys';
+import { GAME_SAVE_KEYS } from '../portal/keys';
 import { store } from '../portal/store';
 import { getNav } from './menuNav';
 import { titleButton } from './titleButton';
@@ -9,7 +9,7 @@ import { titleButton } from './titleButton';
 // Deletes every saved key on this device, behind two confirmations, then reloads so
 // the game starts exactly like a first launch (language choice and the easy fight included).
 export function wipeLocalSave(): void {
-  for (const key of Object.values(KEYS)) store.removeItem(key);
+  for (const key of GAME_SAVE_KEYS) store.removeItem(key);
 }
 
 export function resetSavePanel(scene: Phaser.Scene): void {
