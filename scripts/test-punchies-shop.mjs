@@ -80,3 +80,8 @@ const teeOffer={...d.refreshDailyOffers(d.newShopDraft(day),day),offerIds:[d.WEL
 const teePull=d.buyDailyChest(teeOffer,'fighters',0,day);assert(teePull.ok);d.saveShopDraft(teePull.state);assert(d.loadShopDraft().owned.includes(d.WELCOME_FIGHTER));
 assert(!d.grantFirstGift(d.newShopDraft(day)).state.owned.includes(d.WELCOME_FIGHTER),'current first gift grants skin, not Tee');
 console.log('PASS ownership requires reward item, stale welcome flag cannot grant Tee, legitimate pull persists');
+{
+ const earned=d.SHOP_ITEMS.find(i=>i.id==='fighter-roxy'),pending=d.SHOP_ITEMS.find(i=>i.artPending),normal=d.SHOP_ITEMS.find(i=>i.id==='fighter-nadia');const previous=earned.earnOnly;earned.earnOnly=true;
+ const frozen={...d.newShopDraft(day),offerIds:[earned.id,pending.id,normal.id],offerDay:new Date(day).toISOString().slice(0,10),offerSchema:8,tokens:100};assert.deepEqual(d.dailyOffers(frozen,'fighters').map(i=>i.id),[normal.id]);assert.equal(d.dailyOffers(frozen,'skins').length,0);assert(d.chestRewards(frozen,'fighters').every(r=>!r.item.earnOnly&&!r.item.artPending));assert(d.normalizeShopDraft({...frozen,owned:[earned.id]},day).owned.includes(earned.id),'legitimate earn-only ownership retained');if(previous===undefined)delete earned.earnOnly;else earned.earnOnly=previous;
+ console.log('PASS frozen daily offers reject earn-only/pending rewards without deleting ownership');
+}
