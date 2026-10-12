@@ -424,7 +424,6 @@
   "profile.level": "级别 {level}",
   "profile.level_up": "升级 · {level}",
   "profile.max": "最高等级",
-  "profile.menu": "个人资料 · 等级 {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches} 场比赛 · {wins} 场获胜",
   "profile.result_xp": "+{xp} XP · 等级 {level}",

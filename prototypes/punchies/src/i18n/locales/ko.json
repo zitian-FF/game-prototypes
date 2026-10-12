@@ -424,7 +424,6 @@
   "profile.level": "레벨 {level}",
   "profile.level_up": "레벨 업 · {level}",
   "profile.max": "최대 레벨",
-  "profile.menu": "프로필 · 레벨 {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches} 경기 · {wins} 승리",
   "profile.result_xp": "+{xp} XP · 레벨 {level}",

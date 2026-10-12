@@ -424,7 +424,6 @@
   "profile.level": "NIVEL {level}",
   "profile.level_up": "SUBIR DE NIVEL · {level}",
   "profile.max": "NIVEL MÁXIMO",
-  "profile.menu": "Perfil · Nivel {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches} partidos · {wins} victorias",
   "profile.result_xp": "+{xp} XP · Nivel {level}",

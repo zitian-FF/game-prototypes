@@ -424,7 +424,6 @@
   "profile.level": "レベル {level}",
   "profile.level_up": "レベルアップ · {level}",
   "profile.max": "最大レベル",
-  "profile.menu": "プロフィール · レベル {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches}試合 · {wins}勝",
   "profile.result_xp": "+{xp} XP · Lv. {level}",
