@@ -165,7 +165,7 @@ export class CharSelectScene extends Phaser.Scene {
   // own side; otherwise every key drives the active side.
   private keySide(code: string): number {
     if (this.data0.mode !== 'localvs') return this.active;
-    const kb2 = Object.values(loadLayouts().kb2).some(keys=>keys.includes(code)) || code === 'Enter' || code === 'Backspace';
+    const kb2 = Object.values(loadLayouts().kb2).some(keys=>keys.includes(code)) || code === 'Enter' || code === 'Backspace' || code === 'F6' || code === 'F7';
     const want: InputSource = kb2 ? 'kb2' : 'kb1';
     const s = this.sides.findIndex((x) => x.src === want);
     // A side on touch / a pad still takes the other keyboard half's keys
@@ -182,6 +182,10 @@ export class CharSelectScene extends Phaser.Scene {
     const mappings=loadLayouts(),movementBound=[mappings.kb1,mappings.kb2].some(keys=>(['up','down','left','right'] as const).some(a=>keys[a].includes(c)));
     if(c==='F1'||(c==='KeyF'&&!movementBound)) { e.preventDefault?.();this.cycleFormat(); return; }
     if(c==='F2'||(c==='KeyQ'&&!movementBound)){e.preventDefault?.();this.cycleLevel(-1);return;}if(c==='F3'||(c==='KeyE'&&!movementBound)){e.preventDefault?.();this.cycleLevel(1);return;}
+    if(['F4','F5','F6','F7'].includes(c) && !movementBound){
+      const side=this.data0.mode==='localvs'?this.sides.findIndex(x=>x.src===(c==='F6'||c==='F7'?'kb2':'kb1')):this.active;
+      if(side>=0){e.preventDefault?.();this.cycleSkin(side,c==='F4'||c==='F6'?-1:1);}return;
+    }
     const s = this.keySide(c);
     if (s < 0) return;
     const source=this.sides[s].src;const keys=loadLayouts()[source==='kb2'||(source==='any'&&inputModality.source==='kb2')?'kb2':'kb1'];
@@ -216,6 +220,7 @@ export class CharSelectScene extends Phaser.Scene {
       if (edge(12)) this.moveVertical(s,-1);
       if (edge(13)) this.moveVertical(s,1);
       if(edge(4))this.cycleLevel(-1);if(edge(5))this.cycleLevel(1);
+      if(edge(6))this.cycleSkin(s,-1);if(edge(7))this.cycleSkin(s,1);
       if (edge(14)) this.move(s, -1);
       if (edge(15)) this.move(s, 1);
       const ax = p.axes[0] ?? 0;
@@ -228,12 +233,12 @@ export class CharSelectScene extends Phaser.Scene {
         this.moveVertical(s,Math.sign(ay));
       }
       if (edge(1)) {this.back(s);return;}
-      if (edge(0) || edge(2) || edge(9)) this.confirm(s);
+      if (edge(0) || edge(9)) this.confirm(s);
     });
   }
 
   private moveVertical(s:number,d:number):void {
-    if(!this.editable(s)||this.sides[s].selected)return;
+    if(!this.editable(s)||this.sides[s].locked)return;
     const current=this.sides[s].sel,next=verticalRosterPick(current,d,CHARACTER_IDS.length);
     if(next!==current)this.move(s,next-current,true);
   }
@@ -252,7 +257,7 @@ export class CharSelectScene extends Phaser.Scene {
   private move(s: number, d: number, absoluteDelta=false): void {
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(side.selected){this.cycleSkin(s,d);return;}
+    if(side.locked)return;
     side.sel = absoluteDelta ? (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length : horizontalRosterPick(side.sel,d);
     sfx.uiSelect();
     side.skin=this.preferredSkin(s);this.notice='';
@@ -268,13 +273,14 @@ export class CharSelectScene extends Phaser.Scene {
     if (!this.editable(s)) return;
     if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_daily_chest');return;}
     sfx.uiConfirm();
-    if(!side.selected){side.selected=true;this.notice=t('common.left_right_chooses_a_skin');return;}
+    side.selected=true;this.notice='';
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
       if (this.data0.mode === 'vsai') this.active = 1 - s;
       return;
     }
     side.locked = true;
+    if(this.data0.mode==='training'||this.data0.mode==='survival'){this.fight();return;}
     if (this.data0.mode === 'vsai' && !this.sides[1 - s].locked) this.active = 1 - s;
     if (this.data0.mode === 'online') this.sendPick();
   }
@@ -295,7 +301,7 @@ export class CharSelectScene extends Phaser.Scene {
       if (this.data0.mode === 'online') this.sendPick();
       return;
     }
-    if(side.selected){side.selected=false;return;}
+
     if (this.data0.mode === 'vsai' && s === 1 && this.sides[0].locked) {
       this.sides[0].locked = false;this.sides[0].selected=false;
       this.active = 0;
@@ -312,7 +318,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;side.selected=this.available(s);side.skin=this.preferredSkin(s);this.notice=this.available(s)?t('common.left_right_chooses_a_skin'):t('charselect.locked_fighter_daily_chest');
+    side.sel = i;side.selected=false;side.skin=this.preferredSkin(s);this.notice=this.available(s)?'':t('charselect.locked_fighter_daily_chest');
     if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
@@ -337,8 +343,8 @@ export class CharSelectScene extends Phaser.Scene {
   private skinChoices(s:number):string[]{const id=CHARACTER_IDS[this.sides[s].sel];return ownedSkins(loadShopDraft(),id).filter(skin=>skinReady(this,id,skin));}
   private skins():[string,string]{return this.sides.map((side,s)=>side.src==='remote'?side.skin??'default':equippedSkin(loadShopDraft(),CHARACTER_IDS[side.sel],side.skin)) as [string,string];}
   private cycleSkin(s:number,d:number):void{
-    if(!this.editable(s)||!this.available(s)||!this.sides[s].selected)return;
-    const choices=this.skinChoices(s),side=this.sides[s];side.skin=choices[(Math.max(0,choices.indexOf(side.skin??'default'))+d+choices.length)%choices.length];
+    if(!this.editable(s)||!this.available(s)||this.sides[s].locked)return;
+    const choices=this.skinChoices(s),side=this.sides[s];if(!choices.length)return;side.skin=choices[(Math.max(0,choices.indexOf(side.skin??'default'))+d+choices.length)%choices.length];
     if (choices.length > 1) sfx.uiSelect();
     const prefs=loadCharPrefs(),slot=this.prefSide(s);saveCharPrefs({skins:{...prefs.skins,[slot]:{...prefs.skins[slot],[CHARACTER_IDS[side.sel]]:side.skin}}});
     if(this.data0.mode==='online')this.sendPick();
@@ -488,13 +494,13 @@ export class CharSelectScene extends Phaser.Scene {
         focused: !ready && (local ? !side.locked : this.active === s),
         status: (this.data0.mode==='training'||this.data0.mode==='survival')&&s===1?'':side.src === 'remote'
           ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
-          : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('charselect.locked_in_left_right_skins') : side.selected?t('charselect.left_right_skins_confirm_to'):'',
+          : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('common.ready') : '',
         stats: stats(chars[s]),
         uppercut: {stars:uppercutStars(chars[s])},
       })),
       step: ready ? 2 : (this.data0.mode==='training'||this.data0.mode==='survival')?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
       steps: (this.data0.mode==='training'||this.data0.mode==='survival')?[t('common.your_boxer'),t('common.ready'),this.data0.mode==='survival'?t('survival.start'):t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
-      action: online ? (this.sides[me].locked ? t('charselect.unready') : this.sides[me].selected?t('charselect.ready'):t('charselect.select_boxer'))
+      action: online ? (this.sides[me].locked ? t('charselect.unready') : t('charselect.ready'))
         : ready ? ((this.data0.mode==='training'||this.data0.mode==='survival')?(this.data0.mode==='survival'?t('survival.start'):t('training.start')):t('charselect.fight')) : local
           ? (this.sides.some((side) => side.src === 'touch')
             ? (this.sides[0].locked ? t('charselect.waiting_for_p2') : t('common.confirm_boxer')) : t('charselect.confirm_on_device'))
@@ -504,3 +510,5 @@ export class CharSelectScene extends Phaser.Scene {
     });
   }
 }
+
+

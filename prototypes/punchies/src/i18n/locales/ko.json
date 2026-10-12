@@ -22,9 +22,7 @@
   "charselect.fight": "시작! ›",
   "charselect.host_sent_invalid_settings": "호스트가 잘못된 설정을 보냈습니다.",
   "charselect.host_sets_format": "호스트가 매치 형식을 설정합니다.",
-  "charselect.left_right_skins_confirm_to": "왼쪽/오른쪽: 스킨 · 준비 완료 확인",
   "charselect.locked_fighter_daily_chest": "잠금 해제되지 않은 파이터 · 일일 파이터 상자에서 잠금 해제하세요.",
-  "charselect.locked_in_left_right_skins": "✓ 잠금됨 · 왼쪽/오른쪽: 스킨",
   "charselect.locked_shop_daily_chest": "잠금 · 데일리 파이터 상자",
   "charselect.opponent_left": "상대가 나갔습니다",
   "charselect.pick_a_boxer_then_confirm": "권투 선수를 선택한 다음 확인하세요.\n화살표 + Enter / 방향키 + A",
@@ -32,7 +30,6 @@
   "charselect.power": "힘",
   "charselect.reach": "리치",
   "charselect.ready": "준비 완료 ›",
-  "charselect.select_boxer": "복서 선택 ›",
   "charselect.speed": "속도",
   "charselect.unready": "준비 취소",
   "charselect.waiting_for_opponent": "상대방을 기다리는 중…",
@@ -52,7 +49,6 @@
   "common.hook": "훅",
   "common.hp": "HP",
   "common.jab": "잽",
-  "common.left_right_chooses_a_skin": "왼쪽/오른쪽으로 스킨을 선택하세요. 확인을 눌러 확정하세요.",
   "common.menu": "메뉴",
   "common.online": "온라인",
   "common.opponent": "상대",
@@ -478,5 +474,6 @@
   "super.rising_upper": "라이징 어퍼",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "스테이징 · 반복 뽑기",
-  "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다."
+  "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다.",
+  "ui.skins": "스킨"
 }

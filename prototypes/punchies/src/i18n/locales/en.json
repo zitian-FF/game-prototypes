@@ -22,9 +22,7 @@
   "charselect.fight": "FIGHT!  ›",
   "charselect.host_sent_invalid_settings": "Host sent invalid settings",
   "charselect.host_sets_format": "Host sets match format",
-  "charselect.left_right_skins_confirm_to": "LEFT / RIGHT: SKINS · CONFIRM TO READY",
   "charselect.locked_fighter_daily_chest": "Locked fighter · unlock from the daily fighter chest.",
-  "charselect.locked_in_left_right_skins": "✓ LOCKED IN · LEFT / RIGHT: SKINS",
   "charselect.locked_shop_daily_chest": "LOCKED · DAILY FIGHTER CHEST",
   "charselect.opponent_left": "Opponent left",
   "charselect.pick_a_boxer_then_confirm": "Pick a boxer, then confirm.\nArrows + Enter / D-pad + A",
@@ -32,7 +30,6 @@
   "charselect.power": "POWER",
   "charselect.reach": "REACH",
   "charselect.ready": "READY  ›",
-  "charselect.select_boxer": "SELECT BOXER  ›",
   "charselect.speed": "SPEED",
   "charselect.unready": "UNREADY",
   "charselect.waiting_for_opponent": "Waiting for opponent…",
@@ -52,7 +49,6 @@
   "common.hook": "HOOK",
   "common.hp": "HP",
   "common.jab": "JAB",
-  "common.left_right_chooses_a_skin": "Left / right chooses a skin. Confirm to lock in.",
   "common.menu": "MENU",
   "common.online": "ONLINE",
   "common.opponent": "OPPONENT",
@@ -478,5 +474,6 @@
   "super.rising_upper": "Rising Upper",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "STAGING · repeat pulls",
-  "super.rising_upper_description": "Breaks normal guard. Dodges and Perfect Guard stop it."
+  "super.rising_upper_description": "Breaks normal guard. Dodges and Perfect Guard stop it.",
+  "ui.skins": "Skins"
 }

@@ -22,9 +22,7 @@
   "charselect.fight": "ابدأ النزال! ›",
   "charselect.host_sent_invalid_settings": "أرسل المضيف إعدادات غير صالحة",
   "charselect.host_sets_format": "مجموعة المضيف تتطابق مع التنسيق",
-  "charselect.left_right_skins_confirm_to": "يسار / يمين: أشكال الشخصيات · تأكيد الجاهزية",
   "charselect.locked_fighter_daily_chest": "مقاتل مقفل · افتحه من صندوق المقاتل اليومي.",
-  "charselect.locked_in_left_right_skins": "✓ مُقفل · يسار / يمين: أشكال",
   "charselect.locked_shop_daily_chest": "مغلق · صندوق المقاتل اليومي",
   "charselect.opponent_left": "غادر الخصم",
   "charselect.pick_a_boxer_then_confirm": "اختر ملاكمًا، ثم أكّد.\n\nالأسهم + زر الإدخال / لوحة الاتجاهات + زر A",
@@ -32,7 +30,6 @@
   "charselect.power": "قوة",
   "charselect.reach": "المدى",
   "charselect.ready": "جاهز ›",
-  "charselect.select_boxer": "اختر الملاكم ›",
   "charselect.speed": "سرعة",
   "charselect.unready": "إلغاء الجاهزية",
   "charselect.waiting_for_opponent": "في انتظار الخصم...",
@@ -52,7 +49,6 @@
   "common.hook": "لكمة خطافية",
   "common.hp": "HP",
   "common.jab": "لكمة سريعة",
-  "common.left_right_chooses_a_skin": "اختر المظهر المطلوب بالضغط على اليسار/اليمين. ثم أكّد الاختيار.",
   "common.menu": "القائمة",
   "common.online": "عبر الإنترنت",
   "common.opponent": "الخصم",
@@ -478,5 +474,6 @@
   "super.rising_upper": "اللكمة الصاعدة",
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "اختبار · سحوبات متكررة",
-  "super.rising_upper_description": "تتجاوز الحراسة العادية. يوقفها التفادي أو الصد المثالي."
+  "super.rising_upper_description": "تتجاوز الحراسة العادية. يوقفها التفادي أو الصد المثالي.",
+  "ui.skins": "المظاهر"
 }
