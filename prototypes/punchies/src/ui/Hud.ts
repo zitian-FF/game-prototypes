@@ -1,3 +1,4 @@
+import {rankedIdentityCapsule,rankedCapsuleBounds,type RankedPlayers} from './rankedIdentityCapsule';
 import type { WireProfile } from '../progress/alias';
 import { titleName } from '../progress/titles';
 import Phaser from 'phaser';
@@ -34,13 +35,14 @@ export class Hud {
   private bossTimerMode=false;
   showRoundSockets = true;
 
+  private capsules:ReturnType<typeof rankedIdentityCapsule>[]=[];
   private names: Phaser.GameObjects.Text[] = [];
   private titles: Phaser.GameObjects.Text[] = [];
   private upperReady: Phaser.GameObjects.Text[] = [];
   private superLightning:SuperMeterLightning[]=[];
   private meterLabels: {text:Phaser.GameObjects.Text;part:string}[]=[];
 
-  constructor(private scene: Phaser.Scene, names: [string, string], profiles: [WireProfile|null,WireProfile|null]=[null,null]) {
+  constructor(private scene: Phaser.Scene, names: [string, string], profiles: [WireProfile|null,WireProfile|null]=[null,null],ranked?:RankedPlayers) {
     this.g=scene.add.graphics().setDepth(90);
     const text=(x:number,y:number,s:string,size:number,color:string)=>scene.add.text(x,y,s,{fontFamily:'Arial',fontSize:`${size}px`,fontStyle:'bold',color,stroke:'#061020',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(92);
     this.timer=text(VIEW.cx,VIEW.top+20,'99',29,'#fff1d1').setStroke('#030816',3).setFontFamily('Impact, Arial Black, sans-serif');
@@ -50,6 +52,7 @@ export class Hud {
       this.meterLabels.push({text:text(VIEW.cx,VIEW.top+y,label,9,'#f5eedf'),part});
     }
     for(let i=0;i<2;i++){
+      if(ranked)this.capsules.push(rankedIdentityCapsule(scene,rankedCapsuleBounds(i),i,ranked[i]));
       const sign=i===0?-1:1;
       const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
       name.setScale(Math.min(1,VIEW.width*.18/name.width));
@@ -81,8 +84,9 @@ export class Hud {
       }
     }
     this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)));
-    this.names.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
-    this.titles.forEach((t,i)=>t.setVisible(show('health')&&this.sidesShown[i]));
+    this.names.forEach((t,i)=>t.setVisible(!this.capsules.length&&show('health')&&this.sidesShown[i]));
+    this.capsules.forEach((c,i)=>c.setVisible(show('health')&&this.sidesShown[i]));
+    this.titles.forEach((t,i)=>t.setVisible(!this.capsules.length&&show('health')&&this.sidesShown[i]));
     for(let i=0;i<2;i++){
       if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);this.superLightning[i].setReady(false);continue;}
       const f=s.fighters[i],left=i===0;

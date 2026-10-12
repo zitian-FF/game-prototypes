@@ -1,3 +1,5 @@
+import {rankedResultDetails} from './rankedResultDetails';
+import type {RankedResultPresentation} from './rankedIdentityCapsule';
 import { VictoryAccent } from './rewardAccents';
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
@@ -64,7 +66,7 @@ export function roundSplash(scene: Phaser.Scene, next: () => void): () => void {
 
 export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   rematch: () => void; changeBoxer: () => void; menu: () => void;
-}, score?: [number, number], winner?: ResultWinner, kind: 'victory' | 'defeat' | 'draw' = 'victory'): Phaser.GameObjects.Text {
+}, score?: [number, number], winner?: ResultWinner, kind: 'victory' | 'defeat' | 'draw' = 'victory',ranked?:RankedResultPresentation): Phaser.GameObjects.Text {
   getNav(scene).engage();
   const before=new Set(scene.children.list);
   const defeat=kind==='defeat';
@@ -88,18 +90,19 @@ export function matchResult(scene: Phaser.Scene, headline: string, actions: {
   const heading=scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.16:VIEW.top+VIEW.height*.2,headline,{fontFamily:'Impact, Arial Black, sans-serif',fontSize:headline.length>10?'42px':'56px',
     fontStyle:'bold italic',color,stroke:'#071024',strokeThickness:5,padding:{left:14,right:26,top:10,bottom:10},resolution:PIXEL_RATIO})
     .setOrigin(0.5).setDepth(150);
-  if(score)scene.add.text(textX,hasWinner?VIEW.top+VIEW.height*.28:VIEW.top+VIEW.height*.32,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
+  if(score)scene.add.text(textX,ranked?VIEW.top+145:hasWinner?VIEW.top+VIEW.height*.28:VIEW.top+VIEW.height*.32,score.join('  —  '),{fontFamily:'Arial Black, Arial',fontSize:'28px',fontStyle:'bold',
     color:'#fff7e6',stroke:'#0b1731',strokeThickness:3,padding:{left:8,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(150);
-  if(hasWinner){
+  if(hasWinner&&!ranked){
     scene.add.text(textX,VIEW.top+VIEW.height*.34,winnerName(winner!.char),{fontFamily:'Arial Black, Arial',fontSize:'20px',color:'#91dfff',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
     if(winner!.title)equippedTitle(scene,textX,VIEW.top+VIEW.height*.39,winner!.title,width-24,150);
     const quote=scene.add.text(textX,VIEW.top+VIEW.height*.465,`“${winnerQuote(winner!.char)}”`,{fontFamily:'Arial',fontSize:'18px',fontStyle:'italic',color:'#fff1d5',align:'center',wordWrap:{width:width-24},padding:{left:4,right:8,top:3,bottom:3},resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(150);
     if(quote.height>28)quote.setScale(28/quote.height);
   }
-  const rematch=titleButton(scene,textX,VIEW.bottom-126,280,38,t('match.rematch'),actions.rematch,false,150,'green');
-  const change=titleButton(scene,textX,VIEW.bottom-78,280,38,t('match.change_boxer'),actions.changeBoxer,false,150);
+  if(ranked)rankedResultDetails(scene,textX,width,(defeat?1-ranked.localIdx:ranked.localIdx) as 0|1,ranked);
+  const rematch=titleButton(scene,textX,VIEW.bottom-(ranked?78:126),280,38,ranked?t('ranked.next_match'):t('match.rematch'),ranked?ranked.nextMatch:actions.rematch,false,150,'green');
+  if(!ranked)titleButton(scene,textX,VIEW.bottom-78,280,38,t('match.change_boxer'),actions.changeBoxer,false,150);
   const menu=titleButton(scene,textX,VIEW.bottom-30,280,38,t('match.main_menu'),actions.menu,false,150,'red','back');
-  resultProgress(scene,textX,width);
+  resultProgress(scene,textX,width,ranked?VIEW.bottom-130:undefined);
   if(!reducedMotion()){
     let alive=true;scene.events.once('shutdown',()=>{alive=false;});
     const details=scene.children.list.filter(o=>!before.has(o)&&o!==panel&&o!==shield&&o!==portrait&&o!==heading) as Phaser.GameObjects.Image[];

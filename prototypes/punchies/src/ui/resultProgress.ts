@@ -9,11 +9,11 @@ import {titleButton} from './titleButton';
 import {reducedMotion} from './presentation';
 
 /** Consumes presentation data only; XP was awarded exactly once by the match scene. */
-export function resultProgress(scene:Phaser.Scene,x:number,width:number):void {
+export function resultProgress(scene:Phaser.Scene,x:number,width:number,positionY=VIEW.bottom-175):void {
  const award=scene.registry.get('lastAward') as (MatchAward&{grantedRewards:Reward[]})|undefined;
  scene.registry.remove('lastAward');
  if(!award)return;
- const {before,after}=awardViews(award),y=VIEW.bottom-175;
+ const {before,after}=awardViews(award),y=positionY;
  const hasRewards=award.levelUps.length>0;
  const meterWidth=Math.min(width-24,hasRewards?width-106:width-24),center=x-(hasRewards?42:0);
  const label=profileText(scene,center,y-19,t('profile.result_xp',{xp:award.xpGained,level:before.level}),14,meterWidth,'#a0eaff',150);
