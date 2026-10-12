@@ -10,13 +10,13 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { charName } from '../sim/character';
 import { tune } from '../sim/tune';
 import { reducedMotion } from './presentation';
-import { clashFireImage,animateClashFire, type ClashFlames } from './clashFire';
+import { createVsStamp, vsStampFrame } from './vsStamp';
 
 export class MatchIntro {
   private cover: Phaser.GameObjects.Container;
   private portraits: Phaser.GameObjects.Container[] = [];
-  private flames: ClashFlames;
-  private vs: Phaser.GameObjects.Text;
+  private vs: Phaser.GameObjects.Image;
+  private vsBaseScale=1;
   private complete = false;
 
   constructor(private scene: Phaser.Scene, chars: [string, string],skins:[string,string]=['default','default'],profiles:[WireProfile|null,WireProfile|null]=[null,null]) {
@@ -25,6 +25,7 @@ export class MatchIntro {
     const gym=artImage(scene,'gym_background',VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0);
     if(gym)this.cover.add(gym.setTint(0x5c6373));
     this.cover.add(scene.add.rectangle(VIEW.cx,VIEW.cy,VIEW.width,VIEW.height,0x03070d,0.62));
+    const foregroundIndex=this.cover.list.length;
     chars.forEach((id,side)=>{
       const group=scene.add.container();
       const x=VIEW.cx+(side===0?-1:1)*VIEW.width*0.245;
@@ -65,37 +66,26 @@ export class MatchIntro {
       }
       this.cover.add(group);this.portraits.push(group);
     });
-    this.flames=clashFireImage(scene);this.cover.add(this.flames.root);
-    this.vs=scene.add.text(VIEW.cx,VIEW.cy,'VS',{
-      fontFamily:'Impact, Arial Black, sans-serif',fontSize:'88px',fontStyle:'bold italic',color:'#fff0ab',
-      stroke:'#581721',strokeThickness:9,padding:{left:14,right:30,top:12,bottom:12},resolution:PIXEL_RATIO}).setOrigin(0.5).setAngle(-8);
-    this.cover.add(this.vs);
+    this.vs=createVsStamp(scene).setPosition(VIEW.cx,VIEW.cy).setAngle(-7);this.vsBaseScale=this.vs.scaleX;
+    this.cover.addAt(this.vs,foregroundIndex);
+    scene.events.once('shutdown',this.destroy,this);
   }
 
   draw(elapsedMs: number): void {
     if(this.complete)return;
     const cfg=tune.view.fightPresentation;
-    if(elapsedMs>=cfg.showcaseMs){this.complete=true;this.cover.destroy(true);return;}
+    if(elapsedMs>=cfg.showcaseMs){this.destroy();return;}
     const motion=!reducedMotion();
     const slide=motion?Phaser.Math.Easing.Cubic.Out(Math.min(1,elapsedMs/cfg.portraitSlideMs)):1;
-    const charge=Math.max(0,Math.min(1,(elapsedMs-cfg.portraitSlideMs)/(cfg.showcaseMs-cfg.portraitSlideMs-cfg.vsExitMs)));
     this.portraits.forEach((p,i)=>{
       const sign=i===0?-1:1;
-      const jitter=motion&&slide>=1?Math.sin(elapsedMs/cfg.vibrateMs+i*2)*cfg.vibratePixels*charge:0;
-      p.x=sign*VIEW.width*0.55*(1-slide)+jitter;
-      p.y=motion?Math.cos(elapsedMs/cfg.vibrateMs+i*3)*cfg.vibratePixels*0.3*charge:0;
-      p.setScale(1+charge*0.035);
-      p.y-=VIEW.bottom*charge*0.035;
+      p.setPosition(sign*VIEW.width*.55*(1-slide),0).setScale(1).setAlpha(1);
     });
-    const impact=Math.min(1,Math.max(0,(elapsedMs-cfg.portraitSlideMs)/cfg.impactMs));
-    const exit=Math.max(0,Math.min(1,(elapsedMs-(cfg.showcaseMs-cfg.vsExitMs))/cfg.vsExitMs));
-    const scale=1+0.35*(1-impact)+(motion?Math.pow(exit,3)*cfg.vsExitScale:0);
-    this.vs.setAlpha(impact>0?1:0).setScale(scale);
-    this.portraits.forEach(p=>p.setAlpha(1-exit));
-    // Oversized VS covers the frame, then cuts away into the arena.
-    this.cover.setAlpha(1);
-    animateClashFire(this.flames,VIEW.cx,VIEW.cy+10,elapsedMs,cfg.portraitSlideMs,exit,motion,VIEW.width*.32);
+    const frame=vsStampFrame(elapsedMs,cfg,motion);
+    this.vs.setPosition(VIEW.cx+frame.x,VIEW.cy+frame.y).setScale(this.vsBaseScale*frame.scale).setVisible(frame.visible);
+    this.cover.setAlpha(frame.opacity);
   }
+  destroy():void{if(this.complete)return;this.complete=true;this.scene.events.off('shutdown',this.destroy,this);this.cover.destroy(true);}
 }
 
 export function knockoutWords(scene: Phaser.Scene): () => void {
