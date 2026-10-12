@@ -130,7 +130,7 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
   };
   if (profile === 'touch') {
     TOUCH_IDS.forEach(id => {
-      const hit = scene.add.circle(0, 0, Math.max(18, resolveTouch(draft.value.touch, VIEW)[id].r * scale), 0, 0).setDepth(D + 3).setInteractive({ useHandCursor: true });
+      const hit = scene.add.circle(0, 0, Math.max(18, resolveTouch(draft.value.touch, VIEW)[id].r * scale), 0, 0).setDepth(D + 2).setInteractive({ useHandCursor: true });
       items.push(hit);
       const label = text(0, 0, t('layouts.touch_' + id), id === 'main' ? 10 : 9).setDepth(D + 4);
       handles.push({ id, hit, label });
