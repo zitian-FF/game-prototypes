@@ -65,7 +65,7 @@ export class ProfileScene extends Phaser.Scene {
     const label=up.rewards.length?up.rewards.map(rewardName).join(' · '):t('profile.keep_going');
     const text=profileText(this,rightX+p.right/2+5,cy+(rowH-5)/2,label,12,p.right-182);
     if(text.height>rowH-10)text.setScale(Math.min(text.scaleX,(rowH-10)/text.height));
-    profileText(this,rightX+p.right-40,cy+(rowH-5)/2,t(up.current?'profile.current':up.reached?'profile.reached':'profile.locked'),10,70,up.reached?'#a0dfc5':'#8196b1');
+    profileText(this,rightX+p.right-40,cy+(rowH-5)/2,up.current?t('profile.current'):up.reached?t('profile.reached'):t('profile.locked'),10,70,up.reached?'#a0dfc5':'#8196b1');
    });rows.push(...this.children.list.filter(o=>!before.has(o)));
   };
   const scroll=(dir:number)=>{offset=Math.max(0,Math.min(ladder.length-count,offset+dir*count));render();};

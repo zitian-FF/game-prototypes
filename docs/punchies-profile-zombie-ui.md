@@ -15,3 +15,5 @@ Dependencies already integrated locally: 973c24f, 8b9da1, 6c44f99, 1599735. Cher
 Focused checks: TypeScript; profile-avatar persistence/ownership/storage failure; Survival deterministic counters/boss/checkpoint regressions; progression UI compatibility; profile-zombie scene harness (844x390,1033x390,844x532) for ladder, skin cycle, failure/retry, modal depths, checkpoint states and hit bounds. Locale placeholder check and diff check.
 
 Limits: harness is not physical touch/controller/browser rendering. Build owns consolidated renderer/device/performance/package validation. No direct build or deployment triggered. New title-screen profile entry is a separate approval mockup; Kai is independent and remains unintegrated.
+
+Localization follow-up: literal t() calls on every new state branch; next-boss-wave notice retained. Retired six unused shipped locale keys (survival.total_kills, profile.max_message, profile.next_rewards, profile.select, profile.track_complete, survival.run_stats); Sheet entries retained as translation history, no content/table edits. Full i18n gate required.
