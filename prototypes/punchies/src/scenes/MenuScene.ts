@@ -1,3 +1,4 @@
+import {controlHint} from '../ui/controlHint';
 import {loadRating,onRatingState} from '../net/rating';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import {zombieHandIcon} from '../ui/zombieHandIcon';
@@ -128,7 +129,7 @@ export class MenuScene extends Phaser.Scene {
     items.push(panel,this.add.text(VIEW.cx,VIEW.cy-80,title,{fontFamily:'Arial',fontSize:'22px',fontStyle:'bold',color:'#fff1d1',resolution:PIXEL_RATIO}).setOrigin(0.5).setDepth(402));
     const close=()=>items.forEach(o=>o.destroy());
     getNav(this).modalBack(items[0] as Phaser.GameObjects.Rectangle, ()=>{close();onBack?.();});
-    items.push(this.add.text(VIEW.cx,VIEW.cy+105,t('ui.back_hint'),{fontFamily:'Arial',fontSize:12,color:'#dbe9fa',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(402));
+    items.push(controlHint(this,VIEW.cx,VIEW.cy+105,402,'back'));
     const back=titleButton(this,VIEW.cx,VIEW.cy+78,140,30,t('common.back'),()=>{close();onBack?.();},false,402,'default','back');
     items.push(back,back.getData('bg'));
     return {items,close};
@@ -204,7 +205,7 @@ export class MenuScene extends Phaser.Scene {
     for (const [profile, x, y] of [['kb1', -145, 39], ['kb2', 145, 39], ['pad1', -145, 81], ['pad2', 145, 81]] as const) {
       btn(VIEW.cx + x, VIEW.cy + y, 280, t('layouts.edit_title', { device: t('layouts.' + profile) }), () => inputLayoutEditor(this, profile));
     }
-    txt(VIEW.cx, VIEW.cy + 155, t('ui.back_hint'), 12);
+    items.push(controlHint(this,VIEW.cx,VIEW.cy+155,402,'back'));
     const refresh = () => {
       p1.setText(`< ${SOURCE_LABEL[v.p1]} >`);
       p2.setText(`< ${SOURCE_LABEL[v.p2]} >`);
@@ -280,7 +281,7 @@ export class MenuScene extends Phaser.Scene {
       for (const o of items) o.destroy();
     };
     nav.modalBack(items[0] as Phaser.GameObjects.Rectangle, close);
-    txt(VIEW.cx,VIEW.cy+152,t('ui.back_hint'),12,'#dbe9fa');
+    items.push(controlHint(this,VIEW.cx,VIEW.cy+152,402,'back'));
     const submit = () => {
       const c = normalizeRoomCode(code);
       if (!c) {

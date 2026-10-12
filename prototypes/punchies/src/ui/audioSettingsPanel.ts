@@ -1,3 +1,4 @@
+import {controlHint} from './controlHint';
 import type Phaser from 'phaser';
 import { t } from '../i18n';
 import { getAudioSettings, setAudioSettings } from '../audio/mixer';
@@ -21,7 +22,7 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
     const t = titleButton(scene, x, y, w, 30, label, action, false, D + 2, accent, role);
     items.push(t, t.getData('bg')); return t;
   };
-  text(VIEW.cx, VIEW.cy + 151, t('ui.back_hint'), 12);
+  items.push(controlHint(scene,VIEW.cx,VIEW.cy+151,D+2,'back'));
   text(VIEW.cx, VIEW.cy - 126, t('common.settings'), 23);
   for (const [channel, y] of [['bgm', -80], ['sfx', -35]] as const) {
     text(VIEW.cx - 130, VIEW.cy + y, channel === 'bgm' ? t('settings.bgm') : t('settings.sfx'));

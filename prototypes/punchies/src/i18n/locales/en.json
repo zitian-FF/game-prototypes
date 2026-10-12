@@ -464,5 +464,10 @@
   "ranked.searching": "Searching for an opponent…",
   "ranked.connecting": "Connecting to your opponent…",
   "ranked.search_ended": "Search ended. Please try again.",
-  "ranked.unavailable": "Matchmaking unavailable. Please try again."
+  "ranked.unavailable": "Matchmaking unavailable. Please try again.",
+  "ui.match_format": "Match format",
+  "ui.bot_difficulty": "Bot difficulty",
+  "ui.navigate": "Navigate",
+  "ui.confirm": "Confirm",
+  "ui.adjust_touch_control": "Move the control. Confirm or go back to finish."
 }

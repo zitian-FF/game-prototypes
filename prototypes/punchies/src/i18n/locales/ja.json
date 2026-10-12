@@ -464,5 +464,10 @@
   "ranked.searching": "対戦相手を検索中…",
   "ranked.connecting": "対戦相手に接続中…",
   "ranked.search_ended": "検索が終了しました。もう一度お試しください。",
-  "ranked.unavailable": "マッチメイキングを利用できません。もう一度お試しください。"
+  "ranked.unavailable": "マッチメイキングを利用できません。もう一度お試しください。",
+  "ui.match_format": "試合形式",
+  "ui.bot_difficulty": "AIの強さ",
+  "ui.navigate": "移動",
+  "ui.confirm": "決定",
+  "ui.adjust_touch_control": "コントロールを移動。決定または戻るで終了。"
 }

@@ -464,5 +464,10 @@
   "ranked.searching": "جارٍ البحث عن منافس…",
   "ranked.connecting": "جارٍ الاتصال بمنافسك…",
   "ranked.search_ended": "انتهى البحث. يُرجى المحاولة مجددًا.",
-  "ranked.unavailable": "المطابقة غير متاحة. يُرجى المحاولة مجددًا."
+  "ranked.unavailable": "المطابقة غير متاحة. يُرجى المحاولة مجددًا.",
+  "ui.match_format": "نظام المباراة",
+  "ui.bot_difficulty": "صعوبة الخصم",
+  "ui.navigate": "التنقل",
+  "ui.confirm": "تأكيد",
+  "ui.adjust_touch_control": "حرّك عنصر التحكم. أكّد أو ارجع للإنهاء."
 }

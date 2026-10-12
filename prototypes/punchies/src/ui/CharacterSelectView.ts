@@ -1,6 +1,8 @@
 import { rosterHeadFrame } from '../render/portraitHeadshots';
 
 import { portraitScaleFactor } from '../render/portraitScale';
+import {controlHint} from './controlHint';
+import {inputModality} from '../input/modality';
 
 import Phaser from 'phaser';
 
@@ -28,7 +30,7 @@ interface PanelState {
 
 }
 
-export interface SelectionState {training?:boolean;rosterSide?:number;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
+export interface SelectionState {notice?:boolean;training?:boolean;rosterSide?:number;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 
 import { rosterSlots, rosterIds } from './rosterLayout';
 
@@ -94,6 +96,10 @@ export class CharacterSelectView {
  private levelButtons:Phaser.GameObjects.Text[];
 
  private hint:Phaser.GameObjects.Text;
+ private hintRows:Phaser.GameObjects.Container[]=[];
+ private noticeActive=false;
+ private difficultyHint!:Phaser.GameObjects.Container;
+ private formatControlHint!:Phaser.GameObjects.Container;
 
  private previous='';
 
@@ -168,6 +174,11 @@ export class CharacterSelectView {
   this.levelButtons=[this.level,this.button(672,75,27,27,'‹',()=>callbacks.level(-1)),this.button(816,75,27,27,'›',()=>callbacks.level(1))];
 
   this.hint=this.text(this.root,422,334,'',11,'#bbcce3').setWordWrapWidth(408);
+  this.hintRows=[controlHint(scene,290,334,0,'navigate',this.root),controlHint(scene,422,334,0,'confirm',this.root),controlHint(scene,554,334,0,'back',this.root)];
+  const refreshHints=()=>{const controls=inputModality.kind!=='touch'&&!this.noticeActive;this.hint.setVisible(!controls);this.hintRows.forEach(row=>row.setVisible(controls));};
+  scene.events.on('update',refreshHints);scene.events.once('shutdown',()=>scene.events.off('update',refreshHints));refreshHints();
+  this.formatControlHint=controlHint(scene,80,97,0,'format',this.root);
+  this.difficultyHint=controlHint(scene,744,97,0,'difficulty',this.root);
 
  }
 
@@ -194,6 +205,7 @@ export class CharacterSelectView {
  }
 
  render(state:SelectionState):void{
+  this.noticeActive=!!state.notice;
 
   const signature=JSON.stringify(state);if(signature===this.previous)return;this.previous=signature;
 
@@ -207,7 +219,8 @@ export class CharacterSelectView {
 
   (this.format.getData('hit') as Phaser.GameObjects.Rectangle).input!.enabled=!state.training&&editable;
 
-  this.formatHint.setVisible(!state.training).setText(editable?t('charselect.format_hint'):t('charselect.host_sets_format'));
+  this.formatHint.setVisible(!state.training&&!editable).setText(t('charselect.host_sets_format'));
+  this.formatControlHint.setVisible(!state.training&&editable);this.difficultyHint.setVisible(state.level!==null);
 
   // Dark central well gives future slots room without competing with the portraits.
 

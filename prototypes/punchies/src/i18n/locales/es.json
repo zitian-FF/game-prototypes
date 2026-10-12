@@ -464,5 +464,10 @@
   "ranked.searching": "Buscando rival…",
   "ranked.connecting": "Conectando con tu rival…",
   "ranked.search_ended": "La búsqueda terminó. Inténtalo de nuevo.",
-  "ranked.unavailable": "El emparejamiento no está disponible. Inténtalo de nuevo."
+  "ranked.unavailable": "El emparejamiento no está disponible. Inténtalo de nuevo.",
+  "ui.match_format": "Formato",
+  "ui.bot_difficulty": "Dificultad",
+  "ui.navigate": "Navegar",
+  "ui.confirm": "Confirmar",
+  "ui.adjust_touch_control": "Mueve el control. Confirma o vuelve para terminar."
 }
