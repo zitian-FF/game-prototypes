@@ -153,7 +153,7 @@ for (const mode of ['vsai','localvs','online','training']) {
     s.onKey({code:'KeyF'});assert.equal(tune.match.bestOf,1,'shared format shortcut works with either keyboard half assigned');
   }
 }
-assert.match(i18nStub.t('charselect.format_hint'),/F.*Y/);
+// Device-specific format glyphs are exercised in test-punchies-input-modality.mjs.
 
 // Exercise the real room keypad with shared feedback: no filled hit rectangles,
 // release inside only, navigation once, physical typing once, and teardown.
