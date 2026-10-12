@@ -484,5 +484,7 @@
   "shop.item.fighter-kai.name": "كاي تشين",
   "shop.item.skin-kai-kangaroo-turquoise.name": "كاي · الكنغر الفيروزي",
   "shop.item.skin-kai-grabber-green.name": "كاي · الأخضر اللافت",
-  "shop.item.skin-kai-panda-pink.name": "كاي · الباندا الوردي"
+  "shop.item.skin-kai-panda-pink.name": "كاي · الباندا الوردي",
+  "ranked.next_match": "البحث عن المباراة التالية",
+  "rating.transition": "{before} ← {after} ({delta})"
 }
