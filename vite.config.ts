@@ -16,7 +16,10 @@ function getGitSha(): string {
 }
 
 function getPrototypeEntries(): Record<string, string> {
-  if (process.env.PUNCHIES_ASSET_PROFILE) return { punchies: path.resolve(__dirname, 'prototypes/punchies/index.html') };
+  if (process.env.PUNCHIES_ASSET_PROFILE) return {
+    punchies: path.resolve(__dirname, 'prototypes/punchies/index.html'),
+    ...(process.env.PUNCHIES_STAGING_QA === '1' ? {stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html')} : {}),
+  };
   const entries: Record<string, string> = {
     main: path.resolve(__dirname, 'index.html'),
   };
@@ -86,6 +89,7 @@ export default defineConfig(({ command }) => ({
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
     __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
+    __PUNCHIES_STAGING_QA__: JSON.stringify(process.env.PUNCHIES_STAGING_QA === '1'),
       __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),
