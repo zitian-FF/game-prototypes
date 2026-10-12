@@ -427,7 +427,6 @@
   "profile.level": "LEVEL {level}",
   "profile.level_up": "LEVEL UP · {level}",
   "profile.max": "MAX LEVEL",
-  "profile.menu": "Profile · Lv. {level}",
   "profile.page": "{n} / {total}",
   "profile.record": "{matches} matches · {wins} wins",
   "profile.result_xp": "+{xp} XP · Lv. {level}",

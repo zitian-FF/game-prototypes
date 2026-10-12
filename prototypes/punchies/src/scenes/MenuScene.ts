@@ -25,7 +25,7 @@ import { inputLayoutEditor } from '../ui/inputLayoutEditor';
 import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
-import { progressView } from '../progress/progress';
+import {titleProfileEntry} from '../ui/titleProfileEntry';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -93,11 +93,13 @@ export class MenuScene extends Phaser.Scene {
       .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
     addVersionStamp(this);
-    titleButton(this,VIEW.right-110,VIEW.top+70,190,38,t('profile.menu',{level:progressView().level}),()=>startScreen(this,'Profile'),false,130,'purple');
+    titleProfileEntry(this,()=>startScreen(this,'Profile'));
     // Language picker on the landing screen. Only shown once a second language has translations (always in debug, to test).
     if (availableLanguages(isDebug()).length > 1) {
       const current = LANGUAGES.find((l) => l.code === getLanguage())?.native ?? getLanguage();
-      titleButton(this, VIEW.right - 62, VIEW.top + 24, 104, 28, current, () => this.openLanguagePopup(), false, 130);
+      const language=titleButton(this,VIEW.right-84,VIEW.bottom-30,136,32,current,()=>this.openLanguagePopup(),false,130);
+      language.setX(VIEW.right-73).setScale(Math.min(1,88/Math.max(1,language.width)));
+      const flag=getLanguage();if(flag!=='pseudo')languageFlag(this,flag,VIEW.right-126,VIEW.bottom-30,132);
     }
   }
 
