@@ -12,10 +12,11 @@ export type PunchPhase = 'startup' | 'early' | 'sweet' | 'recovery';
 
 export interface Enemy {
   id: number;
-  d: number;
+  d: number; // distance from the player along the approach line (lane units)
+  ang: number; // bearing from straight above the player, radians, fixed per zombie
   state: EnemyState;
   frame: number;
-  side: number;
+  side: number; // which way it moves off after punching, -1 or 1
 }
 
 export interface PunchState {
@@ -35,7 +36,7 @@ export type SimEvent =
   | { kind: 'sour'; enemy: number; d: number }
   | { kind: 'whiff'; type: PunchType }
   | { kind: 'playerHit'; enemy: number }
-  | { kind: 'spawn'; enemy: number }
+  | { kind: 'spawn'; enemy: number; ang: number }
   | { kind: 'end'; reason: 'time' | 'dead' };
 
 export interface SimState {
@@ -46,23 +47,30 @@ export interface SimState {
   punch: PunchState | null;
   buffered: { type: PunchType; left: number } | null;
   enemies: Enemy[];
-  spawnIn: number;
+  spawned: number;
   nextId: number;
   hurtFrames: number;
 }
 
 export const FPS = 60;
 
-// mulberry32: tiny seeded generator so runs are reproducible in tests.
-export function makeRng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// Fixed spawn plan, the same every run so every player gets the same fight:
+// zombieCount spawns spread evenly from firstSpawnSec to lastSpawnSec, entering
+// from `lanes` off-screen positions in a set shuffled order.
+export function spawnFrame(tune: Tune, i: number): number {
+  const n = tune.run.zombieCount;
+  const span = n > 1 ? (tune.run.lastSpawnSec - tune.run.firstSpawnSec) / (n - 1) : 0;
+  return Math.round((tune.run.firstSpawnSec + i * span) * FPS);
+}
+
+export function spawnBearing(tune: Tune, i: number): number {
+  const lanes = Math.max(1, Math.round(tune.enemy.lanes));
+  if (lanes === 1) return 0;
+  let stride = 2;
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+  while (stride < lanes && gcd(stride, lanes) !== 1) stride++;
+  const lane = (i * (stride >= lanes ? 1 : stride)) % lanes;
+  return (((lane / (lanes - 1)) * 2 - 1) * tune.enemy.maxBearingDeg * Math.PI) / 180;
 }
 
 export function punchPhase(tune: Tune, p: PunchState): PunchPhase {
@@ -96,8 +104,7 @@ export function classify(tune: Tune, type: PunchType, d: number): Verdict | 'out
   return d <= c.headMax ? 'head' : 'body';
 }
 
-export function createSim(tune: Tune, seed = 1) {
-  const rng = makeRng(seed);
+export function createSim(tune: Tune) {
   const s: SimState = {
     frame: 0,
     hp: tune.run.playerHp,
@@ -106,7 +113,7 @@ export function createSim(tune: Tune, seed = 1) {
     punch: null,
     buffered: null,
     enemies: [],
-    spawnIn: Math.round(tune.run.firstSpawnSec * FPS),
+    spawned: 0,
     nextId: 1,
     hurtFrames: 0,
   };
@@ -165,13 +172,13 @@ export function createSim(tune: Tune, seed = 1) {
       }
     }
 
-    // Spawning, on a timer. Enemies may overlap on screen.
-    if (--s.spawnIn <= 0) {
-      const e: Enemy = { id: s.nextId++, d: tune.enemy.spawnDistance, state: 'walk', frame: 0, side: rng() < 0.5 ? -1 : 1 };
+    // Spawning: a fixed number of zombies on a fixed schedule. They may overlap.
+    while (s.spawned < tune.run.zombieCount && s.frame >= spawnFrame(tune, s.spawned)) {
+      const ang = spawnBearing(tune, s.spawned);
+      const e: Enemy = { id: s.nextId++, d: tune.enemy.spawnDistance, ang, state: 'walk', frame: 0, side: ang >= 0 ? 1 : -1 };
       s.enemies.push(e);
-      ev.push({ kind: 'spawn', enemy: e.id });
-      const gap = tune.run.spawnMinSec + rng() * Math.max(0, tune.run.spawnMaxSec - tune.run.spawnMinSec);
-      s.spawnIn = Math.max(1, Math.round(gap * FPS));
+      s.spawned++;
+      ev.push({ kind: 'spawn', enemy: e.id, ang });
     }
 
     // Enemies, nearest first so the queue holds its spacing.

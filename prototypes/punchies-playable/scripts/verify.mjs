@@ -54,16 +54,16 @@ const st = () => page.evaluate(() => { const s = window.__playable.state(); retu
 async function arrange(d, windup = 99999) {
   await page.evaluate(({ d, windup }) => {
     const p = window.__playable;
-    p.tune.run.firstSpawnSec = 9999; p.tune.enemy.walkSpeed = 0; p.tune.enemy.windupFrames = windup;
+    p.tune.run.zombieCount = 0; p.tune.enemy.walkSpeed = 0; p.tune.enemy.windupFrames = windup;
     p.restart();
-    p.state().enemies.push({ id: 99, d, state: 'windup', frame: 0, side: 1 });
+    p.state().enemies.push({ id: 99, d, ang: 0, state: 'windup', frame: 0, side: 1 });
   }, { d, windup });
 }
 // Wait for the sim itself (not wall time: headless rendering can be slow).
 const settle = (frames = 70) => page.waitForFunction((n) => window.__playable.state().frame >= n, frames, { timeout: 30000 });
 
 await load('');
-const hasArt = await page.evaluate(() => window.__playable.scene.textures.exists('marco'));
+const hasArt = await page.evaluate(() => window.__playable.scene.artLoaded);
 check(process.env.EXPECT_NO_ART ? 'placeholder build has no art' : 'sprite art loaded', hasArt === !process.env.EXPECT_NO_ART);
 check('canvas buffer follows devicePixelRatio', await page.evaluate(() => document.querySelector('canvas').width) === 720);
 
@@ -87,13 +87,31 @@ s = await st(); check('no input costs 1 HP', s.score === 0 && s.hp === 2, JSON.s
 await arrange(80); await page.keyboard.press('KeyJ'); await settle();
 s = await st(); check('keyboard J jab scores 2', s.score === 2, JSON.stringify(s));
 
+// Action shot: a jab at full extension against a parked zombie, and one knocked off.
+await arrange(80);
+await page.evaluate(() => { const p = window.__playable; p.pause(true); p.advance(1, { jab: true }); p.advance(10); });
+await page.screenshot({ path: path.join(shots, 'action.png') });
+await page.evaluate(() => window.__playable.advance(8));
+await page.screenshot({ path: path.join(shots, 'knock.png') });
+await page.evaluate(() => window.__playable.pause(false));
+
+// Diagonal knock-off: the zombie flies along the blow direction, spins and fades.
+await arrange(80);
+await page.evaluate(() => { const p = window.__playable; p.state().enemies[0].ang = 0.38; p.pause(true); p.advance(1, { jab: true }); p.advance(18); });
+await page.screenshot({ path: path.join(shots, 'knock-angle-flight.png') });
+await page.evaluate(() => window.__playable.advance(20));
+await page.screenshot({ path: path.join(shots, 'knock-angle-fade.png') });
+const gone = await page.evaluate(() => { const p = window.__playable; p.advance(30); return p.state().enemies.length; });
+check('knocked zombie is removed after the fade', gone === 0, `enemies left ${gone}`);
+await page.evaluate(() => window.__playable.pause(false));
+
 // Mid-run screenshot with enemies in the lane.
-await page.evaluate(() => { const p = window.__playable; p.tune.run.firstSpawnSec = 0.2; p.tune.enemy.walkSpeed = 150; p.tune.enemy.windupFrames = 20; p.restart(); p.advance(150); });
+await page.evaluate(() => { const p = window.__playable; p.tune.run.zombieCount = 12; p.tune.run.playerHp = 99; p.tune.enemy.walkSpeed = 150; p.tune.enemy.windupFrames = 20; p.restart(); p.advance(300); });
 await page.waitForTimeout(200);
 await page.screenshot({ path: path.join(shots, 'game.png') });
 
 // 3 HP ends the run early.
-await page.evaluate(() => { const p = window.__playable; p.tune.run.firstSpawnSec = 0.2; p.tune.enemy.walkSpeed = 150; p.restart(); });
+await page.evaluate(() => { const p = window.__playable; p.tune.run.zombieCount = 12; p.tune.run.playerHp = 3; p.tune.enemy.walkSpeed = 150; p.restart(); });
 await page.evaluate(() => window.__playable.advance(900));
 await page.waitForTimeout(1200);
 s = await st(); check('3 HP lost ends the run early', s.ended === 'dead' && s.hp === 0 && s.frame < 1800, JSON.stringify(s));
@@ -104,8 +122,15 @@ await page.evaluate(() => { const p = window.__playable; p.tune.run.playerHp = 9
 await page.waitForTimeout(1200);
 s = await st(); check('30 s ends the run', s.ended === 'time' && s.frame === 1800, JSON.stringify(s));
 await page.screenshot({ path: path.join(shots, 'end-time.png') });
-await tap(180, 470); await page.waitForTimeout(200);
+await tap(180, 410); await page.waitForTimeout(200);
 check('CTA tap does nothing (no navigation)', page.url().startsWith(base));
+// Retry (testing build): tapping RETRY starts a fresh run.
+await page.screenshot({ path: path.join(shots, 'end-time-retry.png') });
+await tap(180, 513); await page.waitForTimeout(300);
+s = await st(); check('RETRY starts a fresh run', s.ended === null && s.score === 0 && s.hp === 99 && s.frame < 120, JSON.stringify(s));
+// ?retry=0 leaves the button out.
+await load('&retry=0');
+check('?retry=0 hides the retry button', await page.evaluate(() => window.__playable.scene.retryEnabled === false));
 
 // Debug panel hidden by default, shown with ?debug=1.
 check('debug panel hidden by default', await page.evaluate(() => !document.querySelector('.tp-dfwv')));
