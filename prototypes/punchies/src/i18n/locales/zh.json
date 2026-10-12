@@ -260,7 +260,6 @@
   "shop.err.need_tokens": "还需要{n}个代币。",
   "shop.fighter_chest": "拳手宝箱",
   "shop.free_chest_ready": "免费宝箱已就绪",
-  "shop.guaranteed_fighter_of_the_day": "今日最佳拳手（已确定）。\n\n头像、装备和数据均为草稿占位符。",
   "shop.item.fighter-captain.name": "鹰队长",
   "shop.item.fighter-dragon.name": "龙",
   "shop.item.fighter-four.name": "G.P. TEE",
@@ -303,7 +302,6 @@
   "shop.owned": "· 拥有",
   "shop.preview_ad_1_token": "预览广告 · +1代币",
   "shop.punchies_shop": "PUNCHIES 商店",
-  "shop.purple_one_random_skin_gold": "紫色：随机获得一款皮肤。金色：每日必得一名斗士。",
   "shop.rarity.epic": "史诗",
   "shop.rarity.legendary": "传说",
   "shop.rewards_today": "{n}/{max} 今日奖励",
@@ -312,7 +310,6 @@
   "shop.tap_a_chest_to_inspect": "点击宝箱查看今日奖励和抽奖几率。",
   "shop.tap_to_see_rewards": "点击查看奖励",
   "shop.the_ad_did_not_finish": "广告没有播放完毕，所以没有发放代币。",
-  "shop.today_s_fighter": "今日斗士",
   "shop.today_s_skins": "今日皮肤",
   "shop.unlocked": "已解锁：{name}",
   "shop.watch_ad_1_token": "观看广告 · +1 代币",
@@ -475,5 +472,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "测试环境 · 可重复抽取",
   "super.rising_upper_description": "突破普通防守。闪避和完美防守可化解。",
-  "ui.skins": "皮肤"
+  "ui.skins": "皮肤",
+  "shop.today_s_fighters": "今日拳手",
+  "shop.chest_candidate_rules": "每个宝箱从最多3个可获取候选奖励中抽取1个。"
 }
