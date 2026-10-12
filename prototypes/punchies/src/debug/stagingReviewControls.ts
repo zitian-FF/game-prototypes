@@ -26,7 +26,7 @@ export function mountStageReviewControls(folder:FolderApi,game:Phaser.Game):void
  refreshSkins();
  fighterBinding.on('change',refreshSkins);
  folder.addButton({title:'Preview in Training (no unlocks)'}).on('click',()=>{
-  if(!game.scene.isActive('Menu')&&!game.scene.isActive('Training'))return;
+  if(!['Menu','Training','FirstFight','Tutorial'].some(key=>game.scene.isActive(key)))return;
   for(const scene of game.scene.getScenes(true))if(scene.scene.key!=='ArtBoot')scene.scene.stop();
   game.scene.start('Training',{...pick,char:pick.fighter,qaPreview:true});
  });

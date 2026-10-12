@@ -6,7 +6,7 @@ Build may publish completed frozen batches directly to STAGING after compile, bo
 
 Pages checks out the exact `.github/punchies-staging-ref`. The wrapper shows the full source SHA, source version stamp (explicitly not an itch release), and a bounded What changed list from that source. The in-game stamp says STAGE plus SHA. SHA paths prevent mixing cached builds. Compact/web stages disable rating and use the existing fixed reset epoch `punchies-reset-2026-10-12-super-v1`.
 
-Open **Staging QA panel** in the wrapper. Expand punchies tune, then Staging review. Choose a fighter and skin and select **Preview in Training (no unlocks)** from Menu or Training. Picks last only for that Training scene; no ownership/currency/preferences are granted. **Reset staging test saves** removes only the eleven registered staging player keys, preserves the epoch receipt and unrelated/production saves, then reloads. Debug controls remain opt-in and are excluded from production's module graph.
+Open **Staging QA panel** in the wrapper. Expand punchies tune, then Staging review. Choose a fighter and skin and select **Preview in Training (no unlocks)** from Menu, Training or offline onboarding. Picks last only for that Training scene; no ownership/currency/preferences are granted. **Reset staging test saves** removes only the eleven registered staging player keys, preserves the epoch receipt and unrelated/production saves, then reloads. Debug controls remain opt-in and are excluded from production's module graph.
 
 Itch ALWAYS requires explicit owner approval of the exact reviewed source. Stage READY is not approval. After approval, run:
 
