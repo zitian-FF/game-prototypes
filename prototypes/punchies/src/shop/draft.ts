@@ -81,7 +81,7 @@ export function refreshDailyOffers(state:ShopDraftState,now=Date.now()):ShopDraf
 }
 /** Staging entry allowance only; transactions still spend and can exhaust candidates. */
 export function prepareShopEntry(state:ShopDraftState,now=Date.now()):ShopDraftState{
- return refreshDailyOffers(stagingShopAllowance(state),now);
+ const s=stagingShopAllowance(state);return refreshDailyOffers(STAGING_BUILD?{...s,offerDay:''}:s,now);
 }
 export function dailyOffers(state:ShopDraftState,kind:ShopKind):ShopItem[]{
  const eligible=new Set(availablePool(state,kind).map(item=>item.id)),seen=new Set<string>();
@@ -114,4 +114,5 @@ const KEY=KEYS.shop;
 export function shopPreviewBalance():number{try{const raw=store.getItem(KEY);return raw?normalizeShopDraft(JSON.parse(raw)).tokens:0;}catch{return 0;}}
 export function loadShopDraft():ShopDraftState{try{return normalizeShopDraft(JSON.parse(store.getItem(KEY)??'null'));}catch{return newShopDraft();}}
 export function saveShopDraft(s:ShopDraftState):boolean{try{store.setItem(KEY,JSON.stringify(s));return true;}catch{return false;}}
+
 
