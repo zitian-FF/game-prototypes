@@ -260,7 +260,6 @@
   "shop.err.need_tokens": "토큰이 {n}개 더 필요합니다.",
   "shop.fighter_chest": "파이터 상자",
   "shop.free_chest_ready": "무료 상자 준비 완료",
-  "shop.guaranteed_fighter_of_the_day": "오늘의 확정 파이터입니다.\n초상화, 리깅 및 능력치는 임시 이미지입니다.",
   "shop.item.fighter-captain.name": "캡틴 이글",
   "shop.item.fighter-dragon.name": "용",
   "shop.item.fighter-four.name": "G.P. 티",
@@ -303,7 +302,6 @@
   "shop.owned": "· 소유",
   "shop.preview_ad_1_token": "광고 미리보기 · +1 토큰",
   "shop.punchies_shop": "PUNCHIES 상점",
-  "shop.purple_one_random_skin_gold": "보라색: 무작위 스킨 1개. 금색: 매일 확정적으로 파이터 획득.",
   "shop.rarity.epic": "에픽",
   "shop.rarity.legendary": "전설",
   "shop.rewards_today": "오늘 {n}/{max} 리워드를 받으세요",
@@ -312,7 +310,6 @@
   "shop.tap_a_chest_to_inspect": "상자를 탭하여 오늘의 보상과 뽑기 확률을 확인하세요.",
   "shop.tap_to_see_rewards": "보상을 확인하려면 탭하세요",
   "shop.the_ad_did_not_finish": "광고가 끝나지 않아 토큰이 지급되지 않았습니다.",
-  "shop.today_s_fighter": "오늘의 파이터",
   "shop.today_s_skins": "오늘의 스킨",
   "shop.unlocked": "잠금 해제됨: {name}",
   "shop.watch_ad_1_token": "광고 보기 · +1 토큰",
@@ -474,5 +471,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "스테이징 · 반복 뽑기",
   "super.rising_upper_description": "일반 가드 돌파. 퍼펙트 가드와 회피에 막힙니다.",
-  "ui.skins": "스킨"
+  "ui.skins": "스킨",
+  "shop.today_s_fighters": "오늘의 파이터",
+  "shop.chest_candidate_rules": "각 상자에서 최대 3개의 획득 가능 보상 중 1개를 뽑습니다."
 }

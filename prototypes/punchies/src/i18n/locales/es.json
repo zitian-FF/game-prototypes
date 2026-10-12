@@ -260,7 +260,6 @@
   "shop.err.need_tokens": "Necesito {n} tokens más.",
   "shop.fighter_chest": "COFRE DE LUCHADORES",
   "shop.free_chest_ready": "COFRE GRATIS LISTO",
-  "shop.guaranteed_fighter_of_the_day": "Luchador destacado del día.\n\nEl retrato, el esqueleto y las estadísticas son provisionales.",
   "shop.item.fighter-captain.name": "CAPITÁN ÁGUILA",
   "shop.item.fighter-dragon.name": "DRAGÓN",
   "shop.item.fighter-four.name": "TEE de médico general",
@@ -303,7 +302,6 @@
   "shop.owned": "· PROPIEDAD",
   "shop.preview_ad_1_token": "ANUNCIO DE VISTA PREVIA · +1 FICHA",
   "shop.punchies_shop": "TIENDA PUNCHIES",
-  "shop.purple_one_random_skin_gold": "Morado: una skin aleatoria. Dorado: luchador diario garantizado.",
   "shop.rarity.epic": "Épico",
   "shop.rarity.legendary": "Legendario",
   "shop.rewards_today": "Recompensas {n}/{max} hoy",
@@ -312,7 +310,6 @@
   "shop.tap_a_chest_to_inspect": "Toca un cofre para ver las recompensas de hoy y las probabilidades de obtenerlas.",
   "shop.tap_to_see_rewards": "TOCA PARA VER LAS RECOMPENSAS",
   "shop.the_ad_did_not_finish": "El anuncio no terminó, por lo que no se entregó ningún token.",
-  "shop.today_s_fighter": "EL LUCHADOR DE HOY",
   "shop.today_s_skins": "LOS ASPECTOS DE HOY",
   "shop.unlocked": "DESBLOQUEADO: {name}",
   "shop.watch_ad_1_token": "VER ANUNCIO · +1 TOKEN",
@@ -474,5 +471,7 @@
   "charselect.super_cost": "{name} · {stars} ★",
   "shop.staging_repeat_pulls": "PRUEBAS · tiradas repetidas",
   "super.rising_upper_description": "Rompe la guardia normal; se frena con esquivas o guardia perfecta.",
-  "ui.skins": "Aspectos"
+  "ui.skins": "Aspectos",
+  "shop.today_s_fighters": "LUCHADORES DE HOY",
+  "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles."
 }

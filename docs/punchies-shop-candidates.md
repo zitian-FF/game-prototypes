@@ -1,0 +1,11 @@
+# Uniform daily chest candidates and explicit staging allowance
+
+Both skin and fighter chests freeze up to3 eligible, unowned, distinct candidates for the real UTC day, with equal1/N odds (3/2/1/0 candidates). No rarity quotas or guaranteed fighter remain. Frozen candidate IDs, the popup list, odds and transaction all share `dailyOffers`/`chestRewards`; stale owned/duplicate/unready/earn-only IDs are filtered. Schema9 migrates the old one-fighter/rarity-quota offer format without altering ownership/currency/vouchers/paid daily flags. A real new day reselects from current eligibility.
+
+Empty pools reject before spending currency or a voucher. One paid purchase per chest per production day remains, along with the existing progression-voucher exception. Original current fixed Rising Star first gift +skin voucher remains unchanged. Kai and other earn-only/pending-art items remain excluded.
+
+Staging only: `prepareShopEntry` sets existing or new staging shop balance to999, then refreshes daily data; ShopScene must call and persist this on entry. Normal pulls still cost5/10 and consume vouchers normally. Every successful staging pull refreshes candidates from remaining eligible unowned items, and all-owned pools stay blocked. Entry replenishment is predictable, not a no-cost transaction. The direct compile-time allowance branch is removed from production output; URLs/saved flags never enable it, and existing staging save keys remain isolated. Legacy `TEST_BUILD` staysfalse and no debug button is introduced.
+
+Art owns the ShopScene entry call and up-to-three popup rows/odds/empty-button presentation. New player copy keys: shop.today_s_fighters, shop.chest_candidate_rules; old singular/guaranteed/rarity-quota copy is retired in all six locales and the native Sheet at paired integration. No new artwork or layout redesign required.
+
+Focused tests exercise3/2/1/0 for BOTH kinds, exact visible-candidate-to-random-bin choice, costs/vouchers/zero atomicity, migration, frozen production/purchase limit, stage existing0entry999, every remaining eligible reward exactlyonce across repeats, owned/pending/earn-only exclusions, save reset/isolation, and production compile999 absence. Existing shop and roster regressions pass. No production publish by Logic.
