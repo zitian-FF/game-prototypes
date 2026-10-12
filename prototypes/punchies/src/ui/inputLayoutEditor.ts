@@ -14,6 +14,10 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
   const releaseDevices = devices.suspend();
   let releaseNav: (() => void) | null = null, capturing: Action | null = null, padCapture: PadCapture | null = null;
   let closed = false;
+  let adjusting:TouchId|null=null,touchPadPrev:boolean[][]=[],touchStickAt=0;
+  const touchPads=()=>{try{return Array.from(navigator.getGamepads?.()??[]);}catch{return [];}};
+  const stopAdjust=()=>{adjusting=null;releaseNav?.();releaseNav=null;};
+  const nudge=(dx:number,dy:number)=>{if(!adjusting)return;const p=draft.value.touch[adjusting];p.x=Math.max(0,Math.min(1,p.x+dx*.01));p.y=Math.max(0,Math.min(1,p.y+dy*.01));refresh();status.setText(t('ui.adjust_touch_control'));};
   const text = (x: number, y: number, label: string, size = 14) => {
     const obj = scene.add.text(x, y, label, { fontFamily: 'Arial', fontSize: size, fontStyle: 'bold', color: '#fff1d1', align: 'center', resolution: PIXEL_RATIO }).setOrigin(.5).setDepth(D + 2);
     items.push(obj); return obj;
@@ -27,13 +31,13 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
   const stopCapture = () => { capturing = null; padCapture = null; releaseNav?.(); releaseNav = null; };
   const cleanup = () => {
     if (closed) return;
-    closed = true; stopCapture(); releaseDevices(); draft.cancel();
+    closed = true; stopAdjust();stopCapture(); releaseDevices(); draft.cancel();
     window.removeEventListener('keydown', key, true);
     scene.events.off('update', update); scene.events.off('shutdown', cleanup);
     scene.input.off('pointermove', drag); scene.input.off('pointerup', endDrag); scene.input.off('pointerupoutside', endDrag);
     glyphs.forEach(o => o.destroy()); items.forEach(o => o.destroy());
   };
-  const cancel = () => { if (capturing) { stopCapture(); status.setText(t('layouts.staged')); } else cleanup(); };
+  const cancel = () => { if(adjusting){stopAdjust();refresh();}else if (capturing) { stopCapture(); status.setText(t('layouts.staged')); } else cleanup(); };
   nav.modalBack(anchor, cancel);
   const button = (x: number, y: number, w: number, h: number, label: string, fn: () => void, role: 'back' | 'confirm' = 'confirm') => {
     const obj = titleButton(scene, x, y, w, h, label, fn, false, D + 2, 'default', role); items.push(obj, obj.getData('bg')); return obj;
@@ -57,6 +61,11 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
     stopCapture(); refresh();
   };
   const key = (event: KeyboardEvent) => {
+    if(adjusting&&!closed&&scene.scene.isActive()){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(event.code==='Escape'||event.code==='Enter'){stopAdjust();refresh();}
+      else if(event.code==='ArrowLeft')nudge(-1,0);else if(event.code==='ArrowRight')nudge(1,0);else if(event.code==='ArrowUp')nudge(0,-1);else if(event.code==='ArrowDown')nudge(0,1);return;
+    }
     if (!capturing || closed || !scene.scene.isActive()) return;
     devices.blockKey(event.code);
     event.preventDefault(); event.stopImmediatePropagation();
@@ -67,6 +76,14 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
     assign(event.code);
   };
   const update = () => {
+    if(adjusting){
+      const pads=touchPads();
+      for(const [i,p] of pads.entries()){if(!p)continue;const previous=touchPadPrev[i]??[],edges=p.buttons.map((b,n)=>b.pressed&&!previous[n]);touchPadPrev[i]=p.buttons.map(b=>b.pressed);
+       if(edges[0]||edges[1]){stopAdjust();refresh();return;}
+       if(edges[14])nudge(-1,0);if(edges[15])nudge(1,0);if(edges[12])nudge(0,-1);if(edges[13])nudge(0,1);
+       if(scene.time.now-touchStickAt>220&&Math.max(Math.abs(p.axes[0]??0),Math.abs(p.axes[1]??0))>.65){touchStickAt=scene.time.now;nudge(Math.abs(p.axes[0])>.65?Math.sign(p.axes[0]):0,Math.abs(p.axes[1])>.65?Math.sign(p.axes[1]):0);}
+      }return;
+    }
     if (!padCapture || (profile !== 'pad1' && profile !== 'pad2')) return;
     const pad = devices.pad(profile), pressed = padCapture.poll(pad);
     if (pressed === 'cancel') { stopCapture(); status.setText(t('layouts.staged')); }
@@ -113,11 +130,13 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
   };
   if (profile === 'touch') {
     TOUCH_IDS.forEach(id => {
-      const hit = scene.add.circle(0, 0, Math.max(18, resolveTouch(draft.value.touch, VIEW)[id].r * scale), 0, 0).setDepth(D + 3).setInteractive({ useHandCursor: true });
+      const hit = scene.add.circle(0, 0, Math.max(18, resolveTouch(draft.value.touch, VIEW)[id].r * scale), 0, 0).setDepth(D + 2).setInteractive({ useHandCursor: true });
       items.push(hit);
       const label = text(0, 0, t('layouts.touch_' + id), id === 'main' ? 10 : 9).setDepth(D + 4);
       handles.push({ id, hit, label });
+      nav.add(hit,()=>{stopAdjust();adjusting=id;releaseNav=nav.ownBindings();touchPadPrev=touchPads().map(p=>p?.buttons.map(b=>b.pressed)??[]);refresh();status.setText(t('ui.adjust_touch_control'));});
       hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        stopAdjust();
         if (dragging) return;
         const pos = point(p), saved = draft.value.touch[id];
         dragging = { id, pointer: p.id, dx: (pos.x - origin.x) / (scale * VIEW.width) - saved.x, dy: (pos.y - origin.y) / (scale * VIEW.height) - saved.y };
@@ -135,7 +154,7 @@ export function inputLayoutEditor(scene: Phaser.Scene, profile: Profile | 'touch
         hit.setPosition(x, y); label.setPosition(x, y);
         preview.fillStyle(id === 'stick' ? 0x29496e : id === 'guard' ? 0x149eab : 0x47739d).fillCircle(x, y, p.r * scale);
         if (id === 'main') preview.lineStyle(2, 0xffffff, .8).lineBetween(x, y - p.r * scale, x, y + p.r * scale);
-        preview.lineStyle(2, 0xffd24a).strokeCircle(x, y, p.r * scale);
+        preview.lineStyle(adjusting===id?4:2, adjusting===id?0x77ddff:0xffd24a).strokeCircle(x, y, p.r * scale);
         preview.fillStyle(0xffd24a).fillCircle(x, y - p.r * scale, 3);
       });
       status.setText(t(touchValid(draft.value.touch, VIEW) && touchValid(draft.value.touch, { left: 0, top: 0, width: 844, height: 390 }) ? 'layouts.staged' : 'layouts.touch_invalid'));

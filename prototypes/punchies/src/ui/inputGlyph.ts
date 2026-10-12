@@ -4,6 +4,8 @@ import { PIXEL_RATIO } from '../render/pixelRatio';
 import { loadLayouts, type Action, type Profile } from '../input/layouts';
 
 export function keyLabel(code: string): string {
+  if(code==='Escape')return 'Esc';if(code==='Enter')return '↵';
+  if(/^F\d{1,2}$/.test(code))return code;
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit\d$/.test(code)) return code.slice(5);
   if (code.startsWith('Numpad')) return t('layouts.num_key', { key: /^Numpad\d$/.test(code) ? code.slice(6) : t('layouts.key_' + code.slice(6)) });

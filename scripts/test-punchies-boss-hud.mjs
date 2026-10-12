@@ -1,0 +1,11 @@
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';
+const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/survivalBossHud.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:()=>({charName:c=>'name:'+c})});
+const get=exports.survivalBossHud;
+const base={runId:'test',wave:3,waveMode:'boss',boss:{state:'incoming',char:'bruno',currentHP:null,maxHP:null}};
+assert.equal(get({...base,waveMode:'timed',boss:null}),null);assert.equal(get(base).health,null);assert.equal(get(base).maxHealth,null);
+const alive={...base,boss:{state:'alive',char:'bruno',currentHP:156,maxHP:220}};
+assert.equal(get(alive).health,156);assert.equal(get(alive).maxHealth,220,'stored scaled boss max, never generic fighter HP');
+const defeated={...base,boss:{state:'defeated',char:'bruno',currentHP:0,maxHP:null}};
+assert.equal(get(defeated).health,0);assert.equal(get(defeated).maxHealth,null,'no invented defeated max');
+assert.equal(get(alive).key,get(base).key,'same wave lifecycle key');assert.notEqual(get({...alive,wave:6}).key,get(alive).key,'next wave resets trail');
+console.log('PASS: exact Logic waveMode/boss snapshot adapter, stored scaled maxHP, incoming/defeated nulls, wave trail reset');

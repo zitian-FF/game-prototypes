@@ -4,7 +4,7 @@ import { track } from '../portal/analytics';
 import { loadShopDraft, saveShopDraft, grantVoucher, grantSkin } from '../shop/draft';
 import cfg from './progress-config.json';
 import {
-  applyMatch, newProgress, normalizeProgress, progressDay, progressView as buildView,
+  applyMatch, newProgress, normalizeProgress, progressDay, progressView as buildView,rewardLadder,
   type MatchAward, type MatchOutcome, type ProgressConfig, type ProgressState, type ProgressView, type Reward,
 } from './rules';
 
@@ -19,6 +19,7 @@ function saveProgress(s: ProgressState): void {
 }
 
 export const progressView = (now = Date.now()): ProgressView => buildView(C, loadProgress(now), progressDay(now));
+export const progressionLadder=(now=Date.now())=>rewardLadder(C,loadProgress(now),progressDay(now));
 
 export function setTitle(id: string): boolean {
   const s = loadProgress();

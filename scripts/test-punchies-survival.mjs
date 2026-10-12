@@ -52,8 +52,9 @@ assert.equal(survivalView(timed).xpEnabled,false);
 const boss=fresh();boss.status='intermission';boss.wave=2;startNextWave(boss);boss.tick=boss.fightStartTick;
 assert.equal(boss.enemies.filter(e=>e.kind==='boss').length,1);
 assert.equal(boss.enemies.find(e=>e.kind==='boss').fighter.char,boss.bossChar);
-frozen(boss);boss.remainingTicks=1;stepSurvival(boss,N);
-assert.equal(boss.clearedWave,3);assert.equal(boss.enemies.length,0,'live boss does not gate clear');
+frozen(boss);assert.equal(boss.remainingTicks,0);const liveBoss=boss.enemies.find(e=>e.kind==='boss');assert.equal(survivalView(boss).boss.maxHP,liveBoss.maxHealth);
+for(let i=0;i<30*TICK_RATE+1;i++)stepSurvival(boss,N);assert.equal(boss.status,'active','live boss survives former timer duration');assert.equal(boss.clearedWave,0);
+liveBoss.fighter.health=0;boss.hitstop=0;const bossClear=stepSurvival(boss,N);assert.equal(boss.clearedWave,3);assert.equal(boss.enemies.length,0);assert(bossClear.some(e=>e.kind==='waveCleared'));assert.equal(survivalView(boss).boss.state,'defeated');
 const death=fresh();death.remainingTicks=1;death.player.health=0;
 assert.equal(stepSurvival(death,N)[0].kind,'runEnded');assert.equal(death.clearedWave,0);
 
@@ -199,15 +200,16 @@ for(const wave of [1,2,3,6]){
   if(ev.some(e=>e.kind==='go'))go=r.tick;
   assert.equal(JSON.stringify([r.player,r.enemies]),frozen,'no combat or AI during entrance');assert.equal(r.remainingTicks,timer);
  }
- assert.equal(ready,1);assert.equal(go-cue,fightCueTiming().entranceTicks);assert.equal(timer,30*TICK_RATE);
+ assert.equal(ready,1);assert.equal(go-cue,fightCueTiming().entranceTicks);assert.equal(timer,wave%3===0?0:30*TICK_RATE);
  assert.equal(r.enemies.some(e=>e.kind==='boss'),wave%3===0);
- const x=r.player.x;stepSurvival(r,{...N,mx:100});assert(r.player.x>x);assert.equal(r.remainingTicks,timer-1);
+ const x=r.player.x;stepSurvival(r,{...N,mx:100});assert(r.player.x>x);assert.equal(r.remainingTicks,wave%3===0?0:timer-1);
 }
 for(const wave of [1,10,10000]){const p=waveProgression(wave);assert(p.speedRatio<=c.zombieMaxSpeedRatio&&p.attackChance<=c.zombieMaxAttackChance&&p.attackCooldownFrames>=c.zombieMinAttackCooldownFrames);}
 assert(waveProgression(10).attackChance>waveProgression(1).attackChance);assert(waveProgression(10).speedRatio>waveProgression(1).speedRatio);
 const coordinated=fresh();coordinated.status='intermission';coordinated.wave=2;startNextWave(coordinated);coordinated.tick=coordinated.fightStartTick;
-assert(attackPermission(coordinated,'boss'));assert(!attackPermission(coordinated,'zombie'));
-coordinated.tick+=c.bossAttackWindowFrames;assert(!attackPermission(coordinated,'boss'));assert(attackPermission(coordinated,'zombie'));
+assert(attackPermission(coordinated,'boss'));assert(attackPermission(coordinated,'zombie'));
+coordinated.lastEnemyAttackTick=coordinated.tick;assert(!attackPermission(coordinated,'boss'));assert(!attackPermission(coordinated,'zombie'));coordinated.tick+=waveProgression(coordinated.wave).attackStartGapFrames;assert(attackPermission(coordinated,'boss'));
+coordinated.bossPending={type:'jab',frames:12};assert(!attackPermission(coordinated,'zombie'),'pending boss reserves its slot');coordinated.bossPending=null;
 for(let seed=0;seed<30;seed++){
  const r=createRun({...options,seed});for(const e of r.enemies){const f=e.fighter,inset=normalHurtRadius(f)+c.spawnEdgeInset;
  assert([Math.abs(f.x-tune.ring.left-inset),Math.abs(f.x-tune.ring.right+inset),Math.abs(f.y-tune.ring.top-inset),Math.abs(f.y-tune.ring.bottom+inset)].some(n=>n<1e-7),'every initial zombie starts on an inset ring edge');}
@@ -230,3 +232,28 @@ for(let seed=0;seed<100;seed++){
 }
 assert(sawTee,'fixture includes Tee boss');assert.equal(collectionMap.get('punchies:shop-preview:v1'),shopBefore,'appearance never writes ownership');
 console.log('PASS cumulative actual-hit damage, overkill/multi-target, block exclusion, zombie totals, checkpoint persistence and Tee appearance ownership isolation');
+// Approved boss lifecycle and bounded pressure; no UI/physical controller assumptions.
+const bossRun=()=>{const r=fresh();r.status='intermission';r.wave=2;startNextWave(r);r.tick=r.fightStartTick;return r;};
+const incoming=bossRun();incoming.enemies=incoming.enemies.filter(e=>e.kind!=='boss');incoming.bossSpawned=false;incoming.bossAI=null;incoming.spawnWait=9999;stepSurvival(incoming,N);assert.equal(incoming.status,'active');assert.equal(survivalView(incoming).boss.state,'incoming');assert.equal(survivalView(incoming).boss.currentHP,null);assert.equal(survivalView(incoming).boss.maxHP,null,'no invented incoming HP');
+const simultaneous=bossRun();simultaneous.player.health=0;simultaneous.enemies.find(e=>e.kind==='boss').fighter.health=0;assert.equal(stepSurvival(simultaneous,N)[0].kind,'runEnded');assert.equal(simultaneous.clearedWave,0,'player defeat wins simultaneous boss death');
+const bossMemory=new Map(),bossStore=new SurvivalStore({getItem:k=>bossMemory.get(k)??null,setItem:(k,v)=>bossMemory.set(k,v)});boss.player.health=maxHealth(boss.player);assert(bossStore.checkpoint(boss));assert.equal(bossStore.loadResume().kind,'ready');const loadedBoss=bossStore.loadResume().run;assert.equal(loadedBoss.remainingTicks,0);assert.equal(loadedBoss.bossPending,null);assert.equal(loadedBoss.wave,3);bossStore.advance(loadedBoss);assert.equal(loadedBoss.wave,4);assert.equal(loadedBoss.remainingTicks,30*TICK_RATE);
+for(const wave of [1,3,4,6,9,1000]){const p=waveProgression(wave);assert.equal(p.speedRatio,Math.min(.95,.55+(wave-1)*.08));assert.equal(p.attackChance,Math.min(1,.65+(wave-1)*.10));assert.equal(p.attackCooldownFrames,Math.max(60,100-(wave-1)*8));assert.equal(p.attackStartGapFrames,Math.max(12,24-(wave-1)*2));assert.equal(p.concurrentAttacks,wave>=4?3:2);assert(Math.abs(p.bossAttackChanceRatio-Math.min(.90,.70+Math.max(0,Math.floor(wave/3)-1)*.10))<1e-8);}
+let pressureStarts=0;const phase=load(root+'/sim/sim.ts').phaseOf;
+for(const wave of [1,3,4,6,9]){const r=fresh();if(wave>1){r.status='intermission';r.wave=wave-1;startNextWave(r);r.tick=r.fightStartTick;}r.player.health=1e9;r.player.anchored=true;for(const e of r.enemies){e.fighter.health=1e9;}
+ if(r.bossChar){const e=r.enemies.find(e=>e.kind==='boss');assert.equal(e.maxHealth,Math.min(320,160+(wave/3-1)*32)*maxHealth(e.fighter)/96);assert.equal(r.enemies.filter(e=>e.kind==='zombie').length,2);}
+ let last=-99999;for(let i=0;i<1000;i++){const before=new Map(r.enemies.map(e=>[e.id,e.fighter.punch]));stepSurvival(r,N);const started=r.enemies.filter(e=>e.fighter.punch&&e.fighter.punch!==before.get(e.id));assert(started.length<=1);if(started.length){assert(r.tick-1-last>=waveProgression(wave).attackStartGapFrames);last=r.tick-1;pressureStarts++;for(const e of started)if(e.kind==='zombie')assert(e.fighter.punch.startup>=12);}
+ const active=r.enemies.filter(e=>e.fighter.punch&&phase(e.fighter.punch)!=='recovery');assert(active.length<=waveProgression(wave).concurrentAttacks);assert(r.enemies.length<=12);if(r.bossChar){assert(r.enemies.filter(e=>e.kind==='zombie').length<=4);assert(active.filter(e=>e.kind==='zombie').length<=1);assert(!r.bossPending||r.bossPending.frames<=12);}}
+}
+assert(pressureStarts>0,'pressure fixtures actually start attacks');
+const expirePending=bossRun();expirePending.enemies=expirePending.enemies.filter(e=>e.kind==='boss');const queuedBoss=expirePending.enemies[0].fighter;queuedBoss.lock=100;expirePending.bossPending={type:'jab',frames:12};expirePending.player.anchored=true;expirePending.player.health=1e9;for(let i=0;i<12;i++)stepSurvival(expirePending,N);assert.equal(expirePending.bossPending,null,'rejected boss intention expires in bounded12 frames');
+console.log('PASS boss no-timeout/death priority/actual HP/incoming/checkpoint, exact fixed ramp and bounded attack slots/start gap/windups/add cap/queued intent');
+{
+const failed=fresh();failed.enemies=failed.enemies.slice(0,1);const one=failed.enemies[0];one.fighter.x=failed.player.x+60;one.fighter.y=failed.player.y;one.fighter.anchored=true;failed.player.anchored=true;one.attackWait=0;failed.spawnWait=9999;const oldChance=c.zombieAttackChance;c.zombieAttackChance=0;stepSurvival(failed,N);assert.equal(one.attackWait,12,'failed chance uses retry not full cooldown');c.zombieAttackChance=1;one.attackWait=0;failed.lastEnemyAttackTick=failed.tick-24;stepSurvival(failed,N);assert(one.fighter.punch);assert.equal(one.attackWait,100,'success uses wave cooldown');assert(one.fighter.punch.startup>=12);one.fighter.punch=null;one.attackWait=0;failed.lastEnemyAttackTick=failed.tick;stepSurvival(failed,N);assert.equal(one.attackWait,6,'slot denial retries after6');one.fighter.buffered='jab';one.fighter.bufferFrames=10;failed.lastEnemyAttackTick=failed.tick;stepSurvival(failed,N);assert.equal(one.fighter.punch,null,'buffer cannot bypass coordinator');assert.equal(one.fighter.buffered,null);c.zombieAttackChance=oldChance;
+const cappedBoss=fighter=>{const r=createRun({...options,fighter});r.status='intermission';r.wave=299;startNextWave(r);return r.enemies.find(e=>e.kind==='boss');};const capMarco=cappedBoss('marco'),capNadia=cappedBoss('nadia');assert.equal(capMarco.fighter.char,capNadia.fighter.char);assert.equal(capMarco.maxHealth,capNadia.maxHealth,'boss HP never adapts to selected player');assert.equal(capMarco.maxHealth,320*maxHealth(capMarco.fighter)/96,'late boss nominal HP cap');
+const legacyBoss=structuredClone(boss);legacyBoss.balanceVersion=legacyBoss.balanceVersion.replace('survival-v2','survival-v1');delete legacyBoss.lastEnemyAttackTick;delete legacyBoss.bossPending;assert(bossStore.checkpoint(legacyBoss));assert.equal(bossStore.loadResume().kind,'incompatible','old boss rules cannot resume under new balance');
+console.log('PASS failed/success/denied cooldown semantics, boss HP cap/selection independence and legacy checkpoint invalidation');
+
+}
+// Presentation totals are a partition of existing counters, not extra saved/granted data.
+{const r=fresh();r.totalKills=7;r.totalZombieKills=5;r.damageDealt=45.5;r.damageReceived=12.25;const before=JSON.stringify(r),v=survivalView(r);assert.equal(v.totalKills,7);assert.equal(v.totalZombieKills,5);assert.equal(v.totalBossKills,2);assert.equal(v.totalKills,v.totalZombieKills+v.totalBossKills);assert.equal(v.damageDealt,45.5);assert.equal(v.damageReceived,12.25);assert.equal(JSON.stringify(r),before,'stats view is read-only');assert.equal(survivalView(boss).totalBossKills,1,'actual boss defeat counted once');}
+console.log('PASS exact defeated/zombie/boss partition and actual damage view without save-schema changes');

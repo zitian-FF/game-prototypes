@@ -11,6 +11,8 @@ import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { reducedMotion } from './presentation';
 
 
+export interface SurvivalBossHud { key:string; name:string; health:number|null; maxHealth:number|null; }
+
 export class Hud {
   private g: Phaser.GameObjects.Graphics;
   private timer: Phaser.GameObjects.Text;
@@ -21,6 +23,12 @@ export class Hud {
   resourceRow: number[] = [];
   sidesShown = [true,true];
   timerText: string | null = null;
+  survivalBoss:SurvivalBossHud|null=null;
+  private bossName:Phaser.GameObjects.Text;
+  private bossHealth:Phaser.GameObjects.Text;
+  private bossKey='';
+  private bossTrail=-1;
+  private bossTimerMode=false;
   showRoundSockets = true;
 
   private names: Phaser.GameObjects.Text[] = [];
@@ -32,6 +40,8 @@ export class Hud {
     this.g=scene.add.graphics().setDepth(90);
     const text=(x:number,y:number,s:string,size:number,color:string)=>scene.add.text(x,y,s,{fontFamily:'Arial',fontSize:`${size}px`,fontStyle:'bold',color,stroke:'#061020',strokeThickness:2,resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(92);
     this.timer=text(VIEW.cx,VIEW.top+20,'99',29,'#fff1d1').setStroke('#030816',3).setFontFamily('Impact, Arial Black, sans-serif');
+    this.bossName=text(VIEW.cx+VIEW.width*.08,VIEW.top+56,'',11,'#fff1d1').setOrigin(0,.5).setVisible(false);
+    this.bossHealth=text(VIEW.cx+VIEW.width*.40-10,VIEW.top+56,'',10,'#dbe9fa').setOrigin(1,.5).setVisible(false);
     for(const [label,part,y] of [[t('common.hp'),'health',40],[t('hud.stm'),'stamina',56],[t('common.stun'),'stun',70]] as const){
       this.meterLabels.push({text:text(VIEW.cx,VIEW.top+y,label,9,'#f5eedf'),part});
     }
@@ -88,7 +98,27 @@ export class Hud {
         .setColor('#fff3a1').setStroke('#8a4600',2)
         .setShadow(0,0,'#ffce32',8+8*pulse,true,true);
     }
-    this.timer.setText(this.timerText??(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--')).setVisible(show('timer'));
+    const boss=this.survivalBoss;
+    const bossShown=!!boss&&show('health');
+    this.bossName.setVisible(bossShown);this.bossHealth.setVisible(bossShown);
+    if(boss&&bossShown){
+      const active=boss.health!==null&&boss.maxHealth!==null&&boss.maxHealth>0;
+      if(this.bossKey!==boss.key){this.bossKey=boss.key;this.bossTrail=-1;}
+      if(active){
+        const hp=Math.max(0,boss.health!),max=boss.maxHealth!;
+        this.bossTrail=this.bossTrail<0?hp:Math.max(hp,this.bossTrail-.4);
+        this.bar(false,34,14,.40,hp/max,this.bossTrail/max,0xef4db6,0,true);
+        this.bossHealth.setText(`${Math.ceil(hp)} / ${Math.ceil(max)} ${t('common.hp')}`);
+      }else this.bossHealth.setText(boss.health===null?t('survival.boss_incoming'):'');
+      this.bossHealth.setScale(1);this.bossHealth.setScale(Math.min(1,VIEW.width*.15/Math.max(1,this.bossHealth.width)));
+      this.bossName.setText(t('survival.boss',{name:boss.name})).setScale(1);
+      const available=Math.max(1,this.bossHealth.x-this.bossName.x-this.bossHealth.width*this.bossHealth.scaleX-12);
+      this.bossName.setScale(Math.min(1,available/Math.max(1,this.bossName.width)));
+    }
+    if(!!boss!==this.bossTimerMode){this.bossTimerMode=!!boss;this.timer.setFontSize(boss?17:29).setScale(1);}
+    this.timer.setText(boss?t('survival.boss_clock'):this.timerText??(s.timed?String(remainingSeconds(s)).padStart(2,'0'):'--')).setVisible(show('timer'));
+    if(boss)this.timer.setScale(Math.min(1,78/Math.max(1,this.timer.width)));
+
   }
   private drawResources(f:Fighter,side:number):void{
     const g=this.g,sign=side===0?-1:1;

@@ -319,7 +319,7 @@ export class Puppet {
       const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * k * side + v.bodyOffsetY };
       // Register the art actually bound, including base fallback after a failed load.
       const gloveSkin=glove.texture.key.startsWith('punchies:part_marco_rising_star_')?'skin-marco-unique':'default';
-      const registration=gloveRegistration(f.char,glove.width,glove.height,k,gloveSkin);
+      const registration=gloveRegistration(f.char,glove.width,glove.height,k,gloveSkin,i);
       const striking = f.punch?.hand === i;
       const straight = striking && (f.punch!.type === 'jab' || f.punch!.type === 'cross') ? punchExtension(f.punch!) : 0;
       const minSegment = striking && f.punch!.type === 'hook' ? Math.max(9 * k, Math.hypot(fist.x - sh.x, fist.y - sh.y) * rig.hookElbowRatio) : 9 * k;

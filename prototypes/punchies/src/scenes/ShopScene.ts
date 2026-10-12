@@ -1,3 +1,4 @@
+import {controlHint} from '../ui/controlHint';
 import Phaser from 'phaser';
 import { t } from '../i18n';
 import { itemName } from '../shop/itemText';
@@ -98,7 +99,7 @@ export class ShopScene extends Phaser.Scene {
     const tail=this.add.graphics().fillStyle(color).fillTriangle(x+140,342,x+168,342,x+154,357);this.root.add(tail);this.panel(x,70,w,277,color);
     this.root.add(this.add.rectangle(x+w/2,208,w,277,0,0).setInteractive());
     this.text(x+15,82,kind==='skins'?t('shop.today_s_skins'):t('shop.today_s_fighter'),16);this.button(x+w-84,79,70,t('shop.close'),()=>{this.popupKind=null;this.render();},true,300,'blue');
-    this.text(x+w-15,330,t('ui.back_hint'),11,'#dbe9fa').setOrigin(1,0);
+    controlHint(this,x+w-90,330,302,'back',this.root);
     const rewards=chestRewards(this.state,kind),offers=dailyOffers(this.state,kind);
     offers.forEach((item,i)=>{
       const y=kind==='skins'?120+i*62:123;this.panel(x+12,y,w-24,57,0x102034);

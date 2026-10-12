@@ -16,6 +16,7 @@ function rgb(h:number,s:number,v:number):[number,number,number]{
 
 import { PALETTES } from './paletteCatalog';
 import { portraitMaterialMask } from './materialMasks';
+import { teeMaterialMask } from './teeMaterials';
 
 /** Broad material membership avoids excluding noisy/antialiased source shades. */
 function coloured(char:string,h:number,s:number):boolean {
@@ -35,8 +36,9 @@ export function recolourStarter(data:Uint8ClampedArray,char:string,name:string,w
 export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,name:string,width:number,height:number):void {
   const palette=PALETTES[skin];if(!palette||palette.boxer!==char)return;
   const starter=STARTER_SKINS.includes(skin),portrait=name.startsWith('portrait_');
-  const material=portrait?portraitMaterialMask(char,width,height):null;
-  const shades=portrait?new Map<number,number>():null;
+  const teeMask=char==='tee'?teeMaterialMask(name,width,height):null;
+  const material=teeMask??(portrait?portraitMaterialMask(char,width,height):null);
+  const shades=portrait||teeMask?new Map<number,number>():null;
   const kitHsv=hsv(palette.kit>>16&255,palette.kit>>8&255,palette.kit&255),gloveHsv=hsv(palette.gloves>>16&255,palette.gloves>>8&255,palette.gloves&255);
   const head=name.endsWith('_head'),tail=name.includes('ponytail'),glove=name.includes('glove'),boot=name.includes('boot'),torso=name.endsWith('_torso');
   for(let i=0;i<data.length;i+=4){
@@ -47,6 +49,26 @@ export function recolourPalette(data:Uint8ClampedArray,char:string,skin:string,n
     const cached=shades?.get(shadeKey);
     if(cached!==undefined){data[i]=cached>>16&255;data[i+1]=cached>>8&255;data[i+2]=cached&255;continue;}
     const [h,s,v]=hsv(r,g,b);
+
+    if(teeMask){
+      // Only neutral cloth/leather inside authored boundaries. Red tabs, warm
+      // skin/antialiasing and all head/tail pixels retain their original RGBA.
+      let out:[number,number,number]|null=null;
+      if(flags&&s<.6&&v>.09&&!(h<100&&s>.12)&&!(flags!==4&&v>=.8)){
+        const target=flags===2?gloveHsv:kitHsv;
+        const white=flags===4;
+        // White fabric remains shaded fabric; a highlight on BLACK fabric is
+        // neutral. Continuous rolloffs avoid compression-induced colour specks.
+        const light=white?1-Math.max(0,(v-.82)/.18)*.8:Math.max(0,1-(v-.48)/.32);
+        const neutral=Math.max(0,Math.min(1,(.60-s)/.30));
+        const dark=Math.max(0,Math.min(1,(v-40/255)/.18));
+        const colour=rgb(target[0],target[1]*.65*light*neutral*dark,Math.min(1,v*(white?.96:Math.max(.88,target[2]))));
+        out=colour;
+      }
+      if(out){data[i]=out[0];data[i+1]=out[1];data[i+2]=out[2];}
+      if(shades&&shades.size<50000)shades.set(shadeKey,(data[i]<<16)|(data[i+1]<<8)|data[i+2]);
+      continue;
+    }
     const x=(i/4%width+.5)/width,y=(Math.floor(i/4/width)+.5)/height;
     // The exposed face wedge is not helmet material, including its compressed
     // reddish/grey edge pixels. Hair recolouring must never spill into it.

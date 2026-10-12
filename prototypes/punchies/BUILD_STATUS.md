@@ -1,17 +1,17 @@
 ## Current milestone
-Validated compact quality assessment release on live148 base; Main explicitly authorized merge/deploy.
+Approved combined compact release: Profile/Zombie UI, boss pressure and statistics, input navigation, and Tyke/Tee materials. Main cleared the polish hold after approved UI completion.
 
 ## What was implemented
-Survival 30-second waves, bosses every third wave, READY/FIGHT each wave, edge 6–10 HP zombies, bounded progression/boss coordination and cumulative run statistics/save. Removed stale Tee welcome auto-grant while preserving legitimate ownership. Automatic Ranked queue with private WebRTC rooms; Casual retains manual host/code. Portrait-only roster movement, persistent static UI/stat fills, dimmed lock cards/headshots and sharp floor labels. Opposing fire trails/collision, rarity pull accents and restrained victory effects. Normalized escaped Survival hint line breaks.
+Owned avatar selection persists without changing alias, titles, collection, or peer payload. Profile displays rating availability, XP and a passive 50-level ladder. Zombie entry preserves checkpoint confirmation; intermission/results display actual run partitions, damage, applied healing and personal best. Ordinary waves remain timed; bosses use actual scaled HP and end on defeat with bounded pressure progression. Hints follow meaningful last input and saved keys; touch editor handles/footer share one navigation layer. Tyke cuffs are hand-aware and Tee palettes protect hair, skin, red accents and highlights.
 
 ## Key technical decisions
-Integrated Logic a015fc2, VFX c23eb75, Art b069dcf, focused fixture ef48dde and formatting39f743e only. Preserved current main tuning and shared FIGHT entrance/fade-start unlock. WIP quality selected by .github/punchies-wip-profile=compact; itch portal remains web. Explicit profile commands/CI default CrazyGames. Worker deployment must succeed for the same server-changing release SHA before frontend upload. No new downloadable art/R2 changes. Compact assets freshly verified; inventory and parity against recoverable live148 standard pass.
+Original owner dependencies973c24f/8b9da1/6c44f99/1599735/UI1609380 integrated atop materials/input and latestmain. Owner fixes address localization literals, avatar restart lifecycle and CJK wrapping. Compact/web AAC/M4A selected; source bitmaps/compression pins/tune.json/tune.meta.json/Worker unchanged. Final local package10,133,861bytes148files: art3,460,285 audio4,345,153 code2,328,423 under20,000,000. Inventory and geometry/part parity pass against preserved standard companion.
 
 ## Open questions
-Physical Android spark behavior/mobile60fps and native-speaker translations remain unverified. Tee actual appearance-writer root cause unproven; ownership-isolation regression passes. Future Ranked snapshots dddecf0 and unapproved identity/redesign mockups are excluded.
+Physical Android, touchscreen/controller and mobile60fps validation unavailable. Controlled browser simulations validate transitions/presentation, not difficulty balance or played boss wins. KaiChen/proposed title-screen layout/Ranked followups excluded pending separate approvals.
 
 ## Known issues
-Old Survival checkpoints cannot resume under the changed configuration. Cold palette work still peaks around88ms in owner evidence. Compact uses smaller/lossier portraits/backgrounds/arena and64kbps AAC music; no visually lossless or subjective listening-quality claim. Browser result/rematch evidence uses real clients/Worker with an explicitly injected result, not a fully played KO. Ranked remains anonymous/self-reported with legacy endpoint, no anti-cheat guarantee.
+Existing cold palette work remains a limitation. Browser avatar blank and CJK single-line shrink corrected/retested. QA uses real Brave WebGL production scenes with explicit fixture inputs/state injection; locale forced result transitions are layout evidence, not earned results. No new downloadable assets.
 
 ## Next proposed step
-Merge and deploy this complete compact batch, verify exact CI artifact bytes/live version and Worker receipt, then obtain owner's quality assessment. Evidence: outputs/compact-wave-release in Build workspace; all combined checks passed after focused fixes.
+Merge/deploy one validated compact release; verify automatic version, exact CI bytes/profile, workflows and live itch boot. Publish consolidated receipt/screenshots and preserve material evidence/source/tuning constraints.

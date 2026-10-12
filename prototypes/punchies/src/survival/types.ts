@@ -1,5 +1,5 @@
 import type { CharId } from '../sim/character';
-import type { Fighter, SimEvent } from '../sim/types';
+import type { Fighter, SimEvent, PunchType } from '../sim/types';
 import type { EasyAIState } from '../sim/ai';
 
 export interface RunOptions { fighter: CharId; skin: string; seed: number; runId: string; balanceVersion?: string }
@@ -24,6 +24,8 @@ export interface SurvivalRun {
   healing: number; hitstop: number; spawnWait: number; nextEnemyId: number;
   swingHits: string[]; bossSpawned: boolean;
   bossAI: EasyAIState | null;
+  lastEnemyAttackTick:number;
+  bossPending:{type:PunchType;frames:number}|null;
 }
 export type SurvivalEvent =
   | { kind: 'combat'; event: SimEvent; entityIds: readonly [string, string] }

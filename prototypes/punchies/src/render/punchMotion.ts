@@ -28,9 +28,17 @@ export function uppercutFireIntensity(p: PunchState): number {
 
 // Tee's fingerless fists point right; the boxing mitts point up. Register the
 // image axis and cuff distance together so corrected rotation keeps the join.
-export function gloveRegistration(char:string,width:number,height:number,k:number,skin='default'):{scale:number;axis:number;cuff:number} {
+export function gloveRegistration(char:string,width:number,height:number,k:number,skin='default',hand=0):{scale:number;axis:number;cuff:number} {
   const rig=tune.view.puppet;
   const h=rig.gloveHeight*k*(char==='tee'?rig.teeHandScale:1);
+  // Tyke's cuff centres are offset sideways in the authored diagonal mitts.
+  // Resolve the source cuff-to-origin axis for each anatomical hand, rather
+  // than rolling both textures as vertical mitts (which reads as reversed).
+  if(char==='tyke'){
+    const dx=.22*width/height*h,dy=.32*h;
+    const tilt=Math.atan2(dy,dx);
+    return {scale:h/height,axis:hand===0?Math.PI-tilt:tilt,cuff:Math.hypot(dx,dy)};
+  }
   const facesRight = char==='tee' || char==='captain' || skin==='skin-marco-unique';
   return {scale:h/height,axis:char==='captain'||skin==='skin-marco-unique'?0:char==='tee'?rig.teeGloveAxisDegrees*Math.PI/180:Math.PI/2,
     cuff:(facesRight?h*width/height:h)*.4};
