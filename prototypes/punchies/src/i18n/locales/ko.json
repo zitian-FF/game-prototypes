@@ -475,5 +475,7 @@
   "shop.today_s_fighters": "오늘의 파이터",
   "shop.chest_candidate_rules": "각 상자에서 최대 3개의 획득 가능 보상 중 1개를 뽑습니다.",
   "super.code_x": "코드 X",
-  "super.code_x_description": "잽 적중 시 그림자가 크로스 2회. 그림자는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다."
+  "super.code_x_description": "잽 적중 시 그림자가 크로스 2회. 그림자는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다.",
+  "super.buffalo_hook": "버팔로 훅",
+  "super.buffalo_hook_description": "막히지 않은 훅 적중 시 어퍼로 연계. 어퍼는 일반·퍼펙트 가드를 무시하며 회피로 피할 수 있습니다."
 }

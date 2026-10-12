@@ -475,5 +475,7 @@
   "shop.today_s_fighters": "LUCHADORES DE HOY",
   "shop.chest_candidate_rules": "Cada cofre entrega una recompensa entre hasta 3 candidatos disponibles.",
   "super.code_x": "CÓDIGO X",
-  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos."
+  "super.code_x_description": "Conecta el jab para dos golpes Cross de sombras. Ignoran guardia y guardia perfecta; esquiva para evitarlos.",
+  "super.buffalo_hook": "Gancho Búfalo",
+  "super.buffalo_hook_description": "Un gancho sin bloquear enlaza un Upper. El Upper ignora guardia y guardia perfecta; esquiva para evitarlo."
 }

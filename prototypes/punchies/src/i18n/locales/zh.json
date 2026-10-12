@@ -475,5 +475,7 @@
   "shop.today_s_fighters": "今日拳手",
   "shop.chest_candidate_rules": "每个宝箱从最多3个可获取候选奖励中抽取1个。",
   "super.code_x": "代码 X",
-  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。"
+  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。",
+  "super.buffalo_hook": "野牛勾拳",
+  "super.buffalo_hook_description": "未被防守挡下的勾拳命中后，接续上勾拳。该上勾拳无视防守和完美防守，可用闪避躲开。"
 }

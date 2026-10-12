@@ -197,9 +197,10 @@ function gainStamina(f: Fighter, amount: number, natural = false): void {
 
 function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  const codeXActivation=type==='uppercut'&&f.char==='tee';
+  const codeXActivation=type==='uppercut'&&f.char==='tee',buffaloActivation=type==='uppercut'&&f.char==='tyke';
   const resourceCfg=punchCfg(f,type);
   if(codeXActivation)type='jab';
+  if(buffaloActivation)type='hook';
   const cfg = punchCfg(f, type);
   const level = fatigueLevel(f, type);
   // Per-type fatigue: each punch has its own bar count and per-bar penalty.
@@ -220,6 +221,7 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   }
   f.punch = {
     type,
+    ...(buffaloActivation?{buffaloActivation:true,baseDamage:fighterSuper(f).initialDamage!}:{}),
     ...(codeXActivation?{codeXActivation:{fx:f.fx,fy:f.fy}}:{}),
     frame: 0,
     startup: Math.max(1, Math.round(cfg.startup * slow)),
@@ -237,14 +239,14 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
     hand,
   };
   lowerGuard(f);
-  if (type === 'uppercut'||codeXActivation) {
+  if (type === 'uppercut'||codeXActivation||buffaloActivation) {
     f.stars = 0;
   }
   if(type!=='uppercut'){
     f.fatigue[type] += tune.fatigue.perUse;
     f.fatigueWait[type] = tune.fatigue.decayDelayFrames;
   }
-  spendStamina(f, codeXActivation?resourceCfg.staminaCost:cfg.staminaCost);
+  spendStamina(f, (codeXActivation||buffaloActivation)?resourceCfg.staminaCost:cfg.staminaCost);
   f.regenWait = tune.stamina.regenDelayFrames;
   events.push({ kind: 'throw', attacker: idx, punch: type, tired: level > 0 });
 }
@@ -415,7 +417,7 @@ function separateAndClamp(s: SimState): void {
 }
 
 function cancelPunch(f:Fighter,idx:number,reason:SuperCancelReason,events:SimEvent[]):void {
-  if((f.punch?.type==='uppercut'||f.punch?.codeXActivation)&&!f.punch.connected&&phaseOf(f.punch)!=='recovery'){
+  if((f.punch?.type==='uppercut'||f.punch?.codeXActivation||f.punch?.buffaloActivation)&&!f.punch.connected&&phaseOf(f.punch)!=='recovery'){
     const ability=fighterSuper(f);events.push({kind:'superCancelled',fighter:idx,superId:ability.id,starCost:ability.starCost,reason});
   }
   f.punch=null;
@@ -443,6 +445,7 @@ function addStar(s: SimState, idx: number, events: SimEvent[]): void {
 }
 
 interface Contact {
+  sourcePunch?:PunchState;
   targetId?:string;
   attacker: number;
   sweet: boolean;
@@ -480,6 +483,7 @@ function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint): 
     const fullReach = p.frame >= p.startup + p.sourEarly;
     if (!touchingCore && !fullReach) continue;
     contacts.push({
+      sourcePunch:p,
       attacker: i,
       sweet: phase === 'sweet',
       core: touchingCore,
@@ -510,13 +514,27 @@ function pushBack(att: Fighter, def: Fighter, p: PunchState, dist: number): void
   def.pushFrames = frames;
 }
 
+/** Same contact tick, after simultaneous old-Hook contacts, before any timers advance. */
+function flushBuffaloFollowup(s:SimState,idx:number,events:SimEvent[]):void {
+ const f=s.fighters[idx],p=f.punch;
+ if(p?.buffaloActivation&&p.buffaloConfirm&&f.health>0)startBuffaloUpper(s,idx,p,p.buffaloConfirm,events);
+}
+
+function startBuffaloUpper(s:SimState,idx:number,initial:PunchState,target:{targetId:string;x:number;y:number},events:SimEvent[]):void{
+ const f=s.fighters[idx],cfg=punchCfg(f,'uppercut');
+ const dx=target.x-f.x,dy=target.y-f.y,length=Math.sqrt(dx*dx+dy*dy);if(length>0){f.fx=dx/length;f.fy=dy/length;}
+ f.punch={type:'uppercut',buffaloUpper:true,baseDamage:fighterSuper(f).followupDamage!,frame:0,startup:Math.max(1,Math.round(cfg.startup)),sourEarly:cfg.sourEarly,sweet:cfg.sweet,sour:cfg.sour,recovery:Math.max(1,Math.round(cfg.recovery)),whiffFrames:0,reach:cfg.reach,startReach:cfg.reach*cfg.startReachFrac,damageMult:initial.buffed?tune.dodge.buffDamageMult:1,buffed:initial.buffed,resolved:false,connected:false,hand:1};
+ events.push({kind:'buffaloFollowup',attacker:idx,targetId:target.targetId,x:f.x,y:f.y});
+ events.push({kind:'throw',attacker:idx,punch:'uppercut',tired:false});
+}
+
 function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: boolean[], defWhiff: boolean[], emergencyAttack: boolean[], events: SimEvent[]): void {
   const att = s.fighters[c.attacker];
   const defIdx = 1 - c.attacker;
   const def = s.fighters[defIdx];
   const wasSuperCharged=superReady(def),beforeHealth=Math.max(0,def.health);
   const p = att.punch;
-  if (!p) return;
+  if (!p||(c.sourcePunch&&c.sourcePunch!==p)) return;
   p.resolved = true;
   const cfg = punchCfg(att, p.type);
   const damageMult = p.damageMult * (emergencyAttack[c.attacker] ? tune.stamina.emergencyDamageMult : 1);
@@ -524,7 +542,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   let stance = stances[defIdx];
   // Uppercut ignores a normal High Guard (taken as a normal hit) but a
   // Perfect Guard stops it. It can also be dodged (detectContacts).
-  if ((p.type === 'uppercut' && stance === 'guard') || (p.shadowSuper && (stance==='guard'||stance==='perfectGuard'))) {
+  if ((p.type === 'uppercut' && stance === 'guard') || ((p.shadowSuper||p.buffaloUpper) && (stance==='guard'||stance==='perfectGuard'))) {
     stance = 'normal';
   }
   // A hook wraps around a Perfect Guard just as it does a High Guard: it
@@ -554,7 +572,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     // guard is chipped by every punch that it can block.
     let chip = 0;
     if (p.type === 'hook' || def.exhausted) {
-      const full = cfg.damage * damageMult;
+      const full = (p.baseDamage??cfg.damage) * damageMult;
       const share = def.exhausted ? tune.guard.exhaustedChipMult : tune.punches.hook.guardChipMult;
       chip = (c.sweet ? full : full * tune.hit.reducedDamageMult) * share;
       def.health = Math.max(0, def.health - chip);
@@ -571,10 +589,10 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // outer ring (arms/body) resolves on the Normal row.
   // Uppercut ignores the outer ring as it ignores guard: always the Vulnerable row.
   const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' ? 'normal' : 'vulnerable';
-  const baseDamage =
+  const baseDamage =p.baseDamage??(
     p.type === 'uppercut'
       ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * fighterSuper(att).damageMultiplier
-      : cfg.damage;
+      : cfg.damage);
   const full = baseDamage * damageMult;
   const reduced = full * tune.hit.reducedDamageMult;
 
@@ -622,7 +640,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   }
   // Stars: a counter gives stars.counterGain, a sweet hit +1 (not stacked).
   // Uppercut consumes stars rather than building them.
-  if (p.type !== 'uppercut'&&!p.codeXActivation&&!p.shadowSuper) {
+  if (p.type !== 'uppercut'&&!p.codeXActivation&&!p.shadowSuper&&!p.buffaloActivation) {
     const gain = counter ? tune.stars.counterGain : c.sweet ? 1 : 0;
     for (let i = 0; i < gain; i++) addStar(s, c.attacker, events);
   }
@@ -648,6 +666,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     events.push({kind:'codeXLaunched',attacker:c.attacker,activationId:s.tick,endFrame,targetId:att.codeX.targetId,targetX:def.x,targetY:def.y,tracks:structuredClone(att.codeX.tracks)});
   }
   if(c.sweet&&damage>0)events.push({kind:'sweetImpact',attacker:c.attacker,x:c.x,y:c.y,punch:p.type});
+  if(p.buffaloActivation&&damage>0&&def.health<beforeHealth&&!p.buffaloConfirm)p.buffaloConfirm={targetId:c.targetId??'fighter:'+defIdx,x:def.x,y:def.y};
 }
 
 /** Resolve the two bounded visible sweeps. Targets are stable IDs, not AI clones. */
@@ -846,6 +865,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 
   resolveCodeX(s,0,[{id:'fighter:1',fighter:s.fighters[1]}],events);
   resolveCodeX(s,1,[{id:'fighter:0',fighter:s.fighters[0]}],events);
+  flushBuffaloFollowup(s,0,events);flushBuffaloFollowup(s,1,events);
   advanceTimers(s, 0, inputs[0], events);
   advanceTimers(s, 1, inputs[1], events);
 
@@ -860,5 +880,6 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
 // arena calls input/movement/timers once per entity, and contacts per pair.
 export const arenaCombat = {
   createFighter, processInput, move, advanceTimers, detectContacts, resolveContact,
-  requestedAction, rejectAction, gainStamina, resolveCodeX,
+  requestedAction, rejectAction, gainStamina, resolveCodeX, flushBuffaloFollowup,
 };
+
