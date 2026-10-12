@@ -19,7 +19,10 @@ function getGitSha(): string {
 function getPrototypeEntries(): Record<string, string> {
   if (process.env.PUNCHIES_ASSET_PROFILE) return {
     punchies: path.resolve(__dirname, 'prototypes/punchies/index.html'),
-    ...(process.env.PUNCHIES_STAGING === 'on' && process.env.PUNCHIES_QA === '1' && process.env.PUNCHIES_STAGING_QA === '1' ? {stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html')} : {}),
+    ...(process.env.PUNCHIES_STAGING === 'on' && process.env.PUNCHIES_QA === '1' && process.env.PUNCHIES_STAGING_QA === '1' ? {
+      stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html'),
+      ...(fs.existsSync(path.resolve(__dirname,'prototypes/punchies/ranked-review.html'))?{rankedReview:path.resolve(__dirname,'prototypes/punchies/ranked-review.html')}: {}),
+    } : {}),
   };
   const entries: Record<string, string> = {
     main: path.resolve(__dirname, 'index.html'),
