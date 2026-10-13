@@ -1,17 +1,17 @@
 ## Current milestone
-Urgent authorized shop hotfix: publish staging999 allowance first, then shared uniform candidate rules to compact itch. Title121026r0152 is live.
+Approved Zombie and Tyke staging batch, following production r0154.
 
 ## What was implemented
-Both chests show up to3 eligible unowned candidates and draw exactly from that list at uniform1/N odds (33/50/100%). Empty candidates disable the transaction before tokens/vouchers. Production daily paid caps/frozen offers and voucher exceptions remain; staging refills999 on Shop entry, bypasses daily caps and refreshes remaining offers after each success. Existing collection and stable reset receipt are preserved.
+Survival-only boss-add quotas 8/12/16/20/24, fighter-relative boss HP ramp, ordinary Zombie damage ramp, seeded real Cross attacks from wave 4, and schema2 checkpoints. Tyke's production-verified visual glove mirror is included. All earlier content and shared fighter tuning remain intact.
 
 ## Key technical decisions
-Logic17c2688+006930e and Art7533285+footerfix3e670b8 integrated on live152. Offer schema9 migrates deterministic snapshots without a player reset. The literal staging allowance branch is erased from production compilation. Keep exact reset epoch punchies-reset-2026-10-12-super-v1 and existing production/staging/debug/rating flags. Asset catalog VM loads the actual new currency dependency.
+Use production adaptation 9d79f534 as the feature base and integrate approved Zombie source 6ca4550. Preserve the staging namespace, 999-token Shop allowance and fixed reset epoch. Disable rating in the staged package. Old Survival checkpoints preserve personal bests but cannot resume under new balance.
 
 ## Open questions
-Physical controller/Android/mobile60fps remain unproven. Controlled collection fixtures are explicit QA setup, not earned collection or balances.
+User visual and gamefeel review remains ongoing; no extra acceptance gate is introduced.
 
 ## Known issues
-Existing cold palette limitation remains. Actual640x360 WebGL caught footer wrapping overlap; fixed and12skin/fighter popups across6locales reviewed. Three skin pulls cost15, three fighter pulls cost30, every award matched displayed candidates, no duplicates; empty skins/fighters retained tokens and2vouchers. Real production save/cap/no999 and real existing staged0save allowance are next artifact/public gates.
+Profile parity requires a separate focused correction for the compact-only Tee mask and the standard source-resolution fallback. No real Ranked pairing or mobile performance claim follows from this staging verification.
 
 ## Next proposed step
-Build one compact production/stage pair; verify no reset/production allowance leak and publish staging hotfix before shared production rule release. Tee indexed-mask/firelessVS and CodeX/Buffalo/Kai/Ranked work remain separate from this itch batch; new mechanics are stage-first only after their own readiness/compatibility gates.
+Publish the completed frozen stage batch after package/boot verification. Main reviews the next ready queue. Marco PR350 remains outside this batch.
