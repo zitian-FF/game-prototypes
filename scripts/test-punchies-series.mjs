@@ -56,7 +56,7 @@ assert.ok(sawReady && sawGo);
 console.log('Bo3 sweeps, deciders, draws, Bo1, rematch score reset, fresh meters and frozen round intro passed');
 
 // Exercise the online scene's actual round handshake without a browser transport.
-const transitions = [], sent = [], splashes = [];
+const transitions = [], sent = [], splashes = [];let tails=0;
 let resultActions;
 const sceneExports = {};
 const sceneFile = path.resolve(root, '../scenes/MatchScene.ts');
@@ -84,7 +84,7 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,
 function online(series, winner) {
   const scene = new sceneExports.MatchScene();
   Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { peer:{title:'rookie'}, send: m => sent.push(m) } },
-    ls: { confirmedResult: () => ({ winner }) }, waiting: { setVisible() {} },
+    stageReady:true,ls: { confirmedResult: () => ({ winner }),flushInputs(){tails++;} }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
     registry: { set() {} }, scene: { restart: data => transitions.push({ key: 'restart', data }) } });
   return scene;
@@ -94,6 +94,7 @@ early.rematchRemote = true; // Opponent finished its KO before this client.
 early.tryRematch();
 assert.equal(splashes.length, 0, 'never advance before our round is confirmed');
 early.showResult();
+assert(tails>0,'intermission resends the final input tail before readiness');
 early.tryRematch();
 assert.equal(splashes.length, 1, 'duplicate readiness must not restart twice');
 assert.equal(sent.at(-1).round, 8);
