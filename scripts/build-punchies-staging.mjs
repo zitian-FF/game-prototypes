@@ -9,6 +9,7 @@ const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
 const sha=git('rev-parse','HEAD'),branch=git('branch','--show-current'),builtAt=new Date().toISOString();
 const resetId=process.env.PUNCHIES_SAVE_RESET_ID??'punchies-reset-2026-10-12-super-v1';
 const source=path.resolve('dist/punchies-compact-web');
+function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 const stageOnly=process.argv.includes('--stage-only');
 let excluded=false,debugExcluded=false,productionFiles=0;
 if(stageOnly){
@@ -17,7 +18,6 @@ if(stageOnly){
 }else{
 // Prove that the normal entry does not emit the optional QA module or route.
 timed('productionReviewBuild',()=>run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'off',PUNCHIES_QA:'0',PUNCHIES_STAGING_QA:'0',PUNCHIES_SAVE_RESET_ID:resetId}));
-function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 excluded=files(source).every(f=>!/staging-review|ranked-review/.test(f)&&(!f.endsWith('.js')||!fs.readFileSync(f,'utf8').includes('PUNCHIES_STAGE_QA_ONLY')));
 if(!excluded)throw Error('QA leaked into the production artifact');
 const forbidden=['SYNC TUNE','debug=1','tp-dfwv','PUNCHIES_STAGE_QA_ONLY','PUNCHIES_RANKED_STAGE_QA_ONLY','PUNCHIES_RANKED_FICTIONAL_QA_ONLY'];
