@@ -1,7 +1,7 @@
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
-export const SIM_RULES_VERSION='sim-code-x-2';
+export const SIM_RULES_VERSION='sim-wave-motion-4';
 export interface RulesStamp {protocol:2;version:string;hash:string}
 function canonical(value:unknown):string {
  if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';

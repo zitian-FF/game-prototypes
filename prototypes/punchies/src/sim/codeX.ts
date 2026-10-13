@@ -9,8 +9,10 @@ export function codeXTrackPosition(track:CodeXTrack,frame:number){
  phase:frame<track.startFrame?'telegraph':frame<track.startFrame+CODE_X_TIMING.dash?'dash':'recovery'} as const;
 }
 export function codeXTracks(x:number,y:number,fx:number,fy:number,distance:number,stagger=CODE_X_TIMING.stagger,telegraph=CODE_X_TIMING.telegraph):[CodeXTrack,CodeXTrack]{
+ // fx/fy is the target's forward axis at confirmation. Begin at its front
+ // diagonals and cross to the opposite rear diagonals; never use attacker axes.
  const inv=1/Math.sqrt(2);
- return [-1,1].map((sign,index)=>{const dx=(fx-sign*fy)*inv,dy=(fy+sign*fx)*inv;return {startX:x-dx*distance,startY:y-dy*distance,endX:x+dx*distance,endY:y+dy*distance,startFrame:telegraph+index*stagger};}) as [CodeXTrack,CodeXTrack];
+ return [-1,1].map((sign,index)=>{const dx=(fx-sign*fy)*inv,dy=(fy+sign*fx)*inv;return {startX:x+dx*distance,startY:y+dy*distance,endX:x-dx*distance,endY:y-dy*distance,startFrame:telegraph+index*stagger};}) as [CodeXTrack,CodeXTrack];
 }
 /** Swept contact at the rendered track segment, no forced target-center hit. */
 export function codeXContactPoint(state:CodeXState,shadow:0|1,x:number,y:number,radius:number):{x:number;y:number}|null{
