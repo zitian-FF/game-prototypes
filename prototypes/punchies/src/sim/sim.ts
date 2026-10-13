@@ -202,8 +202,8 @@ function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[
   const f = s.fighters[idx];
   if(type==='uppercut'&&f.char==='dragon'){
     const resource=punchCfg(f,'uppercut'),buffed=f.dashBuff>0;f.dashBuff=0;
-    f.wave={activationId:s.tick,frame:0,startup:WAVE_MOTION.startup,endFrame:WAVE_MOTION.startup+WAVE_MOTION.travelFrames,
-      originX:f.x,originY:f.y,fx:f.fx,fy:f.fy,speed:WAVE_MOTION.worldWidth/WAVE_MOTION.travelFrames,radius:WAVE_MOTION.radius,buffed,launched:false};
+    f.wave={activationId:s.tick,frame:0,startup:WAVE_MOTION.startup,endFrame:WAVE_MOTION.startup+WAVE_MOTION.lifetimeFrames,
+      originX:f.x,originY:f.y,fx:f.fx,fy:f.fy,speed:WAVE_MOTION.worldWidth/WAVE_MOTION.travelFrames,startSpeedRatio:WAVE_MOTION.startSpeedRatio,accelerationFrames:WAVE_MOTION.accelerationFrames,radius:WAVE_MOTION.radius,buffed,launched:false};
     f.stars=0;lowerGuard(f);spendStamina(f,resource.staminaCost);f.regenWait=tune.stamina.regenDelayFrames;
     return;
   }

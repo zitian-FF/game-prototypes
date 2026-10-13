@@ -22,7 +22,7 @@
       "followupDamage": 30
     }
   },
-  "waveMotion": {"startup":12,"worldWidth":844,"travelFrames":60,"radius":12,"damage":25,"guardChip":0.5,"guardStaminaShare":0.4},
+  "waveMotion": {"startup":12,"worldWidth":844,"travelFrames":60,"lifetimeFrames":68,"startSpeedRatio":0.5,"accelerationFrames":30,"radius":12,"damage":25,"guardChip":0.5,"guardStaminaShare":0.4},
   "codeXTiming": {
     "telegraph": 18,
     "dash": 6,

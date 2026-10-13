@@ -4,7 +4,7 @@
 
 export type PunchType = 'jab' | 'cross' | 'hook' | 'uppercut';
 export type SuperId='rising-upper'|'code-x'|'buffalo-hook'|'wave-motion-blast';
-export interface WaveState {activationId:number;frame:number;startup:number;endFrame:number;originX:number;originY:number;fx:number;fy:number;speed:number;radius:number;buffed:boolean;launched:boolean}
+export interface WaveState {activationId:number;frame:number;startup:number;endFrame:number;originX:number;originY:number;fx:number;fy:number;speed:number;startSpeedRatio:number;accelerationFrames:number;radius:number;buffed:boolean;launched:boolean}
 export interface CodeXTrack {startX:number;startY:number;endX:number;endY:number;startFrame:number}
 export interface CodeXState {activationId:number;frame:number;endFrame:number;targetId:string;targetX:number;targetY:number;tracks:[CodeXTrack,CodeXTrack];buffed:boolean;crossFatigueMult:number;hitIds:[string[],string[]]}
 
