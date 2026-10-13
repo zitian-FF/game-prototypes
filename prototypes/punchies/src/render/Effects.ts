@@ -1,3 +1,5 @@
+import {EagleFireVfx,eaglePresentation,type EaglePresentation} from './eagleFireVfx';
+import {WaveMotionVfx,wavePresentation,type WavePresentation} from './waveMotionVfx';
 import {CodeXShadows} from './codeXShadows';
 import {CombatSymbols} from './combatSymbols';
 import {CombatText} from './combatText';
@@ -18,11 +20,19 @@ export class Effects {
   private fightCue:ReturnType<typeof fightWord>|null=null;
   private fightCueTick=0;
   codeXSources:(()=>readonly Fighter[])|null=null;
-  draw(s:SimState):void {this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);this.codeXShadows.draw(this.codeXSources?.()??s.fighters,!!s.result);}
+  draw(s:SimState):void {
+    this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);
+    const sources=this.codeXSources?.()??s.fighters,finished=!!s.result||(!!this.codeXSources&&sources.length===0);
+    this.codeXShadows.draw(sources,finished);
+    this.eagleVfx.draw(sources.map(eaglePresentation).filter((p):p is EaglePresentation=>p!==null),s.tick,finished);
+    this.waveVfx.draw(sources.map(wavePresentation).filter((p):p is WavePresentation=>p!==null),s.tick,finished);
+  }
   private sparks: CombatSparks;
   private combatText:CombatText;
   private symbols:CombatSymbols;
   private codeXShadows:CodeXShadows;
+  private waveVfx:WaveMotionVfx;
+  private eagleVfx:EagleFireVfx;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -34,6 +44,8 @@ export class Effects {
     this.sparks=new CombatSparks(scene);
     this.symbols=new CombatSymbols(scene);
     this.codeXShadows=new CodeXShadows(scene);
+    this.waveVfx=new WaveMotionVfx(scene);
+    this.eagleVfx=new EagleFireVfx(scene);
     this.combatText=new CombatText(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
@@ -135,6 +147,12 @@ export class Effects {
           }
           break;
         }
+        case 'eagleContact':
+          if(e.outcome!=='dodged')this.eagleVfx.contact(s.tick,e.x,e.y,e.outcome==='hit'?1:.35);
+          break;
+        case 'waveContact':
+          if(e.outcome!=='dodged')this.waveVfx.contact(s.tick,e.x,e.y,1,0,e.outcome==='hit'?1:e.outcome==='blocked'?.45:.3);
+          break;
         case 'sweetImpact':
           this.symbols.sweet(e.x,e.y);
           break;

@@ -3,7 +3,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'prototypes/punchies/**'
+      - 'prototypes/punchies/asset-profiles.json'
+      - 'prototypes/punchies/music-manifest.json'
+      - 'prototypes/punchies/asset-patches/**'
+      - 'prototypes/punchies/art/**'
       - 'scripts/build-punchies-profile.mjs'
       - 'scripts/test-punchies-profiles.mjs'
       - 'scripts/test-punchies-profile-parity.mjs'

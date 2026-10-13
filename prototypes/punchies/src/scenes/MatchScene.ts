@@ -43,6 +43,7 @@ export class MatchScene extends Phaser.Scene {
   private rematchRemote = false;
   private over = false;
   private departed = false;
+  private stageReady=false;private terminal=false;private connectionEpoch=0;private leaving:Promise<void>|undefined;
   private series!: SeriesState;
   private advancing = false;
   private nextSeries: SeriesState | undefined;
@@ -70,11 +71,17 @@ export class MatchScene extends Phaser.Scene {
   }
 
   create(data: MatchData): void {
+    const epoch=++this.connectionEpoch;this.stageReady=false;this.terminal=false;this.over=true;this.leaving=undefined;
     applyCameraPixelRatio(this);
     this.match = data;
     this.ratingMatchPromise=data.session.ratingMatch;
-    data.session.onRejected=reason=>{if(reason==='incompatible'){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
-    if(data.session.markMatchStarted&&!data.session.markMatchStarted()){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});return;}
+    const session=data.session,alive=()=>epoch===this.connectionEpoch&&!this.terminal;
+    const rejected:typeof session.onRejected=reason=>{if(reason==='incompatible'&&alive()){this.terminal=true;this.over=true;setGameplay(false);session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
+    let inputs:typeof session.onInputs|undefined,hash:typeof session.onHash|undefined,ctl:typeof session.onCtl|undefined,peerLeft:typeof session.onPeerLeft|undefined;
+    session.onRejected=rejected;
+    this.events.once('shutdown',()=>{if(epoch!==this.connectionEpoch)return;this.stageReady=false;this.terminal=true;this.cancelSplash?.();this.cancelSplash=undefined;
+      if(session.onRejected===rejected)session.onRejected=()=>{};if(session.onInputs===inputs)session.onInputs=()=>{};if(session.onHash===hash)session.onHash=()=>{};if(session.onCtl===ctl)session.onCtl=()=>{};if(session.onPeerLeft===peerLeft)session.onPeerLeft=()=>{};});
+    if(session.markMatchStarted&&!session.markMatchStarted()){rejected('incompatible');return;}
     this.series = data.series ?? newSeries(tune.match.bestOf);
     this.nextSeries = undefined;
     this.remoteReselect = false;
@@ -111,9 +118,11 @@ export class MatchScene extends Phaser.Scene {
       data.chars,
       { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0, showcase: this.series.roundNumber === 1 },
     );
-    s.onInputs = (p) => this.ls.receiveInputs(p);
-    s.onHash = (p) => this.ls.receiveHash(p);
-    s.onCtl = (m) => {
+    const rollback=this.ls;
+    s.onInputs = inputs = (p) => {if(alive())rollback.receiveInputs(p);};
+    s.onHash = hash = (p) => {if(alive())rollback.receiveHash(p);};
+    s.onCtl = ctl = (m) => {
+      if(!alive())return;
       if(m.k==='forfeit' && m.round===data.round){this.opponentLeft(true);return;}
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'pong') this.rtt = this.rtt > 0 ? this.rtt * 0.8 + (performance.now() - m.t) * 0.2 : performance.now() - m.t;
@@ -123,7 +132,8 @@ export class MatchScene extends Phaser.Scene {
         this.tryRematch();
       }
     };
-    s.onPeerLeft = () => this.opponentLeft();
+    s.onPeerLeft = peerLeft = () => {if(alive())this.opponentLeft();};
+    s.flushRoundTraffic?.();
 
     const nm = (i: 0 | 1) => charName(data.chars[i]);
     const names: [string, string] =
@@ -135,8 +145,8 @@ export class MatchScene extends Phaser.Scene {
       data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined);
     this.stage.setSeries(this.series);
 
-    this.events.on('menuReturn',()=>this.leave());
-    this.events.once('shutdown',()=>this.events.removeAllListeners('menuReturn'));
+    const onMenuReturn=()=>this.leave();this.events.on('menuReturn',onMenuReturn);
+    this.events.once('shutdown',()=>this.events.off('menuReturn',onMenuReturn));
 
     this.waiting = this.add
       .text(VIEW.cx, tune.ring.top + 16, t('match.waiting_for_opponent'), {
@@ -166,9 +176,11 @@ export class MatchScene extends Phaser.Scene {
       .setDepth(140)
       .setVisible(false);
     addVersionStamp(this);
+    this.stageReady=true;
   }
 
   update(time: number, delta: number): void {
+    if(!this.stageReady||this.terminal)return;
     this.stage.pollDevices();
     if (!this.over) {
       // Late remote inputs that contradict a prediction are corrected here,
@@ -294,12 +306,13 @@ export class MatchScene extends Phaser.Scene {
     if (!outcome.complete) {
       this.nextSeries = outcome.series;
       this.rematchLocal = true;
-      const ready = () => this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
+      const ready = () => {if(!this.terminal){this.ls.flushInputs();this.match.session.send({ k: 'rematch', round: this.match.round + 1 });}};
       ready();
       this.time.addEvent({ delay: 500, loop: true, callback: ready });
       this.tryRematch();
       return;
     }
+    this.match.session.markMatchCompleted?.();
     const score=r.winner===null?.5:r.winner===this.match.localIdx?1:0;
     if(!this.match.session.rated)void this.showRating(score);
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
@@ -315,7 +328,7 @@ export class MatchScene extends Phaser.Scene {
     if(rating)this.events.once('shutdown',()=>rating.dispose());
     const rem = matchResult(this, text, {
       rematch: () => {
-        if (this.rematchLocal) return;
+        if (this.rematchLocal||this.terminal||this.departed) return;
         this.rematchLocal = true;
         rem.setText(t('match.waiting'));
         this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
@@ -332,7 +345,7 @@ export class MatchScene extends Phaser.Scene {
 
   private findNextMatch():void {
     if(!this.match.session.rated||!this.over||this.nextSeries||this.advancing)return;
-    this.advancing=true;this.departed=true;
+    this.advancing=true;this.departed=true;this.terminal=true;
     this.cancelSplash?.();this.cancelSplash=undefined;
     this.match.session.leave();
     if(this.match.restoreTune)restoreTune(this.match.restoreTune);
@@ -361,15 +374,16 @@ export class MatchScene extends Phaser.Scene {
     }
   }
   private tryRematch(): void {
-    if (!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
+    if (this.terminal||this.departed||!this.over || !this.rematchLocal || !this.rematchRemote || this.advancing) return;
     this.advancing = true;
     if(this.match.session.rated&&!this.nextSeries&&this.match.localIdx===0){const nonce=crypto.randomUUID();this.match.session.send({k:'ratingSet',nonce});void this.match.session.beginRating(nonce);}
-    this.cancelSplash = roundSplash(this, () => this.scene.restart({ ...this.match, round: this.match.round + 1, series: this.nextSeries }));
+    const epoch=this.connectionEpoch,next={...this.match,round:this.match.round+1,series:this.nextSeries};
+    this.cancelSplash = roundSplash(this, () => {if(epoch===this.connectionEpoch&&!this.terminal&&!this.departed&&this.match.session.readyForMatch!==false)this.scene.restart(next);});
   }
 
   private changeBoxer(): void {
-    if (this.advancing || !this.over || this.nextSeries) return;
-    this.advancing = true;
+    if (this.terminal||this.departed||this.advancing || !this.over || this.nextSeries) return;
+    this.advancing = true;this.terminal=true;
     startScreen(this, 'CharSelect', { mode: 'online', session: this.match.session,
       localIdx: this.match.localIdx, delay: this.match.delay, restoreTune: this.match.restoreTune,
       nextRound: this.match.round + 1 });
@@ -377,7 +391,7 @@ export class MatchScene extends Phaser.Scene {
 
   private opponentLeft(forfeited=false): void {
     if(this.departed)return;
-    this.departed=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;
+    this.departed=true;this.terminal=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;setGameplay(false);
     this.time.removeAllEvents();
     if(!this.over||this.nextSeries)void this.showRating(forfeited?1:undefined);
     // A remote disappearance is not a voluntary local quit, including Bo3 breaks.
@@ -386,6 +400,7 @@ export class MatchScene extends Phaser.Scene {
     this.cancelSplash = undefined;
     getNav(this).engage();
     this.over = true;
+    if(!this.stageReady){startScreen(this,'Menu',{message:forfeited?t('match.victory_opponent_forfeited'):t('match.victory_opponent_disconnected')});return;}
     this.waiting.setVisible(false);
     this.add
       .text(VIEW.cx, VIEW.cy, forfeited?t('match.victory_opponent_forfeited'):t('match.victory_opponent_disconnected'), {
@@ -402,11 +417,11 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private async leave(): Promise<void> {
+    if(this.leaving)return this.leaving;
+    const forfeit=!this.departed&&(!this.over||!!this.nextSeries);this.terminal=true;setGameplay(false);
     this.cancelSplash?.();
     this.cancelSplash = undefined;
-    if(!this.over || this.nextSeries)await this.match.session.forfeit(this.match.round);
-    this.match.session.leave();
-    if (this.match.restoreTune) restoreTune(this.match.restoreTune);
-    startScreen(this, 'Menu');
+    this.leaving=(async()=>{if(forfeit)await this.match.session.forfeit(this.match.round);this.match.session.leave();if(this.match.restoreTune)restoreTune(this.match.restoreTune);startScreen(this, 'Menu');})();
+    return this.leaving;
   }
 }

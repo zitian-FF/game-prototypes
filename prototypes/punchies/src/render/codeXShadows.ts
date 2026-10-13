@@ -24,16 +24,17 @@ export class CodeXShadows {
   }
   private drawTrack(v:TrackView,state:CodeXState,index:0|1,sheet:CodeXSheet){
     const track=state.tracks[index],frame=state.frame,pos=codeXTrackPosition(track,frame),angle=Math.atan2(track.endY-track.startY,track.endX-track.startX),motion=!reducedMotion();
-    const palette=index?0xb795ef:0x71cef4,key=index?sheet.purple:sheet.cyan;
-    const recovery=Math.max(0,frame-track.startFrame-CODE_X_TIMING.dash),fade=Math.max(0,1-recovery/Math.max(1,CODE_X_TIMING.recovery));
+    const palette=index?0xfaffff:0x10131c,key=index?sheet.white:sheet.black,rimKey=index?sheet.black:sheet.cream;
+    const recovery=Math.max(0,frame-track.startFrame-CODE_X_TIMING.dash),arrival=Math.max(0,Math.min(1,(frame-track.startFrame+3)/3)),fade=arrival*Math.max(0,1-recovery/4);
     const windup=Math.max(0,Math.min(1,(frame-track.startFrame+4)/4));
-    const base=pos.phase==='telegraph'?.45:.82;
-    for(const [image,texture,pose] of [[v.guard,sheet.dark,'guard'],[v.cross,sheet.dark,'cross'],[v.rim,key,'cross']] as const)image.setTexture(texture,pose).setOrigin(sheet.pivotX,sheet.pivotY).setPosition(pos.x,pos.y).setRotation(angle).setVisible(fade>0);
-    v.guard.setTintFill(0x1b2446).setScale(1).setAlpha(base*fade*(1-windup));v.cross.setTintFill(0x1b2446).setScale(1).setAlpha(base*fade*windup);
-    v.rim.setFrame(windup<.5?'guard':'cross').setTintFill(palette).setScale(1.025).setAlpha((pos.phase==='telegraph'?.42:.32)*fade);
+    const base=pos.phase==='telegraph'?.35:.82;
+    for(const [image,texture,pose] of [[v.guard,key,'guard'],[v.cross,key,'cross'],[v.rim,rimKey,'cross']] as const)image.setTexture(texture,pose).setOrigin(sheet.pivotX,sheet.pivotY).setPosition(pos.x,pos.y).setRotation(angle).setVisible(fade>0);
+    v.guard.setTintFill(palette).setScale(1).setAlpha(base*fade*(1-windup));v.cross.setTintFill(palette).setScale(1).setAlpha(base*fade*windup);
+    v.rim.setFrame(windup<.5?'guard':'cross').setTintFill(index?0x14213a:0xfff0ce).setScale(1.08).setAlpha((pos.phase==='telegraph'?.42:.32)*fade);
     v.ghosts.forEach((g,j)=>{const p=codeXTrackPosition(track,Math.max(track.startFrame,frame-(j+1)*2));g.setTexture(key,'cross').setOrigin(sheet.pivotX,sheet.pivotY).setPosition(p.x,p.y).setRotation(angle).setTintFill(palette).setAlpha((j?.09:.15)*fade).setVisible(motion&&pos.phase==='dash');});
     const distance=Math.hypot(pos.x-track.startX,pos.y-track.startY);
-    v.trail.setPosition(pos.x,pos.y).setRotation(angle).setTint(palette).setDisplaySize(Math.max(1,distance),motion?4:2).setAlpha((motion?.28:.14)*fade).setVisible(distance>0&&fade>0);
+    const complete=Math.max(...state.tracks.map(t=>t.startFrame))+CODE_X_TIMING.dash,age=Math.max(0,frame-complete),hold=Math.min(12,Math.max(1,state.endFrame-complete)),trailFade=Math.max(0,Math.min(1,(hold-age)/4));
+    v.trail.setFrame(index?'white':'black').setPosition(pos.x,pos.y).setRotation(angle).setTint(0xffffff).setDisplaySize(Math.max(1,distance),motion?7:4).setAlpha((motion?.9:.4)*trailFade).setVisible(distance>0&&trailFade>0);
   }
   diagnostics(){return {codeXTrackCapacity:4,codeXActiveTracks:this.activeTracks,codeXObjects:this.disposed?0:24,codeXBaked:!!this.sheet,codeXWorldParented:this.views.flatMap(v=>v.flatMap(t=>t.objects)).filter(o=>!!o.parentContainer).length,codeXPuppetFrames:0};}
   destroy(){if(this.disposed)return;this.disposed=true;this.activeTracks=0;this.scene.events.off('shutdown',this.destroy,this);this.views.flatMap(v=>v.flatMap(t=>t.objects)).forEach(o=>o.destroy());this.views=[];}

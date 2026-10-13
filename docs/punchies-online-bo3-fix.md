@@ -1,0 +1,13 @@
+# Online BO3 lifecycle repair
+
+Production r0155 (`4533af75`) and stage (`2aef812`) have identical NetSession and MatchScene sources. The simulation fingerprint differs, but neither release validates actual online BO3 continuation in its boot checks.
+
+The host sent the initial START without recording `initialStartValidated` or `startedRound`; only the guest recorded them. At the first round break the host could not approve round 2, left the room on rejected MatchScene creation, and the guest observed a disconnect. A reused Phaser scene then polled its previously disposed FightStage. The actual two-peer fixture failed before this repair with `host same-build BO3 round 2, rated=false: false !== true`.
+
+The repair records START symmetrically, requires consecutive two-sided readiness, preserves rematch votes across the next Ranked rating reservation, and keeps the final input/hash tail valid during KO confirmation. Authorized next-round traffic is quarantined until the new rollback receivers are installed. The bounded 64-packet queues preserve the earliest ticks rather than evicting tick zero when one peer finishes its splash first.
+
+Scene callbacks capture their own rollback instance and epoch. Shutdown clears only callbacks still owned by that scene. Rejected bootstrap, explicit leave and remote departure are terminal: no disposed control poll, continued simulation, late splash restart, or automatic re-pairing. Intentional Casual intermission forfeits still notify the peer without a rating request; transport disappearance does not fabricate a winner. Full-set completion prevents a later menu exit from becoming a second loss.
+
+The control lifecycle version joins the existing rules fingerprint without overwriting the release's simulation version. Fixed clients reject old control builds before pairing. No Worker migration, tuning restoration change, combat balance change, or automatic session restart is included.
+
+Validation uses the actual NetSession and MatchScene with deterministic transport/API/render boundaries: Ranked/Casual, host/guest first, alternating three-round winners, simultaneous results, delayed round start and tick-zero drain, bounded queues, final-set rematch identity, disconnect during splash/after resume, duplicate readiness/forfeit, stale callback cleanup, rejected bootstrap and one legitimate rating claim per peer per set. Existing series, rating-session, Ranked binding, rules compatibility, CodeX/Eagle timing/rollback and TypeScript checks pass. A real Brave/WebRTC two-device playthrough remains a release smoke check; the fixtures do not claim to validate signalling services or production rating settlement.

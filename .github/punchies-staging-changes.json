@@ -1,8 +1,8 @@
 [
-  "Zombie balance: finite boss-add quotas, approved boss HP and damage ramp",
-  "Cross joins ordinary Zombies from wave 4 with slower startup and one active Cross",
-  "Old Survival checkpoints become incompatible; personal bests remain",
-  "Tyke gloves now visibly mirror with corrected cuff alignment",
-  "Retains all approved fighter stats, Kai/Tee assets, Ranked UI and shop rules",
-  "Staging saves and 999-token allowance remain isolated; rated play disabled"
+  "Eagle Punch startup50: damage40, dash12, recovery18 and cost unchanged",
+  "Online BO3: symmetric START, safe round/rematch votes and late-packet quarantine",
+  "Disconnect and rejected bootstrap are terminal; disposed scenes cannot keep ticking",
+  "Saves retained: missing reset receipts never authorize deletion; failed writes remain coherent",
+  "Retains completed Eagle, refined Wave/CodeX and approved fighter/Zombie balance",
+  "Stage999, isolated saves and ratingdisabled retained; Modern and Beta UI excluded"
 ]

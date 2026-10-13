@@ -4,12 +4,12 @@ import {FighterView} from './FighterView';
 import {mainLook} from './characterLook';
 import {arenaCombat} from '../sim/sim';
 import {NEUTRAL_INPUT} from '../sim/types';
-const CELL=256,KEY='punchies:code-x-tee-shadow-v1';
-export interface CodeXSheet {dark:string;cyan:string;purple:string;pivotX:number;pivotY:number}
+const CELL=256,KEY='punchies:code-x-tee-shadow-v2';
+export interface CodeXSheet {black:string;cream:string;white:string;pivotX:number;pivotY:number}
 /** Bake only twice from the existing Tee rig; never run a puppet for a shadow frame. */
 export function codeXShadowSheet(scene:Phaser.Scene):CodeXSheet|null {
   const saved=scene.registry.get(KEY) as CodeXSheet|undefined;
-  if(saved&&[saved.dark,saved.cyan,saved.purple].every(k=>scene.textures.exists(k)))return saved;
+  if(saved&&[saved.black,saved.cream,saved.white].every(k=>scene.textures.exists(k)))return saved;
   if(!['head','torso','glove_left','glove_right','boot_left','boot_right'].every(part=>scene.textures.exists(skinTexture(scene,'tee','default',`part_tee_${part}`))))return null;
   const texture=scene.textures.addDynamicTexture(KEY,CELL*2,CELL)!;
   const look=mainLook('tee'),view=new FighterView(scene,look.color);view.skin='default';view.setLook(look.color,look.scale,look.ponytail);
@@ -30,11 +30,11 @@ export function codeXShadowSheet(scene:Phaser.Scene):CodeXSheet|null {
     const right=Math.min(CELL,Math.ceil(Math.max(...boxes.map(b=>b.right))+12)),bottom=Math.min(CELL,Math.ceil(Math.max(...boxes.map(b=>b.bottom))+12)),width=Math.max(1,right-left),height=Math.max(1,bottom-top);
     const frames=(t:Phaser.Textures.Texture)=>{t.add('guard',0,left,top,width,height);t.add('cross',0,CELL+left,top,width,height);};
     frames(texture);
-    const result:CodeXSheet={dark:KEY,cyan:KEY,purple:KEY,pivotX:(pivot.x-left)/width,pivotY:(pivot.y-top)/height};
+    const result:CodeXSheet={black:KEY,cream:KEY,white:KEY,pivotX:(pivot.x-left)/width,pivotY:(pivot.y-top)/height};
     if(scene.game.renderer.type===1){
       // Canvas ignores sprite tint-fill. Bake three alpha-mask colours once instead.
       const source=texture.getSourceImage() as HTMLCanvasElement;
-      for(const [name,color] of [['dark','#1b2446'],['cyan','#71cef4'],['purple','#b795ef']] as const){
+      for(const [name,color] of [['black','#10131c'],['cream','#fff0ce'],['white','#faffff']] as const){
         const key=KEY+':'+name,t=scene.textures.createCanvas(key,CELL*2,CELL)!;
         t.context.drawImage(source,0,0);t.context.globalCompositeOperation='source-in';t.context.fillStyle=color;t.context.fillRect(0,0,CELL*2,CELL);t.context.globalCompositeOperation='source-over';frames(t);t.refresh();result[name]=key;
       }
@@ -45,7 +45,10 @@ export function codeXShadowSheet(scene:Phaser.Scene):CodeXSheet|null {
   finally{view.objects.forEach(o=>o.destroy());}
 }
 export function codeXTrailTexture(scene:Phaser.Scene):string {
-  const key='punchies:code-x-trail-v1';if(scene.textures.exists(key))return key;
-  const t=scene.textures.createCanvas(key,128,8)!,ctx=t.context,g=ctx.createLinearGradient(0,0,128,0);
-  g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.5,'rgba(255,255,255,.25)');g.addColorStop(1,'rgba(255,255,255,.85)');ctx.fillStyle=g;ctx.fillRect(0,0,128,8);t.refresh();return key;
+  const key='punchies:code-x-trail-v2';if(scene.textures.exists(key))return key;
+  const t=scene.textures.createCanvas(key,256,12)!,ctx=t.context;
+  for(const [index,name,edge,core] of [[0,'black','#fff0ce','#10131c'],[1,'white','#14213a','#faffff']] as const){
+    const x=index*128;ctx.fillStyle=edge;ctx.beginPath();ctx.moveTo(x,6);ctx.lineTo(x+9,1);ctx.lineTo(x+120,1);ctx.lineTo(x+128,6);ctx.lineTo(x+120,11);ctx.lineTo(x+9,11);ctx.closePath();ctx.fill();
+    ctx.fillStyle=core;ctx.beginPath();ctx.moveTo(x+3,6);ctx.lineTo(x+10,3);ctx.lineTo(x+119,3);ctx.lineTo(x+125,6);ctx.lineTo(x+119,9);ctx.lineTo(x+10,9);ctx.closePath();ctx.fill();t.add(name,0,x,0,128,12);
+  }t.refresh();return key;
 }

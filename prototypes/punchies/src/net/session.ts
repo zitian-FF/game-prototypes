@@ -64,21 +64,31 @@ export class NetSession {
   private pairingTimer:ReturnType<typeof setTimeout>|undefined;
   private rejectRules():void{this.compatiblePeer=false;this.gameStarted=false;this.pendingRating?.resolve(null);this.pendingRating=null;this.onRejected('incompatible');}
   private initialStartValidated=false;private startedRound=0;private playingRatingMatch:Promise<string|null>|null=null;
+  private setActive=false;private forfeitTask:Promise<void>|undefined;
+  private receiverReady=false;private queuedInputs=new Map<string,InputPacket>();private queuedHashes=new Map<string,HashPacket>();
   private approvedStart=false;private localReadyRound:number|null=null;private remoteReadyRound:number|null=null;private currentRatingNonce:string|null=null;private validatedStartNonce:string|null=null;private ratingStarted=false;
   markRoundEnded():void{this.gameStarted=false;this.approvedStart=false;}
-  private rematchReady(round:number,local:boolean):void{if(local)this.localReadyRound=round;else this.remoteReadyRound=round;this.validatedStartNonce=null;this.approvedStart=this.initialStartValidated&&round>this.startedRound&&this.localReadyRound===round&&this.remoteReadyRound===round;}
+  markMatchCompleted():void{this.setActive=false;}
+  private rematchReady(round:number,local:boolean):boolean{if(!this.initialStartValidated||round!==this.startedRound+1)return false;if(local)this.localReadyRound=round;else this.remoteReadyRound=round;this.validatedStartNonce=null;this.approvedStart=this.localReadyRound===round&&this.remoteReadyRound===round;return true;}
   private pendingRating:{nonce:string;resolve:(id:string|null)=>void}|null=null;
   private commitStart():boolean{
     if(!this.readyForMatch||!this.approvedStart)return false;
     const pending=this.pendingRating;
     if(pending&&this.validatedStartNonce&&pending.nonce!==this.validatedStartNonce){this.rejectRules();return false;}
-    this.gameStarted=true;if(this.localReadyRound!==null)this.startedRound=this.localReadyRound;this.localReadyRound=null;this.remoteReadyRound=null;
+    this.gameStarted=true;this.receiverReady=false;this.setActive=true;this.forfeitTask=undefined;if(this.localReadyRound!==null)this.startedRound=this.localReadyRound;this.localReadyRound=null;this.remoteReadyRound=null;
     if(pending){this.pendingRating=null;this.currentRatingNonce=pending.nonce;this.ratingStarted=true;this.playingRatingMatch=this.ratingMatch;void this.createRating(pending.nonce).then(pending.resolve,()=>pending.resolve(null));}
     return true;
   }
   private createRating(nonce:string):Promise<string|null>{return this.rated&&this.peerRating?(this.assignment?createRatingMatch(this.peerRating.id,nonce,this.assignment.pairId):createRatingMatch(this.peerRating.id,nonce)):Promise.resolve(null);}
   private compatiblePeer=false;private gameStarted=false;
   get readyForMatch():boolean{return !this.closed&&!!this.peerId&&this.compatiblePeer;}
+  private roundTraffic(round:number):boolean{return this.readyForMatch&&this.initialStartValidated&&Number.isSafeInteger(round)&&round===this.startedRound;}
+  private queueRound(round:number):boolean{return this.roundTraffic(round)||this.readyForMatch&&this.initialStartValidated&&round===this.startedRound+1&&this.localReadyRound===round;}
+  /** Arm only after the new scene has installed its rollback receivers. */
+  flushRoundTraffic():void{if(!this.readyForMatch||!this.initialStartValidated)return;this.receiverReady=true;
+    const inputs=[...this.queuedInputs.values()].filter(p=>p.round===this.startedRound).sort((a,b)=>a.from-b.from),hashes=[...this.queuedHashes.values()].filter(p=>p.round===this.startedRound).sort((a,b)=>a.tick-b.tick);
+    this.queuedInputs.clear();this.queuedHashes.clear();for(const p of inputs)this.onInputs(p);for(const p of hashes)this.onHash(p);
+  }
   markMatchStarted():boolean {if(!this.readyForMatch)return false;return this.gameStarted||this.commitStart();}
   private closed=false;private initialQueueNonceUsed=false;
   nextRatingNonce():string {if(this.assignment&&!this.initialQueueNonceUsed){this.initialQueueNonceUsed=true;return this.assignment.nonce;}return crypto.randomUUID();}
@@ -116,21 +126,27 @@ export class NetSession {
 
     this.ctl.onMessage = (m, c) => this.handleCtl(m, c.peerId);
     this.inp.onMessage = (p, c) => {
-      if (c.peerId === this.peerId&&this.readyForMatch&&this.gameStarted) this.onInputs(p);
+      if(c.peerId!==this.peerId||!p)return;
+      if(this.roundTraffic(p.round)&&this.receiverReady)this.onInputs(p);
+      else if(this.queueRound(p.round)&&Number.isSafeInteger(p.from)&&p.from>=0&&Array.isArray(p.d)&&p.d.length<=128){const key=p.round+':'+p.from;if(this.queuedInputs.size<64||this.queuedInputs.has(key))this.queuedInputs.set(key,p);}
     };
     this.hsh.onMessage = (p, c) => {
-      if (c.peerId === this.peerId&&this.readyForMatch&&this.gameStarted) this.onHash(p);
+      if(c.peerId!==this.peerId||!p)return;
+      if(this.roundTraffic(p.round)&&this.receiverReady)this.onHash(p);
+      else if(this.queueRound(p.round)&&Number.isSafeInteger(p.tick)&&p.tick>=0){const key=p.round+':'+p.tick;if(this.queuedHashes.size<64||this.queuedHashes.has(key))this.queuedHashes.set(key,p);}
     };
 
     this.room.onPeerJoin = (id: string) => {
       void (this.rated?loadRating():Promise.resolve(null)).then(me=>{if(this.closed)return;return this.ctl.send({ k:'hello',role:this.role,rules:simulationRules(),rated:this.rated,profile:localWireProfile(),...(me?{rating:{id:me.myId,points:me.rating}}:{})},{target:id});}).catch(()=>{});
     };
     this.room.onPeerLeave = (id: string) => {
+      if(this.closed)return;
       this.candidates.delete(id);
       if (id === this.peerId) {
-        this.peerId = null;this.compatiblePeer=false;this.gameStarted=false;
+        this.peerId = null;this.compatiblePeer=false;this.gameStarted=false;this.setActive=false;
+        this.pendingRating?.resolve(null);this.pendingRating=null;
         this.peerRating=null;
-        this.onPeerLeft();
+        try{this.onPeerLeft();}finally{this.leave();}
       }
     };
   }
@@ -177,8 +193,7 @@ export class NetSession {
       return;
     }
     if (from === this.peerId&&this.readyForMatch) {
-      if(m.k==='ratingSet'){this.approvedStart=false;this.localReadyRound=null;this.remoteReadyRound=null;}
-      if(m.k==='rematch'){if(!sameRules(m.rules)||!Number.isSafeInteger(m.round)||m.round<1){this.rejectRules();return;}this.rematchReady(m.round,false);}
+      if(m.k==='rematch'){if(!sameRules(m.rules)||!Number.isSafeInteger(m.round)||m.round<1){this.rejectRules();return;}if(!this.rematchReady(m.round,false))return;}
       if(m.k==='start'){
         if(this.role!=='guest')return;
         if(this.startedRound>0&&m.round<=this.startedRound&&this.gameStarted)return;
@@ -200,28 +215,30 @@ export class NetSession {
   }
   send(m: CtlMessage): void {
     if(!this.readyForMatch)return;
-    if(m.k==='start'){m={...m,rules:simulationRules(),tuneHash:tuneSnapshotHash(m.tune)!};if(!compatibleStart(m,this.rated,validateTuneJson)){this.rejectRules();return;}this.approvedStart=true;this.validatedStartNonce=m.ratingNonce??null;this.commitStart();}
-    if(m.k==='ratingSet'){this.approvedStart=false;this.localReadyRound=null;this.remoteReadyRound=null;}
-    if(m.k==='rematch'){m={...m,rules:simulationRules()};this.rematchReady(m.round,true);}
+    if(m.k==='start'){m={...m,rules:simulationRules(),tuneHash:tuneSnapshotHash(m.tune)!};if(!compatibleStart(m,this.rated,validateTuneJson)){this.rejectRules();return;}if(this.gameStarted&&m.round<=this.startedRound)return;this.initialStartValidated=true;this.startedRound=m.round;this.approvedStart=true;this.validatedStartNonce=m.ratingNonce??null;this.commitStart();}
+    if(m.k==='rematch'){m={...m,rules:simulationRules()};if(!this.rematchReady(m.round,true))return;}
     if (this.peerId) void this.ctl.send(m, { target: this.peerId });
   }
 
   sendInputs(p: InputPacket): void {
-    if (this.readyForMatch&&this.gameStarted&&this.peerId) void this.inp.send(p, { target: this.peerId });
+    if (this.roundTraffic(p.round)&&this.peerId) void this.inp.send(p, { target: this.peerId });
   }
 
   sendHash(p: HashPacket): void {
-    if (this.readyForMatch&&this.gameStarted&&this.peerId) void this.hsh.send(p, { target: this.peerId });
+    if (this.roundTraffic(p.round)&&this.peerId) void this.hsh.send(p, { target: this.peerId });
   }
 
   async forfeit(round:number): Promise<void> {
-    if(!this.readyForMatch||(!this.gameStarted&&!this.ratingStarted))return;
-    await this.report(0,true);
-    if(this.peerId)await this.ctl.send({k:'forfeit',round},{target:this.peerId}).catch(()=>{});
+    if(this.forfeitTask)return this.forfeitTask;
+    if(!this.readyForMatch||!this.setActive)return;
+    this.forfeitTask=(async()=>{if(this.peerId)await this.ctl.send({k:'forfeit',round},{target:this.peerId}).catch(()=>{});await this.report(0,true);this.setActive=false;})();
+    return this.forfeitTask;
   }
 
   leave(): void {
+    if(this.closed)return;
     this.closed=true;this.pendingRating?.resolve(null);this.pendingRating=null;
+    this.receiverReady=false;this.queuedInputs.clear();this.queuedHashes.clear();
     if(!this.gameStarted&&this.assignment)void releaseRatingPair(this.assignment.pairId).catch(()=>{});
     if(this.pairingTimer)clearTimeout(this.pairingTimer);this.candidates.clear();
     void this.room.leave();

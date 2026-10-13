@@ -6,6 +6,8 @@
     "descriptionKey": "super.rising_upper_description"
   },
   "characters": {
+    "captain": {"id":"eagle-punch","nameKey":"super.eagle_punch","descriptionKey":"super.eagle_punch_description","mechanic":"dash"},
+    "dragon": {"id":"wave-motion-blast","nameKey":"super.wave_motion_blast","descriptionKey":"super.wave_motion_blast_description","mechanic":"projectile"},
     "tee": {
       "id": "code-x",
       "nameKey": "super.code_x",
@@ -21,9 +23,11 @@
       "followupDamage": 30
     }
   },
+  "waveMotion": {"startup":12,"worldWidth":844,"travelFrames":60,"lifetimeFrames":68,"startSpeedRatio":0.5,"accelerationFrames":30,"radius":12,"damage":25,"guardChip":0.5,"guardStaminaShare":0.4},
+  "eaglePunch": {"startup":50,"damage":40,"dashDistanceMult":2,"dashFrames":12,"recovery":18},
   "codeXTiming": {
     "telegraph": 18,
-    "dash": 12,
+    "dash": 6,
     "stagger": 4,
     "recovery": 12
   }

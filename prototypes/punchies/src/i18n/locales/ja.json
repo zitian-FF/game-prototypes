@@ -475,7 +475,7 @@
   "shop.today_s_fighters": "本日のファイター",
   "shop.chest_candidate_rules": "各宝箱から、最大3つの候補のうち1つを獲得。",
   "super.code_x": "コードX",
-  "super.code_x_description": "ジャブ命中で影が2回クロス。影は通常・パーフェクトガードを突破。回避で避けよう。",
+  "super.code_x_description": "ジャブ命中で高速の斜めクロス2回。通常・パーフェクトガードで防げます。回避も有効。",
   "super.buffalo_hook": "バッファローフック",
   "super.buffalo_hook_description": "ガードされないフック命中でアッパーへ。アッパーは通常・パーフェクトガードを突破。回避で避けよう。",
   "online.rules_mismatch": "ゲームのルールが一致しません。両方のゲームを更新して、もう一度お試しください。",
@@ -486,5 +486,9 @@
   "shop.item.skin-kai-grabber-green.name": "カイ · グラバーグリーン",
   "shop.item.skin-kai-panda-pink.name": "カイ · ピンクパンダ",
   "ranked.next_match": "次の対戦を探す",
-  "rating.transition": "{before} → {after}（{delta}）"
+  "rating.transition": "{before} → {after}（{delta}）",
+  "super.wave_motion_blast": "波動ブラスト",
+  "super.wave_motion_blast_description": "短い溜めから波動を放つ。通常ガードは半分のダメージと最大スタミナ40%を失う。パーフェクトガードや回避で防げます。",
+  "super.eagle_punch": "イーグルパンチ",
+  "super.eagle_punch_description": "長い溜めから炎の突進パンチ。通常ガードを突破。パーフェクトガードや回避で防げます。無敵時間なし。"
 }

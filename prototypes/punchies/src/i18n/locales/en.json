@@ -475,7 +475,7 @@
   "shop.today_s_fighters": "TODAY’S FIGHTERS",
   "shop.chest_candidate_rules": "Each chest draws one reward from up to 3 eligible candidates.",
   "super.code_x": "CODE X",
-  "super.code_x_description": "Land the jab for two shadow Cross hits. Shadows ignore guard and Perfect Guard; dodge to evade.",
+  "super.code_x_description": "Land the Jab for two fast diagonal Crosses. Guard and Perfect Guard block them; dodge to evade.",
   "super.buffalo_hook": "Buffalo Hook",
   "super.buffalo_hook_description": "An unblocked Hook hit chains into an Upper. The Upper ignores guard and Perfect Guard; dodge to evade.",
   "online.rules_mismatch": "Game rules don’t match. Update both games and try again.",
@@ -486,5 +486,9 @@
   "shop.item.skin-kai-grabber-green.name": "KAI · GRABBER GREEN",
   "shop.item.skin-kai-panda-pink.name": "KAI · PANDA PINK",
   "ranked.next_match": "FIND NEXT MATCH",
-  "rating.transition": "{before} → {after} ({delta})"
+  "rating.transition": "{before} → {after} ({delta})",
+  "super.wave_motion_blast": "Wave Motion Blast",
+  "super.wave_motion_blast_description": "Launch a wave after a brief charge. Guard takes half damage and loses 40% max stamina; Perfect Guard or dodge stops it.",
+  "super.eagle_punch": "Eagle Punch",
+  "super.eagle_punch_description": "Long charge, then a fiery dash punch. Breaks guard; Perfect Guard and dodge work. No invincibility."
 }

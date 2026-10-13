@@ -475,7 +475,7 @@
   "shop.today_s_fighters": "今日拳手",
   "shop.chest_candidate_rules": "每个宝箱从最多3个可获取候选奖励中抽取1个。",
   "super.code_x": "代码 X",
-  "super.code_x_description": "刺拳命中后，两道残影各打出一记摆拳。残影无视防守和完美防守，可用闪避躲开。",
+  "super.code_x_description": "刺拳命中后，两道残影快速交叉打出摆拳。普通防守和完美防守可挡下，也可闪避。",
   "super.buffalo_hook": "野牛勾拳",
   "super.buffalo_hook_description": "未被防守挡下的勾拳命中后，接续上勾拳。该上勾拳无视防守和完美防守，可用闪避躲开。",
   "online.rules_mismatch": "游戏规则版本不一致。请更新双方的游戏后重试。",
@@ -486,5 +486,9 @@
   "shop.item.skin-kai-grabber-green.name": "凯 · 夺目绿",
   "shop.item.skin-kai-panda-pink.name": "凯 · 粉红熊猫",
   "ranked.next_match": "寻找下一场对战",
-  "rating.transition": "{before} → {after}（{delta}）"
+  "rating.transition": "{before} → {after}（{delta}）",
+  "super.wave_motion_blast": "波动冲击",
+  "super.wave_motion_blast_description": "短暂蓄力后发射波动。普通防守仍受一半伤害，并消耗最大体力的40%；完美防守或闪避可化解。",
+  "super.eagle_punch": "鹰击拳",
+  "super.eagle_punch_description": "长时间蓄力后打出烈焰突进拳。突破普通防守，完美防守和闪避仍有效。全程没有无敌。"
 }

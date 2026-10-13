@@ -64,9 +64,11 @@ jobs:
           deployed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-punchies-rating.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
           [ -n "$deployed" ] || { echo "::error::No successful Worker deployment receipt"; exit 1; }
           git fetch origin "$deployed"
-          if ! git diff --quiet "$deployed" HEAD -- prototypes/punchies/server prototypes/punchies/src/net/rules.ts; then
-            echo "::error::Reviewed source is incompatible with the recorded live Worker source/protocol; approve and deploy the Worker separately"; exit 1
+          if ! git diff --quiet "$deployed" HEAD -- prototypes/punchies/server; then
+            echo "::error::Reviewed source changes the recorded live Worker artifact; approve and deploy the Worker separately"; exit 1
           fi
+          # Worker imports server code only and accepts generic protocol2 rules cohorts.
+          # Frontend sim fingerprints select separate cohorts; actual protocol/cohort tests below remain mandatory.
           [ "$(tr -d '[:space:]' < .github/wip-prototype)" = punchies ] || exit 1
 
       - name: Read WIP target
@@ -166,6 +168,8 @@ jobs:
         run: |
           node scripts/test-punchies-rating.mjs
           node scripts/test-punchies-rules-compatibility.mjs
+          node scripts/test-punchies-online-bo3.mjs
+          node scripts/test-punchies-save-persistence.mjs
           node scripts/test-punchies-ranked-rules.mjs
           node scripts/test-punchies-rating-snapshots.mjs
           node scripts/test-punchies-ranked-result-binding.mjs
