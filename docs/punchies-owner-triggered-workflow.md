@@ -16,4 +16,4 @@ Effective 2026-10-13; supersedes prior automatic staging publication and automat
 - Preflight exact commands and Node22 once. Reuse passed evidence when the exact relevant source/contracts are unchanged; test affected behavior and capture one boot.
 - Every receipt records available phase timing from existing logs: preparation/tests, assets/cache/compression, compile, browser, CI queue/run/retries, deployment/upload and coordination. Label estimates and unmeasured values; do not launch benchmarks to fill gaps.
 
-Current hold: PR377 is ready for the parity runner dependency fix and Node22 alignment; it is OPEN with no auto-merge. No release job should be dispatched until the next explicit owner trigger. Stage182693b and production r0155 were already published before the hold took effect.
+The explicit owner trigger permits this Wave/CodeX staging batch and its necessary infrastructure only. Future merges/deployments still require a new owner trigger. Stage source is pinned separately from production; no itch or Worker rollout is part of this batch.

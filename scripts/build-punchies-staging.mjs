@@ -9,7 +9,7 @@ const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
 const sha=git('rev-parse','HEAD'),branch=git('branch','--show-current'),builtAt=new Date().toISOString();
 const resetId=process.env.PUNCHIES_SAVE_RESET_ID??'punchies-reset-2026-10-12-super-v1';
 // Prove that the normal entry does not emit the optional QA module or route.
-timed('productionReviewBuild',()=>run(['scripts/build-punchies-profile.mjs','compact','--portal','web','--fresh'],{PUNCHIES_STAGING:'off',PUNCHIES_QA:'0',PUNCHIES_STAGING_QA:'0',PUNCHIES_SAVE_RESET_ID:resetId}));
+timed('productionReviewBuild',()=>run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'off',PUNCHIES_QA:'0',PUNCHIES_STAGING_QA:'0',PUNCHIES_SAVE_RESET_ID:resetId}));
 const source=path.resolve('dist/punchies-compact-web');
 function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 const excluded=files(source).every(f=>!/staging-review|ranked-review/.test(f)&&(!f.endsWith('.js')||!fs.readFileSync(f,'utf8').includes('PUNCHIES_STAGE_QA_ONLY')));
