@@ -2,7 +2,11 @@
 
 Effective 2026-10-13; supersedes prior automatic staging publication and automatic PR merge guidance for this project.
 
-- Prepare edits and run focused checks without publishing. Collect one READY batch.
+- Main owns requirements and resolves discussion or ambiguity with the owner, then sends executable scoped tasks.
+- Specialists persist until their assigned task is finished and notify Main once DONE with source SHA, asset references, checks and limits. Partial work is not DONE; do not repeat stale setup.
+- Resolve routine implementation choices and findings independently. Use direct technical coordination when needed, without redundant progress handoffs, permission requests or status loops.
+- Surface genuine blockers or owner decisions to Main with a concise cause and recommended options. Main discusses them with the owner; continue unrelated authorized work.
+- When the owner asks for a build, Main reports READY and PENDING items and freezes the requested batch. Prepare edits and focused checks without publishing.
 - Merge and deploy only when the owner explicitly triggers that batch. Main may queue work but cannot substitute a new trigger. Use one integration/release job; do not create follow-on releases automatically.
 - Previously completed uploads remain recorded. Do not destructively cancel or roll back completed work when the policy changes.
 - Reuse prepared asset archives and hashes. Asset compression is permitted only after the measured complete package exceeds 80% of its applicable cap: compact >16,000,000 bytes of 20,000,000; standard >32,000,000 bytes of 40,000,000.
