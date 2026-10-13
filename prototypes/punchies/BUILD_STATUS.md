@@ -1,17 +1,17 @@
 ## Current milestone
-Owner-triggered staging batch: Dragon Wave Motion Blast and revised CodeX.
+Owner-triggered staging batch: accelerated icy Wave, retained CodeX trails and Captain Eagle Punch.
 
 ## What was implemented
-Consolidated Logic7a81e93 and local VFX95b2ffa integrated once against latest main0986a38. Wave startup12, base25, speed844worldpx/sec, first actual collision and ring bounds, 50% guard/dodge chip and 40% maximum-stamina hit. CodeX uses blockable normal Cross followups, target-front diagonals and six-tick travel. VFX shares canonical simulation positions; six locales carry the new Super wording.
+Missing Logicec1ef1a and final Eagle362013b patches integrated once on the current stage, merged with latest main9e7b801. Only the95b2ffa-to-consolidated1f1c897 owned VFX delta was applied; Eagle9df32c7 follows it. No intermediate b38/8074fee or duplicate core7a81e93 was integrated. Wave head24/radius12 accelerates half-to-full over30 ticks with icy contact burst; CodeX retains black/white trails12ticks. Eagle startup72/base40/2x hop/dash12/recovery18, normal guard bypass, perfect guard/dodge valid, zero iFrames and canonical fire VFX. Six locales492 keys.
 
 ## Key technical decisions
-Resolve the old-base Survival conflict by keeping approved Zombie damage/Cross ramps, minimum windups and Jab/Cross retry semantics, while adding Wave state support. Keep all shared tune and source assets unchanged. Reuse cached prepared archives below80% budget; only code compilation/minification and packaging occur. Stage saves/999/QA remain isolated and rated play is disabled.
+Preserve the current Zombie ramps/Cross retry and latest approved shared tuning. Reuse unchanged prepared assets; new visuals are cached procedural textures. Stage-only mode compiles one compact package and verifies focused production debug gating without emitting a production package; normal full builder mode remains available.
 
 ## Open questions
-Owner visual/gamefeel review remains ongoing; this trigger is staging only.
+Owner graphical/gamefeel review continues. This trigger grants staging publication only.
 
 ## Known issues
-No real Ranked service or production Worker compatibility rollout is claimed for the new sim-wave-motion-4 rules. Production remains r0155. The optional controlled VFX review is not a live combat test.
+Browser boot will be attempted only in connected Brave. No real Ranked or mobile performance claim; new rules require a separately authorized production rollout. Production remains r0155.
 
 ## Next proposed step
-Publish this exact completed frozen staging source after focused collision/rules/flags, compile and Brave boot checks. Record phase timings and limits; no additional release without a new owner trigger.
+Publish the exact staged source after focused paired checks, compact compile and package flags. Record public metadata, phase timings and any browser limitation. No automatic next release.

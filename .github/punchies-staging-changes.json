@@ -1,8 +1,8 @@
 [
-  "Dragon Wave Motion Blast: 12-frame startup, base25 and 844 world pixels/sec",
-  "First collision resolves; guard/dodge chip50% HP and hit40% max stamina",
-  "CodeX followups use blockable standard Cross along target-front diagonal X paths",
-  "CodeX six-tick travel and cel Wave VFX use canonical simulation positions",
-  "All six locales include the new Super wording; Zombie ramps and shared tune preserved",
-  "Stage999 and isolated saves retained; rated play disabled; no production deployment"
+  "Dragon: head-sized icy orb accelerates from half speed to full over30 ticks",
+  "Wave first-collision orb burst retains base25, damage/cost and guard/dodge rules",
+  "CodeX black/white X silhouettes retain12-tick trails (about200ms)",
+  "Captain Eagle Punch:72 startup, base40, twice dodge distance, dash12/recovery18",
+  "Eagle fire follows actual body/glove: normal guard bypass, perfect guard/dodge valid, no iFrames",
+  "All six locales updated; Zombie/shared tune retained; stage999 isolated; rating disabled"
 ]
