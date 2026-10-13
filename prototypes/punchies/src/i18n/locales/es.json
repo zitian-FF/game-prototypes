@@ -488,5 +488,7 @@
   "ranked.next_match": "BUSCAR SIGUIENTE PARTIDA",
   "rating.transition": "{before} → {after} ({delta})",
   "super.wave_motion_blast": "Ráfaga Ondulatoria",
-  "super.wave_motion_blast_description": "Lanza una onda tras una carga breve. La guardia recibe medio daño y pierde el 40% de resistencia máxima; guardia perfecta o esquiva la detienen."
+  "super.wave_motion_blast_description": "Lanza una onda tras una carga breve. La guardia recibe medio daño y pierde el 40% de resistencia máxima; guardia perfecta o esquiva la detienen.",
+  "super.eagle_punch": "Puño del Águila",
+  "super.eagle_punch_description": "Carga larga y puñetazo con embestida de fuego. Rompe la guardia; guardia perfecta y esquiva funcionan. Sin invencibilidad."
 }

@@ -41,9 +41,9 @@ function validCheckpoint(v: unknown): v is SurvivalRun {
     if (!a || typeof a !== 'object') return false;
     return Object.entries(b as object).every(([key, value]) => shape((a as Record<string, unknown>)[key], value));
   }
-  if(r.balanceVersion===survivalBalanceVersion()&&p.wave!==null)return false;
-  const {lastBlow: _blow,wave:_wave, ...savedBody} = p;
-  const {lastBlow: _templateBlow,wave:_templateWave, ...templateBody} = template;
+  if(r.balanceVersion===survivalBalanceVersion()&&(p.wave!==null||p.eagle!==null))return false;
+  const {lastBlow: _blow,wave:_wave,eagle:_eagle, ...savedBody} = p;
+  const {lastBlow: _templateBlow,wave:_templateWave,eagle:_templateEagle, ...templateBody} = template;
   const blow = p.lastBlow;
   const validBlow = blow === null || (!!blow && ['jab', 'cross', 'hook', 'uppercut'].includes(blow.punch) && typeof blow.sweet === 'boolean' && typeof blow.chip === 'boolean' && typeof blow.dx === 'number' && typeof blow.dy === 'number');
   return validBlow && shape(savedBody, templateBody);

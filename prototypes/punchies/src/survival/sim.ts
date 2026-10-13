@@ -32,7 +32,7 @@ function pair(r: SurvivalRun, enemy: Fighter): SimState {
   return { tick: r.tick, fighters: [r.player, enemy], timed: false, hitstop: r.hitstop, fightStartTick: 0, result: null };
 }
 function face(f: Fighter, other: Fighter): void {
-  if (f.punch || f.dodge) return;
+  if (f.punch&&!f.punch.eagleSuper || f.dodge || f.eagle?.launched) return;
   const dx = other.x - f.x, dy = other.y - f.y, d = Math.hypot(dx, dy);
   if (d > 0) { f.fx = dx / d; f.fy = dy / d; }
 }
@@ -176,7 +176,7 @@ function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   return input;
 }
 function resetMotion(f: Fighter): void {
-  f.punch = null; f.codeX=null; f.wave=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
+  f.punch = null; f.codeX=null; f.wave=null; f.eagle=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
   f.buffered = null; f.bufferFrames = 0; f.pushX = 0; f.pushY = 0; f.pushFrames = 0;
   f.lock = 0; f.stunTimer = 0; f.stun = 0; f.stunDecayWait = 0; f.stunFromMeter = false;
   f.postDodgeVulnerable = 0; f.guardPenalty = 0; f.dashBuff = 0;
@@ -254,7 +254,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     const contacts = r.enemies.map(e => {
       const s = pair(r, e.fighter), events: SimEvent[] = [];
       if (r.player.punch) r.player.punch.resolved = r.swingHits.includes(e.id);
-      const hits = combat.detectContacts(s, events, survivalPunchPoint);
+      const hits = combat.detectContacts(s, events, survivalPunchPoint,['player',e.id]);
       if (events.some(event => event.kind === 'dodged' && event.attacker === 0)) r.swingHits.push(e.id);
       wrap(events, e.id, out); return { s, hits };
     });

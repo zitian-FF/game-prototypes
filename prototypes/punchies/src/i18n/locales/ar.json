@@ -488,5 +488,7 @@
   "ranked.next_match": "البحث عن المباراة التالية",
   "rating.transition": "{before} ← {after} ({delta})",
   "super.wave_motion_blast": "انفجار الموجة",
-  "super.wave_motion_blast_description": "أطلق موجة بعد شحن قصير. تتلقى الحراسة نصف الضرر وتفقد 40% من أقصى تحمل؛ يوقفها الصد المثالي أو التفادي."
+  "super.wave_motion_blast_description": "أطلق موجة بعد شحن قصير. تتلقى الحراسة نصف الضرر وتفقد 40% من أقصى تحمل؛ يوقفها الصد المثالي أو التفادي.",
+  "super.eagle_punch": "لكمة النسر",
+  "super.eagle_punch_description": "شحن طويل ثم لكمة اندفاع نارية. تخترق الحراسة؛ الصد المثالي والتفادي فعالان. لا حصانة أثناء الحركة."
 }

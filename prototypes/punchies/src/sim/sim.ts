@@ -1,5 +1,7 @@
 import {CODE_X_TIMING,codeXTracks,codeXTrackPosition,codeXContactPoint} from './codeX';
 import {WAVE_MOTION,wavePosition,waveContact} from './waveMotion';
+import {EAGLE_PUNCH,eaglePhase,eagleDashDelta,eagleEndpoint} from './eaglePunch';
+import {punchFist} from './fistPath';
 import { tune, TICK_RATE } from './tune';
 import { fightCueTiming } from './fightCue';
 import { fighterScale, normalHurtRadius, coreRadius, separation } from './geometry';
@@ -48,6 +50,7 @@ function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
     punch: null,
     codeX:null,
     wave:null,
+    eagle:null,
     dodge: null,
     postDodgeVulnerable: 0,
     stunTimer: 0,
@@ -200,6 +203,15 @@ function gainStamina(f: Fighter, amount: number, natural = false): void {
 
 function startPunch(s: SimState, idx: number, type: PunchType, events: SimEvent[]): void {
   const f = s.fighters[idx];
+  if(type==='uppercut'&&f.char==='captain'){
+    const resource=punchCfg(f,'uppercut'),cfg=punchCfg(f,'cross'),buffed=f.dashBuff>0;f.dashBuff=0;
+    f.punch={type:'cross',frame:0,startup:EAGLE_PUNCH.startup,sourEarly:0,sweet:EAGLE_PUNCH.dashFrames,sour:0,recovery:EAGLE_PUNCH.recovery,whiffFrames:0,
+      reach:cfg.reach,startReach:cfg.reach*cfg.startReachFrac,damageMult:buffed?tune.dodge.buffDamageMult:1,buffed,resolved:false,connected:false,hand:1,eagleSuper:true,baseDamage:EAGLE_PUNCH.damage};
+    f.eagle={activationId:s.tick,frame:0,startup:EAGLE_PUNCH.startup,dashFrames:EAGLE_PUNCH.dashFrames,endFrame:punchTotal(f.punch),launched:false,
+      fx:f.fx,fy:f.fy,distance:0,dashProgress:0,startX:f.x,startY:f.y,endX:f.x,endY:f.y,bodyX:f.x,bodyY:f.y,previousFistX:f.x,previousFistY:f.y,hitIds:[]};
+    f.stars=0;lowerGuard(f);spendStamina(f,resource.staminaCost);f.regenWait=tune.stamina.regenDelayFrames;
+    events.push({kind:'eagleStarted',attacker:idx,activationId:s.tick});return;
+  }
   if(type==='uppercut'&&f.char==='dragon'){
     const resource=punchCfg(f,'uppercut'),buffed=f.dashBuff>0;f.dashBuff=0;
     f.wave={activationId:s.tick,frame:0,startup:WAVE_MOTION.startup,endFrame:WAVE_MOTION.startup+WAVE_MOTION.lifetimeFrames,
@@ -373,6 +385,9 @@ function move(s: SimState, idx: number, input: FrameInput): void {
     f.y += f.dodge.dy * speed * dt;
     return;
   }
+  if(f.eagle){if(eaglePhase(f.eagle)==='dash'&&!f.anchored){const delta=eagleDashDelta(f.eagle);
+    let mult=f.stunTimer>0?tune.movement.stunMoveMult:1;if(f.lock>0&&!f.guarding)mult*=tune.movement.lockMoveMult;if(f.postDodgeVulnerable>0)mult*=tune.dodge.penaltyMoveMult;
+    f.x+=delta.x*mult;f.y+=delta.y*mult;f.eagle.dashProgress++;}return;}
   if (f.anchored) return;
   let mx = input.mx / 100;
   let my = input.my / 100;
@@ -397,10 +412,10 @@ function updateFacing(s: SimState): void {
   const dy = b.y - a.y;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 0.0001) return;
-  a.fx = dx / len;
-  a.fy = dy / len;
-  b.fx = -a.fx;
-  b.fy = -a.fy;
+  a.fx = a.eagle?.launched?a.eagle.fx:dx/len;
+  a.fy = a.eagle?.launched?a.eagle.fy:dy/len;
+  b.fx = b.eagle?.launched?b.eagle.fx:-dx/len;
+  b.fy = b.eagle?.launched?b.eagle.fy:-dy/len;
 }
 
 function separateAndClamp(s: SimState): void {
@@ -429,10 +444,11 @@ function separateAndClamp(s: SimState): void {
 
 function cancelPunch(f:Fighter,idx:number,reason:SuperCancelReason,events:SimEvent[]):void {
   if(f.wave&&!f.wave.launched){events.push({kind:'superCancelled',fighter:idx,superId:'wave-motion-blast',starCost:uppercutStars(f),reason});finishWave(f,idx,events);}
-  if((f.punch?.type==='uppercut'||f.punch?.codeXActivation||f.punch?.buffaloActivation)&&!f.punch.connected&&phaseOf(f.punch)!=='recovery'){
+  if((f.punch?.type==='uppercut'||f.punch?.codeXActivation||f.punch?.buffaloActivation||f.punch?.eagleSuper)&&!f.punch.connected&&phaseOf(f.punch)!=='recovery'){
     const ability=fighterSuper(f);events.push({kind:'superCancelled',fighter:idx,superId:ability.id,starCost:ability.starCost,reason});
   }
   f.punch=null;
+  finishEagle(f,idx,events);
 }
 function addStun(s: SimState, idx: number, amount: number, events: SimEvent[]): void {
   const f = s.fighters[idx];
@@ -468,23 +484,29 @@ interface Contact {
 
 // Finds contacts for both fighters against pre-resolution state, so two
 // punches landing on the same tick trade cleanly regardless of index order.
-function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint): Contact[] {
+function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint,entityIds:[string,string]=['fighter:0','fighter:1']): Contact[] {
   const contacts: Contact[] = [];
   for (let i = 0; i < 2; i++) {
     const att = s.fighters[i];
-    const def = s.fighters[1 - i];
+    const defIdx=1-i,def = s.fighters[defIdx];
     const p = att.punch;
-    if (!p || p.resolved) continue;
+    if (!p || p.resolved&&!p.eagleSuper) continue;
+    if(p.eagleSuper&&(att.health<=0||def.health<=0))continue;
     const phase = phaseOf(p);
     if (phase !== 'sweet' && phase !== 'sour') continue;
-    const pt = pointOf(att, p);
+    let pt = p.eagleSuper?punchFist(att,p,fighterScale(att)):pointOf(att, p);
     const hitR = punchCfg(att, p.type).hitRadius;
+    if(p.eagleSuper&&att.eagle){const eagle=att.eagle,key=entityIds[defIdx];eagle.bodyX=att.x;eagle.bodyY=att.y;
+      if(eagle.hitIds.includes(key)||eagle.hitIds.length>=32)continue;
+      const hit=waveContact({x:eagle.previousFistX,y:eagle.previousFistY},pt,def.x,def.y,hurtRadius(def)+hitR);if(!hit)continue;pt=hit;
+    }
     const dx = def.x - pt.x;
     const dy = def.y - pt.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > hurtRadius(def) + hitR) continue;
+    if (!p.eagleSuper&&dist > hurtRadius(def) + hitR) continue;
     if (def.dodge && def.dodge.frame < dodgeIFrames(def)) {
       p.resolved = true;
+      if(p.eagleSuper&&att.eagle){att.eagle.hitIds.push(entityIds[defIdx]);events.push({kind:'eagleContact',attacker:i,activationId:att.eagle.activationId,victimId:entityIds[defIdx],x:pt.x,y:pt.y,outcome:'dodged'});}
       events.push({ kind: 'dodged', attacker: i, x: pt.x, y: pt.y });
       continue;
     }
@@ -496,6 +518,7 @@ function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint): 
     if (!touchingCore && !fullReach) continue;
     contacts.push({
       sourcePunch:p,
+      targetId:entityIds[defIdx],
       attacker: i,
       sweet: phase === 'sweet',
       core: touchingCore,
@@ -547,6 +570,9 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   const wasSuperCharged=superReady(def),beforeHealth=Math.max(0,def.health);
   const p = att.punch;
   if (!p||(c.sourcePunch&&c.sourcePunch!==p)) return;
+  const eagle=att.eagle;
+  if(p.eagleSuper&&eagle){const key=c.targetId??'fighter:'+defIdx;if(eagle.hitIds.includes(key)||eagle.hitIds.length>=32)return;eagle.hitIds.push(key);
+    events.push({kind:'eagleContact',attacker:c.attacker,activationId:eagle.activationId,victimId:key,x:c.x,y:c.y,outcome:stances[defIdx]==='perfectGuard'?'perfectGuard':'hit'});}
   p.resolved = true;
   const cfg = punchCfg(att, p.type);
   const damageMult = p.damageMult * (emergencyAttack[c.attacker] ? tune.stamina.emergencyDamageMult : 1);
@@ -554,7 +580,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   let stance = stances[defIdx];
   // Uppercut ignores a normal High Guard (taken as a normal hit) but a
   // Perfect Guard stops it. It can also be dodged (detectContacts).
-  if ((p.type === 'uppercut' && stance === 'guard') || (p.buffaloUpper && (stance==='guard'||stance==='perfectGuard'))) {
+  if (((p.type === 'uppercut'||p.eagleSuper) && stance === 'guard') || (p.buffaloUpper && (stance==='guard'||stance==='perfectGuard'))) {
     stance = 'normal';
   }
   // A hook wraps around a Perfect Guard just as it does a High Guard: it
@@ -600,7 +626,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   // on the Vulnerable row (full damage on sweet); a hit that only clips the
   // outer ring (arms/body) resolves on the Normal row.
   // Uppercut ignores the outer ring as it ignores guard: always the Vulnerable row.
-  const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' ? 'normal' : 'vulnerable';
+  const row: 'normal' | 'vulnerable' = stance === 'normal' && !c.core && p.type !== 'uppercut' && !p.eagleSuper ? 'normal' : 'vulnerable';
   const baseDamage =p.baseDamage??(
     p.type === 'uppercut'
       ? tune.punches.cross.damage * tune.punches.uppercut.crossDamageMult * fighterSuper(att).damageMultiplier
@@ -652,7 +678,7 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
   }
   // Stars: a counter gives stars.counterGain, a sweet hit +1 (not stacked).
   // Uppercut consumes stars rather than building them.
-  if (p.type !== 'uppercut'&&!p.codeXActivation&&!p.shadowSuper&&!p.buffaloActivation&&!p.waveSuper) {
+  if (p.type !== 'uppercut'&&!p.codeXActivation&&!p.shadowSuper&&!p.buffaloActivation&&!p.waveSuper&&!p.eagleSuper) {
     const gain = counter ? tune.stars.counterGain : c.sweet ? 1 : 0;
     for (let i = 0; i < gain; i++) addStar(s, c.attacker, events);
   }
@@ -716,6 +742,7 @@ function resolveCodeX(s:SimState,idx:number,targets:{id:string;fighter:Fighter}[
   }
 }
 
+function finishEagle(f:Fighter,idx:number,events:SimEvent[]):void {if(f.eagle){events.push({kind:'eagleFinished',attacker:idx,activationId:f.eagle.activationId});f.eagle=null;}}
 function finishWave(f:Fighter,idx:number,events:SimEvent[]):void {if(f.wave){events.push({kind:'waveFinished',attacker:idx,activationId:f.wave.activationId});f.wave=null;}}
 /** One swept projectile, first collision only. The same path is consumed by VFX. */
 function resolveWave(s:SimState,idx:number,targets:{id:string;fighter:Fighter}[],events:SimEvent[]):void {
@@ -758,6 +785,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   if (f.punch) {
     const p = f.punch;
+    if(f.eagle){const point=punchFist(f,p,fighterScale(f));f.eagle.previousFistX=point.x;f.eagle.previousFistY=point.y;}
     p.frame++;
     if (p.frame === activeEnd(p) && !p.connected) {
       // Whiffing keeps the star chain (it used to reset it).
@@ -767,6 +795,17 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
       events.push({ kind: 'whiff', attacker: idx, punch: p.type });
     }
     if (p.frame >= punchTotal(p)) f.punch = null;
+  }
+  if(f.eagle){const eagle=f.eagle,p=f.punch;
+    eagle.bodyX=f.x;eagle.bodyY=f.y;
+    if(f.health<=0||!p?.eagleSuper){if(p?.eagleSuper)f.punch=null;finishEagle(f,idx,events);}
+    else {eagle.frame=p.frame;eagle.endFrame=punchTotal(p);if(!eagle.launched){eagle.fx=f.fx;eagle.fy=f.fy;}
+      if(!eagle.launched&&eagle.frame>=eagle.startup){const length=Math.hypot(f.fx,f.fy)||1;eagle.fx=f.fx/length;eagle.fy=f.fy/length;
+        const dodge=characterDodge(f),endpoint=eagleEndpoint(f.x,f.y,eagle.fx,eagle.fy,dodge.speed*dodge.frames/TICK_RATE*EAGLE_PUNCH.dashDistanceMult,tune.ring,normalHurtRadius(f));
+        eagle.startX=f.x;eagle.startY=f.y;eagle.endX=endpoint.x;eagle.endY=endpoint.y;eagle.distance=endpoint.distance;eagle.launched=true;
+        f.fx=eagle.fx;f.fy=eagle.fy;const fist=punchFist(f,p,fighterScale(f));eagle.previousFistX=fist.x;eagle.previousFistY=fist.y;
+        events.push({kind:'eagleLaunched',attacker:idx,activationId:eagle.activationId});}
+    }
   }
 
   if (f.guardPenalty > 0) f.guardPenalty--;

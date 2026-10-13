@@ -488,5 +488,7 @@
   "ranked.next_match": "FIND NEXT MATCH",
   "rating.transition": "{before} → {after} ({delta})",
   "super.wave_motion_blast": "Wave Motion Blast",
-  "super.wave_motion_blast_description": "Launch a wave after a brief charge. Guard takes half damage and loses 40% max stamina; Perfect Guard or dodge stops it."
+  "super.wave_motion_blast_description": "Launch a wave after a brief charge. Guard takes half damage and loses 40% max stamina; Perfect Guard or dodge stops it.",
+  "super.eagle_punch": "Eagle Punch",
+  "super.eagle_punch_description": "Long charge, then a fiery dash punch. Breaks guard; Perfect Guard and dodge work. No invincibility."
 }

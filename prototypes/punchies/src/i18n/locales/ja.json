@@ -488,5 +488,7 @@
   "ranked.next_match": "次の対戦を探す",
   "rating.transition": "{before} → {after}（{delta}）",
   "super.wave_motion_blast": "波動ブラスト",
-  "super.wave_motion_blast_description": "短い溜めから波動を放つ。通常ガードは半分のダメージと最大スタミナ40%を失う。パーフェクトガードや回避で防げます。"
+  "super.wave_motion_blast_description": "短い溜めから波動を放つ。通常ガードは半分のダメージと最大スタミナ40%を失う。パーフェクトガードや回避で防げます。",
+  "super.eagle_punch": "イーグルパンチ",
+  "super.eagle_punch_description": "長い溜めから炎の突進パンチ。通常ガードを突破。パーフェクトガードや回避で防げます。無敵時間なし。"
 }
