@@ -24,7 +24,7 @@
     }
   },
   "waveMotion": {"startup":12,"worldWidth":844,"travelFrames":60,"lifetimeFrames":68,"startSpeedRatio":0.5,"accelerationFrames":30,"radius":12,"damage":25,"guardChip":0.5,"guardStaminaShare":0.4},
-  "eaglePunch": {"startup":72,"damage":40,"dashDistanceMult":2,"dashFrames":12,"recovery":18},
+  "eaglePunch": {"startup":50,"damage":40,"dashDistanceMult":2,"dashFrames":12,"recovery":18},
   "codeXTiming": {
     "telegraph": 18,
     "dash": 6,

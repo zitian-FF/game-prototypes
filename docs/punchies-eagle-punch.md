@@ -1,6 +1,6 @@
 # Eagle Punch canonical contract
 
-Captain's Super has 72 combat-frame windup, base damage 40, a 12-frame body dash and 18-frame recovery. An entirely missed punch retains the standard Cross whiff tail. Existing Captain Upper input, charge cost and stamina cost are spent once, with no Rising Upper cost/damage normalization. The normal dodge **distance** reference ignores exhausted dodge reduction: `2 × characterDodge.speed × characterDodge.frames / 60`, currently 180 world pixels before ring clipping.
+Captain's Super has 50 combat-frame windup, base damage 40, a 12-frame body dash and 18-frame recovery. An entirely missed punch retains the standard Cross whiff tail. Existing Captain Upper input, charge cost and stamina cost are spent once, with no Rising Upper cost/damage normalization. The normal dodge **distance** reference ignores exhausted dodge reduction: `2 × characterDodge.speed × characterDodge.frames / 60`, currently 180 world pixels before ring clipping.
 
 Walking input is held during windup. Facing may track a target before launch; launch captures a unit heading, clipped body-radius ring endpoint and distance. Dash increments actual body position by the committed ray delta; it never homes or jumps to a predicted endpoint. Normal hit locks, crowd separation, push and ring clamps still apply. A hit can therefore impede the motion; it never catches up by teleporting. No `DodgeState`, invincible frames or hurt-radius exemption is created. Startup and recovery use standard punch vulnerability; active frames remain ordinarily hittable. A damaging startup hit or ordinary meter stun cancels through the existing punch path without refund.
 
@@ -18,4 +18,4 @@ State, captured geometry and ledger serialize through existing rollback/hash pat
 
 ## Focused checks
 
-`test-punchies-eagle-punch.mjs` exercises held 72-frame windup, base 40, normal hop distance, costs, all damage modifiers once, normal guard/PG/dodge, incoming damage in every phase, ring/fixed aim/no blink, hitstop, delayed rollback and actual Survival multi-victim dedupe. Browser preview and VFX implementation are separate; no publication is included.
+`test-punchies-eagle-punch.mjs` exercises held 50-frame windup, base 40, normal hop distance, costs, all damage modifiers once, normal guard/PG/dodge, incoming damage in every phase, ring/fixed aim/no blink, hitstop, delayed rollback and actual Survival multi-victim dedupe. Browser preview and VFX implementation are separate; no publication is included.
