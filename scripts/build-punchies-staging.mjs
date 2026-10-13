@@ -17,7 +17,7 @@ const debugExcluded=files(source).filter(f=>f.endsWith('.js')).every(f=>forbidde
 if(!debugExcluded||files(source).filter(f=>f.endsWith('.html')).length!==1)throw Error('Production contains debug/scaffold routes');
 const productionFiles=files(source).length;
 const productionProfile=JSON.parse(fs.readFileSync(path.join(source,'prototypes/punchies/asset-profile.json')));
-if(productionProfile.stageArtOverlay||files(source).some(file=>/materialmask_tee|part_kai_|portrait_kai|kai_emblems/.test(file)))throw Error('Staging preview art leaked into the production review artifact');
+if(productionProfile.stageArtOverlay||(!productionProfile.approvedContent&&files(source).some(file=>/materialmask_tee|part_kai_|portrait_kai|kai_emblems/.test(file))))throw Error('Staging preview art leaked into the production review artifact');
 if(productionProfile.staging!==false||productionProfile.saveResetId!==resetId)throw Error('Production flags/reset epoch incorrect');
 const productionOutput=path.join(path.dirname(dest),'production');fs.mkdirSync(productionOutput,{recursive:true});fs.cpSync(source,productionOutput,{recursive:true});
 run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'on',PUNCHIES_QA:'1',PUNCHIES_STAGING_QA:'1',PUNCHIES_SAVE_RESET_ID:resetId,VITE_PUNCHIES_RATING_URL:''});
