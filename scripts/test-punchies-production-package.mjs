@@ -8,7 +8,7 @@ const approved=profile.approvedContent;
 assert.equal(approved?.reviewedStageSha,'7d47e739e457ac43e55c60fe68bf47bd2352815c');assert.equal(approved.ownerApproved,true);
 assert.equal(approved.overlay.kai.files.length,6);
 if(profile.profile==='compact'){assert.equal(approved.overlay.maskBytes,14831);assert(files.some(file=>file.endsWith('materialmask_tee.png')));}
-for(const file of approved.overlay.kai.files)assert(files.some(emitted=>emitted.endsWith(file.path)));
+for(const file of approved.overlay.kai.files)assert(files.some(emitted=>emitted.replaceAll('\\','/').endsWith(file.path)));
 const code=files.filter(file=>file.endsWith('.js')).map(file=>fs.readFileSync(file,'utf8')).join('\n');
 for(const marker of ['PUNCHIES_STAGE_QA_ONLY','PUNCHIES_RANKED_STAGE_QA_ONLY','PUNCHIES_RANKED_FICTIONAL_QA_ONLY','Reset staging test saves','Preview in Training (no unlocks)','punchies tune','SYNC TUNE','tp-dfwv'])assert(!code.includes(marker),`Production leaks ${marker}`);
 console.log('PASS production flags/reset, QA/currency-control module exclusion, one root HTML, approved Kai/Tee present; QA/debug/currency controls absent');
