@@ -769,4 +769,25 @@ client.
   requests) and roughly how many more 30 minute games it can host, e.g. "Server capacity today: 97% left, room for
   about 22 more 30 min games". The games figure still uses the cautious per-match cost (4,000 writes, 2,500 requests);
   a measured full match is about 1,000 writes, so it is a floor.
+- Onboarding pass (0.16.0), for testers who did not know where they were, what they could do or what to do:
+  - Objective card under the scoreboard replaces the battle toasts. Four levels with clear hierarchy: danger (red, pulsing:
+    your HQ or a team node about to be attacked within 45 s, node lost, HQ hit), alert (gold: Nuclear Silo or Missile
+    Turrets unlocked), good (green: captured, held, teleport ready) and guide (calm: where your squad is headed). Tapping a
+    card looks at its target. Command errors still use small toasts below it.
+  - "Next moves": up to three suggestions you can follow without thinking (capture the nearest free node, scout the
+    nearest enemy node, attack one you scouted, garrison an empty node of yours, collect a cache, teleport to a forward
+    node). Each only shows when doable now; tapping one pans and zooms to the target and rings it so the next click is the
+    obvious one. Nodes are the only thing you click: the permanent slot tiles on the ground are gone, nodes light up under
+    the pointer and the cursor becomes a hand.
+  - Scoreboard shows "Most points when the clock ends wins" and your own points per second.
+  - Your base is green (pulsing ring, "YOUR BASE", green dot with ring on the minimap); teammates' HQs are quieter and
+    named only when zoomed in or selected.
+  - Contextual info: Scouts and Logs buttons appear after the first scout or fight; Defend and Return only on the picked
+    squad; Reserve only when low; HP only when damaged; the troop total flashes red with the amount lost; "Teleport
+    ready" pulses green.
+  - Node panel leads with one plain line (Capture it: +30 pts/s) and the effect; details sit under More (remembered).
+  - Minimap fog is one contiguous shape (lit and fogged cell runs) instead of overlapping circles.
+  - The bottom hint shows one tip at a time and retires each once done. A Tips on/off toggle sits on the main menu;
+    Reset saved session brings tips back. State lives in the existing save blob.
+  - Logs show only fights you were in (your squads or your HQ), newest first, kept for the whole match.
 - Where this section conflicts with older text above, this section wins.

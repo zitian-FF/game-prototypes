@@ -196,6 +196,7 @@ export class MenuScene extends BaseScene {
     // Players are told, in one line, that anonymous play stats are kept.
     if (footer) ui.text('Anonymous play stats (what you order and score) are recorded to improve the game.', cx, h - 15, { size: 10, align: 'center', color: COLORS.dim, alpha: 0.8 });
     ui.button(12, 20, 104, 30, 'Handbook', { onClick: () => (this.handbookOpen = true), size: 13 });
+    ui.button(12, 56, 104, 26, session.tipsOn ? 'Tips: on' : 'Tips: off', { onClick: () => session.setTipsOn(!session.tipsOn), size: 11, active: session.tipsOn });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, 22, { size: 10, align: 'center', color: COLORS.dim });
     this.drawVersion();
     ui.end();

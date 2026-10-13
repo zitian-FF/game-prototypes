@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.15.6 (PR #209 merged up to 0.15.3; 0.15.4 to 0.15.6 in the next PR): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.16.0 on the branch (onboarding pass, not merged, no PR open; 0.15.4 to 0.15.6 merged in PR 213): square 41 x 41 map with four Portal Nexus nodes, final cache
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.16.0: onboarding pass: objective card with danger/alert/good/guide levels and tap-to-look, Next Moves list with pan-and-ring, goal line and points per second, green own base, contextual panels and flashes, plain node panel with More, contiguous minimap fog, retiring hints and Tips toggle, logs limited to your fights. Slot tiles removed from the ground.
 - 0.15.6: capacity line shows percent left and roughly how many 30 minute games (`QuotaStatus.percentLeft`).
 - 0.15.5: Handbook page on the main menu (four tabs, scrollable, numbers from tune.json); node panel text shortened and wrapped by measured width (`Ui.measure`, `Ui.wrap`).
 - 0.15.4: auto-selected strongest HQ squad (re-picked after a squad is sent); game log v2 (dealt squads with percentile and tier, connect and drop events); usage meter saved on every report and reported when the last socket leaves; map test over 400 seeds that both halves hold the same kinds and tiers.
@@ -51,6 +52,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- Onboarding pass checked on desktop 1280 x 720 and emulated 844 x 390 touch with real matches and with a forced danger, alert and good card; a live "about to be attacked" warning was only checked by a scripted unit check of the logic, not seen in a real match. The Next Moves rules (nearest node, one cue per kind) are first guesses to tune from the game logs.
 
 - Handbook checked in desktop 1280 x 720 and emulated 844 x 390 only; it reads numbers from tune.json at build time, so a server tune change needs a client rebuild to match. The wording is mine and has not been proofread by the designer.
 
