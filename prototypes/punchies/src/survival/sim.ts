@@ -143,7 +143,7 @@ export function waveProgression(wave:number) {
 export function attackPermission(r:SurvivalRun,kind:'boss'|'zombie'):boolean {
  const pressure=waveProgression(r.wave);
  if(r.tick-r.lastEnemyAttackTick<pressure.attackStartGapFrames)return false;
- const active=r.enemies.filter(e=>e.fighter.health>0&&e.fighter.punch&&phaseOf(e.fighter.punch)!=='recovery');
+ const active=r.enemies.filter(e=>e.fighter.health>0&&(e.fighter.wave||e.fighter.punch&&phaseOf(e.fighter.punch)!=='recovery'));
  if(active.length>=pressure.concurrentAttacks)return false;
  if(kind==='zombie'&&r.enemies.some(e=>e.kind==='boss'&&e.fighter.health>0))return !r.bossPending&&!active.some(e=>e.kind==='zombie');
  return true;
@@ -162,7 +162,7 @@ function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   return input;
 }
 function resetMotion(f: Fighter): void {
-  f.punch = null; f.codeX=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
+  f.punch = null; f.codeX=null; f.wave=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
   f.buffered = null; f.bufferFrames = 0; f.pushX = 0; f.pushY = 0; f.pushFrames = 0;
   f.lock = 0; f.stunTimer = 0; f.stun = 0; f.stunDecayWait = 0; f.stunFromMeter = false;
   f.postDodgeVulnerable = 0; f.guardPenalty = 0; f.dashBuff = 0;
@@ -214,15 +214,15 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
           else if(--r.bossPending.frames<=0)r.bossPending=null;
         }
       } else intent = zombieInput(r, e);
-      const before = e.fighter.punch, events: SimEvent[] = [];
+      const before = e.fighter.punch,beforeWave=e.fighter.wave, events: SimEvent[] = [];
       // Offensive retries belong to the coordinator, not the duel input buffer:
       // a delayed buffered punch must never bypass spacing/concurrency permission.
       if(e.fighter.buffered&&e.fighter.buffered!=='dodge'){e.fighter.buffered=null;e.fighter.bufferFrames=0;}
       combat.processInput(s, 1, intent, events);
-      if(e.fighter.punch&&e.fighter.punch!==before){
+      if(e.fighter.punch&&e.fighter.punch!==before||e.fighter.wave&&e.fighter.wave!==beforeWave){
         r.lastEnemyAttackTick=r.tick;
         if(e.kind==='boss')r.bossPending=null;
-        else{e.fighter.punch.damageMult*=config.zombieDamageMultiplier;e.fighter.punch.startup=Math.max(config.zombieMinStartupFrames,e.fighter.punch.startup);e.attackWait=waveProgression(r.wave).attackCooldownFrames;}
+        else if(e.fighter.punch){e.fighter.punch.damageMult*=config.zombieDamageMultiplier;e.fighter.punch.startup=Math.max(config.zombieMinStartupFrames,e.fighter.punch.startup);e.attackWait=waveProgression(r.wave).attackCooldownFrames;}
       }else if(e.kind==='zombie'&&intent.jab)e.attackWait=config.zombieSlotRetryFrames;
       else if(e.kind==='boss'&&r.bossPending&&(intent.jab||intent.cross||intent.hook||intent.uppercut)&&--r.bossPending.frames<=0)r.bossPending=null;
       combat.move(s, 1, intent); wrap(events, e.id, out);
@@ -234,7 +234,7 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     if (movedTarget) face(r.player, movedTarget.fighter);
     // Snapshot all defensive states before any simultaneous contact resolves.
     const snapshots = r.enemies.map(e => [r.player, e.fighter].map(f => ({
-      stance: stanceOf(f), startup: !!f.punch && phaseOf(f.punch) === 'startup', exhausted: f.exhausted,
+      stance: stanceOf(f), startup: !!f.punch && phaseOf(f.punch) === 'startup'||!!f.wave&&!f.wave.launched, exhausted: f.exhausted,
       whiff: !!f.punch && f.punch.whiffFrames > 0 && phaseOf(f.punch) === 'recovery' && f.punch.frame >= punchTotal(f.punch) - f.punch.whiffFrames,
     })));
     const contacts = r.enemies.map(e => {
@@ -263,17 +263,22 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
     for(const enemy of r.enemies){
       const beforeHp=Math.max(0,enemy.fighter.health),s=pair(r,enemy.fighter),events:SimEvent[]=[];
       combat.resolveCodeX(s,0,[{id:enemy.id,fighter:enemy.fighter}],events);
-      r.damageDealt+=Math.max(0,Math.min(beforeHp,beforeHp-enemy.fighter.health));
+      if(events.some(e=>e.kind==='hit'&&e.attacker===0))r.damageDealt+=Math.max(0,Math.min(beforeHp,beforeHp-enemy.fighter.health));
       const playerHp=Math.max(0,r.player.health);
       combat.resolveCodeX(s,1,[{id:'player',fighter:r.player}],events);
-      r.damageReceived+=Math.max(0,Math.min(playerHp,playerHp-r.player.health));
+      if(events.some(e=>e.kind==='hit'&&e.attacker===1))r.damageReceived+=Math.max(0,Math.min(playerHp,playerHp-r.player.health));
       r.hitstop=Math.max(r.hitstop,s.hitstop);wrap(events,enemy.id,out);
     }
     const chained=r.player.punch,chainEvents:SimEvent[]=[];
     combat.flushBuffaloFollowup(primary,0,chainEvents);
     if(chained!==r.player.punch)r.swingHits=[];
     wrap(chainEvents,target?.id??'',out);
-    for(const enemy of r.enemies){const events:SimEvent[]=[];combat.flushBuffaloFollowup(pair(r,enemy.fighter),1,events);wrap(events,enemy.id,out);}
+    const waveEvents:SimEvent[]=[],waveHp=r.enemies.map(e=>Math.max(0,e.fighter.health));combat.resolveWave(primary,0,r.enemies.map(e=>({id:e.id,fighter:e.fighter})),waveEvents);
+    if(waveEvents.some(e=>e.kind==='hit'&&e.attacker===0))r.damageDealt+=r.enemies.reduce((sum,e,i)=>sum+Math.max(0,Math.min(waveHp[i],waveHp[i]-e.fighter.health)),0);
+    r.hitstop=Math.max(r.hitstop,primary.hitstop);wrap(waveEvents,target?.id??'',out);
+    for(const enemy of r.enemies){const events:SimEvent[]=[],s=pair(r,enemy.fighter),hp=Math.max(0,r.player.health);combat.resolveWave(s,1,[{id:'player',fighter:r.player}],events);
+      if(events.some(e=>e.kind==='hit'&&e.attacker===1))r.damageReceived+=Math.max(0,Math.min(hp,hp-r.player.health));r.hitstop=Math.max(r.hitstop,s.hitstop);
+      combat.flushBuffaloFollowup(s,1,events);wrap(events,enemy.id,out);}
     const timerEvents: SimEvent[] = [];
     combat.advanceTimers(primary, 0, input, timerEvents); wrap(timerEvents, target?.id ?? '', out);
     r.enemies.forEach((e, i) => { const events: SimEvent[] = []; combat.advanceTimers(pair(r, e.fighter), 1, inputs[i], events); wrap(events, e.id, out); });

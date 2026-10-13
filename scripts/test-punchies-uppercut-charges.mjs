@@ -7,7 +7,8 @@ function state(id,type=fighterSuper(id).mechanic){
  const s=createSimState({timed:false,fighters:[{char:id},{char:'marco',anchored:true}]}),[a,b]=s.fighters;
  a.x=200;a.y=b.y=210;const cfg=punchCfg(a,type);b.x=a.x+cfg.reach+cfg.hitRadius+normalHurtRadius(b)-.1;b.health=1000;return s;
 }
-for(const id of CHARACTER_IDS){
+// Projectile charge/contact behavior is checked by test-punchies-wave-motion.mjs.
+for(const id of CHARACTER_IDS.filter(id=>fighterSuper(id).mechanic!=='projectile')){
  const ability=fighterSuper(id),required=uppercutStars(id),type=ability.mechanic;
  assert(Number.isInteger(required)&&required>=1&&required<=4,id);assert.equal(ability.starCost,required);
  let s=state(id),[a,b]=s.fighters;a.stars=required-1;
