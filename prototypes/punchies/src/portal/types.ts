@@ -24,6 +24,8 @@ export interface PortalStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+  /** Reset must not trust a memory-only fallback receipt across reloads. */
+  persistResetReceipt?(key:string,value:string):boolean;
 }
 
 export type AnalyticsProps = Record<string, string | number | boolean>;

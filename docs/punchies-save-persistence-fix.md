@@ -1,0 +1,17 @@
+# Save persistence audit
+
+The checked source and origin/main have the same web adapter and historical reset code. Itch builds use the synchronous web/localStorage adapter, not IndexedDB or an asynchronous SDK hydrate. Known production r0154/r0155 receipts use `html-classic.itch.zone` with different upload paths; those paths have the same origin. Stage uses its explicit `punchies:staging:` keys. The reset epoch remains `punchies-reset-2026-10-12-super-v1`; it must not rotate with release versions.
+
+## Reproduced code hazards and repair
+
+The previous startup reset deleted all registered player keys before writing/verifying its receipt. A failed receipt write left no marker, allowing another attempted wipe at the next boot. The owner's reset was a historical one-time operation, so subsequent builds now retire automatic deletion completely. Missing, partial or unavailable receipts preserve every player save. They attempt only the original receipt and report `preserved`, `already-applied` or `failed`; there is no new epoch, migration, namespace change or origin-wide clear. Explicit Settings reset remains a separate intentional action.
+
+The web adapter previously saved to an in-memory fallback on quota/write failure but continued returning stale native values or null whenever reads succeeded. The repair reads its session overlay first, including deletion tombstones. Session saves remain coherent while blocked native persistence cannot promise survival across reloads. A key whose initial native read throws is marked unreadable: a normalizer's newly generated defaults stay in memory instead of overwriting the potentially valid old native save. Reset receipt persistence uses direct native write/readback and never trusts a memory-only receipt.
+
+Tests reproduce blocked reads/writes, quota rejection, receipt readback failure, missing/partial receipts, repeated simulated reloads, session overlay, preservation of unreadable old data and existing stage/manual reset/audio boot ordering. Portal adapter mocks and TypeScript pass. The change does not mutate roster/tuning, language values, collection or profile schemas.
+
+## Browser policy and limits
+
+[Itch's official HTML5 documentation](https://itch.io/docs/creators/html5) confirms games run in an iframe. [WebKit's tracking-prevention documentation](https://webkit.org/tracking-prevention/) describes third-party LocalStorage and IndexedDB as partitioned and ephemeral. [Its storage policy](https://webkit.org/blog/14403/updates-to-storage-policy/) also documents eviction under storage pressure and other conditions. These are possible external causes, not proof of what occurred on the owner's Chrome/iOS device. Switching to IndexedDB alone is not a demonstrated solution to an iframe partition disappearing.
+
+No physical iOS session, actual affected profile export or browser persistence trace was available. The minimal fix addresses verified destructive/reversion hazards; it cannot recover already deleted storage or guarantee that the browser retains third-party state. A same-page reload versus browser-close/reopen comparison on the affected device remains necessary. Async Playgama hydrate/cache timeout risks are a separate adapter concern; they are not the synchronous itch path and were not changed in this patch. Build should verify its current release pins retain the same namespace/retired-reset policy before publishing.

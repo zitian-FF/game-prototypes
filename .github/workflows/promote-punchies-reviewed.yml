@@ -167,6 +167,7 @@ jobs:
           node scripts/test-punchies-rating.mjs
           node scripts/test-punchies-rules-compatibility.mjs
           node scripts/test-punchies-online-bo3.mjs
+          node scripts/test-punchies-save-persistence.mjs
           node scripts/test-punchies-ranked-rules.mjs
           node scripts/test-punchies-rating-snapshots.mjs
           node scripts/test-punchies-ranked-result-binding.mjs
