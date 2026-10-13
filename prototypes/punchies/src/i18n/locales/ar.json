@@ -475,7 +475,7 @@
   "shop.today_s_fighters": "مقاتلو اليوم",
   "shop.chest_candidate_rules": "يمنح كل صندوق مكافأة واحدة من بين ما يصل إلى 3 خيارات متاحة.",
   "super.code_x": "كود X",
-  "super.code_x_description": "أصب الجاب لتطلق ضربتي كروس من الظلال. تتجاوز الظلال الحراسة والصد المثالي؛ تفاداها.",
+  "super.code_x_description": "أصب باللكمة السريعة لتطلق لكمتين مستقيمتين قطريتين سريعتين. أوقفهما بالحراسة أو الصد المثالي، أو تفادهما.",
   "super.buffalo_hook": "خطاف الجاموس",
   "super.buffalo_hook_description": "إصابة خطاف غير محجوب تتبعها لكمة صاعدة. تتجاوز الصاعدة الحراسة والصد المثالي؛ تفاداها.",
   "online.rules_mismatch": "قواعد اللعب غير متطابقة. حدّث اللعبتين ثم حاول مجددًا.",
@@ -486,5 +486,7 @@
   "shop.item.skin-kai-grabber-green.name": "كاي · الأخضر اللافت",
   "shop.item.skin-kai-panda-pink.name": "كاي · الباندا الوردي",
   "ranked.next_match": "البحث عن المباراة التالية",
-  "rating.transition": "{before} ← {after} ({delta})"
+  "rating.transition": "{before} ← {after} ({delta})",
+  "super.wave_motion_blast": "انفجار الموجة",
+  "super.wave_motion_blast_description": "أطلق موجة بعد شحن قصير. تتلقى الحراسة نصف الضرر وتفقد 40% من أقصى تحمل؛ يوقفها الصد المثالي أو التفادي."
 }
