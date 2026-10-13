@@ -45,6 +45,14 @@
     "teleportSeconds": 1.6
   },
   "hud": {
+    "objective": {
+      "threatWarnSeconds": 45,
+      "dangerSeconds": 8,
+      "alertSeconds": 10,
+      "goodSeconds": 5,
+      "idleSeconds": 3
+    },
+    "troopsFlashSeconds": 1.4,
     "toastSeconds": 4.5,
     "toastTouchTrimSeconds": 2,
     "logsMax": 30,

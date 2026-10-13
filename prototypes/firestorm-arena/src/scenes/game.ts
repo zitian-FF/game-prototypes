@@ -11,6 +11,8 @@ import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
 import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
 import { clientTune } from '../clientTune';
+import { LEVEL_RANK, guideLine, incomingThreat, suggestCues } from '../objective';
+import type { Cue, Objective } from '../objective';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
 type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean } | { kind: 'cache'; id: string };
@@ -81,6 +83,30 @@ export class GameScene extends BaseScene {
   private loadFrames = 0;
   private missiles: { from: Vec; to: Vec; startMs: number; arriveMs: number; own: boolean }[] = [];
   private mapRect = { x: 0, y: 0, w: 0, h: 0 };
+  /** Timed lines for the objective card (captures, losses, unlocks), newest last. Times are wall ms. */
+  private alerts: (Objective & { until: number })[] = [];
+  /** When every squad of yours last became idle at HQ (wall ms), or null while something is out. */
+  private idleSince: number | null = null;
+  /** Bottom edge of the objective card this frame, so messages can sit below it. */
+  private objBottom = 0;
+  /** Fights you took part in (your squads, or your HQ), kept for the whole match. */
+  private myLogs = new Map<number, CombatLog>();
+  /** Total troops last frame and when the total last dropped, for the flash. */
+  private prevTroops = -1;
+  private troopsLoss = { at: -1e9, amount: 0 };
+  private hover: Target | null = null;
+  /** Which map cells are inside your vision, for the minimap. */
+  private mmVision: { key: string; cells: Uint8Array } | null = null;
+  private visionCircles: { x: number; y: number; r: number }[] = [];
+  private teleportWasReady = false;
+  /** The target of the cue you last tapped: ringed on the map until it times out (wall ms). */
+  private cuePing: { pos: Vec; until: number } | null = null;
+  /** Squads ordered out in the last moments (wall ms until which they still count as just sent). */
+  private justSent = new Map<string, number>();
+  private sortedLogs: CombatLog[] = [];
+  /** Current troop-loss flash, 0 to 1 (set once a frame in drawHud). */
+  private flashNow = 0;
+  private railFlags = { scouts: false, logs: false, logCount: 0 };
 
   constructor() {
     super('Game');
@@ -105,6 +131,16 @@ export class GameScene extends BaseScene {
     this.floaters = [];
     this.facing = new Map();
     this.fogKey = null;
+    this.alerts = [];
+    this.idleSince = null;
+    this.myLogs = new Map();
+    this.prevTroops = -1;
+    this.troopsLoss = { at: -1e9, amount: 0 };
+    this.hover = null;
+    this.mmVision = null;
+    this.teleportWasReady = false;
+    this.cuePing = null;
+    this.justSent = new Map();
     this.lastFrame = this.time.now;
   }
 
@@ -174,6 +210,7 @@ export class GameScene extends BaseScene {
     this.handleIntents(events, dt, view);
     if (!session.info || !session.view) return; // an order above may have left the match
     this.handleEvents(view, now);
+    this.updateHover(view);
     this.fx.ambient(now);
     this.drawWorld(view, simMs, now);
     this.drawHud(view, simMs);
@@ -421,19 +458,27 @@ export class GameScene extends BaseScene {
           if (!this.ui.covers(e.startX, e.startY)) {
             this.camX -= e.dx / this.zoom;
             this.camY -= e.dy / this.zoom;
+            session.markTip('panned');
           }
           break;
         case 'zoom':
-          if (!this.ui.covers(intents.pointer.x, intents.pointer.y)) this.zoomAt(e.steps, e.x, e.y);
+          if (!this.ui.covers(intents.pointer.x, intents.pointer.y)) {
+            this.zoomAt(e.steps, e.x, e.y);
+            session.markTip('zoomed');
+          }
           break;
         case 'pinch':
           this.zoomBy(e.factor, e.px, e.py, e.x, e.y);
+          session.markTip('zoomed');
           break;
         case 'home':
           this.goHome(view);
           break;
         case 'primary':
-          if (!this.ui.click(e.x, e.y)) this.target = this.pick(e.x, e.y, view);
+          if (!this.ui.click(e.x, e.y)) {
+            this.target = this.pick(e.x, e.y, view);
+            if (this.target) session.markTip('selected');
+          }
           break;
         case 'secondary': {
           if (this.ui.covers(e.x, e.y)) break;
@@ -453,6 +498,16 @@ export class GameScene extends BaseScene {
       }
     }
     this.applyCam();
+  }
+
+  /** What the pointer is over (nodes, HQs, caches): drawn as a ring, and the cursor becomes a pointing hand. */
+  private updateHover(view: WireView): void {
+    if (isTouch() || !intents.inside || this.ui.covers(intents.pointer.x, intents.pointer.y)) {
+      this.hover = null;
+    } else {
+      this.hover = this.pick(intents.pointer.x, intents.pointer.y, view);
+    }
+    this.input.setDefaultCursor(this.hover ? 'pointer' : 'default');
   }
 
   private pick(px: number, py: number, view: WireView): Target | null {
@@ -493,8 +548,10 @@ export class GameScene extends BaseScene {
       return;
     }
     session.sendCommand({ type: 'march', squadId, target: t.kind === 'node' ? { kind: 'node', nodeId: t.id } : { kind: 'hq', hqId: t.id } });
+    session.markTip('sent');
     // The squad just sent is no longer at HQ: let the next strongest one take its place.
     if (this.selectedSquad === squadId) this.selectedSquad = null;
+    this.justSent.set(squadId, Date.now() + 3000);
   }
 
   /**
@@ -508,7 +565,9 @@ export class GameScene extends BaseScene {
     const own = view.squads.filter((q) => q.owner === info.playerId);
     if (this.selectedSquad && own.some((q) => q.id === this.selectedSquad)) return;
     let best: (typeof own)[number] | null = null;
-    for (const q of own) if (q.state === 'hq' && q.troops > 0 && (!best || q.power > best.power)) best = q;
+    const wall = Date.now();
+    // A squad just ordered out is still at HQ until the server answers: do not pick it again.
+    for (const q of own) if (q.state === 'hq' && q.troops > 0 && (this.justSent.get(q.id) ?? 0) < wall && (!best || q.power > best.power)) best = q;
     this.selectedSquad = best ? best.id : null;
   }
 
@@ -572,11 +631,15 @@ export class GameScene extends BaseScene {
           const where = e.log.subject.kind === 'node' ? this.nodeLabel(view, e.log.subject.nodeId) : 'an HQ';
           if (pos) this.combatFloaters(e.log, pos, now);
           const mineAttack = e.log.attacker.team === mine;
-          if (mineAttack && e.log.outcome === 'captured') session.toast(`Captured ${where}`, 'good');
-          else if (mineAttack && e.log.outcome === 'attackerDefeated') session.toast(`Defeated attacking ${where}`, 'bad');
-          else if (mineAttack && e.log.outcome === 'capReached') session.toast(`Attack on ${where} ran out of steam`, 'info');
-          else if (!mineAttack && e.log.outcome === 'captured') session.toast(`${where} fell to the enemy`, 'bad');
-          else if (!mineAttack && e.log.outcome === 'attackerDefeated') session.toast(`Held ${where}`, 'good');
+          const pts = (nodeId: string): string => {
+            const n = view.nodes.find((x) => x.id === nodeId);
+            return n ? `${this.tune.scoring.tierPointsPerSecond[n.tier - 1]} pts/s` : '';
+          };
+          const subj = e.log.subject.kind === 'node' ? e.log.subject.nodeId : null;
+          if (mineAttack && e.log.outcome === 'captured') this.pushAlert({ level: 'good', title: `Captured ${where}`, sub: subj ? `+${pts(subj)}` : undefined, focus: pos ?? undefined }, 'good');
+          else if (mineAttack && e.log.outcome === 'attackerDefeated') this.pushAlert({ level: 'good', title: `Attack on ${where} failed`, sub: 'Your squad is walking home', focus: pos ?? undefined }, 'good');
+          else if (!mineAttack && e.log.outcome === 'captured' && subj) this.pushAlert({ level: 'danger', title: `${where} fell to the enemy`, sub: 'Scouts can win back its caches', focus: pos ?? undefined }, 'danger');
+          else if (!mineAttack && e.log.outcome === 'attackerDefeated') this.pushAlert({ level: 'good', title: `Held ${where}`, focus: pos ?? undefined }, 'good');
           break;
         }
         case 'combatFx':
@@ -590,11 +653,11 @@ export class GameScene extends BaseScene {
         case 'hqDamaged': {
           const h = view.hqs.find((x) => x.id === e.hqId) ?? view.enemyHqs.find((x) => x.id === e.hqId);
           if (h) this.fx.ring(h.pos.x, h.pos.y, now, 0xff4a1c, 1, 1.2);
-          if (e.hqId === session.info?.hqId) session.toast(`Your HQ was hit (${e.hp} left)`, 'bad');
+          if (e.hqId === session.info?.hqId) this.pushAlert({ level: 'danger', title: 'Your HQ was hit', sub: `${e.hp} HP left`, focus: h?.pos }, 'danger');
           break;
         }
         case 'hqDefeated':
-          if (e.hqId === session.info?.hqId) session.toast('Your HQ was defeated and sent home', 'bad');
+          if (e.hqId === session.info?.hqId) this.pushAlert({ level: 'danger', title: 'Your HQ was defeated and sent home' }, 'danger');
           break;
         case 'teleportFx':
           this.fx.teleport(e.from, e.to, now, e.own ? COLORS.mine : COLORS.enemy);
@@ -614,21 +677,14 @@ export class GameScene extends BaseScene {
           const p = this.iso.p(e.at.x, e.at.y);
           this.fx.ring(e.at.x, e.at.y, now, e.team === mine ? 0xffd54a : COLORS.enemy, 0.8, 0.8);
           this.floaters.push({ text: `+${fmtInt(Math.round(e.amount))}`, color: e.team === mine ? '#ffe08a' : '#ff9a7a', size: 16, x: p.x, y: p.y - 30, start: now });
-          const where = this.nodeLabel(view, e.nodeId);
-          if (e.team === mine) session.toast(`Your scouts banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'good');
-          else session.toast(`${e.commander} banked ${fmtInt(Math.round(e.amount))} points from a cache at ${where}`, 'bad');
           break;
         }
-        case 'poolLost':
-          if (e.amount <= 0) break;
-          if (e.team === mine) session.toast(`Lost ${this.nodeLabel(view, e.nodeId)}: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Scouts can win it back`, 'bad');
-          else session.toast(`${this.nodeLabel(view, e.nodeId)} taken: its ${fmtInt(Math.round(e.amount))} point pool dropped as ${e.caches} caches. Send scouts`, 'good');
-          break;
-        case 'poolOpened':
-          if (view.nodes.find((n) => n.id === e.nodeId)?.owner === mine) session.toast(`Score pool open at ${this.nodeLabel(view, e.nodeId)}: hold the node to keep it`, 'info');
-          break;
         case 'nodesUnlocked':
-          session.toast(e.tier >= 4 ? 'Nuclear Silo unlocked: it can be captured now' : 'Missile Turrets unlocked: they can be captured now', 'good');
+          {
+            const hit = view.nodes.filter((n) => n.tier === e.tier);
+            const pts = this.tune.scoring.tierPointsPerSecond[e.tier - 1];
+            this.pushAlert({ level: 'alert', title: e.tier >= 4 ? 'Nuclear Silo unlocked' : 'Missile Turrets unlocked', sub: `Worth ${pts} pts/s. Capture ${e.tier >= 4 ? 'it' : 'them'} now`, focus: hit[0]?.pos }, 'alert');
+          }
           break;
         case 'matchEnded':
           break;
@@ -818,6 +874,7 @@ export class GameScene extends BaseScene {
       .filter((n) => (n.owner === mine && n.visible) || n.kind === 'portal')
       .map((n) => ({ x: n.pos.x, y: n.pos.y, r: this.tune.nodes[n.kind].visionRadiusCells * this.tune.map.cellSize }));
     const key = circles.map((c) => `${c.x},${c.y},${c.r}`).join(';');
+    this.visionCircles = circles;
     if (key !== this.fogKey) {
       this.fogKey = key;
       paintFog(this.ground, iso, circles);
@@ -862,9 +919,12 @@ export class GameScene extends BaseScene {
         square(g, p.x, p.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
           square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
+        } else if (this.hover?.kind === 'node' && this.hover.id === n.id) {
+          // Nodes are what you click: they light up under the pointer.
+          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
-        const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.55) : dim);
+        const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.4) : dim);
         if (n.kind === 'portal') {
           drawPortal(g, p.x, p.y, now, hw * 1.05);
         } else if (n.kind === 'points' && n.tier >= 4) {
@@ -907,20 +967,39 @@ export class GameScene extends BaseScene {
       });
     }
 
-    // HQs
+    // The target of a tapped cue: a pulsing ring and a bobbing arrow, so the next click is obvious.
+    if (this.cuePing && Date.now() < this.cuePing.until) {
+      const ping = this.cuePing;
+      add(ping.pos, () => {
+        const p = iso.p(ping.pos.x, ping.pos.y);
+        const k = 0.5 + 0.5 * Math.sin(now * 7);
+        square(g, p.x, p.y, iso.tile / 2 + 6 + 4 * k, undefined, 1, COLORS.accent, 4);
+        const bob = Math.sin(now * 6) * 4;
+        g.fillStyle(COLORS.accent, 1).fillTriangle(p.x - 9, p.y - 74 + bob, p.x + 9, p.y - 74 + bob, p.x, p.y - 60 + bob);
+      });
+    } else if (this.cuePing) this.cuePing = null;
+
+    // HQs. Yours is green with a pulsing ring and a name; teammates stay quiet blue with names up close only.
     for (const h of view.hqs) {
       const p = iso.p(h.pos.x, h.pos.y);
       const isMe = h.id === info.hqId;
       add(h.pos, () => {
         if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
-        drawHq(g, p.x, p.y, COLORS.mine, 17, 1, now);
+        if (isMe) {
+          const k = 0.5 + 0.5 * Math.sin(now * 3);
+          g.lineStyle(3, COLORS.self, 0.35 + 0.5 * k).strokeEllipse(p.x, p.y + 6, 74 + 6 * k, 42 + 3 * k);
+          g.fillStyle(COLORS.self, 0.08 + 0.08 * k).fillEllipse(p.x, p.y + 6, 74, 42);
+        }
+        drawHq(g, p.x, p.y, isMe ? COLORS.self : shade(COLORS.mine, 0.8), isMe ? 19 : 16, 1, now);
         for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 40, 6, 4);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 3);
         if (isMe) {
           const bob = Math.sin(now * 4) * 2;
           g.fillStyle(COLORS.self, 1).fillTriangle(p.x - 6, p.y - 54 + bob, p.x + 6, p.y - 54 + bob, p.x, p.y - 46 + bob);
+          this.label('YOUR BASE', p.x, p.y + 8, '#8dffa8', 12);
+        } else if (this.zoom >= 2.0 || selHq === h.id || this.hover?.kind === 'hq' && this.hover.id === h.id) {
+          this.label(h.owner, p.x, p.y + 8, '#9fb3c8', 10);
         }
-        this.label(isMe ? 'YOU' : h.owner, p.x, p.y + 8, isMe ? '#8dffa8' : '#9fb3c8', 10);
       });
     }
     for (const h of view.enemyHqs) {
@@ -928,7 +1007,7 @@ export class GameScene extends BaseScene {
       add(h.pos, () => {
         if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
         drawHq(g, p.x, p.y, COLORS.enemy, 17, 1, now);
-        this.label(h.owner, p.x, p.y + 8, '#ff9a7a', 10);
+        if (this.zoom >= 1.0 || selHq === h.id) this.label(h.owner, p.x, p.y + 8, '#ff9a7a', 10);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 5);
       });
     }
@@ -1037,44 +1116,242 @@ export class GameScene extends BaseScene {
 
   // --------------------------------------------------------------------- HUD
 
-  private nodeInfoLines(view: WireView, id: string): { title: string; lines: [string, string][] } | null {
+  // ------------------------------------------------------------ objective card
+
+  private pushAlert(o: Objective, kind: 'danger' | 'alert' | 'good'): void {
+    const t = clientTune.hud.objective;
+    const secs = kind === 'danger' ? t.dangerSeconds : kind === 'alert' ? t.alertSeconds : t.goodSeconds;
+    this.alerts.push({ ...o, until: Date.now() + secs * 1000 });
+    if (this.alerts.length > 6) this.alerts.shift();
+  }
+
+  /** The one line to show now: a live threat or a timed event if there is one, otherwise the plain guidance. */
+  private currentObjective(view: WireView, simMs: number, haveCues: boolean): Objective | null {
+    const info = session.info!;
+    const t = clientTune.hud.objective;
+    const wall = Date.now();
+    this.alerts = this.alerts.filter((a) => a.until > wall);
+
+    // Teleport becoming ready is worth one line, but only when you hold a node to jump to.
+    const hq = view.hqs.find((x) => x.id === info.hqId);
+    const ready = !!hq && hq.nextTeleportAtMs <= simMs;
+    if (ready && !this.teleportWasReady && session.tipsOn && view.nodes.some((n) => n.owner === this.mine)) {
+      this.pushAlert({ level: 'good', title: 'Teleport ready', sub: 'Select a node of yours to jump there' }, 'good');
+    }
+    this.teleportWasReady = ready;
+
+    const own = view.squads.filter((q) => q.owner === info.playerId);
+    const allIdle = own.length > 0 && own.every((q) => q.state === 'hq');
+    if (allIdle) this.idleSince ??= wall;
+    else this.idleSince = null;
+    const idleLong = this.idleSince !== null && wall - this.idleSince > t.idleSeconds * 1000;
+
+    const label = (id: string) => this.nodeLabel(view, id);
+    const threat = incomingThreat(view, info.hqId, this.mine, simMs, this.tune.map.cellSize, t.threatWarnSeconds * 1000, label);
+    // The cue list below already says what to do when you are idle, so the plain nudge only shows when it is empty.
+    const guide = session.tipsOn ? guideLine(view, info.playerId, simMs, label, idleLong && !haveCues) : null;
+
+    // Danger events beat a live threat, which beats unlock alerts, which beat good news, which beats plain guidance.
+    const score = (o: Objective, event: boolean) => (o.level === 'danger' ? (event ? 40 : 35) : o.level === 'alert' ? 20 : o.level === 'good' ? 10 : 0);
+    let best: Objective | null = guide;
+    let bestScore = guide ? score(guide, false) : -1;
+    const consider = (o: Objective, event: boolean) => {
+      const sc = score(o, event);
+      if (sc >= bestScore) {
+        best = o;
+        bestScore = sc;
+      }
+    };
+    for (const a of this.alerts) consider(a, true);
+    if (threat) consider(threat, false);
+    return best;
+  }
+
+  /** Did this fight involve you: one of your squads attacked or defended, or your own HQ was the target? */
+  private involvedIn(log: CombatLog, playerId: string, hqId: string): boolean {
+    if (log.attacker.commander === playerId) return true;
+    if (log.subject.kind === 'hq' && log.subject.hqId === hqId) return true;
+    return log.fights.some((f) => f.defender.commander === playerId);
+  }
+
+  /** Pan to a spot and ring it, so the player only has to click what is highlighted. */
+  private pingTarget(pos: Vec): void {
+    this.focusOn(pos);
+    this.zoom = Math.max(this.zoom, this.focusZoom());
+    this.cuePing = { pos, until: Date.now() + 6000 };
+  }
+
+  /** The "next moves" list under the objective card: each row pans to its target when tapped. */
+  private drawCues(cues: Cue[], w: number, top: number, now: number): void {
+    if (cues.length === 0) return;
+    const ui = this.ui;
+    const compact = this.compact();
+    const cw = Math.min(w - (compact ? 150 : 40), compact ? 280 : 320);
+    const cx = Math.round((w - cw) / 2);
+    const rowH = compact ? 34 : 38;
+    ui.text('NEXT MOVES', cx + 4, top, { size: 9, bold: true, color: COLORS.dim });
+    let y = top + 13;
+    cues.forEach((c, i) => {
+      const hover = ui.isOver(cx, y, cw, rowH);
+      ui.rect(cx, y, cw, rowH, hover ? 0x1d2430 : 0x10141a, 0.92, hover ? COLORS.accent : COLORS.panelEdge, 7);
+      ui.gfx().fillStyle(COLORS.accent, 1).fillCircle(cx + 16, y + rowH / 2, 9);
+      ui.text(String(i + 1), cx + 16, y + rowH / 2 - 7, { size: 12, bold: true, align: 'center', color: '#150f26' });
+      const maxPx = cw - 44;
+      const fit = (str: string, size: number, bold: boolean): string => {
+        let out = str;
+        while (out.length > 4 && ui.measure(out, size, bold) > maxPx) out = out.slice(0, -2);
+        return out === str ? str : out + '...';
+      };
+      ui.text(fit(c.title, 13, true), cx + 34, y + 4, { size: 13, bold: true });
+      if (c.sub) ui.text(fit(c.sub, 10, false), cx + 34, y + 21, { size: 10, color: COLORS.dim });
+      ui.region(cx, y, cw, rowH, () => this.pingTarget(c.pos));
+      y += rowH + 4;
+    });
+    this.objBottom = Math.max(this.objBottom, y);
+    void now;
+  }
+
+  private focusOn(pos: Vec): void {
+    const p = this.iso.p(pos.x, pos.y);
+    this.camX = p.x;
+    this.camY = p.y;
+  }
+
+  /** The objective card under the scoreboard: loud for danger, calm for guidance. Returns its bottom edge. */
+  private drawObjective(view: WireView, simMs: number, w: number, barH: number, now: number): void {
+    const ui = this.ui;
+    const info = session.info!;
+    const hq0 = view.hqs.find((x) => x.id === info.hqId);
+    const cues = session.tipsOn
+      ? suggestCues(view, {
+          playerId: info.playerId,
+          hqId: info.hqId,
+          mine: this.mine,
+          simMs,
+          tierPoints: this.tune.scoring.tierPointsPerSecond,
+          garrisonBonus: this.tune.scoring.garrisonPointsPerSecond,
+          nodeLabel: (id) => this.nodeLabel(view, id),
+          fmtPower,
+          teleportReady: !!hq0 && hq0.nextTeleportAtMs <= simMs,
+          max: this.compact() ? 2 : 3,
+        })
+      : [];
+    const o = this.currentObjective(view, simMs, cues.length > 0);
+    this.objBottom = barH;
+    if (!o) {
+      this.drawCues(cues, w, barH + 8, now);
+      return;
+    }
+    const loud = o.level === 'danger' || o.level === 'alert';
+    const titleSize = o.level === 'guide' ? 13 : loud ? 16 : 14;
+    const subSize = 11;
+    const style = {
+      danger: { fill: 0x3b1016, edge: 0xff5a5a, sub: '#ffb3b3' },
+      alert: { fill: 0x3a2e0e, edge: 0xffd54a, sub: '#ffe9a6' },
+      good: { fill: 0x0f2e1a, edge: 0x5dff8a, sub: '#b7ffcb' },
+      guide: { fill: 0x10141a, edge: COLORS.accent, sub: COLORS.dim },
+    }[o.level];
+    const iconW = 44;
+    const maxW = Math.min(w - (this.compact() ? 150 : 40), 560);
+    const textW = Math.max(ui.measure(o.title, titleSize, true), o.sub ? ui.measure(o.sub, subSize) : 0);
+    const cw = Math.max(o.level === 'guide' ? 200 : 260, Math.min(maxW, textW + iconW + 20));
+    const ch = o.sub ? (loud ? 50 : 44) : 34;
+    const cx = Math.round((w - cw) / 2);
+    const cy = barH + 8;
+    const pulse = o.level === 'danger' ? 0.55 + 0.45 * Math.sin(now * 7) : o.level === 'alert' ? 0.7 + 0.3 * Math.sin(now * 4) : 1;
+    if (loud) ui.rect(cx - 4, cy - 4, cw + 8, ch + 8, style.edge, 0.18 * pulse, undefined, 10);
+    ui.rect(cx, cy, cw, ch, style.fill, 0.94, style.edge, 8);
+    if (o.level !== 'guide') ui.rect(cx, cy, 5, ch, style.edge, pulse, undefined, 3);
+    // Icon: one simple shape per level.
+    const g = ui.gfx();
+    const ix = cx + 24;
+    const iy = cy + ch / 2;
+    if (o.level === 'danger') {
+      g.fillStyle(style.edge, 1).fillCircle(ix, iy, 12);
+      ui.text('!', ix, iy - 10, { size: 17, bold: true, align: 'center', color: '#ffffff' });
+    } else if (o.level === 'alert') {
+      const pts: Vec[] = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const r = i % 2 === 0 ? 13 : 5.5;
+        pts.push({ x: ix + Math.cos(a) * r, y: iy + Math.sin(a) * r });
+      }
+      g.fillStyle(style.edge, 1).fillPoints(pts, true);
+    } else if (o.level === 'good') {
+      g.fillStyle(style.edge, 1).fillCircle(ix, iy, 11);
+      g.lineStyle(3, 0x08140c, 1).beginPath().moveTo(ix - 5, iy).lineTo(ix - 1, iy + 4).lineTo(ix + 6, iy - 4).strokePath();
+    } else {
+      g.fillStyle(style.edge, 0.9).fillTriangle(ix - 4, iy - 7, ix - 4, iy + 7, ix + 7, iy);
+    }
+    const tx = cx + iconW;
+    const ty = o.sub ? cy + (loud ? 7 : 6) : cy + (ch - titleSize) / 2 - 1;
+    const fit = (str: string, size: number, bold: boolean, maxPx: number): string => {
+      let out = str;
+      while (out.length > 4 && ui.measure(out, size, bold) > maxPx) out = out.slice(0, -2);
+      return out === str ? str : out + '...';
+    };
+    ui.text(fit(o.title, titleSize, true, cw - iconW - 10), tx, ty, { size: titleSize, bold: true, color: '#ffffff' });
+    if (o.sub) ui.text(fit(o.sub, subSize, false, cw - iconW - 10), tx, ty + titleSize + 5, { size: subSize, color: style.sub });
+    const focus = o.focus;
+    if (focus) ui.region(cx, cy, cw, ch, () => this.pingTarget(focus));
+    else ui.block(cx, cy, cw, ch);
+    this.objBottom = cy + ch + (loud ? 4 : 0);
+    this.drawCues(cues, w, this.objBottom + 6, now);
+  }
+
+  private hintText(): string | null {
+    if (!session.tipsOn) return null;
+    const t = isTouch();
+    if (!session.tipDone('selected')) return t ? 'Tap a node to inspect it' : 'Click a node to inspect it';
+    if (!session.tipDone('sent')) return t ? 'Press and hold a node to send your selected squad' : 'Right click a node to send your selected squad';
+    if (!session.tipDone('panned') || !session.tipDone('zoomed')) return t ? 'Drag to pan, pinch to zoom' : 'Drag or WASD to pan, wheel to zoom';
+    return null;
+  }
+
+  /** Selected node text: a short headline of what you can do and what it gives, then the details under "More". */
+  private nodeInfoLines(view: WireView, id: string, simMs: number): { title: string; lines: [string, string][]; more: [string, string][] } | null {
     const n = view.nodes.find((x) => x.id === id);
     if (!n) return null;
     const tune = this.tune;
-    const lines: [string, string][] = [];
     if (n.kind === 'portal') {
       return {
         title: nodeName(n.kind, n.tier),
         lines: [
-          ['Neutral, cannot be captured.', COLORS.dim],
-          ['Any HQ can teleport here (8 slots).', COLORS.text],
+          ['Neutral. Teleport your HQ here.', COLORS.good],
           ['Both teams see the cells around it.', COLORS.warn],
         ],
+        more: [['Cannot be captured. Any HQ can jump here (8 slots).', COLORS.dim]],
       };
     }
-    const owner = n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy';
-    lines.push([owner, n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
-    lines.push([`${tune.scoring.tierPointsPerSecond[n.tier - 1]} pts/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander`, COLORS.text]);
+    const pts = tune.scoring.tierPointsPerSecond[n.tier - 1];
+    const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
+    const lines: [string, string][] = [];
+    if (locked) lines.push([`Locked: opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, COLORS.warn]);
+    else if (n.owner === null) lines.push([`Capture it: +${pts} pts/s`, COLORS.good]);
+    else if (n.owner === this.mine) lines.push([`Yours: +${pts} pts/s. Garrison to defend`, COLORS.good]);
+    else lines.push(['Enemy-held: scout it, then attack', COLORS.warn]);
     const k = tune.nodes[n.kind];
-    const effects: string[] = [];
-    if (k.attackPct) effects.push(`Team attack +${Math.round(k.attackPct * n.tier * 100)}%`);
-    if (k.defensePct) effects.push(`Team defense +${Math.round(k.defensePct * n.tier * 100)}%`);
-    if (k.marchEdgeSecondsCut) effects.push(`Squad march -${k.marchEdgeSecondsCut * n.tier}s edge to edge (stacks)`);
-    if (k.teleportCooldownRate) effects.push(`Teleport cooldown x${1 + k.teleportCooldownRate * n.tier} faster (stacks)`);
-    if (k.poolRegenPerSecond) effects.push(`Allies +${k.poolRegenPerSecond * n.tier} reserve troops/s`);
-    if (n.kind === 'largeVision') effects.push(`Vision ${k.visionRadiusCells} cells`);
+    if (k.attackPct) lines.push([`Team attack +${Math.round(k.attackPct * n.tier * 100)}%`, COLORS.text]);
+    if (k.defensePct) lines.push([`Team defense +${Math.round(k.defensePct * n.tier * 100)}%`, COLORS.text]);
+    if (k.marchEdgeSecondsCut) lines.push([`Squad march -${k.marchEdgeSecondsCut * n.tier}s edge to edge (stacks)`, COLORS.text]);
+    if (k.teleportCooldownRate) lines.push([`Teleport cooldown x${1 + k.teleportCooldownRate * n.tier} faster (stacks)`, COLORS.text]);
+    if (k.poolRegenPerSecond) lines.push([`Allies +${k.poolRegenPerSecond * n.tier} reserve troops/s`, COLORS.text]);
+    if (n.kind === 'largeVision') lines.push([`Vision ${k.visionRadiusCells} cells`, COLORS.text]);
     if (n.kind === 'turret') {
       const t = tune.turret;
-      effects.push(`Every ${t.pulseSeconds}s: missile on enemy turrets and silo, -${Math.round(t.damageFraction * 100)}% troops per garrisoned squad`);
+      lines.push([`Every ${t.pulseSeconds}s: missile on enemy turrets and silo, -${Math.round(t.damageFraction * 100)}% troops per garrisoned squad`, COLORS.text]);
     }
-    for (const e of effects) lines.push([e, COLORS.warn]);
-    if (n.poolOpen) lines.push([`Pool ${fmtInt(n.pool ?? 0)}. If taken, drops as caches.`, COLORS.warn]);
-    else if (n.settlesAtMs !== undefined) lines.push([`Pool opens in ${fmtTime(n.settlesAtMs - session.simNow())}`, COLORS.dim]);
+
+    const more: [string, string][] = [];
+    more.push([n.owner === null ? 'Neutral' : n.owner === this.mine ? 'Your team' : 'Enemy', n.owner === this.mine ? COLORS.good : n.owner === null ? COLORS.dim : COLORS.bad]);
+    more.push([`${pts} pts/s, +${tune.scoring.garrisonPointsPerSecond}/s per garrisoned commander. Tier ${n.tier}`, COLORS.dim]);
+    if (n.poolOpen) more.push([`Pool ${fmtInt(n.pool ?? 0)}. If taken, drops as caches.`, COLORS.warn]);
+    else if (n.settlesAtMs !== undefined) more.push([`Pool opens in ${fmtTime(n.settlesAtMs - simMs)}`, COLORS.dim]);
     if (n.garrisonCount !== undefined) {
       const own = n.owner === this.mine && n.visible;
-      lines.push([own ? `Garrison ${n.garrisonCount}/${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
-    } else lines.push(['Garrison unknown: send a scout', COLORS.dim]);
-    return { title: `${nodeName(n.kind, n.tier)}  T${n.tier}`, lines };
+      more.push([own ? `Garrison ${n.garrisonCount}/${tune.garrison.maxSquads}` : `Garrison ${n.garrisonCount} (scouted)`, COLORS.text]);
+    } else more.push(['Garrison unknown: send a scout', COLORS.dim]);
+    return { title: nodeName(n.kind, n.tier), lines, more };
   }
 
   private drawHud(view: WireView, simMs: number): void {
@@ -1086,14 +1363,22 @@ export class GameScene extends BaseScene {
 
     // ---- scoreboard
     const compact = this.compact();
-    const barH = compact ? 30 : 34;
+    const barH = compact ? 30 : 46;
     ui.rect(0, 0, w, barH, 0x000000, 0.55);
     const remain = this.tune.match.durationSeconds * 1000 - simMs;
     const mineP = view.points[mine];
     const theirP = view.points[mine === 0 ? 1 : 0];
-    ui.text(`YOU  ${fmtInt(mineP)}`, w / 2 - 90, 7, { size: 17, bold: true, color: cssColor(COLORS.mine), align: 'right' });
+    // Your own score rate: what your held nodes pay every second (each garrisoned commander adds the bonus).
+    const sc = this.tune.scoring;
+    const rate = view.nodes.reduce((a, n) => (n.owner === mine ? a + sc.tierPointsPerSecond[n.tier - 1] + (n.garrisonCount ?? 0) * sc.garrisonPointsPerSecond : a), 0);
+    const youW = ui.text(`YOU  ${fmtInt(mineP)}`, w / 2 - 90, 7, { size: 17, bold: true, color: cssColor(COLORS.mine), align: 'right' });
+    if (rate > 0) ui.text(`+${fmtInt(rate)}/s`, w / 2 - 90 - youW - 10, 10, { size: 12, bold: true, align: 'right', color: COLORS.good });
     ui.text(fmtTime(remain), w / 2, 7, { size: 17, bold: true, align: 'center' });
     ui.text(`${fmtInt(theirP)}  ENEMY`, w / 2 + 90, 7, { size: 17, bold: true, color: cssColor(COLORS.enemy) });
+    // The one-line rule, for the first minutes on a phone and all match on desktop (until tips are switched off).
+    const goalOn = session.tipsOn && (!compact || simMs < 90_000);
+    if (goalOn) ui.text('Most points when the clock ends wins', w / 2, compact ? barH + 2 : 29, { size: 10, align: 'center', color: COLORS.dim });
+    const belowBar = compact && goalOn ? barH + 12 : barH;
     this.drawVersion();
     // Leave (anyone) or end the room (host), with a confirm step. On touch it lives in the menu button's popup.
     const endLabel = session.isHost ? 'End room' : 'Leave';
@@ -1115,6 +1400,13 @@ export class GameScene extends BaseScene {
     }
     // Square buttons on the left edge, middle of the screen.
     const activeReports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
+    // Fights you were part of, newest first, kept for the whole match (the wire only carries the latest few).
+    for (const l of view.combatLogs) if (this.involvedIn(l, info.playerId, info.hqId)) this.myLogs.set(l.id, l);
+    const logs = [...this.myLogs.values()].sort((a, b) => b.timeMs - a.timeMs || b.id - a.id);
+    this.sortedLogs = logs;
+    if (view.scouts.some((x) => x.owner === info.playerId && x.state !== 'home')) session.markTip('scouted');
+    const showScouts = activeReports > 0 || session.tipDone('scouted');
+    const showLogs = logs.length > 0;
     const sq = (y: number, label: string, count: number, which: Panel) => {
       const on = this.panel === which;
       ui.rect(8, y, 56, 56, on ? COLORS.accent : 0x1a212b, 1, on ? COLORS.accent : COLORS.panelEdge, 6);
@@ -1127,10 +1419,18 @@ export class GameScene extends BaseScene {
     const squadTop = h - (62 + ownSquads * 56) - 34 - 30;
     const by = Math.max(40, Math.min(h / 2 - 62, squadTop - 8 - 118));
     if (!compact) {
-      sq(by, 'Scouts', activeReports, 'scouts');
-      sq(by + 62, 'Logs', view.combatLogs.length, 'logs');
+      let slot = by;
+      if (showScouts) {
+        sq(slot, 'Scouts', activeReports, 'scouts');
+        slot += 62;
+      }
+      if (showLogs) sq(slot, 'Logs', logs.length, 'logs');
     }
+    this.railFlags = { scouts: showScouts, logs: showLogs, logCount: logs.length };
 
+    // ---- objective card, then command messages below it
+    this.drawObjective(view, simMs, w, belowBar, this.time.now / 1000);
+    const toastTop = Math.max(belowBar + 8, this.objBottom + 6);
     // ---- toasts
     const nowWall = Date.now();
     session.toasts = session.toasts.filter((t) => t.until > nowWall);
@@ -1139,11 +1439,12 @@ export class GameScene extends BaseScene {
     shownToasts.forEach((t, i) => {
       const col = t.kind === 'good' ? COLORS.good : t.kind === 'bad' ? COLORS.bad : COLORS.text;
       const tw = Math.max(200, t.text.length * 7.2 + 24);
-      ui.rect(w / 2 - tw / 2, barH + 8 + i * 28, tw, 24, 0x000000, 0.7, undefined, 5);
-      ui.text(t.text, w / 2, barH + 12 + i * 28, { size: 13, align: 'center', color: col });
+      ui.rect(w / 2 - tw / 2, toastTop + i * 28, tw, 24, 0x000000, 0.7, undefined, 5);
+      ui.text(t.text, w / 2, toastTop + 4 + i * 28, { size: 13, align: 'center', color: col });
     });
     if (session.status === 'reconnecting') ui.text('Connection lost, reconnecting...', w / 2, h / 2, { size: 18, align: 'center', color: COLORS.warn, bold: true });
 
+    this.flashNow = this.troopsFlash(view.squads.reduce((a, q) => (q.owner === info.playerId ? a + q.troops : a), 0), this.time.now / 1000);
     this.drawSquadPanel(view, simMs, h);
     this.drawMinimap(view, w, h);
     this.drawRail(view, simMs, w, h);
@@ -1151,8 +1452,9 @@ export class GameScene extends BaseScene {
     if (this.panel === 'scouts') this.drawScouts(view, simMs, h);
     this.drawTargetPanel(view, simMs, w, h);
 
-    const hintOn = !compact || (this.time.now - this.loadStartedAt) / 1000 < clientTune.hud.touchHintSeconds;
-    if (hintOn) ui.text(isTouch() ? 'Tap: inspect   Hold: send selected squad   Drag: pan   Pinch: zoom' : 'Left click: inspect   Right click: send selected squad   Drag / WASD: pan   Wheel: zoom', w / 2, h - 18, { size: 11, align: 'center', color: COLORS.dim, alpha: 0.7 });
+    // One hint at a time, each retiring once you have done the thing. Nodes are the only thing to click.
+    const hint = this.hintText();
+    if (hint) ui.text(hint, w / 2, h - 18, { size: 12, align: 'center', color: COLORS.dim, alpha: 0.85 });
 
     // ---- loading overlay for the first moments
     const introT = Math.max(0, this.introTime());
@@ -1254,9 +1556,19 @@ export class GameScene extends BaseScene {
     ui.region(left, pillY, pillW, pillH, () => (this.squadsOpen = !this.squadsOpen));
     if (hq) {
       const ready = hq.nextTeleportAtMs <= simMs;
-      ui.text(`HQ ${hq.hp}/${hq.maxHp}`, left + 8, pillY + 4, { size: 11, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
-      ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, left + 70, pillY + 4, { size: 11, color: ready ? COLORS.good : COLORS.dim });
-      ui.text(`Reserve ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, left + 8, pillY + 19, { size: 10, color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
+      const nowS = this.time.now / 1000;
+      ui.text(hq.hp < hq.maxHp ? `HQ ${hq.hp}/${hq.maxHp}` : 'HQ', left + 8, pillY + 4, { size: 11, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
+      if (ready) {
+        const k = 0.5 + 0.5 * Math.sin(nowS * 5);
+        ui.rect(left + 62, pillY + 2, 96, 17, 0x2f9e55, 0.18 + 0.2 * k, 0x5dff8a, 4);
+        ui.text('Teleport ready', left + 70, pillY + 4, { size: 11, bold: true, color: this.pulseGreen(nowS) });
+      } else ui.text(`Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, left + 70, pillY + 4, { size: 11, color: COLORS.dim });
+      // Troops total (flashes red when a fight takes some); reserve only when it runs low.
+      const total = squads.reduce((a, q) => a + q.troops, 0);
+      const f = this.flashNow;
+      if (f > 0) ui.rect(left + 3, pillY + 18, pillW - 6, 15, 0xff4a4a, 0.35 * f, undefined, 4);
+      ui.text(f > 0 ? `Troops ${fmtInt(total)}  -${fmtInt(this.troopsLoss.amount)}` : `Troops ${fmtInt(total)}`, left + 8, pillY + 19, { size: 10, bold: f > 0, color: f > 0 ? COLORS.bad : COLORS.dim });
+      if (hq.pool < hq.poolMax * 0.25) ui.text(`Reserve low`, left + pillW - 8, pillY + 4, { size: 10, bold: true, align: 'right', color: COLORS.warn });
     }
     ui.text(open ? 'Hide' : `Squads ${squads.length}`, left + pillW - 8, pillY + 19, { size: 10, bold: true, align: 'right', color: cssColor(COLORS.accent) });
     if (!open) return;
@@ -1317,20 +1629,36 @@ export class GameScene extends BaseScene {
     const px = 12;
     const py = h - ph - 34;
 
-    // Total troops above the panel: in the squads, and what is left in reserve.
+    // Total troops above the panel. It flashes red with the amount lost when a fight takes troops. Reserve only
+    // shows when it is running low.
     const inSquads = squads.reduce((a, q) => a + q.troops, 0);
+    const nowS = this.time.now / 1000;
+    const flash = this.flashNow;
     ui.panel(px, py - 30, pw, 26, 0.92);
-    ui.text(`Troops ${fmtInt(inSquads)}`, px + 10, py - 25, { size: 13, bold: true });
-    if (hq) ui.text(`Reserve ${fmtInt(hq.pool)} / ${fmtInt(hq.poolMax)}`, px + pw - 10, py - 25, { size: 13, align: 'right', color: hq.pool < hq.poolMax * 0.25 ? COLORS.warn : COLORS.dim });
+    if (flash > 0) ui.rect(px, py - 30, pw, 26, 0xff4a4a, 0.35 * flash, 0xff6a6a, 6);
+    const tw = ui.text(`Troops ${fmtInt(inSquads)}`, px + 10, py - 25, { size: 13, bold: true, color: flash > 0 ? '#ffd0d0' : COLORS.text });
+    if (flash > 0) ui.text(`-${fmtInt(this.troopsLoss.amount)}`, px + 18 + tw, py - 25, { size: 13, bold: true, color: COLORS.bad });
+    const lowReserve = !!hq && hq.pool < hq.poolMax * 0.25;
+    if (hq && lowReserve) ui.text(`Reserve low ${fmtInt(hq.pool)}`, px + pw - 10, py - 25, { size: 13, align: 'right', bold: true, color: COLORS.warn });
 
     ui.panel(px, py, pw, ph);
     if (hq) {
       const ready = hq.nextTeleportAtMs <= simMs;
-      ui.text(`HQ  ${hq.hp}/${hq.maxHp}`, px + 10, py + 8, { size: 13, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
-      ui.text(ready ? 'Teleport ready' : `Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, px + 110, py + 8, { size: 13, color: ready ? COLORS.good : COLORS.dim });
-      const homeScouts = view.scouts.filter((s) => s.owner === info.playerId && s.state === 'home').length;
-      const totalScouts = view.scouts.filter((s) => s.owner === info.playerId).length;
-      ui.text(`Scouts ${homeScouts}/${totalScouts}`, px + pw - 10, py + 8, { size: 13, align: 'right', color: homeScouts > 0 ? COLORS.text : COLORS.dim });
+      const hqText = hq.hp < hq.maxHp ? `HQ  ${hq.hp}/${hq.maxHp}` : 'HQ';
+      ui.text(hqText, px + 10, py + 8, { size: 13, bold: true, color: hq.burning ? COLORS.warn : COLORS.text });
+      const tx = px + 10 + ui.measure(hqText, 13, true) + 18;
+      if (ready) {
+        // Ready to jump: a green pulse that is hard to miss.
+        const k = 0.5 + 0.5 * Math.sin(nowS * 5);
+        const tw2 = ui.measure('Teleport ready', 13, true);
+        ui.rect(tx - 6, py + 4, tw2 + 12, 22, 0x2f9e55, 0.18 + 0.2 * k, 0x5dff8a, 5);
+        ui.text('Teleport ready', tx, py + 8, { size: 13, bold: true, color: this.pulseGreen(nowS) });
+      } else ui.text(`Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, tx, py + 8, { size: 13, color: COLORS.dim });
+      if (session.tipDone('scouted')) {
+        const homeScouts = view.scouts.filter((s) => s.owner === info.playerId && s.state === 'home').length;
+        const totalScouts = view.scouts.filter((s) => s.owner === info.playerId).length;
+        ui.text(`Scouts ${homeScouts}/${totalScouts}`, px + pw - 10, py + 8, { size: 13, align: 'right', color: homeScouts > 0 ? COLORS.text : COLORS.dim });
+      }
     }
     squads.forEach((s, i) => {
       const y = py + 36 + i * rowH;
@@ -1349,6 +1677,8 @@ export class GameScene extends BaseScene {
       ui.bar(px + 62, y + 20, 100, 8, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
       ui.text(`${Math.round(s.troops)}/${s.maxTroops}`, px + 168, y + 15, { size: 11, color: COLORS.dim });
       ui.text(this.squadStatus(s, view), px + 62, y + 32, { size: 11, color: COLORS.dim });
+      // Controls belong to the squad you picked: the others stay quiet.
+      if (!sel) return;
       if (s.state === 'hq') {
         ui.button(px + pw - 94, y + 2, 82, 22, s.defend ? 'Defend: ON' : 'Defend: OFF', {
           onClick: () => session.sendCommand({ type: 'setDefend', squadId: s.id, defend: !s.defend }),
@@ -1359,6 +1689,26 @@ export class GameScene extends BaseScene {
         ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
       }
     });
+  }
+
+  /** 0..1 while a drop in total troops is flashing (1 at the moment of the drop, fading out), else 0. */
+  private troopsFlash(total: number, nowS: number): number {
+    if (this.prevTroops >= 0 && total < this.prevTroops - 0.5) {
+      const dropped = this.prevTroops - total;
+      // Losses in quick succession add up while the flash is still showing.
+      const live = nowS - this.troopsLoss.at < clientTune.hud.troopsFlashSeconds;
+      this.troopsLoss = { at: nowS, amount: Math.round((live ? this.troopsLoss.amount : 0) + dropped) };
+    }
+    this.prevTroops = total;
+    const age = nowS - this.troopsLoss.at;
+    return age >= 0 && age < clientTune.hud.troopsFlashSeconds ? 1 - age / clientTune.hud.troopsFlashSeconds : 0;
+  }
+
+  /** Teleport-ready green, breathing between a deep and a pale green. */
+  private pulseGreen(nowS: number): string {
+    const k = 0.5 + 0.5 * Math.sin(nowS * 5);
+    const mix = (a: number, b: number) => Math.round(a + (b - a) * k);
+    return `rgb(${mix(60, 190)},${mix(200, 255)},${mix(110, 205)})`;
   }
 
   /** Touch screens get the compact HUD: slim panels, small minimap, buttons moved to the top bar. */
@@ -1373,6 +1723,7 @@ export class GameScene extends BaseScene {
     const info = session.info!;
     let title = '';
     let body: [string, string][] = [];
+    let more: [string, string][] = [];
     let attackable = true;
     let allyHq = false;
     let report: (typeof view.scoutReports)[number] | undefined;
@@ -1386,16 +1737,14 @@ export class GameScene extends BaseScene {
         ['Any scout banks it for its team on touch.', COLORS.dim],
       ];
     } else if (t.kind === 'node') {
-      const d = this.nodeInfoLines(view, t.id);
+      const d = this.nodeInfoLines(view, t.id, simMs);
       if (!d) return null;
       title = d.title;
       body = d.lines;
+      more = d.more;
       const nv = view.nodes.find((x) => x.id === t.id);
       if (nv?.kind === 'portal') attackable = true; // the order panel offers the teleport
-      if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) {
-        body = [[`Locked: opens in ${fmtTime(nv.unlocksAtMs - simMs)}`, COLORS.warn], ...body];
-        attackable = false;
-      }
+      if (nv?.unlocksAtMs !== undefined && simMs < nv.unlocksAtMs) attackable = false;
       report = view.scoutReports.filter((r) => r.expiresAtMs > simMs && r.target.kind === 'node' && r.target.nodeId === t.id).sort((a, b) => b.takenAtMs - a.takenAtMs)[0];
     } else if (t.own) {
       const hq = view.hqs.find((x) => x.id === t.id);
@@ -1425,6 +1774,7 @@ export class GameScene extends BaseScene {
       t,
       title,
       body,
+      more,
       attackable,
       portal: node?.kind === 'portal',
       allyHq,
@@ -1457,12 +1807,14 @@ export class GameScene extends BaseScene {
     const bottom = h - 34;
 
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.ui.wrap(text, 12, pw - 28)) lines.push({ text: l, color });
+    const showMore = session.nodeMore;
+    for (const [text, color] of [...d.body, ...(showMore ? d.more : [])]) for (const l of this.ui.wrap(text, 12, pw - 28)) lines.push({ text: l, color });
+    const moreH = d.more.length ? 26 : 0;
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const shown = defenders.slice(0, 6);
     const reportH = d.report ? 22 + shown.length * 15 + (defenders.length > shown.length ? 15 : 0) : 0;
     // Both panels share one height so the pair reads as a single, aligned group.
-    const ph = Math.max(40 + lines.length * 16 + reportH + 8, this.orderHeight(d));
+    const ph = Math.max(40 + lines.length * 16 + moreH + reportH + 8, this.orderHeight(d));
     const py = bottom - ph;
 
     ui.panel(px, py, pw, ph);
@@ -1472,6 +1824,10 @@ export class GameScene extends BaseScene {
     for (const l of lines) {
       ui.text(l.text, px + 12, y, { size: 12, color: l.color });
       y += 16;
+    }
+    if (d.more.length) {
+      ui.button(px + 12, y + 2, 64, 20, showMore ? 'Less' : 'More', { onClick: () => session.setNodeMore(!showMore), size: 10 });
+      y += moreH;
     }
     if (d.report) {
       ui.text(`Scouted ${Math.round((simMs - d.report.takenAtMs) / 1000)}s ago, expires ${fmtTime(d.report.expiresAtMs - simMs)}`, px + 12, y + 2, { size: 11, color: COLORS.warn });
@@ -1638,11 +1994,14 @@ export class GameScene extends BaseScene {
 
     // Text: a few wrapped lines, then a one-line scout summary.
     const lines: { text: string; color: string }[] = [];
-    for (const [text, color] of d.body) for (const l of this.ui.wrap(text, 11, 256 - 24)) lines.push({ text: l, color });
-    if (lines.length > 5) {
-      lines.length = 5;
-      lines[4].text = lines[4].text.slice(0, 33) + '...';
+    const showMore = session.nodeMore;
+    for (const [text, color] of [...d.body, ...(showMore ? d.more : [])]) for (const l of this.ui.wrap(text, 11, 256 - 24)) lines.push({ text: l, color });
+    const lineCap = showMore ? 9 : 5;
+    if (lines.length > lineCap) {
+      lines.length = lineCap;
+      lines[lineCap - 1].text = lines[lineCap - 1].text.slice(0, 33) + '...';
     }
+    const moreH = d.more.length ? 24 : 0;
     const defenders = d.report && !d.report.empty ? d.report.defenders : [];
     const repLines: { text: string; color: string }[] = [];
     if (d.report) {
@@ -1674,7 +2033,7 @@ export class GameScene extends BaseScene {
       return r;
     });
     if (col !== 0) rows++;
-    const ph = 30 + lines.length * 14 + repLines.length * 14 + (acts.length ? 6 + rows * 36 : 0) + 6;
+    const ph = 30 + lines.length * 14 + moreH + repLines.length * 14 + (acts.length ? 6 + rows * 36 : 0) + 6;
 
     const leftBound = ins.l + 64;
     const rightBound = w - ins.r - 60;
@@ -1699,6 +2058,10 @@ export class GameScene extends BaseScene {
     for (const l of lines) {
       ui.text(l.text, bx + 10, y, { size: 11, color: l.color });
       y += 14;
+    }
+    if (d.more.length) {
+      ui.button(bx + 10, y + 1, 58, 20, showMore ? 'Less' : 'More', { onClick: () => session.setNodeMore(!showMore), size: 10 });
+      y += moreH;
     }
     for (const l of repLines) {
       ui.text(l.text.length > 40 ? l.text.slice(0, 39) + '...' : l.text, bx + 10, y, { size: 10, color: l.color });
@@ -1835,9 +2198,11 @@ export class GameScene extends BaseScene {
       this.railButton(bx, y, 'menu', 0, () => (this.menuOpen = !this.menuOpen), this.menuOpen);
       y += 50;
       const reports = view.scoutReports.filter((r) => r.expiresAtMs > simMs).length;
-      this.railButton(bx, y, 'scouts', reports, () => (this.panel = this.panel === 'scouts' ? 'none' : 'scouts'), this.panel === 'scouts');
-      y += 50;
-      this.railButton(bx, y, 'logs', view.combatLogs.length, () => (this.panel = this.panel === 'logs' ? 'none' : 'logs'), this.panel === 'logs');
+      if (this.railFlags.scouts) {
+        this.railButton(bx, y, 'scouts', reports, () => (this.panel = this.panel === 'scouts' ? 'none' : 'scouts'), this.panel === 'scouts');
+        y += 50;
+      }
+      if (this.railFlags.logs) this.railButton(bx, y, 'logs', this.railFlags.logCount, () => (this.panel = this.panel === 'logs' ? 'none' : 'logs'), this.panel === 'logs');
       if (this.menuOpen) {
         const mw = 156;
         const mx = bx - mw - 6;
@@ -1924,10 +2289,10 @@ export class GameScene extends BaseScene {
     const pw = 460;
     const ph = Math.min(460, h - 44 - 270);
     ui.panel(px, py, pw, ph);
-    ui.text('Logs', px + 12, py + 10, { size: 15, bold: true });
+    ui.text('Your fights, newest first', px + 12, py + 10, { size: 15, bold: true });
     ui.button(px + pw - 30, py + 6, 22, 22, 'x', { onClick: () => (this.panel = 'none'), size: 12 });
     let y = py + 36;
-    if (view.combatLogs.length === 0) ui.text('No fights yet.', px + 12, y, { size: 12, color: COLORS.dim });
+    if (this.sortedLogs.length === 0) ui.text('No fights of yours yet.', px + 12, y, { size: 12, color: COLORS.dim });
     const OUTCOME: Record<CombatLog['outcome'], string> = {
       captured: 'Captured',
       attackerDefeated: 'Attacker defeated',
@@ -1937,7 +2302,7 @@ export class GameScene extends BaseScene {
       noDefenders: 'Taken, no defenders',
     };
     const typeName = (t: SquadType) => SQUAD_LABEL[t];
-    for (const log of view.combatLogs.slice(0, clientTune.hud.logsMax)) {
+    for (const log of this.sortedLogs.slice(0, clientTune.hud.logsMax)) {
       const fights = log.fights.slice(0, 3);
       const need = 34 + fights.length * 14 + (log.fights.length > fights.length ? 14 : 0) + 6;
       if (y + need > py + ph) break;
@@ -1976,9 +2341,38 @@ export class GameScene extends BaseScene {
     info.map.safeZones.forEach((z, team) => {
       g.fillStyle(teamColor(team as TeamId, this.mine), 0.3).fillRect(mx + z.origin.cx * this.iso.cell * sx, my + z.origin.cy * this.iso.cell * sy, z.cols * this.iso.cell * sx, z.rows * this.iso.cell * sy);
     });
-    for (const n of view.nodes) {
-      if (n.owner === this.mine && n.visible) {
-        g.fillStyle(COLORS.mine, 0.12).fillCircle(mx + n.pos.x * sx, my + n.pos.y * sy, this.tune.nodes[n.kind].visionRadiusCells * this.iso.cell * sx);
+    // Fog as one contiguous shape: per row, runs of lit cells and runs of fogged cells, so overlapping vision
+    // circles merge instead of stacking up as separate discs.
+    const cols = this.tune.map.widthCells;
+    const rows = this.tune.map.heightCells;
+    const fogKey = this.visionCircles.map((c) => `${c.x},${c.y},${c.r}`).join(';');
+    if (!this.mmVision || this.mmVision.key !== fogKey) {
+      const cells = new Uint8Array(cols * rows);
+      const cs = this.tune.map.cellSize;
+      for (let cy = 0; cy < rows; cy++) {
+        for (let cx = 0; cx < cols; cx++) {
+          const px = (cx + 0.5) * cs;
+          const py = (cy + 0.5) * cs;
+          for (const c of this.visionCircles) {
+            if ((px - c.x) * (px - c.x) + (py - c.y) * (py - c.y) <= c.r * c.r) {
+              cells[cy * cols + cx] = 1;
+              break;
+            }
+          }
+        }
+      }
+      this.mmVision = { key: fogKey, cells };
+    }
+    const cellW = mw / cols;
+    const cellH = mh / rows;
+    for (let cy = 0; cy < rows; cy++) {
+      let cx = 0;
+      while (cx < cols) {
+        const lit = this.mmVision.cells[cy * cols + cx];
+        let end = cx + 1;
+        while (end < cols && this.mmVision.cells[cy * cols + end] === lit) end++;
+        g.fillStyle(lit ? COLORS.mine : 0x000000, lit ? 0.1 : 0.5).fillRect(mx + cx * cellW, my + cy * cellH, (end - cx) * cellW + 0.5, cellH + 0.5);
+        cx = end;
       }
     }
     for (const n of view.nodes) {
@@ -1986,7 +2380,15 @@ export class GameScene extends BaseScene {
       const r = 2 + n.tier * 0.8;
       g.fillStyle(col, n.visible ? 1 : 0.55).fillRect(mx + n.pos.x * sx - r / 2, my + n.pos.y * sy - r / 2, r, r);
     }
-    for (const q of view.hqs) g.fillStyle(q.id === info.hqId ? COLORS.self : COLORS.mine, 1).fillCircle(mx + q.pos.x * sx, my + q.pos.y * sy, q.id === info.hqId ? 3 : 2);
+    for (const q of view.hqs) if (q.id !== info.hqId) g.fillStyle(COLORS.mine, 0.8).fillCircle(mx + q.pos.x * sx, my + q.pos.y * sy, 1.6);
+    const own = view.hqs.find((q) => q.id === info.hqId);
+    if (own) {
+      // Your base: a green dot with a ring, drawn last so teammates never cover it.
+      const ox = mx + own.pos.x * sx;
+      const oy = my + own.pos.y * sy;
+      g.lineStyle(1.5, COLORS.self, 0.5 + 0.4 * Math.sin(this.time.now / 300)).strokeCircle(ox, oy, 6);
+      g.fillStyle(COLORS.self, 1).fillCircle(ox, oy, 3.2);
+    }
     for (const q of view.enemyHqs) g.fillStyle(COLORS.enemy, 1).fillCircle(mx + q.pos.x * sx, my + q.pos.y * sy, 2);
     const simMs = session.simNow();
     for (const m of view.enemyMarches) {
