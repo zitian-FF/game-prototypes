@@ -7,10 +7,18 @@ import { intents } from '../input/intents';
 const SAVE_KEY = 'firestorm-arena:save:v1';
 const ROOM_ALPHABET = 'ACDEFHJKMNPRTWXY';
 
+/** Guidance state kept in the same save blob: tips on or off, which first-time hints are done, panel choices. */
+interface TipsState {
+  off?: boolean;
+  done?: Record<string, boolean>;
+  nodeMore?: boolean;
+}
+
 interface Save {
   clientId: string;
   name: string;
   room?: string;
+  tips?: TipsState;
 }
 
 function loadSave(): Save {
@@ -100,6 +108,38 @@ export class Session {
 
   setName(name: string): void {
     this.save.name = name;
+    this.persist();
+  }
+
+  /** Are on-screen tips and hints switched on? */
+  get tipsOn(): boolean {
+    return !this.save.tips?.off;
+  }
+
+  setTipsOn(on: boolean): void {
+    this.save.tips = { ...this.save.tips, off: !on };
+    this.persist();
+  }
+
+  /** A first-time hint that has already been done once in this browser. */
+  tipDone(key: string): boolean {
+    return !!this.save.tips?.done?.[key];
+  }
+
+  markTip(key: string): void {
+    if (this.tipDone(key)) return;
+    const tips = this.save.tips ?? {};
+    this.save.tips = { ...tips, done: { ...tips.done, [key]: true } };
+    this.persist();
+  }
+
+  /** Whether the node panel shows its extra details (remembered). */
+  get nodeMore(): boolean {
+    return !!this.save.tips?.nodeMore;
+  }
+
+  setNodeMore(on: boolean): void {
+    this.save.tips = { ...this.save.tips, nodeMore: on };
     this.persist();
   }
 

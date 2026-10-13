@@ -38,7 +38,7 @@ export function bakeGround(scene: Phaser.Scene, iso: Iso): Ground {
       const v = 26 + Math.floor(h * 16);
       ctx.fillStyle = `rgb(${v + 6},${v},${v - 2})`;
       ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = 'rgba(0,0,0,0.32)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.16)';
       ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
       if (hash2(cx, cy, 13) > 0.8) {
@@ -60,22 +60,13 @@ export function bakeGround(scene: Phaser.Scene, iso: Iso): Ground {
 }
 
 /**
- * Static vector overlays on the floor, drawn once: team-tinted safe zones, the 8 HQ slot tiles around every
- * node, and the map edge. Vector, so they stay sharp at any zoom.
+ * Static vector overlays on the floor, drawn once: team-tinted safe zones and the map edge. Vector, so they stay sharp at any zoom.
  */
 export function drawDecor(g: Phaser.GameObjects.Graphics, iso: Iso, map: MapDef, mine: TeamId): void {
   const T = iso.tile;
   g.clear();
-  // HQ slots: the ring of tiles around each node.
-  for (const n of map.nodes) {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        g.fillStyle(0xb0382c, 0.16).fillRect((n.cell.cx + dx) * T + 2, (n.cell.cy + dy) * T + 2, T - 4, T - 4);
-        g.lineStyle(1, 0xd9503f, 0.45).strokeRect((n.cell.cx + dx) * T + 2.5, (n.cell.cy + dy) * T + 2.5, T - 5, T - 5);
-      }
-    }
-  }
+  // The 8 HQ slot tiles around every node used to be drawn here. They looked like places to click, and nodes are the
+  // only thing you click, so they now only appear (as the teleport glow) when a node you can jump to is selected.
   // Safe zones.
   map.safeZones.forEach((z, team) => {
     const col = teamColor(team as TeamId, mine);
