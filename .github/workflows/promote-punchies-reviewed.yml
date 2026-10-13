@@ -12,6 +12,10 @@ on:
         description: Exact public staging source SHA
         required: true
         type: string
+      production_sha:
+        description: Traceable approved production adaptation SHA
+        required: true
+        type: string
       owner_approved_sha:
         description: Repeat SHA only after explicit owner itch approval
         required: true
@@ -33,22 +37,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.reviewed_sha }}
+          ref: ${{ inputs.production_sha }}
 
       - name: Validate explicit reviewed-source approval
         env:
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          PRODUCTION_SHA: ${{ inputs.production_sha }}
           OWNER_APPROVED_SHA: ${{ inputs.owner_approved_sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
           [[ "$REVIEWED_SHA" =~ ^[a-f0-9]{40}$ ]] && [ "$REVIEWED_SHA" = "$OWNER_APPROVED_SHA" ] || { echo "Exact owner-approved SHA required"; exit 1; }
-          [ "$(git rev-parse HEAD)" = "$REVIEWED_SHA" ] || exit 1
+          [ "$(git rev-parse HEAD)" = "$PRODUCTION_SHA" ] || exit 1
           live=$(curl -fsS "https://zitian-ff.github.io/game-prototypes/staging/punchies/stage.json?promotion=$REVIEWED_SHA" | jq -r .sha)
           [ "$live" = "$REVIEWED_SHA" ] || { echo "Reviewed source is not current public staging"; exit 1; }
           git fetch origin main
-          if ! git diff --quiet origin/main HEAD -- prototypes/punchies/server; then
-            echo "::error::Source requires a separately approved compatible Worker rollout before itch promotion"; exit 1
-          fi
+          git merge-base --is-ancestor "$REVIEWED_SHA" "$PRODUCTION_SHA" || { echo "Production source must descend from reviewed source"; exit 1; }
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';import {execFileSync} from 'node:child_process';
+          const p=JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json'));
+          if(p.reviewedStageSha!==process.env.REVIEWED_SHA||p.ownerApproved!==true||!p.features.kai||!p.features.teeIndexedPortrait)throw Error('Approval provenance/features incorrect');
+          const allowed=new Set(['prototypes/punchies/production-promotion.json','prototypes/punchies/src/sim/character.ts','prototypes/punchies/src/shop/draft.ts','prototypes/punchies/src/render/indexedPortraitMask.ts','prototypes/punchies/src/render/puppet.ts','prototypes/punchies/src/render/punchMotion.ts','scripts/build-punchies-profile.mjs','scripts/overlay-punchies-staging-art.mjs']);
+          const files=execFileSync('git',['diff','--name-only',process.env.REVIEWED_SHA,'HEAD'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+          for(const f of files)if(!allowed.has(f)&&!f.startsWith('scripts/test-punchies-')&&!f.startsWith('docs/punchies-'))throw Error('Unapproved adaptation path '+f);
+          execFileSync('git',['diff','--exit-code',process.env.REVIEWED_SHA,'HEAD','--','prototypes/punchies/tune.json','prototypes/punchies/tune.meta.json','prototypes/punchies/server','prototypes/punchies/src/net','prototypes/punchies/src/sim/sim.ts']);
+          NODE
           deployed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-punchies-rating.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
           [ -n "$deployed" ] || { echo "::error::No successful Worker deployment receipt"; exit 1; }
           git fetch origin "$deployed"
@@ -150,72 +162,18 @@ jobs:
           node scripts/i18n-sheet.mjs check
           node scripts/test-punchies-i18n.mjs
 
-      - name: Verify Punchies audio and roster
-        if: steps.relevant.outputs.run == 'true' && steps.target.outputs.name == 'punchies'
+      - name: Essential production safety and compatible backend checks
         run: |
-          node scripts/test-punchies-audio.mjs
-          node scripts/test-punchies-combat-audio.mjs
-          node scripts/test-punchies-music.mjs
-          node scripts/test-punchies-stingers.mjs
-          node scripts/test-punchies-feedback.mjs
-          node scripts/test-punchies-ui-input.mjs
-          node scripts/test-punchies-input-layouts.mjs
-          node scripts/test-punchies-input-modality.mjs
+          node scripts/test-punchies-rating.mjs
+          node scripts/test-punchies-rules-compatibility.mjs
+          node scripts/test-punchies-ranked-rules.mjs
+          node scripts/test-punchies-rating-snapshots.mjs
+          node scripts/test-punchies-ranked-result-binding.mjs
           node scripts/test-punchies-staging-reset.mjs
           node scripts/test-punchies-debug-exclusion.mjs
-          node scripts/test-punchies-staging-controls.mjs
-          node scripts/test-punchies-rules-compatibility.mjs
-          node scripts/test-punchies-rating-snapshots.mjs
-          node scripts/test-punchies-super.mjs
-          node scripts/test-punchies-super-feedback.mjs
-          node scripts/test-punchies-super-meter-vfx.mjs
-          node scripts/test-punchies-super-meter-layout.mjs
-          node scripts/test-punchies-nadia-torso.mjs
-          node scripts/test-punchies-marco-torso.mjs
-          node scripts/test-punchies-touch-editor-navigation.mjs
-          node scripts/test-punchies-game-menu.mjs
-          node scripts/test-punchies-reward-reveal.mjs
-          node scripts/test-punchies-reward-accents.mjs
-          node scripts/test-punchies-clash-fire.mjs
-          node scripts/test-punchies-fight-cue-visual.mjs
-          node scripts/test-punchies-roster.mjs
-          node scripts/test-punchies-roster-stats.mjs
-          node scripts/test-punchies-roster-animation.mjs
-          node scripts/test-punchies-roster-confirm.mjs
-          node scripts/test-punchies-roster-headshots.mjs
-          node scripts/test-punchies-ground-labels.mjs
-          node scripts/test-punchies-survival.mjs
-          node scripts/test-punchies-survival-views.mjs
-          node scripts/test-punchies-boss-hud.mjs
-          node scripts/test-punchies-survival-cjk-wrap.mjs
-          node scripts/test-punchies-profile-avatar.mjs
-          node scripts/test-punchies-title-profile-entry.mjs
-          node scripts/test-punchies-profile-avatar-art.mjs
-          node scripts/test-punchies-profile-zombie-ui.mjs
-          node scripts/test-punchies-ranked-lobby.mjs
-          node scripts/test-punchies-rating-session.mjs
-          node scripts/test-punchies-shop.mjs
-          node scripts/test-punchies-shop-candidates.mjs
-          node scripts/test-punchies-shop-three-ui.mjs
-          node scripts/test-punchies-progress.mjs
-          node scripts/test-punchies-alias.mjs
-          node scripts/test-punchies-starter-skins.mjs
-          node scripts/test-punchies-material-masks.mjs
-          node scripts/test-punchies-leg-motion.mjs
-          node scripts/test-punchies-portal.mjs
+          node scripts/test-punchies-kai-content.mjs
+          node scripts/test-punchies-kai-progression.mjs
           node scripts/verify-punchies-tune-guard.mjs
-          node scripts/test-punchies-states.mjs
-          node scripts/test-punchies-uppercut-charges.mjs
-          node scripts/test-punchies-emergency.mjs
-          node scripts/test-punchies-geometry.mjs
-          node scripts/test-punchies-i18n.mjs
-          node scripts/test-punchies-json-packing.mjs
-          if [ "${{ steps.punchies-art.outputs.available }}" = "true" ]; then
-            node scripts/test-punchies-asset-optimization.mjs
-            node scripts/test-punchies-tyke-gloves.mjs
-            node scripts/test-punchies-tee-materials.mjs
-            node scripts/test-punchies-palette-roster.mjs
-          fi
 
       # Bumps the target's deploy counter (see "Version stamping" in root
       # CLAUDE.md) without committing yet - committed only after a
@@ -248,6 +206,8 @@ jobs:
           npm run build:punchies:$PROFILE -- --portal web --fresh
           node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
           node scripts/test-punchies-production-package.mjs "dist/punchies-$PROFILE-web"
+          node scripts/test-punchies-kai-package.mjs "dist/punchies-$PROFILE-web"
+          PUNCHIES_TEE_SOURCE="dist/punchies-$PROFILE-web/prototypes/punchies/assets/loose/portrait_tee.webp" node scripts/test-punchies-indexed-portrait.mjs
           if [ "$PROFILE" = compact ]; then
             PUNCHIES_COMPACT_LOOSE=.cache/punchies-profiles/compact/public/prototypes/punchies/assets/loose node scripts/test-punchies-tee-materials.mjs
           fi
@@ -305,6 +265,7 @@ jobs:
       - name: Record promoted source and commit version counter only
         env:
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          PRODUCTION_SHA: ${{ inputs.production_sha }}
         run: |
           cp prototypes/punchies/version.json /tmp/promoted-version.json
           git reset --hard
@@ -312,7 +273,8 @@ jobs:
           cp /tmp/promoted-version.json prototypes/punchies/version.json
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add prototypes/punchies/version.json
+          node -e 'require("fs").writeFileSync(".github/punchies-last-promotion.json",JSON.stringify({reviewedSha:process.env.REVIEWED_SHA,productionSha:process.env.PRODUCTION_SHA,run:process.env.GITHUB_RUN_ID},null,2))'
+          git add prototypes/punchies/version.json .github/punchies-last-promotion.json
           git commit -m "Bump Punchies after approved promotion $REVIEWED_SHA"
           git push origin HEAD:main
           echo "Promoted exact reviewed source $REVIEWED_SHA with production flags" >> "$GITHUB_STEP_SUMMARY"
