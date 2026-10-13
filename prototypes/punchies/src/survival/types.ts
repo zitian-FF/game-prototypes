@@ -17,6 +17,8 @@ export interface SurvivalRun {
   seed: number; rngState: number; tick: number; wave: number; clearedWave: number;
   waveStartTick: number; fightStartTick: number;
   totalZombieKills:number; damageDealt:number; damageReceived:number;
+  /** Successful ordinary spawns in this wave, including initial adds. */
+  waveZombieSpawns:number;
   remainingTicks: number; waveKills: number; waveZombieKills: number; totalKills: number;
   status: 'active' | 'intermission' | 'ended';
   endReason: 'defeat' | 'abandoned' | null;

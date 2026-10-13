@@ -1,1 +1,8 @@
-["Ranked presentation prototype: VS and HUD identity capsules plus victory identity/rating", "Stage rating service is disabled: unavailable and pending states are truthful", "Optional labelled QA uses fictional profiles/ratings for visual review only", "Retains Kai staging draft, earned milestones, quickfix, Supers, VS and Tee pilot", "All fighter and shared tuning remains unchanged"]
+[
+  "Zombie balance: finite boss-add quotas, approved boss HP and damage ramp",
+  "Cross joins ordinary Zombies from wave 4 with slower startup and one active Cross",
+  "Old Survival checkpoints become incompatible; personal bests remain",
+  "Tyke gloves now visibly mirror with corrected cuff alignment",
+  "Retains all approved fighter stats, Kai/Tee assets, Ranked UI and shop rules",
+  "Staging saves and 999-token allowance remain isolated; rated play disabled"
+]

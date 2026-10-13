@@ -5,7 +5,9 @@ assert.equal(profile.staging,false);assert.equal(profile.saveResetId,'punchies-r
 assert.equal(files.filter(file=>file.endsWith('.html')).length,1);
 assert(!files.some(file=>/staging-review|ranked-review/.test(file)));
 const approved=profile.approvedContent;
-assert.equal(approved?.reviewedStageSha,'7d47e739e457ac43e55c60fe68bf47bd2352815c');assert.equal(approved.ownerApproved,true);
+const expected=JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json'));
+assert.match(expected.reviewedStageSha,/^[a-f0-9]{40}$/);assert.equal(expected.ownerApproved,true);
+assert.deepEqual(Object.fromEntries(Object.entries(approved??{}).filter(([key])=>key!=='overlay')),expected,'delivered approval must match the exact source record');
 assert.equal(approved.overlay.kai.files.length,6);
 if(profile.profile==='compact'){assert.equal(approved.overlay.maskBytes,14831);assert(files.some(file=>file.endsWith('materialmask_tee.png')));}
 for(const file of approved.overlay.kai.files)assert(files.some(emitted=>emitted.replaceAll('\\','/').endsWith(file.path)));
