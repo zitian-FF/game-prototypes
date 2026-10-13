@@ -8,7 +8,7 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal,profil
   const stage=process.env.PUNCHIES_STAGING==='on';
   const approvalPath=path.resolve('prototypes/punchies/production-promotion.json');
   const approval=fs.existsSync(approvalPath)?JSON.parse(fs.readFileSync(approvalPath)):null;
-  const approved=approval?.ownerApproved===true&&approval.reviewedStageSha==='7d47e739e457ac43e55c60fe68bf47bd2352815c'&&approval.features?.kai===true&&approval.features?.teeIndexedPortrait===true;
+  const approved=approval?.ownerApproved===true&&['7d47e739e457ac43e55c60fe68bf47bd2352815c','182693b09442928a8ece249cb2032dfe5e26c8da'].includes(approval.reviewedStageSha)&&approval.features?.kai===true&&approval.features?.teeIndexedPortrait===true;
   if(!stage&&!approved)return null;
   const patchRoot=path.resolve('prototypes/punchies/asset-patches');
   const metadataPath=path.join(patchRoot,'materialmask_tee.json');
