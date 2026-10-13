@@ -1,11 +1,11 @@
 import { KEYS } from '../portal/keys';
 import { isCharId, maxHealth, maxStamina } from '../sim/character';
-import { createRun, endRun, startNextWave, stepSurvival, survivalBalanceVersion } from './sim';
+import { createRun, endRun, startNextWave, stepSurvival, survivalBalanceVersion,bossZombieQuota } from './sim';
 import type { FrameInput } from '../sim/types';
 import type { RunOptions, SurvivalBest, SurvivalRun } from './types';
 
 export interface SurvivalStorage { getItem(key: string): string | null; setItem(key: string, value: string): void }
-interface SavedRun { schema: 1; phase: 'active' | 'checkpoint' | 'ended'; checkpoint: SurvivalRun | null; best: SurvivalBest | null }
+interface SavedRun { schema: 1|2; phase: 'active' | 'checkpoint' | 'ended'; checkpoint: SurvivalRun | null; best: SurvivalBest | null }
 export type ResumeResult =
   | { kind: 'ready'; run: SurvivalRun }
   | { kind: 'none' | 'abandoned' | 'corrupt' }
@@ -30,6 +30,7 @@ function validCheckpoint(v: unknown): v is SurvivalRun {
   if (![r.totalKills, r.waveKills, r.waveZombieKills].every(n => Number.isSafeInteger(n) && n >= 0) || r.waveZombieKills > r.waveKills || r.waveKills > r.totalKills) return false;
   if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.totalZombieKills)||r.totalZombieKills<0||r.totalZombieKills>r.totalKills||![r.damageDealt,r.damageReceived].every(n=>Number.isFinite(n)&&n>=0)))return false;
   if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.lastEnemyAttackTick)||r.bossPending!==null))return false;
+  if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.waveZombieSpawns)||r.waveZombieSpawns<0||(r.bossChar&&r.waveZombieSpawns>bossZombieQuota(r.wave))))return false;
   const p = r.player;
   if (!p || p.char !== r.fighter || p.health <= 0 || p.punch || p.dodge || p.guarding || p.buffered) return false;
   // Check complete Fighter shape against a fresh template, including nested counters.
@@ -55,7 +56,7 @@ export class SurvivalStore {
     const text = this.storage.getItem(KEYS.survival);
     if (!text) return null;
     const s = JSON.parse(text) as SavedRun;
-    if (!s || s.schema !== 1 || !['active', 'checkpoint', 'ended'].includes(s.phase) || (s.best !== null && !validBest(s.best))) throw new Error('Invalid survival save');
+    if (!s || ![1,2].includes(s.schema) || !['active', 'checkpoint', 'ended'].includes(s.phase) || (s.best !== null && !validBest(s.best))) throw new Error('Invalid survival save');
     if (s.phase === 'checkpoint' ? !validCheckpoint(s.checkpoint) : s.checkpoint !== null) throw new Error('Invalid survival checkpoint');
     return s;
   }
@@ -69,7 +70,7 @@ export class SurvivalStore {
     return r.clearedWave > (best?.clearedWave ?? 0) ? { clearedWave: r.clearedWave, fighter: r.fighter, skin: r.skin, balanceVersion: r.balanceVersion, runId: r.runId } : best;
   }
   begin(opts: RunOptions): SurvivalRun {
-    const r = createRun(opts); this.write({ schema: 1, phase: 'active', checkpoint: null, best: this.best() }); return r;
+    const r = createRun(opts); this.write({ schema: 2, phase: 'active', checkpoint: null, best: this.best() }); return r;
   }
   step(r: SurvivalRun, input: FrameInput) {
     const events = stepSurvival(r, input);
@@ -79,18 +80,18 @@ export class SurvivalStore {
   }
   checkpoint(r: SurvivalRun): boolean {
     if (r.status !== 'intermission' || !validCheckpoint(r)) return false;
-    this.write({ schema: 1, phase: 'checkpoint', checkpoint: structuredClone(r), best: this.record(r) }); return true;
+    this.write({ schema: 2, phase: 'checkpoint', checkpoint: structuredClone(r), best: this.record(r) }); return true;
   }
   // Atomic save-before-step: an interrupted active attempt cannot replay its old checkpoint.
   advance(r: SurvivalRun) {
     if (r.status !== 'intermission') return [];
-    this.write({ schema: 1, phase: 'active', checkpoint: null, best: this.record(r) });
+    this.write({ schema: 2, phase: 'active', checkpoint: null, best: this.record(r) });
     return startNextWave(r);
   }
   saveAndExit(r: SurvivalRun): boolean { return this.checkpoint(r); }
   finish(r: SurvivalRun): boolean {
     if (r.status !== 'ended') return false;
-    this.write({ schema: 1, phase: 'ended', checkpoint: null, best: this.record(r) }); return true;
+    this.write({ schema: 2, phase: 'ended', checkpoint: null, best: this.record(r) }); return true;
   }
   abandon(r: SurvivalRun): void { endRun(r, 'abandoned'); this.finish(r); }
   loadResume(currentVersion = survivalBalanceVersion()): ResumeResult {
@@ -99,7 +100,7 @@ export class SurvivalStore {
     if (!s || s.phase === 'ended') return { kind: 'none' };
     if (s.phase === 'active') { this.write({ ...s, phase: 'ended' }); return { kind: 'abandoned' }; }
     const r = s.checkpoint!;
-    if (r.balanceVersion !== currentVersion) return { kind: 'incompatible', savedVersion: r.balanceVersion, currentVersion };
+    if (s.schema!==2||r.balanceVersion !== currentVersion) return { kind: 'incompatible', savedVersion: r.balanceVersion, currentVersion };
     if (r.player.health > maxHealth(r.player) || r.player.stamina < 0 || r.player.stamina > maxStamina(r.player)) return { kind: 'corrupt' };
     return { kind: 'ready', run: structuredClone(r) };
   }
