@@ -25,7 +25,7 @@ const decodeClock=()=>typeof performance!=='undefined'&&typeof performance.now==
 export function stagingIndexedMaskDiagnostics(){return STAGING_BUILD?Object.freeze({...decodeStats}):null;}
 
 export function stagingTeePortraitMask(scene:Phaser.Scene,width:number,height:number):IndexedPortraitMask|null {
- if(!STAGING_BUILD||!scene.textures.exists('punchies:materialmask_tee'))return null;
+ if(!scene.textures.exists('punchies:materialmask_tee'))return null;
  const source=scene.textures.get('punchies:materialmask_tee').getSourceImage() as HTMLImageElement;
  // Never resize/index-interpolate a mismatched compact source. Packaging must preserve canonical geometry.
  if(source.width!==width||source.height!==height)return null;
@@ -40,7 +40,7 @@ export function stagingTeePortraitMask(scene:Phaser.Scene,width:number,height:nu
 
 /** Put the one-time decode under the existing boot splash, never first roster motion. */
 export function warmStagingTeePortraitMask(scene:Phaser.Scene):void {
- if(!STAGING_BUILD||!scene.textures.exists('punchies:portrait_tee'))return;
+ if(!scene.textures.exists('punchies:portrait_tee'))return;
  const source=scene.textures.get('punchies:portrait_tee').getSourceImage() as HTMLImageElement;
  stagingTeePortraitMask(scene,source.width,source.height);
 }

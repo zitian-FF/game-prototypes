@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import sharp from 'sharp';
 const root=path.join(process.argv[2],'prototypes/punchies');
 const profile=JSON.parse(fs.readFileSync(path.join(root,'asset-profile.json')));
-assert.equal(profile.staging,true);assert(profile.stageArtOverlay?.kai,'Kai stage provenance must be recorded');
-const files=profile.stageArtOverlay.kai.files;assert.equal(files.length,6);
+const overlay=profile.staging?profile.stageArtOverlay:profile.approvedContent?.overlay;assert(overlay?.kai,'Kai provenance must be recorded');
+const files=overlay.kai.files;assert.equal(files.length,6);
 for(const file of files){
  const bytes=fs.readFileSync(path.join(root,'assets',file.path));
  assert.equal(bytes.length,file.bytes);assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),file.sha256);

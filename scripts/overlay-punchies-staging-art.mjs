@@ -4,25 +4,30 @@ import crypto from 'node:crypto';
 import AdmZip from 'adm-zip';
 import sharp from 'sharp';
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
-export async function overlayStagingArt(assets,cache,baseArtSha256,portal){
-  if(process.env.PUNCHIES_STAGING!=='on')return null;
+export async function overlayStagingArt(assets,cache,baseArtSha256,portal,profile='compact'){
+  const stage=process.env.PUNCHIES_STAGING==='on';
+  const approvalPath=path.resolve('prototypes/punchies/production-promotion.json');
+  const approval=fs.existsSync(approvalPath)?JSON.parse(fs.readFileSync(approvalPath)):null;
+  const approved=approval?.ownerApproved===true&&approval.reviewedStageSha==='7d47e739e457ac43e55c60fe68bf47bd2352815c'&&approval.features?.kai===true&&approval.features?.teeIndexedPortrait===true;
+  if(!stage&&!approved)return null;
   const patchRoot=path.resolve('prototypes/punchies/asset-patches');
   const metadataPath=path.join(patchRoot,'materialmask_tee.json');
-  if(!fs.existsSync(metadataPath))return null;
-  if(portal!=='web')throw Error('The reviewed staging mask pilot is web-only');
-  const metadata=JSON.parse(fs.readFileSync(metadataPath));
-  const bytes=fs.readFileSync(path.join(patchRoot,'materialmask_tee.png'));
-  if(metadata.target!=='loose/materialmask_tee.png'||bytes.length!==metadata.bytes||hash(bytes)!==metadata.sha256)throw Error('Staging mask payload does not match the reviewed manifest');
-  const mask=await sharp(bytes).metadata();
-  const portraitPath=path.join(assets,'loose/portrait_tee.webp'),portrait=fs.readFileSync(portraitPath),base=await sharp(portrait).metadata();
-  if(mask.width!==766||mask.height!==700||mask.width!==base.width||mask.height!==base.height||metadata.dimensions[0]!==mask.width||metadata.dimensions[1]!==mask.height)throw Error('Staging mask and compact portrait geometry differ');
-  const preparedBase={bytes:portrait.length,sha256:hash(portrait),dimensions:[base.width,base.height]};
-  fs.copyFileSync(path.join(patchRoot,'materialmask_tee.png'),path.join(assets,metadata.target));
-  const preparedMetadata=Buffer.from(JSON.stringify({...metadata,preparedBase},null,2));
-  fs.writeFileSync(path.join(assets,'loose/materialmask_tee.json'),preparedMetadata);
+  if(portal!=='web'&&stage)throw Error('Staging preview is web-only');
+  const includeMask=profile==='compact';
+  let metadata,bytes,preparedBase;
   const manifestPath=path.join(assets,'manifest.json');
   const manifest=JSON.parse(fs.readFileSync(manifestPath)).filter(entry=>!entry.path.startsWith('loose/materialmask_tee.'));
-  manifest.push({path:metadata.target,hash:metadata.sha256},{path:'loose/materialmask_tee.json',hash:hash(preparedMetadata)});
+  if(includeMask){
+    if(!fs.existsSync(metadataPath))throw Error('Approved Tee mask payload missing');
+    metadata=JSON.parse(fs.readFileSync(metadataPath));bytes=fs.readFileSync(path.join(patchRoot,'materialmask_tee.png'));
+    if(metadata.target!=='loose/materialmask_tee.png'||bytes.length!==metadata.bytes||hash(bytes)!==metadata.sha256)throw Error('Tee mask payload does not match the reviewed manifest');
+    const mask=await sharp(bytes).metadata(),portrait=fs.readFileSync(path.join(assets,'loose/portrait_tee.webp')),base=await sharp(portrait).metadata();
+    if(mask.width!==766||mask.height!==700||mask.width!==base.width||mask.height!==base.height||metadata.dimensions[0]!==mask.width||metadata.dimensions[1]!==mask.height)throw Error('Mask and compact portrait geometry differ');
+    preparedBase={bytes:portrait.length,sha256:hash(portrait),dimensions:[base.width,base.height]};
+    fs.copyFileSync(path.join(patchRoot,'materialmask_tee.png'),path.join(assets,metadata.target));
+    const preparedMetadata=Buffer.from(JSON.stringify({...metadata,preparedBase},null,2));fs.writeFileSync(path.join(assets,'loose/materialmask_tee.json'),preparedMetadata);
+    manifest.push({path:metadata.target,hash:metadata.sha256},{path:'loose/materialmask_tee.json',hash:hash(preparedMetadata)});
+  }
   const kaiRoot=path.join(patchRoot,'kai'),kaiManifestPath=path.join(kaiRoot,'manifest.json');
   let kai;
   if(fs.existsSync(kaiManifestPath)){
@@ -63,6 +68,6 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal){
   }
   const archive=zip.toBuffer(),archiveSha256=hash(archive),archivePath=path.join(cache,`tee-stage-art-${archiveSha256}.zip`);
   fs.writeFileSync(archivePath,archive);
-  if(!new AdmZip(archive).getEntry(metadata.target).getData().equals(bytes))throw Error('Staging ZIP altered mask bytes');
-  return {scope:kai?'tee-indexed-and-kai-staging-preview':'tee-indexed-staging-pilot',baseArtSha256,archiveSha256,archiveBytes:archive.length,maskSha256:metadata.sha256,maskBytes:bytes.length,manifestSha256:hash(manifestBytes),preparedBase,...(kai?{kai}: {})};
+  if(metadata&&!new AdmZip(archive).getEntry(metadata.target).getData().equals(bytes))throw Error('Staging ZIP altered mask bytes');
+  return {scope:stage?(kai?'tee-indexed-and-kai-staging-preview':'tee-indexed-staging-pilot'):'approved-production-content',baseArtSha256,archiveSha256,archiveBytes:archive.length,...(metadata?{maskSha256:metadata.sha256,maskBytes:bytes.length,preparedBase}: {maskFallback:'source-resolution palette'}),manifestSha256:hash(manifestBytes),...(kai?{kai}: {})};
 }
