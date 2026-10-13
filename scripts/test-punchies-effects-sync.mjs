@@ -85,7 +85,9 @@ for (const webgl of [false, true]) {
   const shadowBefore=new Set(scene.children.list),shadows=new shadowExports.CodeXShadows(scene),shadowObjects=scene.children.list.filter(o=>!shadowBefore.has(o));perspective.take(shadowObjects);assert.equal(shadowObjects.length,24);assert(shadowObjects.every(o=>o.parentContainer===perspective.world),'all cached shadow tracks share ring world');
   const waveExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/waveMotionVfx.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:waveExports,require:id=>id.includes('waveMotionTexture')?{waveMotionTexture:()=> 'wave',WAVE_ART:{coreX:88,coreY:48,width:128,height:96}}:{reducedMotion:()=>false}});
   const waveBefore=new Set(scene.children.list),wave=new waveExports.WaveMotionVfx(scene),waveObjects=scene.children.list.filter(o=>!waveBefore.has(o));perspective.take(waveObjects);assert.equal(waveObjects.length,6);assert(waveObjects.every(o=>o.parentContainer===perspective.world),'all wave objects share fitted ring world');
-  const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));effects.push(...waveObjects);
+  const eagleExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/eagleFireVfx.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:eagleExports,require:id=>id.includes('eagleFireTexture')?{eagleFireTexture:()=> 'eagle',EAGLE_ART:{gloveX:72,width:96}}:{reducedMotion:()=>false}});
+  const eagleBefore=new Set(scene.children.list),eagle=new eagleExports.EagleFireVfx(scene),eagleObjects=scene.children.list.filter(o=>!eagleBefore.has(o));perspective.take(eagleObjects);assert.equal(eagleObjects.length,10);assert(eagleObjects.every(o=>o.parentContainer===perspective.world),'all eagle fire objects share fitted ring world');
+  const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));effects.push(...waveObjects,...eagleObjects);
   const overlay = spawn(76);
   const flash = spawn(80);
   const hud = spawn(130);
@@ -120,7 +122,7 @@ for (const webgl of [false, true]) {
   // the perspective listener, without pretending to be a full GameObject.
   scene.children.shutdown = () => {};
   events.emit('shutdown');
-  assert(waveObjects.every(o=>o.scene===null),'wave object cleanup leaked');
+  assert(waveObjects.every(o=>o.scene===null),'wave object cleanup leaked');assert(eagleObjects.every(o=>o.scene===null),'eagle fire cleanup leaked');
   assert.equal(events.listenerCount('update'),0,'pooled spark update listener leaked');
   const afterShutdown = spawn(60);
   await new Promise((resolve) => queueMicrotask(resolve));

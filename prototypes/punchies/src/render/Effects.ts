@@ -1,3 +1,4 @@
+import {EagleFireVfx,eaglePresentation,type EaglePresentation} from './eagleFireVfx';
 import {WaveMotionVfx,wavePresentation,type WavePresentation} from './waveMotionVfx';
 import {CodeXShadows} from './codeXShadows';
 import {CombatSymbols} from './combatSymbols';
@@ -23,6 +24,7 @@ export class Effects {
     this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);
     const sources=this.codeXSources?.()??s.fighters,finished=!!s.result||(!!this.codeXSources&&sources.length===0);
     this.codeXShadows.draw(sources,finished);
+    this.eagleVfx.draw(sources.map(eaglePresentation).filter((p):p is EaglePresentation=>p!==null),s.tick,finished);
     this.waveVfx.draw(sources.map(wavePresentation).filter((p):p is WavePresentation=>p!==null),s.tick,finished);
   }
   private sparks: CombatSparks;
@@ -30,6 +32,7 @@ export class Effects {
   private symbols:CombatSymbols;
   private codeXShadows:CodeXShadows;
   private waveVfx:WaveMotionVfx;
+  private eagleVfx:EagleFireVfx;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -42,6 +45,7 @@ export class Effects {
     this.symbols=new CombatSymbols(scene);
     this.codeXShadows=new CodeXShadows(scene);
     this.waveVfx=new WaveMotionVfx(scene);
+    this.eagleVfx=new EagleFireVfx(scene);
     this.combatText=new CombatText(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)
@@ -143,6 +147,9 @@ export class Effects {
           }
           break;
         }
+        case 'eagleContact':
+          if(e.outcome!=='dodged')this.eagleVfx.contact(s.tick,e.x,e.y,e.outcome==='hit'?1:.35);
+          break;
         case 'waveContact':
           if(e.outcome!=='dodged')this.waveVfx.contact(s.tick,e.x,e.y,1,0,e.outcome==='hit'?1:e.outcome==='blocked'?.45:.3);
           break;
