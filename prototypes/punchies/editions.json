@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "defaultEdition": "master",
+  "masterFighters": ["marco", "mia", "bruno", "tee", "tyke", "dragon", "longan", "captain", "roxy", "nadia", "kai"],
+  "editions": {
+    "master": {"runtimeReady": true, "fighters": ["marco", "mia", "bruno", "tee", "tyke", "dragon", "longan", "captain", "roxy", "nadia", "kai"], "skins": "all", "economy": true, "progression": true, "ads": false, "storageNamespace": "", "onlineCohort": "master"},
+    "crazygames": {"runtimeReady": false, "fighters": ["marco", "mia", "bruno", "roxy", "nadia", "tee", "tyke", "dragon", "longan", "captain", "kai"], "rows": [["marco", "mia", "bruno", "roxy", "nadia"], ["tee", "tyke", "dragon", "longan", "captain", "kai"]], "skins": "all", "economy": true, "progression": true, "ads": true, "storageNamespace": "punchies:crazygames:", "onlineCohort": "crazygames"},
+    "itchbeta": {"runtimeReady": false, "title": "Punchies - Beta Test", "account": "zitian-ff", "slug": "punchies-beta-test", "fighters": ["marco", "mia", "bruno", "roxy", "nadia"], "initialFighters": ["marco", "mia", "bruno"], "milestones": [{"fighter": "roxy", "completedMatches": 3}, {"fighter": "nadia", "completedMatches": 5}], "skins": "default", "economy": false, "progression": false, "ads": false, "storageNamespace": "punchies:community:", "onlineCohort": "itchbeta"}
+  }
+}
