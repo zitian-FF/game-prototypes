@@ -26,11 +26,15 @@
     { "id": "champion", "level": 40 },
     { "id": "legend", "level": 50 }
   ],
+  "fighterRewards": { "6": "fighter-kai" },
   "skinRewards": {
     "12": "skin-marco-veteran",
+    "14": "skin-kai-kangaroo-turquoise",
     "18": "skin-mia-veteran",
+    "22": "skin-kai-grabber-green",
     "24": "skin-bruno-veteran",
     "30": "skin-tee-veteran",
+    "32": "skin-kai-panda-pink",
     "36": "skin-longan-veteran",
     "42": "skin-tyke-veteran",
     "48": "skin-dragon-veteran"

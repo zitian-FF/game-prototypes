@@ -394,6 +394,7 @@ export class CharSelectScene extends Phaser.Scene {
 
   private setupNet(): void {
     const s = this.data0.session!;
+    s.onRejected=reason=>{if(reason==='incompatible'){s.leave();startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
       if (m.k === 'format' && this.data0.localIdx === 1) tune.match.bestOf = m.bestOf === 1 ? 1 : 3;
@@ -442,6 +443,7 @@ export class CharSelectScene extends Phaser.Scene {
   private hostStart(): void {
     if (this.handedOff) return;
     const s = this.data0.session!;
+    if(!s.readyForMatch||!validateTuneJson(JSON.stringify(tune)).ok)return;
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
     const round = this.data0.nextRound ?? 1;

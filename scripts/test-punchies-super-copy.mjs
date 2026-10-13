@@ -1,0 +1,6 @@
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';
+const exports={};let table;const t=key=>table[key]??key;
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/superCopy.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports,require:()=>({t})});
+for(const lang of ['en','ja','ko','zh','es','ar']){table=JSON.parse(fs.readFileSync('prototypes/punchies/src/i18n/locales/'+lang+'.json','utf8'));for(const nameKey of ['super.rising_upper','super.code_x','super.buffalo_hook'])assert.equal(exports.superName(nameKey),table[nameKey]);for(const key of ['super.rising_upper_description','super.code_x_description','super.buffalo_hook_description'])assert.equal(exports.superDescription(key),table[key]);}
+const source=fs.readFileSync('prototypes/punchies/src/ui/CharacterSelectView.ts','utf8');assert(source.includes('superName(superMove.nameKey)'));assert(source.includes('superDescription(superMove.descriptionKey)'));assert(source.includes('stars:superMove.starCost'));assert(!source.includes("name:t('super.rising_upper')"));
+console.log('PASS canonical name/description metadata routes Rising Upper, CodeX and Buffalo Hook in all six locales; canonical cost and literal-key strict validation retained');

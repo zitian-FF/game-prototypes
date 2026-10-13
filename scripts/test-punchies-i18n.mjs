@@ -55,7 +55,12 @@ for (const file of files) {
   visit(sf);
 }
 // Dynamic keys are limited to a few groups, each checked for completeness below.
-const { CHARACTER_IDS } = await loadTs('./prototypes/punchies/src/sim/character', ['CHARACTER_IDS']);
+// Translation completeness covers registered content, including staged fighters
+// disabled by production availability gates. Never weaken their runtime gate.
+const characterSource = fs.readFileSync(`${src}/sim/character.ts`, 'utf8');
+const inventoryExport = /export const ALL_CHARACTER_IDS\b/.test(characterSource) ? 'ALL_CHARACTER_IDS' : 'CHARACTER_IDS';
+const inventoryModule = await loadTs('./prototypes/punchies/src/sim/character', [inventoryExport]);
+const CHARACTER_IDS = inventoryModule[inventoryExport];
 const progressCfg = JSON.parse(fs.readFileSync(`${src}/progress/progress-config.json`, 'utf8'));
 const groups = { 'level.': ['easy', 'medium', 'hard'], 'quote.': CHARACTER_IDS, 'char.': CHARACTER_IDS, 'title.': progressCfg.titles.map((x) => x.id) };
 for (const d of dynamic) assert.ok(/level\.|quote\.|char\.|title\.|shop\.item\.|layouts\.|reasonKey|STANCE_KEY/.test(d.text), `${d.where}: unexpected dynamic key ${d.text}`);

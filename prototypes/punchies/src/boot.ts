@@ -23,7 +23,7 @@ import { setupOrientation } from './orientation/orientation';
 
 
 
-mountDebugPanelIfRequested();
+
 installTextLocale(Phaser);
 
 export const game = new Phaser.Game({
@@ -39,6 +39,7 @@ export const game = new Phaser.Game({
   },
 });
 
+mountDebugPanelIfRequested(game);
 setupOrientation(game);
 installMusic(game);
 

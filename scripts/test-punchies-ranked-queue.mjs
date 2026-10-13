@@ -8,12 +8,23 @@ async function player(rating){const p={myId:crypto.randomUUID()};Object.assign(p
 const a=await player(1000),b=await player(1400),c=await player(1050);
 const qa=await call('/queue/join',a),qb=await call('/queue/join',b),qc=await call('/queue/join',c);assert.equal(qa.status,'waiting');assert.equal(qb.status,'waiting');assert.equal(qc.status,'paired');assert.equal(qc.opponent,a.myId,'closest authoritative rating, not client-supplied rating');
 const pa=await call('/queue/poll',a,{ticket:qa.ticket});assert.equal(pa.room,qc.room);assert.notEqual(pa.role,qc.role);assert.equal(pa.nonce,qc.nonce);
+assert.deepEqual(pa.baseline,{local:1000,opponent:1050});assert.deepEqual(qc.baseline,{local:1050,opponent:1000});
+sql.exec('UPDATE players SET rating=1001 WHERE id=?',a.myId);
+assert.deepEqual((await call('/queue/poll',a,{ticket:qa.ticket})).baseline,pa.baseline,'pairing baseline is immutable');
 assert.equal((await call('/queue/join',a)).ticket,qa.ticket,'one idempotent ticket per player');
 assert.equal((await call('/queue/cancel',b,{ticket:qa.ticket})).status,'cancelled');assert.equal((await call('/queue/poll',a,{ticket:qa.ticket})).status,'paired','cannot cancel another player ticket');
 await call('/queue/complete',a,{ticket:qa.ticket});await call('/queue/complete',c,{ticket:qc.ticket});
 const m=await call('/match',a,{opponent:c.myId,nonce:pa.nonce,pairId:pa.pairId});const other=await call('/match',c,{opponent:a.myId,nonce:pa.nonce,pairId:pa.pairId});assert.equal(m.matchId,other.matchId);
 await call('/match',b,{opponent:a.myId,nonce:pa.nonce,pairId:pa.pairId},403);
-await call('/report',a,{matchId:m.matchId,score:1,quit:false});assert.equal((await call('/report',c,{matchId:m.matchId,score:0,quit:false})).state,'settled');
+assert.equal((await call('/report',a,{matchId:m.matchId,score:1,quit:false})).outcome,null);
+const settled=await call('/report',c,{matchId:m.matchId,score:0,quit:false});assert.equal(settled.state,'settled');
+assert.equal(settled.outcome.opponent.before,1001);assert.equal(settled.outcome.local.before,1050);
+assert.equal(settled.outcome.opponent.after-settled.outcome.opponent.before,settled.outcome.opponent.delta);
+assert.equal(settled.outcome.local.matches,1);
+await call('/status',b,{matchId:m.matchId},404);
+sql.exec('UPDATE players SET rating=1200,matches=9 WHERE id=?',c.myId);
+const later=await call('/status',c,{matchId:m.matchId});assert.deepEqual(later.outcome,settled.outcome,'later ratings cannot rewrite a match result');assert.equal(later.rating,1200);
+sql.exec('DELETE FROM match_snapshots WHERE match=?',m.matchId);assert.equal((await call('/status',c,{matchId:m.matchId})).outcome,null,'legacy result unavailable');
 const d=await player(1000),qd=await call('/queue/join',d);let pb;
 for(let i=0;i<12;i++){now+=5000;pb=await call('/queue/poll',b,{ticket:qb.ticket});await call('/queue/poll',d,{ticket:qd.ticket});if(pb.status==='paired')break;}
 assert.equal(pb.status,'paired','wait widens eligible Elo range');await call('/queue/cancel',b,{ticket:qb.ticket});assert.equal((await call('/queue/poll',d,{ticket:qd.ticket})).status,'cancelled','reservation cancellation releases both');

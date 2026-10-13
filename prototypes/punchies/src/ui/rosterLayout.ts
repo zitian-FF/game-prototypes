@@ -4,9 +4,9 @@ export function rosterSlots():{x:number;y:number}[]{return ROSTER_ROWS.flatMap((
 // Reserve future fighters without making unfinished characters selectable.
 export function rosterIds(ids:readonly string[]=CHARACTER_IDS):(string|null)[]{
  const result:(string|null)[]=Array(30).fill(null);
- const reserved=['tee','marco','mia','bruno','roxy','nadia'];
- for(const [slot,id] of [[0,'tee'],[3,'marco'],[4,'mia'],[5,'bruno'],[6,'roxy'],[7,'nadia']] as const)if(ids.includes(id))result[slot]=id;
- const free=[12,18,9,20,15,10,19,8,17,13,21,11,16,14,1,2,22,23,24,25,26,27,28,29];
+ const reserved=['tee','marco','mia','bruno','roxy','nadia','kai'];
+ for(const [slot,id] of [[0,'tee'],[3,'marco'],[4,'mia'],[5,'bruno'],[6,'roxy'],[7,'nadia'],[29,'kai']] as const)if(ids.includes(id))result[slot]=id;
+ const free=[12,18,9,20,15,10,19,8,17,13,21,11,16,14,1,2,22,23,24,25,26,27,28];
  ids.filter(id=>!reserved.includes(id)).forEach((id,i)=>{if(free[i]!==undefined)result[free[i]]=id;});
  return result;
 }

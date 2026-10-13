@@ -1,9 +1,10 @@
+import {CodeXShadows} from './codeXShadows';
 import {CombatSymbols} from './combatSymbols';
 import {CombatText} from './combatText';
 import {CombatSparks} from './combatVfx';
 import Phaser from 'phaser';
 import { t } from '../i18n';
-import type { SimEvent, SimState } from '../sim/types';
+import type { Fighter, SimEvent, SimState } from '../sim/types';
 import { sfx } from '../audio/sfx';
 import { PIXEL_RATIO, VIEW } from './pixelRatio';
 import { tune, TICK_RATE } from '../sim/tune';
@@ -16,10 +17,12 @@ export class Effects {
   roundNumber = 1;
   private fightCue:ReturnType<typeof fightWord>|null=null;
   private fightCueTick=0;
-  draw(s:SimState):void {this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);}
+  codeXSources:(()=>readonly Fighter[])|null=null;
+  draw(s:SimState):void {this.fightCue?.draw((s.tick-this.fightCueTick)*1000/TICK_RATE);this.codeXShadows.draw(this.codeXSources?.()??s.fighters,!!s.result);}
   private sparks: CombatSparks;
   private combatText:CombatText;
   private symbols:CombatSymbols;
+  private codeXShadows:CodeXShadows;
   private flashRect: Phaser.GameObjects.Rectangle;
   private vignette: Phaser.GameObjects.Graphics;
   // Set by FightStage: flash a fighter's body (hit feedback on the boxer).
@@ -30,6 +33,7 @@ export class Effects {
     scene.events.once('shutdown',()=>{this.fightCue?.();this.fightCue=null;});
     this.sparks=new CombatSparks(scene);
     this.symbols=new CombatSymbols(scene);
+    this.codeXShadows=new CodeXShadows(scene);
     this.combatText=new CombatText(scene);
     this.flashRect = scene.add
       .rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0xffffff, 0)

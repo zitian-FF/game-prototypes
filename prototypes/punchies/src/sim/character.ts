@@ -10,15 +10,17 @@ import type { Fighter, PunchType } from './types';
 // fatigue rules) stays global so every character reads the same.
 // Deterministic: the sim only reads tune + the fighter's character id.
 
-export const CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia'] as const;
-export type CharId = (typeof CHARACTER_IDS)[number];
+export const ALL_CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia', 'kai'] as const;
+export type CharId = (typeof ALL_CHARACTER_IDS)[number];
+export const CHARACTER_IDS:readonly CharId[]=ALL_CHARACTER_IDS;
 
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
+  kai: {name:'Kai Chen',nick:'Courier',style:'Slow courier: strong hooks, weak Jab and Cross, longer dash.'},
   roxy: { name: 'Roxy', nick: 'Firecracker', style: 'Close-range brawler: heavy hooks, costly swings.' },
   nadia: { name: 'Nadia', nick: 'Rising Star', style: 'Fast, light Cross pressure with extra fatigue capacity.' },
   captain: { name: 'Captain Eagle', nick: 'Full Throttle', style: 'Mobile burst fighter: quick recovery, costly pressure and lower durability.' },
   longan: { name: 'Longan', nick: 'Still Waters', style: 'Endurance specialist: efficient pressure and a weak one-star uppercut.' },
-  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Power finisher: heavy Cross and devastating four-star uppercut, slow recovery.' },
+  tyke: { name: 'Tyke Maison', nick: 'Thunder', style: 'Precision powerhouse: crushing blows, tires quickly, easily stunned.' },
   dragon: { name: 'Dragon', nick: 'The Blind Fist', style: 'Long-range outboxer: extended jab and Cross, slower follow-through.' },
   tee: { name:'G.P. Tee',nick:'Tee',style:'Fast burst attacker: heavy Cross and hooks, fragile with low stamina.' },
   marco: { name: 'Marco Reyes', nick: 'The Metronome', style: 'Steady all-rounder: stronger Cross, balanced speed and endurance.' },
@@ -58,6 +60,20 @@ export const maxStamina = (f: Fighter) => tune.stamina.max * ct(f).stamina;
 export const regenMult = (f: Fighter) => ct(f).regen;
 export const stunThreshold = (f: Fighter) => tune.stun.threshold * ct(f).stun;
 export const moveSpeed = (f: Fighter) => tune.movement.speed * ct(f).speed;
+
+/** Optional character draft overrides; existing fighters keep the shared rules. */
+export function characterDodge(f: Fighter): { speed: number; frames: number; iFrames: number } {
+  const o = ct(f) as CharTune & { dodge?: { speedMult: number; framesMult: number; iFramesMult: number } };
+  const frames = Math.max(1, Math.round(tune.dodge.frames * (o.dodge?.framesMult ?? 1)));
+  return { speed: tune.dodge.speed * (o.dodge?.speedMult ?? 1), frames,
+    iFrames: Math.min(frames, Math.max(0, Math.round(tune.dodge.iFrames * (o.dodge?.iFramesMult ?? 1)))) };
+}
+export function punchFreeUses(f: Fighter, type: PunchType): number {
+  const o = ct(f)[type] as { freeUses?: number };
+  // Fatigue is sampled before incrementing the throw counter. The optional
+  // override means exactly N unpenalized throws; preserve legacy global timing.
+  return o.freeUses === undefined ? tune.fatigue.freeUses : Math.max(0, o.freeUses - tune.fatigue.perUse);
+}
 
 export interface PunchCfg {
   starRequirement: number;

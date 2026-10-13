@@ -12,7 +12,7 @@ const original=new Uint8ClampedArray([30,100,230,255,250,240,220,255,8,10,20,255
 const textures=new Map();
 const context={drawImage(){draws++;},getImageData(){return{data:new Uint8ClampedArray(original)};},putImageData(p){this.data=p.data;}};
 const scene={textures:{exists:k=>textures.has(k),get:k=>({getSourceImage:()=>textures.get(k)}),addCanvas:(k,c)=>textures.set(k,c)}};
-const skins=load('prototypes/punchies/src/render/skins.ts',{document:{createElement:()=>{created++;return{width:0,height:0,getContext:()=>context};}},require:p=>p==='phaser'?{default:{Display:{Color:{IntegerToColor:()=>({red:0,green:0,blue:0}),RGBToHSV:()=>({h:0})}}}}:p.includes('skinPalette')?palette:p==='./art'?{artKey:(scene,name)=>scene.textures.exists('punchies:'+name)?'punchies:'+name:null}:{skinItem:(char,id)=>items.find(i=>i.boxer===char&&i.id===id)}});
+const skins=load('prototypes/punchies/src/render/skins.ts',{document:{createElement:()=>{created++;return{width:0,height:0,getContext:()=>context};}},require:p=>p==='phaser'?{default:{Display:{Color:{IntegerToColor:()=>({red:0,green:0,blue:0}),RGBToHSV:()=>({h:0})}}}}:p.includes('skinPalette')?palette:p==='./indexedPortraitMask'?load('prototypes/punchies/src/render/indexedPortraitMask.ts',{require:()=>({STAGING_BUILD:false})}):p==='./art'?{artKey:(scene,name)=>scene.textures.exists('punchies:'+name)?'punchies:'+name:null}:{skinItem:(char,id)=>items.find(i=>i.boxer===char&&i.id===id)}});
 for(const item of items.filter(i=>i.skinType==='palette')){
  const name='portrait_'+item.boxer,base='punchies:'+name;textures.set(base,{width:4,height:1});
  const key=skins.skinTexture(scene,item.boxer,item.id,name);assert.notEqual(key,base);const count=created;

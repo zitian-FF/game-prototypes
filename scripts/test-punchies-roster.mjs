@@ -32,7 +32,7 @@ const Scene=module('prototypes/punchies/src/scenes/CharSelectScene.ts',p=>{
  if(p.includes('shop/roster'))return roster;if(p.includes('shop/draft'))return draft;
  if(p.includes('sim/character'))return character;if(p.includes('charPrefs'))return prefs;
  if(p.includes('render/skins'))return{skinReady:(_s,_c,skin)=>!skin.endsWith('-unique')};
- if(p.includes('sim/tune'))return{tune:JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'))};
+ if(p.includes('sim/tune'))return{validateTuneJson:()=>({ok:true}),tune:JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8'))};
  if(p.includes('ui/presentation'))return{startScreen:(_s,name,data)=>started={name,data}};
  if(p.includes('audio/sfx'))return{sfx:{uiSelect(){},uiConfirm(){},denied(){}}};return{};
 }).CharSelectScene;
@@ -47,7 +47,7 @@ console.log('Roster: Tee lock/unlock, per-player skin persistence, ownership iso
 // A peer's locked fighter is independent of the local collection. Invalid or
 // unavailable peer picks cannot make the host start; cosmetic IDs match the boxer.
 draft.saveShopDraft(draft.newShopDraft());
-const packets=[],session={send:m=>packets.push(m),beginRating:async()=>null};
+const packets=[],session={readyForMatch:true,send:m=>packets.push(m),beginRating:async()=>null};
 const net=new Scene();net.data0={mode:'online',localIdx:0,session};net.time={addEvent:()=>{}};
 net.sides=[{sel:0,src:'any',locked:false,skin:'default'},{sel:0,src:'remote',locked:false}];net.setupNet();
 session.onCtl({k:'pick',char:'tee',hover:'tee',available:ids.slice(0,3),skin:'skin-mia'});
