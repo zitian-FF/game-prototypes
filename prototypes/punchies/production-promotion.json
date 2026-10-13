@@ -1,0 +1,13 @@
+{
+  "reviewedStageSha": "182693b09442928a8ece249cb2032dfe5e26c8da",
+  "ownerApproved": true,
+  "features": {
+    "kai": true,
+    "teeIndexedPortrait": true
+  },
+  "saveResetId": "punchies-reset-2026-10-12-super-v1",
+  "teeMaskProfile": "compact canonical geometry; standard retains source-resolution palette fallback",
+  "approvedBugfixShas": [
+    "275503bef1081cd42e75f436183fb4e52b3318c3"
+  ]
+}

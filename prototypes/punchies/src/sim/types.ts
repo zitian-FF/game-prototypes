@@ -3,6 +3,11 @@
 // same next state, which is what the rollback netcode relies on.
 
 export type PunchType = 'jab' | 'cross' | 'hook' | 'uppercut';
+export type SuperId='rising-upper'|'code-x'|'buffalo-hook';
+export interface CodeXTrack {startX:number;startY:number;endX:number;endY:number;startFrame:number}
+export interface CodeXState {activationId:number;frame:number;endFrame:number;targetId:string;targetX:number;targetY:number;tracks:[CodeXTrack,CodeXTrack];buffed:boolean;crossFatigueMult:number;hitIds:[string[],string[]]}
+
+export type SuperCancelReason='startupHit'|'stun'|'perfectGuard';
 export type FatiguedPunch = 'jab' | 'cross' | 'hook';
 export const FATIGUED_PUNCHES: readonly FatiguedPunch[] = ['jab', 'cross', 'hook'];
 
@@ -33,6 +38,9 @@ export const NEUTRAL_INPUT: FrameInput = {
 };
 
 export interface PunchState {
+  codeXActivation?:{fx:number;fy:number};
+  shadowSuper?:boolean;
+  baseDamage?:number;buffaloActivation?:boolean;buffaloUpper?:boolean;buffaloConfirm?:{targetId:string;x:number;y:number};
   type: PunchType;
   frame: number;
   startup: number;
@@ -42,6 +50,8 @@ export interface PunchState {
   // Late sour: fist at full reach, past its sweet moment.
   sour: number;
   recovery: number;
+  // Extra recovery frames added when the punch whiffed (the tail of recovery).
+  whiffFrames: number;
   // Full reach and the reach it starts from (character-adjusted).
   reach: number;
   startReach: number;
@@ -78,17 +88,16 @@ export interface Fighter {
   // Frames left before each type's fatigue starts decaying (reset on throw).
   fatigueWait: Record<FatiguedPunch, number>;
   punch: PunchState | null;
+  codeX:CodeXState|null;
   dodge: DodgeState | null;
   postDodgeVulnerable: number;
   stunTimer: number;
   stunFromMeter: boolean;
   guarding: boolean;
   guardFrames: number;
-  // Frames since guard was last down, and whether this raise may Perfect
-  // Guard (only if guard was down >= guard.perfectCooldownFrames).
-  guardDownFrames: number;
-  perfectEligible: boolean;
-  exhausted: boolean;
+  // Vulnerable frames remaining after lowering guard; prevents re-guarding.
+  guardPenalty: number;
+  exhausted: boolean; // Emergency recovery: protected meter, exits only at full.
   regenWait: number;
   buffered: BufferedAction | null;
   bufferFrames: number;
@@ -108,7 +117,7 @@ export interface Fighter {
   pushY: number;
   pushFrames: number;
   // Ticks the player's own walking stays locked after a push lands.
-  pushLock: number;
+  lock: number; // frames of hit/block stun left: no actions, no walking
   // The last blow that took health (a finishing blow decides the KO style).
   lastBlow: LastBlow | null;
 }
@@ -128,6 +137,15 @@ export type KoStyle = 'drop' | 'fly';
 export type Stance = 'dodging' | 'perfectGuard' | 'guard' | 'normal' | 'vulnerable';
 
 export type SimEvent =
+  | {kind:'buffaloFollowup';attacker:number;targetId:string;x:number;y:number}
+  | {kind:'codeXLaunched';attacker:number;activationId:number;endFrame:number;targetId:string;targetX:number;targetY:number;tracks:[CodeXTrack,CodeXTrack]}
+  | {kind:'codeXFinished';attacker:number;activationId:number}
+  | {kind:'codeXContact';attacker:number;activationId:number;shadow:0|1;victimId:string;x:number;y:number;outcome:'hit'|'dodged'}
+  | {kind:'sweetImpact';attacker:number;x:number;y:number;punch:PunchType}
+  | {kind:'superCharged';fighter:number;superId:SuperId;starCost:number}
+  | {kind:'superCancelled';fighter:number;superId:SuperId;starCost:number;reason:SuperCancelReason}
+  | {kind:'superChargeLost';fighter:number;superId:SuperId;starCost:number;reason:'sweetHit'}
+  | { kind: 'staminaRejected'; fighter: number }
   | {
       kind: 'hit';
       attacker: number;
@@ -149,6 +167,7 @@ export type SimEvent =
   | { kind: 'starsReady'; fighter: number }
   | { kind: 'ready' }
   | { kind: 'go' }
+  | { kind: 'fightCue' }
   | { kind: 'ko'; loser: number }
   | { kind: 'timeUp'; winner: number | null };
 

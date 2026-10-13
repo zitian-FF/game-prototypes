@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';
+let result;const exports={},id=crypto.randomUUID(),opponent=crypto.randomUUID(),matchId=crypto.randomUUID();
+const source=fs.readFileSync('prototypes/punchies/src/net/rating.ts','utf8').replace(/import\.meta\.env\.VITE_PUNCHIES_RATING_URL/g,"'https://rating'");
+vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,AbortController,setTimeout,clearTimeout,fetch:async url=>({ok:true,json:async()=>url.endsWith('/rating')?{rating:1000,matches:0}:result}),require:p=>p.endsWith('/store')?{store:{getItem:()=>JSON.stringify({myId:id,token:'a'.repeat(72),rating:1000,matches:0}),setItem(){}}}:{KEYS:{rating:'rating'}}});
+await exports.loadRating();
+const valid={state:'settled',rating:1016,matches:1,delta:16,outcome:{local:{before:1000,after:1016,delta:16,matches:1},opponent:{before:1000,after:984,delta:-16,matches:1}}};result=valid;assert.equal((await exports.ratingStatus(matchId)).outcome.local.after,1016);
+result={...valid,outcome:{...valid.outcome,local:{...valid.outcome.local,delta:99}}};assert.equal(await exports.ratingStatus(matchId),null,'reject inconsistent snapshot');
+result={status:'paired',ticket:crypto.randomUUID(),pairId:crypto.randomUUID(),room:crypto.randomUUID(),nonce:crypto.randomUUID(),opponent,role:'host',baseline:{local:1000,opponent:-1}};await assert.rejects(()=>exports.rankedQueue('join'));
+result={...valid,state:'pending',outcome:null};const stop=new AbortController(),seen=[];await exports.pollRatingOutcome(matchId,r=>{seen.push(r);stop.abort();},stop.signal);assert.equal(seen.length,1);
+const alreadyStopped=new AbortController();alreadyStopped.abort();await exports.pollRatingOutcome(matchId,()=>assert.fail('aborted poll callback'),alreadyStopped.signal);
+console.log('PASS snapshot validation, invalid baseline rejection, bounded polling and abort');

@@ -1,22 +1,34 @@
+import type {RankedPlayers} from '../ui/rankedIdentityCapsule';
+import type { WireProfile } from '../progress/alias';
+import { sideProfiles } from '../progress/profile';
 import Phaser from 'phaser';
+import { cartoonButton, bindButtonFeedback } from '../ui/cartoonChrome';
 import { PIXEL_RATIO, VIEW } from '../render/pixelRatio';
 import { IntentLayer } from '../input/intents';
 import { devices, mergeInputs, type InputSource } from '../input/devices';
 import { TouchControls } from '../ui/TouchControls';
-import { Hud } from '../ui/Hud';
+import { Hud,type SurvivalBossHud } from '../ui/Hud';
 import { InfoPanel } from '../ui/InfoPanel';
-import { addFullscreenButton } from '../ui/fullscreen';
+import { addGameMenu } from '../ui/gameMenu';
+import { trackFightScene } from '../portal/gameplay';
 import { FighterView } from '../render/FighterView';
 import { Effects } from '../render/Effects';
+import { MovementSound } from '../audio/movementSound';
+import { stopCombatSounds } from '../audio/sfx';
 import { KoAnim } from '../render/KoAnim';
+import { MatchIntro, knockoutWords } from '../ui/fightPresentation';
+import { TICK_RATE } from '../sim/tune';
 import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
 import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
-import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
-import { unlockAudio } from '../audio/sfx';
+import { NEUTRAL_INPUT, type Fighter, type FrameInput, type SimEvent, type SimState } from '../sim/types';
+import { unlockAudio, sfx } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
+import { ArenaArt } from '../render/arenaArt';
+import { alignGymFloor } from '../render/gymPerspective';
+import type { SeriesState } from '../sim/series';
 
 // Everything a fight scene draws, shared by Training and Online: ring,
 // fighters, hit effects, HUD, touch controls and the "i" info panel.
@@ -27,6 +39,7 @@ export class FightStage {
   private info: InfoPanel;
   private views: [FighterView, FighterView];
   private fx: Effects;
+  private movementSound = new MovementSound();
   private ko: KoAnim;
   private ring: Phaser.GameObjects.Graphics;
   private floor: Phaser.GameObjects.Image | null;
@@ -35,6 +48,23 @@ export class FightStage {
   private ropes: (Phaser.GameObjects.Image | null)[];
   private posts: (Phaser.GameObjects.Image | null)[];
   private persp: RingPerspective;
+  private authoredRing: ArenaArt | null;
+  private clearKoTitle: (() => void) | null = null;
+  private koTitleUntil = 0;
+  private matchIntro: MatchIntro | null = null;
+  hideOpponent = false; // Survival renders additional enemies by entity ID.
+  inputBlocked = false;
+  survivalHud(seconds:number,boss:SurvivalBossHud|null=null):void {
+    this.hud.sidesShown=[true,false];this.hud.showRoundSockets=false;
+    this.hud.timerText=String(seconds).padStart(2,'0');this.hud.survivalBoss=boss;
+  }
+  private introChecked = false;
+
+
+  setSeries(series: SeriesState): void {
+    this.fx.roundNumber = series.roundNumber;
+    this.hud.setSeries(series);
+  }
 
   constructor(
     private scene: Phaser.Scene,
@@ -43,10 +73,16 @@ export class FightStage {
     private localIdx: 0 | 1 | -1,
     // Whether the on-screen touch controls are available at all.
     private touchEnabled = true,
+    private skins:[string,string]=['default','default'],
+    private profiles:[WireProfile|null,WireProfile|null]=sideProfiles(localIdx===-1?0:localIdx,null),
+    private rankedPlayers?:RankedPlayers,
   ) {
-    backdrop(scene, 0.15, 'stage_background');
+    const gym=backdrop(scene, 0.15, 'gym_background');
+    alignGymFloor(scene,gym);
     this.persp = new RingPerspective(scene);
+    this.persp.setBackdrop(gym);
     const before = new Set(scene.children.list);
+    this.authoredRing = ArenaArt.create(scene);
     this.floor = artImage(scene, 'ring_floor', 422, 219, 310, 310, 0);
     this.apron = artImage(scene, 'ring_apron', 422, 382, 326, 16, -1);
     this.turnbuckles = [0, 1, 2, 3].map(() => artImage(scene, 'ring_turnbuckle', 0, 0, 22, 22, 2));
@@ -56,13 +92,19 @@ export class FightStage {
     this.ring = scene.add.graphics().setDepth(0);
     getNav(scene).fightMode = true;
     this.views = [new FighterView(scene, 0x3a78d0), new FighterView(scene, 0xd04a4a)];
+    this.views.forEach((v,i)=>v.skin=this.skins[i]);
+    this.views.forEach((v,i)=>v.setIndicator(i===0?0x245eb7:0xbb3347,i===0?'P1':['FirstFight','VsAI','Training','Tutorial'].includes(scene.scene.key)?'P(COM)':'P2'));
     this.ko = new KoAnim(scene, [0x3a78d0, 0xd04a4a]);
+    this.ko.skins=this.skins;
     this.fx = new Effects(scene);
-    this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, 110, zone);
+    scene.events.once('shutdown', stopCombatSounds);
+    scene.events.on('pause', stopCombatSounds);
+    scene.events.once('shutdown', () => scene.events.off('pause', stopCombatSounds));
+    this.fx.onFighterFlash = (idx, color, zone) => this.views[idx].flash(color, scene.time.now, tune.view.flashMs, zone);
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
-    this.hud = new Hud(scene, names);
+    this.hud = new Hud(scene, names,this.profiles,this.rankedPlayers);
     // P1 / P2 tags over each boxer at the start of a round.
     this.tags = [0, 1].map((i) =>
       scene.add
@@ -73,7 +115,9 @@ export class FightStage {
     this.persp.take(this.tags);
     this.controls = new TouchControls(scene, this.intents);
     this.info = new InfoPanel(scene);
-    addFullscreenButton(scene, VIEW.right - 24, VIEW.top + 64);
+    this.info.setButtonVisible(false);
+    addGameMenu(scene,()=>this.controls.reset());
+    trackFightScene(scene);
     scene.input.on('pointerdown', unlockAudio);
     const clear = () => {
       this.intents.clearAll();
@@ -83,24 +127,45 @@ export class FightStage {
     scene.events.once('shutdown', () => scene.game.events.off(Phaser.Core.Events.BLUR, clear));
   }
 
+  // Runtime Survival enemies/corpses must share the player's ring camera.
+  // The constructor's initial snapshot cannot include objects created later.
+  setCodeXRenderSources(sources:()=>readonly Fighter[]):void{this.fx.codeXSources=sources;}
+  createFighterView(color: number): FighterView {
+    const before = new Set(this.scene.children.list);
+    const view = new FighterView(this.scene, color);
+    this.persp.take(this.scene.children.list.filter(o => !before.has(o)));
+    return view;
+  }
+
   pollDevices(): void {
     devices.poll();
   }
 
   handleEvents(events: SimEvent[], s: SimState): void {
+    for (const e of events) {
+      if (e.kind === 'staminaRejected') this.hud.rejectStamina(e.fighter);
+      if (e.kind !== 'hit' && e.kind !== 'block') continue;
+      const defender = 1 - e.attacker;
+      if (s.fighters[defender].anchored) {
+        this.views[defender].reactToDummyHit(e.kind === 'hit' && e.row === 'vulnerable' ? 'head' : 'body', this.scene.time.now);
+      }
+    }
     this.fx.handle(events, s, this.localIdx);
   }
 
   // Solo modes: touch + either keyboard half + any controller all drive the
   // one local player.
   sampleLocal(): FrameInput {
+    if(this.inputBlocked)return NEUTRAL_INPUT;
     // While keyboard / controller are driving the menu highlight, only
     // touch reaches the fighter.
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (getNav(this.scene).capturing) return this.intents.sample();
     return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
   }
 
   sampleSource(src: InputSource): FrameInput {
+    if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (src === 'touch') return this.intents.sample();
     return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src);
   }
@@ -121,13 +186,26 @@ export class FightStage {
 
   // True once any KO animation has played out (the result screen waits).
   koFinished(s: SimState, time: number): boolean {
-    return this.ko.finished(s, time);
+    const finished=this.ko.finished(s,time);
+    if(finished){this.clearKoTitle?.();this.clearKoTitle=null;}
+    return finished;
   }
 
   // koAllowed: online passes false until the KO is confirmed, so a
   // predicted KO that gets rolled back never starts the animation.
+  private lastDrawTick: number | null = null;
   draw(s: SimState, time: number, koAllowed = true): void {
-    // Character looks (colour, size, ponytail); mirror matches give P2 the alt colour.
+    this.movementSound.update(s);
+    this.fx.draw(s);
+    if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
+    this.lastDrawTick=s.tick;
+    const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
+    if(!this.introChecked){
+      this.introChecked=true;
+      if(s.timed&&showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles,this.rankedPlayers);
+    }
+    this.matchIntro?.draw(s.tick*1000/TICK_RATE);
+    // Character looks are slot-independent; floor indicators identify the players.
     const chars: [string, string] = [s.fighters[0].char, s.fighters[1].char];
     const looks = [lookFor(chars, 0), lookFor(chars, 1)];
     looks.forEach((l, i) => this.views[i].setLook(l.color, l.scale, l.ponytail));
@@ -135,11 +213,19 @@ export class FightStage {
     this.ko.looks = looks;
     this.drawRing(looks[0].color, looks[1].color);
     this.drawTags(s, looks.map((l) => l.color));
-    this.controls.enabled = this.touchEnabled && !this.info.open;
+    this.controls.enabled = this.touchEnabled && !this.inputBlocked && !this.info.open && !this.scene.registry.get('gameMenu:'+this.scene.scene.key);
     this.controls.setVisible(this.touchEnabled && devices.lastDevice === 'touch');
     const show = this.forceHitboxes || this.info.hitboxes || (isDebug() && debugView.showHitboxes);
     this.persp.update();
+    const hadKo=this.ko.active;
     this.ko.sync(s, koAllowed, time);
+    if(!hadKo && this.ko.active){
+      this.clearKoTitle=knockoutWords(this.scene);
+      this.koTitleUntil=time+tune.view.fightPresentation.koHoldMs+tune.view.fightPresentation.fadeMs;
+      sfx.ko();
+    }
+    // Browser background throttling can advance the frame clock faster than tweens.
+    if(this.clearKoTitle && time>=this.koTitleUntil){this.clearKoTitle();this.clearKoTitle=null;}
     if (this.ko.active) {
       const loser = this.ko.loser;
       this.views[loser].clear();
@@ -147,15 +233,17 @@ export class FightStage {
       this.ko.draw(time);
     } else {
       this.views[0].draw(s.fighters[0], time, show);
-      this.views[1].draw(s.fighters[1], time, show);
+      if(this.hideOpponent)this.views[1].clear();
+      else this.views[1].draw(s.fighters[1], time, show);
     }
-    // Star / fatigue row for anyone not using the touch buttons: the local
-    // player on keyboard or controller, or both players in Local VS unless
-    // that player is on touch.
-    const touch = this.touchEnabled && devices.lastDevice === 'touch';
-    this.hud.resourceRow = this.localIdx === -1 ? this.localVsRows : touch ? [] : [this.localIdx];
+    // Both players show uppercut charge sockets beside the stun meters.
+    this.hud.resourceRow = [0, 1];
     this.hud.draw(s);
     this.controls.draw(s.fighters[this.localIdx === 1 ? 1 : 0]);
+  }
+
+  setSkins(skins: [string,string]): void {
+    this.skins=skins; this.views.forEach((v,i)=>v.skin=skins[i]); this.ko.skins=skins;
   }
 
   // Small menu-style button (not a gameplay intent).
@@ -179,7 +267,7 @@ export class FightStage {
       tag.setPosition(f.x, f.y - 26);
       tag.setColor('#' + colors[i].toString(16).padStart(6, '0'));
       tag.setAlpha(a);
-      tag.setVisible(a > 0);
+      tag.setVisible(false); // Persistent floor indicators replace floating player tags.
     });
   }
 
@@ -192,6 +280,12 @@ export class FightStage {
     g.clear();
     const w = r.right - r.left;
     const h = r.bottom - r.top;
+    if (this.authoredRing) {
+      this.persp.fitArtwork(this.authoredRing.fitFloor(r.left,r.top,r.right,r.bottom));
+      this.floor?.setVisible(false); this.apron?.setVisible(false);
+      [...this.ropes,...this.posts,...this.turnbuckles].forEach(o=>o?.setVisible(false));
+      return;
+    }
     this.floor?.setPosition(r.left + w / 2, r.top + h / 2).setDisplaySize(w, h);
     // Keep the skirt inside the flat camera before the post-effect samples it.
     this.apron?.setPosition(r.left + w / 2, r.bottom + 8).setDisplaySize(w + 16, 16);
@@ -293,15 +387,18 @@ export function makeButton(
   onTap: () => void,
   h = 26,
   fontSize = 10,
+  tint = 0x327dc2,
 ): Phaser.GameObjects.Text {
-  const bg = scene.add.rectangle(x, y, w, h, 0x222222, 0.9).setStrokeStyle(1, 0x888888).setDepth(130);
-  const art = artImage(scene, 'ui_button', x, y, w, h, 130);
-  if (art) bg.setFillStyle(0x222222, 0).setStrokeStyle(0);
-  bg.on('destroy', () => art?.destroy());
-  bg.setInteractive().on('pointerdown', onTap);
+  const bg = scene.add.rectangle(x, y, w, h, 0, 0).setDepth(130);
+  const chrome=scene.add.graphics().setDepth(130);
+  cartoonButton(chrome,x-w/2,y-h/2,w,h,tint,7);
+  bg.on('destroy', () => chrome.destroy());
+  bg.setInteractive();
+  bindButtonFeedback(bg,state=>{chrome.clear();cartoonButton(chrome,x-w/2,y-h/2+(state==='pressed'?2:0),w,h,tint,7);chrome.setAlpha(state==='disabled'?.45:1);if(state==='hover')chrome.fillStyle(0xffffff,.12).fillRoundedRect(x-w/2,y-h/2,w,h,7);});
+  bg.on('pointerup',()=>{if(bg.getData('buttonReleasedInside'))onTap();});
   navRegister(scene, bg, onTap);
   const label = scene.add
-    .text(x, y, text, { fontFamily: 'monospace', fontSize: `${fontSize}px`, color: '#dddddd', resolution: PIXEL_RATIO })
+    .text(x, y, text, { fontFamily: 'Arial Black, Arial',fontStyle:'bold', fontSize: `${fontSize}px`, color: '#fff4df',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true}, resolution: PIXEL_RATIO })
     .setOrigin(0.5)
     .setDepth(131);
   label.setData('bg', bg);

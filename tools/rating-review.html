@@ -1,0 +1,6 @@
+<!doctype html><html><body style="margin:0;background:#081324"><div id="app"></div><script type="module">
+import Phaser from 'phaser';
+import {LobbyScene} from '/prototypes/punchies/src/scenes/LobbyScene.ts';
+import {VIEW,PIXEL_RATIO} from '/prototypes/punchies/src/render/pixelRatio.ts';
+new Phaser.Game({type:Phaser.AUTO,parent:'app',width:VIEW.width*PIXEL_RATIO,height:VIEW.height*PIXEL_RATIO,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[class extends LobbyScene {create(){super.create({role:'host'});}}]});
+</script></body></html>

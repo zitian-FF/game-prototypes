@@ -1,18 +1,28 @@
+import {rosterKey,PAD_ROSTER,type RosterCommand,type KeyboardProfile} from '../input/rosterMenu';
+import {setRosterHintContext} from '../ui/controlHint';
+import {rosterScores,statFill,type RosterStat} from '../sim/rosterStats';
+import {inputModality,installInputModality,pollInputModality} from '../input/modality';
+import {loadLayouts} from '../input/layouts';
+import { verticalRosterPick, horizontalRosterPick } from '../ui/rosterLayout';
+import { loadShopDraft } from '../shop/draft';
+import { t } from '../i18n';
+import { availableFighters,ownedSkins,equippedSkin,skinName,skinItem } from '../shop/roster';
+import { skinReady } from '../render/skins';
+import { CharacterSelectView } from '../ui/CharacterSelectView';
+import { startScreen } from '../ui/presentation';
 import Phaser from 'phaser';
-import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
+import { sfx } from '../audio/sfx';
+import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { FighterView } from '../render/FighterView';
-import { lookFor, mainLook } from '../render/characterLook';
-import { createSimState } from '../sim/sim';
-import { charTune, CHARACTER_IDS, CHARACTER_INFO, isCharId, type CharId } from '../sim/character';
+import { uppercutStars, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
-import { applyTuneJson, snapshotTune, tune } from '../sim/tune';
+import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
 import type { InputSource } from '../input/devices';
 import type { LocalInputs } from '../input/localSetup';
 import type { NetSession } from '../net/session';
 import type { MatchData } from './LobbyScene';
-import { artImage, artKey, backdrop, fighterGroups, prefetchGroups } from '../render/art';
+import { backdrop, fighterGroups, prefetchGroups } from '../render/art';
 
 // Character select. UI chrome only: it never touches the sim except to hand
 // the chosen ids to the fight scene.
@@ -24,7 +34,7 @@ import { artImage, artKey, backdrop, fighterGroups, prefetchGroups } from '../re
 //   online:  each phone picks only its own side; the opponent's pick shows
 //            as READY until the host starts the match.
 
-type Mode = 'vsai' | 'localvs' | 'online';
+type Mode = 'survival' | 'training' | 'vsai' | 'localvs' | 'online';
 
 export interface CharSelectData {
   mode: Mode;
@@ -32,36 +42,21 @@ export interface CharSelectData {
   session?: NetSession; // online
   localIdx?: 0 | 1; // online
   delay?: number; // online, host only (measured in the lobby)
+  restoreTune?: string;
+  nextRound?: number;
 }
 
-const COLORS = [0x3a78d0, 0xd04a4a];
-
-// Bar fill per stat: today's base tune sits at 80%.
-function stats(id: CharId): [string, number][] {
-  const c = charTune(id);
-  const types = ['jab', 'cross', 'hook'] as const;
-  const power = types.reduce((n, t) => n + c[t].damage, 0) / types.length;
-  // Hand speed vs the unmodified base frames (Marco carries no frame deltas).
-  let frames = 0;
-  let base = 0;
-  for (const t of types) {
-    const p = tune.punches[t];
-    base += p.startup + p.recovery;
-    frames += Math.max(1, p.startup + c[t].startup) + Math.max(1, p.recovery + c[t].recovery);
-  }
-  return [
-    ['HP', c.hp],
-    ['STAMINA', c.stamina],
-    ['STUN RESIST', c.stun],
-    ['SPEED', c.speed],
-    ['POWER', power],
-    ['HAND SPEED', base / frames],
-  ];
+function stats(id:CharId):[string,number,number][] {
+ const scores=rosterScores(id);
+ const labels={durability:t('charselect.durability'),endurance:t('charselect.endurance'),speed:t('charselect.speed'),power:t('charselect.power'),reach:t('charselect.reach')};
+ return (Object.keys(scores) as RosterStat[]).map(key=>[labels[key],statFill(key,scores[key]),scores[key]]);
 }
 
 interface Side {
   sel: number;
   locked: boolean;
+  selected?:boolean;
+  skin?:string;
   label: string;
   src: InputSource | 'any' | 'remote';
 }
@@ -70,20 +65,16 @@ export class CharSelectScene extends Phaser.Scene {
   private data0!: CharSelectData;
   private sides: Side[] = [];
   private active = 0;
-  // Single Player: the bot's difficulty (shown under the AI label).
   private level: BotLevel = 'easy';
-  private levelText: Phaser.GameObjects.Text | null = null;
-  // Big character portraits on the panels (the live top-down preview is the fallback).
-  private portraits: (Phaser.GameObjects.Image | null)[] = [null, null];
-  private g!: Phaser.GameObjects.Graphics;
-  private views: FighterView[] = [];
-  private texts: { name: Phaser.GameObjects.Text; style: Phaser.GameObjects.Text; status: Phaser.GameObjects.Text; stats: Phaser.GameObjects.Text[] }[] = [];
-  private fightBtn!: { bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text };
+  private selectionView!: CharacterSelectView;
   private remotePick: CharId | null = null;
   // Online: the opponent has reached this screen (heard from them here).
   private peerHere = false;
+  private remoteAvailable:CharId[]=['marco','mia','bruno'];
+  private notice='';
   private handedOff = false;
   private prevPad: boolean[] = [];
+  private padIds:string[]=[];
   private stickAt = [0, 0];
 
   constructor() {
@@ -91,25 +82,30 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   create(data: CharSelectData): void {
+    installInputModality();
     applyCameraPixelRatio(this);
-    backdrop(this, 0.84);
+    backdrop(this, 0.14, 'character_select_background');
     this.data0 = data;
+    if (data.mode === 'online' && data.localIdx === 1) {
+      this.data0 = { ...data, restoreTune: data.restoreTune ?? snapshotTune() };
+    }
     this.handedOff = false;
     this.remotePick = null;
-    this.peerHere = false;
+    this.peerHere = false;this.notice='';this.remoteAvailable=['marco','mia','bruno'];
     this.active = 0;
-    this.levelText = null;
-    this.portraits = [null, null];
-    this.cardViews = [];
-    this.views = [];
-    this.texts = [];
     this.prevPad = [];
+    this.padIds=[];
     const prefs = loadCharPrefs();
     const idx = (id: CharId) => CHARACTER_IDS.indexOf(id);
     this.level = prefs.level;
-    if (data.mode === 'vsai') {
+    if ((data.mode === 'training' || data.mode === 'survival')) {
       this.sides = [
-        { sel: idx(prefs.p1), locked: false, label: 'YOU', src: 'any' },
+        {sel:idx(prefs.p1),locked:false,label:t('common.you'),src:'any'},
+        {sel:0,locked:true,label:t('common.dummy'),src:'remote'},
+      ];
+    } else if (data.mode === 'vsai') {
+      this.sides = [
+        { sel: idx(prefs.p1), locked: false, label: t('common.you'), src: 'any' },
         { sel: idx(prefs.ai), locked: false, label: 'AI', src: 'any' },
       ];
     } else if (data.mode === 'localvs') {
@@ -122,99 +118,42 @@ export class CharSelectScene extends Phaser.Scene {
       const me = data.localIdx ?? 0;
       this.sides = [0, 1].map((i) =>
         i === me
-          ? { sel: idx(prefs.p1), locked: false, label: 'YOU', src: 'any' as const }
-          : { sel: 0, locked: false, label: 'OPPONENT', src: 'remote' as const },
+          ? { sel: idx(prefs.p1), locked: false, label: t('common.you'), src: 'any' as const }
+          : { sel: 0, locked: false, label: t('common.opponent'), src: 'remote' as const },
       );
       this.active = me;
       this.setupNet();
     }
 
-    this.add
-      .text(VIEW.cx, VIEW.top + 22, 'CHOOSE YOUR BOXER', { fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#ffd24a', resolution: PIXEL_RATIO })
-      .setOrigin(0.5);
-    this.buildCards();
-    this.buildPanels();
-    // Above the panel backgrounds, below the text.
-    this.g = this.add.graphics().setDepth(5);
-    this.buildButtons();
+    this.sides.forEach((side,i)=>{side.selected=false;const id=CHARACTER_IDS[side.sel],saved=equippedSkin(loadShopDraft(),id,prefs.skins[this.prefSide(i)]?.[id]);side.skin=skinReady(this,id,saved)?saved:'default';});
+    this.selectionView = new CharacterSelectView(this, {
+      skin:(s,d)=>this.cycleSkin(s,d),
+      card: (i) => this.tapCard(i), panel: (i) => this.tapPanel(i),
+      format: () => this.cycleFormat(),
+      action: () => this.fightButton(), back: () => this.back(-1, true),
+      level: (d) => this.cycleLevel(d),
+    });
+    setRosterHintContext(this,{local:data.mode==='localvs',profile:'kb1',owned:this.sides.flatMap(side=>side.src==='kb1'||side.src==='kb2'?[side.src]:[]) as KeyboardProfile[]});
     this.bindKeys();
     this.events.once('shutdown', () => {
-      if (data.mode === 'online' && !this.handedOff) data.session?.leave();
+      if (data.mode === 'online' && !this.handedOff) {
+        data.session?.leave();
+        if (this.data0.restoreTune) restoreTune(this.data0.restoreTune);
+      }
     });
     addVersionStamp(this);
   }
 
-  // ---- layout -----------------------------------------------------------
-
-  private cardPos(i: number): { x: number; y: number } {
-    return { x: VIEW.cx + (i - 1) * 92, y: VIEW.cy - 10 };
-  }
-
-  private buildCards(): void {
-    CHARACTER_IDS.forEach((id, i) => {
-      const { x, y } = this.cardPos(i);
-      const bg = this.add.rectangle(x, y, 80, 104, 0x1c212b, 1).setStrokeStyle(1, 0x5a6378).setInteractive();
-      bg.on('pointerdown', () => this.tapCard(i));
-      artImage(this, 'ui_panel', x, y, 80, 104);
-      const portrait = artImage(this, `portrait_${id}`, x, y - 12, 55, 67, 10);
-      this.add
-        .text(x, y + 38, CHARACTER_INFO[id].name.split(' ')[0].toUpperCase(), { fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO })
-        .setOrigin(0.5);
-      const v = new FighterView(this, 0xb8bcc8);
-      if (!portrait) this.cardViews.push({ v, id, x, y: y - 8 });
-    });
-  }
-  private cardViews: { v: FighterView; id: CharId; x: number; y: number }[] = [];
-
-  private panelX(side: number): number {
-    return side === 0 ? VIEW.left + 112 : VIEW.right - 112;
-  }
-
-  private buildPanels(): void {
-    const style = (size: number, color = '#ffffff') => ({ fontFamily: 'monospace', fontSize: `${size}px`, color, resolution: PIXEL_RATIO });
-    for (let s = 0; s < 2; s++) {
-      const x = this.panelX(s);
-      const bg = this.add.rectangle(x, VIEW.cy + 8, 196, 300, 0x151922, 1).setInteractive();
-      bg.on('pointerdown', () => this.tapPanel(s));
-      artImage(this, 'ui_panel', x, VIEW.cy + 8, 196, 300);
-      this.add.text(x - 86, VIEW.cy - 130, this.sides[s].label, style(12, s === 0 ? '#7fb3ff' : '#ff8a7a')).setOrigin(0, 0.5);
-      if (this.data0.mode === 'vsai' && s === 1) {
-        // Tap (or Up / Down, D-pad up / down) to change the bot's level.
-        this.levelText = this.add
-          .text(x + 36, VIEW.cy - 130, '', { fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: '#2a3140', padding: { x: 6, y: 2 }, resolution: PIXEL_RATIO })
-          .setOrigin(0.5)
-          .setDepth(6)
-          .setInteractive()
-          .on('pointerdown', () => this.cycleLevel(1));
-      }
-      this.views.push(new FighterView(this, COLORS[s]));
-      const name = this.add.text(x, VIEW.cy - 18, '', style(13)).setOrigin(0.5).setFontStyle('bold').setDepth(6);
-      const st = this.add.text(x, VIEW.cy - 8, '', style(9, '#aab0bc')).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(184).setDepth(6);
-      const status = this.add.text(x, VIEW.cy + 146, '', style(11, '#ffd24a')).setOrigin(0.5);
-      const labels: Phaser.GameObjects.Text[] = [];
-      for (let r = 0; r < 6; r++) labels.push(this.add.text(x - 88, VIEW.cy + 30 + r * 20, '', style(9, '#cccccc')).setOrigin(0, 0.5).setDepth(6));
-      this.texts.push({ name, style: st, status, stats: labels });
-    }
-  }
-
-  private buildButtons(): void {
-    const mk = (x: number, label: string, fill: number, onTap: () => void) => {
-      const bg = this.add.rectangle(x, VIEW.cy + 92, 110, 30, fill, 1).setStrokeStyle(1, 0x7fb3ff).setInteractive();
-      bg.on('pointerdown', onTap);
-      const t = this.add.text(x, VIEW.cy + 92, label, { fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5);
-      return { bg, label: t };
-    };
-    mk(VIEW.cx - 62, 'BACK', 0x3a2a2a, () => this.back(-1, true));
-    this.fightBtn = mk(VIEW.cx + 62, this.data0.mode === 'online' ? 'READY' : 'FIGHT!', 0x2a4a34, () => this.fightButton());
-    this.add
-      .text(VIEW.cx, VIEW.cy + 126, this.hint(), { fontFamily: 'monospace', fontSize: '9px', color: '#8a90a0', align: 'center', resolution: PIXEL_RATIO })
-      .setOrigin(0.5);
+  private cycleFormat(): void {
+    if ((this.data0.mode === 'training' || this.data0.mode === 'survival') || (this.data0.mode === 'online' && this.data0.localIdx !== 0)) return;
+    tune.match.bestOf = tune.match.bestOf === 3 ? 1 : 3;
+    sfx.uiSelect();
   }
 
   private hint(): string {
-    if (this.data0.mode === 'localvs') return 'Keys: move left/right, punch or Enter to lock\nEsc / B / Numpad0 to change';
-    if (this.data0.mode === 'online') return 'Pick a boxer, then READY · starts when both are ready';
-    return 'Tap a boxer · or arrows + Enter / D-pad + A\nEsc / B to change';
+    if (this.data0.mode === 'localvs') return t('charselect.each_player_picks_and_confirms').split('\n')[0];
+    if (this.data0.mode === 'online') return t('charselect.pick_your_boxer_then_ready').split('\n')[0];
+    return t('charselect.pick_a_boxer_then_confirm').split('\n')[0];
   }
 
   // ---- input --------------------------------------------------------------
@@ -227,26 +166,27 @@ export class CharSelectScene extends Phaser.Scene {
 
   // Which side a key belongs to: in Local VS each keyboard half drives its
   // own side; otherwise every key drives the active side.
-  private keySide(code: string): number {
-    if (this.data0.mode !== 'localvs') return this.active;
-    const kb2 = code.startsWith('Arrow') || code.startsWith('Numpad') || code === 'Enter' || code === 'Backspace';
-    const want: InputSource = kb2 ? 'kb2' : 'kb1';
-    const s = this.sides.findIndex((x) => x.src === want);
-    // A side on touch / a pad still takes the other keyboard half's keys
-    // only if no side owns that half.
-    return s;
+  private onKey(e: KeyboardEvent): void {
+    if(!this.scene.isActive()||this.input.enabled===false||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||e.repeat)return;
+    const target=e.target as HTMLElement|null;if(target?.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(target?.tagName??''))return;
+    const local=this.data0.mode==='localvs',layouts=loadLayouts();
+    const profile:KeyboardProfile=inputModality.source==='kb2'?'kb2':'kb1';
+    const owned=this.sides.flatMap(side=>side.src==='kb1'||side.src==='kb2'?[side.src]:[]) as KeyboardProfile[];
+    const resolved=rosterKey(e.code,layouts,local,profile,owned);if(!resolved)return;
+    const side=local?this.sides.findIndex(x=>x.src===resolved.profile):this.active;if(side<0||!this.editable(side))return;
+    e.preventDefault?.();setRosterHintContext(this,{local,profile:resolved.profile,owned});this.menuCommand(side,resolved.command);
   }
 
-  private onKey(e: KeyboardEvent): void {
-    const c = e.code;
-    const s = this.keySide(c);
-    if (s < 0) return;
-    if (c === 'ArrowUp' || c === 'KeyW') this.cycleLevel(-1);
-    else if (c === 'ArrowDown' || c === 'KeyS') this.cycleLevel(1);
-    else if (c === 'ArrowLeft' || c === 'KeyA') this.move(s, -1);
-    else if (c === 'ArrowRight' || c === 'KeyD') this.move(s, 1);
-    else if (['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'Numpad1'].includes(c)) this.confirm(s);
-    else if (['Escape', 'Backspace', 'Numpad0'].includes(c)) this.back(s);
+  private menuCommand(s:number,command:RosterCommand):void {
+    if(!this.editable(s))return;
+    if(command==='back'){this.back(s);return;}
+    if(command==='confirm'){this.confirm(s);return;}
+    if(this.sides[s].locked)return;
+    if(command==='format'){this.cycleFormat();return;}
+    if(command==='difficultyPrev'||command==='difficultyNext'){this.cycleLevel(command==='difficultyPrev'?-1:1);return;}
+    if(command==='skinPrev'||command==='skinNext'){this.cycleSkin(s,command==='skinPrev'?-1:1);return;}
+    if(command==='up'||command==='down')this.moveVertical(s,command==='up'?-1:1);
+    else this.move(s,command==='left'?-1:1);
   }
 
   private pollPads(): void {
@@ -256,31 +196,39 @@ export class CharSelectScene extends Phaser.Scene {
     } catch {
       return;
     }
+    for(let i=0;i<2;i++)if(!pads[i]){this.padIds[i]='';for(let n=0;n<32;n++)this.prevPad[i*32+n]=false;}
     pads.slice(0, 2).forEach((p, i) => {
       if (!p) return;
+      const identity=p.id??'',changed=this.padIds[i]!==identity;this.padIds[i]=identity;
+      const edges=p.buttons.map((b,n)=>{const k=i*32+n,was=this.prevPad[k];this.prevPad[k]=b.pressed;return !changed&&b.pressed&&!was;});
+      if(!this.scene.isActive()||this.input.enabled===false)return;
       let s = this.active;
       if (this.data0.mode === 'localvs') s = this.sides.findIndex((x) => x.src === (i === 0 ? 'pad1' : 'pad2'));
       if (s < 0) return;
       const edge = (n: number) => {
-        const k = i * 32 + n;
-        const now = !!p.buttons[n]?.pressed;
-        const was = this.prevPad[k];
-        this.prevPad[k] = now;
-        return now && !was;
+        return !!edges[n];
       };
-      if (edge(12)) this.cycleLevel(-1);
-      if (edge(13)) this.cycleLevel(1);
-      if (edge(14)) this.move(s, -1);
-      if (edge(15)) this.move(s, 1);
+      // One edge is one command; Back/Confirm win over contextual buttons.
+      const commandOrder=[1,0,6,7,5,2,3,12,13,14,15];
+      const button=commandOrder.find(edge);
+      if(button!==undefined){this.menuCommand(s,PAD_ROSTER[button]);return;}
       const ax = p.axes[0] ?? 0;
+      const ay = p.axes[1] ?? 0;
       if (Math.abs(ax) > 0.6 && this.time.now - this.stickAt[i] > 220) {
         this.stickAt[i] = this.time.now;
         this.move(s, Math.sign(ax));
+      } else if(Math.abs(ay)>0.6 && this.time.now-this.stickAt[i]>220){
+        this.stickAt[i]=this.time.now;
+        this.moveVertical(s,Math.sign(ay));
       }
-      if (edge(0) || edge(2)) this.confirm(s);
-      if (edge(1)) this.back(s);
-      if (edge(9)) this.confirm(s);
+
     });
+  }
+
+  private moveVertical(s:number,d:number):void {
+    if(!this.editable(s)||this.sides[s].locked)return;
+    const current=this.sides[s].sel,next=verticalRosterPick(current,d,CHARACTER_IDS.length);
+    if(next!==current)this.move(s,next-current,true);
   }
 
   private cycleLevel(d: number): void {
@@ -291,13 +239,17 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private editable(s: number): boolean {
-    return this.sides[s].src !== 'remote';
+    return this.sides[s].src !== 'remote' && !((this.data0.mode==='training'||this.data0.mode==='survival') && s===1);
   }
 
-  private move(s: number, d: number): void {
+  private move(s: number, d: number, absoluteDelta=false): void {
     const side = this.sides[s];
-    if (!this.editable(s) || side.locked) return;
-    side.sel = (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length;
+    if (!this.editable(s)) return;
+    if(side.locked)return;
+    side.sel = absoluteDelta ? (side.sel + d + CHARACTER_IDS.length) % CHARACTER_IDS.length : horizontalRosterPick(side.sel,d);
+    sfx.uiSelect();
+    side.skin=this.preferredSkin(s);this.notice='';
+    if(this.data0.mode==='online')this.sendPick();
   }
 
   private confirm(s: number): void {
@@ -307,12 +259,16 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
+    if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_daily_chest');return;}
+    sfx.uiConfirm();
+    side.selected=true;this.notice='';
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
       if (this.data0.mode === 'vsai') this.active = 1 - s;
       return;
     }
     side.locked = true;
+    if(this.data0.mode==='training'||this.data0.mode==='survival'){this.fight();return;}
     if (this.data0.mode === 'vsai' && !this.sides[1 - s].locked) this.active = 1 - s;
     if (this.data0.mode === 'online') this.sendPick();
   }
@@ -328,13 +284,14 @@ export class CharSelectScene extends Phaser.Scene {
     const side = this.sides[s];
     if (!this.editable(s)) return;
     if (side.locked) {
-      side.locked = false;
+      side.locked = false;side.selected=false;
       if (this.data0.mode === 'vsai') this.active = s;
       if (this.data0.mode === 'online') this.sendPick();
       return;
     }
+
     if (this.data0.mode === 'vsai' && s === 1 && this.sides[0].locked) {
-      this.sides[0].locked = false;
+      this.sides[0].locked = false;this.sides[0].selected=false;
       this.active = 0;
       return;
     }
@@ -349,19 +306,36 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;
+    side.sel = i;side.selected=false;side.skin=this.preferredSkin(s);this.notice=this.available(s)?'':t('charselect.locked_fighter_daily_chest');
+    if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
       this.sendPick();
       return;
     }
-    this.confirm(s);
   }
 
   private tapPanel(s: number): void {
     if (this.data0.mode !== 'vsai' || !this.editable(s)) return;
     this.active = s;
-    this.sides[s].locked = false;
+    // Focus a confirmed card without changing its boxer.
+  }
+
+  private prefSide(s:number):string{return this.data0.mode==='online'?'p1':this.data0.mode==='vsai'&&s===1?'ai':s===0?'p1':'p2';}
+  private available(s:number):boolean{return (this.sides[s].src==='remote'?this.remoteAvailable:availableFighters(loadShopDraft())).includes(CHARACTER_IDS[this.sides[s].sel]);}
+  private preferredSkin(s:number):string {
+    const id=CHARACTER_IDS[this.sides[s].sel];
+    const saved=equippedSkin(loadShopDraft(),id,loadCharPrefs().skins[this.prefSide(s)]?.[id]);
+    return skinReady(this,id,saved)?saved:'default';
+  }
+  private skinChoices(s:number):string[]{const id=CHARACTER_IDS[this.sides[s].sel];return ownedSkins(loadShopDraft(),id).filter(skin=>skinReady(this,id,skin));}
+  private skins():[string,string]{return this.sides.map((side,s)=>side.src==='remote'?side.skin??'default':equippedSkin(loadShopDraft(),CHARACTER_IDS[side.sel],side.skin)) as [string,string];}
+  private cycleSkin(s:number,d:number):void{
+    if(!this.editable(s)||!this.available(s)||this.sides[s].locked)return;
+    const choices=this.skinChoices(s),side=this.sides[s];if(!choices.length)return;side.skin=choices[(Math.max(0,choices.indexOf(side.skin??'default'))+d+choices.length)%choices.length];
+    if (choices.length > 1) sfx.uiSelect();
+    const prefs=loadCharPrefs(),slot=this.prefSide(s);saveCharPrefs({skins:{...prefs.skins,[slot]:{...prefs.skins[slot],[CHARACTER_IDS[side.sel]]:side.skin}}});
+    if(this.data0.mode==='online')this.sendPick();
   }
 
   private bothLocked(): boolean {
@@ -377,26 +351,40 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private leave(): void {
-    this.scene.start('Menu');
+    startScreen(this, this.data0.mode==='survival'?'SurvivalEntry':'Menu');
   }
 
   // Online: the button is READY / UNREADY for your own pick.
   private fightButton(): void {
-    if (this.data0.mode !== 'online') return this.fight();
+    if (this.data0.mode !== 'online') {
+      if (this.bothLocked()) this.fight();
+      else if (this.data0.mode === 'localvs') {
+        const touch = this.sides.findIndex((side) => side.src === 'touch');
+        if (touch >= 0) this.confirm(touch);
+      } else this.confirm(this.active);
+      return;
+    }
     const me = this.data0.localIdx ?? 0;
     if (this.sides[me].locked) this.back(me);
     else this.confirm(me);
   }
 
   private fight(): void {
-    if (!this.bothLocked()) return;
+    if ((this.data0.mode==='training'||this.data0.mode==='survival')) {
+      if (!this.bothLocked() || !this.available(0)) return;
+      const char=this.picks()[0],skin=this.skins()[0],prefs=loadCharPrefs();
+      saveCharPrefs({p1:char,skins:{...prefs.skins,p1:{...prefs.skins.p1,[char]:skin}}});
+      startScreen(this,this.data0.mode==='survival'?'Survival':'Training',{char,skin});
+      return;
+    }
+    if (!this.bothLocked() || this.sides.some((_,s)=>!this.available(s))) return;
     const [a, b] = this.picks();
     if (this.data0.mode === 'vsai') {
       saveCharPrefs({ p1: a, ai: b, level: this.level });
-      this.scene.start('VsAI', { chars: [a, b], level: this.level });
+      startScreen(this, 'VsAI', { chars: [a, b],skins:this.skins(), level: this.level });
     } else if (this.data0.mode === 'localvs') {
       saveCharPrefs({ p1: a, p2: b });
-      this.scene.start('LocalVs', { ...this.data0.inputs!, chars: [a, b] });
+      startScreen(this, 'LocalVs', { ...this.data0.inputs!, chars: [a, b],skins:this.skins() });
     } else if (this.data0.localIdx === 0) {
       this.hostStart();
     }
@@ -406,23 +394,36 @@ export class CharSelectScene extends Phaser.Scene {
 
   private setupNet(): void {
     const s = this.data0.session!;
+    s.onRejected=reason=>{if(reason==='incompatible'){s.leave();startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
     s.onCtl = (m) => {
       if (m.k === 'ping') s.send({ k: 'pong', t: m.t });
+      if (m.k === 'format' && this.data0.localIdx === 1) tune.match.bestOf = m.bestOf === 1 ? 1 : 3;
       if (m.k === 'pick') {
         this.peerHere = true;
-        this.remotePick = isCharId(m.char) ? m.char : null;
+        this.remoteAvailable=Array.isArray(m.available)?m.available.filter(isCharId):['marco','mia','bruno'];
+        this.remotePick = isCharId(m.char)&&this.remoteAvailable.includes(m.char) ? m.char : null;
         const other = 1 - (this.data0.localIdx ?? 0);
+        if(isCharId(m.hover))this.sides[other].sel=CHARACTER_IDS.indexOf(m.hover);
+        const id=this.remotePick??CHARACTER_IDS[this.sides[other].sel];this.sides[other].skin=typeof m.skin==='string'&&skinItem(id,m.skin)?m.skin:'default';
         this.sides[other].locked = this.remotePick !== null;
         if (this.remotePick) this.sides[other].sel = CHARACTER_IDS.indexOf(this.remotePick);
         if (this.data0.localIdx === 0 && this.bothLocked()) this.hostStart();
       }
       if (m.k === 'start' && this.data0.localIdx === 1) {
-        const restore = snapshotTune();
+        if((m.rated===true)!==s.rated)return;
+        const check = validateTuneJson(m.tune);
+        if (!check.ok) {
+          s.leave();
+          startScreen(this, 'Menu', { message: t('charselect.host_sent_invalid_settings') });
+          return;
+        }
+        const restore = this.data0.restoreTune ?? snapshotTune();
         applyTuneJson(m.tune);
-        this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars });
+        if(s.rated&&m.ratingNonce)void s.beginRating(m.ratingNonce);
+        this.handOff({ session: s, localIdx: 1, delay: m.delay, round: m.round, restoreTune: restore, chars: m.chars,skins:m.skins });
       }
     };
-    s.onPeerLeft = () => this.scene.start('Menu', { message: 'Opponent left' });
+    s.onPeerLeft = () => startScreen(this, 'Menu', { message: t('charselect.opponent_left') });
     // Heartbeat: keep re-sending our status, so a message sent while the
     // other phone was still in the lobby (measuring ping) is never lost.
     this.time.addEvent({ delay: 500, loop: true, callback: () => this.sendPick() });
@@ -432,7 +433,8 @@ export class CharSelectScene extends Phaser.Scene {
   private sendPick(): void {
     const me = this.data0.localIdx ?? 0;
     const side = this.sides[me];
-    this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null });
+    if (me === 0) this.data0.session?.send({ k: 'format', bestOf: tune.match.bestOf === 1 ? 1 : 3 });
+    this.data0.session?.send({ k: 'pick', char: side.locked ? CHARACTER_IDS[side.sel] : null,hover:CHARACTER_IDS[side.sel],skin:side.skin,available:availableFighters(loadShopDraft()) });
     if (side.locked) saveCharPrefs({ p1: CHARACTER_IDS[side.sel] });
     if (!this.peerHere) return;
     if (me === 0 && this.bothLocked()) this.hostStart();
@@ -441,129 +443,63 @@ export class CharSelectScene extends Phaser.Scene {
   private hostStart(): void {
     if (this.handedOff) return;
     const s = this.data0.session!;
+    if(!s.readyForMatch||!validateTuneJson(JSON.stringify(tune)).ok)return;
     const chars = this.picks();
     const delay = this.data0.delay ?? tune.net.inputDelayFrames;
-    s.send({ k: 'start', round: 1, delay, tune: JSON.stringify(tune), chars });
-    this.handOff({ session: s, localIdx: 0, delay, round: 1, chars });
+    const round = this.data0.nextRound ?? 1;
+    const ratingNonce=s.rated?s.nextRatingNonce():undefined;if(ratingNonce)void s.beginRating(ratingNonce);
+    s.send({ k: 'start', rated:s.rated,ratingNonce,round, delay, tune: JSON.stringify(tune), chars,skins:this.skins() });
+    this.handOff({ session: s, localIdx: 0, delay, round, chars,skins:this.skins() });
   }
 
   private handOff(data: MatchData): void {
     this.handedOff = true;
-    this.scene.start('Match', data);
+    startScreen(this, 'Match', data);
   }
 
-  // ---- draw ---------------------------------------------------------------
+  // ---- presentation -------------------------------------------------------
 
-  update(time: number): void {
+  update(): void {
+    pollInputModality();
     this.pollPads();
-    this.levelText?.setText(`< ${this.level.toUpperCase()} >`);
-    const g = this.g;
-    g.clear();
-    // Each side wears its character's colour (alt colour on a mirror pick).
     const chars = this.picks();
-    // Download the boxers on show (and so the next fight's art) in the background.
     prefetchGroups(fighterGroups(chars));
-    const col = [lookFor(chars, 0), lookFor(chars, 1)].map((l, i) => (this.sides[i].src === 'remote' && !this.bothLocked() ? COLORS[i] : l.color));
-    for (let s = 0; s < 2; s++) {
-      const l = lookFor(chars, s);
-      this.views[s].setLook(l.color, l.scale, l.ponytail);
-      g.lineStyle(2, col[s], 1);
-      g.strokeRect(this.panelX(s) - 98, VIEW.cy + 8 - 150, 196, 300);
-    }
-    // Cards and the cursors on them.
-    CHARACTER_IDS.forEach((_, i) => {
-      const { x, y } = this.cardPos(i);
-      for (let s = 0; s < 2; s++) {
-        const side = this.sides[s];
-        if (side.src === 'remote' && !side.locked) continue;
-        if (side.sel !== i) continue;
-        const hide = this.data0.mode === 'online' && side.src === 'remote';
-        if (hide) continue;
-        const focus = this.data0.mode === 'vsai' ? this.active === s : true;
-        g.lineStyle(side.locked ? 4 : 2, col[s], side.locked || focus ? 1 : 0.45);
-        const o = s === 0 ? 0 : 5;
-        g.strokeRect(x - 40 - o, y - 52 - o, 80 + o * 2, 104 + o * 2);
-        g.fillStyle(col[s], 1);
-        g.fillTriangle(x - 8 + (s ? 10 : -10), y + 60 + o, x + (s ? 10 : -10), y + 54 + o, x + 8 + (s ? 10 : -10), y + 60 + o);
-      }
+    const online = this.data0.mode === 'online';
+    const local = this.data0.mode === 'localvs';
+    const ready = this.bothLocked();
+    const me = this.data0.localIdx ?? 0;
+    this.selectionView.render({
+      notice:!!this.notice,
+      training:(this.data0.mode==='training'||this.data0.mode==='survival'),
+      bestOf: tune.match.bestOf,
+      formatEditable: this.data0.mode !== 'online' || this.data0.localIdx === 0,
+      rosterSide:online?(this.data0.localIdx??0):this.active,
+      panels: this.sides.map((side, s) => ({
+        dummy:this.data0.mode==='training'&&s===1,
+        survival:this.data0.mode==='survival'&&s===1,
+        id: chars[s], label: side.label === 'AI' ? t('common.opponent') : side.label,
+        rosterAvailable:side.src==='remote'?this.remoteAvailable:availableFighters(loadShopDraft()),
+        cursor:side.src!=='remote'||this.peerHere,available:this.available(s),selected:!!side.selected,skin:side.skin??'default',skinName:skinName(chars[s],side.skin??'default'),skinIndex:Math.max(0,this.skinChoices(s).indexOf(side.skin??'default'))+1,skinCount:this.skinChoices(s).length,
+        hidden: side.src === 'remote', locked: side.locked,
+        focused: !ready && (local ? !side.locked : this.active === s),
+        status: (this.data0.mode==='training'||this.data0.mode==='survival')&&s===1?'':side.src === 'remote'
+          ? (!this.peerHere ? t('charselect.waiting_for_opponent') : side.locked ? t('common.ready') : t('charselect.choosing_boxer'))
+          : !this.available(s)?t('charselect.locked_shop_daily_chest'):side.locked ? t('common.ready') : '',
+        stats: stats(chars[s]),
+        uppercut: {stars:uppercutStars(chars[s])},
+      })),
+      step: ready ? 2 : (this.data0.mode==='training'||this.data0.mode==='survival')?(this.sides[0].selected?1:0):online ? (this.sides[me].locked ? 1 : 0) : local ? (this.sides[0].locked ? 1 : 0) : this.active,
+      steps: (this.data0.mode==='training'||this.data0.mode==='survival')?[t('common.your_boxer'),t('common.ready'),this.data0.mode==='survival'?t('survival.start'):t('common.training')]:local ? [t('common.player_1'), t('common.player_2'), t('common.fight')] : online ? [t('common.your_boxer'), t('common.ready'), t('common.fight')] : [t('common.your_boxer'), t('common.opponent'), t('common.fight')],
+      action: online ? (this.sides[me].locked ? t('charselect.unready') : t('charselect.ready'))
+        : ready ? ((this.data0.mode==='training'||this.data0.mode==='survival')?(this.data0.mode==='survival'?t('survival.start'):t('training.start')):t('charselect.fight')) : local
+          ? (this.sides.some((side) => side.src === 'touch')
+            ? (this.sides[0].locked ? t('charselect.waiting_for_p2') : t('common.confirm_boxer')) : t('charselect.confirm_on_device'))
+          : this.active === 0 ? t('common.confirm_boxer') : t('charselect.confirm_opponent'),
+      level: this.data0.mode === 'vsai' ? t(`level.${this.level}`).toUpperCase() : null,
+      hint:this.notice||this.hint(),
     });
-    for (const c of this.cardViews) {
-      const l = mainLook(c.id);
-      c.v.setLook(l.color, l.scale, l.ponytail);
-      this.drawBoxer(c.v, c.id, c.x, c.y, 1, time);
-    }
-
-    for (let s = 0; s < 2; s++) {
-      const side = this.sides[s];
-      const t = this.texts[s];
-      const x = this.panelX(s);
-      const hidden = side.src === 'remote';
-      const id = CHARACTER_IDS[side.sel];
-      if (hidden) {
-        this.views[s].clear();
-        this.portraits[s]?.setVisible(false);
-        t.name.setText('');
-        t.style.setText('');
-        t.stats.forEach((l) => l.setText(''));
-        t.status.setText(!this.peerHere ? 'waiting for opponent...' : side.locked ? 'READY' : 'picking...');
-        continue;
-      }
-      // Active-side glow (vsai).
-      if (this.data0.mode === 'vsai' && this.active === s && !this.bothLocked()) {
-        g.lineStyle(3, col[s], 0.35 + 0.25 * Math.sin(time / 160));
-        g.strokeRect(x - 102, VIEW.cy + 8 - 154, 204, 308);
-      }
-      // Portrait when the art is loaded, otherwise the live top-down preview.
-      const key = artKey(this, `portrait_${id}`);
-      if (key) {
-        let img = this.portraits[s];
-        if (!img) img = this.portraits[s] = this.add.image(x, VIEW.cy - 72, key).setDepth(5);
-        if (img.texture.key !== key) img.setTexture(key);
-        img.setVisible(true).setPosition(x, VIEW.cy - 72 + Math.sin(time / 600 + s) * 1.2).setScale(96 / img.height);
-        this.views[s].clear();
-      } else {
-        this.portraits[s]?.setVisible(false);
-        this.drawBoxer(this.views[s], id, x, VIEW.cy - 76, s === 0 ? 1 : -1, time);
-      }
-      const info = CHARACTER_INFO[id];
-      t.name.setText(`${info.name}`);
-      t.style.setText(`"${info.nick}"\n${info.style}`);
-      t.status.setText(side.locked ? 'LOCKED IN' : '');
-      stats(id).forEach(([label, v], r) => {
-        t.stats[r].setText(label);
-        const by = VIEW.cy + 30 + r * 20;
-        const bx = x - 12;
-        const w = 96;
-        g.fillStyle(0x000000, 0.6);
-        g.fillRect(bx, by - 4, w, 8);
-        g.fillStyle(col[s], 1);
-        g.fillRect(bx, by - 4, w * Math.min(1, 0.8 * v), 8);
-        g.lineStyle(1, 0xffffff, 0.3);
-        g.strokeRect(bx, by - 4, w, 8);
-        // 80% (base) tick.
-        g.lineStyle(1, 0xffffff, 0.5);
-        g.lineBetween(bx + w * 0.8, by - 6, bx + w * 0.8, by + 6);
-      });
-    }
-    if (this.data0.mode === 'online') {
-      const me = this.sides[this.data0.localIdx ?? 0];
-      this.fightBtn.label.setText(me.locked ? 'UNREADY' : 'READY');
-      this.fightBtn.bg.setAlpha(1);
-      this.fightBtn.label.setAlpha(1);
-    } else {
-      const ready = this.bothLocked();
-      this.fightBtn.bg.setAlpha(ready ? 1 : 0.35);
-      this.fightBtn.label.setAlpha(ready ? 1 : 0.35);
-    }
-  }
-
-  // Idle preview: the in-game boxer, gently bobbing, facing the centre.
-  private drawBoxer(v: FighterView, id: CharId, x: number, y: number, face: number, time: number): void {
-    const f = createSimState({ timed: false, fighters: [{ char: id }, {}] }).fighters[0];
-    f.x = x;
-    f.y = y + Math.sin(time / 300) * 1.5;
-    f.fx = face;
-    f.fy = 0;
-    v.draw(f, time, false);
   }
 }
+
+
+

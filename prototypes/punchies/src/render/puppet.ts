@@ -1,6 +1,12 @@
+import {drawUppercutFlame} from './combatVfx';
+import { blendedFootStep, bootCollar } from './legMotion';
+import {cosmeticTorsoScale,cosmeticShoulderScale} from './cosmeticTorso';
 import Phaser from 'phaser';
+import { skinTexture } from './skins';
+import { limbSkin } from './skinPalette';
 import { tune } from '../sim/tune';
 import type { Fighter } from '../sim/types';
+import { armPose, punchExtension, uppercutFireIntensity, gloveRegistration } from './punchMotion';
 
 // Runtime boxer puppet, true overhead. Replaces the baked animation frames
 // for the three playable characters: head, torso, gloves and boots are static
@@ -15,7 +21,6 @@ import type { Fighter } from '../sim/types';
 type Pt = { x: number; y: number };
 
 const NAVY = 0x101b32;
-const key = (name: string) => `punchies:${name}`;
 
 interface CharLook {
   skin: number;
@@ -23,93 +28,34 @@ interface CharLook {
   headOrigin: number;
   headScale: number;
   torsoScale: number;
-  // Recolour for the mirror-match "alt" look: hue range (deg) and shift.
-  alt: { from: [number, number]; shift: number };
 }
 
 const LOOKS: Record<string, CharLook> = {
-  marco: { skin: 0xf0a060, headOrigin: 0.49, headScale: 1, torsoScale: 1, alt: { from: [190, 265], shift: -36 } },
-  mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1, alt: { from: [338, 375], shift: -28 } },
-  bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1, alt: { from: [85, 175], shift: -38 } },
+  kai: {skin:0xf7b775,headOrigin:.5,headScale:1,torsoScale:1},
+  zombie: {skin:0x9dbc61,headOrigin:.49,headScale:1,torsoScale:1},
+  roxy: {skin:0xf0a060,headOrigin:.49,headScale:1,torsoScale:1},
+  nadia: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
+  captain: {skin:0x173b79,headOrigin:.49,headScale:1,torsoScale:1},
+  longan: {skin:0xe9a26b,headOrigin:.5,headScale:1,torsoScale:1},
+  tyke: {skin:0x995c39,headOrigin:.5,headScale:1,torsoScale:1},
+  dragon: {skin:0xf0ae72,headOrigin:.5,headScale:1,torsoScale:1},
+  tee: {skin:0xf6b886,headOrigin:.49,headScale:1,torsoScale:1},
+  marco: { skin: 0xf0a060, headOrigin: 0.49, headScale: 1, torsoScale: 1 },
+  mia: { skin: 0xf6b886, headOrigin: 0.452, headScale: 1, torsoScale: 1 },
+  bruno: { skin: 0xee9a62, headOrigin: 0.465, headScale: 1, torsoScale: 1 },
 };
+
+const kaiRigs=new WeakMap<object,typeof tune.view.puppet>();
+function kaiRig(base:typeof tune.view.puppet){let rig=kaiRigs.get(base);if(!rig){rig=Object.assign(Object.create(base),{headHeight:22,torsoHeight:32,gloveHeight:14,bootWidth:13,shoulderSpread:11,bootSpread:8,hipSpread:5,headForward:2.5}) as typeof tune.view.puppet;kaiRigs.set(base,rig);}return rig;}
 
 // Art registration follows prepare-assets.mjs; runtime sizes are in tune.view.puppet.
 const PONYTAIL_PIVOT = 0.915;
 
 const PARTS = ['head', 'torso', 'glove_left', 'glove_right', 'boot_left', 'boot_right'];
 
-const partKey = (char: string, alt: boolean, name: string) => key(`part_${char}${alt ? '_alt' : ''}_${name}`);
-
-// Every character with parts gets an alt (hue shifted) copy of each part,
-// made once in a canvas, so a mirror match needs no extra download.
-export function makeAltParts(scene: Phaser.Scene): void {
-  for (const [char, look] of Object.entries(LOOKS)) {
-    for (const name of [...PARTS, 'ponytail']) {
-      const src = partKey(char, false, name);
-      const dst = partKey(char, true, name);
-      if (!scene.textures.exists(src) || scene.textures.exists(dst)) continue;
-      const img = scene.textures.get(src).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
-      const w = img.width;
-      const h = img.height;
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
-      ctx.drawImage(img, 0, 0);
-      const data = ctx.getImageData(0, 0, w, h);
-      const px = data.data;
-      for (let i = 0; i < px.length; i += 4) {
-        if (px[i + 3] === 0) continue;
-        const [hh, s, v] = rgbToHsv(px[i], px[i + 1], px[i + 2]);
-        if (s < 0.35 || v < 0.2) continue; // skin is orange, outlines are dark
-        let deg = hh;
-        if (look.alt.from[1] > 360 && deg < look.alt.from[1] - 360) deg += 360;
-        if (deg < look.alt.from[0] || deg > look.alt.from[1]) continue;
-        const [r, g, b] = hsvToRgb(deg + look.alt.shift, s, v);
-        px[i] = r;
-        px[i + 1] = g;
-        px[i + 2] = b;
-      }
-      ctx.putImageData(data, 0, 0);
-      scene.textures.addCanvas(dst, canvas);
-    }
-  }
-}
-
-function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
-  const rr = r / 255;
-  const gg = g / 255;
-  const bb = b / 255;
-  const max = Math.max(rr, gg, bb);
-  const min = Math.min(rr, gg, bb);
-  const d = max - min;
-  let h = 0;
-  if (d > 0) {
-    if (max === rr) h = ((gg - bb) / d) % 6;
-    else if (max === gg) h = (bb - rr) / d + 2;
-    else h = (rr - gg) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  return [h, max === 0 ? 0 : d / max, max];
-}
-
-function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
-  const hh = (((h % 360) + 360) % 360) / 60;
-  const c = v * s;
-  const x = c * (1 - Math.abs((hh % 2) - 1));
-  const m = v - c;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (hh < 1) [r, g, b] = [c, x, 0];
-  else if (hh < 2) [r, g, b] = [x, c, 0];
-  else if (hh < 3) [r, g, b] = [0, c, x];
-  else if (hh < 4) [r, g, b] = [0, x, c];
-  else if (hh < 5) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+function lerpRgb(a: number, b: number, t: number): number {
+  const ch = (shift: number) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
 // Elbow (or knee) of a two-segment limb from `s` to `w`, bent toward `outward`.
@@ -144,9 +90,11 @@ function limb(g: Phaser.GameObjects.Graphics, a: Pt, b: Pt, c: Pt, width: number
 
 export interface PuppetArgs {
   f: Fighter;
+  visualId?: string; // Art identity only; underlying fighter retains its stats.
   now: number;
   k: number; // character scale
   alt: boolean;
+  skin?:string;
   fists: [Pt, Pt]; // glove centres from the sim (rest / guard / punch)
   fistColors: [number, number]; // phase feedback colours (sweet, sour, guard)
   baseColor: number;
@@ -158,17 +106,22 @@ export interface PuppetArgs {
   flashColor: number;
   dodging: boolean;
   guarding: boolean;
+  vulnerable?: boolean; // open to full-damage hits: the silhouette pulses red-orange
+  reviewLegsOnly?: boolean; // isolated developer review, never enabled by game scenes
   limp?: boolean; // knocked out: slumped, no sweat or wobble
 }
 
 export class Puppet {
   private legs: Phaser.GameObjects.Graphics;
+  private ankles: Phaser.GameObjects.Graphics;
   private arms: Phaser.GameObjects.Graphics;
   private fx: Phaser.GameObjects.Graphics;
   private bootL: Phaser.GameObjects.Image;
   private bootR: Phaser.GameObjects.Image;
   private torso: Phaser.GameObjects.Image;
+  private scarf: Phaser.GameObjects.Image;
   private ponytail: Phaser.GameObjects.Image;
+  private twinTails:Phaser.GameObjects.Image[];
   private gloveL: Phaser.GameObjects.Image;
   private gloveR: Phaser.GameObjects.Image;
   private head: Phaser.GameObjects.Image;
@@ -179,6 +132,7 @@ export class Puppet {
   constructor(private scene: Phaser.Scene) {
     const img = (d: number) => scene.add.image(0, 0, '__DEFAULT').setDepth(d).setVisible(false);
     this.legs = scene.add.graphics().setDepth(9.2);
+    this.ankles = scene.add.graphics().setDepth(9.35);
     this.bootL = img(9.3);
     this.bootR = img(9.3);
     this.ghosts = [0, 1].map(() => ({ torso: img(9.6), head: img(9.62) }));
@@ -187,6 +141,8 @@ export class Puppet {
     this.gloveL = img(10.1);
     this.gloveR = img(10.1);
     this.ponytail = img(10.12);
+    this.scarf = img(10.12);
+    this.twinTails=[img(10.12),img(10.12)];
     this.head = img(10.2);
     this.fx = scene.add.graphics().setDepth(10.4);
   }
@@ -197,9 +153,10 @@ export class Puppet {
 
   hide(): void {
     this.legs.clear();
+    this.ankles.clear();
     this.arms.clear();
     this.fx.clear();
-    for (const o of [this.bootL, this.bootR, this.torso, this.ponytail, this.gloveL, this.gloveR, this.head]) o.setVisible(false);
+    for (const o of [...this.twinTails,this.bootL, this.bootR, this.torso, this.ponytail, this.scarf, this.gloveL, this.gloveR, this.head]) o.setVisible(false);
     for (const g of this.ghosts) {
       g.torso.setVisible(false);
       g.head.setVisible(false);
@@ -208,24 +165,30 @@ export class Puppet {
   }
 
   // True when this character's parts are loaded.
-  private bind(char: string, alt: boolean): boolean {
-    const id = `${char}${alt ? '_alt' : ''}`;
+  private bind(char: string, skin='default'): boolean {
+    const id = `${char}:${skin}`;
+    const part=(name:string)=>skinTexture(this.scene,char,skin,`part_${char}_${name}`);
     if (this.bound === id) return true;
     const look = LOOKS[char];
     if (!look) return false;
-    const need = PARTS.map((p) => partKey(char, alt, p));
+    const need = PARTS.map((p) => part(p));
     if (!need.every((k) => this.scene.textures.exists(k))) return false;
-    this.bootL.setTexture(partKey(char, alt, 'boot_left'));
-    this.bootR.setTexture(partKey(char, alt, 'boot_right'));
-    this.torso.setTexture(partKey(char, alt, 'torso'));
-    this.gloveL.setTexture(partKey(char, alt, 'glove_left'));
-    this.gloveR.setTexture(partKey(char, alt, 'glove_right'));
-    this.head.setTexture(partKey(char, alt, 'head')).setOrigin(look.headOrigin, 0.5);
-    const pony = partKey(char, alt, 'ponytail');
+    this.bootL.setTexture(part('boot_left'));
+    this.bootR.setTexture(part('boot_right'));
+    this.torso.setTexture(part('torso'));
+    // Rising Star's authored source has the left-hand thumb silhouette.
+    // Its mirrored alias therefore belongs to the right hand.
+    const swapGloves = char === 'marco' && skin === 'skin-marco-unique';
+    this.gloveL.setTexture(part(swapGloves ? 'glove_right' : 'glove_left'));
+    this.gloveR.setTexture(part(swapGloves ? 'glove_left' : 'glove_right'));
+    this.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5);
+    if (this.scene.textures.exists(part('scarf'))) this.scarf.setTexture(part('scarf')).setOrigin(tune.view.puppet.captainScarfOriginX,tune.view.puppet.captainScarfOriginY);
+    const pony = part('ponytail');
     if (this.scene.textures.exists(pony)) this.ponytail.setTexture(pony).setOrigin(PONYTAIL_PIVOT, 0.5);
+    ['ponytail_left','ponytail_right'].forEach((name,i)=>{if(this.scene.textures.exists(part(name)))this.twinTails[i].setTexture(part(name)).setOrigin(tune.view.puppet.teeTailOriginX,tune.view.puppet.teeTailOriginY);});
     for (const g of this.ghosts) {
-      g.torso.setTexture(partKey(char, alt, 'torso')).setTintFill(0x7fe9ff);
-      g.head.setTexture(partKey(char, alt, 'head')).setOrigin(look.headOrigin, 0.5).setTintFill(0x7fe9ff);
+      g.torso.setTexture(part('torso')).setTintFill(0x7fe9ff);
+      g.head.setTexture(part('head')).setOrigin(look.headOrigin, 0.5).setTintFill(0x7fe9ff);
     }
     this.bound = id;
     return true;
@@ -234,14 +197,15 @@ export class Puppet {
   // Draws the boxer. Returns false (and hides) when the parts are missing, so
   // the caller can fall back to the older art.
   draw(a: PuppetArgs): boolean {
-    const { f } = a;
-    const look = LOOKS[f.char];
-    if (!look || f.anchored || !this.bind(f.char, a.alt)) {
+    const f = a.visualId ? { ...a.f, char: a.visualId } : a.f;
+    const originalLook = LOOKS[f.char];
+    const look = originalLook && { ...originalLook, skin: limbSkin(f.char,a.skin??'default',originalLook.skin) };
+    if (!look || f.anchored || !this.bind(f.char,a.skin)) {
       this.hide();
       return false;
     }
     const v = tune.view;
-    const rig = v.puppet;
+    const rig = f.char==='kai' ? kaiRig(v.puppet) : v.puppet;
     const k = a.k;
     const now = a.now;
     const fx = f.fx;
@@ -258,6 +222,7 @@ export class Puppet {
     const breathe = Math.sin(now / 520);
 
     this.legs.clear();
+    this.ankles.clear();
     this.arms.clear();
     this.fx.clear();
 
@@ -266,25 +231,22 @@ export class Puppet {
     let mu = 0;
     let mv = 0;
     if (speed > 0.01) {
-      mu = (a.vel.x * fx + a.vel.y * fy) / speed;
-      mv = (a.vel.x * lx + a.vel.y * ly) / speed;
+      mu = a.vel.x * fx + a.vel.y * fy;
+      mv = a.vel.x * lx + a.vel.y * ly;
     }
-    // 0 = walking forward / back, 1 = side-stepping (past ~45 degrees).
-    const angle = Math.atan2(Math.abs(mv), Math.abs(mu));
-    const strafe = Math.min(1, Math.max(0, (angle - 0.52) / 0.5));
-    const amp = (9 - 2 * strafe) * k * a.stride;
+    // Blend independent longitudinal and lateral steps without an angle threshold.
     const feet: { pos: Pt; yaw: number; lift: number; ankle: Pt; hip: Pt; out: Pt }[] = [];
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? 1 : -1; // boot_left on +v
       const ph = a.walk + (i === 0 ? 0 : Math.PI);
-      const sw = Math.sin(ph);
+      const step = blendedFootStep(ph,mu,mv,a.stride);
       const u0 = (i === 0 ? rig.leadBootForward : rig.rearBootForward) * k;
       const v0 = rig.bootSpread * k * side;
-      const pos = P(u0 + mu * amp * sw, v0 + mv * amp * sw, v.feetOffsetY);
-      const yaw = 0.3 * strafe * Math.sign(mv || 1) * a.stride;
-      const lift = Math.max(0, Math.cos(ph)) * a.stride;
+      const pos = P(u0 + step.u*k, v0 + step.v*k, v.feetOffsetY);
+      const yaw = step.yaw;
+      const lift = step.lift;
       const hip = P(-2 * k, rig.hipSpread * k * side, v.bodyOffsetY);
-      const ankle = { x: pos.x - fx * 4 * k, y: pos.y - fy * 4 * k };
+      const ankle = bootCollar(pos.x,pos.y,th+yaw,rig.bootWidth*k*(1+.14*lift),f.char==='kai'?.075:.2);
       feet.push({ pos, yaw, lift, ankle, hip, out: { x: lx * side, y: ly * side } });
     }
     [this.bootL, this.bootR].forEach((boot, i) => {
@@ -293,28 +255,53 @@ export class Puppet {
       boot.setPosition(ft.pos.x, ft.pos.y).setRotation(th + ft.yaw).setScale(s).setAlpha(alpha).setVisible(true).setDepth(9.3 + 0.01 * ft.lift);
     });
     for (const ft of feet) {
-      const knee = joint(ft.hip, ft.ankle, 8 * k, ft.out);
+      // A top-down knee is a shallow projected bend. A fixed 8px minimum
+      // segment forced short legs into wide triangular loops under the torso.
+      const projectedLength = Math.hypot(ft.ankle.x-ft.hip.x, ft.ankle.y-ft.hip.y);
+      const knee = joint(ft.hip, ft.ankle, projectedLength * .51, ft.out);
       limb(this.legs, ft.hip, knee, ft.ankle, 5.5 * k, look.skin, alpha);
+      // Shoe pixels are opaque inside the collar: overlap a short ankle above
+      // the boot, while the full leg remains behind it and the torso.
+      const dx=knee.x-ft.ankle.x,dy=knee.y-ft.ankle.y,length=Math.hypot(dx,dy)||1;
+      const join={x:ft.ankle.x+dx/length*3*k,y:ft.ankle.y+dy/length*3*k};
+      limb(this.ankles,join,join,ft.ankle,3*k,look.skin,alpha);
     }
 
     // ---- torso and head ----
     const tpos = P(-snap * 0.5, 0, v.bodyOffsetY);
+    // Torso twist: the shoulder of the striking hand turns forward with the
+    // punch (left hand +, right hand -), the head follows part way.
+    const twist = f.punch && !a.limp ? (f.punch.hand === 0 ? 1 : -1) * ((rig.torsoTwistDegrees * Math.PI) / 180) * punchExtension(f.punch) : 0;
+    const tfx = Math.cos(th + twist);
+    const tfy = Math.sin(th + twist);
+    const tlx = tfy;
+    const tly = -tfx;
     this.torso
       .setPosition(tpos.x, tpos.y)
-      .setRotation(th + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
-      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * (1 + 0.012 * breathe))
+      .setRotation(th + twist + (f.stunTimer > 0 ? Math.sin(now / 130) * 0.06 : 0))
+      .setScale(((rig.torsoHeight * k) / this.torso.height) * look.torsoScale * cosmeticTorsoScale(f.char,a.skin) * (f.char==='tee'?rig.teeTorsoScale:1) * (1 + 0.012 * breathe))
       .setAlpha(alpha)
       .setVisible(true);
     const headDy = v.headOffsetY + (slump ? 2 : 0) + (a.guarding ? 0 : 0.4 * breathe);
     const hpos = P(rig.headForward * k - snap, 0, headDy);
-    const hrot = th + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
-    const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale;
+    const hrot = th + twist * 0.4 + (f.stunTimer > 0 ? Math.sin(now / 110) * 0.3 : hitT < 1 ? 0.18 * (1 - hitT) * (f.lastBlow && f.lastBlow.dx * ly - f.lastBlow.dy * lx > 0 ? 1 : -1) : Math.sin(now / 900) * 0.03);
+    const hscale = ((rig.headHeight * k) / this.head.height) * look.headScale * (f.char==='tee'?rig.teeHeadScale:1);
     this.head.setPosition(hpos.x, hpos.y).setRotation(hrot).setScale(hscale).setAlpha(alpha).setVisible(true);
-    if (this.scene.textures.exists(partKey(f.char, a.alt, 'ponytail'))) {
+    if (this.scene.textures.exists(skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}_ponytail`))) {
       const sway = Math.sin(a.walk * 0.8 + now / 400) * (0.1 + 0.25 * a.stride) + (hitT < 1 ? 0.4 * (1 - hitT) : 0);
       const ppos = P(rig.headForward * k - snap - 11 * k, 0, headDy);
       this.ponytail.setPosition(ppos.x, ppos.y).setRotation(hrot + sway).setScale(hscale).setAlpha(alpha).setVisible(true);
     } else this.ponytail.setVisible(false);
+
+    if(f.char==='captain'){const root=P(rig.headForward*k-snap-rig.captainScarfBack*k,0,headDy);const sway=Math.sin(now/rig.captainScarfSwayMs+a.walk)*(rig.captainScarfIdleSway+rig.captainScarfWalkSway*a.stride);this.scarf.setPosition(root.x,root.y).setRotation(hrot+sway).setScale(hscale*rig.captainScarfScale).setAlpha(alpha).setVisible(true);}else this.scarf.setVisible(false);
+    this.twinTails.forEach((tail,i)=>{
+      const name='ponytail_'+(i===0?'left':'right');
+      const texture=skinTexture(this.scene,f.char,a.skin??'default',`part_${f.char}_${name}`);
+      if(!this.scene.textures.exists(texture)){tail.setVisible(false);return;}
+      const side=i===0?1:-1,root=P(rig.headForward*k-snap-rig.teeTailBack*k,side*rig.teeTailSpread*k,headDy);
+      const sway=Math.sin(now/rig.teeTailSwayMs+a.walk*rig.teeTailWalkCoupling+i*rig.teeTailPhase)*(rig.teeTailIdleSway+rig.teeTailSway*a.stride)+(hitT<1?side*rig.teeTailHitSway*(1-hitT):0);
+      tail.setPosition(root.x,root.y).setRotation(hrot+sway+side*rig.teeTailRestAngle).setScale(hscale*rig.teeTailScale).setAlpha(alpha).setVisible(true);
+    });
 
     // ---- arms: shoulder to wrist, elbow bent outward ----
     const fists = a.fists.map((p, i) => {
@@ -326,44 +313,59 @@ export class Puppet {
       }
       return p;
     });
-    const skinNow = a.flashBody ? a.flashColor : look.skin;
+    // Vulnerable: the whole silhouette pulses red-orange while it lasts.
+    const pulse = a.vulnerable && !a.limp ? rig.vulnerablePulseMax * (0.45 + 0.55 * (0.5 + 0.5 * Math.sin(now / rig.vulnerablePulseMs))) : 0;
+    const warn = pulse > 0 ? lerpRgb(0xffffff, 0xff5a28, pulse) : 0xffffff;
+    const skinNow = a.flashBody ? a.flashColor : pulse > 0 ? lerpRgb(look.skin, 0xff5a28, pulse * 0.8) : look.skin;
     [this.gloveL, this.gloveR].forEach((glove, i) => {
       const side = i === 0 ? 1 : -1;
       const fist = fists[i];
-      const sh = P(1 * k, rig.shoulderSpread * k * side, v.bodyOffsetY);
-      const gh = rig.gloveHeight * k;
-      let dx = fist.x - sh.x;
-      let dy = fist.y - sh.y;
-      let d = Math.hypot(dx, dy) || 1;
-      dx /= d;
-      dy /= d;
-      const wrist = { x: fist.x - dx * gh * 0.4, y: fist.y - dy * gh * 0.4 };
-      const elbow = joint(sh, wrist, 9 * k, { x: lx * side, y: ly * side });
-      limb(this.arms, sh, elbow, wrist, 6 * k, skinNow, alpha);
-      dx = fist.x - elbow.x;
-      dy = fist.y - elbow.y;
-      d = Math.hypot(dx, dy) || 1;
+      const sh = { x: f.x + tfx * k + tlx * rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side, y: f.y + tfy * k + tly * rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side + v.bodyOffsetY };
+      // Register the art actually bound, including base fallback after a failed load.
+      const gloveSkin=glove.texture.key.startsWith('punchies:part_marco_rising_star_')?'skin-marco-unique':'default';
+      const registration=gloveRegistration(f.char,glove.width,glove.height,k,gloveSkin,i);
+      const striking = f.punch?.hand === i;
+      const straight = striking && (f.punch!.type === 'jab' || f.punch!.type === 'cross') ? punchExtension(f.punch!) : 0;
+      const minSegment = striking && f.punch!.type === 'hook' ? Math.max(9 * k, Math.hypot(fist.x - sh.x, fist.y - sh.y) * rig.hookElbowRatio) : 9 * k;
+      const { elbow, wrist } = armPose(sh, fist, registration.cuff, minSegment, { x: lx * side, y: ly * side }, straight);
+      if (!striking || f.punch!.type !== 'uppercut' || uppercutFireIntensity(f.punch!) < 0.2) {
+        limb(this.arms, sh, elbow, wrist, 6 * k, skinNow, alpha);
+      }
+      const dx = fist.x - elbow.x;
+      const dy = fist.y - elbow.y;
       glove
+        .setFlipX(f.char==='tyke')
+        .setOrigin(registration.originX??.5,registration.originY??.5)
         .setPosition(fist.x, fist.y)
-        .setRotation(Math.atan2(dy, dx) + Math.PI / 2)
-        .setScale(gh / glove.height)
+        .setRotation(Math.atan2(dy, dx) + registration.axis)
+        .setScale(registration.scale)
         .setAlpha(alpha)
         .setVisible(true)
         // High Guard: the gloves come up over the head.
         .setDepth(a.guarding ? 10.25 : 10.1);
-      // Sweet / sour / guard feedback ring around the glove.
-      if (a.fistColors[i] !== a.baseColor) {
-        this.fx.lineStyle(2, a.fistColors[i], 0.85 * alpha);
-        this.fx.strokeCircle(fist.x, fist.y, gh * 0.55);
-      }
     });
+
+    if (f.punch?.type === 'uppercut' && !a.limp) {
+      const p = f.punch;
+      const intensity = uppercutFireIntensity(p);
+      const side = p.hand === 0 ? 1 : -1;
+      this.uppercutFlame(P(k, rig.shoulderSpread * cosmeticShoulderScale(f.char,a.skin) * k * side, v.bodyOffsetY), fists[p.hand], intensity, now, k);
+    }
 
     // ---- tints: head and torso flash separately when hit ----
     const head = a.flashHead;
     const body = a.flashBody;
-    for (const o of [this.head, this.ponytail]) (head ? o.setTintFill(a.flashColor) : o.clearTint());
-    if (body) this.torso.setTintFill(a.flashColor);
-    else this.torso.clearTint();
+    const tintOf = (o: Phaser.GameObjects.Image, flash: boolean) => {
+      if (flash) o.setTintFill(a.flashColor);
+      else if (pulse > 0) o.setTint(warn);
+      else o.clearTint();
+    };
+    tintOf(this.head, head);
+    tintOf(this.ponytail, head);
+    tintOf(this.scarf, head);
+    this.twinTails.forEach(t=>tintOf(t,head));
+    tintOf(this.torso, body);
+    for (const o of [this.gloveL, this.gloveR, this.bootL, this.bootR]) tintOf(o, false);
 
     // ---- effects: dodge afterimage + speed lines, exhausted sweat ----
     this.history.push({ x: tpos.x, y: tpos.y, rot: th });
@@ -414,6 +416,16 @@ export class Puppet {
         this.fx.fillCircle(x - 0.5, y - 0.6, rig.sweatHighlightRadius * k);
       }
     }
+    if (a.reviewLegsOnly) {
+      this.arms.clear(); this.fx.clear();
+      for (const image of [this.head,this.torso,this.gloveL,this.gloveR,this.ponytail,this.scarf,...this.twinTails]) image.setVisible(false);
+      for (const ghost of this.ghosts) { ghost.head.setVisible(false); ghost.torso.setVisible(false); }
+    }
     return true;
   }
+
+  private uppercutFlame(root:Pt,fist:Pt,intensity:number,now:number,k:number):void {
+    drawUppercutFlame(this.fx,root,fist,intensity,now,k,tune.view.puppet);
+  }
+
 }

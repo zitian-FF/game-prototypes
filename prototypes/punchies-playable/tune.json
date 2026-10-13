@@ -1,0 +1,99 @@
+{
+  "run": {
+    "durationSec": 30,
+    "playerHp": 3,
+    "firstSpawnSec": 0.1,
+    "zombieCount": 50,
+    "startGapSec": 0.7,
+    "endGapSec": 0.35
+  },
+  "enemy": {
+    "spawnDistance": 520,
+    "walkSpeed": 250,
+    "attackDistance": 80,
+    "minGap": 70,
+    "windupFrames": 20,
+    "strikeFrames": 6,
+    "damage": 1,
+    "leaveFrames": 32,
+    "leaveSpeed": 480,
+    "knockFrames": 44,
+    "knockSpeed": 700,
+    "lanes": 7,
+    "maxBearingDeg": 28,
+    "knockFadeFrames": 14,
+    "walkSpeedEnd": 340,
+    "hp": 4,
+    "staggerPush": 25
+  },
+  "points": {
+    "head": 2,
+    "body": 1
+  },
+  "punch": {
+    "bufferFrames": 6,
+    "jab": {
+      "startup": 6,
+      "sourEarly": 3,
+      "sweet": 2,
+      "recovery": 8,
+      "whiffRecovery": 4,
+      "sourBelow": 44,
+      "headMax": 87,
+      "bodyMax": 105,
+      "damage": 2
+    },
+    "cross": {
+      "startup": 8,
+      "sourEarly": 3,
+      "sweet": 6,
+      "recovery": 12,
+      "whiffRecovery": 8,
+      "sourBelow": 105,
+      "headMax": 117,
+      "bodyMax": 127.5,
+      "damage": 4
+    },
+    "sourDamageMult": 0.5
+  },
+  "view": {
+    "unitPx": 1.2,
+    "playerY": 480,
+    "hitFlashFrames": 10,
+    "popupMs": 700,
+    "endDelayMs": 600,
+    "rig": {
+      "scale": 1.5,
+      "torsoHeight": 40,
+      "headHeight": 24,
+      "gloveHeight": 19,
+      "bootWidth": 16,
+      "shoulderSpread": 13.5,
+      "hipSpread": 6,
+      "bootSpread": 9,
+      "leadBootForward": 9,
+      "rearBootForward": -7,
+      "headForward": 2.5,
+      "guardU": 16,
+      "guardV": 11,
+      "jabReach": 46,
+      "crossReach": 62,
+      "enemyReach": 44,
+      "torsoTwistDeg": 22,
+      "strideAmp": 7,
+      "walkHz": 2.2
+    },
+    "playerTurn": 0.25,
+    "hitStopMs": 70
+  },
+  "audio": {
+    "master": 0.7
+  },
+  "fx": {
+    "intensity": 1,
+    "shake": 1,
+    "particles": 1,
+    "flash": 1,
+    "zoomPunch": 0.05
+  }
+}

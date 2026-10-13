@@ -110,11 +110,11 @@ export class Rollback {
     private sendInputs: (p: InputPacket) => void,
     private sendHash: (p: HashPacket) => void,
     chars: [string, string] = ['marco', 'marco'],
-    opts: { tapExtra?: number } = {},
+    opts: { tapExtra?: number; showcase?: boolean } = {},
   ) {
     this.tapExtra = Math.max(0, Math.round(opts.tapExtra ?? 0));
     this.tapQueue = new Array<number>(this.tapExtra).fill(0);
-    this.sim = createSimState({ timed: true, fighters: [{ char: chars[0] }, { char: chars[1] }] });
+    this.sim = createSimState({ timed: true, showcase: opts.showcase, fighters: [{ char: chars[0] }, { char: chars[1] }] });
     const neutral: PackedInput = [0, 0, 0];
     for (let t = 0; t < delay; t++) {
       this.local.set(t, neutral);

@@ -17,10 +17,11 @@ import type { NetPlayerId } from '../net/netPlayerId';
 // does mean every seat's scripted cards must currently be genuinely legal
 // (in the real holder's hand, matching required suit, etc.) for
 // `applyAction` to accept them - the design doc's "fully fabricated/non-
-// deck-constrained" remote data is NOT yet supported as a bypass-legality
-// path. Scene 1 doesn't need that (its remote plays are ordinary legal
-// follows), so this is a known, called-out gap for whichever later scene
-// first needs genuinely invalid remote data - see BUILD_STATUS.md.
+// deck-constrained" remote data is NOT supported as a bypass-legality
+// path. None of the 6 built scenes ever needed that latitude - every
+// scripted deal across all of them stays genuinely deck-consistent (no
+// two seats share a card), so this remains an unexercised path rather
+// than a gap any current scene is blocked on.
 export interface TutorialScript {
   deal: ForcedDeal;
   steps: TutorialStep[];
@@ -64,17 +65,22 @@ export interface TutorialRedistributeAssignment {
   toPlayer: NetPlayerId;
 }
 
-// What the hard-lock gate restricts. 'handCard' (Scene 1) and
-// 'redistributeAssignments' (Scene 2) are both implemented -
-// 'delegateTo'/'actionButton' are still just reserved shapes for
-// Scenes 3/6 (delegate-selection seat targets, a bare confirm tap with
-// no card selection involved) so the union doesn't need reshaping again
-// later - see BUILD_STATUS.md.
+// What the hard-lock gate restricts. 'handCard' (Scene 1), Scene 5's own
+// investigation (see tutorialScenes.ts's doc comment on that scene)
+// found no separate 'actionButton' variant was ever needed for a bare
+// confirm tap - the real legality/action-button state already narrows
+// to exactly one option once the right card(s) are selected, so the
+// tutorial lock only ever needs to gate card/seat selection itself.
+// 'doubleCards' (Scene 6) locks a scripted same-rank pair the same way
+// 'redistributeAssignments' locks a multi-step plan: live-resolved every
+// render from the pair plus the real, already-tracked
+// view.selectedCards (see ui/renderGameView.ts's
+// nextTutorialDoubleCardId), not a separate tutorial-only progress flag.
 export type TutorialLock =
   | { kind: 'handCard'; cardId: CardId }
   | { kind: 'redistributeAssignments'; assignments: TutorialRedistributeAssignment[] }
   | { kind: 'delegateTo'; toPlayer: NetPlayerId }
-  | { kind: 'actionButton' };
+  | { kind: 'doubleCards'; cardIds: readonly [CardId, CardId] };
 
 // What the guide pointer points at. 'handCard' and 'redistributeAssignments'
 // are both resolved to a real screen position today (the former via
@@ -83,14 +89,15 @@ export type TutorialLock =
 // far the player has actually progressed - see
 // ui/renderGameView.ts's nextTutorialRedistributeTarget). 'seat' is a
 // plain, static single-seat point (used internally by
-// 'redistributeAssignments', and reserved standalone for a future
-// delegate-selection scene); 'actionButton' is still a reserved shape
-// nothing resolves yet - see BUILD_STATUS.md.
+// 'redistributeAssignments', and standalone for Scene 6's own
+// delegate-selection step). 'doubleCards' mirrors the lock variant of
+// the same name - same live resolution, read as "where to point" rather
+// than "what to allow".
 export type GuidePointerTarget =
   | { kind: 'handCard'; cardId: CardId }
   | { kind: 'redistributeAssignments'; assignments: TutorialRedistributeAssignment[] }
   | { kind: 'seat'; slot: NetPlayerId }
-  | { kind: 'actionButton' };
+  | { kind: 'doubleCards'; cardIds: readonly [CardId, CardId] };
 
 // One scene marker in the top-of-screen scene selector (see
 // dom/tutorial/TutorialTopBar.tsx) - 'locked' scenes aren't reachable yet

@@ -1,0 +1,31 @@
+import { CHARACTER_IDS, type CharId } from '../sim/character';
+import { t } from '../i18n';
+import { itemName } from './itemText';
+import { SHOP_ITEMS, WELCOME_FIGHTER, type ShopDraftState, type ShopItem } from './draft';
+import { STARTER_SKINS } from '../render/skinPalette';
+
+export const DEFAULT_SKIN = 'default';
+
+export function availableFighters(state: ShopDraftState): CharId[] {
+  return CHARACTER_IDS.filter(id => ['marco','mia','bruno'].includes(id) || SHOP_ITEMS.some(item => item.kind === 'fighters' && !item.artPending && item.boxer === id && state.owned.includes(item.id)));
+}
+
+export function skinItem(char: string, skin: string): ShopItem | undefined {
+  return SHOP_ITEMS.find(item => item.kind === 'skins' && item.boxer === char && item.id === skin);
+}
+
+export function ownedSkins(state: ShopDraftState, char: CharId): string[] {
+  return [DEFAULT_SKIN, ...SHOP_ITEMS.filter(item =>
+    item.kind === 'skins' && !item.artPending && item.boxer === char && state.owned.includes(item.id)).map(item => item.id)];
+}
+
+export function equippedSkin(state: ShopDraftState, char: CharId, requested: unknown): string {
+  return typeof requested === 'string' && ownedSkins(state, char).includes(requested) ? requested : DEFAULT_SKIN;
+}
+
+export function skinName(char: string, skin: string): string {
+  const item = skinItem(char, skin);
+  if (!item) return t('shop.default');
+  const name = itemName(item);
+  return name.split(' · ')[1] ?? name;
+}

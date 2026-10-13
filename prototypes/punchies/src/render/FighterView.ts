@@ -1,10 +1,15 @@
+import { WalkMotion } from './legMotion';
 import Phaser from 'phaser';
 import { tune } from '../sim/tune';
+import { coreRadius } from '../sim/geometry';
+import { punchCfg, characterDodge } from '../sim/character';
 import type { Fighter } from '../sim/types';
 import { activeEnd, hurtRadius, isVulnerable, phaseOf, punchPoint, stanceOf } from '../sim/sim';
 import { pose } from './art';
 import { GroundLayer } from './groundLayer';
 import { Puppet } from './puppet';
+import { TrainingDummy } from './TrainingDummy';
+import { punchFist } from './punchMotion';
 import { mainLook } from './characterLook';
 
 // Placeholder top-down boxer drawn in code: torso, sparring helmet, arms,
@@ -124,6 +129,9 @@ export class FighterView {
   private ground: GroundLayer;
   // True-overhead puppet (head, torso, gloves, boots + code limbs); first choice.
   private puppet: Puppet;
+  skin='default';
+  visualId?:string; // Render-only identity, independent of simulation stats.
+  private dummy: TrainingDummy;
   // Layered art (top to bottom): effects, head, gloves, torso; feet and the
   // shadow sit below in `ground`. Falls back to the single baked body sprite.
   private torso: Phaser.GameObjects.Image;
@@ -136,19 +144,32 @@ export class FighterView {
   private fx: Phaser.GameObjects.Graphics;
   private flashColor = 0xffffff;
   private flashUntil = 0;
+  private flashAlt = 0xff4a4a;
+  private flashStart = 0;
   // Walk cycle, driven by how far the body moves between frames.
-  private lastX = NaN;
-  private lastY = NaN;
+  private gait = new WalkMotion();
   private walk = 0;
   private stride = 0;
+  readonly objects: Phaser.GameObjects.GameObject[];
+  presentationLimp=false;
 
   // Brief body flash when hit (white = you landed it, red = you took it).
   flash(color: number, now: number, ms = 110, zone: 'head' | 'body' = 'body'): void {
     this.flashColor = color;
+    // The flash strobes between two colours: white <-> red when damage landed,
+    // red <-> dark red when it did not.
+    this.flashAlt = color === 0xffffff ? 0xff4a4a : 0x7a1010;
+    this.flashStart = now;
     this.flashUntil = now + ms;
     // Layered art flashes only the part that was hit.
     if (zone === 'head') this.flashHeadUntil = now + ms;
     else this.flashBodyUntil = now + ms;
+  }
+
+  // Current strobe colour of the hit flash.
+  private flashNow(now: number): number {
+    const step = Math.floor((now - this.flashStart) / Math.max(1, tune.view.flashStrobeMs));
+    return step % 2 === 0 ? this.flashColor : this.flashAlt;
   }
 
   private hideLayers(): void {
@@ -166,8 +187,10 @@ export class FighterView {
     scene: Phaser.Scene,
     private color: number,
   ) {
+    const before=new Set(scene.children.list);
     this.ground = new GroundLayer(scene, BODY_R);
     this.puppet = new Puppet(scene);
+    this.dummy = new TrainingDummy(scene);
     this.g = scene.add.graphics().setDepth(10);
     this.sprite = scene.add.image(0, 0, '__DEFAULT').setDepth(10).setVisible(false);
     // Same depth family as the body sprite, ordered: torso, gloves, head, effects.
@@ -177,6 +200,7 @@ export class FighterView {
     this.head = layer(10.2);
     this.effects = layer(10.3);
     this.fx = scene.add.graphics().setDepth(12);
+    this.objects=scene.children.list.filter(o=>!before.has(o));
   }
 
   setLook(color: number, scale = 1, ponytail = false): void {
@@ -188,6 +212,7 @@ export class FighterView {
   get look(): number {
     return this.color;
   }
+  setIndicator(color:number,label:string):void{this.ground.setIndicator(color,label);}
 
   clear(): void {
     this.g.clear();
@@ -196,9 +221,27 @@ export class FighterView {
     this.puppet.hide();
     this.ground.hide();
     this.fx.clear();
+    this.dummy.hide();
+  }
+
+  /** Reset temporal presentation before a pooled view is assigned a new entity. */
+  reset():void {
+    this.clear();this.gait=new WalkMotion();this.walk=0;this.stride=0;
+    this.presentationLimp=false;
+    this.flashHeadUntil=this.flashBodyUntil=this.flashUntil=this.flashStart=0;
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;if(a.alpha!==1)a.setAlpha(1);}
+  }
+  setPresentationAlpha(alpha:number):void {
+    if(alpha>=1)return;
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;a.setAlpha(a.alpha*alpha);}
+  }
+
+  reactToDummyHit(zone: 'head' | 'body', now: number): void {
+    this.dummy.strike(zone, now);
   }
 
   draw(f: Fighter, now: number, showHitboxes: boolean): void {
+    for(const o of this.objects){const a=o as Phaser.GameObjects.Image;if(a.alpha!==1)a.setAlpha(1);}
     const g = this.g;
     g.clear();
     this.fx.clear();
@@ -208,38 +251,28 @@ export class FighterView {
     const alpha = stance === 'dodging' ? 0.35 : 1;
     const k = this.scale;
 
-    const dxm = Number.isNaN(this.lastX) ? 0 : f.x - this.lastX;
-    const dym = Number.isNaN(this.lastX) ? 0 : f.y - this.lastY;
-    const moved = Math.hypot(dxm, dym);
-    this.lastX = f.x;
-    this.lastY = f.y;
-    const walking = moved > 0.2 && moved < 20; // big jumps = reset/teleport
-    if (walking) this.walk += moved * 0.35;
-    this.stride += ((walking ? 1 : 0) - this.stride) * 0.15;
+    const walking = !this.presentationLimp&&this.gait.update(f, now, tune.view.puppet.walkPhasePerPixel * (f.char==='tee'?tune.view.puppet.teeWalkRate:1));
+    this.walk = this.gait.phase;
+    this.stride = this.gait.stride;
 
-    if (!f.anchored && this.drawPuppet(f, now, stance, walking ? { x: dxm, y: dym } : { x: 0, y: 0 })) {
-      if (isVulnerable(f) && stance !== 'dodging') {
-        g.lineStyle(2, 0xff4a3a, 0.45);
-        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
-      }
-      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-        g.lineStyle(2, 0xffe03a, 0.6);
-        g.strokeCircle(f.x, f.y, BODY_R + 4);
-      }
+    if (f.anchored && this.dummy.draw(f, now, k)) {
+      this.sprite.setVisible(false);
+      this.hideLayers();
+      this.puppet.hide();
+      this.ground.shadowOnly(f.x, f.y, k, 1);
+      this.drawStun(f, now);
+      if (showHitboxes) this.drawHitboxes(f);
+      return;
+    }
+    this.dummy.hide();
+
+    if (!f.anchored && this.drawPuppet(f, now, stance, this.gait.direction)) {
       this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;
     }
 
     if (this.drawArt(f, now, walking)) {
-      if (isVulnerable(f) && stance !== 'dodging') {
-        g.lineStyle(2, 0xff4a3a, 0.45);
-        g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
-      }
-      if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-        g.lineStyle(2, 0xffe03a, 0.6);
-        g.strokeCircle(f.x, f.y, BODY_R + 4);
-      }
       this.drawStun(f, now);
       if (showHitboxes) this.drawHitboxes(f);
       return;
@@ -259,10 +292,6 @@ export class FighterView {
         g.fillEllipse(x + 2, y + 3, 11, 11);
       }
     }
-    if (isVulnerable(f) && stance !== 'dodging') {
-      g.lineStyle(2, 0xff4a3a, 0.35 + 0.2 * Math.sin(now / 60));
-      g.strokeCircle(f.x, f.y, tune.body.vulnerableHurtRadius);
-    }
 
     const { fists, colors } = this.fistPoints(f, k, stance);
 
@@ -277,18 +306,9 @@ export class FighterView {
     for (let i = 0; i < 2; i++) drawGlove(g, fists[i].x, fists[i].y, f.fx, f.fy, colors[i], i === 0 ? 1 : -1, alpha, k);
 
     if (now < this.flashUntil) {
-      g.fillStyle(this.flashColor, 0.75);
+      g.fillStyle(this.flashNow(now), 0.75);
       g.fillCircle(f.x, f.y, BODY_R + 2);
     }
-    // Powered up (dash buff armed or Uppercut charged): subtle yellow pulse.
-    if (f.dashBuff > 0 || f.stars >= tune.stars.max) {
-      const pulse = 0.5 + 0.5 * Math.sin(now / (f.dashBuff > 0 ? 45 : 110));
-      g.fillStyle(0xffe03a, 0.1 + 0.18 * pulse);
-      g.fillCircle(f.x, f.y, BODY_R + 1);
-      g.lineStyle(2, 0xffe03a, 0.25 + 0.35 * pulse);
-      g.strokeCircle(f.x, f.y, BODY_R + 4);
-    }
-
     this.drawStun(f, now);
 
     if (showHitboxes) this.drawHitboxes(f);
@@ -315,23 +335,7 @@ export class FighterView {
     if (f.punch) {
       const p = f.punch;
       const phase = phaseOf(p);
-      const end = activeEnd(p);
-      const reach = p.reach;
-      let t: number;
-      if (phase === 'startup') t = -0.15 * (p.frame / p.startup);
-      else if (phase === 'recovery') t = 1 - (p.frame - end) / p.recovery;
-      else t = 1;
-      const from = rest(p.hand);
-      const to = phase === 'recovery' ? { x: f.x + f.fx * reach, y: f.y + f.fy * reach } : punchPoint(f, p);
-      let x = from.x + (to.x - from.x) * t;
-      let y = from.y + (to.y - from.y) * t;
-      if (p.type === 'hook' || p.type === 'uppercut') {
-        const side = p.hand === 0 ? 1 : -1;
-        const bulge = Math.sin(Math.max(0, t) * Math.PI) * (p.type === 'hook' ? 14 : 6) * side;
-        x += lx * bulge;
-        y += ly * bulge;
-      }
-      fists[p.hand] = { x, y };
+      fists[p.hand] = punchFist(f, p, k);
       colors[p.hand] =
         phase === 'sweet' ? 0xffe03a : phase === 'sour' ? 0xff8a3a : p.type === 'uppercut' ? 0xffc83a : this.color;
     }
@@ -345,6 +349,8 @@ export class FighterView {
     const { fists, colors } = this.fistPoints(f, k, stance);
     const ok = this.puppet.draw({
       f,
+      visualId:this.visualId,
+      skin:this.skin,
       now,
       k,
       alt,
@@ -356,9 +362,11 @@ export class FighterView {
       vel,
       flashHead: now < this.flashHeadUntil,
       flashBody: now < this.flashBodyUntil,
-      flashColor: this.flashColor,
+      flashColor: this.flashNow(now),
       dodging: stance === 'dodging',
+      vulnerable: isVulnerable(f) && stance !== 'dodging',
       guarding: f.guarding,
+      limp:this.presentationLimp,
     });
     if (ok) {
       this.sprite.setVisible(false);
@@ -385,9 +393,9 @@ export class FighterView {
 
   private drawArt(f: Fighter, now: number, walking: boolean): boolean {
     const stance = stanceOf(f);
-    const prefix = f.anchored ? 'dummy' : `${f.char}${this.color !== mainLook(f.char).color ? '_alt' : ''}`;
+    const prefix = f.anchored ? 'dummy' : f.char;
     let action = walking ? 'walk' : 'idle';
-    let progress = ((now / 1000) % 1);
+    let progress = ((now / 1000) * (walking ? tune.view.puppet.walkPhasePerPixel / 0.35 : 1)) % 1;
     if (f.punch) {
       const p = f.punch;
       action = p.type === 'hook' ? (p.hand === 0 ? 'hook_l' : 'hook_r') : p.type;
@@ -397,7 +405,7 @@ export class FighterView {
       progress = p.frame < p.startup ? 0.25 * p.frame / p.startup
         : p.frame < end ? 0.25 + 0.3 * (p.frame - p.startup) / Math.max(1, end - p.startup)
         : 0.55 + 0.45 * (p.frame - end) / Math.max(1, p.recovery);
-    } else if (f.dodge) { action = 'dodge'; progress = f.dodge.frame / Math.max(1, tune.dodge.frames); }
+    } else if (f.dodge) { action = 'dodge'; progress = f.dodge.frame / characterDodge(f).frames; }
     else if (f.lastBlow && f.framesSinceHit < 10) {
       action = f.lastBlow.sweet && f.lastBlow.punch !== 'jab' ? 'hit_heavy' : 'hit_light';
       progress = f.framesSinceHit / 10;
@@ -420,9 +428,9 @@ export class FighterView {
       // runtime orbit, so the baked ones are skipped.
       if (action !== 'stunned' && pose(this.effects, `${key}_effects`, progress)) place(this.effects, 0);
       else this.effects.setVisible(false);
-      if (now < this.flashBodyUntil) this.torso.setTintFill(this.flashColor);
+      if (now < this.flashBodyUntil) this.torso.setTintFill(this.flashNow(now));
       else this.torso.clearTint();
-      if (now < this.flashHeadUntil) this.head.setTintFill(this.flashColor);
+      if (now < this.flashHeadUntil) this.head.setTintFill(this.flashNow(now));
       else this.head.clearTint();
       this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
       return true;
@@ -432,7 +440,7 @@ export class FighterView {
     this.sprite.setPosition(f.x, f.y).setOrigin(0.5).setScale(this.scale / 2).setRotation(rotation);
     this.sprite.setAlpha(alpha);
     this.ground.draw(key, progress, f.x, f.y, rotation, this.scale, alpha);
-    if (now < this.flashUntil) this.sprite.setTintFill(this.flashColor);
+    if (now < this.flashUntil) this.sprite.setTintFill(this.flashNow(now));
     else this.sprite.clearTint();
     return true;
   }
@@ -465,14 +473,14 @@ export class FighterView {
     g.strokeCircle(f.x, f.y, hurtRadius(f));
     if (!isVulnerable(f)) {
       g.lineStyle(1, 0x00aaff, 0.9);
-      g.strokeCircle(f.x, f.y, tune.body.coreRadius);
+      g.strokeCircle(f.x, f.y, coreRadius(f));
     }
     if (f.punch) {
       const phase = phaseOf(f.punch);
       const pt = punchPoint(f, f.punch);
       const c = phase === 'sweet' ? 0xffff00 : phase === 'sour' ? 0xff8800 : 0x888888;
       g.lineStyle(1, c, phase === 'startup' || phase === 'recovery' ? 0.4 : 1);
-      g.strokeCircle(pt.x, pt.y, tune.punches[f.punch.type].hitRadius);
+      g.strokeCircle(pt.x, pt.y, punchCfg(f, f.punch.type).hitRadius);
     }
   }
 }

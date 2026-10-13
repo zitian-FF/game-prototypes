@@ -39,6 +39,10 @@ you did so.
 
 ## Stack
 
+For Punchies artwork, asset preparation or compression, read
+`prototypes/punchies/art/PRODUCTION_STANDARD.md` before making changes.
+It defines the standard and compact delivery contracts and their required checks.
+
 Fixed. Do not add, swap, or upgrade any of these without asking first.
 
 - Engine: Phaser 3
@@ -56,6 +60,8 @@ Fixed. Do not add, swap, or upgrade any of these without asking first.
   Firestorm Arena uses two separate deployment targets: its browser
   client deploys to the itch.io project via Butler, while its multiplayer
   server deploys to Cloudflare Workers. Neither replaces the other.
+  The itch.io project formerly used by mp-console now hosts
+  punchies-playable. Its dedicated workflow builds that prototype only.
   The itch.io project formerly used for suits is now the "Current WIP"
   slot: `.github/workflows/deploy-wip-itch.yml` deploys whichever
   prototype is named in `.github/wip-prototype`, and the hub links to it

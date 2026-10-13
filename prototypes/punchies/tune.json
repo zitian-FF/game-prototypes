@@ -8,6 +8,39 @@
     "resultDelayMs": 500
   },
   "view": {
+    "fighterScale": 1.25,
+    "cameraShakeScale": 0.5,
+    "roundSplashMs": 900,
+    "fightPresentation": {
+      "showcaseMs": 1800,
+      "portraitSlideMs": 300,
+      "impactMs": 160,
+      "fadeMs": 180,
+      "koWordGapMs": 250,
+      "koHoldMs": 1200,
+      "resultEnterMs": 220,
+      "vibrateMs": 18,
+      "vibratePixels": 4,
+      "vsExitMs": 320,
+      "vsExitScale": 16,
+      "fightHoldMs": 180,
+      "fightFadeMs": 80,
+      "upperPulseMs": 940
+    },
+    "arena": {
+      "roundZoomMs": 900,
+      "uiBottom": 82,
+      "topGap": 0.03,
+      "bottomGap": 0.05,
+      "floorTopScale": 1,
+      "floorBottomScale": 1,
+      "floorTileWidth": 105,
+      "floorTileDepth": 72,
+      "floorOverscan": 1.25,
+      "vanishingHeight": 5.5,
+      "floorSourceVanishingHeight": 0.9,
+      "ringSourceTopRatio": 0.97
+    },
     "perspective": 1,
     "topScale": 0.9,
     "squash": 0.85,
@@ -29,7 +62,91 @@
       "rearBootForward": -7,
       "headForward": 2.5,
       "sweatRadius": 2.8,
-      "sweatHighlightRadius": 0.8
+      "sweatHighlightRadius": 0.8,
+      "walkPhasePerPixel": 0.21,
+      "hookWindupDegrees": 80,
+      "hookFollowDegrees": 35,
+      "hookSnapPower": 2,
+      "hookElbowRatio": 0.68,
+      "uppercutFireWidth": 14,
+      "uppercutFireLength": 22,
+      "uppercutFireFadeFrames": 6,
+      "uppercutFireFlickerHz": 12,
+      "torsoTwistDegrees": 22,
+      "vulnerablePulseMs": 90,
+      "vulnerablePulseMax": 0.8,
+      "teeTailSwayMs": 360,
+      "teeTailSway": 0.35,
+      "teeTailSpread": 7,
+      "teeTailScale": 0.9,
+      "teeTailIdleSway": 0.07,
+      "teeTailHitSway": 0.35,
+      "teeTailRestAngle": 0.1,
+      "teeTailBack": 8,
+      "teeTailWalkCoupling": 0.65,
+      "teeTailPhase": 0.8,
+      "teeHeadScale": 0.9,
+      "teeTorsoScale": 0.86,
+      "teeHandScale": 0.8,
+      "teeGloveAxisDegrees": 0,
+      "teeWalkRate": 1.2,
+      "teeTailOriginX": 0.975,
+      "teeTailOriginY": 0.44,
+      "captainScarfOriginX": 0.8908272859216255,
+      "captainScarfOriginY": 0.5886317222600409,
+      "captainScarfBack": 11,
+      "captainScarfScale": 0.75,
+      "captainScarfSwayMs": 360,
+      "captainScarfIdleSway": 0.04,
+      "captainScarfWalkSway": 0.22
+    },
+    "trainingDummy": {
+      "bodyHeight": 34,
+      "headHeight": 21,
+      "headForward": 7,
+      "shakeMs": 300,
+      "shakeHz": 28,
+      "shakeDistance": 4,
+      "shakeAngle": 0.18,
+      "gloveHeight": 16,
+      "armWidth": 5,
+      "shoulderSpread": 12,
+      "poseMs": 140,
+      "normalForward": 17,
+      "normalSpread": 15,
+      "guardForward": 12,
+      "guardSpread": 8,
+      "loweredForward": -6,
+      "loweredSpread": 6,
+      "loweredOffsetY": 20
+    },
+    "staminaRejectFlashMs": 300,
+    "staminaRejectFlashHz": 10,
+    "flashMs": 260,
+    "flashStrobeMs": 50,
+    "menu": {
+      "logoPulseMs": 1500,
+      "shopRayRotationMs": 18000,
+      "logoPulseScale": 1.025,
+      "stampMs": 260,
+      "loadingDrift": 15,
+      "crossfadeMs": 180,
+      "characterSlideMs": 300,
+      "characterSlideDistance": 220,
+      "characterSlideEase": "Back.Out",
+      "rewardReveal": {
+        "fadeMs": 220,
+        "entryMs": 420,
+        "portraitHoldMs": 2200,
+        "nameFadeMs": 260,
+        "ackDelayMs": 650,
+        "darkenAlpha": 0.92,
+        "portraitHeight": 0.96,
+        "entryScale": 0.84,
+        "buttonEntryScale": 0.75
+      },
+      "characterImpactMs": 110,
+      "characterImpactPixels": 3
     }
   },
   "ring": {
@@ -41,27 +158,46 @@
   "movement": {
     "speed": 130,
     "punchMoveMult": 0.35,
-    "guardMoveMult": 0.5,
+    "guardMoveMult": 0.6,
     "stunMoveMult": 0.6,
-    "minSeparation": 44
+    "lockMoveMult": 0.6,
+    "minSeparation": 40
   },
   "body": {
     "hurtRadius": 22,
-    "coreRadius": 11,
-    "vulnerableHurtRadius": 28
+    "coreRadius": 10,
+    "vulnerableHurtRadius": 28,
+    "proportions": {
+      "marco": 1,
+      "mia": 0.88,
+      "bruno": 1.12,
+      "tee": 0.88,
+      "tyke": 1.18,
+      "dragon": 1,
+      "longan": 1,
+      "captain": 1,
+      "roxy": 1,
+      "nadia": 0.88,
+      "kai": 0.9
+    }
   },
   "punches": {
     "jab": {
+      "counterStartup": 0,
+      "counterWhiff": 0,
+      "hitStun": 10,
+      "blockStun": 8,
+      "sourStun": 8,
       "startup": 4,
       "sourEarly": 3,
       "sweet": 2,
-      "sour": 2,
+      "sour": 0,
       "recovery": 8,
       "whiffRecovery": 4,
-      "reach": 45,
-      "hitRadius": 10,
+      "reach": 42,
+      "hitRadius": 9,
       "damage": 4,
-      "staminaCost": 4,
+      "staminaCost": 4.8,
       "staminaDamage": 5,
       "stunBuild": 10,
       "startReachFrac": 0.4,
@@ -72,36 +208,46 @@
       "pushBlock": 0
     },
     "cross": {
-      "startup": 13,
+      "counterStartup": 1,
+      "counterWhiff": 1,
+      "hitStun": 23,
+      "blockStun": 17,
+      "sourStun": 18,
+      "startup": 12,
       "sourEarly": 3,
-      "sweet": 3,
-      "sour": 3,
-      "recovery": 20,
-      "whiffRecovery": 12,
+      "sweet": 4,
+      "sour": 0,
+      "recovery": 15,
+      "whiffRecovery": 10,
       "reach": 52,
-      "hitRadius": 11,
+      "hitRadius": 10,
       "damage": 10,
-      "staminaCost": 9,
-      "staminaDamage": 16,
-      "stunBuild": 22.5,
+      "staminaCost": 10,
+      "staminaDamage": 15,
+      "stunBuild": 20,
       "startReachFrac": 0.4,
-      "fatigueBars": 2,
+      "fatigueBars": 3,
       "fatigueSpeedPerBar": 0.24,
       "fatigueDamagePerBar": 0.2,
       "pushHit": 19.5,
       "pushBlock": 9.75
     },
     "hook": {
-      "startup": 7,
+      "counterStartup": 1,
+      "counterWhiff": 1,
+      "hitStun": 14,
+      "blockStun": 11,
+      "sourStun": 10,
+      "startup": 10,
       "sourEarly": 1,
       "sweet": 3,
-      "sour": 3,
+      "sour": 0,
       "recovery": 12,
       "whiffRecovery": 8,
-      "reach": 35,
-      "hitRadius": 13,
+      "reach": 31,
+      "hitRadius": 10,
       "damage": 7,
-      "staminaCost": 7,
+      "staminaCost": 8.4,
       "staminaDamage": 12,
       "stunBuild": 17.5,
       "startReachFrac": 0.75,
@@ -113,16 +259,21 @@
       "pushBlock": 7.8
     },
     "uppercut": {
+      "counterStartup": 0,
+      "counterWhiff": 1,
+      "hitStun": 20,
+      "blockStun": 0,
+      "sourStun": 12,
       "startup": 2,
       "sourEarly": 0,
       "sweet": 3,
-      "sour": 2,
-      "recovery": 14,
+      "sour": 0,
+      "recovery": 16,
       "whiffRecovery": 45,
-      "reach": 40,
-      "hitRadius": 13,
+      "reach": 31,
+      "hitRadius": 10,
       "crossDamageMult": 2,
-      "staminaCost": 10,
+      "staminaCost": 12,
       "staminaDamage": 24,
       "stunBuild": 37.5,
       "startReachFrac": 0.4,
@@ -133,38 +284,40 @@
   "hit": {
     "reducedDamageMult": 0.5,
     "attackerStaminaPenalty": 6,
-    "counterDamageMult": 1.5,
+    "counterDamageMult": 1.2,
     "sourStunMult": 0.5,
     "hitstopFrames": 3,
     "pushFrames": 6,
-    "pushLockFrames": 8
+    "counterStunMult": 1.2
   },
   "guard": {
-    "perfectFrames": 6,
-    "staminaDrainPerSec": 6,
+    "perfectFrames": 8,
+    "exhaustedChipMult": 0.5,
+    "staminaDrainPerSec": 7.2,
     "perfectGuardStaminaGain": 12,
     "perfectGuardAttackerStunFrames": 56,
     "perfectGuardStunBuild": 31.25,
-    "perfectCooldownFrames": 40
+    "penaltyFrames": 24
   },
   "dodge": {
-    "frames": 14,
-    "iFrames": 10,
+    "frames": 16,
+    "iFrames": 8,
+    "exhaustedEfficacy": 0.5,
     "speed": 337.5,
-    "vulnerableFrames": 12,
+    "vulnerableFrames": 24,
     "stunnedVulnerableMult": 2,
-    "staminaCost": 12,
+    "staminaCost": 17.28,
     "neutralDeadzone": 0.3,
-    "buffWindowFrames": 18,
-    "buffDamageMult": 1.5
+    "buffWindowFrames": 6,
+    "buffDamageMult": 1.5,
+    "penaltyMoveMult": 0.4
   },
   "stamina": {
     "max": 100,
     "regenIdlePerSec": 24,
     "regenActivePerSec": 8,
     "regenDelayFrames": 20,
-    "exhaustRecoverAt": 20,
-    "exhaustedRegenMult": 0.5
+    "emergencyDamageMult": 0.5
   },
   "health": {
     "max": 100
@@ -172,20 +325,20 @@
   "stun": {
     "threshold": 100,
     "decayPerSec": 8,
-    "decayDelayFrames": 60,
+    "decayDelayFrames": 20,
     "baseFrames": 90,
-    "overflowFramesPerPoint": 1.5
+    "overflowFramesPerPoint": 1
   },
   "stars": {
     "max": 3,
-    "counterGain": 2
+    "counterGain": 1
   },
   "fatigue": {
     "perUse": 1,
     "decayPerSec": 0.8,
     "freeUses": 2,
     "minDamageMult": 0.5,
-    "decayDelayFrames": 60
+    "decayDelayFrames": 20
   },
   "input": {
     "bufferFrames": 6,
@@ -193,6 +346,7 @@
     "joystickDeadzone": 0.15
   },
   "match": {
+    "bestOf": 3,
     "durationSec": 99,
     "startDistance": 180,
     "introSec": 2,
@@ -242,33 +396,45 @@
       "strafePeriod": 40,
       "cornerAvoid": 0.8,
       "pgMistime": 0.45,
-      "pgHesitateFrames": 15
+      "pgHesitateFrames": 15,
+      "recoverUntil": 55,
+      "conserveBelow": 45,
+      "safeDistance": 95,
+      "edgeMargin": 45,
+      "pressureFoeBelow": 0,
+      "pressureBoost": 1
     },
     "hard": {
       "reactionFrames": 5,
-      "attackChance": 0.14,
-      "attackCooldownFrames": 22,
-      "guardChance": 0.4,
-      "guardHoldFrames": 20,
+      "attackChance": 0.125,
+      "attackCooldownFrames": 28,
+      "guardChance": 0.5,
+      "guardHoldFrames": 24,
       "dodgeChance": 0.1,
       "uppercutDodgeChance": 0.9,
-      "pgChance": 0.35,
-      "counterChance": 0.35,
+      "pgChance": 0.25,
+      "counterChance": 0.3,
       "punishChance": 0.9,
-      "retreatStaminaBelow": 22,
-      "strafe": 0.4,
-      "strafePeriod": 35,
-      "cornerAvoid": 1.2,
-      "pgMistime": 0.35,
-      "pgHesitateFrames": 12
+      "retreatStaminaBelow": 25,
+      "strafe": 0.3,
+      "strafePeriod": 40,
+      "cornerAvoid": 0.8,
+      "pgMistime": 0.45,
+      "pgHesitateFrames": 15,
+      "recoverUntil": 55,
+      "conserveBelow": 45,
+      "safeDistance": 95,
+      "edgeMargin": 45,
+      "pressureFoeBelow": 55,
+      "pressureBoost": 2.5
     }
   },
   "characters": {
     "marco": {
       "hp": 1,
-      "stamina": 1.1,
-      "regen": 1.1,
-      "stun": 1.05,
+      "stamina": 1,
+      "regen": 1,
+      "stun": 1,
       "speed": 1,
       "jab": {
         "damage": 1,
@@ -301,19 +467,21 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
+        "damage": 1.55,
         "staminaCost": 1,
         "stunBuild": 1,
         "push": 1,
         "reach": 1,
         "startup": 0,
         "recovery": 0,
-        "fatigueBars": 0
+        "fatigueBars": 0,
+        "starRequirement": 3,
+        "referenceStarCost": 3
       }
     },
     "mia": {
       "hp": 0.85,
-      "stamina": 1.1,
+      "stamina": 0.9,
       "regen": 1.15,
       "stun": 0.9,
       "speed": 1.15,
@@ -325,7 +493,7 @@
         "reach": 0.9,
         "startup": -1,
         "recovery": -2,
-        "fatigueBars": 0
+        "fatigueBars": 1
       },
       "cross": {
         "damage": 0.9,
@@ -348,14 +516,16 @@
         "fatigueBars": 0
       },
       "uppercut": {
-        "damage": 1,
-        "staminaCost": 1,
-        "stunBuild": 1,
+        "damage": 0.8,
+        "staminaCost": 0.8333333333333334,
+        "stunBuild": 0.5866666666666667,
         "push": 1,
         "reach": 0.9,
         "startup": 0,
-        "recovery": 0,
-        "fatigueBars": 0
+        "recovery": -4,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
     },
     "bruno": {
@@ -378,7 +548,7 @@
         "damage": 1.15,
         "staminaCost": 1,
         "stunBuild": 1,
-        "push": 1.25,
+        "push": 1.1,
         "reach": 1,
         "startup": 1,
         "recovery": 2,
@@ -395,15 +565,668 @@
         "fatigueBars": 1
       },
       "uppercut": {
+        "damage": 1.7,
+        "staminaCost": 1.0833333333333333,
+        "stunBuild": 1.12,
+        "push": 1.1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 4,
+        "fatigueBars": 0,
+        "starRequirement": 3,
+        "referenceStarCost": 3
+      }
+    },
+    "tee": {
+      "hp": 0.75,
+      "stamina": 0.85,
+      "regen": 1,
+      "stun": 0.7,
+      "speed": 1.2,
+      "jab": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": -1,
+        "recovery": -2,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.15,
+        "staminaCost": 1,
+        "stunBuild": 0.75,
+        "push": 1,
+        "reach": 1,
+        "startup": -1,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1.15,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": -1,
+        "recovery": -2,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 0.9,
+        "staminaCost": 1.0833333333333333,
+        "stunBuild": 0.5866666666666667,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
+      }
+    },
+    "tyke": {
+      "hp": 1.05,
+      "stamina": 1,
+      "regen": 0.9,
+      "stun": 0.4,
+      "speed": 0.85,
+      "jab": {
+        "damage": 2,
+        "staminaCost": 1.15,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": -2
+      },
+      "cross": {
+        "damage": 1.3,
+        "staminaCost": 1.2,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": 2,
+        "recovery": 2,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1.4285714285714286,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.9,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": -2
+      },
+      "uppercut": {
+        "damage": 2.4,
+        "staminaCost": 1.6666666666666667,
+        "stunBuild": 1.2,
+        "push": 1,
+        "reach": 0.9,
+        "startup": 4,
+        "recovery": 10,
+        "fatigueBars": 0,
+        "starRequirement": 4,
+        "referenceStarCost": 4
+      }
+    },
+    "dragon": {
+      "hp": 1,
+      "stamina": 0.95,
+      "regen": 1,
+      "stun": 1.05,
+      "speed": 1.02,
+      "jab": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1.08,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1.05,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1.08,
+        "startup": 1,
+        "recovery": 1,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 1,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1.45,
+        "staminaCost": 1,
+        "stunBuild": 0.9333333333333333,
+        "push": 1,
+        "reach": 1.1,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 0,
+        "starRequirement": 3,
+        "referenceStarCost": 3
+      }
+    },
+    "longan": {
+      "hp": 0.95,
+      "stamina": 1.1,
+      "regen": 1.05,
+      "stun": 0.95,
+      "speed": 1,
+      "jab": {
+        "damage": 0.9,
+        "staminaCost": 0.9,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": -1,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 0.95,
+        "staminaCost": 0.9,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": -1,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 0.3,
+        "staminaCost": 0.6666666666666666,
+        "stunBuild": 0.4266666666666667,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 3,
+        "recovery": -2,
+        "fatigueBars": 0,
+        "starRequirement": 1,
+        "referenceStarCost": 1
+      }
+    },
+    "captain": {
+      "hp": 0.9,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.95,
+      "speed": 1.1,
+      "jab": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": -1,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 1.1,
+        "staminaCost": 1.1,
+        "stunBuild": 1,
+        "push": 0.9,
+        "reach": 1,
+        "startup": 0,
+        "recovery": -1,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1,
+        "staminaCost": 1.1,
+        "stunBuild": 1,
+        "push": 0.9,
+        "reach": 1,
+        "startup": 0,
+        "recovery": -1,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 0.85,
+        "staminaCost": 1,
+        "stunBuild": 0.5866666666666667,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": -4,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
+      }
+    },
+    "roxy": {
+      "hp": 1,
+      "stamina": 0.95,
+      "regen": 0.95,
+      "stun": 1,
+      "speed": 0.97,
+      "jab": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
         "damage": 1,
         "staminaCost": 1,
         "stunBuild": 1,
-        "push": 1.25,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1.2,
+        "staminaCost": 1.15,
+        "stunBuild": 1.1,
+        "push": 1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 1.75,
+        "staminaCost": 1.25,
+        "stunBuild": 1.0666666666666667,
+        "push": 1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 4,
+        "fatigueBars": 0,
+        "starRequirement": 3,
+        "referenceStarCost": 3
+      }
+    },
+    "nadia": {
+      "hp": 0.9,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.95,
+      "speed": 1.05,
+      "jab": {
+        "damage": 0.9,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
         "reach": 1,
         "startup": 0,
         "recovery": 0,
         "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 0.9,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": -2,
+        "recovery": -1,
+        "fatigueBars": 2
+      },
+      "hook": {
+        "damage": 0.95,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "uppercut": {
+        "damage": 0.75,
+        "staminaCost": 0.8333333333333334,
+        "stunBuild": 0.5333333333333333,
+        "push": 1,
+        "reach": 1,
+        "startup": 0,
+        "recovery": -2,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
       }
+    },
+    "kai": {
+      "hp": 0.85,
+      "stamina": 0.95,
+      "regen": 1.05,
+      "stun": 0.8,
+      "speed": 0.9,
+      "jab": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "cross": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 1,
+        "push": 1,
+        "reach": 0.95,
+        "startup": 0,
+        "recovery": 0,
+        "fatigueBars": 0
+      },
+      "hook": {
+        "damage": 1.2857142857142858,
+        "staminaCost": 1.1,
+        "stunBuild": 1.05,
+        "push": 1,
+        "reach": 1.25,
+        "startup": 1,
+        "recovery": 2,
+        "fatigueBars": 0,
+        "freeUses": 6
+      },
+      "uppercut": {
+        "damage": 0.8,
+        "staminaCost": 1,
+        "stunBuild": 0.6,
+        "push": 1,
+        "reach": 1,
+        "startup": 1,
+        "recovery": 0,
+        "fatigueBars": 0,
+        "starRequirement": 2,
+        "referenceStarCost": 2
+      },
+      "dodge": {
+        "speedMult": 1.15,
+        "iFramesMult": 1.25,
+        "framesMult": 1
+      }
+    }
+  },
+  "balanceWorkshop": {
+    "baseHistory": {
+      "format": 1,
+      "initial": {
+        "punches.jab.counterStartup": 0,
+        "punches.jab.counterWhiff": 0,
+        "punches.jab.hitStun": 10,
+        "punches.jab.blockStun": 8,
+        "punches.jab.sourStun": 8,
+        "punches.jab.startup": 4,
+        "punches.jab.sourEarly": 3,
+        "punches.jab.sweet": 2,
+        "punches.jab.sour": 0,
+        "punches.jab.recovery": 8,
+        "punches.jab.whiffRecovery": 4,
+        "punches.jab.reach": 42,
+        "punches.jab.hitRadius": 9,
+        "punches.jab.damage": 4,
+        "punches.jab.staminaCost": 4.8,
+        "punches.jab.staminaDamage": 5,
+        "punches.jab.stunBuild": 10,
+        "punches.jab.startReachFrac": 0.4,
+        "punches.cross.counterStartup": 1,
+        "punches.cross.counterWhiff": 1,
+        "punches.cross.hitStun": 23,
+        "punches.cross.blockStun": 17,
+        "punches.cross.sourStun": 18,
+        "punches.cross.startup": 15,
+        "punches.cross.sourEarly": 3,
+        "punches.cross.sweet": 4,
+        "punches.cross.sour": 0,
+        "punches.cross.recovery": 20,
+        "punches.cross.whiffRecovery": 12,
+        "punches.cross.reach": 48,
+        "punches.cross.hitRadius": 10,
+        "punches.cross.damage": 10,
+        "punches.cross.staminaCost": 10.8,
+        "punches.cross.staminaDamage": 16,
+        "punches.cross.stunBuild": 22.5,
+        "punches.cross.startReachFrac": 0.4,
+        "punches.hook.counterStartup": 1,
+        "punches.hook.counterWhiff": 1,
+        "punches.hook.hitStun": 14,
+        "punches.hook.blockStun": 11,
+        "punches.hook.sourStun": 10,
+        "punches.hook.startup": 10,
+        "punches.hook.sourEarly": 1,
+        "punches.hook.sweet": 3,
+        "punches.hook.sour": 0,
+        "punches.hook.recovery": 12,
+        "punches.hook.whiffRecovery": 8,
+        "punches.hook.reach": 31,
+        "punches.hook.hitRadius": 10,
+        "punches.hook.damage": 7,
+        "punches.hook.staminaCost": 8.4,
+        "punches.hook.staminaDamage": 12,
+        "punches.hook.stunBuild": 17.5,
+        "punches.hook.startReachFrac": 0.75,
+        "punches.uppercut.counterStartup": 0,
+        "punches.uppercut.counterWhiff": 1,
+        "punches.uppercut.hitStun": 20,
+        "punches.uppercut.blockStun": 0,
+        "punches.uppercut.sourStun": 12,
+        "punches.uppercut.startup": 2,
+        "punches.uppercut.sourEarly": 0,
+        "punches.uppercut.sweet": 3,
+        "punches.uppercut.sour": 0,
+        "punches.uppercut.recovery": 16,
+        "punches.uppercut.whiffRecovery": 45,
+        "punches.uppercut.reach": 31,
+        "punches.uppercut.hitRadius": 10,
+        "punches.uppercut.staminaCost": 12,
+        "punches.uppercut.staminaDamage": 24,
+        "punches.uppercut.stunBuild": 37.5,
+        "punches.uppercut.startReachFrac": 0.4,
+        "punches.hook.guardChipMult": 0.4,
+        "punches.uppercut.crossDamageMult": 2,
+        "hit.reducedDamageMult": 0.5,
+        "hit.attackerStaminaPenalty": 6,
+        "hit.counterDamageMult": 1.2,
+        "hit.sourStunMult": 0.5,
+        "stars.max": 3,
+        "fatigue.perUse": 1,
+        "fatigue.decayPerSec": 0.8,
+        "fatigue.freeUses": 2,
+        "fatigue.minDamageMult": 0.5,
+        "guard.perfectFrames": 3,
+        "guard.exhaustedChipMult": 0.5,
+        "guard.staminaDrainPerSec": 7.2,
+        "guard.perfectGuardStaminaGain": 12,
+        "guard.perfectGuardAttackerStunFrames": 56,
+        "guard.perfectGuardStunBuild": 31.25,
+        "dodge.frames": 14,
+        "dodge.iFrames": 10,
+        "dodge.exhaustedEfficacy": 0.5,
+        "dodge.speed": 337.5,
+        "dodge.vulnerableFrames": 24,
+        "dodge.stunnedVulnerableMult": 2,
+        "dodge.staminaCost": 17.28,
+        "dodge.neutralDeadzone": 0.3,
+        "body.hurtRadius": 22,
+        "body.coreRadius": 10,
+        "body.vulnerableHurtRadius": 28,
+        "health.max": 100,
+        "stun.threshold": 100,
+        "stun.decayPerSec": 8,
+        "stun.decayDelayFrames": 60,
+        "stun.baseFrames": 90,
+        "stun.overflowFramesPerPoint": 1.5,
+        "stamina.max": 100,
+        "stamina.regenIdlePerSec": 24,
+        "stamina.regenActivePerSec": 8,
+        "stamina.regenDelayFrames": 20,
+        "stamina.emergencyDamageMult": 0.5,
+        "movement.speed": 130,
+        "movement.punchMoveMult": 0.35,
+        "movement.guardMoveMult": 0.5,
+        "movement.stunMoveMult": 0.6,
+        "movement.lockMoveMult": 0.6,
+        "movement.minSeparation": 44,
+        "dodge.buffWindowFrames": 6,
+        "dodge.buffDamageMult": 1.5,
+        "hit.hitstopFrames": 3,
+        "punches.jab.fatigueBars": 4,
+        "punches.jab.fatigueSpeedPerBar": 0.12,
+        "punches.jab.fatigueDamagePerBar": 0.1,
+        "punches.hook.fatigueBars": 3,
+        "punches.hook.fatigueSpeedPerBar": 0.16,
+        "punches.hook.fatigueDamagePerBar": 0.133,
+        "punches.cross.fatigueBars": 2,
+        "punches.cross.fatigueSpeedPerBar": 0.24,
+        "punches.cross.fatigueDamagePerBar": 0.2,
+        "fatigue.decayDelayFrames": 60,
+        "hit.pushFrames": 6,
+        "punches.jab.pushHit": 3.9,
+        "punches.jab.pushBlock": 0,
+        "punches.cross.pushHit": 19.5,
+        "punches.cross.pushBlock": 9.75,
+        "punches.hook.pushHit": 15.6,
+        "punches.hook.pushBlock": 7.8,
+        "punches.uppercut.pushHit": 31.2,
+        "punches.uppercut.pushBlock": 0,
+        "stars.counterGain": 1,
+        "hit.counterStunMult": 1.2,
+        "dodge.penaltyMoveMult": 0.4,
+        "guard.penaltyFrames": 24,
+        "view.fighterScale": 1.25
+      },
+      "versions": [
+        {
+          "version": 1,
+          "savedAt": "2026-10-10T14:22:38.027Z",
+          "changes": [
+            {
+              "path": "punches.cross.startup",
+              "before": 15,
+              "after": 12
+            },
+            {
+              "path": "punches.cross.recovery",
+              "before": 20,
+              "after": 15
+            },
+            {
+              "path": "punches.cross.whiffRecovery",
+              "before": 12,
+              "after": 10
+            },
+            {
+              "path": "punches.cross.reach",
+              "before": 48,
+              "after": 52
+            },
+            {
+              "path": "punches.cross.staminaCost",
+              "before": 10.8,
+              "after": 10
+            },
+            {
+              "path": "punches.cross.staminaDamage",
+              "before": 16,
+              "after": 15
+            },
+            {
+              "path": "punches.cross.stunBuild",
+              "before": 22.5,
+              "after": 20
+            },
+            {
+              "path": "stun.decayDelayFrames",
+              "before": 60,
+              "after": 20
+            },
+            {
+              "path": "stun.overflowFramesPerPoint",
+              "before": 1.5,
+              "after": 1
+            },
+            {
+              "path": "movement.guardMoveMult",
+              "before": 0.5,
+              "after": 0.6
+            },
+            {
+              "path": "movement.minSeparation",
+              "before": 44,
+              "after": 40
+            },
+            {
+              "path": "punches.cross.fatigueBars",
+              "before": 2,
+              "after": 3
+            },
+            {
+              "path": "fatigue.decayDelayFrames",
+              "before": 60,
+              "after": 20
+            }
+          ]
+        },
+        {
+          "version": 2,
+          "savedAt": "2026-10-10T14:36:30.934Z",
+          "changes": [
+            {
+              "path": "dodge.frames",
+              "before": 14,
+              "after": 16
+            },
+            {
+              "path": "dodge.iFrames",
+              "before": 10,
+              "after": 8
+            }
+          ]
+        }
+      ]
+    },
+    "archetypes": {
+      "char.base.nick": "Balanced benchmark: standard power, speed, reach and endurance.",
+      "char.marco.nick": "Steady all-rounder: stronger Cross, balanced speed and endurance.",
+      "char.mia.nick": "Agile pressure fighter: fast hands, extra jab fatigue capacity, short reach.",
+      "char.bruno.nick": "Durable bruiser: heavy blows, extra fatigue capacity, slow recovery.",
+      "char.tee.nick": "Fast burst attacker: heavy Cross and hooks, fragile with low stamina.",
+      "char.tyke.nick": "Precision powerhouse: crushing blows, tires quickly, easily stunned.",
+      "char.dragon.nick": "Long-range outboxer: extended jab and Cross, slower follow-through.",
+      "char.longan.nick": "Endurance specialist: efficient pressure and a weak one-star uppercut.",
+      "char.captain.nick": "Mobile burst fighter: quick recovery, costly pressure and lower durability.",
+      "char.roxy.nick": "Close-range brawler: heavy hooks, costly swings.",
+      "char.nadia.nick": "Fast, light Cross pressure with extra fatigue capacity.",
+      "char.kai.nick": "Slow courier: strong hooks, weak Jab and Cross, longer dash."
     }
   }
 }

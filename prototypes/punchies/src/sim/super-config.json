@@ -1,0 +1,30 @@
+{
+  "defaultSuper": {
+    "id": "rising-upper",
+    "nameKey": "super.rising_upper",
+    "mechanic": "uppercut",
+    "descriptionKey": "super.rising_upper_description"
+  },
+  "characters": {
+    "tee": {
+      "id": "code-x",
+      "nameKey": "super.code_x",
+      "descriptionKey": "super.code_x_description",
+      "mechanic": "jab"
+    },
+    "tyke": {
+      "id": "buffalo-hook",
+      "nameKey": "super.buffalo_hook",
+      "descriptionKey": "super.buffalo_hook_description",
+      "mechanic": "hook",
+      "initialDamage": 20,
+      "followupDamage": 30
+    }
+  },
+  "codeXTiming": {
+    "telegraph": 18,
+    "dash": 12,
+    "stagger": 4,
+    "recovery": 12
+  }
+}

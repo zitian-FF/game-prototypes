@@ -1,0 +1,10 @@
+{
+  "hitsToKo": 6,
+  "jabsStep": 2,
+  "crossesStep": 2,
+  "opponentJabCooldownTicks": 150,
+  "opponentApproachSpeed": 0.4,
+  "opponentJabRange": 72,
+  "playerHealthFloor": 0.5,
+  "idleHintMs": 10000
+}

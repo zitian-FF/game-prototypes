@@ -1,0 +1,60 @@
+{
+  "character": "kai",
+  "approval": "Canonical six-file art payload confirmed by Art handoff; staging only; no extra re-encoding",
+  "assets": [
+    {
+      "name": "kai_emblems.webp",
+      "bytes": 5400,
+      "sha256": "8513111154aacf3556c703571c9c8654549b3c31e1ebd45d521e3059a73d3cca",
+      "dimensions": [
+        256,
+        64
+      ]
+    },
+    {
+      "name": "part_kai_boot_right.webp",
+      "bytes": 5458,
+      "sha256": "4eb633a0fdd4fcf414608371d2ba1912a3679a283054924a762f7b89348bae39",
+      "dimensions": [
+        144,
+        61
+      ]
+    },
+    {
+      "name": "part_kai_glove_right.webp",
+      "bytes": 6352,
+      "sha256": "b31dd97ea4c4cd851a95555388e022940c802607c43c4b26047ee9be2550468b",
+      "dimensions": [
+        117,
+        96
+      ]
+    },
+    {
+      "name": "part_kai_head.webp",
+      "bytes": 8588,
+      "sha256": "f83536653f18d6d2b5bfae4c4eeda6b7b62179a818c5a24c6abdb0ebbe2a5eb5",
+      "dimensions": [
+        134,
+        128
+      ]
+    },
+    {
+      "name": "part_kai_torso.webp",
+      "bytes": 9196,
+      "sha256": "1d374d5edf357cabfc95cc7a455663d5fbf6bbe8cf1a396e1add8de2dddf8c3a",
+      "dimensions": [
+        93,
+        128
+      ]
+    },
+    {
+      "name": "portrait_kai.webp",
+      "bytes": 106958,
+      "sha256": "baf063657ea3576ebb6fd4b1c061e11fc76fa319b2d8e74d636744852eed80aa",
+      "dimensions": [
+        640,
+        768
+      ]
+    }
+  ]
+}

@@ -17,8 +17,8 @@ export function normalizeRoomCode(raw: string | null | undefined): string | null
 }
 
 // Game URL with the room code attached, for the QR code / share link.
-export function roomUrl(code: string): string {
-  return `${location.origin}${location.pathname}?room=${code}`;
+export function roomUrl(code: string, rated = false): string {
+  return `${location.origin}${location.pathname}?room=${code}${rated?'&ranked=1':''}`;
 }
 
 export function roomFromUrl(): string | null {

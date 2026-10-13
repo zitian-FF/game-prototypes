@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -77,8 +77,36 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Verify Punchies tuning tool
+        run: |
+          node scripts/test-punchies-tuner.mjs
+          node scripts/test-punchies-tuner-file.mjs
+
       - name: Build
         run: npm run build
+
+      # Pin the reviewed gameplay source independently of staging infrastructure.
+      - name: Read pinned Punchies staging commit
+        id: staging
+        run: echo "sha=$(cat .github/punchies-staging-ref)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout isolated staging source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.staging.outputs.sha }}
+          path: .staging-source
+
+      - name: Build compact staging and verify focused flags
+        working-directory: .staging-source
+        env:
+          VITE_PUNCHIES_RATING_URL: ''
+        run: |
+          git switch -c staging/punchies-super
+          npm ci
+          npm run build:packages
+          node scripts/build-punchies-staging.mjs ../dist/staging/punchies --stage-only
+          # Production review output is local QA evidence, not a public stage route.
+          rm -rf ../dist/staging/production
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -1,26 +1,33 @@
 import { isCharId, type CharId } from '../sim/character';
+import { fighterScale } from '../sim/geometry';
 
-// How each character is drawn. Render only: size here never touches
-// hurtboxes or reach (those stay in the sim / tune).
+// Character colours and proportions; scale is shared with simulation geometry.
 export interface Look {
   color: number;
   scale: number;
   ponytail: boolean;
 }
 
-const LOOKS: Record<CharId, { main: number; alt: number; scale: number; ponytail: boolean }> = {
-  marco: { main: 0x3a78d0, alt: 0x2ec4d6, scale: 1, ponytail: false },
-  mia: { main: 0xd04a4a, alt: 0xf06fae, scale: 0.88, ponytail: true },
-  bruno: { main: 0x3fa34d, alt: 0x9be84a, scale: 1.12, ponytail: false },
+const LOOKS: Record<CharId, { main: number; alt: number; ponytail: boolean }> = {
+  kai:{main:0xffd21a,alt:0xffd21a,ponytail:false},
+  roxy: { main:0x164480,alt:0x164480,ponytail:false },
+  nadia: { main:0x7622bf,alt:0x7622bf,ponytail:false },
+  captain: { main:0x173b79,alt:0x173b79,ponytail:false },
+  longan: {main:0x628958,alt:0x628958,ponytail:false},
+  tyke: {main:0xf4c832,alt:0xf4c832,ponytail:false},
+  dragon: {main:0xf5f1e8,alt:0xf5f1e8,ponytail:true},
+  tee: {main:0x34343f,alt:0x645a7d,ponytail:true},
+  marco: { main: 0x3a78d0, alt: 0x2ec4d6, ponytail: false },
+  mia: { main: 0xd04a4a, alt: 0xf06fae, ponytail: true },
+  bruno: { main: 0x3fa34d, alt: 0x9be84a, ponytail: false },
 };
 
-// Fighter `idx` in a match between chars[0] and chars[1]: in a mirror
-// match the second fighter wears the alt colour.
+// Fighter appearance is independent of player slot; matching skins are allowed.
+
 export function lookFor(chars: [string, string], idx: number): Look {
   const id = isCharId(chars[idx]) ? chars[idx] : 'marco';
   const l = LOOKS[id as CharId];
-  const mirror = idx === 1 && chars[0] === chars[1];
-  return { color: mirror ? l.alt : l.main, scale: l.scale, ponytail: l.ponytail };
+  return { color: l.main, scale: fighterScale(id), ponytail: l.ponytail };
 }
 
 export function mainLook(id: string): Look {

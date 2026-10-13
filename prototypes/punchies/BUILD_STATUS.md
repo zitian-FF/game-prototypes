@@ -1,23 +1,17 @@
 ## Current milestone
-Expose boxer presentation sizes and offsets in the live View tuning panel.
+Approved Zombie and Tyke staging batch, following production r0154.
 
 ## What was implemented
-- Moved torso, head, glove and boot sizes, shoulder/hip/boot spreads, lead/rear boot offsets and head offset into `tune.view.puppet`.
-- Added range, description and reset metadata for all twelve controls, including sweat droplet and highlight sizes.
-- Puppet reads the live values each draw, including dodge ghosts and KO puppet rendering.
+Survival-only boss-add quotas 8/12/16/20/24, fighter-relative boss HP ramp, ordinary Zombie damage ramp, seeded real Cross attacks from wave 4, and schema2 checkpoints. Tyke's production-verified visual glove mirror is included. All earlier content and shared fighter tuning remain intact.
 
 ## Key technical decisions
-- Kept every existing tuning value and all former size/offset defaults identical.
-- Art registration, perspective, rig depth, gameplay and netcode are unchanged.
-- Existing Tweakpane binding provides immediate adjustment, reset and JSON export.
+Use production adaptation 9d79f534 as the feature base and integrate approved Zombie source 6ca4550. Preserve the staging namespace, 999-token Shop allowance and fixed reset epoch. Disable rating in the staged package. Old Survival checkpoints preserve personal bests but cannot resume under new balance.
 
 ## Open questions
-- Owner/device review of the assembled rig remains useful before changing its proportions.
+User visual and gamefeel review remains ongoing; no extra acceptance gate is introduced.
 
 ## Known issues
-- No real-phone or online-match verification in this pass.
-- Controlled renderer review in Brave exercised head/body flashes, lateral gait, sweat, and fly KO mid-spin/landing without console errors. This checks renderer inputs rather than hit-event routing or a complete match.
-- Live Punchies loaded in Brave at https://zitian-ff.itch.io/suits after the successful deployment. The suits-mp page belongs to Firestorm; it was initially checked by mistake.
+Profile parity requires a separate focused correction for the compact-only Tee mask and the standard source-resolution fallback. No real Ranked pairing or mobile performance claim follows from this staging verification.
 
 ## Next proposed step
-Review the rig on a real phone and verify complete-match hit routing and online play. Typecheck and production build passed; Brave at 844x390 loaded Marco, Mia and Bruno without console errors, and a live head-size edit/reset worked. Existing tuning values were checked for equality.
+Publish the completed frozen stage batch after package/boot verification. Main reviews the next ready queue. Marco PR350 remains outside this batch.

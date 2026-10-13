@@ -1,0 +1,18 @@
+{
+  "scope": "staging-only Tee portrait indexed pilot",
+  "target": "loose/materialmask_tee.png",
+  "dimensions": [
+    766,
+    700
+  ],
+  "materialEncodingStep": 48,
+  "coverageLevels": 16,
+  "bytes": 14831,
+  "sha256": "c26a1b2fc01ba0da904d19948f890afa2066ee89f04256ccef82a0d230fe0450",
+  "canonicalBase": {
+    "path": "loose/portrait_tee.webp",
+    "bytes": 128686,
+    "sha256": "8fb4c747b241b3310fd9b61c884a2699ab4d7e4903159d3189d7660e6a6e76b9"
+  },
+  "packaging": "Overlay exact PNG into staging art payload and update manifest/hash; no resize/lossy conversion. No other portraits replaced."
+}

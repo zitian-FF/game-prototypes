@@ -1,8 +1,14 @@
+import type Phaser from 'phaser';
+import {mountStageReviewControls} from './stagingReviewControls';
+export {qaTrainingPick} from './stagingReviewControls';
+import { DEBUG_TOOLS_BUILD } from '../buildFlags';
 import { Pane, type FolderApi } from 'tweakpane';
+import {DEV_KEYS} from '../portal/keys';
+import { getEventLog } from '../portal/analytics';
 import { tune, tuneBaseline, tuneSource, onTuneReplaced } from '../sim/tune';
 import meta from '../../tune.meta.json';
 
-// Tweakpane panel for every tune.json value, available in production builds
+// Tweakpane panel for tune.json values, available only in explicit staging QA builds
 // (see "Tuning" in root CLAUDE.md). While we are in internal testing a red bug
 // button is always on screen: it toggles debug mode (this panel, the hitbox
 // overlay, the net stats readout). ?debug=1 still starts with it on, and the
@@ -11,9 +17,30 @@ import meta from '../../tune.meta.json';
 // description and the value it started from ("was"), with a reset button.
 // Binds straight to the live tune object, so edits apply immediately.
 
-const DEBUG_KEY = 'punchies:debug:v1';
+const DEBUG_KEY = DEV_KEYS.debug;
+
+// Debug tools are hidden in the public build. Opening the game once with
+// ?debug=1 unlocks them on this browser (bug button, tune label, SYNC TUNE);
+// ?debug=0 locks them again.
+const UNLOCK_KEY = DEV_KEYS.unlock;
+
+export function debugUnlocked(): boolean {
+  if (!DEBUG_TOOLS_BUILD) return false;
+  try {
+    const q = new URLSearchParams(location.search).get('debug');
+    if (q === '1') localStorage.setItem(UNLOCK_KEY, '1');
+    if (q === '0') {
+      localStorage.removeItem(UNLOCK_KEY);
+      localStorage.removeItem(DEBUG_KEY);
+    }
+    return q === '1' || localStorage.getItem(UNLOCK_KEY) === '1';
+  } catch {
+    return new URLSearchParams(location.search).get('debug') === '1';
+  }
+}
 
 function loadDebug(): boolean {
+  if (!debugUnlocked()) return false;
   if (new URLSearchParams(location.search).get('debug') === '1') return true;
   try {
     return localStorage.getItem(DEBUG_KEY) === '1';
@@ -71,10 +98,13 @@ function setDebug(on: boolean): void {
 }
 
 let bug: HTMLButtonElement | null = null;
+let reviewGame: Phaser.Game | undefined;
 
 // Always-visible red bug button (internal testing). Bottom centre, clear of
 // the touch controls. A debug aid, so it is a plain DOM button like the panel.
-export function mountDebugPanelIfRequested(): void {
+export function mountDebugPanelIfRequested(game:Phaser.Game): void {
+  reviewGame=game;
+  if (!debugUnlocked()) return;
   bug = document.createElement('button');
   bug.textContent = '\u{1F41E}';
   bug.title = 'Toggle debug mode';
@@ -96,6 +126,7 @@ function mountPanel(): void {
   panelHost = host;
   if (host) host.style.width = '420px';
   pane.element.style.setProperty('--bld-vw', '230px');
+  if(reviewGame)mountStageReviewControls(pane.addFolder({title:'Staging review',expanded:true}),reviewGame);
   const root = tune as unknown as Obj;
   const entries = meta as Record<string, MetaEntry>;
 
@@ -104,6 +135,9 @@ function mountPanel(): void {
   pane.addBinding(debugView, 'showHitboxes');
   pane.addButton({ title: 'Copy JSON (paste into tune.json)' }).on('click', () => {
     void navigator.clipboard.writeText(JSON.stringify(tune, null, 2) + '\n');
+  });
+  pane.addButton({ title: 'Copy analytics events (JSON)' }).on('click', () => {
+    void navigator.clipboard.writeText(JSON.stringify(getEventLog(), null, 2) + '\n');
   });
 
   const wasLabels: { path: string; el: HTMLElement }[] = [];
@@ -164,3 +198,4 @@ function mountPanel(): void {
   refreshWas();
   onTuneReplaced(refreshWas);
 }
+

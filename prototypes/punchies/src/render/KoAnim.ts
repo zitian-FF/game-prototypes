@@ -42,6 +42,7 @@ function ellipse(c: Pt, dx: number, dy: number, a: number, b: number): Pt[] {
 }
 
 export class KoAnim {
+  skins:[string,string]=['default','default'];
   private g: Phaser.GameObjects.Graphics;
   private result: MatchResult | null = null;
   private start = 0;
@@ -141,6 +142,7 @@ export class KoAnim {
     const lf: Fighter = { ...f, x: p.x, y: p.y, fx, fy, punch: null, guarding: false, exhausted: false, stunTimer: 0, dodge: null, lastBlow: null, framesSinceHit: 99 };
     const ok = this.puppet.draw({
       f: lf,
+      skin:this.skins[this.loser],
       now,
       k,
       alt: look.color !== mainLook(f.char).color,
@@ -159,10 +161,11 @@ export class KoAnim {
     });
     if (!ok) return false;
     this.sprite.setVisible(false);
+    this.ground.setIndicator(this.loser===0?0x245eb7:0xbb3347,this.loser===0?'P1':['VsAI','Training','Tutorial'].includes(this.scene.scene.key)?'P(COM)':'P2');
     this.ground.shadowOnly(p.x, p.y, k, 1);
     if (fly && el >= tune.ko.flyMs && !this.shook) {
       this.shook = true;
-      this.scene.cameras.main.shake(180, 0.006);
+      this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale);
     }
     return true;
   }
@@ -178,7 +181,7 @@ export class KoAnim {
     const f = this.loserFighter;
     if (f) {
       const look = this.looks[ko.loser];
-      const prefix = f.anchored ? 'dummy' : `${f.char}${look.color !== mainLook(f.char).color ? '_alt' : ''}`;
+      const prefix = f.anchored ? 'dummy' : f.char;
       const fly = ko.style === 'fly';
       const u = clamp01(el / (fly ? tune.ko.flyMs + tune.ko.sitMs : tune.ko.dropMs));
       if (this.drawPuppet(f, look, ko, fly, el, u, now)) return;
@@ -187,7 +190,7 @@ export class KoAnim {
         const rotation = fly && el < tune.ko.flyMs ? Math.atan2(f.fy, f.fx) + clamp01(el / tune.ko.flyMs) * Math.PI * 1.5 : Math.atan2(-this.dy, -this.dx);
         this.sprite.setPosition(p.x, p.y).setScale(look.scale / 2).setRotation(rotation);
         this.ground.draw(`${prefix}_ko`, u, p.x, p.y, rotation, look.scale, 1);
-        if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006); }
+        if (fly && el >= tune.ko.flyMs && !this.shook) { this.shook = true; this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale); }
         return;
       }
     }
@@ -272,7 +275,7 @@ export class KoAnim {
 
     if (!this.shook) {
       this.shook = true;
-      this.scene.cameras.main.shake(180, 0.006);
+      this.scene.cameras.main.shake(180, 0.006 * tune.view.cameraShakeScale);
     }
     // Rope flash + bulge at the impact point.
     const flash = 1 - clamp01((el - k.flyMs) / 400);

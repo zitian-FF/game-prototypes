@@ -1,0 +1,16 @@
+import Phaser from 'phaser';
+import { VIEW } from '../render/pixelRatio';
+import { titleButton } from './titleButton';
+import { devices } from '../input/devices';
+import { PAUSE_BUTTON_DEPTH,getNav } from './menuNav';
+export function addGameMenu(scene:Phaser.Scene,clear:()=>void):void {
+  const open=()=>{
+    if(scene.scene.isActive('GameMenu'))return;
+    clear();devices.clear();
+    scene.registry.set('gameMenu:'+scene.scene.key,true);
+    scene.scene.launch('GameMenu',{source:scene.scene.key,multiplayer:['Match','LocalVs'].includes(scene.scene.key)});
+  };
+  const nav=getNav(scene);nav.pauseAction=open;
+  titleButton(scene,VIEW.left+24,VIEW.top+24,34,34,'☰',open,false,PAUSE_BUTTON_DEPTH);
+  scene.events.once('shutdown',()=>{nav.pauseAction=null;scene.registry.remove('gameMenu:'+scene.scene.key);if(scene.scene.isActive('GameMenu'))scene.scene.stop('GameMenu');});
+}

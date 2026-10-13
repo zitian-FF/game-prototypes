@@ -3,6 +3,16 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-08 - punchies-playable replaces the mp-console itch slot
+
+**What changed:** the dedicated punchies-playable workflow now builds its
+own relative-path-safe Vite output, prepares the existing Punchies art when
+available, and pushes that output to `zitian-ff/mp-console:web`. The old
+mp-console deploy workflow is retired, while its source remains in the repo.
+The hub now links that itch project as Punchies Playable.
+
+**Applies to:** punchies-playable deployment and the prototype hub only.
+
 ## 2026-10-05 — firestorm shared packages: firestorm-net 0.14.0 (log v2, usage meter)
 
 **What changed:** the game log record is version 2: it adds `squads` (the dealt squads with percentile and reveal tier),

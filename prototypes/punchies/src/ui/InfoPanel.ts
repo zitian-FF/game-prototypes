@@ -119,7 +119,6 @@ export class InfoPanel {
         String(p.startup),
         { text: String(p.sourEarly), color: '#ff9a4a' },
         { text: String(p.sweet), color: '#ffe03a' },
-        { text: String(p.sour), color: '#ff9a4a' },
         String(p.recovery),
         `+${p.whiffRecovery}`,
         String(total),
@@ -134,8 +133,8 @@ export class InfoPanel {
         left,
         y,
         'FRAME DATA (frames @60fps)',
-        [64, 44, 50, 42, 44, 44, 42, 38, 40, 34, 44],
-        ['Punch', 'Start', 'E.sour', 'Sweet', 'L.sour', 'Recov', 'Whiff', 'Total', 'Reach', 'Dmg', 'Stam'],
+        [68, 48, 54, 46, 48, 46, 42, 44, 38, 48],
+        ['Punch', 'Start', 'E.sour', 'Sweet', 'Recov', 'Whiff', 'Total', 'Reach', 'Dmg', 'Stam'],
         frameRows,
       ) + 10;
 
@@ -151,7 +150,7 @@ export class InfoPanel {
       ['Where it lands', 'Sweet', 'Sour'],
       [
         ['Face (core)', { text: 'FULL · def -stam', color: green }, `${red}% · def -stam`],
-        ['Body (outer ring)', `${red}% · def -stam`, { text: 'absorbed · both -stam', color: dim }],
+        ['Body (outer ring)', { text: `${red}% · no def stam loss`, color: dim }, { text: 'absorbed · attacker -stam', color: dim }],
         ['Vulnerable (no guard)', { text: 'FULL · def -stam', color: green }, `${red}% · def -stam`],
         ['High Guard', { text: '0 · both -stam', color: dim }, { text: '0 · attacker -stam', color: dim }],
         ['High Guard vs HOOK', { text: `chip ${chip}% of full`, color: '#ffb03a' }, { text: `chip ${chip}% of ${red}%`, color: '#ffb03a' }],
@@ -171,7 +170,7 @@ export class InfoPanel {
       [0x00ff88, 'Hurtbox (bigger when Vulnerable)'],
       [0x00aaff, 'Core = FACE'],
       [0x888888, 'Fist: startup'],
-      [0xff8800, 'Fist: sour (early / late)'],
+      [0xff8800, 'Fist: sour (early contact)'],
       [0xffff00, 'Fist: sweet'],
     ];
     for (const [c, label] of legend) {
@@ -183,7 +182,7 @@ export class InfoPanel {
     ry += 8;
     this.text(rx, ry, 'VULNERABLE WHEN', 11, '#ffd24a', true);
     ry += 16;
-    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Stunned', `Stamina hit 0, until ${tune.stamina.exhaustRecoverAt}`, `  (regen x${tune.stamina.exhaustedRegenMult})`]) {
+    for (const s of ['Punch startup + recovery', '(incl. whiff recovery)', 'Dodge tail + after dodge', 'Guard release penalty', 'Stunned', 'Emergency: 0 → full; idle regen', 'Punches x0.5; guard (no perfect, chip), half dodge']) {
       this.text(rx, ry, s, 9);
       ry += 12;
     }
@@ -192,12 +191,12 @@ export class InfoPanel {
     ry += 16;
     for (const s of [
       `Perfect Guard window: ${tune.guard.perfectFrames}f`,
-      `  only if guard was down ${tune.guard.perfectCooldownFrames}f`,
+      `Release: ${tune.guard.penaltyFrames}f vulnerable, no guard`,
       `Guard drain: ${tune.guard.staminaDrainPerSec}/s`,
       `Dodge: ${tune.dodge.iFrames}f invincible of ${tune.dodge.frames}f`,
-      `  then ${tune.dodge.vulnerableFrames}f Vulnerable`,
+      `Penalty: ${tune.dodge.vulnerableFrames}f, walk x${tune.dodge.penaltyMoveMult}, no dodge`,
       `Dodge then punch within ${tune.dodge.buffWindowFrames}f: x${tune.dodge.buffDamageMult} dmg`,
-      `Counter (Cross/Hook on startup): x${tune.hit.counterDamageMult}`,
+      `Counter (per punch: startup / whiff tail): x${tune.hit.counterDamageMult}`,
       `Round: ${tune.match.durationSec}s · HP ${tune.health.max}`,
     ]) {
       this.text(rx, ry, s, 9);

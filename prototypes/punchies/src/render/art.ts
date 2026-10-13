@@ -1,8 +1,13 @@
 import Phaser from 'phaser';
+import {warmStagingTeePortraitMask} from './indexedPortraitMask';
+import { t } from '../i18n';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
-import { makeAltParts } from './puppet';
+
 import { roomFromUrl } from '../net/roomCode';
+import { needsFirstRun } from '../firstrun/state';
+import { tune } from '../sim/tune';
+import { reducedMotion } from '../ui/presentation';
 
 interface AnimationSource { frameCount: number; frames: string[] }
 interface ArtGroup { atlases: string[]; animations: string[] }
@@ -20,6 +25,18 @@ const textureKey = (name: string) => `punchies:${name}`;
 // Texture key of a loaded loose art file (e.g. portrait_marco), or null.
 export function artKey(scene: Phaser.Scene, name: string): string | null {
   const k = textureKey(name);
+  // This unique portrait was authored to the thigh; all portrait consumers
+  // share a waist-framed texture, preserving the original source asset.
+  if(name==='portrait_mia_flaming_kunoichi'&&scene.textures.exists(k)){
+    const framed=k+':waist';
+    if(!scene.textures.exists(framed)){
+      const source=scene.textures.get(k).getSourceImage() as HTMLImageElement;
+      const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=Math.round(source.height*.75);
+      canvas.getContext('2d')!.drawImage(source,0,0);
+      scene.textures.addCanvas(framed,canvas);
+    }
+    return framed;
+  }
   return scene.textures.exists(k) ? k : null;
 }
 const hashOf = (path: string) => index.manifest.find((f) => f.path === path)?.hash ?? '';
@@ -85,12 +102,11 @@ function requestGroup(group: string): void {
   if (!load.isLoading()) load.start();
 }
 
-// Groups a fight needs. Fighter 0 wears the main look, fighter 1 the alt
-// look in a mirror match (see lookFor), and the training dummy has its own.
+// Palette skins share base art groups, including same-character matches.
 export function fighterGroups(chars: [string, string]): string[] {
   const id = (c: string) => (isCharId(c) ? c : 'marco');
   const [a, b] = [id(chars[0]), id(chars[1])];
-  return [a, a === b ? `${b}_alt` : b];
+  return [...new Set([a, b])];
 }
 export function trainingGroups(char: string): string[] {
   return [isCharId(char) ? char : 'marco', 'dummy'];
@@ -136,15 +152,41 @@ export function whenGroupsReady(scene: Phaser.Scene, names: string[], build: () 
   }
 }
 
-function loadingBar(scene: Phaser.Scene): { set(v: number): void; destroy(): void } {
+function loadingBar(scene: Phaser.Scene): { set(v: number): void; refreshLogo(): void; destroy(): void } {
   const W = 220;
   const objs: Phaser.GameObjects.GameObject[] = [];
   objs.push(scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, 1).setDepth(1000));
-  const logo = artImage(scene, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
-  if (logo) objs.push(logo);
+  let logo: Phaser.GameObjects.Image | null = null;
+  const stamps: Array<{image: Phaser.GameObjects.Image; x: number}> = [];
+  let offset = 0;
+  const drift = (_time: number, delta: number) => {
+    if (reducedMotion()) return;
+    offset = (offset + delta * tune.view.menu.loadingDrift / 1000) % 190;
+    for (const s of stamps) s.image.x = s.x - offset;
+  };
+  const refreshLogo = () => {
+    if (logo || !artKey(scene,'logo')) return;
+    for (let row=0; row<Math.ceil(VIEW.height/90)+2; row++) {
+      for (let col=0; col<Math.ceil(VIEW.width/190)+2; col++) {
+        const x=VIEW.left-190+col*190+(row%2)*95;
+        const image=artImage(scene,'logo',x,VIEW.top-45+row*90,145,42,1000)!;
+        image.setAngle(-12).setAlpha(0.09);
+        stamps.push({image,x}); objs.push(image);
+      }
+    }
+    logo=artImage(scene,'logo',VIEW.cx,VIEW.cy-73,250,71,1001)!;
+    objs.push(logo);
+    if (!reducedMotion()) {
+      const sx=logo.scaleX,sy=logo.scaleY;
+      logo.setScale(sx*1.3,sy*1.3).setAngle(-6).setAlpha(0);
+      scene.tweens.add({targets:logo,scaleX:sx,scaleY:sy,angle:0,alpha:1,duration:tune.view.menu.stampMs,ease:'Back.Out'});
+    }
+  };
+  refreshLogo();
+  scene.events.on('update',drift);
   objs.push(
     scene.add
-      .text(VIEW.cx, VIEW.cy - 18, 'LOADING', { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
+      .text(VIEW.cx, VIEW.cy - 18, t('loading.loading'), { fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#fff1d1', resolution: PIXEL_RATIO })
       .setOrigin(0.5)
       .setDepth(1001),
   );
@@ -153,12 +195,13 @@ function loadingBar(scene: Phaser.Scene): { set(v: number): void; destroy(): voi
   objs.push(fill);
   return {
     set: (v) => fill.setSize(Math.max(1, W * Math.min(1, Math.max(0, v))), 8),
-    destroy: () => objs.forEach((o) => o.destroy()),
+    refreshLogo,
+    destroy: () => { scene.events.off('update',drift); if(logo)scene.tweens.killTweensOf(logo); objs.forEach((o) => o.destroy()); },
   };
 }
 
 export class ArtBootScene extends Phaser.Scene {
-  private bar: { set(v: number): void; destroy(): void } | null = null;
+  private bar: ReturnType<typeof loadingBar> | null = null;
   constructor() { super('ArtBoot'); }
   init(): void { applyCameraPixelRatio(this); }
   preload(): void {
@@ -166,14 +209,12 @@ export class ArtBootScene extends Phaser.Scene {
     this.load.on('progress', (v: number) => this.bar?.set(v));
     // The logo becomes available during the first loose-file download, before boot completes.
     this.load.once(`filecomplete-image-${textureKey('logo')}`, () => {
-      const logo = artImage(this, 'logo', VIEW.cx, VIEW.cy - 73, 250, 71, 1001);
-      if (logo) {
-        this.events.once('shutdown', () => logo.destroy());
-        this.load.once('complete', () => logo.destroy());
-      }
+      this.bar?.refreshLogo();
     });
     for (const file of index.manifest) {
-      if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
+      if (file.path === 'loose/part-mirrors.json') {
+        this.load.json('punchies:part-mirrors', `${assetRoot}${file.path}?v=${file.hash}`);
+      } else if (file.path.startsWith('loose/') && /\.(png|webp|jpg)$/i.test(file.path)) {
         const name = file.path.slice(6).replace(/\.[^.]+$/, '');
         this.load.image(textureKey(name), `${assetRoot}${file.path}?v=${file.hash}`);
       } else if (!grouped && /^atlas\/atlas.*\.json$/.test(file.path)) {
@@ -182,18 +223,33 @@ export class ArtBootScene extends Phaser.Scene {
     }
   }
   create(): void {
+    const mirrors = this.cache.json.get('punchies:part-mirrors') as Record<string, { source: string; axis: 'x' | 'y' }> | undefined;
+    for (const [name, mirror] of Object.entries(mirrors ?? {})) {
+      if (!this.textures.exists(textureKey(mirror.source))) continue;
+      const source = this.textures.get(textureKey(mirror.source)).getSourceImage() as HTMLImageElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+      ctx.translate(mirror.axis === 'x' ? source.width : 0, mirror.axis === 'y' ? source.height : 0);
+      ctx.scale(mirror.axis === 'x' ? -1 : 1, mirror.axis === 'y' ? -1 : 1);
+      ctx.drawImage(source, 0, 0);
+      this.textures.addCanvas(textureKey(name), canvas);
+    }
+    warmStagingTeePortraitMask(this);
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;
-    makeAltParts(this); // hue-shifted copies of the boxer parts for mirror matches
+
     if (!grouped) {
       const atlases = index.manifest.filter((f) => /^atlas\/atlas.*\.json$/.test(f.path)).map((f) => textureKey(f.path));
       registerAnimations(this, Object.keys(index.animations), atlases);
     }
     const room = roomFromUrl();
     // launch (not start): this scene keeps running as the background loader.
-    if (room) this.scene.launch('Lobby', { role: 'guest', code: room });
-    else this.scene.launch('Menu');
+    if (room) this.scene.launch('Lobby', { role: 'guest', code: room, rated:new URLSearchParams(location.search).get('ranked')==='1' });
+    else this.scene.launch(needsFirstRun() ? 'FirstFight' : 'Menu');
   }
 }
 
@@ -210,12 +266,21 @@ export function pose(image: Phaser.GameObjects.Image, key: string, progress: num
 
 export function artImage(scene: Phaser.Scene, name: string, x: number, y: number, w: number, h: number, depth = 0): Phaser.GameObjects.Image | null {
   const key = textureKey(name);
-  return scene.textures.exists(key) ? scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth) : null;
+  if (!scene.textures.exists(key)) return null;
+  const image = scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth);
+  // Logo v4 adds bottom padding for the restored red extrusion. Preserve the
+  // old 462x131 artwork scale and pixel pivot in every loading/title consumer.
+  if (name === 'logo' && image.width === 462 && image.height >= 131) {
+    image.setDisplaySize(w, h * image.height / 131).setOrigin(.5, 65.5 / image.height);
+  }
+  return image;
 }
 
-export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): void {
+export function backdrop(scene: Phaser.Scene, dim = 0.72, name = 'menu_background'): Phaser.GameObjects.Image | null {
   const image = artImage(scene, name, VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, -10);
+  if (image && name==='gym_background') image.setScale(Math.max(VIEW.width/image.width,VIEW.height/image.height));
   if (image) scene.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x101b32, dim).setDepth(-9);
+  return image;
 }
 
 export function resultArt(scene: Phaser.Scene): void {

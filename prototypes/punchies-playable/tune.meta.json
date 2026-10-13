@@ -1,0 +1,541 @@
+{
+  "punch.jab.startup": {
+    "cat": "Punch",
+    "desc": "Jab: Startup frames before the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sourEarly": {
+    "cat": "Punch",
+    "desc": "Jab: Early sour frames while the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sweet": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet frames at full extension.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.recovery": {
+    "cat": "Punch",
+    "desc": "Jab: Recovery frames after the punch.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.whiffRecovery": {
+    "cat": "Punch",
+    "desc": "Jab: Extra recovery frames after a miss.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.jab.sourBelow": {
+    "cat": "Punch",
+    "desc": "Jab: Enemy closer than this (lane units) is too close: sour.",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.jab.headMax": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet head hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.jab.bodyMax": {
+    "cat": "Punch",
+    "desc": "Jab: Sweet body hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.startup": {
+    "cat": "Punch",
+    "desc": "Cross: Startup frames before the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sourEarly": {
+    "cat": "Punch",
+    "desc": "Cross: Early sour frames while the fist extends.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sweet": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet frames at full extension.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.recovery": {
+    "cat": "Punch",
+    "desc": "Cross: Recovery frames after the punch.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.whiffRecovery": {
+    "cat": "Punch",
+    "desc": "Cross: Extra recovery frames after a miss.",
+    "min": 0,
+    "max": 40,
+    "step": 1
+  },
+  "punch.cross.sourBelow": {
+    "cat": "Punch",
+    "desc": "Cross: Enemy closer than this (lane units) is too close: sour.",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.headMax": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet head hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "punch.cross.bodyMax": {
+    "cat": "Punch",
+    "desc": "Cross: Sweet body hit up to this distance (lane units).",
+    "min": 0,
+    "max": 250,
+    "step": 0.5
+  },
+  "run.durationSec": {
+    "cat": "Run",
+    "desc": "Run length in seconds.",
+    "min": 5,
+    "max": 120,
+    "step": 1
+  },
+  "run.playerHp": {
+    "cat": "Run",
+    "desc": "Player hit points.",
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "run.firstSpawnSec": {
+    "cat": "Run",
+    "desc": "Time of the first zombie spawn (seconds).",
+    "min": 0,
+    "max": 5,
+    "step": 0.1
+  },
+  "enemy.spawnDistance": {
+    "cat": "Enemy",
+    "desc": "Spawn distance from the player (lane units, off the top of the screen).",
+    "min": 200,
+    "max": 600,
+    "step": 5
+  },
+  "enemy.walkSpeed": {
+    "cat": "Enemy",
+    "desc": "Walk speed of the first zombie (lane units per second). Speed rises steadily to walkSpeedEnd.",
+    "min": 20,
+    "max": 600,
+    "step": 5
+  },
+  "enemy.attackDistance": {
+    "cat": "Enemy",
+    "desc": "Distance at which an enemy stops and winds up its punch (lane units).",
+    "min": 50,
+    "max": 140,
+    "step": 1
+  },
+  "enemy.minGap": {
+    "cat": "Enemy",
+    "desc": "Minimum gap between queued enemies (lane units).",
+    "min": 30,
+    "max": 200,
+    "step": 5
+  },
+  "enemy.windupFrames": {
+    "cat": "Enemy",
+    "desc": "Enemy wind-up before the punch (60 Hz frames).",
+    "min": 1,
+    "max": 90,
+    "step": 1
+  },
+  "enemy.strikeFrames": {
+    "cat": "Enemy",
+    "desc": "Frames from wind-up end until the enemy punch lands.",
+    "min": 1,
+    "max": 30,
+    "step": 1
+  },
+  "enemy.damage": {
+    "cat": "Enemy",
+    "desc": "Damage an enemy punch deals to the player.",
+    "min": 1,
+    "max": 5,
+    "step": 1
+  },
+  "enemy.leaveFrames": {
+    "cat": "Enemy",
+    "desc": "Frames an enemy takes to move off to the side after punching.",
+    "min": 4,
+    "max": 90,
+    "step": 1
+  },
+  "enemy.leaveSpeed": {
+    "cat": "Enemy",
+    "desc": "Sideways speed after punching (screen px per second).",
+    "min": 100,
+    "max": 1200,
+    "step": 10
+  },
+  "enemy.knockFrames": {
+    "cat": "Enemy",
+    "desc": "Frames from the final blow until the zombie is gone (flight, one full spin, then fade).",
+    "min": 4,
+    "max": 120,
+    "step": 1
+  },
+  "enemy.knockSpeed": {
+    "cat": "Enemy",
+    "desc": "Speed along the final blow direction (screen px per second).",
+    "min": 100,
+    "max": 2000,
+    "step": 10
+  },
+  "points.head": {
+    "cat": "Scoring",
+    "desc": "Points for a sweet head hit.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "points.body": {
+    "cat": "Scoring",
+    "desc": "Points for a sweet body hit.",
+    "min": 0,
+    "max": 10,
+    "step": 1
+  },
+  "punch.bufferFrames": {
+    "cat": "Punch",
+    "desc": "Frames a press is remembered while a punch is busy.",
+    "min": 0,
+    "max": 20,
+    "step": 1
+  },
+  "view.unitPx": {
+    "cat": "View",
+    "desc": "Screen pixels per lane unit.",
+    "min": 0.5,
+    "max": 3,
+    "step": 0.05
+  },
+  "view.playerY": {
+    "cat": "View",
+    "desc": "Player vertical position (logical px).",
+    "min": 300,
+    "max": 620,
+    "step": 5
+  },
+  "view.hitFlashFrames": {
+    "cat": "View",
+    "desc": "Hit flash length (frames).",
+    "min": 1,
+    "max": 40,
+    "step": 1
+  },
+  "view.popupMs": {
+    "cat": "View",
+    "desc": "Score popup duration (ms).",
+    "min": 100,
+    "max": 2000,
+    "step": 50
+  },
+  "view.endDelayMs": {
+    "cat": "View",
+    "desc": "Pause before the end screen appears (ms).",
+    "min": 0,
+    "max": 3000,
+    "step": 50
+  },
+  "view.rig.scale": {
+    "cat": "View",
+    "desc": "Overall fighter size multiplier.",
+    "min": 0.5,
+    "max": 3,
+    "step": 0.05
+  },
+  "view.rig.torsoHeight": {
+    "cat": "View",
+    "desc": "Torso image size across the body (rig units).",
+    "min": 20,
+    "max": 80,
+    "step": 1
+  },
+  "view.rig.headHeight": {
+    "cat": "View",
+    "desc": "Head image size (rig units).",
+    "min": 10,
+    "max": 50,
+    "step": 1
+  },
+  "view.rig.gloveHeight": {
+    "cat": "View",
+    "desc": "Glove image length (rig units).",
+    "min": 8,
+    "max": 40,
+    "step": 1
+  },
+  "view.rig.bootWidth": {
+    "cat": "View",
+    "desc": "Boot image length (rig units).",
+    "min": 6,
+    "max": 30,
+    "step": 1
+  },
+  "view.rig.shoulderSpread": {
+    "cat": "View",
+    "desc": "Shoulder distance from the body centre line (rig units).",
+    "min": 4,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.hipSpread": {
+    "cat": "View",
+    "desc": "Hip distance from the centre line (rig units).",
+    "min": 2,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.bootSpread": {
+    "cat": "View",
+    "desc": "Boot distance from the centre line (rig units).",
+    "min": 2,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.leadBootForward": {
+    "cat": "View",
+    "desc": "Lead boot forward offset at rest (rig units).",
+    "min": -20,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.rearBootForward": {
+    "cat": "View",
+    "desc": "Rear boot offset at rest (rig units).",
+    "min": -30,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.rig.headForward": {
+    "cat": "View",
+    "desc": "Head forward offset from the torso (rig units).",
+    "min": -10,
+    "max": 15,
+    "step": 0.5
+  },
+  "view.rig.guardU": {
+    "cat": "View",
+    "desc": "Guard fist forward position (rig units).",
+    "min": 4,
+    "max": 40,
+    "step": 0.5
+  },
+  "view.rig.guardV": {
+    "cat": "View",
+    "desc": "Guard fist distance from the centre line (rig units).",
+    "min": 2,
+    "max": 30,
+    "step": 0.5
+  },
+  "view.rig.jabReach": {
+    "cat": "View",
+    "desc": "Jab fist travel at full extension (rig units).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "view.rig.crossReach": {
+    "cat": "View",
+    "desc": "Cross fist travel at full extension (rig units).",
+    "min": 20,
+    "max": 120,
+    "step": 1
+  },
+  "view.rig.enemyReach": {
+    "cat": "View",
+    "desc": "Enemy punch fist travel (rig units).",
+    "min": 20,
+    "max": 100,
+    "step": 1
+  },
+  "view.rig.torsoTwistDeg": {
+    "cat": "View",
+    "desc": "Torso twist while punching (degrees).",
+    "min": 0,
+    "max": 45,
+    "step": 1
+  },
+  "view.rig.strideAmp": {
+    "cat": "View",
+    "desc": "Foot travel while walking (rig units).",
+    "min": 0,
+    "max": 16,
+    "step": 0.5
+  },
+  "view.rig.walkHz": {
+    "cat": "View",
+    "desc": "Walk cycles per second.",
+    "min": 0.5,
+    "max": 5,
+    "step": 0.1
+  },
+  "run.zombieCount": {
+    "cat": "Run",
+    "desc": "Zombies spawned in every run (fixed so every run is the same). Maximum 50.",
+    "min": 1,
+    "max": 50,
+    "step": 1
+  },
+  "enemy.lanes": {
+    "cat": "Enemy",
+    "desc": "Number of off-screen entry positions (spread across the top and sides).",
+    "min": 1,
+    "max": 9,
+    "step": 1
+  },
+  "enemy.maxBearingDeg": {
+    "cat": "Enemy",
+    "desc": "Widest entry angle from straight above the player (degrees).",
+    "min": 0,
+    "max": 60,
+    "step": 1
+  },
+  "enemy.knockFadeFrames": {
+    "cat": "Enemy",
+    "desc": "Last frames of the knock off spent fading out.",
+    "min": 1,
+    "max": 60,
+    "step": 1
+  },
+  "view.playerTurn": {
+    "cat": "View",
+    "desc": "How fast the player turns to face the front zombie (fraction per frame).",
+    "min": 0.02,
+    "max": 1,
+    "step": 0.01
+  },
+  "run.startGapSec": {
+    "cat": "Run",
+    "desc": "Gap between the first spawns (seconds). The gap shrinks steadily to endGapSec, so the pace builds.",
+    "min": 0.1,
+    "max": 5,
+    "step": 0.05
+  },
+  "run.endGapSec": {
+    "cat": "Run",
+    "desc": "Gap between the last spawns (seconds).",
+    "min": 0.1,
+    "max": 5,
+    "step": 0.05
+  },
+  "enemy.walkSpeedEnd": {
+    "cat": "Enemy",
+    "desc": "Walk speed of the last zombie (lane units per second).",
+    "min": 20,
+    "max": 600,
+    "step": 5
+  },
+  "enemy.hp": {
+    "cat": "Enemy",
+    "desc": "Zombie hit points.",
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "enemy.staggerPush": {
+    "cat": "Enemy",
+    "desc": "A sweet hit that does not defeat a zombie pushes it back this far and interrupts its punch (lane units).",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "punch.sourDamageMult": {
+    "cat": "Punch",
+    "desc": "Sour hits do this fraction of the punch damage (sweet hits do full damage).",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "punch.jab.damage": {
+    "cat": "Punch",
+    "desc": "Jab: damage to a zombie on a sweet hit.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
+  },
+  "punch.cross.damage": {
+    "cat": "Punch",
+    "desc": "Cross: damage to a zombie on a sweet hit.",
+    "min": 0,
+    "max": 20,
+    "step": 0.5
+  },
+  "view.hitStopMs": {
+    "cat": "View",
+    "desc": "Freeze when a zombie is defeated, for impact (milliseconds).",
+    "min": 0,
+    "max": 250,
+    "step": 5
+  },
+  "audio.master": {
+    "cat": "Audio",
+    "desc": "Master volume of the generated sound effects.",
+    "min": 0,
+    "max": 1,
+    "step": 0.05
+  },
+  "fx.intensity": {
+    "cat": "FX",
+    "desc": "Overall strength of the screen effects. 1 is the over-the-top default, 0 turns them off, up to 2.",
+    "min": 0,
+    "max": 2,
+    "step": 0.05
+  },
+  "fx.shake": {
+    "cat": "FX",
+    "desc": "Camera shake multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.particles": {
+    "cat": "FX",
+    "desc": "Particle count multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.flash": {
+    "cat": "FX",
+    "desc": "Screen flash multiplier.",
+    "min": 0,
+    "max": 3,
+    "step": 0.05
+  },
+  "fx.zoomPunch": {
+    "cat": "FX",
+    "desc": "Camera zoom punch on hits (fraction of zoom).",
+    "min": 0,
+    "max": 0.2,
+    "step": 0.005
+  }
+}

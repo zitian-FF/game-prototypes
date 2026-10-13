@@ -1,0 +1,7 @@
+{
+  "minLength": 3,
+  "maxLength": 12,
+  "defaultPrefix": "Boxer",
+  "reserved": ["admin", "administrator", "moderator", "mod", "staff", "support", "official", "system", "punchies", "tiantian", "codex", "claude"],
+  "offensive": []
+}

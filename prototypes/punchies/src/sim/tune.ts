@@ -1,4 +1,7 @@
 import tuneJson from '../../tune.json';
+import tuneMeta from '../../tune.meta.json';
+import {readArchetypes} from './workshopText';
+import {setEnglishOverrides} from '../i18n';
 
 // Single live tune object. The debug panel binds to this same object, so
 // edits made in Tweakpane apply to the running sim immediately.
@@ -8,8 +11,12 @@ import tuneJson from '../../tune.json';
 // tune.json committed to GitHub (main branch), so values can be tweaked
 // without a rebuild. Online, the guest temporarily adopts the host's values
 // for the match (see applyTuneJson / restoreTune).
-export type Tune = typeof tuneJson;
-export const tune: Tune = tuneJson;
+// Workshop history is persistence metadata, not simulation tuning.
+export type Tune = Omit<typeof tuneJson, 'balanceWorkshop'>;
+const {balanceWorkshop: _history, ...gameTune}=tuneJson as typeof tuneJson & {balanceWorkshop?:unknown};
+export const tune: Tune = gameTune;
+let archetypes=readArchetypes(tuneJson);
+setEnglishOverrides(archetypes);
 
 export const TICK_RATE = 60;
 
@@ -18,7 +25,7 @@ const SYNC_TIMEOUT_MS = 6000;
 
 type Obj = Record<string, unknown>;
 
-let baseline: Tune = structuredClone(tuneJson);
+let baseline: Tune = structuredClone(tune);
 let source = 'built-in';
 const listeners: (() => void)[] = [];
 
@@ -54,13 +61,60 @@ function assignKnown(dst: Obj, src: Obj): number {
   return applied;
 }
 
-// Online: adopt the host's tune for the match.
+type TuneCheck = { ok: true; value: Obj } | { ok: false; error: string };
+type Range = { min: number; max: number };
+
+// Strict check of a tune that came from someone else (the online host, the
+// GitHub sync). Parses, then walks the live tune: every known value must
+// have the same type, and every number must be finite and inside the
+// min/max in tune.meta.json. Unknown keys are ignored, as in assignKnown.
+// It never applies anything and never clamps: a guest that clamped would
+// simulate different numbers from the host and desync.
+export function validateTuneJson(json: string): TuneCheck {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return { ok: false, error: 'not valid JSON' };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, error: 'not an object' };
+  const meta = tuneMeta as unknown as Record<string, Range | undefined>;
+  const walk = (dst: Obj, src: Obj, path: string): string | null => {
+    for (const k of Object.keys(dst)) {
+      const d = dst[k];
+      const v = src[k];
+      if (v === undefined) continue;
+      const at = path ? `${path}.${k}` : k;
+      if (d && typeof d === 'object') {
+        if (!v || typeof v !== 'object' || Array.isArray(v) !== Array.isArray(d)) return `${at} has the wrong type`;
+        const err = walk(d as Obj, v as Obj, at);
+        if (err) return err;
+      } else if (typeof v !== typeof d) {
+        return `${at} has the wrong type`;
+      } else if (typeof v === 'number') {
+        const r = meta[at];
+        if (!Number.isFinite(v)) return `${at} is not a finite number`;
+        if (!r || typeof r.min !== 'number' || typeof r.max !== 'number') return `${at} has no allowed range`;
+        if ((at.endsWith('.starRequirement')||at.endsWith('.referenceStarCost')) && !Number.isInteger(v)) return `${at} must be whole stars`;
+        if (at.startsWith('characters.') && at.endsWith('.freeUses') && !Number.isInteger(v)) return `${at} must be whole throws`;
+        if (v < r.min || v > r.max) return `${at} is out of range`;
+      }
+    }
+    return null;
+  };
+  const error = walk(tune as unknown as Obj, parsed as Obj, '');
+  return error ? { ok: false, error } : { ok: true, value: parsed as Obj };
+}
+
+// Online: adopt the host's tune for the match. Call validateTuneJson first.
 export function applyTuneJson(json: string): void {
-  assignKnown(tune as unknown as Obj, JSON.parse(json) as Obj);
+  const parsed=JSON.parse(json),texts=readArchetypes(parsed);
+  assignKnown(tune as unknown as Obj,parsed as Obj);
+  archetypes=texts;setEnglishOverrides(archetypes);
 }
 
 export function snapshotTune(): string {
-  return JSON.stringify(tune);
+  return JSON.stringify({...tune,balanceWorkshop:{archetypes}});
 }
 
 export function restoreTune(snapshot: string): void {
@@ -80,7 +134,11 @@ export async function syncTuneFromGitHub(): Promise<{ ok: true; applied: number 
       return { ok: false, error: 'tune.json on GitHub is not valid JSON' };
     }
     if (!parsed || typeof parsed !== 'object') return { ok: false, error: 'tune.json on GitHub is empty' };
-    const applied = assignKnown(tune as unknown as Obj, parsed as Obj);
+    const check = validateTuneJson(JSON.stringify(parsed));
+    if (!check.ok) return { ok: false, error: `tune.json on GitHub rejected: ${check.error}` };
+    const texts=readArchetypes(check.value);
+    const applied = assignKnown(tune as unknown as Obj, check.value);
+    archetypes=texts;setEnglishOverrides(archetypes);
     baseline = structuredClone(tune);
     source = `GitHub ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     for (const cb of listeners) cb();
