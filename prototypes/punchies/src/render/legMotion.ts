@@ -32,7 +32,7 @@ export function blendedFootStep(phase:number,forward:number,lateral:number,strid
  return {u:9*forward*stride*cycle.travel,v:7*lateral*stride*cycle.travel,yaw:.3*lateral*stride,lift:cycle.lift*stride};
 }
 /** Collar attachment follows the same rotation and lift scale as its boot. */
-export function bootCollar(x:number,y:number,rotation:number,width:number):{x:number;y:number}{
- const offset=-.3*width;
+export function bootCollar(x:number,y:number,rotation:number,width:number,collarX=.2):{x:number;y:number}{
+ const offset=(collarX-.5)*width;
  return {x:x+Math.cos(rotation)*offset,y:y+Math.sin(rotation)*offset};
 }

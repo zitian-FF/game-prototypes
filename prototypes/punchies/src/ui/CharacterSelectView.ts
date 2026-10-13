@@ -1,3 +1,4 @@
+import {superName,superDescription} from './superCopy';
 import {fighterSuper} from '../sim/super';
 import { rosterHeadFrame } from '../render/portraitHeadshots';
 
@@ -370,9 +371,9 @@ export class CharacterSelectView {
   if(statsKey!==ui.statsKey){ui.statsKey=statsKey;ui.values=p.stats.slice(0,5).map(([,value])=>Math.max(0,Math.min(1,value)));ui.fillProgress=-1;for(let i=0;i<5;i++){const row=p.stats[i];ui.labels[i].setText(row?.[0]??'');ui.scores[i].setText(row?Math.round(row[2]*100)+'%':'');}}
 
   const superMove=fighterSuper(p.id);
-  ui.upper.setText(!p.dummy&&p.uppercut?t('charselect.super_cost',{name:t('super.rising_upper'),stars:superMove.starCost}):'').setScale(1);
+  ui.upper.setText(!p.dummy&&p.uppercut?t('charselect.super_cost',{name:superName(superMove.nameKey),stars:superMove.starCost}):'').setScale(1);
   ui.upper.setScale(Math.min(1,186/Math.max(1,ui.upper.width),16/Math.max(1,ui.upper.height)));
-  ui.superDescription.setText(!p.dummy?t('super.rising_upper_description'):'').setScale(1);
+  ui.superDescription.setText(!p.dummy?superDescription(superMove.descriptionKey):'').setScale(1);
   ui.superDescription.setScale(Math.min(1,184/Math.max(1,ui.superDescription.width),30/Math.max(1,ui.superDescription.height)));
 
   ui.skinName.setText(p.skinName).setScale(1);ui.skinName.setScale(Math.min(1,88/ui.skinName.width));ui.skinIndex.setText(p.skinIndex+'/'+p.skinCount);

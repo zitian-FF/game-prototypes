@@ -1,3 +1,4 @@
+import {qaTrainingPick} from '../debug/debugPanel';
 import { t } from '../i18n';
 import Phaser from 'phaser';
 import { availableFighters,equippedSkin } from '../shop/roster';
@@ -35,12 +36,13 @@ export class TrainingScene extends Phaser.Scene {
     super('Training');
   }
 
-  create(data: {char?:CharId;skin?:string} = {}): void {
+  create(data: {char?:CharId;skin?:string;qaPreview?:boolean} = {}): void {
     applyCameraPixelRatio(this);
     this.built = false;
     const preferred=isCharId(data.char)?data.char:loadCharPrefs().p1;
-    this.char=availableFighters(loadShopDraft()).includes(preferred)?preferred:'marco';
-    this.skin=equippedSkin(loadShopDraft(),this.char,data.skin??loadCharPrefs().skins.p1?.[this.char]);
+    const qa=qaTrainingPick(data);
+    this.char=qa?.char??(availableFighters(loadShopDraft()).includes(preferred)?preferred:'marco');
+    this.skin=qa?.skin??equippedSkin(loadShopDraft(),this.char,data.skin??loadCharPrefs().skins.p1?.[this.char]);
     whenGroupsReady(this, trainingGroups(this.char), () => this.build());
   }
 

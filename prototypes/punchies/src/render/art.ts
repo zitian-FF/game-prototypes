@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {warmStagingTeePortraitMask} from './indexedPortraitMask';
 import { t } from '../i18n';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from './pixelRatio';
 import { isCharId } from '../sim/character';
@@ -236,6 +237,7 @@ export class ArtBootScene extends Phaser.Scene {
       ctx.drawImage(source, 0, 0);
       this.textures.addCanvas(textureKey(name), canvas);
     }
+    warmStagingTeePortraitMask(this);
     this.bar?.destroy();
     this.bar = null;
     loaderScene = this;

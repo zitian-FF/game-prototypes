@@ -8,3 +8,6 @@ export function stagingStorageKey(key:string):string {return STAGING_BUILD?key.r
 declare const __PUNCHIES_QA__:boolean;
 export const DEBUG_TOOLS_BUILD=STAGING_BUILD && typeof __PUNCHIES_QA__!=='undefined' && __PUNCHIES_QA__===true;
 
+
+declare const __PUNCHIES_SOURCE_SHA__:string;
+export const SOURCE_SHA=typeof __PUNCHIES_SOURCE_SHA__==='string'?__PUNCHIES_SOURCE_SHA__:'unknown';

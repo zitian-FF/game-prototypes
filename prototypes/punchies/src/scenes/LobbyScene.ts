@@ -113,6 +113,7 @@ export class LobbyScene extends Phaser.Scene {
       if(epoch!==this.queueEpoch){if((result.status==='waiting'||result.status==='paired')&&result.ticket!==this.queueTicket)void rankedQueue('cancel',result.ticket).catch(()=>{});return;}
       if(result.status==='waiting'||result.status==='paired')this.queueTicket=result.ticket;
       if(this.queueCancelled||!this.scene.isActive()){if(this.queueTicket)void rankedQueue('cancel',this.queueTicket).catch(()=>{});return;}
+      if(result.status==='incompatible'){this.back(t('online.rules_mismatch'));return;}
       if(result.status==='waiting'){this.queuePoll=setTimeout(()=>void this.matchmake(),2500);return;}
       if(result.status!=='paired'){this.back(t('ranked.search_ended'));return;}
       await this.connectRanked(result);
@@ -122,8 +123,8 @@ export class LobbyScene extends Phaser.Scene {
     const epoch=this.queueEpoch;const current=()=>epoch===this.queueEpoch&&!this.queueCancelled&&this.scene.isActive();
     this.status.setText(t('ranked.connecting'));
     const ice=await fetchTurnIceServers();if(!current())return;
-    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId});this.session=s;
-    s.onRejected=()=>this.back(t('ranked.search_ended'));
+    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId,baseline:pair.baseline});this.session=s;
+    s.onRejected=reason=>this.back(reason==='incompatible'?t('online.rules_mismatch'):t('ranked.search_ended'));
     s.onPeerLeft=()=>this.back(t('ranked.search_ended'));
     s.onCtl=m=>{if(m.k==='ping')s.send({k:'pong',t:m.t});};
     s.onPaired=()=>{
@@ -136,7 +137,7 @@ export class LobbyScene extends Phaser.Scene {
     };
     const monitor=async()=>{
       if(!current()||this.handedOff||s.peerId)return;
-      try{const state=await rankedQueue('poll',pair.ticket);if(!current())return;if(state.status!=='paired'){this.back(t('ranked.search_ended'));return;}}
+      try{const state=await rankedQueue('poll',pair.ticket);if(!current())return;if(state.status!=='paired'){this.back(state.status==='incompatible'?t('online.rules_mismatch'):t('ranked.search_ended'));return;}}
       catch{if(current())this.back(t('ranked.unavailable'));return;}
       if(current()&&!this.handedOff&&!s.peerId)this.queuePoll=setTimeout(()=>void monitor(),2500);
     };this.queuePoll=setTimeout(()=>void monitor(),2500);
@@ -150,7 +151,8 @@ export class LobbyScene extends Phaser.Scene {
     if (!this.scene.isActive()) return;
     const s = new NetSession(code, 'host', ice,this.rated);
     this.session = s;
-    s.onRejected = () => {
+    s.onRejected = reason => {
+      if(reason==='incompatible'){this.back(t('online.rules_mismatch'));return;}
       // Someone else is hosting this code: pick another.
       s.leave();
       this.scene.restart({ role: 'host',rated:this.rated });

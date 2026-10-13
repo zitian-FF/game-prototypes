@@ -1,4 +1,5 @@
-import {ratingStatus,reportRating} from '../net/rating';
+import {ratingStatus,reportRating,ratingConfigured} from '../net/rating';
+import {rankedPlayers,rankedResultBinding} from '../net/rankedResult';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { sideProfiles } from '../progress/profile';
 import { startScreen } from '../ui/presentation';
@@ -31,6 +32,7 @@ const MAX_STEPS_PER_FRAME = 5;
 
 export class MatchScene extends Phaser.Scene {
   private match!: MatchData;
+  private ratingMatchPromise:Promise<string|null>|undefined;
   private ls!: Rollback;
   private stage!: FightStage;
   private acc = 0;
@@ -70,6 +72,9 @@ export class MatchScene extends Phaser.Scene {
   create(data: MatchData): void {
     applyCameraPixelRatio(this);
     this.match = data;
+    this.ratingMatchPromise=data.session.ratingMatch;
+    data.session.onRejected=reason=>{if(reason==='incompatible'){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
+    if(data.session.markMatchStarted&&!data.session.markMatchStarted()){data.session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});return;}
     this.series = data.series ?? newSeries(tune.match.bestOf);
     this.nextSeries = undefined;
     this.remoteReselect = false;
@@ -125,7 +130,9 @@ export class MatchScene extends Phaser.Scene {
       data.localIdx === 0 ? [t('match.you_host', { name: nm(0) }), t('match.opponent_name', { name: nm(1) })] : [t('match.opponent_name', { name: nm(0) }), t('match.you_name', { name: nm(1) })];
     // No waiting here: the session is live, so a late atlas just pops in.
     prefetchGroups(fighterGroups(data.chars));
-    this.stage = new FightStage(this, names, data.localIdx,true,data.skins,sideProfiles(data.localIdx,data.session.peer));
+    const profiles=sideProfiles(data.localIdx,data.session.peer);
+    this.stage = new FightStage(this, names, data.localIdx,true,data.skins,profiles,
+      data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined);
     this.stage.setSeries(this.series);
 
     this.events.on('menuReturn',()=>this.leave());
@@ -279,6 +286,7 @@ export class MatchScene extends Phaser.Scene {
   private showResult(): void {
     setGameplay(false);
     this.over = true;
+    this.match.session.markRoundEnded?.();
     this.waiting.setVisible(false);
     const r = this.ls.confirmedResult()!;
     const outcome = finishRound(this.series, r.winner);
@@ -292,11 +300,19 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
-    void this.showRating(r.winner===null?.5:r.winner===this.match.localIdx?1:0);
+    const score=r.winner===null?.5:r.winner===this.match.localIdx?1:0;
+    if(!this.match.session.rated)void this.showRating(score);
     const text = r.winner === null ? t('common.draw') : r.winner === this.match.localIdx ? t('common.victory') : t('common.defeat');
     track('match', 'Online', r.winner === null ? 'draw' : r.winner === this.match.localIdx ? 'win' : 'lose');
     this.registry.set('lastAward', awardMatch({ kind: 'online', win: r.winner === this.match.localIdx }));
-    if (this.remoteReselect) { this.changeBoxer(); return; }
+    if (this.remoteReselect) { void this.showRating(score);this.changeBoxer(); return; }
+    const rating=this.match.session.rated?rankedResultBinding({
+      players:rankedPlayers(sideProfiles(this.match.localIdx,this.match.session.peer),this.match.localIdx,ratingConfigured(),this.match.session.assignment?.baseline),
+      localIdx:this.match.localIdx,configured:ratingConfigured(),match:this.ratingMatchPromise??this.match.session.ratingMatch,
+      report:id=>reportRating(id,score),status:ratingStatus,
+      schedule:callback=>{const timer=this.time.delayedCall(2000,callback);return ()=>timer.remove();},
+    }):undefined;
+    if(rating)this.events.once('shutdown',()=>rating.dispose());
     const rem = matchResult(this, text, {
       rematch: () => {
         if (this.rematchLocal) return;
@@ -310,7 +326,17 @@ export class MatchScene extends Phaser.Scene {
         this.changeBoxer();
       },
       menu: () => this.leave(),
-    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner],title:r.winner===this.match.localIdx?progressView().title:this.match.session.peer.title}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat');
+    }, outcome.series.wins, r.winner===null?undefined:{char:this.match.chars[r.winner],skin:this.match.skins?.[r.winner],title:r.winner===this.match.localIdx?progressView().title:this.match.session.peer.title}, r.winner===null?'draw':r.winner===this.match.localIdx?'victory':'defeat',
+      rating?{players:rating.players,localIdx:this.match.localIdx,subscribe:update=>rating.subscribe(update),nextMatch:()=>{rating.dispose();this.findNextMatch();}}:undefined);
+  }
+
+  private findNextMatch():void {
+    if(!this.match.session.rated||!this.over||this.nextSeries||this.advancing)return;
+    this.advancing=true;this.departed=true;
+    this.cancelSplash?.();this.cancelSplash=undefined;
+    this.match.session.leave();
+    if(this.match.restoreTune)restoreTune(this.match.restoreTune);
+    startScreen(this,'Lobby',{role:'host',rated:true});
   }
 
   private async showRating(score?:0|.5|1):Promise<void>{
@@ -318,7 +344,7 @@ export class MatchScene extends Phaser.Scene {
     const status=ratingStatusText(this,VIEW.cx,VIEW.top+24,Math.min(560,VIEW.width-80),155);
     const label=status.label;
     status.set(ratingLabel({phase:'pending'},t));
-    const matchPromise=this.match.session.ratingMatch;
+    const matchPromise=this.ratingMatchPromise??this.match.session.ratingMatch;
     const id=await matchPromise;if(!id){if(this.scene.isActive())status.set(ratingLabel({phase:'unavailable'},t));return;}
     let result=score===undefined?await ratingStatus(id):await reportRating(id,score);if(!this.scene.isActive())return;
     const alive=()=>this.scene.isActive()&&label.active;

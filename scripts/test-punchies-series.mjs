@@ -66,7 +66,7 @@ const sceneCode = ts.transpileModule(fs.readFileSync(sceneFile, 'utf8'), {
 vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,performance, console, require: (id) => {
   if (id === 'phaser') return { default: { Scene: class {} } };
   if (id === '../sim/series') return { newSeries, finishRound };
-  if (id === '../sim/tune') return { tune, TICK_RATE };
+  if (id === '../sim/tune') return { tune, TICK_RATE,restoreTune:value=>transitions.push({key:'restore',data:value}) };
   if (id === '../ui/matchPresentation') return {
     roundSplash: (_scene, next) => splashes.push(next),
     matchResult: (_scene, _text, actions) => { resultActions = actions; return { setText() {} }; },
@@ -123,6 +123,16 @@ await sceneExports.MatchScene.prototype.showRating.call(casualResult,undefined);
 // No add/label/API mocks exist here: any casual rating work would throw.
 console.log('Casual result and disconnect do not create rating UI or requests');
 console.log('Online early/late readiness, duplicate packets, carried score, final result and rematch reset passed');
+
+// A finished Ranked set searches a fresh queue rather than offering a rematch.
+const nextRanked=online(newSeries(1),0);let leaves=0;
+nextRanked.over=true;nextRanked.match.session.rated=true;nextRanked.match.restoreTune='original-tune';
+nextRanked.match.session.leave=()=>leaves++;
+nextRanked.findNextMatch();nextRanked.findNextMatch();
+assert.equal(leaves,1,'next match is guarded against double activation');
+assert.equal(transitions.at(-2).key,'restore');assert.equal(transitions.at(-2).data,'original-tune');
+assert.equal(transitions.at(-1).key,'Lobby');assert.equal(transitions.at(-1).data.rated,true);
+assert.equal(transitions.at(-1).data.role,'host');assert.equal(nextRanked.departed,true);
 
 for(const forfeited of [false,true]){
  const disconnected=online(newSeries(3),0),claims=[];let ownQuits=0;

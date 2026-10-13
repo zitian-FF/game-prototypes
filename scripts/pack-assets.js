@@ -35,6 +35,8 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // tabletop background below).
 const IMAGE_OPTIMIZATION_RULES = {
   punchies: [
+    // Material ID/coverage maps are byte-exact indexed PNGs, never lossy/resize.
+    { match: name => name.startsWith('materialmask_') },
     // Waist-framed portraits; retain full-resolution design masters in Drive.
     { match: name => name === 'portrait_tyke', keepTop: .86, maxDimension: 1280, format: 'webp', quality: 90 },
     { match: name => name === 'portrait_longan', keepTop: .75, maxDimension: 1280, format: 'webp', quality: 90 },

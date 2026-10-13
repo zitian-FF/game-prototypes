@@ -164,3 +164,14 @@ The **Build Punchies asset profiles** workflow is the shared release gate for
 profile inventory, music behavior, byte budgets and content parity. A new art
 delivery is complete when both profiles pass and its visual evidence and source
 lineage are available to the next producer.
+
+
+## Isolated staging asset patches (2026-10-13)
+
+Owner-reviewed runtime payloads may be committed to an isolated staging feature branch as `asset-patches/<feature>/` when that is needed for a reproducible Pages preview. This exception covers reviewed runtime files and indexed masks, not design masters or unreviewed alternate renders. Main carries infrastructure/source pins; staging permission does not approve production adoption or an R2 overwrite.
+
+Each patch has an explicit filename/byte-count/SHA-256/dimension inventory. Verify alpha, registration and mirror aliases before adding it to the prepared art manifest. The staging builder hashes the combined manifest, creates a deterministic derived archive and records base/archive/source provenance in `asset-profile.json`. Source R2 objects remain unchanged. Production flags exclude patches, QA controls and experimental assets; verify the emitted package rather than assuming branch names enforce this.
+
+Kai's reviewed six-file staging payload is 141,952 bytes: one 640x768 portrait, canonical head/torso/right glove/right boot and a 256x64 four-frame baked badge atlas. Preserve these approved prepared bytes; there is no size-driven re-encoding pass. Left glove/boot use Y-mirror aliases. Palette variants reuse the canonical rig/portrait and corrected skin/material boundaries; protect face/neck/elbow/finger skin and alpha, and do not create duplicate colour bitmaps or runtime font-dependent badge art. Any eventual production adoption separately updates the archived source inventory and both profiles under the original production contract.
+
+Stage receipts identify the source SHA and source stamp, list the changes, distinguish draft stats from approved tuning, and include the ready/pending/blocker queue for Main's immediate next-batch review. Compile/load, essential package/save/network gates and focused risky logic checks are the release pass; the owner reviews visuals and gamefeel. Itch promotion requires explicit approval of the exact reviewed source and the production compatibility/exclusion checks. Never infer production approval from staging readiness.

@@ -12,6 +12,7 @@ export interface ProgressConfig {
   skinChestEvery: number; fighterChestEvery: number;
   titles: { id: string; level: number }[];
   skinRewards: Record<string, string>;
+  fighterRewards?:Record<string,string>;
 }
 
 export interface ProgressState {
@@ -25,7 +26,7 @@ export interface ProgressState {
   titleId: string | null;
 }
 
-export type Reward = { kind: 'skinChest' } | { kind: 'fighterChest' } | { kind: 'skin'; id: string } | { kind: 'title'; id: string };
+export type Reward = { kind: 'skinChest' } | { kind: 'fighterChest' } | {kind:'fighter';id:string} | { kind: 'skin'; id: string } | { kind: 'title'; id: string };
 export interface LevelUp { level: number; rewards: Reward[]; }
 export interface MatchAward { state: ProgressState; xpGained: number; capped: boolean; levelUps: LevelUp[]; }
 
@@ -78,6 +79,8 @@ export function matchXp(cfg: ProgressConfig, m: MatchOutcome): number {
 export function rewardsForLevel(cfg: ProgressConfig, level: number): Reward[] {
   const out: Reward[] = [];
   for (const t of cfg.titles) if (t.level === level && level > 1) out.push({ kind: 'title', id: t.id });
+  const fighter=cfg.fighterRewards?.[String(level)];
+  if(fighter)out.push({kind:'fighter',id:fighter});
   const skin = cfg.skinRewards[String(level)];
   if (skin) out.push({ kind: 'skin', id: skin });
   if (level % cfg.fighterChestEvery === 0) out.push({ kind: 'fighterChest' });

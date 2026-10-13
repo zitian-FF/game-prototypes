@@ -3,7 +3,7 @@ import {agreedScore,ratingChange,type Player,type Report,type Score} from './rat
 interface SQL {exec<T=Record<string,unknown>>(sql:string,...args:unknown[]):Iterable<T>}
 interface State {storage:{sql:SQL;transactionSync<T>(fn:()=>T):T}}
 interface Env {RATINGS:{idFromName(name:string):unknown;get(id:unknown):{fetch(request:Request):Promise<Response>}}}
-interface Match {id:string;a:string;b:string;expires:number;reports:string;settled:number;deltas:string}
+interface Match {id:string;a:string;b:string;expires:number;reports:string;settled:number;deltas:string;rules:string}
 const validId=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(v);
 const json=(v:unknown,status=200)=>Response.json(v,{status});
 const first=<T>(rows:Iterable<T>)=>Array.from(rows)[0];
@@ -14,6 +14,8 @@ export class RatingStore {
   this.sql=state.storage.sql;this.queue=new RankedQueue(this.sql);
   this.sql.exec('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, token TEXT NOT NULL, rating INTEGER NOT NULL, matches INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, a TEXT NOT NULL,b TEXT NOT NULL,nonce TEXT NOT NULL,expires INTEGER NOT NULL,reports TEXT NOT NULL,settled INTEGER NOT NULL DEFAULT 0,deltas TEXT NOT NULL DEFAULT "[]",UNIQUE(a,b,nonce))');
+  try{this.sql.exec("ALTER TABLE matches ADD COLUMN rules TEXT NOT NULL DEFAULT 'legacy'");}catch(e){if(!String(e).includes('duplicate column'))throw e;}
+  this.sql.exec('CREATE TABLE IF NOT EXISTS match_snapshots(match TEXT PRIMARY KEY,players TEXT NOT NULL)');
  }
  private player(id:string):Player{return first(this.sql.exec<Player>('SELECT rating,matches FROM players WHERE id=?',id));}
  async fetch(request:Request):Promise<Response>{
@@ -30,20 +32,30 @@ export class RatingStore {
    }
    const owner=first(this.sql.exec<{token:string}>('SELECT token FROM players WHERE id=?',id));
    if(!owner||owner.token!==body.token)return json({error:'Invalid identity'},401);
-   if(/^\/queue\/(join|poll|cancel|complete)$/.test(path))return this.state.storage.transactionSync(()=>json(this.queue.action(path.split('/')[2],id,body.ticket)));
+   const rules=body.rules===undefined?'legacy':typeof body.rules==='string'&&/^[a-z0-9-]{1,80}:[a-f0-9]{8}$/.test(body.rules)?body.rules:null;
+   if(rules===null)return json({error:'Invalid rules'},400);
+   if(path==='/queue/cancel-pair')return this.state.storage.transactionSync(()=>json({status:this.queue.cancelPair(id,String(body.pairId),rules)?'cancelled':'complete'}));
+   if(/^\/queue\/(join|poll|cancel|complete)$/.test(path))return this.state.storage.transactionSync(()=>json(this.queue.action(path.split('/')[2],id,body.ticket,Date.now(),rules)));
    if(path==='/rating')return json(this.player(id));
    if(path==='/match'){
     if(!validId(body.opponent)||body.opponent===id||!validId(body.nonce)||!this.player(body.opponent))return json({error:'Invalid pair'},400);
-    if(body.pairId!==undefined&&(typeof body.pairId!=='string'||!this.queue.authorize(id,body.opponent,body.pairId)))return json({error:'Invalid queue pair'},403);
+    if(body.pairId!==undefined&&(typeof body.pairId!=='string'||!this.queue.authorize(id,body.opponent,body.pairId,rules)))return json({error:'Invalid queue pair'},403);
+    if(rules!=='legacy'&&!body.pairId)return json({error:'Rules require queue binding'},403);
     const [a,b]=[id,body.opponent].sort(),nonce=body.nonce;
     let match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE a=? AND b=? AND nonce=?',a,b,nonce));
-    if(!match){this.sql.exec('INSERT INTO matches(id,a,b,nonce,expires,reports) VALUES(?,?,?,?,?,?)',crypto.randomUUID(),a,b,nonce,Date.now()+600000,'{}');match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE a=? AND b=? AND nonce=?',a,b,nonce));}
+    if(!match){this.sql.exec('INSERT INTO matches(id,a,b,nonce,expires,reports,rules) VALUES(?,?,?,?,?,?,?)',crypto.randomUUID(),a,b,nonce,Date.now()+600000,'{}',rules);match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE a=? AND b=? AND nonce=?',a,b,nonce));}
+    if(match.rules!==rules)return json({error:'Rules mismatch'},403);
     return json({matchId:match.id,expires:match.expires});
    }
    if(path==='/report'||path==='/status')return this.state.storage.transactionSync(()=>{
     const match=first(this.sql.exec<Match>('SELECT * FROM matches WHERE id=?',body.matchId));
     if(!match||![match.a,match.b].includes(id))return json({error:'Invalid match'},404);
-    const result=()=>json({state:match.settled?'settled':Date.now()>match.expires?'expired':'pending',...this.player(id),delta:match.settled?JSON.parse(match.deltas)[id]:0});
+    if(path==='/report'&&match.rules!==rules)return json({error:'Rules mismatch'},403);
+    const result=()=>{
+     const saved=first(this.sql.exec<{players:string}>('SELECT players FROM match_snapshots WHERE match=?',match.id));
+     const players=saved?JSON.parse(saved.players):null;
+     return json({state:match.settled?'settled':Date.now()>match.expires?'expired':'pending',...this.player(id),delta:match.settled?JSON.parse(match.deltas)[id]:0,outcome:players?{local:players[id],opponent:players[id===match.a?match.b:match.a]}:null});
+    };
     if(match.settled||Date.now()>match.expires||path==='/status')return result();
     if(![0,.5,1].includes(body.score as number)||typeof body.quit!=='boolean'||(body.quit&&body.score!==0))return json({error:'Invalid result'},400);
     const reports=JSON.parse(match.reports) as Record<string,Report>;
@@ -57,6 +69,7 @@ export class RatingStore {
      this.sql.exec('UPDATE players SET rating=rating+?,matches=matches+1 WHERE id=?',da,match.a);
      this.sql.exec('UPDATE players SET rating=rating+?,matches=matches+1 WHERE id=?',db,match.b);
      match.deltas=JSON.stringify({[match.a]:da,[match.b]:db});match.settled=1;
+     this.sql.exec('INSERT INTO match_snapshots VALUES(?,?)',match.id,JSON.stringify({[match.a]:{before:a.rating,after:a.rating+da,delta:da,matches:a.matches+1},[match.b]:{before:b.rating,after:b.rating+db,delta:db,matches:b.matches+1}}));
      this.sql.exec('UPDATE matches SET settled=1,deltas=? WHERE id=?',match.deltas,match.id);
     }
     return result();

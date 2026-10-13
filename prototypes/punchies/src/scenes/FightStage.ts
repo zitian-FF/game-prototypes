@@ -1,3 +1,4 @@
+import type {RankedPlayers} from '../ui/rankedIdentityCapsule';
 import type { WireProfile } from '../progress/alias';
 import { sideProfiles } from '../progress/profile';
 import Phaser from 'phaser';
@@ -21,7 +22,7 @@ import { artImage, backdrop } from '../render/art';
 import { lookFor } from '../render/characterLook';
 import { RingPerspective } from '../render/perspective';
 import { tune } from '../sim/tune';
-import { NEUTRAL_INPUT, type FrameInput, type SimEvent, type SimState } from '../sim/types';
+import { NEUTRAL_INPUT, type Fighter, type FrameInput, type SimEvent, type SimState } from '../sim/types';
 import { unlockAudio, sfx } from '../audio/sfx';
 import { isDebug, debugView } from '../debug/debugPanel';
 import { getNav, navRegister } from '../ui/menuNav';
@@ -74,6 +75,7 @@ export class FightStage {
     private touchEnabled = true,
     private skins:[string,string]=['default','default'],
     private profiles:[WireProfile|null,WireProfile|null]=sideProfiles(localIdx===-1?0:localIdx,null),
+    private rankedPlayers?:RankedPlayers,
   ) {
     const gym=backdrop(scene, 0.15, 'gym_background');
     alignGymFloor(scene,gym);
@@ -102,7 +104,7 @@ export class FightStage {
     // Ring, boxers and hit effects tilt together; screen-space overlays
     // (depth 76 and up), the HUD and the controls stay flat.
     this.persp.take(scene.children.list.filter((o) => !before.has(o) && o !== this.persp.world && (o as Phaser.GameObjects.Image).depth >= 0 && (o as Phaser.GameObjects.Image).depth < 76));
-    this.hud = new Hud(scene, names,this.profiles);
+    this.hud = new Hud(scene, names,this.profiles,this.rankedPlayers);
     // P1 / P2 tags over each boxer at the start of a round.
     this.tags = [0, 1].map((i) =>
       scene.add
@@ -127,6 +129,7 @@ export class FightStage {
 
   // Runtime Survival enemies/corpses must share the player's ring camera.
   // The constructor's initial snapshot cannot include objects created later.
+  setCodeXRenderSources(sources:()=>readonly Fighter[]):void{this.fx.codeXSources=sources;}
   createFighterView(color: number): FighterView {
     const before = new Set(this.scene.children.list);
     const view = new FighterView(this.scene, color);
@@ -199,7 +202,7 @@ export class FightStage {
     const showcaseTicks = Math.max(0,s.fightStartTick-Math.round(tune.match.introSec*TICK_RATE));
     if(!this.introChecked){
       this.introChecked=true;
-      if(s.timed&&showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles);
+      if(s.timed&&showcaseTicks>0)this.matchIntro=new MatchIntro(this.scene,[s.fighters[0].char,s.fighters[1].char],this.skins,this.profiles,this.rankedPlayers);
     }
     this.matchIntro?.draw(s.tick*1000/TICK_RATE);
     // Character looks are slot-independent; floor indicators identify the players.

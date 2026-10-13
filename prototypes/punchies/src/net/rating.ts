@@ -1,9 +1,11 @@
+import {rulesFingerprint} from './rules';
 import {store} from '../portal/store';
 import {KEYS} from '../portal/keys';
 export interface RatingIdentity {myId:string;token:string;rating:number;matches:number}
-export interface RatingResult {state:'pending'|'settled'|'expired';rating:number;matches:number;delta:number}
+export interface RatingSnapshot {before:number;after:number;delta:number;matches:number}
+export interface RatingResult {state:'pending'|'settled'|'expired';rating:number;matches:number;delta:number;outcome?:{local:RatingSnapshot;opponent:RatingSnapshot}|null}
 export type RatingServiceState = {status:'unconfigured'|'loading'|'error'} | {status:'ready';rating:number;matches:number};
-interface PendingReport {matchId:string;score:0|.5|1;quit:boolean;expires:number}
+interface PendingReport {matchId:string;score:0|.5|1;quit:boolean;expires:number;rules?:string}
 interface SavedIdentity extends RatingIdentity {pending?:PendingReport[]}
 const configuredUrl=(import.meta.env.VITE_PUNCHIES_RATING_URL as string|undefined)?.replace(/\/$/,'');
 const key=KEYS.rating;
@@ -23,7 +25,9 @@ async function request<T>(path:string,body:unknown):Promise<T>{
 }
 const validId=(id:unknown):id is string=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function validIdentity(v:unknown):v is SavedIdentity {const p=v as SavedIdentity;return !!p&&validId(p.myId)&&typeof p.token==='string'&&p.token.length===72&&Number.isSafeInteger(p.rating)&&p.rating>=0&&Number.isSafeInteger(p.matches)&&p.matches>=0;}
-function validResult(r:RatingResult){return !!r&&['pending','settled','expired'].includes(r.state)&&Number.isSafeInteger(r.rating)&&r.rating>=0&&Number.isSafeInteger(r.matches)&&r.matches>=0&&Number.isSafeInteger(r.delta);}
+const points=(n:unknown)=>Number.isSafeInteger(n)&&Number(n)>=0;
+function snapshot(s:RatingSnapshot){return !!s&&points(s.before)&&points(s.after)&&points(s.matches)&&Number.isSafeInteger(s.delta)&&s.after-s.before===s.delta;}
+function validResult(r:RatingResult){return !!r&&['pending','settled','expired'].includes(r.state)&&points(r.rating)&&points(r.matches)&&Number.isSafeInteger(r.delta)&&(r.outcome==null||(r.state==='settled'&&snapshot(r.outcome.local)&&snapshot(r.outcome.opponent)));}
 function save(){if(identity)try{store.setItem(key,JSON.stringify({...identity,pending}));}catch{/* Anonymous identity remains session-only if storage is unavailable. */}}
 function applyResult(r:RatingResult){if(r.matches>=identity!.matches)Object.assign(identity!,{rating:r.rating,matches:r.matches});save();updateState({status:'ready',rating:identity!.rating,matches:identity!.matches});}
 export function currentRating(){return state.status==='ready'?identity:null;}
@@ -44,7 +48,7 @@ export function loadRating():Promise<RatingIdentity|null>{
 }
 export async function createRatingMatch(opponent:string,nonce:string,pairId?:string):Promise<string|null>{
  const me=await loadRating();if(!me||!validId(opponent)||!validId(nonce))return null;
- try{const result=await request<{matchId:string}>('/match',{myId:me.myId,token:me.token,opponent,nonce,...(pairId?{pairId}:{})});return validId(result.matchId)?result.matchId:null;}catch{updateState({status:'error'});return null;}
+ try{const result=await request<{matchId:string}>('/match',{myId:me.myId,token:me.token,opponent,nonce,rules:rulesFingerprint(),...(pairId?{pairId}:{})});return validId(result.matchId)?result.matchId:null;}catch{updateState({status:'error'});return null;}
 }
 async function sendReport(p:PendingReport):Promise<RatingResult|null>{
  if(!identity)return null;
@@ -63,7 +67,7 @@ export async function reportRating(matchId:string,score:0|.5|1,quit=false):Promi
  if(!identity||!validId(matchId)||![0,.5,1].includes(score)||(quit&&score!==0))return null;
  let report=pending.find(p=>p.matchId===matchId);
  if(report&&(report.score!==score||report.quit!==quit))return null;
- if(!report){report={matchId,score,quit,expires:Date.now()+600000};pending.push(report);save();}
+ if(!report){report={matchId,score,quit,rules:rulesFingerprint(),expires:Date.now()+600000};pending.push(report);save();}
  return sendReport(report);
 }
 export async function flushRatingReports():Promise<void>{
@@ -83,12 +87,31 @@ export async function ratingStatus(matchId:string):Promise<RatingResult|null>{
  }catch{updateState({status:'error'});return null;}
 }
 
-export type QueueResult={status:'waiting';ticket:string;waitMs:number}|{status:'paired';ticket:string;pairId:string;room:string;nonce:string;opponent:string;role:'host'|'guest'}|{status:'cancelled'|'timeout'|'full'|'complete'};
+/** Bounded polling owned by the caller's scene. Null means unavailable, never zero change. */
+export async function pollRatingOutcome(matchId:string,onResult:(result:RatingResult|null)=>void,signal:AbortSignal,maxAttempts=8):Promise<void>{
+ for(let i=0;i<Math.min(8,Math.max(0,maxAttempts));i++){
+  if(signal.aborted)return;
+  const result=await ratingStatus(matchId);if(signal.aborted)return;
+  onResult(result);if(signal.aborted||!result||result.state!=='pending')return;
+  if(i+1<Math.min(8,maxAttempts))await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);signal.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,1500);signal.addEventListener('abort',done,{once:true});});
+ }
+}
+export type QueueResult={status:'waiting';ticket:string;waitMs:number}|{status:'paired';ticket:string;pairId:string;room:string;nonce:string;opponent:string;role:'host'|'guest';baseline?:{local:number;opponent:number}|null}|{status:'incompatible'}|{status:'cancelled'|'timeout'|'full'|'complete'};
 export async function rankedQueue(action:'join'|'poll'|'cancel'|'complete',ticket?:string):Promise<QueueResult>{
  const me=currentRating()??await loadRating();if(!me)throw Error('Rating unavailable');
- const result=await request<QueueResult>('/queue/'+action,{myId:me.myId,token:me.token,ticket});
- if(!result||!['waiting','paired','cancelled','timeout','full','complete'].includes(result.status))throw Error('Invalid queue response');
+ const result=await request<QueueResult>('/queue/'+action,{myId:me.myId,token:me.token,ticket,rules:rulesFingerprint()});
+ if(result&&(result.status==='waiting'||result.status==='paired')){
+  const metadata=result as QueueResult&{queueProtocol?:number;rules?:string};
+  if(metadata.queueProtocol!==2||metadata.rules!==rulesFingerprint()){
+   if('ticket' in result)void request('/queue/cancel',{myId:me.myId,token:me.token,ticket:result.ticket,rules:rulesFingerprint()}).catch(()=>{});
+   return {status:'incompatible'};
+  }
+ }
+ if(!result||!['waiting','paired','cancelled','timeout','full','complete','incompatible'].includes(result.status))throw Error('Invalid queue response');
  if((result.status==='waiting'||result.status==='paired')&&!validId(result.ticket))throw Error('Invalid queue ticket');
  if(result.status==='paired'&&(!validId(result.pairId)||!validId(result.room)||!validId(result.nonce)||!validId(result.opponent)||!['host','guest'].includes(result.role)))throw Error('Invalid queue pair');
+ if(result.status==='paired'&&result.baseline!=null&&(!points(result.baseline.local)||!points(result.baseline.opponent)))throw Error('Invalid queue baseline');
  return result;
 }
+
+export async function releaseRatingPair(pairId:string):Promise<void>{const me=currentRating();if(me)await request('/queue/cancel-pair',{myId:me.myId,token:me.token,pairId,rules:rulesFingerprint()});}

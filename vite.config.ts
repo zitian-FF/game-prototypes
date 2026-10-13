@@ -19,7 +19,10 @@ function getGitSha(): string {
 function getPrototypeEntries(): Record<string, string> {
   if (process.env.PUNCHIES_ASSET_PROFILE) return {
     punchies: path.resolve(__dirname, 'prototypes/punchies/index.html'),
-    ...(process.env.PUNCHIES_STAGING === 'on' && process.env.PUNCHIES_QA === '1' && process.env.PUNCHIES_STAGING_QA === '1' ? {stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html')} : {}),
+    ...(process.env.PUNCHIES_STAGING === 'on' && process.env.PUNCHIES_QA === '1' && process.env.PUNCHIES_STAGING_QA === '1' ? {
+      stagingReview: path.resolve(__dirname, 'prototypes/punchies/staging-review.html'),
+      ...(fs.existsSync(path.resolve(__dirname,'prototypes/punchies/ranked-review.html'))?{rankedReview:path.resolve(__dirname,'prototypes/punchies/ranked-review.html')}: {}),
+    } : {}),
   };
   const entries: Record<string, string> = {
     main: path.resolve(__dirname, 'index.html'),
@@ -90,6 +93,7 @@ export default defineConfig(({ command }) => ({
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
     __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
+    __PUNCHIES_SOURCE_SHA__:JSON.stringify(execSync('git rev-parse HEAD').toString().trim()),
     __PUNCHIES_QA__:JSON.stringify(qaBuild),
     __PUNCHIES_SAVE_RESET_ID__:JSON.stringify(saveResetId),
     __PUNCHIES_STAGING_QA__: JSON.stringify(process.env.PUNCHIES_STAGING_QA === '1'),

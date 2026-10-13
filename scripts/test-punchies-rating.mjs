@@ -4,6 +4,7 @@ import {build} from 'esbuild';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {rulesMock} from './lib-punchies-rules.mjs';
 const compiled=await build({stdin:{contents:"export * from './prototypes/punchies/server/src/rating';export * from './prototypes/punchies/server/src/index';export {default as worker} from './prototypes/punchies/server/src/index';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false});
 const m=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
 assert.equal(m.kFactor({rating:1600,matches:0}),40);assert.equal(m.kFactor({rating:1400,matches:10}),24);assert.equal(m.kFactor({rating:1401,matches:10}),16);
@@ -47,14 +48,21 @@ function client(saved=new Map(),configured=true){
  const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const exports={};
  vm.runInNewContext(code,{exports,crypto,AbortController,setTimeout,clearTimeout,console,
-  require:path=>{if(path==='../portal/store')return {store:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)}};if(path==='../portal/keys')return {KEYS:{rating:'punchies:rating:v1'}};throw Error(`Unexpected client import ${path}`);},
+  require:path=>{if(path==='./rules')return rulesMock;if(path==='../portal/store')return {store:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)}};if(path==='../portal/keys')return {KEYS:{rating:'punchies:rating:v1'}};throw Error(`Unexpected client import ${path}`);},
   fetch:async(url,options)=>{if(offline)throw Error('offline');return m.worker.fetch(new Request(url,{...options,headers:{...options.headers,Origin:'http://localhost:5189'}}),env);}});
  return {api:exports,saved,setOffline:value=>offline=value};
 }
 const ca=client(),cb=client();
 const ia=await ca.api.loadRating(),ib=await cb.api.loadRating();
 assert.equal(ia.rating,1000);assert.equal(ca.api.ratingServiceState().status,'ready');
-const realNonce=crypto.randomUUID(),matchA=await ca.api.createRatingMatch(ib.myId,realNonce),matchB=await cb.api.createRatingMatch(ia.myId,realNonce);
+assert.equal(await ca.api.createRatingMatch(ib.myId,crypto.randomUUID()),null,'modern client cannot bypass authenticated queue binding');
+const qa=await ca.api.rankedQueue('join'),qb=await cb.api.rankedQueue('join');
+assert.equal(qa.status,'waiting');assert.equal(qb.status,'paired');
+const pa=await ca.api.rankedQueue('poll',qa.ticket);assert.equal(pa.status,'paired');assert.equal(pa.pairId,qb.pairId);assert.equal(pa.nonce,qb.nonce);
+assert.deepEqual(pa.baseline,{local:1000,opponent:1000});
+await ca.api.rankedQueue('complete',qa.ticket);await cb.api.rankedQueue('complete',qb.ticket);
+const realNonce=pa.nonce,matchA=await ca.api.createRatingMatch(ib.myId,realNonce,pa.pairId),matchB=await cb.api.createRatingMatch(ia.myId,realNonce,qb.pairId);
+assert(matchA,'actual modern compatible pair creates a match');
 assert.equal(matchA,matchB);
 ca.setOffline(true);assert.equal(await ca.api.reportRating(matchA,1),null);assert.equal(ca.api.ratingServiceState().status,'error');assert.equal(ca.api.currentRating(),null);
 assert.equal(JSON.parse(ca.saved.get('punchies:rating:v1')).pending.length,1);
@@ -64,7 +72,7 @@ assert.equal(reloaded.api.currentRating().rating,1020,'reloaded client retries i
 assert.equal(JSON.parse(ca.saved.get('punchies:rating:v1')).pending.length,0);
 assert.equal((await cb.api.ratingStatus(matchB)).rating,980);assert.equal(cb.api.currentRating().matches,1);
 assert.equal((await cb.api.reportRating(matchB,0)).rating,980,'re-report cannot settle twice');
-const quitNonce=crypto.randomUUID(),quitMatch=await cb.api.createRatingMatch(ia.myId,quitNonce);
+const quitNonce=crypto.randomUUID(),quitMatch=await cb.api.createRatingMatch(ia.myId,quitNonce,qb.pairId);
 await cb.api.reportRating(quitMatch,0,true);assert.equal((await reloaded.api.ratingStatus(quitMatch)).state,'settled');
 const off=client(new Map(),false);assert.equal(await off.api.loadRating(),null);assert.equal(off.api.ratingServiceState().status,'unconfigured');
 const badStore=new Map([['punchies:rating:v1','{"myId":"bad","token":"bad"}']]);const bad=client(badStore);assert.equal((await bad.api.loadRating()).rating,1000);
