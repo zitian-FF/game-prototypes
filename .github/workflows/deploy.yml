@@ -96,7 +96,7 @@ jobs:
           ref: ${{ steps.staging.outputs.sha }}
           path: .staging-source
 
-      - name: Build compact staging and prove production QA exclusion
+      - name: Build compact staging and verify focused flags
         working-directory: .staging-source
         env:
           VITE_PUNCHIES_RATING_URL: ''
@@ -104,7 +104,7 @@ jobs:
           git switch -c staging/punchies-super
           npm ci
           npm run build:packages
-          node scripts/build-punchies-staging.mjs ../dist/staging/punchies
+          node scripts/build-punchies-staging.mjs ../dist/staging/punchies --stage-only
           # Production review output is local QA evidence, not a public stage route.
           rm -rf ../dist/staging/production
 
