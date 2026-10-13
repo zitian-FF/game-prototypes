@@ -36,12 +36,14 @@ export function gloveRegistration(char:string,width:number,height:number,k:numbe
     const dx=(.10-originX)*width*scale,dy=(hand===0?-.03:.03)*height*scale;
     return {scale,axis:Math.atan2(dy,-dx),cuff:Math.hypot(dx,dy),originX,originY};
   }
-  // Actual gold mitt landmarks: main knuckle centre(.44/.56,.33),
-  // cuff centre(.70/.30,.82). Centre-of-canvas sat on the thumb fold and
+  // Tyke artwork is now visibly mirrored X. Reflect both knuckle and cuff
+  // landmarks with the pixels so the new thumb direction retains its wrist join.
+  // Mirrored gold mitt landmarks: main knuckle centre(.56/.44,.33),
+  // cuff centre(.30/.70,.82). Centre-of-canvas sat on the thumb fold and
   // rolled the hand around the wrong pivot, despite a numerically joined cuff.
   if(char==='tyke'){
-    const originX=hand===0?.44:.56,originY=.33;
-    const cuffX=hand===0?.70:.30,cuffY=.82;
+    const originX=hand===0?.56:.44,originY=.33;
+    const cuffX=hand===0?.30:.70,cuffY=.82;
     const dx=(cuffX-originX)*width/height*h,dy=(cuffY-originY)*h;
     return {scale:h/height,axis:Math.PI-Math.atan2(dy,dx),cuff:Math.hypot(dx,dy),originX,originY};
   }
