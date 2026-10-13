@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 const root=process.cwd(),dest=path.resolve(process.argv[2]??'dist-staging');
+const phaseStarted=performance.now(),phaseTimingMs={};
+const timed=(name,fn)=>{const started=performance.now();const result=fn();phaseTimingMs[name]=Math.round(performance.now()-started);return result;};
 const run=(args,env={})=>execFileSync(process.execPath,args,{stdio:'inherit',env:{...process.env,...env}});
 const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
 const sha=git('rev-parse','HEAD'),branch=git('branch','--show-current'),builtAt=new Date().toISOString();
 const resetId=process.env.PUNCHIES_SAVE_RESET_ID??'punchies-reset-2026-10-12-super-v1';
 // Prove that the normal entry does not emit the optional QA module or route.
-run(['scripts/build-punchies-profile.mjs','compact','--portal','web','--fresh'],{PUNCHIES_STAGING:'off',PUNCHIES_QA:'0',PUNCHIES_STAGING_QA:'0',PUNCHIES_SAVE_RESET_ID:resetId});
+timed('productionReviewBuild',()=>run(['scripts/build-punchies-profile.mjs','compact','--portal','web','--fresh'],{PUNCHIES_STAGING:'off',PUNCHIES_QA:'0',PUNCHIES_STAGING_QA:'0',PUNCHIES_SAVE_RESET_ID:resetId}));
 const source=path.resolve('dist/punchies-compact-web');
 function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 const excluded=files(source).every(f=>!/staging-review|ranked-review/.test(f)&&(!f.endsWith('.js')||!fs.readFileSync(f,'utf8').includes('PUNCHIES_STAGE_QA_ONLY')));
@@ -20,7 +22,7 @@ const productionProfile=JSON.parse(fs.readFileSync(path.join(source,'prototypes/
 if(productionProfile.stageArtOverlay||(!productionProfile.approvedContent&&files(source).some(file=>/materialmask_tee|part_kai_|portrait_kai|kai_emblems/.test(file))))throw Error('Staging preview art leaked into the production review artifact');
 if(productionProfile.staging!==false||productionProfile.saveResetId!==resetId)throw Error('Production flags/reset epoch incorrect');
 const productionOutput=path.join(path.dirname(dest),'production');fs.mkdirSync(productionOutput,{recursive:true});fs.cpSync(source,productionOutput,{recursive:true});
-run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'on',PUNCHIES_QA:'1',PUNCHIES_STAGING_QA:'1',PUNCHIES_SAVE_RESET_ID:resetId,VITE_PUNCHIES_RATING_URL:''});
+timed('stagingBuild',()=>run(['scripts/build-punchies-profile.mjs','compact','--portal','web'],{PUNCHIES_STAGING:'on',PUNCHIES_QA:'1',PUNCHIES_STAGING_QA:'1',PUNCHIES_SAVE_RESET_ID:resetId,VITE_PUNCHIES_RATING_URL:''}));
 if(!fs.existsSync(path.join(source,'staging-review.html')))throw Error('Missing opted-in QA route');
 if(fs.existsSync('prototypes/punchies/ranked-review.html')&&!fs.existsSync(path.join(source,'ranked-review.html')))throw Error('Missing opted-in Ranked presentation fixture');
 if(JSON.parse(fs.readFileSync(path.join(source,'prototypes/punchies/asset-profile.json'))).stageArtOverlay?.kai)run(['scripts/test-punchies-kai-package.mjs',source]);
@@ -30,10 +32,11 @@ const output=path.join(dest,'builds',sha,'game');fs.mkdirSync(output,{recursive:
 const emitted=files(output),bytes=emitted.reduce((sum,f)=>sum+fs.statSync(f).size,0),largest=Math.max(...emitted.map(f=>fs.statSync(f).size));
 if(emitted.filter(f=>f.endsWith('.js')).some(f=>fs.readFileSync(f,'utf8').includes('punchies-rating.tianz-88.workers.dev')))throw Error('Production rating endpoint leaked into staging');
 const sourceStamp=fs.readFileSync('prototypes/punchies/src/version.generated.ts','utf8').match(/VERSION_STAMP = "([^"]+)"/)[1];
+phaseTimingMs.totalUntilMetadata=Math.round(performance.now()-phaseStarted);
 const changes=JSON.parse(fs.readFileSync('.github/punchies-staging-changes.json','utf8'));
 if(!Array.isArray(changes)||changes.length>6||changes.some(x=>typeof x!=='string'||x.length>120))throw Error('Stage change list must be bounded');
 const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const metadata={sha,branch,builtAt,sourceStamp,changes,quality:'compact',portal:'web',bytes,files:emitted.length,largestFileBytes:largest,ratedPlay:'disabled; no rating endpoint compiled',productionQaExclusion:{passed:excluded&&debugExcluded,fileCount:productionFiles,qa:false,staging:false,resetId},artProfile:JSON.parse(fs.readFileSync(path.join(output,'prototypes/punchies/asset-profile.json')))};
+const metadata={sha,branch,builtAt,sourceStamp,changes,quality:'compact',portal:'web',bytes,files:emitted.length,largestFileBytes:largest,phaseTimingMs,ratedPlay:'disabled; no rating endpoint compiled',productionQaExclusion:{passed:excluded&&debugExcluded,fileCount:productionFiles,qa:false,staging:false,resetId},artProfile:JSON.parse(fs.readFileSync(path.join(output,'prototypes/punchies/asset-profile.json')))};
 if(metadata.artProfile.staging!==true||metadata.artProfile.saveResetId!==resetId)throw Error('Staging flags/reset epoch incorrect');
 fs.writeFileSync(path.join(dest,'stage.json'),JSON.stringify(metadata,null,2));
 const game=`builds/${sha}/game/index.html`,qa=`builds/${sha}/game/staging-review.html`;
