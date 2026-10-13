@@ -83,7 +83,9 @@ for (const webgl of [false, true]) {
   const symbols=new symbolExports.CombatSymbols(scene);symbols.sweet(400,204);
   const shadowExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/codeXShadows.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:shadowExports,require:id=>id.includes('codeXShadowSheet')?{codeXTrailTexture:()=> 'trail'}:{}});
   const shadowBefore=new Set(scene.children.list),shadows=new shadowExports.CodeXShadows(scene),shadowObjects=scene.children.list.filter(o=>!shadowBefore.has(o));perspective.take(shadowObjects);assert.equal(shadowObjects.length,24);assert(shadowObjects.every(o=>o.parentContainer===perspective.world),'all cached shadow tracks share ring world');
-  const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));
+  const waveExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/render/waveMotionVfx.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:waveExports,require:id=>id.includes('waveMotionTexture')?{waveMotionTexture:()=> 'wave'}:{reducedMotion:()=>false}});
+  const waveBefore=new Set(scene.children.list),wave=new waveExports.WaveMotionVfx(scene),waveObjects=scene.children.list.filter(o=>!waveBefore.has(o));perspective.take(waveObjects);assert.equal(waveObjects.length,6);assert(waveObjects.every(o=>o.parentContainer===perspective.world),'all wave objects share fitted ring world');
+  const effects = [60, 61, 69, 70, 72, 75].map((depth) => spawn(depth));effects.push(...waveObjects);
   const overlay = spawn(76);
   const flash = spawn(80);
   const hud = spawn(130);
@@ -118,6 +120,7 @@ for (const webgl of [false, true]) {
   // the perspective listener, without pretending to be a full GameObject.
   scene.children.shutdown = () => {};
   events.emit('shutdown');
+  assert(waveObjects.every(o=>o.scene===null),'wave object cleanup leaked');
   assert.equal(events.listenerCount('update'),0,'pooled spark update listener leaked');
   const afterShutdown = spawn(60);
   await new Promise((resolve) => queueMicrotask(resolve));
