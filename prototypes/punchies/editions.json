@@ -77,7 +77,7 @@
       "onlineCohort": "crazygames"
     },
     "itchbeta": {
-      "runtimeReady": false,
+      "runtimeReady": true,
       "title": "Punchies - Beta Test",
       "account": "zitian-ff",
       "slug": "punchies-beta-test",
