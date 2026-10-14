@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import {applyCanonicalLogo} from './punchies-logo-art.mjs';
+import {applyDummyPortrait} from './punchies-dummy-portrait-art.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -395,6 +396,7 @@ if (existsSync(looseSrcDir)) {
 
 const manifestPath = path.join(outDir, 'manifest.json');
 if (name === 'punchies') applyCanonicalLogo(outDir, 'standard', manifest);
+if (name === 'punchies') applyDummyPortrait(outDir, 'standard', manifest);
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
 console.log(`pack-assets: wrote ${manifest.length} file(s) to ${path.relative(rootDir, outDir)}`);
