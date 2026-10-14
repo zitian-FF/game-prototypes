@@ -3,22 +3,57 @@
     "cols": 5,
     "rowsVisible": 9,
     "bandRows": 8,
-    "hpBase": 2,
-    "hpPerRow": 0.35,
-    "treasureChance": 0.25,
+    "hpBase": 4,
+    "hpPerRow": 0.5,
+    "treasureChance": 0.2,
     "gemBase": 2,
     "gemPerBand": 2,
     "metersPerRow": 1,
-    "tunnelRows": 1.2
+    "tunnelRows": 1.2,
+    "rockStartRow": 3,
+    "rockChance": 0.12,
+    "rockHpMult": 2.5,
+    "tntStartRow": 3,
+    "tntChance": 0.05,
+    "tntHpMult": 0.75,
+    "crystalChance": 0.07,
+    "crystalContinue": 0.45,
+    "crystalHpMult": 0.8,
+    "crystalGemChance": 0.5
   },
-  "tap": { "damage": 1 },
+  "tap": {
+    "damage": 2,
+    "splashFactor": 0.5
+  },
   "upgrades": {
-    "power": { "baseCost": 10, "growth": 1.55, "damagePerLevel": 1 },
-    "value": { "baseCost": 15, "growth": 1.7, "perLevel": 0.25 },
-    "helper": { "baseCost": 25, "growth": 1.8, "tapsPerSecPerLevel": 0.5 }
+    "power": {
+      "baseCost": 10,
+      "growth": 1.55,
+      "damagePerLevel": 1
+    },
+    "value": {
+      "baseCost": 15,
+      "growth": 1.7,
+      "perLevel": 0.25
+    },
+    "helper": {
+      "baseCost": 25,
+      "growth": 1.8,
+      "tapsPerSecPerLevel": 0.5
+    },
+    "splash": {
+      "baseCost": 30,
+      "growth": 2.2,
+      "maxLevel": 3
+    }
   },
-  "offline": { "capSeconds": 7200, "efficiency": 0.5 },
-  "depth": { "bandMeters": 10 },
+  "offline": {
+    "capSeconds": 7200,
+    "efficiency": 0.5
+  },
+  "depth": {
+    "bandMeters": 10
+  },
   "feel": {
     "comboResetMs": 500,
     "tapShakePx": 3.5,
@@ -39,14 +74,32 @@
     "cameraFollow": 6,
     "breakShakeMs": 90,
     "breakShakeIntensity": 0.004,
-    "rowClearShakeMs": 200,
-    "rowClearShakeIntensity": 0.01,
     "punchZoom": 1.02,
     "numberRiseMs": 600,
     "numberRisePx": 34,
     "pitchStepPerHit": 0.05,
     "pitchStepMax": 14,
     "volume": 0.5,
-    "vibrate": 1
+    "vibrate": 1,
+    "blastShake": 0.012,
+    "blastShakeMs": 220,
+    "clinkShakePx": 3,
+    "linkFlashMs": 160
+  },
+  "blast": {
+    "tntDamage": 6,
+    "tntRadius": 1,
+    "linkDamage": 999
+  },
+  "chain": {
+    "gemBonusPerWave": 0.25,
+    "waveDelayMs": 100,
+    "bigWaves": 3,
+    "maxWaves": 30
+  },
+  "fall": {
+    "gravity": 2600,
+    "maxSpeed": 1400,
+    "bounce": 0.18
   }
 }

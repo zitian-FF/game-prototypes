@@ -1,55 +1,58 @@
 ## Current milestone
 
-Playable tap-to-mine loop with upgrades, auto pickaxe, offline progress and a
-save. Ready to playtest. Not yet tried on a real phone.
+Game loop upgraded: splash damage, untappable rocks, gravity, TNT and crystal
+chain reactions, and a gem multiplier per chain wave. Ready to playtest. Not yet
+tried on a real phone.
 
 ## What was implemented
 
-- Shaft of pillow blocks in strata colours, any visible block tappable. Cracks
-  grow with every tap (tapered grooves with a lit lip, more arms as health
-  falls). A block gives way with a pop and dust in its strata colour.
-- Buried gems: a glint shows through the block; when it breaks the gem pops out,
-  hangs, then arcs to the gem counter with a sparkle trail, ring burst and
-  counter bump. Collection is automatic.
-- Rows scroll away as they are cleared (shaft view); depth in metres; the
-  backdrop changes colour with depth. Row-cleared banner, camera shake and punch
-  zoom on a cleared row.
-- Upgrades: tap power, gem value, auto pickaxe (random visible block, rate by
-  level). Offline progress for the auto pickaxe. Save to `dig-tap:save:v1` on
-  every change (throttled) and when the page is hidden; verified by a reload.
-- Rules (`src/game/`) are pure. A headless check showed offline digging matches
-  digging the same blocks by hand (damage 1, 2, 5; 1 to 12345 taps) and a save
-  round-trips exactly.
+- Splash: a tap damages the block fully and its neighbours for half (rounded up,
+  min 1). Splash upgrade (max level 3) grows the pattern: plus, 3x3, diamond
+  radius 2, 5x5.
+- Rocks: untappable (clink, "SPLASH ONLY"), 2.5x health, damaged only by splash
+  and blasts. Never stacked, so a rock always has a tappable neighbour.
+- TNT (blasts 3x3 for 6) and crystal (shatters touching crystals) chain in waves
+  100 ms apart; each wave after the first adds 25% to the gems it frees. A chain of
+  3 or more waves gets a banner, sound and punch zoom.
+- Gravity: blocks above a break fall under gravity with a small bounce and a thump;
+  the wall surface drops, the tunnel above it grows and the view follows. Blocks
+  hold still while a chain plays, then fall.
+- Four upgrades (Power, Splash, Gems, Auto pickaxe). Save is now
+  `dig-tap:save:v2` (old v1 saves are ignored).
+- Checks: a headless run of 60,000 auto taps over 40 seeds, with splash upgrades,
+  kept every invariant (consecutive rows per column, no stacked rocks, no broken
+  block left behind) and the auto pickaxe never got stuck or targeted a rock; save
+  and restore matched block for block; taps on rocks are refused. Chains reached
+  12 waves at most; the auto pickaxe averaged 0.35 blocks broken per tap and 1.03
+  waves per tap.
+- Playwright run with real clicks: rocks, TNT and crystals appear, tapping works,
+  gems and upgrades saved across a reload, no console errors.
 
 ## Key technical decisions
 
-- New prototype folder (`dig-tap`); `dig-match` and `dice-dig` stay as they are.
-  Uses `dig-kit` pinned to 0.1.0. Terrain rendering is a copy of dig-match's, so
-  it is a candidate to move into dig-kit (0.2.0, bump all pins together).
-- The wall is generated from a seed per row, so a save stores only damage.
-- `?test=1` exposes a hook for the Playwright script (next block position, gems,
-  a grant). `?debug=1` shows the tune panel (it covers the top right) and a
-  reset-save button.
-- Worked on branch `ccr-1e26354f-01jcy9`, not `proto/dig-tap/...`, because the
-  session was assigned that branch.
-- `deploy-dig-itch.yml` (manual) now also lists dig-tap.
+- Blocks are generated per original row from the seed, so a save stores only the
+  removed rows per column and damaged blocks. Board row = removed count + index in
+  the column, so falling is just re-indexing.
+- Tap targeting uses where blocks are drawn (they can still be falling), then the
+  rules use the block's real row.
+- Terrain rendering is still local to this prototype (candidate for dig-kit 0.2.0).
+- Worked on branch `ccr-1e26354f-01jcy9`, restarted from `main` after PR #387 was
+  merged.
 
 ## Open questions
 
-- Pacing is placeholder: roughly 2 taps per early block, a quarter of blocks hide
-  gems, first upgrade after about 4 rows. Needs a playtest.
-- Free tapping of any visible block: does it need structure?
-- The upgrade shelf shows level and cost but not the effect (that is in the
-  top line).
-- BRIEF.md was written from a discussion and may need updating after playtest.
+- Feel and pacing: splash half damage, TNT 6 damage, crystal chance 7%, rock chance
+  12% and upgrade costs are all placeholders in tune.json.
+- Do rocks need a small tap damage so they never feel like a dead end?
+- BRIEF.md was updated from a discussion and may need changes after playtest.
 
 ## Known issues
 
-- No gem cap, hammer or C4, or other tools yet.
-- The glint on many blocks may look busy at 25% gem chance.
+- No gem cap, milestone chest or combo meter for rapid taps yet.
 - Frame rate only measured in a software-rendered test browser.
+- Chains are rare with the default chances; raise TNT or crystal chance to see more.
 
 ## Next proposed step
 
-Playtest, then tune pacing and decide whether to add tools (hammer, C4) as
-upgrades and the gem cap.
+Playtest, then tune the placeholder numbers and decide on the combo meter,
+milestone chest and gem cap.

@@ -9,46 +9,58 @@ exact version.
 
 ## Core loop
 
-1. Tap any visible block. Each tap deals the same damage (tap power).
-2. Cracks add up on the block with every tap: more arms, thicker grooves, a
-   darker surface.
-3. When its health reaches 0 the block gives way. It leaves a dark tunnel, and a
-   buried gem (shown as a glint through the block) pops out and flies to the gem
-   counter automatically with a sparkling trail.
-4. When a whole row is broken, the view slides down (shaft view): the cleared
-   rows become tunnel and the depth counter goes up.
-5. Spend gems on permanent upgrades. Play never ends.
+1. Tap a block. It takes tap damage; its neighbours take splash damage (half,
+   rounded up, at least 1). The splash pattern grows with the Splash upgrade.
+2. Cracks add up on every damaged block (more arms, thicker grooves, darker
+   surface). At 0 hp the block gives way.
+3. Special blocks chain (see below). A chain plays out in waves about 100 ms
+   apart; later waves multiply the gems.
+4. When blocks break, everything above them falls to fill the gaps (gravity).
+   The wall surface drops, the tunnel above it grows, and the view slides down.
+5. Buried gems fly to the gem counter automatically. Spend gems on permanent
+   upgrades. Play never ends.
+
+## Block types
+
+- Dirt: the normal block. Strata colour by depth (grass, dirt, clay, sand, stone,
+  slate, crystal, 8 rows each). About a fifth hide a gem (glint through the block).
+- Rock (untappable): grey with rivets and an X. Taps do nothing ("SPLASH ONLY").
+  It takes damage only from splash and blasts, and has 2.5x the health. A rock is
+  never stacked on another rock, so every rock always has a tappable neighbour.
+- TNT: red. On breaking it blasts the 3x3 around it for 6 damage, rocks included.
+- Crystal: purple. On breaking, every touching crystal shatters too, so crystal
+  veins chain. About half hide a gem.
 
 ## Screen
 
-- Top: depth in metres, gem counter, a line with current tap damage, gem
+- Top: depth in metres, gem counter, and a line with damage, splash level, gem
   multiplier, auto pickaxe rate and blocks dug.
-- Middle: the shaft, 5 columns wide, 9 rows visible. Blocks are pillows in strata
-  colours that change with depth (grass, dirt, clay, sand, stone, slate,
-  crystal, 8 rows each). Cleared rows show as a dark tunnel above.
-- Bottom: three upgrade buttons showing level and cost.
+- Middle: the shaft, 5 columns wide, 9 rows visible, with a dark tunnel above the
+  wall surface.
+- Bottom: four upgrade buttons showing level and cost.
 
 ## Rules
 
-- Any visible block can be tapped. Taps on a tunnel do nothing.
-- Block health starts at 2 and rises with depth (tune.json).
-- About a quarter of blocks hide a gem. Gem value grows with each strata band.
+- Any visible tappable block can be tapped. Falling blocks are tappable too.
+- Block health starts at 4 and rises with depth (tune.json). Tap damage starts at 2.
+- Gem multiplier per chain wave: +25% for each wave after the first.
 - Backdrop colour changes every 10 m.
 
 ## Upgrades (gems)
 
-- Tap power: +1 damage per tap per level.
-- Gem value: +25% gem value per level.
-- Auto pickaxe: taps a random visible block, 0.5 taps per second per level,
-  also while the tab is closed (up to 2 hours, at half rate), computed from a
-  saved timestamp.
+- Power: +1 tap damage per level (splash follows: half, rounded up).
+- Splash: level 0 hits the 4 touching blocks, 1 the 8 around, 2 the diamond of
+  radius 2, 3 the full 5x5. Max level 3.
+- Gems: +25% gem value per level.
+- Auto pickaxe: taps the top tappable block of the shallowest column, 0.5 taps per
+  second per level, also while the tab is closed (up to 2 hours, at half rate).
 - Costs grow by a factor per level. All numbers are in tune.json.
 
 ## Persistence
 
-`localStorage` key `dig-tap:save:v1`: gems, upgrade levels, terrain seed and
-every damaged or broken block, saved on every state change (throttled) and when
-the page is hidden. The wall is generated from the seed, so only damage is stored.
+`localStorage` key `dig-tap:save:v2`: gems, upgrade levels, terrain seed, which
+blocks were removed in each column and every damaged block, saved on every state change (throttled) and when
+the page is hidden. The wall is generated from the seed, so only removals and damage are stored.
 
 ## Input
 
@@ -63,7 +75,7 @@ fly time and arc, sound pitch).
 
 ## Out of scope for now
 
-Gem cap (spend sink), special tools (hammer, C4), relics, raids, guild base view,
+Gem cap (spend sink), a daily or depth milestone chest, upgrade choices beyond the four above, relics, raids, guild base view,
 monetization, social features, backend, energy, luck mechanics, levels.
 
 ## Success test
@@ -74,5 +86,5 @@ tap, and the upgrades make the next stretch of digging feel noticeably faster.
 ## Open questions
 
 - Pacing of health, gem chance and upgrade costs (placeholders).
-- Whether "any visible block" needs more structure (e.g. harder blocks behind
-  easier ones).
+- How strong splash, TNT and chains should feel (placeholders in tune.json).
+- Whether rocks should ever be tappable at a small damage.
