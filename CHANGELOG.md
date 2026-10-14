@@ -3,6 +3,15 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-14 - digger is now Dice Dig; the old game is digger-legacy
+
+**What changed:** `prototypes/digger` now holds Dice Dig (a dice-rolling dig game). The previous digger game moved
+unchanged to `prototypes/digger-legacy` (also tagged `archive/digger-v1`). The `deploy-digger-itch.yml` workflow now
+deploys Dice Dig to the digger itch project, has no art fetch, and bumps `prototypes/digger/version.json`. The Pages
+workflow fetches the old art under the `digger-legacy` name. The hub lists both.
+
+**Applies to:** digger and digger-legacy only.
+
 ## 2026-10-08 - punchies-playable replaces the mp-console itch slot
 
 **What changed:** the dedicated punchies-playable workflow now builds its
