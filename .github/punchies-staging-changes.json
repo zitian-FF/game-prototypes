@@ -1,8 +1,8 @@
 [
-  "Modern is default: contextual held Normal and Super; fatigue damage x0.8; stamina inert",
-  "Neutral auto guard without perfect guard; 12-frame collision-triggered dodge",
-  "Per-side Modern/Classic settings, touch controls and HUD badges; Classic retained",
-  "Online START and rollback agree modes; BO3 modes locked through the set",
-  "Modern9 and Classic17 tutorials; bounded first-fight HP with real KO",
-  "Retains Eagle50, BO3/save fixes and approved assets; stage saves isolated, ratings disabled"
+  "CrazyGames11 roster: top Marco/Mia/Bruno/Roxy/Nadia; bottom Tee/Tyke/Dragon/Longan/Captain/Kai",
+  "Centered 5+6 grid with larger touch targets and row-aware keyboard/controller navigation",
+  "Shared edition manifest drives precompile assets/tune, CG save namespace and online cohort",
+  "Approved skins, progression and rewarded ads retained; prepared art/audio unchanged",
+  "Complete Modern/Classic controls and tutorials plus Eagle50/BO3/save fixes retained",
+  "CG stage is isolated with ratings disabled; normal portal artifact excludes staging/QA flags"
 ]

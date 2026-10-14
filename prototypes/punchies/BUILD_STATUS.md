@@ -1,17 +1,12 @@
 ## Current milestone
-CrazyGames 5+6 roster UI ready for shared edition integration.
-
+Complete CrazyGames edition integrated and ready for artifact/staging packaging.
 ## What was implemented
-CG-only centered two-row selector, larger touch targets, row navigation and aspect-correct headshots. Master roster and shared portrait/skin/confirmation behavior retained.
-
+CG-only eleven-fighter5+6 grid, authoritative shared edition/runtime/build policy, precompile asset/tune selection and distinct saves/network cohort. Modern/Classic and previous completed gameplay/save fixes retained.
 ## Key technical decisions
-Build owns edition.ts and manifest-ordered CHARACTER_IDS. UI gates on CRAZYGAMES_EDITION; no portal or URL inference and no second allowlist.
-
+Same MASTER source and prepared quality pipeline; no game fork or art re-encoding. MASTER layout/keys preserved. Beta remains fail-closed. Normal CG artifact and isolated staging are separate outputs.
 ## Open questions
-None for the grid contract. Community key-art visual review remains independent.
-
+No roster/design decision is pending. Real CrazyGames portal QA/submission is separate from this staging preparation.
 ## Known issues
-No actual CG release/package, physical Xbox or two-device test claimed. Focused helpers and local Brave fixture validated. Build validates the complete edition artifact.
-
+Physical controller/iOS/two-device WebRTC and real portal ad delivery are not claimed. Beta runtime and keyart remain separate unfinished tasks.
 ## Next proposed step
-Build integrates this small UI commit with its authoritative edition source and packages/stages the completed CrazyGames edition.
+Build normal compact CG artifact and staging, verify flags/inventory, then publish the separate authorized CG stage route while keeping Modern MASTER staging.
