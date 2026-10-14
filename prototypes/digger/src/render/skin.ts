@@ -75,7 +75,11 @@ export function tileColor(layer: number, kind: TileKind): number {
   return KIND_TINT[kind](LAYER_BASE[Math.min(layer, LAYER_BASE.length - 1)]);
 }
 
-/** Deterministic crack polylines in unit-square coordinates. */
+/**
+ * Deterministic jagged crack arms in unit-square coordinates. Each arm starts
+ * near the centre and zigzags outward with sharp turns, like a real fracture.
+ * The renderer turns them into tapered filled shapes.
+ */
 export function crackPaths(seed: number, count: number): Pt[][] {
   const out: Pt[][] = [];
   let s = (seed * 2654435761) >>> 0;
@@ -83,18 +87,21 @@ export function crackPaths(seed: number, count: number): Pt[][] {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
     return s / 4294967296;
   };
+  const clamp = (v: number) => Math.max(0.05, Math.min(0.95, v));
+  const base = rnd() * Math.PI * 2;
   for (let i = 0; i < count; i++) {
-    const a = (i / Math.max(count, 1)) * Math.PI * 2 + rnd() * 1.2;
-    const path: Pt[] = [{ x: 0.5 + (rnd() - 0.5) * 0.1, y: 0.5 + (rnd() - 0.5) * 0.1 }];
-    let x = path[0].x;
-    let y = path[0].y;
-    const steps = 2 + Math.floor(rnd() * 2);
+    const a = base + (i / Math.max(count, 1)) * Math.PI * 2 + (rnd() - 0.5) * 0.7;
+    let x = 0.5 + (rnd() - 0.5) * 0.08;
+    let y = 0.5 + (rnd() - 0.5) * 0.08;
+    const path: Pt[] = [{ x, y }];
+    const steps = 3 + Math.floor(rnd() * 2);
+    let ang = a;
     for (let k = 0; k < steps; k++) {
-      const ang = a + (rnd() - 0.5) * 0.9;
-      const len = 0.16 + rnd() * 0.12;
-      x += Math.cos(ang) * len;
-      y += Math.sin(ang) * len;
-      path.push({ x: Math.max(0.04, Math.min(0.96, x)), y: Math.max(0.04, Math.min(0.96, y)) });
+      ang += (k % 2 === 0 ? 1 : -1) * (0.35 + rnd() * 0.5);
+      const len = 0.1 + rnd() * 0.1;
+      x = clamp(x + Math.cos(ang) * len);
+      y = clamp(y + Math.sin(ang) * len);
+      path.push({ x, y });
     }
     out.push(path);
   }

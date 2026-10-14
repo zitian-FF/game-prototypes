@@ -44,20 +44,43 @@ interface DecorStyle {
 }
 const DARK_DECOR: DecorStyle = { crack: 0x1b1420, rivet: 0x2c2f3a, weak: 0xffb347, weakGlow: 0xff8a1f };
 
+/**
+ * A crack as a recessed groove: wide at the centre, tapering to a point, with
+ * a lit lip on the lower edge and a darker core so it reads as depth.
+ */
+function drawCrack(g: Phaser.GameObjects.Graphics, pts: Pt[], width: number, st: DecorStyle): void {
+  const n = pts.length - 1;
+  const outline = (w: number, dx: number, dy: number): Pt[] => {
+    const left: Pt[] = [];
+    const right: Pt[] = [];
+    for (let i = 0; i <= n; i++) {
+      const a = pts[Math.max(0, i - 1)];
+      const b = pts[Math.min(n, i + 1)];
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const nx = -(b.y - a.y) / len;
+      const ny = (b.x - a.x) / len;
+      const half = (w * Math.pow(1 - i / (n + 0.6), 0.9)) / 2;
+      left.push({ x: pts[i].x + nx * half + dx, y: pts[i].y + ny * half + dy });
+      right.push({ x: pts[i].x - nx * half + dx, y: pts[i].y - ny * half + dy });
+    }
+    return [...left, ...right.reverse()];
+  };
+  g.fillStyle(0xffffff, 0.5);
+  g.fillPoints(outline(width, 0.9, 1.3), true);
+  g.fillStyle(st.crack, 1);
+  g.fillPoints(outline(width, 0, 0), true);
+  g.fillStyle(0x000000, 0.35);
+  g.fillPoints(outline(width * 0.45, 0, 0), true);
+}
+
 function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: number, st: DecorStyle = DARK_DECOR): void {
   const s = v.surface;
   if (!s) return;
   const dmg = 1 - s.hpFrac;
   if (dmg > 0.01) {
-    g.lineStyle(Math.max(1, 1.6 * scale), st.crack, 0.85);
-    for (const path of crackPaths(v.idx + 1, 1 + Math.ceil(dmg * 4))) {
-      g.beginPath();
-      path.forEach((p, i) => {
-        const pt = bilerp(q, p.x, p.y);
-        if (i === 0) g.moveTo(pt.x, pt.y);
-        else g.lineTo(pt.x, pt.y);
-      });
-      g.strokePath();
+    for (const path of crackPaths(v.idx + 1, 2 + Math.ceil(dmg * 3))) {
+      const pts = path.map((p) => bilerp(q, p.x, p.y));
+      drawCrack(g, pts, (1.6 + dmg * 3.2) * scale, st);
     }
   }
   if (s.kind === 'hardened') {
@@ -285,15 +308,15 @@ export function createFlatSkin(rect: BoardRect, cols: number, rows: number): Ski
   };
 }
 
-// Pastel strata, top layer first: mint, peach, periwinkle.
-const PASTEL_LAYER = [0xaee9c6, 0xffd0a8, 0xb9bdf5];
+// Bright, saturated strata, top layer first: grass green, warm orange, sky blue.
+const PASTEL_LAYER = [0x5ed957, 0xffa23a, 0x4d9bff];
 function pastelColor(layer: number, kind: TileKind): number {
   const base = PASTEL_LAYER[Math.min(layer, PASTEL_LAYER.length - 1)];
-  if (kind === 'soft') return mix(base, 0xffffff, 0.35);
-  if (kind === 'hardened') return mix(base, 0xc4cbdc, 0.62);
+  if (kind === 'soft') return mix(base, 0xffffff, 0.22);
+  if (kind === 'hardened') return mix(base, 0x8c9bc4, 0.6);
   return base;
 }
-const PASTEL_DECOR: DecorStyle = { crack: 0x7a5f86, rivet: 0xffffff, weak: 0xff6f91, weakGlow: 0xff9db4 };
+const PASTEL_DECOR: DecorStyle = { crack: 0x3a2a55, rivet: 0xffffff, weak: 0xff2f6a, weakGlow: 0xff6f9a };
 
 /**
  * Chunky soft blocks in the spirit of cosy block-building games: rounded
@@ -321,7 +344,7 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
       return { x: b.x + b.w / 2, y: b.y - height * lp + topH / 2 };
     },
     drawBackdrop(g, w, h) {
-      g.fillGradientStyle(0x9fc7f2, 0x9fc7f2, 0xe2c4f0, 0xe2c4f0, 1);
+      g.fillGradientStyle(0x2f9bff, 0x2f9bff, 0x8ad8ff, 0x8ad8ff, 1);
       g.fillRect(0, 0, w, h);
       g.fillStyle(0xffffff, 0.16);
       for (const [x, y, r] of [[60, 70, 34], [330, 40, 26], [300, 570, 40], [40, 590, 30]]) g.fillCircle(x, y, r);
@@ -329,9 +352,9 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
     drawCell(g, v) {
       const b = geo(v.col, v.row);
       // Pit floor, rounded, with the treasure gem if one is down there.
-      g.fillStyle(0x8c7cae, 1);
+      g.fillStyle(0x7a4a2e, 1);
       g.fillRoundedRect(b.x, b.y, b.w, topH, R);
-      g.fillStyle(0x6f5f92, 0.7);
+      g.fillStyle(0x4a2a1c, 0.7);
       g.fillRoundedRect(b.x + 2, b.y + 2, b.w - 4, topH * 0.4, R * 0.8);
       if (v.hasTreasure) {
         const cx = b.x + b.w / 2;
@@ -357,7 +380,7 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
         const a = v.alive[i];
         const y0 = bodyTop + i * bandH;
         const last = i === n - 1;
-        g.fillStyle(shade(pastelColor(a.layer, a.kind), 0.86 - i * 0.02), 1);
+        g.fillStyle(shade(pastelColor(a.layer, a.kind), 0.78 - i * 0.02), 1);
         if (last) g.fillRoundedRect(x, y0, b.w, bandH, { tl: 0, tr: 0, bl: R, br: R });
         else g.fillRect(x, y0, b.w, bandH + 0.5);
         if (i > 0) {
@@ -370,13 +393,13 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
       const base = pastelColor(v.surface.layer, v.surface.kind);
       const dmg = 1 - v.surface.hpFrac;
       const top = shade(base, 1 - dmg * 0.1);
-      g.fillStyle(shade(base, 0.8), 1);
-      g.fillRoundedRect(x, topY + 2, b.w, topH, R);
-      g.fillStyle(shade(base, 0.95), 1);
+      g.fillStyle(shade(base, 0.68), 1);
+      g.fillRoundedRect(x, topY + 2.5, b.w, topH, R);
+      g.fillStyle(shade(base, 0.9), 1);
       g.fillRoundedRect(x, topY, b.w, topH, R);
       g.fillStyle(top, 1);
       g.fillRoundedRect(x + 2.5, topY + 2.5, b.w - 5, topH - 6, R * 0.8);
-      g.fillStyle(0xffffff, 0.45);
+      g.fillStyle(0xffffff, 0.5);
       g.fillRoundedRect(x + 6, topY + 5, b.w * 0.42, 4, 2);
       g.fillStyle(0xffffff, 0.22);
       g.fillCircle(x + b.w - 9, topY + 9, 2.5);

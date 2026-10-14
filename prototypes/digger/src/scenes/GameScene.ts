@@ -183,7 +183,7 @@ export class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
         fontSize: `${size}px`,
         color,
-        stroke: '#5b4a86',
+        stroke: '#1f4f8f',
         strokeThickness: Math.max(2, size / 6),
         align: 'center',
         resolution: PIXEL_RATIO,
