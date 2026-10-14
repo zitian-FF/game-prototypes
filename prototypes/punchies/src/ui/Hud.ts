@@ -1,3 +1,4 @@
+import {ITCH_BETA_EDITION} from '../edition';
 import {modeBadge} from './modeBadge';
 import {CLASSIC_MODES,type ControlModes} from './controlMode';
 import {rankedIdentityCapsule,rankedCapsuleBounds,type RankedPlayers} from './rankedIdentityCapsule';
@@ -63,7 +64,7 @@ export class Hud {
       const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
       name.setScale(Math.min(1,VIEW.width*.18/name.width));
       this.names.push(name);
-      const title=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+83,profiles[i]?titleName(profiles[i]!.title):'',10,'#caa2ff');
+      const title=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+83,!ITCH_BETA_EDITION&&profiles[i]?titleName(profiles[i]!.title):'',10,'#caa2ff');
       title.setScale(Math.min(1,VIEW.width*.18/Math.max(1,title.width)));
       this.titles.push(title);
       this.superLightning.push(new SuperMeterLightning(scene,superMeterLayout(VIEW,i,3).bounds));

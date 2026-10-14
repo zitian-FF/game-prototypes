@@ -1,3 +1,4 @@
+import {ITCH_BETA_EDITION} from '../edition';
 import type Phaser from 'phaser';
 import { rankedIdentityCapsule,type RankedResultPresentation,type RankedPlayers } from './rankedIdentityCapsule';
 import {ratingLabel} from './ratingPresentation';
@@ -16,7 +17,7 @@ export function rankedResultDetails(scene:Phaser.Scene,x:number,width:number,pri
   :ratingLabel(player.rating.phase==='settled'?{phase:'unavailable'}:player.rating,t);
  let alive=true;
  const update=(players:RankedPlayers)=>{if(!alive||!result.active)return;const a=players[primary],b=players[1-primary];first.set(a);
-  fit(result,outcome(a),31);const p=b.profile;fit(other,p?`${p.alias} · ${t('profile.level',{level:p.level})} · ${titleName(p.title)}`:t('match.waiting'),18);fit(otherResult,outcome(b),18);
+  fit(result,outcome(a),31);const p=b.profile;fit(other,p?(ITCH_BETA_EDITION?p.alias:`${p.alias} · ${t('profile.level',{level:p.level})} · ${titleName(p.title)}`):t('match.waiting'),18);fit(otherResult,outcome(b),18);
  };update(data.players);
  const stop=data.subscribe?.(update);
  const shutdown=()=>{if(!alive)return;alive=false;stop?.();};scene.events.once('shutdown',shutdown);

@@ -1,3 +1,4 @@
+import {ITCH_BETA_EDITION} from '../edition';
 import {superName,superDescription} from './superCopy';
 import {fighterSuper} from '../sim/super';
 import { rosterHeadFrame } from '../render/portraitHeadshots';
@@ -337,7 +338,7 @@ export class CharacterSelectView {
 
   ui.hiddenLabel.setText(p.label);ui.hiddenStatus.setText(p.status);
 
-  const showTray=!!(p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
+  const showTray=!ITCH_BETA_EDITION&&!!(p.available&&!p.dummy&&!p.survival&&!p.hidden);ui.tray.setVisible(showTray);
 
   ui.skinButtons.forEach((hit,i)=>{hit.input!.enabled=showTray&&!p.locked&&p.focused&&p.skinCount>1;ui.skinDraws[i]();});
 

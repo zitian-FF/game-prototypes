@@ -1,0 +1,2 @@
+/** Local review only. Never included by a release entry. Never writes storage. */
+export function betaView(){const completed=Math.max(0,Math.min(5,Number(new URLSearchParams(location.search).get('matches'))||0));return {completed,wins:Math.floor(completed/2),records:[],fighters:['marco','mia','bruno',...(completed>=3?['roxy']:[]),...(completed>=5?['nadia']:[])],milestones:[{fighter:'roxy',required:3,unlocked:completed>=3},{fighter:'nadia',required:5,unlocked:completed>=5}]};}

@@ -1,3 +1,4 @@
+import {ITCH_BETA_EDITION} from '../edition';
 import type Phaser from 'phaser';
 import type { WireProfile } from '../progress/alias';
 import { titleName } from '../progress/titles';
@@ -30,9 +31,9 @@ export function rankedIdentityCapsule(scene:Phaser.Scene,bounds:{x:number;y:numb
  if(expanded)name.setWordWrapWidth(width-18,true);
  const fit=(label:Phaser.GameObjects.Text,value:string,maxWidth:number)=>{label.setScale(1).setText(value).setScale(Math.min(1,maxWidth/Math.max(1,label.width)));};
  const set=(value:RankedIdentity)=>{
-  fit(name,value.profile?`${value.profile.alias} · ${t('profile.level',{level:value.profile.level})}`:t('match.waiting'),width-18);
+  fit(name,value.profile?(ITCH_BETA_EDITION?value.profile.alias:`${value.profile.alias} · ${t('profile.level',{level:value.profile.level})}`):t('match.waiting'),width-18);
   if(expanded)name.setScale(Math.min(name.scaleX,(height-18)/Math.max(1,name.height)));
-  fit(meta,[value.profile?titleName(value.profile.title):'',ratingLabel(value.rating,t)].filter(Boolean).join(' · '),width-18);
+  fit(meta,[!ITCH_BETA_EDITION&&value.profile?titleName(value.profile.title):'',ratingLabel(value.rating,t)].filter(Boolean).join(' · '),width-18);
  };set(identity);
  return {root,set,setVisible:(visible:boolean)=>root.setVisible(visible),destroy:()=>root.destroy(true)};
 }

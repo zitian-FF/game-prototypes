@@ -1,3 +1,4 @@
+import {ITCH_BETA_EDITION} from '../edition';
 import {controlHint} from '../ui/controlHint';
 import {loadRating,onRatingState} from '../net/rating';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
@@ -51,12 +52,15 @@ export class MenuScene extends Phaser.Scene {
     if (!logo) this.add
       .text(menuX, top + 33, 'PUNCHIES', { fontFamily: 'Arial', fontSize: '40px', fontStyle: 'bold', color: '#fff1d1', stroke: '#101b32', strokeThickness: 6, resolution: PIXEL_RATIO })
       .setOrigin(0.5);
+    if(ITCH_BETA_EDITION)titleButton(this,menuX,top+105,w,45,t('common.single_player'),()=>startScreen(this,'CharSelect',{mode:'vsai'}),true);
+    else {
     const zombieW=82,soloW=w-zombieW-8;
     titleButton(this,menuX-(zombieW+8)/2,top+105,soloW,45,t('common.single_player'),()=>startScreen(this,'CharSelect',{mode:'vsai'}),true);
     const zx=menuX+(soloW+8)/2;
     const zombie=titleButton(this,zx,top+105,zombieW,45,t('survival.menu'),()=>startScreen(this,'SurvivalEntry'),false,130,'green');
     zombie.setX(zx+11).setScale(Math.min(zombie.scaleX,43/zombie.width));
     zombieHandIcon(this,zx-25,top+105,22,132);
+    }
     const category = (y: number, label: string) => {
       this.add.text(menuX,y,label,{fontFamily:'Arial',fontSize:'11px',fontStyle:'bold',color:'#a6c5e8',resolution:PIXEL_RATIO}).setOrigin(0.5);
       const g=this.add.graphics().lineStyle(1,0x789ecb,0.65);
@@ -69,6 +73,8 @@ export class MenuScene extends Phaser.Scene {
     category(top+213,t('menu.practice'));
     titleButton(this,menuX-(half+12)/2,top+243,half,38,t('common.training'),()=>startScreen(this,'CharSelect',{mode:'training'}),false,130,'purple');
     titleButton(this,menuX+(half+12)/2,top+243,half,38,t('menu.tutorial'),()=>startScreen(this,'Tutorial'),false,130,'teal');
+    if(ITCH_BETA_EDITION)titleButton(this,menuX,top+294,w,27,t('common.settings'),()=>this.openSettings());
+    else {
     titleButton(this,menuX-(half+12)/2,top+294,half,27,t('common.settings'),()=>this.openSettings());
     const shopX = menuX + (half + 12) / 2;
     const shop = titleButton(this,shopX,top+294,half,27,t('menu.shop'),()=>this.openShop(),false,130,'green');
@@ -87,6 +93,8 @@ export class MenuScene extends Phaser.Scene {
       const bx = shopX + half / 2 - 2, by = top + 283;
       this.add.graphics().setDepth(133).fillStyle(0xe8283c).fillCircle(bx, by, 8).lineStyle(2, 0xffffff).strokeCircle(bx, by, 8);
       this.add.text(bx, by, '!', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff', resolution: PIXEL_RATIO }).setOrigin(0.5).setDepth(134);
+    }
+
     }
 
     this.msg = this.add

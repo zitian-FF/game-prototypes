@@ -1,12 +1,12 @@
 ## Current milestone
-Punchies CrazyGames prepared for the explicitly approved itch Suits deployment; Punchies Master stays on staging.
+Beta-only UI ready on Art branch `proto/punchies/beta-ui`, based on `4e192cb`; integration and release belong to Build.
 ## What was implemented
-Complete CG11 edition and5+6 grid, Modern/Classic integration, separate save/cohort policy and a no-overwrite migration of existing itch saves into CG keys. Production flags exclude staging/QA controls. Existing reset epoch retained.
+Profile scene and title entry show alias/default-fighter avatar, completed match record and real rating-service states. Roxy and Nadia unlock milestones use the Logic ledger at three/five completed whole matches. Results show only completed match count. Beta menu hides Shop/tokens/chests/Zombies; selection hides skin tray; HUD/VS/ranked results hide level/title labels.
 ## Key technical decisions
-Canonical editions: Punchies Master→staging; Punchies CrazyGames→zitian-ff/suits:html5; Punchies Beta→new Punchies - Beta Test page. Same source/prepared art; no extra CG staging route or new lossy compression. CI alone increments version after successful upload.
+Three Build compile aliases target `src/editions/beta/ProfileScene.ts`, `titleProfileEntry.ts`, and `resultProgress.ts` with matching exports. Shared scene changes are gated by `ITCH_BETA_EDITION`. No new generated assets, economy writes, XP awards, tuning changes or roster geometry edits. Default avatar crops match their target aspect ratio.
 ## Open questions
-None blocks the authorized CG release.
+Build owns final alias/lean profile dependencies, edition flag, ledger/keys, six-language keys, default-skin inbound policy and release packaging.
 ## Known issues
-Beta branch proto/punchies/free-community-preparation is local scaffolding, not a completed edition or public page. Actual CrazyGames portal ads/controller/iOS/two-device WebRTC are not verified by a desktop boot.
+Local UI fixture uses explicitly labelled synthetic match counts with no ledger writes. Real match completion, backend Elo, physical controller, portal and final package are not validated by this UI fixture. Menu review fixture does not load arena layers. Preview dependency copies are deliberately excluded from Art commit.
 ## Next proposed step
-Deploy approved CG source to itch via the explicit once-only promotion workflow; confirm processing and actual live build. Keep Master staging pin1abdc04.
+Integrate Art UI into Build's Beta runtime branch once. Verify actual five-fighter roster/default avatars, completed-match milestones and stripped artifact before publication.
