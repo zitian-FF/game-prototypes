@@ -1,0 +1,10 @@
+import type {CharId} from '../../sim/character';
+import type {ShopDraftState,ShopItem} from '../../shop/draft';
+import {betaFighters} from '../../progress/beta';
+import {t} from '../../i18n';
+export const DEFAULT_SKIN='default';
+export const availableFighters=(_state?:ShopDraftState):CharId[]=>betaFighters() as CharId[];
+export const ownedSkins=(_state:ShopDraftState,_char:CharId):string[]=>['default'];
+export const equippedSkin=(_state:ShopDraftState,_char:CharId,_requested:unknown)=>'default';
+export const skinItem=(_char:string,_skin:string):ShopItem|undefined=>undefined;
+export const skinName=(_char:string,_skin:string)=>t('shop.default');

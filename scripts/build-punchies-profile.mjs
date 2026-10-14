@@ -57,7 +57,7 @@ if(profile==='standard'){
   await archive(settings.audioUrl,settings.audioSha256,staging,name=>/^music\/(title\.m4a|charselect\.m4a|gameplay\.m4a|credits\.md|SOURCE-MAPPING\.md)$/.test(name)||name==='music/');
   fs.cpSync(path.join(staging,'music'),path.join(target,'audio'),{recursive:true});
 }
-const stageArtOverlay=await overlayStagingArt(path.join(target,'assets'),staging,settings.artSha256??null,portal,profile);
+const stageArtOverlay=editionName==='itchbeta'?null:await overlayStagingArt(path.join(target,'assets'),staging,settings.artSha256??null,portal,profile);
 if(process.env.PUNCHIES_STAGING!=='on'&&!fs.existsSync('prototypes/punchies/production-promotion.json')&&fs.existsSync(path.join(target,'assets/loose/materialmask_tee.png')))throw Error('Staging mask leaked into production');
 const editionArt=editionName==='master'?null:selectEditionArt(path.join(target,'assets'),editionName);
 const profileRecord={profile,portal,...(editionName==='master'?{}:{edition:editionName,editionPolicyHash:edition.policyHash,editionFighters:edition.fighters,editionArt}),musicExtension:settings.musicExtension,artSha256:stageArtOverlay?.archiveSha256??settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256,staging:process.env.PUNCHIES_STAGING==='on',saveResetId:process.env.PUNCHIES_SAVE_RESET_ID??'',...(stageArtOverlay?(process.env.PUNCHIES_STAGING==='on'?{stageArtOverlay}:{approvedContent:{...JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json')),overlay:stageArtOverlay}}): {})};

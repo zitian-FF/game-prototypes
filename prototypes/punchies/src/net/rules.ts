@@ -1,4 +1,4 @@
-import {EDITION_ID,EDITION_POLICY_HASH} from '../edition';
+import {EDITION_ID,EDITION_POLICY_HASH,ITCH_BETA_EDITION} from '../edition';
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
@@ -27,7 +27,7 @@ export function validControlModes(value:unknown):value is ['modern'|'classic','m
 export const controlModesHash=(modes:unknown)=>validControlModes(modes)?hash(modes):null;
 
 export function compatibleStart(value:unknown,rated:boolean,validate:(json:string)=>{ok:boolean}):boolean {
- const m=value as {rules?:unknown;tune?:unknown;tuneHash?:unknown;rated?:boolean;round?:unknown;delay?:unknown;chars?:unknown;ratingNonce?:unknown;controlModes?:unknown;controlHash?:unknown};
+ const m=value as {rules?:unknown;tune?:unknown;tuneHash?:unknown;rated?:boolean;round?:unknown;delay?:unknown;chars?:unknown;skins?:unknown;ratingNonce?:unknown;controlModes?:unknown;controlHash?:unknown};
  if(!m||!validControlModes(m.controlModes)||m.controlHash!==controlModesHash(m.controlModes))return false;
- return !!m&&sameRules(m.rules)&&(m.rated===true)===rated&&typeof m.tune==='string'&&typeof m.tuneHash==='string'&&m.tuneHash===tuneSnapshotHash(m.tune)&&validate(m.tune).ok&&Number.isSafeInteger(m.round)&&Number(m.round)>0&&Number.isSafeInteger(m.delay)&&Number(m.delay)>=0&&Number(m.delay)<=60&&Array.isArray(m.chars)&&m.chars.length===2&&m.chars.every(id=>CHARACTER_IDS.includes(id))&&(!rated||(typeof m.ratingNonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.ratingNonce)));
+ return !!m&&sameRules(m.rules)&&(m.rated===true)===rated&&typeof m.tune==='string'&&typeof m.tuneHash==='string'&&m.tuneHash===tuneSnapshotHash(m.tune)&&validate(m.tune).ok&&Number.isSafeInteger(m.round)&&Number(m.round)>0&&Number.isSafeInteger(m.delay)&&Number(m.delay)>=0&&Number(m.delay)<=60&&Array.isArray(m.chars)&&m.chars.length===2&&m.chars.every(id=>CHARACTER_IDS.includes(id))&&(!ITCH_BETA_EDITION||Array.isArray(m.skins)&&m.skins.length===2&&m.skins.every(skin=>skin==='default'))&&(!rated||(typeof m.ratingNonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.ratingNonce)));
 }

@@ -1,4 +1,5 @@
 import { EDITIONS, editionContract, editionTune } from './scripts/punchies-editions.mjs';
+import {betaBuildPlugin} from './scripts/punchies-beta-build';
 import { defineConfig } from 'vite';
 import { punchiesDebugGate } from './scripts/punchies-debug-gate';
 import react from '@vitejs/plugin-react';
@@ -66,7 +67,7 @@ export default defineConfig(({ command }) => ({
   root: assetProfile ? path.resolve(__dirname, 'prototypes/punchies') : __dirname,
   base: '/game-prototypes/',
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
-    plugins: [punchiesDebugGate(stagingBuild, qaBuild), react(), tailwindcss(), {
+    plugins: [betaBuildPlugin(edition),punchiesDebugGate(stagingBuild, qaBuild), react(), tailwindcss(), {
       name: 'punchies-art-index', enforce:'pre', apply:'build',
       transformIndexHtml(html,ctx){if(ctx.filename.replace(/\\/g,'/').endsWith('/prototypes/punchies/index.html'))return html.replace(/<title>.*?<\/title>/,'<title>'+ (edition.name==='crazygames'?'Punchies CrazyGames':edition.name==='itchbeta'?'Punchies Beta':'Punchies Master')+'</title>');},
       resolveId(id) { if(id==='virtual:punchies-art')return '\0punchies-art'; },
@@ -119,4 +120,5 @@ export default defineConfig(({ command }) => ({
     },
   },
 }));
+
 

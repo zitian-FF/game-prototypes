@@ -28,6 +28,7 @@ export interface MatchData {
   delay: number;
   round: number;
   series?: import('../sim/series').SeriesState;
+  betaCompletionId?:string;
   // Guest only: its own tune, restored after the match (it plays on the
   // host's values).
   restoreTune?: string;

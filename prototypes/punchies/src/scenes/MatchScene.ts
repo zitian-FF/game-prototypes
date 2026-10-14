@@ -1,3 +1,7 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {STAGING_BUILD,DEBUG_TOOLS_BUILD} from '../buildFlags';
+import {newBetaCompletionId,recordBetaCompletion} from '../progress/beta';
+import {betaLineupAllowed} from '../editions/beta/policy';
 import {ratingStatus,reportRating,ratingConfigured} from '../net/rating';
 import {rankedPlayers,rankedResultBinding} from '../net/rankedResult';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
@@ -16,7 +20,7 @@ import { getNav } from '../ui/menuNav';
 import { fighterGroups, prefetchGroups } from '../render/art';
 import { Rollback } from '../net/rollback';
 import type { MatchData } from './LobbyScene';
-import { charName } from '../sim/character';
+import { charName,isCharId } from '../sim/character';
 import { restoreTune, tune, TICK_RATE } from '../sim/tune';
 import { isDebug } from '../debug/debugPanel';
 import type { SimState } from '../sim/types';
@@ -74,7 +78,8 @@ export class MatchScene extends Phaser.Scene {
   create(data: MatchData): void {
     const epoch=++this.connectionEpoch;this.stageReady=false;this.terminal=false;this.over=true;this.leaving=undefined;
     applyCameraPixelRatio(this);
-    this.match = data;
+    if(ITCH_BETA_EDITION&&(!data.chars.every(isCharId)||(data.skins??['default','default']).some(skin=>skin!=='default'))){data.session.leave();startScreen(this,'Menu',{message:t('online.rules_mismatch')});return;}
+    this.match = ITCH_BETA_EDITION?{...data,betaCompletionId:data.series?(data.betaCompletionId??newBetaCompletionId()):data.round===1&&data.session.assignment?.nonce?'online:'+data.session.assignment.nonce:newBetaCompletionId()}:data;
     this.ratingMatchPromise=data.session.ratingMatch;
     const session=data.session,alive=()=>epoch===this.connectionEpoch&&!this.terminal;
     const rejected:typeof session.onRejected=reason=>{if(reason==='incompatible'&&alive()){this.terminal=true;this.over=true;setGameplay(false);session.leave();if(data.restoreTune)restoreTune(data.restoreTune);startScreen(this,'Menu',{message:t('online.rules_mismatch')});}};
@@ -313,6 +318,7 @@ export class MatchScene extends Phaser.Scene {
       this.tryRematch();
       return;
     }
+    if(ITCH_BETA_EDITION&&!this.terminal&&!this.departed)recordBetaCompletion({id:this.match.betaCompletionId!,mode:'online',completed:true,seriesComplete:true,forfeit:false,disconnected:false,qa:STAGING_BUILD||DEBUG_TOOLS_BUILD,win:r.winner===this.match.localIdx});
     this.match.session.markMatchCompleted?.();
     const score=r.winner===null?.5:r.winner===this.match.localIdx?1:0;
     if(!this.match.session.rated)void this.showRating(score);

@@ -50,6 +50,7 @@ export function selectEditionArt(directory,name) {
   const animationKeys=new Set(Object.values(allowedGroups).flatMap(group=>group.animations));
   const allowedAnimations=Object.fromEntries(Object.entries(animations).filter(([key])=>animationKeys.has(key)));
   const keep=relative=>{
+    if(name==='itchbeta'&&/^loose\/(chest_|punch_token|reward_ad|kai_emblems|part_zombie)/.test(relative))return false;
     if(relative.startsWith('atlas/atlas-'))return atlasFiles.has(relative)||[...atlasFiles].some(json=>json.replace(/\.json$/,'.webp')===relative);
     const key=path.basename(relative).replace(/\.(webp|png|json)$/,'').replace(/^(part|portrait|materialmask)_/,'');
     const fighter=owner(key);

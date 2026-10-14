@@ -1,3 +1,5 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {betaView} from '../progress/beta';
 import {rosterKey,PAD_ROSTER,type RosterCommand,type KeyboardProfile} from '../input/rosterMenu';
 import {setRosterHintContext} from '../ui/controlHint';
 import {rosterScores,statFill,type RosterStat} from '../sim/rosterStats';
@@ -14,7 +16,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { applyCameraPixelRatio } from '../render/pixelRatio';
 import { addVersionStamp } from '../version/versionStamp';
-import { uppercutStars, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
+import { charName,uppercutStars, CHARACTER_IDS, isCharId, type CharId } from '../sim/character';
 import { loadCharPrefs, saveCharPrefs } from '../sim/charPrefs';
 import { BOT_LEVELS, type BotLevel } from '../sim/bot';
 import { applyTuneJson, restoreTune, snapshotTune, tune, validateTuneJson } from '../sim/tune';
@@ -259,7 +261,7 @@ export class CharSelectScene extends Phaser.Scene {
     }
     const side = this.sides[s];
     if (!this.editable(s)) return;
-    if(!this.available(s)){sfx.denied();this.notice=t('charselect.locked_fighter_daily_chest');return;}
+    if(!this.available(s)){sfx.denied();this.notice=this.lockedNotice(s);return;}
     sfx.uiConfirm();
     side.selected=true;this.notice='';
     if (side.locked) {
@@ -306,7 +308,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (s < 0 || !this.editable(s)) return;
     const side = this.sides[s];
     if (side.locked) side.locked = false;
-    side.sel = i;side.selected=false;side.skin=this.preferredSkin(s);this.notice=this.available(s)?'':t('charselect.locked_fighter_daily_chest');
+    side.sel = i;side.selected=false;side.skin=this.preferredSkin(s);this.notice=this.available(s)?'':this.lockedNotice(s);
     if (this.available(s)) sfx.uiSelect(); else sfx.denied();
     // Online: tapping only selects (and un-readies); READY locks it in.
     if (this.data0.mode === 'online') {
@@ -322,6 +324,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private prefSide(s:number):string{return this.data0.mode==='online'?'p1':this.data0.mode==='vsai'&&s===1?'ai':s===0?'p1':'p2';}
+  private lockedNotice(s:number):string{const fighter=CHARACTER_IDS[this.sides[s].sel];return ITCH_BETA_EDITION?t('beta.unlock_requirement',{fighter:charName(fighter),matches:betaView().milestones.find(item=>item.fighter===fighter)?.required??0}):t('charselect.locked_fighter_daily_chest');}
   private available(s:number):boolean{return (this.sides[s].src==='remote'?this.remoteAvailable:availableFighters(loadShopDraft())).includes(CHARACTER_IDS[this.sides[s].sel]);}
   private preferredSkin(s:number):string {
     const id=CHARACTER_IDS[this.sides[s].sel];

@@ -1,3 +1,7 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {STAGING_BUILD,DEBUG_TOOLS_BUILD} from '../buildFlags';
+import {newBetaCompletionId,recordBetaCompletion} from '../progress/beta';
+import {betaLineupAllowed} from '../editions/beta/policy';
 import {loadControlModes} from '../input/controlPreferences';
 import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
@@ -29,17 +33,20 @@ export class LocalVsScene extends Phaser.Scene {
   private modes:readonly ['modern'|'classic','modern'|'classic']=['modern','modern'];
   private sim!: SimState;
   private stage!: FightStage;
-  private inputs!: LocalInputs & { chars?: [string, string];skins?:[string,string]; series?: SeriesState };
+  private inputs!: LocalInputs & { chars?: [string, string];skins?:[string,string]; series?: SeriesState;betaCompletionId?:string };
   private acc = 0;
   private over = false;
   private series!: SeriesState;
+  private betaCompletionId='';
 
 
   constructor() {
     super('LocalVs');
   }
 
-  create(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState }): void {
+  create(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState;betaCompletionId?:string }): void {
+    if(ITCH_BETA_EDITION&&!betaLineupAllowed(data?.chars??['marco','marco'],data?.skins??['default','default'])){startScreen(this,'Menu');return;}
+    if(ITCH_BETA_EDITION)this.betaCompletionId=data?.series?(data.betaCompletionId??newBetaCompletionId()):newBetaCompletionId();
     if(!data.series)this.modes=loadControlModes();
     this.series = data.series ?? newSeries(tune.match.bestOf);
 
@@ -51,9 +58,9 @@ export class LocalVsScene extends Phaser.Scene {
 
   private built = false;
 
-  private build(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState }): void {
+  private build(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState;betaCompletionId?:string }): void {
     this.built = true;
-    this.inputs = data;
+    this.inputs = {...data,betaCompletionId:this.betaCompletionId};
     this.acc = 0;
     this.over = false;
     const chars = data.chars ?? ['marco', 'marco'];
@@ -92,6 +99,7 @@ export class LocalVsScene extends Phaser.Scene {
       roundSplash(this, () => this.scene.restart({ ...this.inputs, series: outcome.series }));
       return;
     }
+    if(ITCH_BETA_EDITION)recordBetaCompletion({id:this.betaCompletionId,mode:'local',completed:true,seriesComplete:true,forfeit:false,disconnected:false,qa:STAGING_BUILD||DEBUG_TOOLS_BUILD,win:r.winner===0});
     track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished');
     this.registry.set('lastAward', awardMatch({ kind: 'localvs', win: false }));
     matchResult(this, r.winner === null ? t('common.draw') : t('match.p_victory', { n: r.winner + 1 }), {

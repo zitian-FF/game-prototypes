@@ -1,3 +1,7 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {STAGING_BUILD,DEBUG_TOOLS_BUILD} from '../buildFlags';
+import {newBetaCompletionId,recordBetaCompletion} from '../progress/beta';
+import {betaLineupAllowed} from '../editions/beta/policy';
 import {loadControlModes} from '../input/controlPreferences';
 import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
@@ -32,6 +36,7 @@ export class VsAIScene extends Phaser.Scene {
   private acc = 0;
   private over = false;
   private series!: SeriesState;
+  private betaCompletionId='';
 
 
   constructor() {
@@ -41,7 +46,9 @@ export class VsAIScene extends Phaser.Scene {
   private skins:[string,string]=['default','default'];
   private chars: [string, string] = ['marco', 'marco'];
 
-  create(data: { chars?: [string, string]; skins?:[string,string]; level?: BotLevel; series?: SeriesState }): void {
+  create(data: { chars?: [string, string]; skins?:[string,string]; level?: BotLevel; series?: SeriesState;betaCompletionId?:string }): void {
+    if(ITCH_BETA_EDITION&&!betaLineupAllowed(data?.chars??['marco','marco'],data?.skins??['default','default'])){startScreen(this,'Menu');return;}
+    if(ITCH_BETA_EDITION)this.betaCompletionId=data?.series?(data.betaCompletionId??newBetaCompletionId()):newBetaCompletionId();
     if(!data?.series)this.modes=[loadControlModes()[0],'classic'];
     this.series = data?.series ?? newSeries(tune.match.bestOf);
 
@@ -90,9 +97,10 @@ export class VsAIScene extends Phaser.Scene {
     const outcome = finishRound(this.series, r.winner);
     this.stage.setSeries(outcome.series);
     if (!outcome.complete) {
-      roundSplash(this, () => this.scene.restart({ chars: this.chars,skins:this.skins, level: this.level, series: outcome.series }));
+      roundSplash(this, () => this.scene.restart({ chars: this.chars,skins:this.skins, level: this.level, series: outcome.series,betaCompletionId:this.betaCompletionId }));
       return;
     }
+    if(ITCH_BETA_EDITION)recordBetaCompletion({id:this.betaCompletionId,mode:'ai',completed:true,seriesComplete:true,forfeit:false,disconnected:false,qa:STAGING_BUILD||DEBUG_TOOLS_BUILD,win:r.winner===0});
     track('match', 'VsAI', r.winner === null ? 'draw' : r.winner === 0 ? 'win' : 'lose', { level: this.level, char: this.chars[0] });
     this.registry.set('lastAward', awardMatch({ kind: 'vsai', win: r.winner === 0, botLevel: this.level }));
     matchResult(this, r.winner === null ? t('common.draw') : r.winner === 0 ? t('common.victory') : t('common.defeat'), {

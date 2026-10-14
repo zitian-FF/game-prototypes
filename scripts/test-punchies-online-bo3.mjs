@@ -3,7 +3,7 @@ import {rulesMock,tuneValidationMock,compatibleTune} from './lib-punchies-rules.
 import {EventEmitter} from 'node:events';
 const source=fs.readFileSync('prototypes/punchies/src/net/session.ts','utf8');
 const tick=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
-function peers(rated,modes=['modern','modern']){
+function peers(rated,modes=['modern','modern'],startChars=['tee','captain']){
  const rooms={},queue=[],timers=[],created=[],reports=[],ids={host:crypto.randomUUID(),guest:crypto.randomUUID()};
  const sessions={};
  for(const role of ['host','guest']){const exports={};vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout(){},require:id=>{
@@ -15,7 +15,7 @@ function peers(rated,modes=['modern','modern']){
  }});sessions[role]=new exports.NetSession('BO3',''+role,undefined,rated,undefined,modes[role==='host'?0:1]);}
  const deliver=(filter=()=>true)=>{for(let i=0;i<queue.length;){const p=queue[i];if(!filter(p)){i++;continue;}queue.splice(i,1);rooms[p.to][p.name].onMessage?.(p.data,{peerId:p.from});}};
  const begin=async()=>{rooms.host.onPeerJoin('guest');rooms.guest.onPeerJoin('host');await tick();deliver();timers.splice(0).forEach(fn=>fn());deliver();assert(sessions.host.readyForMatch&&sessions.guest.readyForMatch);
-  const nonce=crypto.randomUUID();if(rated)void sessions.host.beginRating(nonce);sessions.host.send({k:'start',rated,round:1,delay:2,tune:compatibleTune,chars:['tee','captain'],...(rated?{ratingNonce:nonce}:{})});deliver();if(rated)await sessions.guest.beginRating(nonce);await tick();assert(sessions.host.markMatchStarted());assert(sessions.guest.markMatchStarted());};
+  const nonce=crypto.randomUUID();if(rated)void sessions.host.beginRating(nonce);sessions.host.send({k:'start',rated,round:1,delay:2,tune:compatibleTune,chars:startChars,skins:['default','default'],...(rated?{ratingNonce:nonce}:{})});deliver();if(rated)await sessions.guest.beginRating(nonce);await tick();assert(sessions.host.markMatchStarted());assert(sessions.guest.markMatchStarted());};
  return {sessions,rooms,queue,deliver,begin,created,reports};
 }
 for(const rated of [false,true])for(const first of ['host','guest']){
@@ -56,13 +56,14 @@ for(const rated of [false,true]){const p=peers(rated);await p.begin();p.sessions
 
 function mod(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/'+file+'.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:id=>mocks[id]??{}});return exports;}
 const series=mod('sim/series'),binding=mod('net/rankedResult');
-function sceneHarness(role,p){
+function sceneHarness(role,p,beta=null){
  const exports={},splashes=[],transitions=[],exceptions=[],timers=[];let claims=0;
  class LS{constructor(_idx,_delay,_max,round,send){this.round=round;this.send=send;this.received=[];this.result=null;this.sim={tick:0,fighters:[{x:100,y:100},{x:200,y:100}]};this.rollbacks=0;this.rolledBackFrames=0;this.maxRollbackDepth=0;}receiveInputs(packet){if(packet.round===this.round)this.received.push(packet);}receiveHash(){}confirmedResult(){return this.result;}flushInputs(){this.send({k:'inp',round:this.round,from:0,d:[[0,0,0]],adv:0});}resolve(){return [];}canScheduleLocal(){return false;}canStep(){return false;}}
  class Stage{constructor(scene){scene.events.once('shutdown',()=>this.dead=true);}pollDevices(){if(this.dead)throw Error('disposed controls');}handleEvents(){}setSeries(){}draw(){}koFinished(){return true;}}
  const label=()=>({active:true,setOrigin(){return this;},setDepth(){return this;},setVisible(){return this;},setText(){return this;},setColor(){return this;}});
  const tune=JSON.parse(compatibleTune);tune.net.enhanced=0;
  vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/scenes/MatchScene.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,performance,require:id=>{
+  if(id==='../edition')return {ITCH_BETA_EDITION:!!beta};if(id==='../buildFlags')return {STAGING_BUILD:false,DEBUG_TOOLS_BUILD:false};if(id==='../progress/beta')return beta??{};
   if(id==='phaser')return {default:{Scene:class{}}};if(id==='../sim/series')return series;if(id==='../net/rollback')return {Rollback:LS};
   if(id==='./FightStage')return {FightStage:Stage,makeButton(){}};
   if(id==='../render/pixelRatio')return {applyCameraPixelRatio(){},PIXEL_RATIO:1,VIEW:{cx:422,cy:195,left:0,top:0,width:844}};
@@ -71,14 +72,14 @@ function sceneHarness(role,p){
   if(id==='../net/rankedResult')return binding;
   if(id==='../net/rating')return {ratingConfigured:()=>p.sessions.host.rated,reportRating:async(id,score)=>{claims++;p.reports.push({role,id,score});return {state:'settled',outcome:{local:{before:1000,after:1000,delta:0,matches:1},opponent:{before:1000,after:1000,delta:0,matches:1}}};},ratingStatus:async()=>null};
   if(id==='../progress/profile')return {sideProfiles:()=>[{alias:'host',title:'rookie',level:1},{alias:'guest',title:'rookie',level:1}]};
-  if(id==='../progress/progress')return {awardMatch:()=>({}),progressView:()=>({title:'rookie'})};if(id==='../sim/tune')return {tune,TICK_RATE:60,restoreTune:value=>transitions.push({restore:value})};
+  if(id==='../progress/progress')return beta?mod('editions/beta/progress',{'../../progress/beta':beta}):{awardMatch:()=>({}),progressView:()=>({title:'rookie'})};if(id==='../sim/tune')return {tune,TICK_RATE:60,restoreTune:value=>transitions.push({restore:value})};
   if(id==='../portal/gameplay')return {setGameplay(){}};if(id==='../portal/analytics')return {track(){}};if(id==='../ui/menuNav')return {getNav:()=>({engage(){}})};
-  if(id==='../render/art')return {fighterGroups:()=>[],prefetchGroups(){}};if(id==='../sim/character')return {charName:id=>id};if(id==='../version/versionStamp')return {addVersionStamp(){}};if(id==='../i18n')return {t:k=>k};if(id==='../debug/debugPanel')return {isDebug:()=>false};return {};
+  if(id==='../render/art')return {fighterGroups:()=>[],prefetchGroups(){}};if(id==='../sim/character')return {charName:id=>id,isCharId:id=>['marco','mia','bruno','roxy','nadia'].includes(id)};if(id==='../version/versionStamp')return {addVersionStamp(){}};if(id==='../i18n')return {t:k=>k};if(id==='../debug/debugPanel')return {isDebug:()=>false};return {};
  }});
  const scene=new exports.MatchScene();scene.events=new EventEmitter();scene.add={text:label};scene.registry={set(){}};
  scene.time={addEvent:cfg=>{const t={cfg,removed:false,remove(){this.removed=true;}};timers.push(t);return t;},delayedCall:(_delay,cb)=>({remove(){},cb}),removeAllEvents(){timers.forEach(t=>t.removed=true);}};
  scene.scene={isActive:()=>true,restart:data=>transitions.push({restart:data})};
- const data={session:p.sessions[role],localIdx:role==='host'?0:1,round:1,delay:2,chars:['tee','captain'],restoreTune:'original-local-tune'};
+ const data={session:p.sessions[role],localIdx:role==='host'?0:1,round:1,delay:2,chars:beta?['marco','mia']:['tee','captain'],skins:['default','default'],restoreTune:'original-local-tune'};
  const attempt=fn=>{try{fn();}catch(error){exceptions.push(error);}};
  return {scene,data,splashes,transitions,exceptions,attempt,get claims(){return claims;},restart(next){scene.events.emit('shutdown');attempt(()=>scene.create(next));}};
 }
@@ -106,3 +107,11 @@ for(const rated of [false,true])for(const early of ['host','guest']){
 // Rejected bootstrap remains safe even when Phaser reuses a disposed scene instance.
 {const p=peers(false);await p.begin();const h=sceneHarness('host',p);h.scene.create(h.data);h.scene.events.emit('shutdown');p.sessions.host.markMatchStarted=()=>false;h.attempt(()=>h.scene.create({...h.data,round:2}));h.attempt(()=>h.scene.update(100,16));assert.equal(h.exceptions.length,0,'no stale-stage poll after rejected create');assert.equal(h.transitions.at(-1).key,'Menu');assert(h.transitions.some(t=>t.restore==='original-local-tune'));}
 console.log('PASS actual MatchScene: alternating host/guest BO3 KO transitions, disconnect freezes, late splash/callback cleanup, rejected bootstrap safety, tune restore and no false/rerun rating claim.');
+
+function betaFixture(){const state=new Map(),exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/progress/beta.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,require:id=>id==='../portal/keys'?{KEYS:{betaCompletions:'beta-ledger'}}:{store:{getItem:key=>state.get(key)??null,setItem:(key,value)=>state.set(key,value)}}});return exports;}
+{const p=peers(false,['modern','modern'],['marco','mia']);await p.begin();const b={host:betaFixture(),guest:betaFixture()},h={host:sceneHarness('host',p,b.host),guest:sceneHarness('guest',p,b.guest)};for(const x of Object.values(h))x.scene.create(x.data);const ids={host:h.host.scene.match.betaCompletionId,guest:h.guest.scene.match.betaCompletionId};
+ for(const [i,winner] of [0,1,0].entries()){for(const x of Object.values(h)){x.scene.ls.result={winner};x.attempt(()=>x.scene.showResult());}p.deliver();for(const role of ['host','guest']){assert.equal(h[role].exceptions.length,0);assert.equal(b[role].betaView().completed,i===2?1:0,'only whole online series grants');assert.equal(h[role].scene.match.betaCompletionId,ids[role]);}
+ if(i<2)for(const role of ['host','guest']){h[role].splashes.at(-1).next();h[role].restart(h[role].transitions.at(-1).restart);}}
+ assert.equal(b.host.betaView().wins,1);assert.equal(b.guest.betaView().wins,0);}
+{const p=peers(false,['modern','modern'],['marco','mia']);await p.begin();const b=betaFixture(),h=sceneHarness('host',p,b);h.scene.create(h.data);h.scene.match.session.onPeerLeft();assert.equal(b.betaView().completed,0,'disconnect never grants a match');assert.equal(h.scene.terminal,true);}
+console.log('PASS actual online Beta scene + real ledger: zero per-round grants, one whole-set ID/count, correct side wins, disconnect excluded');
