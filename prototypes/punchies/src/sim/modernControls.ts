@@ -1,11 +1,12 @@
 import type {Fighter,FrameInput,PunchType} from './types';
 import {punchCfg} from './character';
+import {coreRadius,normalHurtRadius,separation} from './geometry';
 
 export type ControlMode='modern'|'classic';
 export const MODERN_DAMAGE_MULT=.8;
 export const MODERN_DODGE_WINDOW=12;
 /** Selection only: never changes punch geometry. Included in online rules hash. */
-export const MODERN_SELECTION_TOLERANCE=Object.freeze({hookReachFraction:0,hookHitRadiusFraction:0,crossJabInsetFraction:0,crossReachFraction:.20});
+export const MODERN_SELECTION_TOLERANCE=Object.freeze({crossReachFraction:.20,contactBoundaryEpsilon:1e-6});
 const ENTER_NEUTRAL=.12,LEAVE_NEUTRAL=.20;
 export function controlMode(value:unknown):ControlMode{return value==='classic'?'classic':'modern';}
 export interface ModernStickState {neutral:boolean;dodgeWindow:number;dx:number;dy:number}
@@ -28,18 +29,22 @@ export function consumeModernDodge(state:ModernStickState,legal:boolean):{dx:num
   if(!legal||state.dodgeWindow<=0)return null;
   state.dodgeWindow=0;return {dx:state.dx,dy:state.dy};
 }
-/** Approved context boundaries are fist reach, already scaled in world units.
- * Hurt envelopes classify the actual hit, not the chosen action. */
-export function modernPunchRange(att:Fighter,_target:Fighter,type:'jab'|'cross'|'hook'):number {
-  return punchCfg(att,type).reach;
+/** Raw fist extension remains unchanged; selection uses real contact geometry below. */
+export function modernPunchRange(att:Fighter,_target:Fighter,type:'jab'|'cross'|'hook'):number{return punchCfg(att,type).reach;}
+export function modernPunchZones(att:Fighter,target:Fighter){
+  const hook=punchCfg(att,'hook'),jab=punchCfg(att,'jab'),cross=punchCfg(att,'cross'),core=coreRadius(target);
+  const hookMax=hook.reach+hook.hitRadius+core;
+  // Any closer than this can touch the head before full extension (early sour).
+  const lastEarlyReach=cross.reach*(cross.startReachFrac+(1-cross.startReachFrac)*cross.sourEarly/(cross.sourEarly+1));
+  const crossSweetMin=lastEarlyReach+cross.hitRadius+core;
+  const jabMax=Math.max(jab.reach+jab.hitRadius+core,crossSweetMin+MODERN_SELECTION_TOLERANCE.contactBoundaryEpsilon);
+  const crossContactMax=cross.reach+cross.hitRadius+normalHurtRadius(target);
+  return {bodyContact:separation(att,target),hookMax,jabMax,crossSweetMin,crossContactMax,crossMax:crossContactMax+cross.reach*MODERN_SELECTION_TOLERANCE.crossReachFraction};
 }
-/** Only at legal action start; the committed PunchState owns the choice thereafter. */
+/** Commit once at legal action start. Moving in too early can still jam a Cross; no auto-hit/auto-sweet. */
 export function contextualModernPunch(att:Fighter,target:Fighter):PunchType {
-  const dx=target.x-att.x,dy=target.y-att.y,distance=Math.sqrt(dx*dx+dy*dy);
-  const hook=punchCfg(att,'hook'),tolerance=MODERN_SELECTION_TOLERANCE;
-  const hookLimit=hook.reach+Math.min(hook.reach*tolerance.hookReachFraction,hook.hitRadius*tolerance.hookHitRadiusFraction);
-  const crossStart=modernPunchRange(att,target,'jab')*(1-tolerance.crossJabInsetFraction);
-  if(distance<=hookLimit)return 'hook';
-  if(distance>crossStart&&distance<=modernPunchRange(att,target,'cross')*(1+tolerance.crossReachFraction))return 'cross';
+  const dx=target.x-att.x,dy=target.y-att.y,distance=Math.sqrt(dx*dx+dy*dy),zones=modernPunchZones(att,target);
+  if(distance<=zones.hookMax)return 'hook';
+  if(distance>zones.jabMax&&distance<=zones.crossMax)return 'cross';
   return 'jab';
 }
