@@ -268,10 +268,10 @@ export function artImage(scene: Phaser.Scene, name: string, x: number, y: number
   const key = textureKey(name);
   if (!scene.textures.exists(key)) return null;
   const image = scene.add.image(x, y, key).setDisplaySize(w, h).setDepth(depth);
-  // Logo v4 adds bottom padding for the restored red extrusion. Preserve the
-  // old 462x131 artwork scale and pixel pivot in every loading/title consumer.
-  if (name === 'logo' && image.width === 462 && image.height >= 131) {
-    image.setDisplaySize(w, h * image.height / 131).setOrigin(.5, 65.5 / image.height);
+  // Every consumer uses the complete canonical wordmark at its natural aspect.
+  // Uniform scale also keeps standard/compact sources and crown padding aligned.
+  if (name === 'logo') {
+    image.setDisplaySize(w, w * image.height / image.width).setOrigin(.5, .5);
   }
   return image;
 }

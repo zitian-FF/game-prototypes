@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import AdmZip from 'adm-zip';
 import {EDITIONS,editionContract,editionBuildIdentity,selectEditionArt} from './punchies-editions.mjs';
 import {overlayStagingArt} from './overlay-punchies-staging-art.mjs';
+import {applyCanonicalLogo} from './punchies-logo-art.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
 const args=process.argv.slice(2),value=key=>args[args.indexOf(key)+1];
@@ -58,9 +59,11 @@ if(profile==='standard'){
   fs.cpSync(path.join(staging,'music'),path.join(target,'audio'),{recursive:true});
 }
 const stageArtOverlay=editionName==='itchbeta'?null:await overlayStagingArt(path.join(target,'assets'),staging,settings.artSha256??null,portal,profile);
+const logoArt=applyCanonicalLogo(path.join(target,'assets'),profile);
 if(process.env.PUNCHIES_STAGING!=='on'&&!fs.existsSync('prototypes/punchies/production-promotion.json')&&fs.existsSync(path.join(target,'assets/loose/materialmask_tee.png')))throw Error('Staging mask leaked into production');
 const editionArt=editionName==='master'?null:selectEditionArt(path.join(target,'assets'),editionName);
 const profileRecord={profile,portal,...(editionName==='master'?{}:{edition:editionName,editionPolicyHash:edition.policyHash,editionFighters:edition.fighters,editionArt}),musicExtension:settings.musicExtension,artSha256:stageArtOverlay?.archiveSha256??settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256,staging:process.env.PUNCHIES_STAGING==='on',saveResetId:process.env.PUNCHIES_SAVE_RESET_ID??'',...(stageArtOverlay?(process.env.PUNCHIES_STAGING==='on'?{stageArtOverlay}:{approvedContent:{...JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json')),overlay:stageArtOverlay}}): {})};
+profileRecord.logoArt=logoArt;
 fs.writeFileSync(path.join(target,'asset-profile.json'),JSON.stringify(profileRecord,null,2));
 const outDir=path.join(root,'dist',editionName==='master'?`punchies-${profile}-${portal}`:`punchies-${identity}`);
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--outDir',outDir,'--emptyOutDir','--base','./'],{stdio:'inherit',env:{...process.env,PUNCHIES_ASSET_PROFILE:profile,PUNCHIES_EDITION:editionName,PUNCHIES_PUBLIC_DIR:publicDir,PORTAL:portal}});
