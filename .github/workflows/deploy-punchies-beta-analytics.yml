@@ -60,8 +60,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.143.0'
-          command: deploy --config prototypes/punchies/analytics-server/wrangler.jsonc
+          workingDirectory: prototypes/punchies/analytics-server
+          command: deploy --config wrangler.jsonc
           secrets: REPORT_TOKEN
         env:
           REPORT_TOKEN: ${{ secrets.PUNCHIES_ANALYTICS_REPORT_TOKEN }}
+
 
