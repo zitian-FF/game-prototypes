@@ -92,9 +92,9 @@ Worker with the Editor role.
 ## Browser build hosting
 
 Firestorm should use its own itch.io project and HTML5 channel:
-`zitian-ff/firestorm-arena:html5`. The existing Current WIP slot remains
+`polsia/firestorm-arena:html5`. The existing Current WIP slot remains
 assigned to Punchies. The itch.io project exists as a private draft. The dedicated Butler workflow is
 `.github/workflows/deploy-firestorm-arena-itch.yml`, targeting
-`zitian-ff/firestorm-arena:html5`. It uploads only the Firestorm build and
+`polsia/firestorm-arena:html5`. It uploads only the Firestorm build and
 skips until the Phaser entry page and the `BUTLER_API_KEY` repository secret
 are present. See the workflow for its path filter and version-counter handling.

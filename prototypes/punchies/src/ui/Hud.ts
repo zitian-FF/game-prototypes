@@ -1,3 +1,5 @@
+import {modeBadge} from './modeBadge';
+import {CLASSIC_MODES,type ControlModes} from './controlMode';
 import {rankedIdentityCapsule,rankedCapsuleBounds,type RankedPlayers} from './rankedIdentityCapsule';
 import type { WireProfile } from '../progress/alias';
 import { titleName } from '../progress/titles';
@@ -36,6 +38,9 @@ export class Hud {
   showRoundSockets = true;
 
   private capsules:ReturnType<typeof rankedIdentityCapsule>[]=[];
+  private modes:ControlModes=CLASSIC_MODES;
+  private modeBadges:ReturnType<typeof modeBadge>[]=[];
+  setControlModes(modes:ControlModes):void{this.modes=[...modes];}
   private names: Phaser.GameObjects.Text[] = [];
   private titles: Phaser.GameObjects.Text[] = [];
   private upperReady: Phaser.GameObjects.Text[] = [];
@@ -54,6 +59,7 @@ export class Hud {
     for(let i=0;i<2;i++){
       if(ranked)this.capsules.push(rankedIdentityCapsule(scene,rankedCapsuleBounds(i),i,ranked[i]));
       const sign=i===0?-1:1;
+      this.modeBadges.push(modeBadge(scene,VIEW.cx+sign*(VIEW.width*.40+20),VIEW.top+41));
       const name=text(VIEW.cx+sign*VIEW.width*.34,VIEW.top+56,names[i],11,'#fff1d1');
       name.setScale(Math.min(1,VIEW.width*.18/name.width));
       this.names.push(name);
@@ -83,18 +89,19 @@ export class Hud {
         g.lineStyle(1.5,0xd5e0ef).strokePoints(p,true);
       }
     }
-    this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)));
+    this.meterLabels.forEach(({text,part})=>text.setVisible(show(part)&&(part!=='stamina'||this.modes.some((m,i)=>m==='classic'&&this.sidesShown[i]))));
     this.names.forEach((t,i)=>t.setVisible(!this.capsules.length&&show('health')&&this.sidesShown[i]));
     this.capsules.forEach((c,i)=>c.setVisible(show('health')&&this.sidesShown[i]));
     this.titles.forEach((t,i)=>t.setVisible(!this.capsules.length&&show('health')&&this.sidesShown[i]));
     for(let i=0;i<2;i++){
-      if(!this.sidesShown[i]){this.upperReady[i].setVisible(false);this.superLightning[i].setReady(false);continue;}
+      if(!this.sidesShown[i]){this.modeBadges[i].setVisible(false);this.upperReady[i].setVisible(false);this.superLightning[i].setReady(false);continue;}
+      this.modeBadges[i].setMode(this.modes[i]);this.modeBadges[i].setVisible(show('health'));
       const f=s.fighters[i],left=i===0;
       this.shownHealth[i]=this.shownHealth[i]<0?f.health:Math.max(f.health,this.shownHealth[i]-.4);
       if(show('health'))this.bar(left,34,14,.40,f.health/maxHealth(f),this.shownHealth[i]/maxHealth(f),0xef4db6,0,true);
       const elapsed=this.scene.time.now-this.staminaRejectedAt[i];
       const flash=elapsed<tune.view.staminaRejectFlashMs?.35+.6*Math.abs(Math.cos(elapsed*tune.view.staminaRejectFlashHz*Math.PI/1000)):0;
-      if(show('stamina'))this.bar(left,50,12,(29+(VIEW.width*.34-29)*.8)/VIEW.width,f.stamina/maxStamina(f),0,f.exhausted?0xef3545:0x34bfe8,flash);
+      if(show('stamina')&&this.modes[i]==='classic')this.bar(left,50,12,(29+(VIEW.width*.34-29)*.8)/VIEW.width,f.stamina/maxStamina(f),0,f.exhausted?0xef3545:0x34bfe8,flash);
       const stun=Math.min(1,f.stun/stunThreshold(f));
       if(show('stun'))this.bar(left,64,12,.20,f.stunFromMeter?1:stun,0,f.stunFromMeter?0xffdf43:stun>.7?0xff9d35:0xb88b53);
 

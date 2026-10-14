@@ -66,6 +66,7 @@ const sceneCode = ts.transpileModule(fs.readFileSync(sceneFile, 'utf8'), {
 vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,performance, console, require: (id) => {
   if (id === 'phaser') return { default: { Scene: class {} } };
   if (id === '../sim/series') return { newSeries, finishRound };
+  if (id === '../input/controlPreferences') return {loadControlModes:()=>['modern','modern']};
   if (id === '../sim/tune') return { tune, TICK_RATE,restoreTune:value=>transitions.push({key:'restore',data:value}) };
   if (id === '../ui/matchPresentation') return {
     roundSplash: (_scene, next) => splashes.push(next),
@@ -83,7 +84,7 @@ vm.runInNewContext(sceneCode, { exports: sceneExports, crypto:globalThis.crypto,
 } });
 function online(series, winner) {
   const scene = new sceneExports.MatchScene();
-  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { peer:{title:'rookie'}, send: m => sent.push(m) } },
+  Object.assign(scene, { series, match: { round: 7, localIdx: 0, chars: ['marco', 'mia'], session: { peer:{title:'rookie'}, prepareNextMatchMode(){return true;},send: m => sent.push(m) } },
     stageReady:true,ls: { confirmedResult: () => ({ winner }),flushInputs(){tails++;} }, waiting: { setVisible() {} },
     stage: { setSeries() {} }, time: { addEvent() {} },
     registry: { set() {} }, scene: { restart: data => transitions.push({ key: 'restart', data }) } });

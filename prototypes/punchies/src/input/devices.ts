@@ -113,9 +113,10 @@ export class DeviceHub {
   }
 
   // FrameInput for one keyboard/gamepad source; consumes its tap edges.
-  sample(source: Exclude<InputSource, 'touch'>): FrameInput {
+  sample(source: Exclude<InputSource, 'touch'>,mode:'modern'|'classic'='classic'): FrameInput {
     if (this.suppressed) return { ...NEUTRAL_INPUT };
-    return source === 'kb1' || source === 'kb2' ? this.sampleKeys(loadLayouts()[source]) : this.samplePad(source === 'pad1' ? 0 : 1);
+    const input=source === 'kb1' || source === 'kb2' ? this.sampleKeys(loadLayouts()[source]) : this.samplePad(source === 'pad1' ? 0 : 1,mode);
+    input.normalAttack=mode==='modern'&&input.normalAttack;return input;
   }
 
   private sampleKeys(m: KeyMap): FrameInput {
@@ -135,6 +136,7 @@ export class DeviceHub {
       mx: Math.round(x * 100),
       my: Math.round(y * 100),
       jab: edge(m.jab),
+      normalAttack:any(m.jab),
       cross: edge(m.cross),
       hook: edge(m.hook),
       uppercut: edge(m.uppercut),
@@ -143,7 +145,7 @@ export class DeviceHub {
     };
   }
 
-  private samplePad(i: number): FrameInput {
+  private samplePad(i: number,mode:'modern'|'classic'): FrameInput {
     const p = this.pads()[i];
     if (!p) return { ...NEUTRAL_INPUT };
     const m = loadLayouts()[i === 0 ? 'pad1' : 'pad2'];
@@ -155,7 +157,7 @@ export class DeviceHub {
     };
     let x = p.axes[0] ?? 0;
     let y = p.axes[1] ?? 0;
-    if (Math.sqrt(x * x + y * y) < STICK_DEADZONE) {
+    if (mode==='classic'&&Math.sqrt(x * x + y * y) < STICK_DEADZONE) {
       x = 0;
       y = 0;
     }
@@ -172,6 +174,7 @@ export class DeviceHub {
       mx: Math.round(x * 100),
       my: Math.round(y * 100),
       jab: edge(...m.jab),
+      normalAttack:m.jab.some(held),
       cross: edge(...m.cross),
       hook: edge(...m.hook),
       uppercut: edge(...m.uppercut),
@@ -202,6 +205,7 @@ export function mergeInputs(inputs: FrameInput[]): FrameInput {
     out.uppercut ||= i.uppercut;
     out.dodge ||= i.dodge;
     out.guard ||= i.guard;
+    out.normalAttack ||= i.normalAttack;
   }
   const mag = Math.sqrt(x * x + y * y);
   if (mag > 100) {

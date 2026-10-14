@@ -8,11 +8,11 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal,profil
   const stage=process.env.PUNCHIES_STAGING==='on';
   const approvalPath=path.resolve('prototypes/punchies/production-promotion.json');
   const approval=fs.existsSync(approvalPath)?JSON.parse(fs.readFileSync(approvalPath)):null;
-  const approved=approval?.ownerApproved===true&&['7d47e739e457ac43e55c60fe68bf47bd2352815c','182693b09442928a8ece249cb2032dfe5e26c8da','6d4ca357cabe59c8876cd2c921162a02f8ad7269'].includes(approval.reviewedStageSha)&&approval.features?.kai===true&&approval.features?.teeIndexedPortrait===true;
+  const approved=approval?.ownerApproved===true&&['4d274c3837b4fc3c3961e5666791c8a15174f5a6','7d47e739e457ac43e55c60fe68bf47bd2352815c','182693b09442928a8ece249cb2032dfe5e26c8da','6d4ca357cabe59c8876cd2c921162a02f8ad7269'].includes(approval.reviewedStageSha)&&approval.features?.kai===true&&approval.features?.teeIndexedPortrait===true;
   if(!stage&&!approved)return null;
   const patchRoot=path.resolve('prototypes/punchies/asset-patches');
   const metadataPath=path.join(patchRoot,'materialmask_tee.json');
-  if(portal!=='web'&&stage)throw Error('Staging preview is web-only');
+  if(!['web','crazygames'].includes(portal)&&stage)throw Error('Unsupported staging portal');
   const includeMask=profile==='compact';
   let metadata,bytes,preparedBase;
   const manifestPath=path.join(assets,'manifest.json');
@@ -71,3 +71,4 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal,profil
   if(metadata&&!new AdmZip(archive).getEntry(metadata.target).getData().equals(bytes))throw Error('Staging ZIP altered mask bytes');
   return {scope:stage?(kai?'tee-indexed-and-kai-staging-preview':'tee-indexed-staging-pilot'):'approved-production-content',baseArtSha256,archiveSha256,archiveBytes:archive.length,...(metadata?{maskSha256:metadata.sha256,maskBytes:bytes.length,preparedBase}: {maskFallback:'source-resolution palette'}),manifestSha256:hash(manifestBytes),...(kai?{kai}: {})};
 }
+

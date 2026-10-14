@@ -10,7 +10,7 @@ game) lives in `prototypes/dice-dig`; there is no `prototypes/digger` folder any
 `packages/dig-kit` (0.1.0) holds the pillow-block art helpers, tapered crack drawing, synthesised sounds, button, intent
 bus, tune panel and RNG that dice-dig uses and the next prototype (dig-match) will reuse. `deploy-digger-itch.yml` is
 replaced by `deploy-dig-itch.yml`, which only runs by hand: it asks which prototype to deploy and which itch
-project:channel to push to, and bumps that prototype's `version.json`. Nothing deploys to itch on merge. The Pages
+project:channel to push to (default `polsia/digger:html5`), and bumps that prototype's `version.json`. Nothing deploys to itch on merge. The Pages
 workflow fetches the old digger art under the `digger-legacy` name. The hub lists Dice Dig and digger-legacy.
 
 **Applies to:** dice-dig, digger-legacy and any prototype that opts into dig-kit. Pin dig-kit to an exact version.

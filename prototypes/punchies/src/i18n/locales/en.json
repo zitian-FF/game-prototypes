@@ -490,5 +490,16 @@
   "super.wave_motion_blast": "Wave Motion Blast",
   "super.wave_motion_blast_description": "Launch a wave after a brief charge. Guard takes half damage and loses 40% max stamina; Perfect Guard or dodge stops it.",
   "super.eagle_punch": "Eagle Punch",
-  "super.eagle_punch_description": "Long charge, then a fiery dash punch. Breaks guard; Perfect Guard and dodge work. No invincibility."
+  "super.eagle_punch_description": "Long charge, then a fiery dash punch. Breaks guard; Perfect Guard and dodge work. No invincibility.",
+  "controls.mode": "Control mode",
+  "controls.modern": "Modern",
+  "controls.classic": "Classic",
+  "controls.normal_attack": "Normal Attack",
+  "controls.next_match": "Changes apply next match",
+  "firstfight.modern_attack": "Hold {binding}. Close: Hook. Beyond Jab range: Cross. Otherwise: Jab.",
+  "firstfight.modern_mix": "Move and punch. Use {super} when charged. Stop moving to guard automatically.",
+  "tutorial.modern_attack_text": "Hold Normal Attack to repeat legal punches. Hook up close; Cross beyond Jab range but within Cross range; Jab otherwise. There is no stamina, but fatigue still applies.",
+  "tutorial.modern_guard_text": "Release the stick to High Guard automatically. Modern has no Perfect Guard. Moving or attacking lowers your guard; its normal release penalty still applies.",
+  "tutorial.modern_dodge_text": "From still, move just before a punch arrives. For 12 combat frames, a legal incoming collision triggers one dodge in that direction. Movement alone never dodges. The normal dodge penalty prevents a repeat.",
+  "tutorial.modern_super_text": "Land clean hits to charge Super, then use {btn}. Modern uses the same Super without stamina costs. All its outgoing damage is 20% lower, including follow-ups; fatigue still applies."
 }

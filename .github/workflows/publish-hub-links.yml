@@ -1,0 +1,39 @@
+name: Publish hub links only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reuse last successful Pages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous=$(gh run list --workflow deploy.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          [ -n "$previous" ] || exit 1
+          gh run download "$previous" --name github-pages --dir previous-pages
+          mkdir site
+          tar -xf previous-pages/artifact.tar -C site
+          find site -type f ! -path 'site/index.html' -print0 | sort -z | xargs -0 sha256sum > /tmp/before.sha256
+          cp index.html site/index.html
+          find site -type f ! -path 'site/index.html' -print0 | sort -z | xargs -0 sha256sum > /tmp/after.sha256
+          cmp /tmp/before.sha256 /tmp/after.sha256
+          echo "Updated hub only; reused Pages artifact from $previous" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment

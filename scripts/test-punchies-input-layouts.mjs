@@ -56,6 +56,8 @@ key('KeyQ'); keys.emit('blur'); assert.equal(hub.sample('kb1').jab, false); asse
 key('KeyW'); key('KeyD'); assert.equal(hub.sample('kb1').mx, 71); up('KeyW'); up('KeyD');
 const pad = (index = 0) => ({ index, id: 'test-' + index, connected: true, axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) });
 pads = [pad(), pad(1)]; hub.poll(); pads[1].buttons[10].pressed = true; hub.poll(); assert.equal(hub.sample('pad2').guard, true); assert.equal(hub.sample('pad1').guard, false);
+// Modern's simulation owns hysteresis; the Classic sampler must not zero it first.
+pads[0].axes[0]=.16;assert.equal(hub.sample('pad1','classic').mx,0);assert.equal(hub.sample('pad1','modern').mx,16);pads[0].axes[0]=0;
 pads[0].buttons[6].value = .39; hub.poll(); assert.equal(hub.sample('pad1').uppercut, false); pads[0].buttons[6].value = .41; hub.poll(); assert.equal(hub.sample('pad1').uppercut, true); assert.equal(hub.sample('pad1').uppercut, false);
 const capture = new PadCapture(pads[0]); assert.equal(capture.poll(pads[0]), null, 'held trigger ignored'); pads[0].buttons[6].value = 0; capture.poll(pads[0]); pads[0].buttons[6].value = .5; assert.equal(capture.poll(pads[0]), 6);
 pads[0].buttons[9].pressed = true; assert.equal(capture.poll(pads[0]), 'cancel', 'Start cancels capture rather than binding');
@@ -80,6 +82,7 @@ equal(validateLayouts({ ...defaults(), touch: badTouch }).touch, touch);
 // Execute real touch handlers, graphics and label placements against the same resolved geometry.
 class Obj extends EventEmitter {
   constructor(x = 0, y = 0, text = '') { super(); Object.assign(this, { x, y, text, active: true, data: {}, circles: [] }); }
+  setScale() { return this; }
   setColor() { return this; } setShadow() { return this; } setDepth() { return this; } setOrigin() { return this; } setAlpha() { return this; } setVisible() { return this; } setInteractive() { return this; }
   setPosition(x, y) { this.x = x; this.y = y; return this; } setText(text) { this.text = text; return this; } setWordWrapWidth() { return this; }
   setData(k, v) { this.data[k] = v; return this; } getData(k) { return this.data[k]; }
@@ -149,6 +152,6 @@ const tutorial = load('scenes/TutorialScene', { phaser: { default: { Scene: clas
 modality.inputModality.register('kb2'); custom.kb2.jab = ['KeyZ']; custom.kb2.guard = ['ControlRight']; saveLayouts(custom);
 assert.equal(tutorial.binderForTest()('jab'), i18nStub.t('tutorial.press_key', { key: 'Z' })); assert.equal(tutorial.binderForTest()('guard'), glyph.keyLabel('ControlRight'));
 const { FirstFightScene } = load('scenes/FirstFightScene', { phaser: { default: { Scene: class {} } }, '../input/devices': { devices: hub }, '../ui/inputGlyph': glyph, '../i18n': i18nStub, '../sim/tune': { TICK_RATE: 60 } });
-const coach = new FirstFightScene(); coach.phase = 'jab'; assert.equal(coach.coachText(), 'Throw JABS: Z');
+const coach = new FirstFightScene(); coach.phase = 'jab'; assert(coach.coachText().startsWith('Hold Z.'),'Modern coaching follows saved Normal binding');
 memory.delete(KEYS.localInputs); equal(loadLayouts(), defaults(), 'whole-save removal restores mapping config through its registered key');
 console.log('PASS: saved inputs reload/repair, independent profiles, defaults/alternates, actual FrameInput edges/guard, capture isolation/held/disconnect, normalized touch draw/hit/labels/tutorial/multitouch/floating stick, editor Save/Cancel/Reset/shutdown.');

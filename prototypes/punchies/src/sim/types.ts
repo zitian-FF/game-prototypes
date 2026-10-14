@@ -18,6 +18,7 @@ export type Phase = 'startup' | 'sweet' | 'sour' | 'recovery';
 // One tick of intents for one fighter. Movement is quantised to integers in
 // [-100, 100] so it serialises compactly and identically on both peers.
 export interface FrameInput {
+  normalAttack?:boolean;
   mx: number;
   my: number;
   jab: boolean;
@@ -79,6 +80,9 @@ export interface DodgeState {
 export type BufferedAction = PunchType | 'dodge';
 
 export interface Fighter {
+  readonly controlMode:'modern'|'classic';
+  readonly healthMultiplier:number;
+  modernStick:import('./modernControls').ModernStickState;
   x: number;
   y: number;
   fx: number;

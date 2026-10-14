@@ -490,5 +490,16 @@
   "super.wave_motion_blast": "波動ブラスト",
   "super.wave_motion_blast_description": "短い溜めから波動を放つ。通常ガードは半分のダメージと最大スタミナ40%を失う。パーフェクトガードや回避で防げます。",
   "super.eagle_punch": "イーグルパンチ",
-  "super.eagle_punch_description": "長い溜めから炎の突進パンチ。通常ガードを突破。パーフェクトガードや回避で防げます。無敵時間なし。"
+  "super.eagle_punch_description": "長い溜めから炎の突進パンチ。通常ガードを突破。パーフェクトガードや回避で防げます。無敵時間なし。",
+  "controls.mode": "操作モード",
+  "controls.modern": "モダン",
+  "controls.classic": "クラシック",
+  "controls.normal_attack": "通常攻撃",
+  "controls.next_match": "変更は次の試合から適用されます",
+  "firstfight.modern_attack": "{binding}を押し続けよう。近距離はフック、ジャブの届かない距離はクロス、それ以外はジャブ。",
+  "firstfight.modern_mix": "動きながら攻撃しよう。たまったら{super}を使おう。止まると自動でガードする。",
+  "tutorial.modern_attack_text": "通常攻撃を押し続けると、動作が終わるたびに攻撃する。近距離はフック、ジャブの届かないクロス圏内はクロス、それ以外はジャブ。スタミナはないが、疲労は残る。",
+  "tutorial.modern_guard_text": "スティックを離すと自動でハイガードする。モダンにはパーフェクトガードがない。移動や攻撃でガードを解くと、通常の解除ペナルティが発生する。",
+  "tutorial.modern_dodge_text": "止まった状態から、パンチが当たる直前に動こう。12戦闘フレーム以内に攻撃が接触すると、可能な場合にその方向へ一度だけ回避する。移動だけでは回避せず、通常の回避ペナルティ中は再回避できない。",
+  "tutorial.modern_super_text": "クリーンヒットでスーパーをため、{btn}で使おう。モダンも同じスーパーを使うが、スタミナは消費しない。追撃を含む与ダメージはすべて20%低く、疲労も適用される。"
 }

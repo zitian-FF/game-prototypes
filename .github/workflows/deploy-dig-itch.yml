@@ -16,7 +16,7 @@ on:
       itch_target:
         description: itch.io project:channel to push to
         type: string
-        default: zitian-ff/digger:html5
+        default: polsia/digger:html5
 
 permissions:
   contents: write

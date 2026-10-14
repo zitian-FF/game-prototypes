@@ -92,7 +92,7 @@ jobs:
         if: steps.ready.outputs.run == 'true'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist zitian-ff/firestorm-arena:html5
+        run: butler push dist polsia/firestorm-arena:html5
 
       - name: Commit version stamp bump
         if: steps.ready.outputs.run == 'true'

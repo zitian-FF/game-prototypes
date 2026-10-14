@@ -1,5 +1,5 @@
 {
-  "reviewedStageSha": "6d4ca357cabe59c8876cd2c921162a02f8ad7269",
+  "reviewedStageSha": "4d274c3837b4fc3c3961e5666791c8a15174f5a6",
   "ownerApproved": true,
   "features": {
     "kai": true,
@@ -11,5 +11,8 @@
     "275503bef1081cd42e75f436183fb4e52b3318c3",
     "cf9cdce86f591264e10f1ad8a5c5bb818a3c6b69",
     "ad73923c279bff06c9b6d5d20256edd3f3ad6e72"
-  ]
+  ],
+  "edition": "crazygames",
+  "destination": "polsia/suits:html5",
+  "masterStageSha": "1abdc04b059a81907ef73c252056f5ca7880f050"
 }

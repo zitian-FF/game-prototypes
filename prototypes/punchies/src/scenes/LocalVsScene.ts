@@ -1,3 +1,4 @@
+import {loadControlModes} from '../input/controlPreferences';
 import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
@@ -25,6 +26,7 @@ const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
 
 export class LocalVsScene extends Phaser.Scene {
+  private modes:readonly ['modern'|'classic','modern'|'classic']=['modern','modern'];
   private sim!: SimState;
   private stage!: FightStage;
   private inputs!: LocalInputs & { chars?: [string, string];skins?:[string,string]; series?: SeriesState };
@@ -38,6 +40,7 @@ export class LocalVsScene extends Phaser.Scene {
   }
 
   create(data: LocalInputs & { chars?: [string, string]; skins?:[string,string]; series?: SeriesState }): void {
+    if(!data.series)this.modes=loadControlModes();
     this.series = data.series ?? newSeries(tune.match.bestOf);
 
     applyCameraPixelRatio(this);
@@ -54,9 +57,9 @@ export class LocalVsScene extends Phaser.Scene {
     this.acc = 0;
     this.over = false;
     const chars = data.chars ?? ['marco', 'marco'];
-    this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: chars[0] }, { char: chars[1] }] });
+    this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: chars[0],controlMode:this.modes[0] }, { char: chars[1],controlMode:this.modes[1] }] });
     const names: [string, string] = [t('match.p_name_source', { n: 1, name: charName(chars[0]), source: SOURCE_LABEL[data.p1] }), t('match.p_name_source', { n: 2, name: charName(chars[1]), source: SOURCE_LABEL[data.p2] })];
-    this.stage = new FightStage(this, names, -1, data.p1 === 'touch',data.skins);
+    this.stage = new FightStage(this, names, -1, data.p1 === 'touch',data.skins,undefined,undefined,this.modes);
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     this.stage.setSeries(this.series);
 
@@ -70,7 +73,7 @@ export class LocalVsScene extends Phaser.Scene {
       this.acc = Math.min(this.acc + delta, STEP_MS * MAX_STEPS_PER_FRAME);
       while (this.acc >= STEP_MS) {
         this.acc -= STEP_MS;
-        const events = step(this.sim, [this.stage.sampleSource(this.inputs.p1), this.stage.sampleSource(this.inputs.p2)]);
+        const events = step(this.sim, [this.stage.sampleSource(this.inputs.p1,0), this.stage.sampleSource(this.inputs.p2,1)]);
         this.stage.handleEvents(events, this.sim);
       }
       if (this.sim.result && this.stage.koFinished(this.sim, time)) this.showResult();

@@ -253,12 +253,14 @@ jobs:
           PUNCHIES_SAVE_RESET_ID: 'punchies-reset-2026-10-12-super-v1'
           PROFILE: ${{ steps.quality.outputs.profile }}
         run: |
-          npm run build:punchies:$PROFILE -- --portal web --fresh
-          node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
+          edition=$(cat .github/punchies-wip-edition 2>/dev/null || echo master)
+          case "$edition" in master) portal=web; output="dist/punchies-$PROFILE-web" ;; crazygames) portal=crazygames; output="dist/punchies-crazygames-$PROFILE-crazygames" ;; *) exit 1 ;; esac
+          npm run build:punchies:$PROFILE -- --edition "$edition" --portal "$portal"
+          node scripts/test-punchies-profiles.mjs "$output" "$PROFILE"
           if [ "$PROFILE" = compact ]; then
-            PUNCHIES_COMPACT_LOOSE=.cache/punchies-profiles/compact/public/prototypes/punchies/assets/loose node scripts/test-punchies-tee-materials.mjs
+            PUNCHIES_COMPACT_LOOSE="$output/prototypes/punchies/assets/loose" node scripts/test-punchies-tee-materials.mjs
           fi
-          echo "ITCH_UPLOAD_DIR=dist/punchies-$PROFILE-web" >> "$GITHUB_ENV"
+          echo "ITCH_UPLOAD_DIR=$output" >> "$GITHUB_ENV"
 
       # Keep only the target prototype's page plus shared assets/, so the
       # upload has exactly one HTML file for itch.io to auto-select.
@@ -307,7 +309,7 @@ jobs:
         if: steps.relevant.outputs.run == 'true'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push "$ITCH_UPLOAD_DIR" zitian-ff/suits:html5
+        run: butler push "$ITCH_UPLOAD_DIR" polsia/suits:html5
 
       - name: Commit version stamp bump
         if: steps.relevant.outputs.run == 'true'

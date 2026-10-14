@@ -1,3 +1,4 @@
+import type {ControlModes,NormalAttackSink} from '../ui/controlMode';
 import type {RankedPlayers} from '../ui/rankedIdentityCapsule';
 import type { WireProfile } from '../progress/alias';
 import { sideProfiles } from '../progress/profile';
@@ -59,7 +60,17 @@ export class FightStage {
     this.hud.timerText=String(seconds).padStart(2,'0');this.hud.survivalBoss=boss;
   }
   private introChecked = false;
+  private modesBound=false;
+  private controlModes:ControlModes=['classic','classic'];
 
+
+  /** Logic binds canonical match modes and its held input sink after whole-match creation. */
+  setControlModes(modes:ControlModes,normalAttack:NormalAttackSink):void {
+    this.modesBound=true;
+    this.controlModes=[...modes];
+    this.hud.setControlModes(modes);
+    this.controls.setMode(modes[this.localIdx===1?1:0],normalAttack);
+  }
 
   setSeries(series: SeriesState): void {
     this.fx.roundNumber = series.roundNumber;
@@ -76,6 +87,7 @@ export class FightStage {
     private skins:[string,string]=['default','default'],
     private profiles:[WireProfile|null,WireProfile|null]=sideProfiles(localIdx===-1?0:localIdx,null),
     private rankedPlayers?:RankedPlayers,
+    initialModes?:ControlModes,
   ) {
     const gym=backdrop(scene, 0.15, 'gym_background');
     alignGymFloor(scene,gym);
@@ -114,6 +126,7 @@ export class FightStage {
     );
     this.persp.take(this.tags);
     this.controls = new TouchControls(scene, this.intents);
+    if(initialModes)this.setControlModes(initialModes,(source,held)=>this.intents.setNormalAttack(source,held));
     this.info = new InfoPanel(scene);
     this.info.setButtonVisible(false);
     addGameMenu(scene,()=>this.controls.reset());
@@ -161,13 +174,14 @@ export class FightStage {
     // touch reaches the fighter.
     if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (getNav(this.scene).capturing) return this.intents.sample();
-    return mergeInputs([this.intents.sample(), devices.sample('kb1'), devices.sample('kb2'), devices.sample('pad1'), devices.sample('pad2')]);
+    const mode=this.controlModes[this.localIdx===1?1:0];
+    return mergeInputs([this.intents.sample(), devices.sample('kb1',mode), devices.sample('kb2',mode), devices.sample('pad1',mode), devices.sample('pad2',mode)]);
   }
 
-  sampleSource(src: InputSource): FrameInput {
+  sampleSource(src: InputSource,side:0|1=0): FrameInput {
     if(this.scene.registry.get('gameMenu:'+this.scene.scene.key))return NEUTRAL_INPUT;
     if (src === 'touch') return this.intents.sample();
-    return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src);
+    return getNav(this.scene).capturing ? NEUTRAL_INPUT : devices.sample(src,this.controlModes[side]);
   }
 
   // Tutorial: reveal only the listed controls/HUD parts (null = all), and
@@ -195,6 +209,7 @@ export class FightStage {
   // predicted KO that gets rolled back never starts the animation.
   private lastDrawTick: number | null = null;
   draw(s: SimState, time: number, koAllowed = true): void {
+    if(!this.modesBound)this.setControlModes([s.fighters[0].controlMode,s.fighters[1].controlMode],(source,held)=>this.intents.setNormalAttack(source,held));
     this.movementSound.update(s);
     this.fx.draw(s);
     if(this.lastDrawTick===null || (s.tick<=1 && this.lastDrawTick>1)) this.persp.beginRound(this.scene.time.now);
