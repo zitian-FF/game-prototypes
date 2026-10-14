@@ -1,12 +1,12 @@
 ## Current milestone
-Complete CrazyGames edition integrated and ready for artifact/staging packaging.
+Punchies CrazyGames prepared for the explicitly approved itch Suits deployment; Punchies Master stays on staging.
 ## What was implemented
-CG-only eleven-fighter5+6 grid, authoritative shared edition/runtime/build policy, precompile asset/tune selection and distinct saves/network cohort. Modern/Classic and previous completed gameplay/save fixes retained.
+Complete CG11 edition and5+6 grid, Modern/Classic integration, separate save/cohort policy and a no-overwrite migration of existing itch saves into CG keys. Production flags exclude staging/QA controls. Existing reset epoch retained.
 ## Key technical decisions
-Same MASTER source and prepared quality pipeline; no game fork or art re-encoding. MASTER layout/keys preserved. Beta remains fail-closed. Normal CG artifact and isolated staging are separate outputs.
+Canonical editions: Punchies Master→staging; Punchies CrazyGames→zitian-ff/suits:html5; Punchies Beta→new Punchies - Beta Test page. Same source/prepared art; no extra CG staging route or new lossy compression. CI alone increments version after successful upload.
 ## Open questions
-No roster/design decision is pending. Real CrazyGames portal QA/submission is separate from this staging preparation.
+None blocks the authorized CG release.
 ## Known issues
-Physical controller/iOS/two-device WebRTC and real portal ad delivery are not claimed. Beta runtime and keyart remain separate unfinished tasks.
+Beta branch proto/punchies/free-community-preparation is local scaffolding, not a completed edition or public page. Actual CrazyGames portal ads/controller/iOS/two-device WebRTC are not verified by a desktop boot.
 ## Next proposed step
-Build normal compact CG artifact and staging, verify flags/inventory, then publish the separate authorized CG stage route while keeping Modern MASTER staging.
+Deploy approved CG source to itch via the explicit once-only promotion workflow; confirm processing and actual live build. Keep Master staging pin1abdc04.

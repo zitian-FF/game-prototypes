@@ -68,6 +68,7 @@ export default defineConfig(({ command }) => ({
   publicDir: process.env.PUNCHIES_PUBLIC_DIR ?? 'public',
     plugins: [punchiesDebugGate(stagingBuild, qaBuild), react(), tailwindcss(), {
       name: 'punchies-art-index', enforce:'pre', apply:'build',
+      transformIndexHtml(html,ctx){if(ctx.filename.replace(/\\/g,'/').endsWith('/prototypes/punchies/index.html'))return html.replace(/<title>.*?<\/title>/,'<title>'+ (edition.name==='crazygames'?'Punchies CrazyGames':edition.name==='itchbeta'?'Punchies Beta':'Punchies Master')+'</title>');},
       resolveId(id) { if(id==='virtual:punchies-art')return '\0punchies-art'; },
       load(id) { if(id==='\0punchies-art')return `export default ${packArtIndex(punchiesArtIndex() as Parameters<typeof packArtIndex>[0])};`; },
       transform(code,id) {

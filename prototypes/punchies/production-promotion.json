@@ -1,5 +1,5 @@
 {
-  "reviewedStageSha": "182693b09442928a8ece249cb2032dfe5e26c8da",
+  "reviewedStageSha": "4d274c3837b4fc3c3961e5666791c8a15174f5a6",
   "ownerApproved": true,
   "features": {
     "kai": true,
@@ -9,5 +9,8 @@
   "teeMaskProfile": "compact canonical geometry; standard retains source-resolution palette fallback",
   "approvedBugfixShas": [
     "275503bef1081cd42e75f436183fb4e52b3318c3"
-  ]
+  ],
+  "edition": "crazygames",
+  "destination": "zitian-ff/suits:html5",
+  "masterStageSha": "1abdc04b059a81907ef73c252056f5ca7880f050"
 }

@@ -15,6 +15,7 @@ const playerKeys = {
   survival: 'punchies:survival:v1',
   rating: 'punchies:rating:v1',
 } as const;
+export const MASTER_KEYS=Object.freeze({...playerKeys,resetReceipt:'punchies:save-reset:v1'});
 export const KEYS=Object.fromEntries(Object.entries({...playerKeys,resetReceipt:'punchies:save-reset:v1'}).map(([name,key])=>[name,stagingStorageKey(key)])) as {[K in keyof typeof playerKeys|'resetReceipt']:string};
 export const GAME_SAVE_KEYS=Object.freeze(Object.keys(playerKeys).map(name=>KEYS[name as keyof typeof playerKeys]));
 /** Developer preferences are isolated in staging but are not player-save data. */

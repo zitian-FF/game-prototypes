@@ -1,7 +1,11 @@
 import { suspendAudioForAd,reloadAudioSettings } from '../audio/mixer';
 import {applySaveReset,type SaveResetReceipt} from './saveReset';
 import { setGameplay } from './gameplay';
-import { KEYS } from './keys';
+import { KEYS,MASTER_KEYS } from './keys';
+import {CRAZYGAMES_EDITION} from '../edition';
+import {STAGING_BUILD} from '../buildFlags';
+import {webStorage} from './web';
+import {migrateCrazyGamesSaves} from './editionMigration';
 import { portal } from './select';
 import type { RewardedResult } from './types';
 
@@ -15,6 +19,7 @@ export async function initPortal(timeoutMs = 10000): Promise<void> {
   const work = (async () => { await portal.init(); await portal.storage.preload(Object.values(KEYS)); })();
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
   try { await Promise.race([work, timeout]); } catch { /* boot anyway */ }
+  if(CRAZYGAMES_EDITION&&!STAGING_BUILD)migrateCrazyGamesSaves(portal.storage,webStorage(),MASTER_KEYS,KEYS);
   resetReceipt=applySaveReset(portal.storage);reloadAudioSettings();
 }
 
