@@ -34,7 +34,7 @@ interface PanelState {
 
 export interface SelectionState {notice?:boolean;training?:boolean;rosterSide?:number;panels:PanelState[];step:number;steps:string[];action:string;level:string|null;hint:string;bestOf:number;formatEditable?:boolean;}
 
-import { rosterSlots, rosterIds } from './rosterLayout';
+import { rosterSlots, rosterIds, rosterCardGeometry } from './rosterLayout';
 
 interface PanelView {
 
@@ -57,6 +57,8 @@ interface PanelView {
 
 
 export class CharacterSelectView {
+
+ private cardGeometry=rosterCardGeometry();
 
  private root:Phaser.GameObjects.Container;
 
@@ -135,23 +137,24 @@ export class CharacterSelectView {
 
   }
 
+  const cg=this.cardGeometry;
   rosterSlots().forEach((pos,i)=>{
 
    const card=scene.add.container(pos.x,pos.y);this.root.add(card);const frame=this.graphics(card);this.cards.push(frame);
 
-   const id=rosterIds()[i] as CharId|null;cartoonPanel(frame,-25,-17,50,34,id?0x354665:0x161d2b,5);
+   const id=rosterIds()[i] as CharId|null;cartoonPanel(frame,-cg.width/2,-cg.height/2,cg.width,cg.height,id?0x354665:0x161d2b,5);
 
    if(id){const key=artKey(scene,'portrait_'+id);this.cardSkins.push('default');
 
-    const portrait=key?scene.add.image(0,-5,key,rosterHeadFrame(scene,key,id)).setDisplaySize(43,27).setFlipX(id==='tyke'):null;this.cardPortraits.push(portrait);if(portrait)card.add(portrait);
+    const portrait=key?scene.add.image(0,cg.portraitY,key,rosterHeadFrame(scene,key,id,cg.portraitWidth/cg.portraitHeight)).setDisplaySize(cg.portraitWidth,cg.portraitHeight).setFlipX(id==='tyke'):null;this.cardPortraits.push(portrait);if(portrait)card.add(portrait);
 
-   this.text(card,0,13,id.toUpperCase(),7);
+   this.text(card,0,cg.labelY,id.toUpperCase(),cg.labelSize);
 
-   const darkener=this.graphics(card).fillStyle(0x000000,.5).fillRect(-22,-19,44,28).setVisible(false);this.darkeners.push(darkener);this.cursors.push(this.graphics(card));
+   const darkener=this.graphics(card).fillStyle(0x000000,.5).fillRect(-22,cg.darkY,44,cg.darkHeight).setVisible(false);this.darkeners.push(darkener);this.cursors.push(this.graphics(card));
 
-   const tileLock=scene.add.image(0,-5,artKey(scene,'locked_icon')??'__DEFAULT').setDisplaySize(16,18).setVisible(false);card.add(tileLock);this.tileLocks.push(tileLock);
+   const tileLock=scene.add.image(0,cg.portraitY,artKey(scene,'locked_icon')??'__DEFAULT').setDisplaySize(16,18).setVisible(false);card.add(tileLock);this.tileLocks.push(tileLock);
 
-   const hit=scene.add.rectangle(0,0,51,34,0,0).setInteractive({useHandCursor:true});hit.on('pointerdown',()=>callbacks.card(CHARACTER_IDS.indexOf(id)));card.add(hit);
+   const hit=scene.add.rectangle(0,0,cg.hitWidth,cg.hitHeight,0,0).setInteractive({useHandCursor:true});hit.on('pointerdown',()=>callbacks.card(CHARACTER_IDS.indexOf(id)));card.add(hit);
 
    hit.on('pointerover',()=>card.setScale(1.06)).on('pointerout',()=>card.setScale(1)).on('pointerup',()=>card.setScale(1));
 
@@ -165,7 +168,7 @@ export class CharacterSelectView {
 
    }
 
-   this.locks.push([0,1].map(side=>{const lock=scene.add.image(side===0?-18:18,-13,artKey(scene,'locked_icon')??'__DEFAULT').setDisplaySize(13,15).setVisible(false);card.add(lock);return lock;}));
+   this.locks.push([0,1].map(side=>{const lock=scene.add.image(side===0?-cg.lockX:cg.lockX,cg.lockY,artKey(scene,'locked_icon')??'__DEFAULT').setDisplaySize(13,15).setVisible(false);card.add(lock);return lock;}));
 
   });
 
@@ -252,17 +255,17 @@ export class CharacterSelectView {
 
   this.cards.forEach((_frame,i)=>{const cursor=this.cursors[i];cursor?.clear();this.locks[i].forEach(lock=>lock.setVisible(false));const id=rosterIds()[i],real=!!id;const locked=!!id&&!!rosterAvailable&&!rosterAvailable.includes(id as CharId);this.darkeners[i]?.setVisible(locked);this.tileLocks[i]?.setVisible(locked);
 
-   const skin=id===rosterPanel?.id&&!rosterPanel.hidden?rosterPanel.skin:'default',portrait=this.cardPortraits[i];if(id&&portrait&&skin!==this.cardSkins[i]){this.cardSkins[i]=skin;const key=skinTexture(this.scene,id,skin,'portrait_'+id);if(this.scene.textures.exists(key))portrait.setTexture(key,rosterHeadFrame(this.scene,key,id)).setDisplaySize(43,27);}
+   const skin=id===rosterPanel?.id&&!rosterPanel.hidden?rosterPanel.skin:'default',portrait=this.cardPortraits[i];if(id&&portrait&&skin!==this.cardSkins[i]){this.cardSkins[i]=skin;const key=skinTexture(this.scene,id,skin,'portrait_'+id);if(this.scene.textures.exists(key))portrait.setTexture(key,rosterHeadFrame(this.scene,key,id,this.cardGeometry.portraitWidth/this.cardGeometry.portraitHeight)).setDisplaySize(this.cardGeometry.portraitWidth,this.cardGeometry.portraitHeight);}
 
 
 
    state.panels.forEach((p,side)=>{if(!real||p.dummy||p.hidden||!p.cursor||p.id!==id)return;
 
-    const color=side===0?0x65d9ff:0xff8593;cursor!.lineStyle(2,color).strokeRoundedRect(-26,-18,52,36,6);
+    const color=side===0?0x65d9ff:0xff8593;cursor!.lineStyle(2,color).strokeRoundedRect(-this.cardGeometry.cursorWidth/2,-this.cardGeometry.cursorHeight/2,this.cardGeometry.cursorWidth,this.cardGeometry.cursorHeight,6);
 
-    const x=side===0?-18:18;cursor!.fillStyle(color).fillCircle(x,-13,6);cursor!.lineStyle(1,0xffffff);
+    const x=side===0?-this.cardGeometry.lockX:this.cardGeometry.lockX,y=this.cardGeometry.lockY;cursor!.fillStyle(color).fillCircle(x,y,6);cursor!.lineStyle(1,0xffffff);
 
-    if(!p.available){this.locks[i][side].setVisible(true);}else cursor!.beginPath().moveTo(x-3,-13).lineTo(x-1,-11).lineTo(x+3,-15).strokePath();
+    if(!p.available){this.locks[i][side].setVisible(true);}else cursor!.beginPath().moveTo(x-3,y).lineTo(x-1,y+2).lineTo(x+3,y-2).strokePath();
 
    });
 
