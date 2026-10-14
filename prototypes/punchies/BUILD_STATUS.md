@@ -1,17 +1,12 @@
 ## Current milestone
-Authorized Eagle50/BO3/save-retention stage and development live release.
-
+Punchies CrazyGames prepared for the explicitly approved itch Suits deployment; Punchies Master stays on staging.
 ## What was implemented
-Exact completed Eagle02c47ea startup50, BO3cf9cdce host START/round continuation/terminal-scene repair, independent savead73923 retention fix and standalone beta349226b API integrated. The beta API has no gameplay/UI callers in this edition. Full completed Eagle/Wave/X features from stage2aef812 remain; no partial Modern or free-community UI.
-
+Complete CG11 edition and5+6 grid, Modern/Classic integration, separate save/cohort policy and a no-overwrite migration of existing itch saves into CG keys. Production flags exclude staging/QA controls. Existing reset epoch retained.
 ## Key technical decisions
-Preserve latest main balance, Zombie/Tyke tuning, cached assets, normal production caps and unchanged reset epoch. Retire automatic deletion even when receipts cannot persist; explicit Settings reset is the only intentional wipe. Generic protocol2 Worker server is unchanged; frontend fingerprint changes isolate cohorts and required compatibility tests remain. Stage-only build emits one compact package with focused debug gating.
-
+Canonical editions: Punchies Master→staging; Punchies CrazyGames→zitian-ff/suits:html5; Punchies Beta→new Punchies - Beta Test page. Same source/prepared art; no extra CG staging route or new lossy compression. CI alone increments version after successful upload.
 ## Open questions
-Real Brave two-device WebRTC and production settlement smoke remain unverified. Free-community runtime/manifest/UI and Modern design/control integration are separate queued work.
-
+None blocks the authorized CG release.
 ## Known issues
-Actual two-peer session/MatchScene fixtures pass BO3 and terminal paths, but cannot establish signalling service or physical/mobile performance. No new asset compression is needed below80% cap.
-
+Beta branch proto/punchies/free-community-preparation is local scaffolding, not a completed edition or public page. Actual CrazyGames portal ads/controller/iOS/two-device WebRTC are not verified by a desktop boot.
 ## Next proposed step
-Publish exact stage, then promote its traced production adaptation under existing owner stage/live trigger. Verify normal production flags/assets/save behavior and report source/version/limits. Continue complete Modern/Beta staging handoffs without partial publication.
+Deploy approved CG source to itch via the explicit once-only promotion workflow; confirm processing and actual live build. Keep Master staging pin1abdc04.

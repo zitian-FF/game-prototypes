@@ -2,7 +2,7 @@ import type { CharId } from '../sim/character';
 import type { Fighter, SimEvent, PunchType } from '../sim/types';
 import type { EasyAIState } from '../sim/ai';
 
-export interface RunOptions { fighter: CharId; skin: string; seed: number; runId: string; balanceVersion?: string }
+export interface RunOptions { fighter: CharId; skin: string; seed: number; runId: string; balanceVersion?: string;controlMode?:import('../sim/modernControls').ControlMode }
 export interface SurvivalEnemy {
   id: string;
   kind: 'zombie' | 'boss';

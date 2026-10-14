@@ -1,3 +1,4 @@
+import {loadControlModes} from '../input/controlPreferences';
 import Phaser from 'phaser';
 import {t} from '../i18n';
 import {applyCameraPixelRatio,VIEW} from '../render/pixelRatio';
@@ -39,7 +40,7 @@ export class SurvivalScene extends Phaser.Scene {
   applyCameraPixelRatio(this);this.store=new SurvivalStore(portalStore);this.built=false;this.acc=0;this.panel=null;this.closePanel=null;this.saveFailed=false;
   try{
    const owned=loadShopDraft(),fighter=availableFighters(owned).includes(data.char??'marco')?(data.char??'marco'):'marco';
-   this.run=data.run??this.store.begin({fighter,skin:equippedSkin(owned,fighter,data.skin),seed:crypto.getRandomValues(new Uint32Array(1))[0],runId:crypto.randomUUID()});
+   this.run=data.run??this.store.begin({fighter,skin:equippedSkin(owned,fighter,data.skin),seed:crypto.getRandomValues(new Uint32Array(1))[0],runId:crypto.randomUUID(),controlMode:loadControlModes()[0]});
    if(data.resume&&this.run.status==='intermission')this.store.advance(this.run);
   }catch{this.showInitialError();return;}
   whenGroupsReady(this,fighterGroups([this.run.fighter,'marco']),()=>this.build());
@@ -59,7 +60,7 @@ export class SurvivalScene extends Phaser.Scene {
    survivalOverlay(this,t('survival.unavailable'),[t('survival.unavailable_detail')],[{label:t('common.back'),run:()=>startScreen(this,'SurvivalEntry'),back:true}]);return;
   }
   this.display=createSimState({timed:false,fighters:[{char:this.run.fighter},{char:'marco'}]});this.display.fightStartTick=0;
-  this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default']);this.stage.hideOpponent=true;this.enemyViews=new SurvivalViews(this,color=>this.stage.createFighterView(color));
+  this.stage=new FightStage(this,[charName(this.run.fighter),''],0,true,[this.run.skin,'default'],undefined,undefined,[this.run.player.controlMode,'classic']);this.stage.hideOpponent=true;this.enemyViews=new SurvivalViews(this,color=>this.stage.createFighterView(color));
   this.stage.setCodeXRenderSources(()=>this.run.status==='active'&&this.run.tick>=this.run.fightStartTick?[this.run.player,...this.run.enemies.filter(e=>e.kind==='boss'&&(e.fighter.codeX||e.fighter.wave||e.fighter.eagle)&&e.fighter.health>0).map(e=>e.fighter)]:[]);
   this.bossWaveMode=false;
   this.waveText=survivalText(this,VIEW.cx+VIEW.width*.23,VIEW.top+23,'',17,VIEW.width*.34,'#fff1d1',93,22);

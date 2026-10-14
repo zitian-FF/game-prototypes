@@ -48,15 +48,22 @@ jobs:
         run: |
           [[ "$REVIEWED_SHA" =~ ^[a-f0-9]{40}$ ]] && [ "$REVIEWED_SHA" = "$OWNER_APPROVED_SHA" ] || { echo "Exact owner-approved SHA required"; exit 1; }
           [ "$(git rev-parse HEAD)" = "$PRODUCTION_SHA" ] || exit 1
+          edition=$(node -p 'JSON.parse(require("fs").readFileSync("prototypes/punchies/production-promotion.json")).edition || "master"')
+          if [ "$edition" = crazygames ]; then
+            expected=$(node -p 'JSON.parse(require("fs").readFileSync("prototypes/punchies/production-promotion.json")).masterStageSha')
+          else expected="$REVIEWED_SHA"; fi
           live=$(curl -fsS "https://zitian-ff.github.io/game-prototypes/staging/punchies/stage.json?promotion=$REVIEWED_SHA" | jq -r .sha)
-          [ "$live" = "$REVIEWED_SHA" ] || { echo "Reviewed source is not current public staging"; exit 1; }
+          [ "$live" = "$expected" ] || { echo "Master staging provenance mismatch"; exit 1; }
           git fetch origin main
           git merge-base --is-ancestor "$REVIEWED_SHA" "$PRODUCTION_SHA" || { echo "Production source must descend from reviewed source"; exit 1; }
           node --input-type=module <<'NODE'
           import fs from 'node:fs';import {execFileSync} from 'node:child_process';
           const p=JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json'));
           if(p.reviewedStageSha!==process.env.REVIEWED_SHA||p.ownerApproved!==true||!p.features.kai||!p.features.teeIndexedPortrait)throw Error('Approval provenance/features incorrect');
-          const allowed=new Set(['prototypes/punchies/production-promotion.json','prototypes/punchies/src/sim/character.ts','prototypes/punchies/src/shop/draft.ts','prototypes/punchies/src/render/indexedPortraitMask.ts','prototypes/punchies/src/render/puppet.ts','prototypes/punchies/src/render/punchMotion.ts','scripts/build-punchies-profile.mjs','scripts/build-punchies-staging.mjs','scripts/overlay-punchies-staging-art.mjs']);
+          const cg=p.edition==='crazygames';
+          if(cg&&(p.destination!=='zitian-ff/suits:html5'||p.masterStageSha!=='1abdc04b059a81907ef73c252056f5ca7880f050'||JSON.parse(fs.readFileSync('prototypes/punchies/editions.json')).editions.crazygames.runtimeReady!==true))throw Error('CG destination/MASTER provenance/readiness incorrect');
+          const extra=cg?['.github/punchies-wip-edition','.github/workflows/promote-punchies-reviewed.yml','.github/workflows/deploy-wip-itch.yml','.github/workflows/deploy.yml','vite.config.ts','prototypes/punchies/src/portal/editionMigration.ts','prototypes/punchies/src/portal/index.ts','prototypes/punchies/src/portal/keys.ts','prototypes/punchies/BUILD_STATUS.md']:[];
+          const allowed=new Set([...extra,'prototypes/punchies/production-promotion.json','prototypes/punchies/src/sim/character.ts','prototypes/punchies/src/shop/draft.ts','prototypes/punchies/src/render/indexedPortraitMask.ts','prototypes/punchies/src/render/puppet.ts','prototypes/punchies/src/render/punchMotion.ts','scripts/build-punchies-profile.mjs','scripts/build-punchies-staging.mjs','scripts/overlay-punchies-staging-art.mjs']);
           const files=execFileSync('git',['diff','--name-only',process.env.REVIEWED_SHA,'HEAD'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
           for(const f of files)if(!allowed.has(f)&&!f.startsWith('scripts/test-punchies-')&&!f.startsWith('docs/punchies-'))throw Error('Unapproved adaptation path '+f);
           execFileSync('git',['diff','--exit-code',process.env.REVIEWED_SHA,'HEAD','--','prototypes/punchies/tune.json','prototypes/punchies/tune.meta.json','prototypes/punchies/server','prototypes/punchies/src/net','prototypes/punchies/src/sim/sim.ts']);
@@ -170,6 +177,12 @@ jobs:
           node scripts/test-punchies-rules-compatibility.mjs
           node scripts/test-punchies-online-bo3.mjs
           node scripts/test-punchies-save-persistence.mjs
+          node scripts/test-punchies-edition-migration.mjs
+          node scripts/test-punchies-edition-runtime.mjs
+          node scripts/test-punchies-cg-grid.mjs
+          node scripts/test-punchies-modern-contract.mjs
+          node scripts/test-punchies-modern-tutorial.mjs
+          node scripts/test-punchies-modern-ui.mjs
           node scripts/test-punchies-ranked-rules.mjs
           node scripts/test-punchies-rating-snapshots.mjs
           node scripts/test-punchies-ranked-result-binding.mjs
@@ -207,15 +220,17 @@ jobs:
           PROFILE: ${{ steps.quality.outputs.profile }}
         run: |
           [ -n "$VITE_PUNCHIES_RATING_URL" ] || { echo "::error::Production rating URL is not configured"; exit 1; }
-          npm run build:punchies:$PROFILE -- --portal web --fresh
-          node scripts/test-punchies-profiles.mjs "dist/punchies-$PROFILE-web" "$PROFILE"
-          node scripts/test-punchies-production-package.mjs "dist/punchies-$PROFILE-web"
-          node scripts/test-punchies-kai-package.mjs "dist/punchies-$PROFILE-web"
-          PUNCHIES_TEE_SOURCE="dist/punchies-$PROFILE-web/prototypes/punchies/assets/loose/portrait_tee.webp" node scripts/test-punchies-indexed-portrait.mjs
+          edition=$(cat .github/punchies-wip-edition 2>/dev/null || echo master)
+          case "$edition" in master) portal=web; output="dist/punchies-$PROFILE-web" ;; crazygames) portal=crazygames; output="dist/punchies-crazygames-$PROFILE-crazygames" ;; *) exit 1 ;; esac
+          npm run build:punchies:$PROFILE -- --edition "$edition" --portal "$portal"
+          node scripts/test-punchies-profiles.mjs "$output" "$PROFILE"
+          node scripts/test-punchies-production-package.mjs "$output"
+          node scripts/test-punchies-kai-package.mjs "$output"
+          PUNCHIES_TEE_SOURCE="$output/prototypes/punchies/assets/loose/portrait_tee.webp" node scripts/test-punchies-indexed-portrait.mjs
           if [ "$PROFILE" = compact ]; then
-            PUNCHIES_COMPACT_LOOSE=.cache/punchies-profiles/compact/public/prototypes/punchies/assets/loose node scripts/test-punchies-tee-materials.mjs
+            PUNCHIES_COMPACT_LOOSE="$output/prototypes/punchies/assets/loose" node scripts/test-punchies-tee-materials.mjs
           fi
-          echo "ITCH_UPLOAD_DIR=dist/punchies-$PROFILE-web" >> "$GITHUB_ENV"
+          echo "ITCH_UPLOAD_DIR=$output" >> "$GITHUB_ENV"
 
       # Keep only the target prototype's page plus shared assets/, so the
       # upload has exactly one HTML file for itch.io to auto-select.

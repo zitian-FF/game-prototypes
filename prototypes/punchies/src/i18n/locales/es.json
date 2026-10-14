@@ -490,5 +490,16 @@
   "super.wave_motion_blast": "Ráfaga Ondulatoria",
   "super.wave_motion_blast_description": "Lanza una onda tras una carga breve. La guardia recibe medio daño y pierde el 40% de resistencia máxima; guardia perfecta o esquiva la detienen.",
   "super.eagle_punch": "Puño del Águila",
-  "super.eagle_punch_description": "Carga larga y puñetazo con embestida de fuego. Rompe la guardia; guardia perfecta y esquiva funcionan. Sin invencibilidad."
+  "super.eagle_punch_description": "Carga larga y puñetazo con embestida de fuego. Rompe la guardia; guardia perfecta y esquiva funcionan. Sin invencibilidad.",
+  "controls.mode": "Modo de control",
+  "controls.modern": "Moderno",
+  "controls.classic": "Clásico",
+  "controls.normal_attack": "Ataque normal",
+  "controls.next_match": "Los cambios se aplican en la próxima partida",
+  "firstfight.modern_attack": "Mantén {binding}: Hook de cerca, Cross fuera del alcance del Jab y Jab en las demás distancias.",
+  "firstfight.modern_mix": "Muévete y golpea. Usa {super} al cargarlo. Deja de moverte para bloquear automáticamente.",
+  "tutorial.modern_attack_text": "Mantén Ataque normal para repetir golpes cuando sea posible. Hook de cerca; Cross fuera del Jab pero dentro del Cross; Jab en el resto. No hay stamina, pero sí fatiga.",
+  "tutorial.modern_guard_text": "Suelta el stick para hacer High Guard automáticamente. Moderno no tiene Perfect Guard. Moverte o atacar baja la guardia y mantiene su penalización habitual.",
+  "tutorial.modern_dodge_text": "Desde parado, muévete justo antes del golpe. Durante 12 fotogramas de combate, un impacto entrante activa una esquiva legal en esa dirección. Moverse solo no esquiva. La penalización normal impide repetirla.",
+  "tutorial.modern_super_text": "Conecta golpes limpios para cargar Super y usa {btn}. Moderno usa el mismo Super sin coste de stamina. Todo su daño baja un 20%, incluidos los golpes posteriores; la fatiga sigue activa."
 }

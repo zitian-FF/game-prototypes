@@ -1,4 +1,5 @@
 import {CODE_X_TIMING,codeXTracks,codeXTrackPosition,codeXContactPoint} from './codeX';
+import {newModernStickState,modernMovement,advanceModernWindow,consumeModernDodge,contextualModernPunch,MODERN_DAMAGE_MULT,type ControlMode} from './modernControls';
 import {WAVE_MOTION,wavePosition,waveContact} from './waveMotion';
 import {EAGLE_PUNCH,eaglePhase,eagleDashDelta,eagleEndpoint} from './eaglePunch';
 import {punchFist} from './fistPath';
@@ -28,6 +29,8 @@ import type {SuperCancelReason} from './types';
 // 754 / ECMAScript), never trig, so both online peers stay in sync (and rollback replays exactly).
 
 export interface FighterOptions {
+  healthMultiplier?:number;
+  controlMode?:ControlMode;
   anchored?: boolean;
   infiniteStamina?: boolean;
   forceVulnerable?: boolean;
@@ -36,6 +39,9 @@ export interface FighterOptions {
 
 function createFighter(x: number, y: number, opts: FighterOptions): Fighter {
   const f: Fighter = {
+    // Explicit mode from scene/START is authoritative. Legacy internal callers
+    // remain Classic until all mode-aware scene/input integration is installed.
+    controlMode:opts.controlMode??'classic',modernStick:newModernStickState(),healthMultiplier:opts.healthMultiplier??1,
     x,
     y,
     fx: 1,
@@ -155,7 +161,7 @@ export function stanceOf(f: Fighter): Stance {
   if (f.dodge && f.dodge.frame < dodgeIFrames(f)) return 'dodging';
   // Exhausted: guard works but has no Perfect Guard window, everything else is open.
   if (f.exhausted) return f.guarding ? 'guard' : 'vulnerable';
-  if (f.guarding) return f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
+  if (f.guarding) return f.controlMode!=='modern'&&f.guardFrames < tune.guard.perfectFrames ? 'perfectGuard' : 'guard';
   return isVulnerable(f) ? 'vulnerable' : 'normal';
 }
 
@@ -187,7 +193,7 @@ function lowerGuard(f: Fighter): void {
 }
 
 function spendStamina(f: Fighter, amount: number): void {
-  if (f.infiniteStamina || f.exhausted) return;
+  if (f.controlMode==='modern'||f.infiniteStamina || f.exhausted) return;
   f.stamina = Math.max(0, f.stamina - amount);
   if (f.stamina <= 0) {
     f.exhausted = true;
@@ -196,6 +202,7 @@ function spendStamina(f: Fighter, amount: number): void {
 }
 
 function gainStamina(f: Fighter, amount: number, natural = false): void {
+  if(f.controlMode==='modern')return;
   if (f.exhausted && !natural) return;
   f.stamina = Math.min(maxStamina(f), f.stamina + amount);
   if (f.exhausted && f.stamina >= maxStamina(f)) f.exhausted = false;
@@ -309,7 +316,7 @@ function rejectAction(f: Fighter, idx: number, action: BufferedAction, events: S
     f.bufferFrames = 0;
     return true;
   }
-  if (action === 'dodge' && !f.exhausted && !f.infiniteStamina && f.stamina < tune.dodge.staminaCost) {
+  if (action === 'dodge' && f.controlMode!=='modern'&&!f.exhausted && !f.infiniteStamina && f.stamina < tune.dodge.staminaCost) {
     events.push({ kind: 'staminaRejected', fighter: idx });
     f.buffered = null;
     f.bufferFrames = 0;
@@ -335,7 +342,12 @@ function tryStartAction(s: SimState, idx: number, action: BufferedAction, input:
 
 function processInput(s: SimState, idx: number, input: FrameInput, events: SimEvent[]): void {
   const f = s.fighters[idx];
-  const req = requestedAction(input);
+  const modern=f.controlMode==='modern';
+  if(modern){f.stamina=maxStamina(f);f.exhausted=false;f.regenWait=0;}
+  if(modern){const movement=modernMovement(f.modernStick,input);input={...input,...movement,jab:false,cross:false,hook:false,dodge:false,guard:f.modernStick.neutral};
+    if(f.buffered!=='uppercut'){f.buffered=null;f.bufferFrames=0;}
+  }
+  const req = modern?(input.uppercut?'uppercut':input.normalAttack&&canAct(f)?contextualModernPunch(f,s.fighters[1-idx]):null):requestedAction(input);
   if (req && !rejectAction(f, idx, req, events)) {
     f.buffered = req;
     f.bufferFrames = tune.input.bufferFrames;
@@ -391,6 +403,7 @@ function move(s: SimState, idx: number, input: FrameInput): void {
   if (f.anchored) return;
   let mx = input.mx / 100;
   let my = input.my / 100;
+  if(f.controlMode==='modern'&&f.modernStick.neutral){mx=0;my=0;}
   const mag = Math.sqrt(mx * mx + my * my);
   if (mag > 1) {
     mx /= mag;
@@ -482,6 +495,14 @@ interface Contact {
   y: number;
 }
 
+/** Called only by real collision candidates; one latched window per defender. */
+function tryModernCollisionDodge(def:Fighter):void {
+  if(def.controlMode!=='modern'||def.health<=0)return;
+  const direction=consumeModernDodge(def.modernStick,canAct(def)&&def.postDodgeVulnerable<=0&&!def.anchored);
+  if(!direction)return;
+  def.dodge={frame:0,...direction};lowerGuard(def);
+}
+
 // Finds contacts for both fighters against pre-resolution state, so two
 // punches landing on the same tick trade cleanly regardless of index order.
 function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint,entityIds:[string,string]=['fighter:0','fighter:1']): Contact[] {
@@ -504,6 +525,7 @@ function detectContacts(s: SimState, events: SimEvent[], pointOf = punchPoint,en
     const dy = def.y - pt.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (!p.eagleSuper&&dist > hurtRadius(def) + hitR) continue;
+    tryModernCollisionDodge(def);
     if (def.dodge && def.dodge.frame < dodgeIFrames(def)) {
       p.resolved = true;
       if(p.eagleSuper&&att.eagle){att.eagle.hitIds.push(entityIds[defIdx]);events.push({kind:'eagleContact',attacker:i,activationId:att.eagle.activationId,victimId:entityIds[defIdx],x:pt.x,y:pt.y,outcome:'dodged'});}
@@ -575,9 +597,10 @@ function resolveContact(s: SimState, c: Contact, stances: Stance[], defStartup: 
     events.push({kind:'eagleContact',attacker:c.attacker,activationId:eagle.activationId,victimId:key,x:c.x,y:c.y,outcome:stances[defIdx]==='perfectGuard'?'perfectGuard':'hit'});}
   p.resolved = true;
   const cfg = punchCfg(att, p.type);
-  const damageMult = p.damageMult * (emergencyAttack[c.attacker] ? tune.stamina.emergencyDamageMult : 1);
+  const damageMult = p.damageMult * (att.controlMode!=='modern'&&emergencyAttack[c.attacker] ? tune.stamina.emergencyDamageMult : 1)*(att.controlMode==='modern'?MODERN_DAMAGE_MULT:1);
 
   let stance = stances[defIdx];
+  if(def.controlMode==='modern'&&stance==='perfectGuard')stance='guard';
   // Uppercut ignores a normal High Guard (taken as a normal hit) but a
   // Perfect Guard stops it. It can also be dodged (detectContacts).
   if (((p.type === 'uppercut'||p.eagleSuper) && stance === 'guard') || (p.buffaloUpper && (stance==='guard'||stance==='perfectGuard'))) {
@@ -717,6 +740,7 @@ function resolveCodeX(s:SimState,idx:number,targets:{id:string;fighter:Fighter}[
       const cfg=punchCfg(att,'cross'),hit=codeXContactPoint(ability,shadow,target.fighter.x,target.fighter.y,normalHurtRadius(target.fighter)+cfg.hitRadius);
       if(!hit)continue;ability.hitIds[shadow].push(target.id);
       const def=target.fighter;
+      tryModernCollisionDodge(def);
       if(def.dodge&&def.dodge.frame<dodgeIFrames(def)){
         events.push({kind:'codeXContact',attacker:idx,activationId:ability.activationId,shadow,victimId:target.id,x:hit.x,y:hit.y,outcome:'dodged'});
         events.push({kind:'dodged',attacker:idx,x:hit.x,y:hit.y});continue;
@@ -757,6 +781,7 @@ function resolveWave(s:SimState,idx:number,targets:{id:string;fighter:Fighter}[]
    .sort((x,y)=>x.hit!.t-y.hit!.t||(x.target.id<y.target.id?-1:x.target.id>y.target.id?1:0));
  const contact=contacts[0];if(!contact){if(limit<1)finishWave(att,idx,events);return;}
  const def=contact.target.fighter,hit=contact.hit!,cfg=punchCfg(att,'cross');
+ tryModernCollisionDodge(def);
  let outcome:'hit'|'blocked'|'perfectGuard'|'dodged';
  if(def.dodge&&def.dodge.frame<dodgeIFrames(def)){outcome='dodged';events.push({kind:'dodged',attacker:idx,x:hit.x,y:hit.y});}
  else {
@@ -844,9 +869,10 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
 
   // Stamina: guard drains; otherwise regen after a short delay since the
   // last spend, fastest with no input at all.
-  if (f.infiniteStamina) {
+  if (f.controlMode==='modern'||f.infiniteStamina) {
     f.stamina = maxStamina(f);
     f.exhausted = false;
+    if(f.controlMode==='modern')f.regenWait=0;
   } else if (f.exhausted) {
     // Protected, continuous recovery at the normal standing-still rate, even while
     // punching/stunned. Only natural recovery changes this meter until full.
@@ -865,6 +891,7 @@ function advanceTimers(s: SimState, idx: number, input: FrameInput, events: SimE
   }
 
   f.framesSinceHit++;
+  if(f.controlMode==='modern')advanceModernWindow(f.modernStick);
 }
 
 // Uppercut always sends them flying; a clean (sweet, unblocked) Cross or
@@ -920,6 +947,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
   }
 
   for (const f of s.fighters) {
+    if(f.controlMode==='modern'){f.stamina=maxStamina(f);f.exhausted=false;f.regenWait=0;continue;}
     if (!f.infiniteStamina && f.stamina <= 0) {
       f.exhausted = true;
       f.regenWait = 0;
@@ -933,7 +961,7 @@ export function step(s: SimState, inputs: [FrameInput, FrameInput], finishMatch 
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i];
       if (f.exhausted) gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
-      const req = requestedAction(inputs[i]);
+      const req = f.controlMode==='modern'?(inputs[i].uppercut?'uppercut':null):requestedAction(inputs[i]);
       if (req && !rejectAction(s.fighters[i], i, req, events)) {
         s.fighters[i].buffered = req;
         s.fighters[i].bufferFrames = tune.input.bufferFrames;

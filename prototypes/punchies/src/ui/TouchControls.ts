@@ -1,3 +1,4 @@
+import {modernControlLayout,type ControlMode,type NormalAttackSink} from './controlMode';
 import Phaser from 'phaser';
 import { reducedMotion } from './presentation';
 import { t } from '../i18n';
@@ -25,7 +26,7 @@ interface ArcButton {
   label: string;
 }
 
-type Owner = { kind: 'joystick'; ox: number; oy: number } | { kind: 'guard' } | { kind: 'tap' };
+type Owner = { kind: 'joystick'; ox: number; oy: number } | { kind: 'guard' } | { kind: 'tap' } | {kind:'normal'};
 
 export class TouchControls {
   private layout = safeTouch(loadLayouts().touch, VIEW);
@@ -53,6 +54,15 @@ export class TouchControls {
   private flash = new Map<string, number>();
   private labelIds: string[] = ['jab', 'cross', 'hook', 'guard', 'dodge', 'uppercut'];
   private visible = true;
+  private mode:ControlMode='classic';
+  private normalSink:NormalAttackSink|null=null;
+  private modernLabel:Phaser.GameObjects.Text;
+  private modernIcon:Phaser.GameObjects.Image|null=null;
+  private get modern(){return modernControlLayout(VIEW,this.main,this.resolved.uppercut);}
+  setMode(mode:ControlMode,sink?:NormalAttackSink):void {
+    if(mode==='modern'&&!sink)throw new Error('Modern touch controls require a held Normal input sink');
+    this.reset();this.mode=mode;this.normalSink=sink??null;
+  }
   private chrome: { image: Phaser.GameObjects.Image; ids: string[] }[] = [];
   private stickArt: Phaser.GameObjects.Image | null = null;
   private knobArt: Phaser.GameObjects.Image | null = null;
@@ -70,6 +80,9 @@ export class TouchControls {
   ) {
     scene.input.addPointer(3);
     this.g = scene.add.graphics().setDepth(100);
+    this.modernLabel=scene.add.text(0,0,t('controls.normal_attack'),{fontFamily:'Arial Black, Arial',fontStyle:'bold',fontSize:'12px',color:'#fff3da',resolution:PIXEL_RATIO}).setOrigin(.5).setDepth(101).setVisible(false);
+    this.modernLabel.setScale(Math.min(1,100/Math.max(1,this.modernLabel.width)));
+    this.modernIcon=artImage(scene,'icon_jab',0,0,44,48,101)?.setVisible(false)??null;
     const txt = (x: number, y: number, s: string, size: number) =>
       this.labels.push(
         scene.add
@@ -92,8 +105,10 @@ export class TouchControls {
     scene.input.on('pointerupoutside', this.onUp, this);
     const blur = () => this.reset();
     window.addEventListener('blur', blur);
+    window.addEventListener('pointercancel',blur);
     scene.events.once('shutdown', () => {
       this.reset(); window.removeEventListener('blur', blur);
+      window.removeEventListener('pointercancel',blur);
       scene.input.off('pointerdown', this.onDown, this);
       scene.input.off('pointermove', this.onMove, this);
       scene.input.off('pointerup', this.onUp, this);
@@ -106,23 +121,33 @@ export class TouchControls {
   }
 
   // Set false while a full-screen overlay (the "i" panel) is open.
-  enabled = true;
+  private activeInput=true;
+  get enabled():boolean{return this.activeInput;}
+  set enabled(value:boolean){if(this.activeInput&&!value)this.reset();this.activeInput=value;}
 
   // Hidden when the player is using a keyboard or controller.
   setVisible(v: boolean): void {
+    if(this.visible&&!v)this.reset();
     this.visible = v;
     this.g.setVisible(v);
-    this.labels.forEach((l, i) => l.setVisible(v && this.isShown(this.labelIds[i])));
-    this.chrome.forEach(c => c.image.setVisible(v && c.ids.some(id => this.isShown(id))));
+    this.labels.forEach((l, i) => l.setVisible(v && this.isShown(this.labelIds[i]) && (this.mode==='classic'||this.labelIds[i]==='uppercut')));
+    this.chrome.forEach(c => c.image.setVisible(v && this.mode==='classic' && c.ids.some(id => this.isShown(id))));
+    this.modernLabel.setVisible(v&&this.mode==='modern'&&this.isShown('normalAttack'));
+    this.modernIcon?.setVisible(v&&this.mode==='modern'&&this.isShown('normalAttack'));
     this.stickArt?.setVisible(v && this.isShown('stick'));
     this.knobArt?.setVisible(v && this.isShown('stick'));
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.visible) return;
     this.refreshLayout();
     const { x, y } = this.point(p);
-    const hit = this.hitTest(x, y);
+    if(this.mode==='modern'){
+      const {normal,superButton}=this.modern;
+      if(this.isShown('uppercut')&&Math.hypot(x-superButton.x,y-superButton.y)<=superButton.r+8){this.owners.set(p.id,{kind:'tap'});this.intents.tap('uppercut');this.flash.set('uppercut',8);return;}
+      if(this.isShown('normalAttack')&&Math.hypot(x-normal.x,y-normal.y)<=normal.r+8){this.owners.set(p.id,{kind:'normal'});this.normalSink?.(`touch${p.id}`,true);return;}
+    }
+    const hit = this.mode==='classic'?this.hitTest(x, y):null;
     if (hit === 'guard') {
       this.owners.set(p.id, { kind: 'guard' });
       this.intents.setGuard(`touch${p.id}`, true);
@@ -161,7 +186,7 @@ export class TouchControls {
     const nx = dx / r;
     const ny = dy / r;
     const mag = Math.sqrt(nx * nx + ny * ny);
-    if (mag < tune.input.joystickDeadzone) this.intents.setTouchMove(0, 0);
+    if (this.mode==='classic'&&mag < tune.input.joystickDeadzone) this.intents.setTouchMove(0, 0);
     else this.intents.setTouchMove(nx, ny);
   }
 
@@ -169,6 +194,7 @@ export class TouchControls {
     const owner = this.owners.get(p.id);
     if (!owner) return;
     this.owners.delete(p.id);
+    if(owner.kind==='normal')this.normalSink?.(`touch${p.id}`,false);
     if (owner.kind === 'guard') this.intents.setGuard(`touch${p.id}`, false);
     if (owner.kind === 'joystick') {
       this.stick.active = false;
@@ -176,7 +202,7 @@ export class TouchControls {
     }
   }
 
-  reset():void {this.owners.clear();this.stick.active=false;this.intents.clearAll();}
+  reset():void {for(const [id,owner] of this.owners)if(owner.kind==='normal')this.normalSink?.(`touch${id}`,false);this.owners.clear();this.stick.active=false;this.intents.clearAll();}
 
   isGuardHeld(): boolean {
     for (const o of this.owners.values()) if (o.kind === 'guard') return true;
@@ -199,6 +225,7 @@ export class TouchControls {
       this.disc(base.x,base.y,22,0x6a9bc4);
     }
 
+    if(this.mode==='modern'){this.drawModern(f);return;}
     if(this.isShown('jab')||this.isShown('cross'))this.disc(this.main.x,this.main.y,this.main.r,0x174ea9);
     // Main split button
     const jabFlash = (this.flash.get('jab') ?? 0) > 0;
@@ -241,6 +268,23 @@ export class TouchControls {
     }
 
     for (const [k, v] of this.flash) this.flash.set(k, v - 1);
+  }
+
+  private drawModern(f:Fighter):void {
+    const {normal,superButton}=this.modern;
+    let held=false;for(const owner of this.owners.values())if(owner.kind==='normal')held=true;
+    if(this.isShown('normalAttack')){
+      this.disc(normal.x,normal.y+(held?2:0),normal.r,held?0x53b7ff:0x238ce8);
+      this.modernLabel.setPosition(normal.x,normal.y+25+(held?2:0));
+      this.modernIcon?.setPosition(normal.x,normal.y-10+(held?2:0));
+      if(this.isShown('fatigue')){
+        // Three fatigue lanes remain visible because Normal selects among three punches.
+        (['jab','cross','hook'] as const).forEach((p,i)=>this.drawFatigue(normal.x+(i-1)*32,normal.y+40,fatigueLevel(f,p),punchCfg(f,p).fatigueBars));
+      }
+    }
+    const superLabel=this.labels[this.labels.length-1];superLabel.setPosition(superButton.x,superButton.y+5);
+    if(this.isShown('uppercut'))this.drawUppercut({...superButton,id:'uppercut',label:t('common.super')},f.stars,uppercutStars(f),(this.flash.get('uppercut')??0)>0);
+    for(const [k,v] of this.flash)this.flash.set(k,v-1);
   }
 
   private disc(x:number,y:number,r:number,color:number):void {
