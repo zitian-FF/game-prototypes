@@ -1,4 +1,4 @@
-# Dig Match (DRAFT, awaiting approval)
+# Dig Match
 
 A casual, skill-based, endless match-3 digging game with incremental
 progression. The luck-based sibling is `prototypes/dice-dig`. Mobile-first,
@@ -8,10 +8,12 @@ portrait, one-thumb play. Reuses the pastel pillow-block look and feel from
 ## Core loop
 
 1. Swap two neighbouring blocks to make a line of 3 or more of the same colour.
-2. Matched blocks break. Blocks above fall, new blocks fill in from the top.
+2. Matched blocks break. Blocks below rise to fill the gap (upward gravity, as
+   if the player is descending) and new blocks enter from the bottom edge.
    Chains (cascades) score more.
 3. Breaking blocks chips neighbouring hardened blocks and frees gems.
-4. Tap each freed gem to collect it.
+4. Freed gems are collected automatically with a flashy effect (gems fly to
+   the gem counter in a trail).
 5. Spend gems on permanent upgrades. Play never ends: there is no fail state.
 
 ## Board
@@ -21,10 +23,10 @@ portrait, one-thumb play. Reuses the pastel pillow-block look and feel from
 - Each block is a pillow. A normal block is one slab. A hardened block is a
   stack of 2 to 3 grey slabs; the stack height is its health.
 - Hardened blocks cannot be swapped or matched. A match next to one removes a
-  slab. They fall like other blocks. Weak-point blocks give an extra chip to
+  slab. They rise like other blocks. Weak-point blocks give an extra chip to
   their neighbours when matched.
 - Some blocks hold a gem. Matching the block frees the gem.
-- Endless: new blocks come from the top, with the colour band and the share of
+- Endless: new blocks come from the bottom, with the colour band and the share of
   hardened blocks and gems changing slowly with depth. Depth is the number of
   rows' worth of blocks cleared. The board always has a valid move; if none is
   left it reshuffles. New blocks never start as a ready-made match.
@@ -46,9 +48,9 @@ portrait, one-thumb play. Reuses the pastel pillow-block look and feel from
 
 ## Economy and incremental layer (later steps)
 
-- Gems are the currency. Gem value grows with combo length and depth.
-- Permanent upgrades: gem value, Hammer and C4 power and frequency, a magnet that
-  collects gems automatically, a helper that breaks blocks by itself every few
+- Gems are the currency, collected automatically. Gem value grows with combo length and depth.
+- Permanent upgrades: gem value, Hammer and C4 power and frequency, a bigger
+  collection effect/bonus, a helper that breaks blocks by itself every few
   seconds (also while the tab is closed, computed from a saved timestamp).
 - A cap on stored gems that can be raised, as the spend sink.
 - Saves to `localStorage`, key `dig-match:save:v1`, on every state change.
@@ -82,11 +84,12 @@ backend.
 A swap, the break, the fall and the cascade feel good enough that the player
 wants one more swap.
 
+## Decisions
+
+- Gravity is upward (blocks rise toward the top row), to be novel. Easy to flip
+  later: it is one setting in the board rules and the spawn side.
+- Gems collect automatically with a fancy effect (no tap-to-collect).
+
 ## Open questions
 
-- Gravity direction. I propose blocks fall down, as in every match-3 players
-  already know. The "digging" feel then comes from the strata colour bands and
-  the depth counter scrolling by. Upward gravity (blocks rise as you descend)
-  is possible but less familiar for a casual audience.
-- Tap-to-collect for gems (as in dice-dig) or auto-collect from the start.
-  Proposed: tap first, with a magnet upgrade.
+- Whether upward gravity reads clearly to casual players; judged in playtest.
