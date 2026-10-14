@@ -53,6 +53,7 @@
       "idleSeconds": 3
     },
     "troopsFlashSeconds": 1.4,
+    "tpFlashSeconds": 1.6,
     "toastSeconds": 4.5,
     "toastTouchTrimSeconds": 2,
     "logsMax": 30,
