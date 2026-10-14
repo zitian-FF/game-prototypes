@@ -10,9 +10,9 @@ assert(Math.abs(Math.hypot(...Object.values(m.modernMovement(stick,{mx:100,my:10
 const saved=structuredClone(tune);Object.assign(tune.punches.hook,{reach:15});Object.assign(tune.punches.jab,{reach:35});Object.assign(tune.punches.cross,{reach:60});
 for(const chars of [['marco','nadia'],['tyke','bruno']]){const[a,b]=sim.createSimState({timed:false,fighters:chars.map(char=>({char}))}).fighters;a.x=a.y=b.y=0;
  const hook=m.modernPunchRange(a,b,'hook'),jab=m.modernPunchRange(a,b,'jab'),cross=m.modernPunchRange(a,b,'cross');assert(hook<jab&&jab<cross);
- const cfg=load(root+'sim/character.ts').punchCfg(a,'hook'),hookLimit=hook+Math.min(hook*.1,cfg.hitRadius*.5),crossStart=jab*.9;
+ const cfg=load(root+'sim/character.ts').punchCfg(a,'hook'),hookLimit=hook+Math.min(hook*.1,cfg.hitRadius*.5),crossStart=jab*.85,crossLimit=cross*1.1;
  assert.equal(m.modernPunchRange(a,b,'hook'),cfg.reach,'actual reach remains unchanged');
- for(const[distance,punch]of [[hook,'hook'],[hookLimit,'hook'],[hookLimit+1e-6,'jab'],[crossStart,'jab'],[crossStart+1e-6,'cross'],[jab,'cross'],[cross,'cross'],[cross+1e-6,'jab']]){b.x=distance;assert.equal(m.contextualModernPunch(a,b),punch,chars+' boundary '+distance);}}
+ for(const[distance,punch]of [[hook,'hook'],[hookLimit,'hook'],[hookLimit+1e-6,'jab'],[crossStart,'jab'],[crossStart+1e-6,'cross'],[jab,'cross'],[cross,'cross'],[cross+1e-6,'cross'],[crossLimit,'cross'],[crossLimit+1e-6,'jab']]){b.x=distance;assert.equal(m.contextualModernPunch(a,b),punch,chars+' boundary '+distance);}}
 Object.assign(tune,saved);
 // Every roster fighter can actually connect its selected Hook at the added band edge.
 for(const char of load(root+'sim/character.ts').CHARACTER_IDS){
