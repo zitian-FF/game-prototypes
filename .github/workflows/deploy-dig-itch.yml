@@ -11,6 +11,7 @@ on:
         options:
           - dice-dig
           - dig-match
+          - dig-tap
         default: dice-dig
       itch_target:
         description: itch.io project:channel to push to
