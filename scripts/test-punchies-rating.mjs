@@ -37,7 +37,7 @@ assert.equal((await call('/report',{...ra,matchId:expired.matchId})).state,'expi
 assert.equal(m.agreedScore(null,null),null);assert.equal(m.agreedScore({score:0,quit:true},null),0);assert.equal(m.agreedScore(null,{score:0,quit:true}),1);
 const env={RATINGS:{idFromName:()=>'',get:()=>store}};
 assert.equal((await m.worker.fetch(new Request('https://rating.test/rating',{method:'POST',headers:{Origin:'https://evil.test'},body:JSON.stringify(a)}),env)).status,403);
-assert.equal((await m.worker.fetch(new Request('https://rating.test/rating',{method:'POST',headers:{Origin:'https://zitian-ff.itch.io'},body:JSON.stringify(a)}),env)).status,200);
+assert.equal((await m.worker.fetch(new Request('https://rating.test/rating',{method:'POST',headers:{Origin:'https://polsia.itch.io'},body:JSON.stringify(a)}),env)).status,200);
 assert.equal((await m.worker.fetch(new Request('https://rating.test/rating',{method:'POST',headers:{Origin:'http://localhost:5189'},body:'x'.repeat(5000)}),env)).status,413,'chunked requests enforce payload cap');
 
 // Actual rating.ts client against the Worker handler + SQLite, with separate

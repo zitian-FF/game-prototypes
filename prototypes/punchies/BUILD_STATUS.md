@@ -3,7 +3,7 @@ Punchies CrazyGames prepared for the explicitly approved itch Suits deployment; 
 ## What was implemented
 Complete CG11 edition and5+6 grid, Modern/Classic integration, separate save/cohort policy and a no-overwrite migration of existing itch saves into CG keys. Production flags exclude staging/QA controls. Existing reset epoch retained.
 ## Key technical decisions
-Canonical editions: Punchies Master→staging; Punchies CrazyGames→zitian-ff/suits:html5; Punchies Beta→new Punchies - Beta Test page. Same source/prepared art; no extra CG staging route or new lossy compression. CI alone increments version after successful upload.
+Canonical editions: Punchies Master→staging; Punchies CrazyGames→polsia/suits:html5; Punchies Beta→new Punchies - Beta Test page. Same source/prepared art; no extra CG staging route or new lossy compression. CI alone increments version after successful upload.
 ## Open questions
 None blocks the authorized CG release.
 ## Known issues
