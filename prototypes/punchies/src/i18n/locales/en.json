@@ -501,5 +501,7 @@
   "tutorial.modern_attack_text": "Hold Normal Attack to repeat legal punches. Hook up close; Cross beyond Jab range but within Cross range; Jab otherwise. There is no stamina, but fatigue still applies.",
   "tutorial.modern_guard_text": "Release the stick to High Guard automatically. Modern has no Perfect Guard. Moving or attacking lowers your guard; its normal release penalty still applies.",
   "tutorial.modern_dodge_text": "From still, move just before a punch arrives. For 12 combat frames, a legal incoming collision triggers one dodge in that direction. Movement alone never dodges. The normal dodge penalty prevents a repeat.",
-  "tutorial.modern_super_text": "Land clean hits to charge Super, then use {btn}. Modern uses the same Super without stamina costs. All its outgoing damage is 20% lower, including follow-ups; fatigue still applies."
+  "tutorial.modern_super_text": "Land clean hits to charge Super, then use {btn}. Modern uses the same Super without stamina costs. All its outgoing damage is 20% lower, including follow-ups; fatigue still applies.",
+  "beta.completed_matches": "{matches} completed matches",
+  "beta.unlock_requirement": "Unlock {fighter} after {matches} completed matches."
 }

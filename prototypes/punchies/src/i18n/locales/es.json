@@ -501,5 +501,7 @@
   "tutorial.modern_attack_text": "Mantén Ataque normal para repetir golpes cuando sea posible. Hook de cerca; Cross fuera del Jab pero dentro del Cross; Jab en el resto. No hay stamina, pero sí fatiga.",
   "tutorial.modern_guard_text": "Suelta el stick para hacer High Guard automáticamente. Moderno no tiene Perfect Guard. Moverte o atacar baja la guardia y mantiene su penalización habitual.",
   "tutorial.modern_dodge_text": "Desde parado, muévete justo antes del golpe. Durante 12 fotogramas de combate, un impacto entrante activa una esquiva legal en esa dirección. Moverse solo no esquiva. La penalización normal impide repetirla.",
-  "tutorial.modern_super_text": "Conecta golpes limpios para cargar Super y usa {btn}. Moderno usa el mismo Super sin coste de stamina. Todo su daño baja un 20%, incluidos los golpes posteriores; la fatiga sigue activa."
+  "tutorial.modern_super_text": "Conecta golpes limpios para cargar Super y usa {btn}. Moderno usa el mismo Super sin coste de stamina. Todo su daño baja un 20%, incluidos los golpes posteriores; la fatiga sigue activa.",
+  "beta.completed_matches": "{matches} combates completados",
+  "beta.unlock_requirement": "Desbloquea a {fighter} tras completar {matches} combates."
 }

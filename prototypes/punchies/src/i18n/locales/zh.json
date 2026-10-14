@@ -501,5 +501,7 @@
   "tutorial.modern_attack_text": "按住普通攻击可在动作允许时连续出拳。近身用勾拳；刺拳距离以外、摆拳距离以内用摆拳；其余距离用刺拳。没有体力消耗，但仍有疲劳。",
   "tutorial.modern_guard_text": "松开摇杆会自动高位防御。现代模式没有完美防御；移动或出拳会解除防御，并保留通常的解除惩罚。",
   "tutorial.modern_dodge_text": "静止时，在拳头命中前开始移动。随后12个战斗帧内，实际碰撞会在动作允许时触发一次该方向的闪避。仅移动不会闪避；通常的闪避惩罚期间不能再次闪避。",
-  "tutorial.modern_super_text": "用精准命中积攒超级招式，再用{btn}释放。现代模式使用相同的超级招式，不消耗体力；包括后续攻击在内的所有伤害降低20%，仍受疲劳影响。"
+  "tutorial.modern_super_text": "用精准命中积攒超级招式，再用{btn}释放。现代模式使用相同的超级招式，不消耗体力；包括后续攻击在内的所有伤害降低20%，仍受疲劳影响。",
+  "beta.completed_matches": "已完成 {matches} 场比赛",
+  "beta.unlock_requirement": "完成 {matches} 场比赛后解锁 {fighter}。"
 }

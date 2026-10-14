@@ -85,6 +85,8 @@ for (const [prefix, ids] of Object.entries(groups)) for (const id of ids) {
 const { SHOP_ITEMS } = await loadTs('./prototypes/punchies/src/shop/draft', ['SHOP_ITEMS']);
 for (const item of SHOP_ITEMS) { assert.ok(`shop.item.${item.id}.name` in en, `missing name for shop item ${item.id}`); used.add(`shop.item.${item.id}.name`); }
 for (const key of Object.keys(en)) if (allLiterals.has(key)) used.add(key);
+// Beta runtime consumers are integrated separately by Build.
+for(const key of ['beta.completed_matches','beta.unlock_requirement'])used.add(key);
 const unused = Object.keys(en).filter((k) => !used.has(k));
 assert.deepEqual(unused, [], `unused English keys: ${unused.join(', ')}`);
 
