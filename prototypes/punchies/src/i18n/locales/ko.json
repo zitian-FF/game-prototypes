@@ -508,5 +508,7 @@
   "controls.modern_cons": "피해량 20% 감소\n거리에 따라 펀치 선택\n퍼펙트 가드 없음",
   "controls.classic_pros": "기본 피해량 그대로\n펀치와 방어 직접 조작\n퍼펙트 가드 가능",
   "controls.classic_cons": "더 많은 입력\n스태미나와 방어 직접 관리",
-  "controls.modern_note": "모던: 스태미나는 없지만 피로는 적용됩니다. 자동 회피는 멈췄다가 움직인 직후에만 가능하며 회피 페널티도 적용됩니다."
+  "controls.modern_note": "모던: 스태미나는 없지만 피로는 적용됩니다. 자동 회피는 멈췄다가 움직인 직후에만 가능하며 회피 페널티도 적용됩니다.",
+  "controls.advantages": "장점",
+  "controls.tradeoffs": "감수할 점"
 }

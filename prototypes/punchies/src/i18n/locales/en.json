@@ -508,5 +508,7 @@
   "controls.modern_cons": "20% less damage\nSpacing chooses your punch\nNo Perfect Guard",
   "controls.classic_pros": "Full damage\nDirect punches and defence\nPerfect Guard",
   "controls.classic_cons": "More inputs\nManage stamina and defence",
-  "controls.modern_note": "Modern: no stamina; fatigue remains. Auto-dodge only works briefly after moving from still; dodge penalties still apply."
+  "controls.modern_note": "Modern: no stamina; fatigue remains. Auto-dodge only works briefly after moving from still; dodge penalties still apply.",
+  "controls.advantages": "Advantages",
+  "controls.tradeoffs": "Trade-offs"
 }

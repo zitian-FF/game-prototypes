@@ -508,5 +508,7 @@
   "controls.modern_cons": "伤害降低20%\n按距离自动选择拳种\n没有完美防御",
   "controls.classic_pros": "完整伤害\n直接控制出拳与防御\n可用完美防御",
   "controls.classic_cons": "需要更多操作\n手动管理体力与防御",
-  "controls.modern_note": "现代模式没有体力消耗，但仍有疲劳。自动闪避仅在静止后开始移动的短暂窗口内生效，仍受闪避惩罚限制。"
+  "controls.modern_note": "现代模式没有体力消耗，但仍有疲劳。自动闪避仅在静止后开始移动的短暂窗口内生效，仍受闪避惩罚限制。",
+  "controls.advantages": "优势",
+  "controls.tradeoffs": "取舍"
 }

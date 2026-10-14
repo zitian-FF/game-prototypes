@@ -508,5 +508,7 @@
   "controls.modern_cons": "20% menos daño\nLa distancia elige el golpe\nSin Perfect Guard",
   "controls.classic_pros": "Daño completo\nControl directo de golpes y defensa\nPerfect Guard",
   "controls.classic_cons": "Más controles\nGestiona stamina y defensa",
-  "controls.modern_note": "Moderno: sin stamina, pero con fatiga. La esquiva automática solo funciona justo al moverte desde parado; su penalización sigue activa."
+  "controls.modern_note": "Moderno: sin stamina, pero con fatiga. La esquiva automática solo funciona justo al moverte desde parado; su penalización sigue activa.",
+  "controls.advantages": "Ventajas",
+  "controls.tradeoffs": "Desventajas"
 }

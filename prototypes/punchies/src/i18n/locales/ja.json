@@ -508,5 +508,7 @@
   "controls.modern_cons": "与ダメージが20%減少\n距離でパンチが決まる\nパーフェクトガードなし",
   "controls.classic_pros": "通常のダメージ\n攻撃・防御を直接操作\nパーフェクトガードあり",
   "controls.classic_cons": "操作が多い\nスタミナと防御を自分で管理",
-  "controls.modern_note": "モダン：スタミナはないが疲労は残る。自動回避は静止から動き始めた直後のみ。回避ペナルティも適用される。"
+  "controls.modern_note": "モダン：スタミナはないが疲労は残る。自動回避は静止から動き始めた直後のみ。回避ペナルティも適用される。",
+  "controls.advantages": "強み",
+  "controls.tradeoffs": "注意点"
 }
