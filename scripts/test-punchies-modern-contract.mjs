@@ -10,8 +10,19 @@ assert(Math.abs(Math.hypot(...Object.values(m.modernMovement(stick,{mx:100,my:10
 const saved=structuredClone(tune);Object.assign(tune.punches.hook,{reach:15});Object.assign(tune.punches.jab,{reach:35});Object.assign(tune.punches.cross,{reach:60});
 for(const chars of [['marco','nadia'],['tyke','bruno']]){const[a,b]=sim.createSimState({timed:false,fighters:chars.map(char=>({char}))}).fighters;a.x=a.y=b.y=0;
  const hook=m.modernPunchRange(a,b,'hook'),jab=m.modernPunchRange(a,b,'jab'),cross=m.modernPunchRange(a,b,'cross');assert(hook<jab&&jab<cross);
- for(const[distance,punch]of [[hook,'hook'],[hook+1e-6,'jab'],[jab,'jab'],[jab+1e-6,'cross'],[cross,'cross'],[cross+1e-6,'jab']]){b.x=distance;assert.equal(m.contextualModernPunch(a,b),punch,chars+' boundary '+distance);}}
+ const cfg=load(root+'sim/character.ts').punchCfg(a,'hook'),hookLimit=hook+Math.min(hook*.1,cfg.hitRadius*.5),crossStart=jab*.9;
+ assert.equal(m.modernPunchRange(a,b,'hook'),cfg.reach,'actual reach remains unchanged');
+ for(const[distance,punch]of [[hook,'hook'],[hookLimit,'hook'],[hookLimit+1e-6,'jab'],[crossStart,'jab'],[crossStart+1e-6,'cross'],[jab,'cross'],[cross,'cross'],[cross+1e-6,'jab']]){b.x=distance;assert.equal(m.contextualModernPunch(a,b),punch,chars+' boundary '+distance);}}
 Object.assign(tune,saved);
+// Every roster fighter can actually connect its selected Hook at the added band edge.
+for(const char of load(root+'sim/character.ts').CHARACTER_IDS){
+ const state=sim.createSimState({timed:false,fighters:[{char,controlMode:'modern'},{char:'marco',anchored:true}]}),[a,b]=state.fighters,cfg=load(root+'sim/character.ts').punchCfg(a,'hook');
+ a.x=400;a.y=b.y=200;a.fx=1;a.fy=0;b.x=a.x+cfg.reach+Math.min(cfg.reach*.1,cfg.hitRadius*.5)-1e-6;
+ sim.arenaCombat.processInput(state,0,{...load(root+'sim/types.ts').NEUTRAL_INPUT,normalAttack:true,mx:100},[]);
+ assert.equal(a.punch.type,'hook',char+' expanded hook selected');let contact=false;
+ for(let frame=a.punch.startup;frame<=a.punch.startup+a.punch.sourEarly+a.punch.sweet+a.punch.sour;frame++){a.punch.frame=frame;if(sim.arenaCombat.detectContacts(state,[]).length){contact=true;break;}}
+ assert(contact,char+' expanded hook band can connect');
+}
 const N=load(root+'sim/types.ts').NEUTRAL_INPUT,c=sim.arenaCombat,{maxStamina,punchCfg}=load(root+'sim/character.ts');
 function pair(mode='modern'){const s=sim.createSimState({timed:false,fighters:[{char:'marco',controlMode:mode},{char:'marco',controlMode:'classic',anchored:true}]});s.fighters[1].health=10000;return s;}
 {const s=pair(),a=s.fighters[0];a.stamina=0;a.exhausted=true;sim.step(s,[N,N],false);assert.equal(a.stamina,maxStamina(a));assert.equal(a.exhausted,false);assert.equal(sim.stanceOf(a),'guard','first neutral guard never PG');sim.step(s,[{...N,guard:true,dodge:true,jab:true,cross:true,hook:true},N],false);assert.equal(a.punch,null,'Classic manual bits ignored');assert.equal(a.dodge,null);}

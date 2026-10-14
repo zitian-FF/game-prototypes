@@ -4,6 +4,8 @@ import {punchCfg} from './character';
 export type ControlMode='modern'|'classic';
 export const MODERN_DAMAGE_MULT=.8;
 export const MODERN_DODGE_WINDOW=12;
+/** Selection only: never changes punch geometry. Included in online rules hash. */
+export const MODERN_SELECTION_TOLERANCE=Object.freeze({hookReachFraction:.10,hookHitRadiusFraction:.50,crossJabInsetFraction:.10});
 const ENTER_NEUTRAL=.12,LEAVE_NEUTRAL=.20;
 export function controlMode(value:unknown):ControlMode{return value==='classic'?'classic':'modern';}
 export interface ModernStickState {neutral:boolean;dodgeWindow:number;dx:number;dy:number}
@@ -34,7 +36,10 @@ export function modernPunchRange(att:Fighter,_target:Fighter,type:'jab'|'cross'|
 /** Only at legal action start; the committed PunchState owns the choice thereafter. */
 export function contextualModernPunch(att:Fighter,target:Fighter):PunchType {
   const dx=target.x-att.x,dy=target.y-att.y,distance=Math.sqrt(dx*dx+dy*dy);
-  if(distance<=modernPunchRange(att,target,'hook'))return 'hook';
-  if(distance>modernPunchRange(att,target,'jab')&&distance<=modernPunchRange(att,target,'cross'))return 'cross';
+  const hook=punchCfg(att,'hook'),tolerance=MODERN_SELECTION_TOLERANCE;
+  const hookLimit=hook.reach+Math.min(hook.reach*tolerance.hookReachFraction,hook.hitRadius*tolerance.hookHitRadiusFraction);
+  const crossStart=modernPunchRange(att,target,'jab')*(1-tolerance.crossJabInsetFraction);
+  if(distance<=hookLimit)return 'hook';
+  if(distance>crossStart&&distance<=modernPunchRange(att,target,'cross'))return 'cross';
   return 'jab';
 }

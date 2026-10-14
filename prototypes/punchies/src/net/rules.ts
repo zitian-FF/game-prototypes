@@ -1,8 +1,9 @@
+import {MODERN_SELECTION_TOLERANCE} from '../sim/modernControls';
 import {EDITION_ID,EDITION_POLICY_HASH,ITCH_BETA_EDITION} from '../edition';
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
-export const SIM_RULES_VERSION='sim-modern-controls-7';
+export const SIM_RULES_VERSION='sim-modern-controls-8';
 export interface RulesStamp {protocol:2;version:string;hash:string}
 // Control lifecycle changes must also reject clients with the old BO3 gate.
 const EDITION_RULES=EDITION_ID==='master'?[]:[EDITION_ID,EDITION_POLICY_HASH];
@@ -18,7 +19,7 @@ function simulationData(value:unknown):unknown {
  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([key])=>key!=='nameKey'&&key!=='descriptionKey').map(([key,v])=>[key,simulationData(v)]));
  return value;
 }
-export function simulationRules():RulesStamp{return {protocol:2,version:SIM_RULES_VERSION,hash:hash([SIM_RULES_VERSION,CONTROL_RULES_VERSION,[...CHARACTER_IDS].sort(),simulationData(superBalanceConfig),...EDITION_RULES])};}
+export function simulationRules():RulesStamp{return {protocol:2,version:SIM_RULES_VERSION,hash:hash([SIM_RULES_VERSION,CONTROL_RULES_VERSION,MODERN_SELECTION_TOLERANCE,[...CHARACTER_IDS].sort(),simulationData(superBalanceConfig),...EDITION_RULES])};}
 export function sameRules(value:unknown):boolean {const r=value as Partial<RulesStamp>|null,local=simulationRules();return !!r&&r.protocol===local.protocol&&r.version===local.version&&r.hash===local.hash;}
 export const rulesFingerprint=()=>{const r=simulationRules();return r.version+':'+r.hash;};
 /** Host tune is validated/synchronized separately; a different local tune is legal. */
