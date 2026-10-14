@@ -1,8 +1,8 @@
 [
-  "CrazyGames11 roster: top Marco/Mia/Bruno/Roxy/Nadia; bottom Tee/Tyke/Dragon/Longan/Captain/Kai",
-  "Centered 5+6 grid with larger touch targets and row-aware keyboard/controller navigation",
-  "Shared edition manifest drives precompile assets/tune, CG save namespace and online cohort",
-  "Approved skins, progression and rewarded ads retained; prepared art/audio unchanged",
-  "Complete Modern/Classic controls and tutorials plus Eagle50/BO3/save fixes retained",
-  "CG stage is isolated with ratings disabled; normal portal artifact excludes staging/QA flags"
+ "Roster bars use fixed 40-100% logarithmic fills; percentages hidden; Power unchanged",
+ "Definitive repaired logo in every loading, menu and match splash",
+ "Modern Hook/Cross selection tolerance and rules v8 compatibility",
+ "Polished Modern/Classic comparison cards and selected P1/P2 badges",
+ "Full Master roster retained; shared tuning and save epoch unchanged",
+ "Staging ratings disabled; Beta remains isolated five default fighters"
 ]
