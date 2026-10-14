@@ -47,9 +47,9 @@ export function controlModePanel(scene:Phaser.Scene,back:()=>void):void {
     text(x+29,cardTop+22,i===0?'M':'C',24,32,28,i===0?'#8af0ff':'#ffe4a4');
     text(x+57,cardTop+22,t('controls.'+mode),19,column-130,28,'#fff3d7','left');
     badges.push([0,1].map(side=>text(x+column-48+side*29,cardTop+22,`P${side+1}`,11,24,20,i===0?'#8af0ff':'#ffe4a4')));
-    const list=(key:string,top:number,positive:boolean)=>{
+    const list=(copy:string,top:number,positive:boolean)=>{
       text(x+14,top,t(positive?'controls.advantages':'controls.tradeoffs'),11,column-28,16,positive?'#b6e8c4':'#ffc9a5','left');
-      t(key).split('\n').forEach((value,row)=>{
+      copy.split('\n').forEach((value,row)=>{
         const y=top+24+row*18,marker=scene.add.graphics().setDepth(depth+2);items.push(marker);
         marker.fillStyle(positive?0x174836:0x593023).fillCircle(x+22,y,7);
         marker.lineStyle(2,positive?0x99edb6:0xffbb93,1);
@@ -58,8 +58,8 @@ export function controlModePanel(scene:Phaser.Scene,back:()=>void):void {
         text(x+36,y,value,14,column-50,17,'#f1eada','left');
       });
     };
-    list('controls.'+mode+'_pros',cardTop+58,true);
-    list('controls.'+mode+'_cons',cardTop+145,false);
+    list(t('controls.'+mode+'_pros'),cardTop+58,true);
+    list(t('controls.'+mode+'_cons'),cardTop+145,false);
   }
   for(const side of [0,1] as const){const x=VIEW.cx+(side===0?-offset:offset);
     text(x-column/2+20,VIEW.cy-125,`P${side+1}`,15,38,30);
