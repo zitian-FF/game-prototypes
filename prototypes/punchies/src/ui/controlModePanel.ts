@@ -58,8 +58,8 @@ export function controlModePanel(scene:Phaser.Scene,back:()=>void):void {
         text(x+36,y,value,14,column-50,17,'#f1eada','left');
       });
     };
-    list(t('controls.'+mode+'_pros'),cardTop+58,true);
-    list(t('controls.'+mode+'_cons'),cardTop+145,false);
+    list(mode==='modern'?t('controls.modern_pros'):t('controls.classic_pros'),cardTop+58,true);
+    list(mode==='modern'?t('controls.modern_cons'):t('controls.classic_cons'),cardTop+145,false);
   }
   for(const side of [0,1] as const){const x=VIEW.cx+(side===0?-offset:offset);
     text(x-column/2+20,VIEW.cy-125,`P${side+1}`,15,38,30);
