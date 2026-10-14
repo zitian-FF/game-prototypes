@@ -1,8 +1,8 @@
 [
-  "Eagle Punch startup50: damage40, dash12, recovery18 and cost unchanged",
-  "Online BO3: symmetric START, safe round/rematch votes and late-packet quarantine",
-  "Disconnect and rejected bootstrap are terminal; disposed scenes cannot keep ticking",
-  "Saves retained: missing reset receipts never authorize deletion; failed writes remain coherent",
-  "Retains completed Eagle, refined Wave/CodeX and approved fighter/Zombie balance",
-  "Stage999, isolated saves and ratingdisabled retained; Modern and Beta UI excluded"
+  "Modern is default: contextual held Normal and Super; fatigue damage x0.8; stamina inert",
+  "Neutral auto guard without perfect guard; 12-frame collision-triggered dodge",
+  "Per-side Modern/Classic settings, touch controls and HUD badges; Classic retained",
+  "Online START and rollback agree modes; BO3 modes locked through the set",
+  "Modern9 and Classic17 tutorials; bounded first-fight HP with real KO",
+  "Retains Eagle50, BO3/save fixes and approved assets; stage saves isolated, ratings disabled"
 ]
