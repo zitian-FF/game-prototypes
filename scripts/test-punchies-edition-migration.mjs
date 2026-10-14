@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';
+const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/portal/editionMigration.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports});
+const master={profile:'punchies:profile:v1',shop:'punchies:shop-preview:v1'},cg={profile:'punchies:crazygames:profile:v1',shop:'punchies:crazygames:shop-preview:v1'};
+const raw=new Map([[master.profile,'{"alias":"Existing player","level":6}'],[master.shop,'{"tokens":7,"owned":["fighter-kai"]}']]);
+const native={getItem:key=>raw.get(key)??null},destination=new Map(),target={getItem:key=>destination.get(key)??null,setItem:(key,value)=>destination.set(key,value),removeItem(){assert.fail('migration never deletes');}};
+assert.equal(exports.migrateCrazyGamesSaves(target,native,master,cg),2);
+assert.equal(destination.get(cg.profile),raw.get(master.profile));assert.equal(destination.get(cg.shop),raw.get(master.shop));
+destination.set(cg.shop,'new CG progress');assert.equal(exports.migrateCrazyGamesSaves(target,native,master,cg),0);assert.equal(destination.get(cg.shop),'new CG progress');assert(raw.has(master.shop));
+for(const broken of [{...target,getItem(){throw Error('blocked');}},{...target,getItem:()=>null,setItem(){throw Error('quota');}}])assert.doesNotThrow(()=>exports.migrateCrazyGamesSaves(broken,native,master,cg));
+assert(raw.has(master.profile));assert(raw.has(master.shop));
+console.log('PASS existing itch alias/progression/owned/currency copy only into absent CG keys; no deletion/overwrite; quota/blocked safe');

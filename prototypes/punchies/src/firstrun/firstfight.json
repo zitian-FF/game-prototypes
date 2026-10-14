@@ -1,5 +1,6 @@
 {
   "hitsToKo": 6,
+  "opponentHealthMultiplier":1.25,
   "jabsStep": 2,
   "crossesStep": 2,
   "opponentJabCooldownTicks": 150,

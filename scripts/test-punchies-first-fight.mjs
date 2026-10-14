@@ -32,17 +32,20 @@ function scene(){
   s.welcome=()=>{};
   s.built=true;s.coach={setText(){}};
   s.sim={fighters:[{x:0,y:0,health:100},{x:config.opponentJabRange,y:0,health:100}],result:null};
-  s.stage={pollDevices(){},sampleLocal:()=>({jab:true,cross:true,hook:true,uppercut:true,dodge:true,guard:true,mx:45,my:-20}),handleEvents(){},draw(){}};
+  s.stage={pollDevices(){},sampleLocal:()=>({normalAttack:true,jab:true,cross:true,hook:true,uppercut:true,dodge:true,guard:true,mx:45,my:-20}),handleEvents(){},draw(){}};
   return s;
 }
 const fight=scene();
 const input=fight.playerInput();
 assert.equal(input.jab,true);assert.equal(input.cross,true);assert.equal(input.mx,45);
-for(const move of ['hook','uppercut','dodge','guard'])assert.equal(input[move],false);
+assert.equal(input.normalAttack,true,'first play retains held Normal input');
+for(const move of ['hook','dodge','guard'])assert.equal(input[move],false);
+assert.equal(input.uppercut,true,'first play exposes the existing charged Super');
 fight.update(0,0);assert.equal(fight.phase,'jab','coach teaches jab upon reaching range before landing a hit');
 for(let n=0;n<config.jabsStep;n++)fight.onHit('jab');assert.equal(fight.phase,'cross');
 for(let n=0;n<config.crossesStep;n++)fight.onHit('cross');assert.equal(fight.phase,'mix');
-assert.equal(fight.sim.fighters[1].health,100*(1-(config.jabsStep+config.crossesStep)/config.hitsToKo));
+assert.equal(fight.sim.fighters[1].health,100,'coaching never replaces real damage with a scripted quota');
+assert.equal(config.opponentHealthMultiplier,1.25);
 fight.finish('win');fight.finish('skip');
 assert.equal(done,1);assert.equal(gifts,1);assert.equal(reveals,1);assert.equal(awards,1);
 const replay=scene();replay.skipFromMenu();
@@ -50,4 +53,4 @@ assert.equal(resumes,1,'pause-menu return resumes the scene for reward presentat
 assert.equal(done,2);assert.equal(gifts,1,'a replay never duplicates the gift');assert.equal(reveals,1);assert.equal(awards,1,'skip gives no match XP');
 saved.firstGiftDone=false;const skip=scene();skip.finish('skip');
 assert.equal(gifts,2);assert.equal(reveals,2,'new players receive the same reveal when skipping');
-console.log('PASS: first-fight allowed controls, coach sequence, even health drain, win/skip gift parity, replay idempotence and pause-menu return.');
+console.log('PASS: Modern first-fight held controls, coach sequence, real HP preserved, 25% intro-only HP config, win/skip gift parity, replay idempotence and pause-menu return.');

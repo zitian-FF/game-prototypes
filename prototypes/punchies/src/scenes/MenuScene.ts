@@ -222,8 +222,7 @@ export class MenuScene extends Phaser.Scene {
     const close = () => { padTimer.remove();items.forEach(o=>o.destroy()); };
     const done = () => { close();this.openSettings(); };
     getNav(this).modalBack(items[0] as Phaser.GameObjects.Rectangle, done);
-    btn(VIEW.cx - 70,VIEW.cy + 120,120,t('common.credits'),()=>{close();this.openCredits();});
-    btn(VIEW.cx + 70,VIEW.cy + 120,120,t('menu.done'),done);
+    btn(VIEW.cx,VIEW.cy + 120,120,t('menu.done'),done);
     refresh();
   }
 

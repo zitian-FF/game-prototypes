@@ -5,21 +5,25 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import AdmZip from 'adm-zip';
+import {EDITIONS,editionContract,editionBuildIdentity,selectEditionArt} from './punchies-editions.mjs';
 import {overlayStagingArt} from './overlay-punchies-staging-art.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
 const args=process.argv.slice(2),value=key=>args[args.indexOf(key)+1];
 const profile=args[0],portal=args.includes('--portal')?value('--portal'):'crazygames';
 if(!['standard','compact'].includes(profile)||!['web','crazygames','poki','playgama'].includes(portal))throw Error('Expected standard|compact and --portal web|crazygames|poki|playgama');
+const editionName=args.includes('--edition')?value('--edition'):process.env.PUNCHIES_EDITION??EDITIONS.defaultEdition;
+const edition=editionContract(editionName),identity=editionBuildIdentity(editionName,profile,portal);
 const settings=JSON.parse(fs.readFileSync('prototypes/punchies/asset-profiles.json'))[profile];
-const staging=path.join(root,'.cache/punchies-profiles',profile),publicDir=path.join(staging,'public');
+const archiveCache=path.join(root,'.cache/punchies-profiles',profile);
+const staging=editionName==='master'?archiveCache:path.join(root,'.cache/punchies-editions',identity),publicDir=path.join(staging,'public');
 const target=path.join(publicDir,'prototypes/punchies');
 fs.mkdirSync(staging,{recursive:true});
 const run=(file,argv=[])=>execFileSync(process.execPath,[file,...argv],{stdio:'inherit'});
 function reset(folder){if(!path.resolve(folder).startsWith(`${staging}${path.sep}`))throw Error('Staging path escaped profile root');fs.rmSync(folder,{recursive:true,force:true});}
 async function archive(url,sha,destination,allowed){
   if(!/^[a-f0-9]{64}$/.test(sha))throw Error('Profile archive SHA-256 must be configured');
-  const cache=path.join(staging,`${sha}.zip`);
+  const cache=path.join(archiveCache,`${sha}.zip`);fs.mkdirSync(archiveCache,{recursive:true});
   let bytes;
   if(fs.existsSync(cache)&&!args.includes('--fresh'))bytes=fs.readFileSync(cache);
   else{if(args.includes('--offline'))throw Error(`No verified cached archive: ${sha}`);const res=await fetch(url);if(!res.ok)throw Error(`HTTP ${res.status}: ${url}`);bytes=Buffer.from(await res.arrayBuffer());}
@@ -55,10 +59,11 @@ if(profile==='standard'){
 }
 const stageArtOverlay=await overlayStagingArt(path.join(target,'assets'),staging,settings.artSha256??null,portal,profile);
 if(process.env.PUNCHIES_STAGING!=='on'&&!fs.existsSync('prototypes/punchies/production-promotion.json')&&fs.existsSync(path.join(target,'assets/loose/materialmask_tee.png')))throw Error('Staging mask leaked into production');
-const profileRecord={profile,portal,musicExtension:settings.musicExtension,artSha256:stageArtOverlay?.archiveSha256??settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256,staging:process.env.PUNCHIES_STAGING==='on',saveResetId:process.env.PUNCHIES_SAVE_RESET_ID??'',...(stageArtOverlay?(process.env.PUNCHIES_STAGING==='on'?{stageArtOverlay}:{approvedContent:{...JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json')),overlay:stageArtOverlay}}): {})};
+const editionArt=editionName==='master'?null:selectEditionArt(path.join(target,'assets'),editionName);
+const profileRecord={profile,portal,...(editionName==='master'?{}:{edition:editionName,editionPolicyHash:edition.policyHash,editionFighters:edition.fighters,editionArt}),musicExtension:settings.musicExtension,artSha256:stageArtOverlay?.archiveSha256??settings.artSha256??null,audioSha256:settings.audioSha256??JSON.parse(fs.readFileSync('prototypes/punchies/music-manifest.json')).sha256,staging:process.env.PUNCHIES_STAGING==='on',saveResetId:process.env.PUNCHIES_SAVE_RESET_ID??'',...(stageArtOverlay?(process.env.PUNCHIES_STAGING==='on'?{stageArtOverlay}:{approvedContent:{...JSON.parse(fs.readFileSync('prototypes/punchies/production-promotion.json')),overlay:stageArtOverlay}}): {})};
 fs.writeFileSync(path.join(target,'asset-profile.json'),JSON.stringify(profileRecord,null,2));
-const outDir=path.join(root,'dist',`punchies-${profile}-${portal}`);
-execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--outDir',outDir,'--emptyOutDir','--base','./'],{stdio:'inherit',env:{...process.env,PUNCHIES_ASSET_PROFILE:profile,PUNCHIES_PUBLIC_DIR:publicDir,PORTAL:portal}});
+const outDir=path.join(root,'dist',editionName==='master'?`punchies-${profile}-${portal}`:`punchies-${identity}`);
+execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--outDir',outDir,'--emptyOutDir','--base','./'],{stdio:'inherit',env:{...process.env,PUNCHIES_ASSET_PROFILE:profile,PUNCHIES_EDITION:editionName,PUNCHIES_PUBLIC_DIR:publicDir,PORTAL:portal}});
 // These indexes are embedded by __PUNCHIES_ART__; no runtime request uses them.
 // Keep them in the staging/source archives, but avoid shipping a second copy.
 const deliveredArt=path.join(outDir,'prototypes/punchies/assets');

@@ -32,7 +32,9 @@ export function loadLocalInputs(): LocalInputs {
 
 export function saveLocalInputs(v: LocalInputs): void {
   try {
-    store.setItem(KEY, JSON.stringify({ ...v, layouts: loadLayouts() }));
+    let previous:Record<string,unknown>={};
+    try {const raw:unknown=JSON.parse(store.getItem(KEY)??'{}');if(raw&&typeof raw==='object'&&!Array.isArray(raw))previous=raw as Record<string,unknown>;}catch{/* repair malformed save */}
+    store.setItem(KEY, JSON.stringify({ ...previous, ...v, layouts: loadLayouts() }));
   } catch {
     /* storage unavailable (private mode) */
   }

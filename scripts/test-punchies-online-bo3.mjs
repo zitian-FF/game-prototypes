@@ -3,16 +3,16 @@ import {rulesMock,tuneValidationMock,compatibleTune} from './lib-punchies-rules.
 import {EventEmitter} from 'node:events';
 const source=fs.readFileSync('prototypes/punchies/src/net/session.ts','utf8');
 const tick=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
-function peers(rated){
+function peers(rated,modes=['modern','modern']){
  const rooms={},queue=[],timers=[],created=[],reports=[],ids={host:crypto.randomUUID(),guest:crypto.randomUUID()};
  const sessions={};
  for(const role of ['host','guest']){const exports={};vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout(){},require:id=>{
-  if(id==='./rules')return rulesMock;if(id==='../sim/tune')return tuneValidationMock;
+  if(id==='../edition')return {EDITION_ID:'master'};if(id==='./rules')return rulesMock;if(id==='../sim/tune')return tuneValidationMock;
   if(id==='../progress/profile')return {localWireProfile:()=>({alias:role,title:'rookie',level:1}),peerProfile:p=>p??{}};
   if(id==='./rating')return {currentRating:()=>({myId:ids[role],rating:1000}),loadRating:async()=>({myId:ids[role],rating:1000}),createRatingMatch:async(_other,nonce)=>{created.push({role,nonce});return 'match:'+nonce;},reportRating:async(id,score,quit)=>{reports.push({role,id,score,quit});return null;},releaseRatingPair:async()=>{}};
   if(id==='trystero/nostr')return {getRelaySockets:()=>({}),joinRoom:()=>{const room={makeAction:name=>{const channel={send:async(data)=>queue.push({from:role,to:role==='host'?'guest':'host',name,data})};room[name]=channel;return channel;},leave(){room.left=true;}};rooms[role]=room;return room;}};
   throw Error('unexpected import '+id);
- }});sessions[role]=new exports.NetSession('BO3',''+role,undefined,rated);}
+ }});sessions[role]=new exports.NetSession('BO3',''+role,undefined,rated,undefined,modes[role==='host'?0:1]);}
  const deliver=(filter=()=>true)=>{for(let i=0;i<queue.length;){const p=queue[i];if(!filter(p)){i++;continue;}queue.splice(i,1);rooms[p.to][p.name].onMessage?.(p.data,{peerId:p.from});}};
  const begin=async()=>{rooms.host.onPeerJoin('guest');rooms.guest.onPeerJoin('host');await tick();deliver();timers.splice(0).forEach(fn=>fn());deliver();assert(sessions.host.readyForMatch&&sessions.guest.readyForMatch);
   const nonce=crypto.randomUUID();if(rated)void sessions.host.beginRating(nonce);sessions.host.send({k:'start',rated,round:1,delay:2,tune:compatibleTune,chars:['tee','captain'],...(rated?{ratingNonce:nonce}:{})});deliver();if(rated)await sessions.guest.beginRating(nonce);await tick();assert(sessions.host.markMatchStarted());assert(sessions.guest.markMatchStarted());};
@@ -30,7 +30,11 @@ for(const rated of [false,true])for(const first of ['host','guest']){
  assert.equal(p.reports.length,0,'round transition never claims a winner or forfeit');
 }
 console.log('PASS actual two-peer NetSession: host/guest early readiness, Ranked/Casual three-round continuation and one rating set identity.');
+for(const modes of [['classic','modern'],['modern','classic'],['classic','classic']]){const p=peers(false,modes);await p.begin();for(const s of Object.values(p.sessions))assert.deepEqual(Array.from(s.controlModes),modes,'agreed immutable peer modes');
+ for(const s of Object.values(p.sessions)){s.markRoundEnded();s.send({k:'rematch',round:2});}p.deliver();for(const s of Object.values(p.sessions)){assert(s.markMatchStarted());assert.deepEqual(Array.from(s.controlModes),modes,'BO3 mode lock');}
+ const expected=Array.from(p.sessions.host.controlModes);p.sessions.host.send({k:'start',rated:false,round:3,delay:2,tune:compatibleTune,chars:['tee','captain'],controlModes:['modern','modern']});if(modes.some(m=>m==='classic'))assert.equal(p.sessions.host.readyForMatch,false,'cannot alter agreed modes through START');assert.deepEqual(Array.from(p.sessions.guest.controlModes),expected);}
 // Reserving a new Ranked set after both rematch votes must not erase those votes.
+{const p=peers(false);await p.begin();assert.equal(p.sessions.host.prepareNextMatchMode('classic',2),false,'no mode switch during an active set');p.sessions.host.markRoundEnded();p.sessions.host.markMatchCompleted();assert(p.sessions.host.prepareNextMatchMode('classic',2));p.deliver();assert.deepEqual(Array.from(p.sessions.guest.controlModes),['modern','modern'],'early proposal cannot change still-active peer mode');p.sessions.guest.markRoundEnded();p.sessions.guest.markMatchCompleted();for(const s of Object.values(p.sessions))s.send({k:'rematch',round:2});p.deliver();for(const s of Object.values(p.sessions)){assert(s.markMatchStarted());assert.deepEqual(Array.from(s.controlModes),['classic','modern'],'preference applies only to next full set');}}
 {const p=peers(true);await p.begin();for(const s of Object.values(p.sessions)){s.markRoundEnded();s.markMatchCompleted();s.send({k:'rematch',round:2});}p.deliver();
  const nonce=crypto.randomUUID();p.sessions.host.send({k:'ratingSet',nonce});void p.sessions.host.beginRating(nonce);p.deliver();
  for(const s of Object.values(p.sessions))assert(s.markMatchStarted(),'new rating reservation preserves agreed rematch');await tick();assert.equal(p.created.length,4,'exactly one new identity per peer for rematched set');}

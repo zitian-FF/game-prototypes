@@ -9,6 +9,8 @@ export class IntentLayer {
   private touchMove = { x: 0, y: 0 };
   private taps = new Set<TapIntent>();
   private guardSources = new Set<string>();
+  private normalSources=new Set<string>();
+  setNormalAttack(source:string,held:boolean):void{if(held)this.normalSources.add(source);else this.normalSources.delete(source);}
 
   setTouchMove(x: number, y: number): void {
     this.touchMove.x = x;
@@ -28,6 +30,7 @@ export class IntentLayer {
     this.touchMove = { x: 0, y: 0 };
     this.taps.clear();
     this.guardSources.clear();
+    this.normalSources.clear();
   }
 
   // Consumes tap edges. Call exactly once per sim tick.
@@ -40,6 +43,7 @@ export class IntentLayer {
       y /= mag;
     }
     const input: FrameInput = {
+      normalAttack:this.normalSources.size>0,
       mx: Math.round(x * 100),
       my: Math.round(y * 100),
       jab: this.taps.has('jab'),

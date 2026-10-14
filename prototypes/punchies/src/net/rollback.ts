@@ -39,12 +39,14 @@ export interface HashPacket {
 
 const HASH_EVERY = 60;
 const GUARD_BIT = 32;
+const NORMAL_BIT=64;
+const HELD_BITS=GUARD_BIT|NORMAL_BIT;
 // At most one skipped tick per this many ticks, so sync is smooth.
 const SYNC_WAIT_EVERY = 10;
 
 export function packInput(i: FrameInput): PackedInput {
   const bits =
-    (i.jab ? 1 : 0) | (i.cross ? 2 : 0) | (i.hook ? 4 : 0) | (i.uppercut ? 8 : 0) | (i.dodge ? 16 : 0) | (i.guard ? GUARD_BIT : 0);
+    (i.jab ? 1 : 0) | (i.cross ? 2 : 0) | (i.hook ? 4 : 0) | (i.uppercut ? 8 : 0) | (i.dodge ? 16 : 0) | (i.guard ? GUARD_BIT : 0)|(i.normalAttack?NORMAL_BIT:0);
   return [i.mx, i.my, bits];
 }
 
@@ -58,6 +60,7 @@ export function unpackInput([mx, my, b]: PackedInput): FrameInput {
     uppercut: (b & 8) !== 0,
     dodge: (b & 16) !== 0,
     guard: (b & GUARD_BIT) !== 0,
+    normalAttack:(b&NORMAL_BIT)!==0,
   };
 }
 
@@ -110,11 +113,11 @@ export class Rollback {
     private sendInputs: (p: InputPacket) => void,
     private sendHash: (p: HashPacket) => void,
     chars: [string, string] = ['marco', 'marco'],
-    opts: { tapExtra?: number; showcase?: boolean } = {},
+    opts: { tapExtra?: number; showcase?: boolean;controlModes?:[import('../sim/modernControls').ControlMode,import('../sim/modernControls').ControlMode] } = {},
   ) {
     this.tapExtra = Math.max(0, Math.round(opts.tapExtra ?? 0));
     this.tapQueue = new Array<number>(this.tapExtra).fill(0);
-    this.sim = createSimState({ timed: true, showcase: opts.showcase, fighters: [{ char: chars[0] }, { char: chars[1] }] });
+    this.sim = createSimState({ timed: true, showcase: opts.showcase, fighters: [{ char: chars[0],controlMode:opts.controlModes?.[0] }, { char: chars[1],controlMode:opts.controlModes?.[1] }] });
     const neutral: PackedInput = [0, 0, 0];
     for (let t = 0; t < delay; t++) {
       this.local.set(t, neutral);
@@ -141,10 +144,10 @@ export class Rollback {
 
   scheduleLocal(input: FrameInput): void {
     const [mx, my, bits] = packInput(input);
-    this.tapQueue.push(bits & ~GUARD_BIT);
+    this.tapQueue.push(bits & ~HELD_BITS);
     let taps = 0;
     while (this.tapQueue.length > this.tapExtra) taps |= this.tapQueue.shift()!;
-    this.local.set(this.nextLocalTick, [mx, my, (bits & GUARD_BIT) | taps]);
+    this.local.set(this.nextLocalTick, [mx, my, (bits & HELD_BITS) | taps]);
     this.nextLocalTick++;
     this.local.delete(this.nextLocalTick - this.redundancy - 1);
     this.flushInputs();
@@ -210,7 +213,7 @@ export class Rollback {
     const real = this.remote.get(t);
     if (real) return real;
     // Prediction: the opponent keeps holding what they held; no new taps.
-    const guess: PackedInput = [this.lastRemote[0], this.lastRemote[1], this.lastRemote[2] & GUARD_BIT];
+    const guess: PackedInput = [this.lastRemote[0], this.lastRemote[1], this.lastRemote[2] & HELD_BITS];
     this.predicted.set(t, guess);
     return guess;
   }

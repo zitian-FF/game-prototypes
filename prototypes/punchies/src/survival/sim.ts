@@ -1,4 +1,5 @@
 import config from './config.json';
+import {newModernStickState} from '../sim/modernControls';
 import { tune, TICK_RATE } from '../sim/tune';
 import {superBalanceConfig} from '../sim/super';
 import { fightCueTiming } from '../sim/fightCue';
@@ -118,7 +119,7 @@ function spawnInterval(r: SurvivalRun): number {
   return Math.max(config.minSpawnIntervalFrames, config.spawnIntervalFrames - (r.wave - 1) * config.spawnIntervalReductionPerWave);
 }
 export function createRun(opts: RunOptions): SurvivalRun {
-  const player = combat.createFighter((tune.ring.left + tune.ring.right) / 2, (tune.ring.top + tune.ring.bottom) / 2, { char: opts.fighter });
+  const player = combat.createFighter((tune.ring.left + tune.ring.right) / 2, (tune.ring.top + tune.ring.bottom) / 2, { char: opts.fighter,controlMode:opts.controlMode });
   const r: SurvivalRun = {
     ...opts, balanceVersion: opts.balanceVersion ?? survivalBalanceVersion(), seed: opts.seed >>> 0, rngState: opts.seed >>> 0,
     tick: 0, waveStartTick:0, fightStartTick:0, wave: 1, clearedWave: 0, remainingTicks: 0, waveKills: 0, waveZombieKills: 0, totalKills: 0,
@@ -176,6 +177,7 @@ function zombieInput(r: SurvivalRun, e: SurvivalEnemy): FrameInput {
   return input;
 }
 function resetMotion(f: Fighter): void {
+  f.modernStick=newModernStickState();
   f.punch = null; f.codeX=null; f.wave=null; f.eagle=null; f.dodge = null; f.guarding = false; f.guardFrames = 0;
   f.buffered = null; f.bufferFrames = 0; f.pushX = 0; f.pushY = 0; f.pushFrames = 0;
   f.lock = 0; f.stunTimer = 0; f.stun = 0; f.stunDecayWait = 0; f.stunFromMeter = false;
@@ -200,12 +202,12 @@ export function stepSurvival(r: SurvivalRun, input: FrameInput): SurvivalEvent[]
   const target = closestEnemy(r);
   const anchor = target?.fighter ?? combat.createFighter(r.player.x + 1, r.player.y, { anchored: true });
   const primary = pair(r, anchor);
-  for (const f of [r.player, ...r.enemies.map(e => e.fighter)]) if (!f.infiniteStamina && f.stamina <= 0) { f.exhausted = true; f.regenWait = 0; }
+  for (const f of [r.player, ...r.enemies.map(e => e.fighter)]) {if(f.controlMode==='modern'){f.stamina=maxStamina(f);f.exhausted=false;f.regenWait=0;}else if (!f.infiniteStamina && f.stamina <= 0) { f.exhausted = true; f.regenWait = 0; }}
   if (target) face(r.player, anchor);
   if (r.hitstop > 0) {
     r.hitstop--;
     for (const f of [r.player, ...r.enemies.map(e => e.fighter)]) if (f.exhausted) combat.gainStamina(f, tune.stamina.regenIdlePerSec * regenMult(f) / TICK_RATE, true);
-    const events: SimEvent[] = [], req = combat.requestedAction(input);
+    const events: SimEvent[] = [], req = r.player.controlMode==='modern'?(input.uppercut?'uppercut':null):combat.requestedAction(input);
     if (req && !combat.rejectAction(r.player, 0, req, events)) { r.player.buffered = req; r.player.bufferFrames = tune.input.bufferFrames; }
     wrap(events, target?.id ?? '', out);
   } else {
