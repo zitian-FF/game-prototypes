@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PIXEL_RATIO } from '../pixelRatio';
+import { PIXEL_RATIO } from './pixelRatio';
 
 export interface ButtonStyle {
   fill: number;

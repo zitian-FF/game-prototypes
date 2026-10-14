@@ -1,6 +1,7 @@
 # Dice Dig
 
 Replaces the previous digger game (archived as `prototypes/digger-legacy`).
+The casual match-3 sibling is `prototypes/dig-match`.
 Mobile-first, portrait, one-thumb play. The player taps one button to roll
 dice. Dice damage tiles on a layered board, breaking tiles reveals treasure,
 treasure is tapped to collect, gems buy upgrades.

@@ -1,4 +1,4 @@
-import type { Rng } from './types';
+export type Rng = () => number;
 
 export function mulberry32(seed: number): Rng {
   let a = seed >>> 0;

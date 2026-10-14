@@ -1,10 +1,6 @@
 import type Phaser from 'phaser';
+import { type Pt, mix, shade } from 'dig-kit';
 import type { TileKind } from '../game/types';
-
-export interface Pt {
-  x: number;
-  y: number;
-}
 
 /** Everything a skin needs to draw one cell. Skins never read game state. */
 export interface CellView {
@@ -59,22 +55,6 @@ export interface BoardRect {
   h: number;
 }
 
-export function shade(color: number, f: number): number {
-  const r = Math.max(0, Math.min(255, Math.round(((color >> 16) & 255) * f)));
-  const g = Math.max(0, Math.min(255, Math.round(((color >> 8) & 255) * f)));
-  const b = Math.max(0, Math.min(255, Math.round((color & 255) * f)));
-  return (r << 16) | (g << 8) | b;
-}
-
-export function mix(a: number, b: number, t: number): number {
-  const ch = (s: number) => {
-    const av = (a >> s) & 255;
-    const bv = (b >> s) & 255;
-    return Math.round(av + (bv - av) * t);
-  };
-  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
-
 // Strata colours, top layer first. Placeholder palette: swap freely.
 const LAYER_BASE = [0xc79a62, 0xa8604a, 0x5b6a8c];
 const KIND_TINT: Record<TileKind, (c: number) => number> = {
@@ -85,37 +65,4 @@ const KIND_TINT: Record<TileKind, (c: number) => number> = {
 
 export function tileColor(layer: number, kind: TileKind): number {
   return KIND_TINT[kind](LAYER_BASE[Math.min(layer, LAYER_BASE.length - 1)]);
-}
-
-/**
- * Deterministic jagged crack arms in unit-square coordinates. Each arm starts
- * near the centre and zigzags outward with sharp turns, like a real fracture.
- * The renderer turns them into tapered filled shapes.
- */
-export function crackPaths(seed: number, count: number): Pt[][] {
-  const out: Pt[][] = [];
-  let s = (seed * 2654435761) >>> 0;
-  const rnd = () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-  const clamp = (v: number) => Math.max(0.05, Math.min(0.95, v));
-  const base = rnd() * Math.PI * 2;
-  for (let i = 0; i < count; i++) {
-    const a = base + (i / Math.max(count, 1)) * Math.PI * 2 + (rnd() - 0.5) * 0.7;
-    let x = 0.5 + (rnd() - 0.5) * 0.08;
-    let y = 0.5 + (rnd() - 0.5) * 0.08;
-    const path: Pt[] = [{ x, y }];
-    const steps = 3 + Math.floor(rnd() * 2);
-    let ang = a;
-    for (let k = 0; k < steps; k++) {
-      ang += (k % 2 === 0 ? 1 : -1) * (0.35 + rnd() * 0.5);
-      const len = 0.1 + rnd() * 0.1;
-      x = clamp(x + Math.cos(ang) * len);
-      y = clamp(y + Math.sin(ang) * len);
-      path.push({ x, y });
-    }
-    out.push(path);
-  }
-  return out;
 }

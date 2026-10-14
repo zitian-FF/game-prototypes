@@ -1,15 +1,13 @@
 import Phaser from 'phaser';
-import { Sfx } from '../audio/sfx';
 import { aliveLayers, generateBoard, isCleared, surfaceLayer, tilesLeft, topLayer } from '../game/board';
-import { mulberry32 } from '../game/rng';
 import { diceCount, resolveFace, rollFaces } from '../game/rules';
 import { type Board, type Face, type Hit, TOOLS, TOOL_LABEL, type ToolId } from '../game/types';
-import { IntentBus, bindKeyboard } from '../input/intents';
-import { HEIGHT, PIXEL_RATIO, WIDTH } from '../pixelRatio';
+import { Button, PIXEL_RATIO, Sfx, mulberry32 } from 'dig-kit';
+import { type Intent, IntentBus, bindKeyboard } from '../input/intents';
+import { HEIGHT, WIDTH } from '../pixelRatio';
 import { type CellView, ROW_DEPTH, type Skin } from '../render/skin';
 import { createSkin } from '../render/skins';
 import { tune } from '../tune';
-import { Button } from '../ui/button';
 import { VERSION_STAMP } from '../version.generated';
 
 const BOARD_RECT = { x: 16, y: 104, w: 358, h: 432 };
@@ -62,7 +60,7 @@ type Phase = 'idle' | 'tumble' | 'resolve';
 export const runtime = { skin: new URLSearchParams(location.search).get('skin') ?? 'pastel', newBoard: false };
 
 export class GameScene extends Phaser.Scene {
-  private bus = new IntentBus();
+  private bus = new IntentBus<Intent>();
   private sfx!: Sfx;
   private rng = mulberry32(Math.floor(Math.random() * 2 ** 31));
   private board!: Board;
@@ -109,7 +107,11 @@ export class GameScene extends Phaser.Scene {
     cam.setZoom(PIXEL_RATIO);
     cam.centerOn(WIDTH / 2, HEIGHT / 2);
 
-    this.sfx = new Sfx(this);
+    this.sfx = new Sfx(this, {
+      volume: () => tune.feel.volume,
+      pitchStep: () => tune.feel.pitchStepPerHit,
+      pitchStepMax: () => tune.feel.pitchStepMax,
+    });
     this.gBackdrop = this.add.graphics().setDepth(-10);
     this.gDice = this.add.graphics().setDepth(2);
 

@@ -1,24 +1,27 @@
-name: Deploy digger to itch.io
+name: Deploy dig prototype to itch.io (manual)
 
+# Nothing here deploys on merge. Run it from the Actions tab and pick which
+# dig prototype goes live and which itch project:channel receives it.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'prototypes/digger/**'
-      - 'scripts/generate-versions.js'
-      - 'scripts/bump-version.js'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'vite.config.ts'
-      - 'tsconfig.json'
-      - '.github/workflows/deploy-digger-itch.yml'
   workflow_dispatch:
+    inputs:
+      prototype:
+        description: Prototype folder under prototypes/
+        type: choice
+        options:
+          - dice-dig
+          - dig-match
+        default: dice-dig
+      itch_target:
+        description: itch.io project:channel to push to
+        type: string
+        default: zitian-ff/digger:html5
 
 permissions:
   contents: write
 
 concurrency:
-  group: itch-digger
+  group: itch-dig
   cancel-in-progress: true
 
 jobs:
@@ -37,30 +40,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check prototype exists
+        run: test -f "prototypes/${{ inputs.prototype }}/index.html"
+
       - name: Typecheck
         run: npm run typecheck
 
       # Bumps the deploy counter (see "Version stamping" in root CLAUDE.md)
       # in place; it is committed only after a successful itch.io push.
       - name: Bump version stamp counter
-        run: node scripts/bump-version.js digger
+        run: node scripts/bump-version.js ${{ inputs.prototype }}
 
       # itch.io serves each upload from a build-specific path, so asset URLs
-      # must be relative rather than the "/game-prototypes/" absolute base
-      # the Pages build uses. Overriding --base here does not touch the
-      # Pages build or vite.config.ts.
+      # must be relative rather than the "/game-prototypes/" absolute base.
       - name: Build (relative base for itch.io)
         run: npx vite build --base ./
 
-      # dist/ contains the hub page and both prototypes because Vite builds
-      # all entry points together. Only digger's page (and the shared
-      # assets/ chunks it references) needs to ship to digger's itch
-      # project, so drop the rest. This also leaves exactly one HTML file
-      # in the upload, which itch.io auto-selects as the played file.
-      - name: Prune build to digger only
+      # dist/ holds the hub and every prototype because Vite builds all entry
+      # points together. Ship only the chosen prototype (plus the shared
+      # assets/ chunks) so itch.io finds exactly one HTML file.
+      - name: Prune build to the chosen prototype
         run: |
           rm -f dist/index.html
-          find dist/prototypes -mindepth 1 -maxdepth 1 ! -name digger -exec rm -rf {} +
+          find dist/prototypes -mindepth 1 -maxdepth 1 ! -name '${{ inputs.prototype }}' -exec rm -rf {} +
 
       - name: Set up butler
         uses: jdno/setup-butler@v1
@@ -68,18 +70,18 @@ jobs:
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist zitian-ff/digger:html5
+        run: butler push dist ${{ inputs.itch_target }}
 
       - name: Commit version stamp bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add prototypes/digger/version.json
+          git add prototypes/${{ inputs.prototype }}/version.json
           if git diff --cached --quiet; then
             echo "No version bump to commit"
             exit 0
           fi
-          git commit -m "Bump digger version stamp counter"
+          git commit -m "Bump ${{ inputs.prototype }} version stamp counter"
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git rebase origin/main

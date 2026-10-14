@@ -109,6 +109,15 @@ whether or not anyone notices. Real per-consumer version isolation
 (so a stale pin fails loudly instead of resolving to the wrong thing)
 remains unbuilt infrastructure work.
 
+## Dig prototypes kit: dig-kit
+
+`packages/dig-kit` (0.1.0) holds what the dig prototypes share: the pastel pillow-block art (baked
+rounded blocks drawn as sprites, a saturated layer palette), tapered volumetric cracks, placeholder sounds
+synthesised with WebAudio, a canvas button, a small intent bus with keyboard binding, the `?debug=1` tune
+panel and a seeded RNG. Phaser 3 is a peer dependency. dice-dig uses it and dig-match will. Consumers pin an
+exact version (`"dig-kit": "0.1.0"`); ship changes additively and bump every consumer's pin together, as with
+mp-core. See `packages/dig-kit/README.md`.
+
 ## Game rules engine: arena-sim
 
 `packages/arena-sim` (0.14.0) is the pure TypeScript rules engine for

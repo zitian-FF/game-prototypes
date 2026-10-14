@@ -48,5 +48,3 @@ export interface Hit {
   cleared: boolean;
   treasureRevealed: boolean;
 }
-
-export type Rng = () => number;

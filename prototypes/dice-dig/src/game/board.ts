@@ -1,6 +1,6 @@
 import { tune } from '../tune';
-import { pickWeighted } from './rng';
-import type { Board, Cell, Rng, Tile, TileKind } from './types';
+import { type Rng, pickWeighted } from 'dig-kit';
+import type { Board, Cell, Tile, TileKind } from './types';
 
 const MAX_LAYERS = 3;
 

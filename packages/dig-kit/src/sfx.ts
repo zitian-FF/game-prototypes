@@ -1,18 +1,25 @@
 import type Phaser from 'phaser';
-import { tune } from '../tune';
 
 type Wave = OscillatorType;
 
+export interface SfxOptions {
+  /** 0 to 1 master volume, read on every sound so a debug panel can change it live. */
+  volume: () => number;
+  /** Octave fraction added per consecutive hit. */
+  pitchStep: () => number;
+  /** Cap on consecutive hits that raise the pitch. */
+  pitchStepMax: () => number;
+}
+
 /**
  * Placeholder sounds synthesised with the WebAudio context Phaser already
- * owns, so there are no audio files and no extra dependency. Everything is
- * swappable behind this small class.
+ * owns, so there are no audio files and no extra dependency.
  */
 export class Sfx {
   private ctx: AudioContext | null;
   private master: GainNode | null = null;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, private opts: SfxOptions) {
     const mgr = scene.sound as unknown as { context?: AudioContext };
     this.ctx = mgr.context ?? null;
   }
@@ -24,11 +31,11 @@ export class Sfx {
       this.master = this.ctx.createGain();
       this.master.connect(this.ctx.destination);
     }
-    this.master.gain.value = tune.feel.volume;
+    this.master.gain.value = this.opts.volume();
     return this.master;
   }
 
-  private tone(freq: number, dur: number, type: Wave, vol: number, slideTo?: number, delay = 0): void {
+  tone(freq: number, dur: number, type: Wave, vol: number, slideTo?: number, delay = 0): void {
     const out = this.out();
     if (!out || !this.ctx) return;
     const t = this.ctx.currentTime + delay;
@@ -45,7 +52,7 @@ export class Sfx {
     osc.stop(t + dur + 0.02);
   }
 
-  private noise(dur: number, vol: number, cutoff: number, delay = 0): void {
+  noise(dur: number, vol: number, cutoff: number, delay = 0): void {
     const out = this.out();
     if (!out || !this.ctx) return;
     const t = this.ctx.currentTime + delay;
@@ -66,7 +73,7 @@ export class Sfx {
   }
 
   private pitch(step: number): number {
-    return Math.pow(2, Math.min(step, tune.feel.pitchStepMax) * tune.feel.pitchStepPerHit);
+    return Math.pow(2, Math.min(step, this.opts.pitchStepMax()) * this.opts.pitchStep());
   }
 
   rollStart(): void {
@@ -78,6 +85,7 @@ export class Sfx {
     this.tone(520 + (i % 5) * 40, 0.05, 'square', 0.08);
   }
 
+  /** A hit. `step` is the number of consecutive hits so far; it raises the pitch. */
   hit(step: number, glancing: boolean): void {
     const p = this.pitch(step);
     if (glancing) {

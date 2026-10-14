@@ -6,7 +6,9 @@ portrait canvas. Not yet playtested by the user.
 ## What was implemented
 
 - Replaced the old digger game. The old build is archived untouched as
-  `prototypes/digger-legacy` (also tagged `archive/digger-v1`).
+  `prototypes/digger-legacy`. This folder was `prototypes/digger` earlier in the
+  session and is now `prototypes/dice-dig`. A frozen copy of this version is on
+  the branch `shelf/dice-dig-luck-v1`.
 - One 6x8 board, 3 layers, tile kinds (soft, normal, hardened), weak points,
   hardness vs tool tier (glancing hits).
 - Tap ROLL (or Space) to roll. Three tool buttons (or keys 1 to 3) pick the
@@ -29,6 +31,8 @@ portrait canvas. Not yet playtested by the user.
 
 ## Key technical decisions
 
+- Shared code now lives in `packages/dig-kit` (pinned to 0.1.0): RNG, colours, sounds, button, intent bus, tune panel, pillow baking, cracks, palette.
+- Itch deploys are manual (`deploy-dig-itch.yml`); nothing deploys on merge.
 - Rules (`src/game/`) are pure and separate from the scene, so they can be
   simulated and later tested without Phaser.
 - Rendering is driven by `CellView` data through the `Skin` interface: per-row Graphics for cheap shapes, plus baked pillow textures drawn as sprites in the pastel skin (live-drawn rounded shapes ran about 10x slower). A sprite skin (or a later Godot/Blender pipeline)

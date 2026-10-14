@@ -1,6 +1,6 @@
 // Visual check for Dice Dig. Usage:
 //   node scripts/screenshot-dice-dig.mjs <baseUrl> <outDir>
-// baseUrl is a running dev/preview server, e.g. http://localhost:5199/game-prototypes/prototypes/digger/
+// baseUrl is a running dev/preview server, e.g. http://localhost:5199/game-prototypes/prototypes/dice-dig/
 // Plays real taps on the canvas, fails on any console error, and writes one
 // screenshot per skin plus a side-by-side style sheet.
 import fs from 'node:fs';

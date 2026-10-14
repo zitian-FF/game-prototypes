@@ -62,7 +62,7 @@ jobs:
       - name: Prune build to mp-net only
         run: |
           rm -f dist/index.html
-          rm -rf dist/prototypes/digger
+          rm -rf dist/prototypes/digger dist/prototypes/dice-dig dist/prototypes/digger-legacy
           rm -rf dist/prototypes/suits
           rm -rf dist/prototypes/mp-console
           rm -rf dist/prototypes/suits-mp

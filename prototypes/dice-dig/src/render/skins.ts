@@ -1,16 +1,6 @@
 import type Phaser from 'phaser';
-import {
-  type BoardRect,
-  type CellLayers,
-  type CellView,
-  ROW_DEPTH,
-  type Pt,
-  type Skin,
-  crackPaths,
-  mix,
-  shade,
-  tileColor,
-} from './skin';
+import { type Pt, bakePillow, bakeTexture, crackPaths, drawCrack, layerColor, mix, shade } from 'dig-kit';
+import { type BoardRect, type CellLayers, type CellView, ROW_DEPTH, type Skin, tileColor } from './skin';
 import type { TileKind } from '../game/types';
 import { tune } from '../tune';
 
@@ -46,35 +36,6 @@ interface DecorStyle {
 }
 const DARK_DECOR: DecorStyle = { crack: 0x1b1420, rivet: 0x2c2f3a, weak: 0xffb347, weakGlow: 0xff8a1f };
 
-/**
- * A crack as a recessed groove: wide at the centre, tapering to a point, with
- * a lit lip on the lower edge and a darker core so it reads as depth.
- */
-function drawCrack(g: Phaser.GameObjects.Graphics, pts: Pt[], width: number, st: DecorStyle): void {
-  const n = pts.length - 1;
-  const outline = (w: number, dx: number, dy: number): Pt[] => {
-    const left: Pt[] = [];
-    const right: Pt[] = [];
-    for (let i = 0; i <= n; i++) {
-      const a = pts[Math.max(0, i - 1)];
-      const b = pts[Math.min(n, i + 1)];
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const nx = -(b.y - a.y) / len;
-      const ny = (b.x - a.x) / len;
-      const half = (w * Math.pow(1 - i / (n + 0.6), 0.9)) / 2;
-      left.push({ x: pts[i].x + nx * half + dx, y: pts[i].y + ny * half + dy });
-      right.push({ x: pts[i].x - nx * half + dx, y: pts[i].y - ny * half + dy });
-    }
-    return [...left, ...right.reverse()];
-  };
-  g.fillStyle(0xffffff, 0.5);
-  g.fillPoints(outline(width, 0.9, 1.3), true);
-  g.fillStyle(st.crack, 1);
-  g.fillPoints(outline(width, 0, 0), true);
-  g.fillStyle(0x000000, 0.35);
-  g.fillPoints(outline(width * 0.45, 0, 0), true);
-}
-
 function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: number, st: DecorStyle = DARK_DECOR): void {
   const s = v.surface;
   if (!s) return;
@@ -82,7 +43,7 @@ function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: 
   if (dmg > 0.01) {
     for (const path of crackPaths(v.idx + 1, 2 + Math.ceil(dmg * 3))) {
       const pts = path.map((p) => bilerp(q, p.x, p.y));
-      drawCrack(g, pts, (1.6 + dmg * 3.2) * scale, st);
+      drawCrack(g, pts, (1.6 + dmg * 3.2) * scale, st.crack);
     }
   }
   if (s.kind === 'hardened') {
@@ -312,41 +273,9 @@ export function createFlatSkin(rect: BoardRect, cols: number, rows: number): Ski
   };
 }
 
-// Bright, saturated strata, top layer first: grass green, warm orange, sky blue.
-const PASTEL_LAYER = [0x5ed957, 0xffa23a, 0x4d9bff];
-function pastelColor(layer: number, kind: TileKind): number {
-  const base = PASTEL_LAYER[Math.min(layer, PASTEL_LAYER.length - 1)];
-  if (kind === 'soft') return mix(base, 0xffffff, 0.22);
-  if (kind === 'hardened') return mix(base, 0x8c9bc4, 0.6);
-  return base;
-}
 const PASTEL_DECOR: DecorStyle = { crack: 0x3a2a55, rivet: 0xffffff, weak: 0xff2f6a, weakGlow: 0xff6f9a };
 
-/**
- * A soft pillow: concentric rounded rects that lighten toward the centre fake
- * the smooth shading of a rounded cube. Only used at bake time.
- */
-function pillow(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, r: number, base: number, glossy: boolean): void {
-  const steps = 10;
-  const inset = Math.min(w, h) * 0.034;
-  for (let j = 0; j <= steps; j++) {
-    const t = j / steps;
-    const i = j * inset;
-    const col = mix(shade(base, 0.62), mix(base, 0xffffff, 0.2), Math.pow(t, 0.8));
-    // Light comes from the top left: the lit core sits up and left of centre.
-    g.fillStyle(col, 1);
-    g.fillRoundedRect(x + i * 0.75, y + i * 0.55, w - i * 1.9, h - i * 1.7, Math.max(1, r - i * 0.8));
-  }
-  if (glossy) {
-    g.fillStyle(0xffffff, 0.42);
-    g.fillRoundedRect(x + w * 0.14, y + h * 0.1, w * 0.36, Math.max(3, h * 0.12), 3);
-    g.fillStyle(0xffffff, 0.2);
-    g.fillCircle(x + w * 0.82, y + h * 0.17, Math.max(2, w * 0.04));
-  }
-}
-
 const KINDS: TileKind[] = ['soft', 'normal', 'hardened'];
-const BAKE_RES = 2;
 
 /**
  * Soft pillow blocks, each layer a rounded slab. Slabs are baked once into
@@ -372,24 +301,18 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
   const baked = (sc: Phaser.Scene) => {
     scene = sc;
     if (sc.textures.exists('pd_pit')) return;
-    const bake = (k: string, w: number, h: number, draw: (g: Phaser.GameObjects.Graphics) => void) => {
-      const g = sc.make.graphics({ x: 0, y: 0 }, false);
-      draw(g);
-      g.generateTexture(k, Math.ceil(w * BAKE_RES), Math.ceil(h * BAKE_RES));
-      g.destroy();
-    };
     for (let layer = 0; layer < 3; layer++) {
       for (const kind of KINDS) {
-        const col = pastelColor(layer, kind);
-        bake(key('top', layer, kind), bw, topNominal, (g) => pillow(g, 0, 0, bw * BAKE_RES, topNominal * BAKE_RES, R * 1.15 * BAKE_RES, col, true));
-        bake(key('low', layer, kind), bw, lowNominal, (g) => pillow(g, 0, 0, bw * BAKE_RES, lowNominal * BAKE_RES, Math.min(R, lowNominal / 2) * BAKE_RES, shade(col, 0.9), false));
+        const col = layerColor(layer, kind);
+        bakePillow(sc, key('top', layer, kind), bw, topNominal, R * 1.15, col, true);
+        bakePillow(sc, key('low', layer, kind), bw, lowNominal, Math.min(R, lowNominal / 2), shade(col, 0.9), false);
       }
     }
-    bake('pd_pit', bw, topH, (g) => {
+    bakeTexture(sc, 'pd_pit', bw, topH, (g, res) => {
       g.fillStyle(0x7a4a2e, 1);
-      g.fillRoundedRect(0, 0, bw * BAKE_RES, topH * BAKE_RES, R * BAKE_RES);
+      g.fillRoundedRect(0, 0, bw * res, topH * res, R * res);
       g.fillStyle(0x4a2a1c, 0.7);
-      g.fillRoundedRect(2 * BAKE_RES, 2 * BAKE_RES, (bw - 4) * BAKE_RES, topH * 0.4 * BAKE_RES, R * 0.8 * BAKE_RES);
+      g.fillRoundedRect(2 * res, 2 * res, (bw - 4) * res, topH * 0.4 * res, R * 0.8 * res);
     });
   };
 

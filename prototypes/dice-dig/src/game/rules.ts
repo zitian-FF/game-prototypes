@@ -1,7 +1,7 @@
 import { tune } from '../tune';
 import { aliveLayers, surfaceLayer, topLayer } from './board';
-import { pickWeighted, randInt } from './rng';
-import type { Board, Cell, Face, Hit, Rng, ToolId } from './types';
+import { type Rng, pickWeighted, randInt } from 'dig-kit';
+import type { Board, Cell, Face, Hit, ToolId } from './types';
 
 export function diceCount(tool: ToolId, rng: Rng): number {
   const t = tune.tools[tool];

@@ -3,14 +3,17 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
-## 2026-10-14 - digger is now Dice Dig; the old game is digger-legacy
+## 2026-10-14 - Dice Dig replaces digger; shared package dig-kit 0.1.0; manual itch deploy
 
-**What changed:** `prototypes/digger` now holds Dice Dig (a dice-rolling dig game). The previous digger game moved
-unchanged to `prototypes/digger-legacy` (also tagged `archive/digger-v1`). The `deploy-digger-itch.yml` workflow now
-deploys Dice Dig to the digger itch project, has no art fetch, and bumps `prototypes/digger/version.json`. The Pages
-workflow fetches the old art under the `digger-legacy` name. The hub lists both.
+**What changed:** the previous digger game moved unchanged to `prototypes/digger-legacy`. Dice Dig (a luck-based dice dig
+game) lives in `prototypes/dice-dig`; there is no `prototypes/digger` folder any more. A new shared package
+`packages/dig-kit` (0.1.0) holds the pillow-block art helpers, tapered crack drawing, synthesised sounds, button, intent
+bus, tune panel and RNG that dice-dig uses and the next prototype (dig-match) will reuse. `deploy-digger-itch.yml` is
+replaced by `deploy-dig-itch.yml`, which only runs by hand: it asks which prototype to deploy and which itch
+project:channel to push to, and bumps that prototype's `version.json`. Nothing deploys to itch on merge. The Pages
+workflow fetches the old digger art under the `digger-legacy` name. The hub lists Dice Dig and digger-legacy.
 
-**Applies to:** digger and digger-legacy only.
+**Applies to:** dice-dig, digger-legacy and any prototype that opts into dig-kit. Pin dig-kit to an exact version.
 
 ## 2026-10-08 - punchies-playable replaces the mp-console itch slot
 
