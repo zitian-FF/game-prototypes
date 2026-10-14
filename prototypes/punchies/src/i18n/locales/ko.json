@@ -511,5 +511,6 @@
   "controls.modern_note": "모던: 스태미나는 없지만 피로는 적용됩니다. 자동 회피는 멈췄다가 움직인 직후에만 가능하며 회피 페널티도 적용됩니다.",
   "controls.advantages": "장점",
   "controls.tradeoffs": "감수할 점",
-  "settings.analytics": "익명 플레이 데이터: {state}"
+  "settings.analytics": "익명 플레이 데이터: {state}",
+  "menu.feedback_discord": "피드백 · Discord"
 }

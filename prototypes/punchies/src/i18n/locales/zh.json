@@ -511,5 +511,6 @@
   "controls.modern_note": "现代模式没有体力消耗，但仍有疲劳。自动闪避仅在静止后开始移动的短暂窗口内生效，仍受闪避惩罚限制。",
   "controls.advantages": "优势",
   "controls.tradeoffs": "取舍",
-  "settings.analytics": "匿名游戏数据：{state}"
+  "settings.analytics": "匿名游戏数据：{state}",
+  "menu.feedback_discord": "反馈 · Discord"
 }

@@ -511,5 +511,6 @@
   "controls.modern_note": "Modern: no stamina; fatigue remains. Auto-dodge only works briefly after moving from still; dodge penalties still apply.",
   "controls.advantages": "Advantages",
   "controls.tradeoffs": "Trade-offs",
-  "settings.analytics": "Anonymous analytics: {state}"
+  "settings.analytics": "Anonymous analytics: {state}",
+  "menu.feedback_discord": "Feedback · Discord"
 }

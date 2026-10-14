@@ -511,5 +511,6 @@
   "controls.modern_note": "モダン：スタミナはないが疲労は残る。自動回避は静止から動き始めた直後のみ。回避ペナルティも適用される。",
   "controls.advantages": "強み",
   "controls.tradeoffs": "注意点",
-  "settings.analytics": "匿名のプレイデータ送信：{state}"
+  "settings.analytics": "匿名のプレイデータ送信：{state}",
+  "menu.feedback_discord": "ご意見 · Discord"
 }

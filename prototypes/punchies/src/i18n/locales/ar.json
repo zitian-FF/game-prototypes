@@ -511,5 +511,6 @@
   "controls.modern_note": "الحديث: دون طاقة تحمّل، لكن الإرهاق باقٍ. المراوغة التلقائية متاحة لفترة قصيرة عند التحرك من السكون؛ وعقوبتها ما زالت سارية.",
   "controls.advantages": "المزايا",
   "controls.tradeoffs": "العيوب",
-  "settings.analytics": "بيانات اللعب المجهولة: {state}"
+  "settings.analytics": "بيانات اللعب المجهولة: {state}",
+  "menu.feedback_discord": "ملاحظات · Discord"
 }

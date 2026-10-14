@@ -28,6 +28,7 @@ import { punchToken } from '../ui/punchToken';
 import { ArenaArt } from '../render/arenaArt';
 import { alignGymFloor } from '../render/gymPerspective';
 import {titleProfileEntry} from '../ui/titleProfileEntry';
+import {discordFeedbackButton} from '../ui/discordFeedbackButton';
 
 export class MenuScene extends Phaser.Scene {
   private msg!: Phaser.GameObjects.Text;
@@ -100,8 +101,9 @@ export class MenuScene extends Phaser.Scene {
     }
 
     this.msg = this.add
-      .text(menuX, top + 320, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
+      .text(menuX, VIEW.top + 12, data?.message ?? '', { fontFamily: 'Arial', fontSize: '11px', color: '#ff8a7a', resolution: PIXEL_RATIO })
       .setOrigin(0.5);
+    discordFeedbackButton(this,menuX,Math.min(top+332,VIEW.bottom-21),Math.min(w,230));
     addVersionStamp(this);
     titleProfileEntry(this,()=>startScreen(this,'Profile'));
     // Language picker on the landing screen. Only shown once a second language has translations (always in debug, to test).
