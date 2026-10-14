@@ -1,3 +1,5 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {analyticsEnabled,setAnalyticsOptout} from '../analytics/beta';
 import {controlModePanel} from './controlModePanel';
 import {controlHint} from './controlHint';
 import type Phaser from 'phaser';
@@ -41,7 +43,11 @@ export function audioSettingsPanel(scene: Phaser.Scene, inputs: () => void, cred
   button(VIEW.cx,VIEW.cy+17,250,t('controls.mode'),()=>{close();controlModePanel(scene,()=>audioSettingsPanel(scene,inputs,credits,language));});
   button(VIEW.cx - 90, VIEW.cy + 62, 170, t('settings.input_setup'), () => { close(); inputs(); });
   button(VIEW.cx + 90, VIEW.cy + 62, 170, t('menu.language'), () => { close(); language(); });
-  button(VIEW.cx - 120, VIEW.cy + 120, 112, t('common.credits'), () => { close(); credits(); });
-  button(VIEW.cx, VIEW.cy + 120, 112, t('settings.reset_save'), () => resetSavePanel(scene), 'confirm', 'red');
-  button(VIEW.cx + 120, VIEW.cy + 120, 112, t('common.back'), close, 'back');
+  if(ITCH_BETA_EDITION){
+    const analytics=button(VIEW.cx,VIEW.cy+100,300,'',()=>{setAnalyticsOptout(analyticsEnabled());refreshAnalytics();});
+    const refreshAnalytics=()=>analytics.setText(t('settings.analytics',{state:analyticsEnabled()?t('settings.on'):t('settings.off')}));refreshAnalytics();
+  }
+  button(VIEW.cx - 120, VIEW.cy + (ITCH_BETA_EDITION?145:120), 112, t('common.credits'), () => { close(); credits(); });
+  button(VIEW.cx, VIEW.cy + (ITCH_BETA_EDITION?145:120), 112, t('settings.reset_save'), () => resetSavePanel(scene), 'confirm', 'red');
+  button(VIEW.cx + 120, VIEW.cy + (ITCH_BETA_EDITION?145:120), 112, t('common.back'), close, 'back');
 }

@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';import {build} from 'esbuild';import vm from 'node:vm';
+for(const edition of ['master','crazygames']){
+ const out=await build({stdin:{contents:"import {bootBetaAnalytics,betaTrack} from './prototypes/punchies/src/analytics/beta';bootBetaAnalytics();betaTrack('beta','menu_view','event');",resolveDir:process.cwd(),loader:'ts'},bundle:true,minify:true,platform:'browser',format:'iife',write:false,define:{__PUNCHIES_EDITION__:JSON.stringify(edition),__PUNCHIES_EDITION_NAMESPACE__:'""',__PUNCHIES_EDITION_FIGHTERS__:'[]',__PUNCHIES_EDITION_POLICY_HASH__:'""',__PUNCHIES_STAGING__:'false',__PUNCHIES_PORTAL__:'"web"',__PUNCHIES_PORTAL_ADS__:'false','import.meta.env.VITE_PUNCHIES_ANALYTICS_URL':'"https://punchies-beta-analytics.tianz-88.workers.dev/v1/events"'}});
+ const text=out.outputFiles[0].text;assert(!text.includes('punchies-beta-analytics.tianz-88'),'collector endpoint compiled out '+edition);
+ let calls=0;vm.runInNewContext(text,{console,fetch(){calls++;throw Error('unexpected network');},window:{addEventListener(){calls++;},setInterval(){calls++;}},navigator:{sendBeacon(){calls++;}},localStorage:{getItem(){calls++;},setItem(){calls++;}},crypto:{randomUUID(){calls++;}}});assert.equal(calls,0,edition+' zero collector IDs/listeners/network');
+}
+console.log('PASS compiled Master/CrazyGames analytics entry: collector endpoint removed, zero storage/IDs/listeners/network');

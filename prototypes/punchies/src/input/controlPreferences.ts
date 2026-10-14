@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import {store} from '../portal/store';
 import {KEYS} from '../portal/keys';
 import {controlMode,type ControlMode,type ControlModes} from '../ui/controlMode';
@@ -10,6 +11,7 @@ export function loadControlModes():ControlModes {
 }
 /** Next-match preferences; retain devices, bindings and layouts in the same save blob. */
 export function saveControlMode(side:0|1,mode:ControlMode):void {
+  track('beta','settings_change','event',{setting:'control',control:mode});
   const value=saved(),modes=[...loadControlModes()];modes[side]=mode;
   store.setItem(KEYS.localInputs,JSON.stringify({...value,controlModes:{p1:modes[0],p2:modes[1]}}));
 }

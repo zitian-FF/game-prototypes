@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import {ITCH_BETA_EDITION} from '../edition';
 import {controlHint} from '../ui/controlHint';
 import {loadRating,onRatingState} from '../net/rating';
@@ -36,6 +37,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(data: { message?: string }): void {
+    track('beta','menu_view','event');
     loadingFinished();
     applyCameraPixelRatio(this);
     const gym=backdrop(this, 0, 'gym_background');

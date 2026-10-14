@@ -69,6 +69,7 @@ export class LocalVsScene extends Phaser.Scene {
     this.stage = new FightStage(this, names, -1, data.p1 === 'touch',data.skins,undefined,undefined,this.modes);
     this.stage.localVsRows = data.p1 === 'touch' ? [1] : [0, 1];
     this.stage.setSeries(this.series);
+    if(this.series.roundNumber===1)track('beta','match_start','event',{mode:'localvs',control:this.modes[0],fighter:chars[0]});
 
     addVersionStamp(this);
   }
@@ -100,7 +101,7 @@ export class LocalVsScene extends Phaser.Scene {
       return;
     }
     if(ITCH_BETA_EDITION)recordBetaCompletion({id:this.betaCompletionId,mode:'local',completed:true,seriesComplete:true,forfeit:false,disconnected:false,qa:STAGING_BUILD||DEBUG_TOOLS_BUILD,win:r.winner===0});
-    track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished');
+    track('match', 'LocalVs', r.winner === null ? 'draw' : 'finished', {result:r.winner===null?'draw':r.winner===0?'win':'lose'});
     this.registry.set('lastAward', awardMatch({ kind: 'localvs', win: false }));
     matchResult(this, r.winner === null ? t('common.draw') : t('match.p_victory', { n: r.winner + 1 }), {
       rematch: () => this.scene.restart({ ...this.inputs, series: undefined }),

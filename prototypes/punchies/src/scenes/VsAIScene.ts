@@ -70,6 +70,7 @@ export class VsAIScene extends Phaser.Scene {
     this.ai = makeBot(this.level, 1);
     this.stage = new FightStage(this, [t('match.you_name', { name: charName(this.chars[0]) }), t('match.cpu_name', { level: t(`level.${this.level}`), name: charName(this.chars[1]) })], 0,true,this.skins,undefined,undefined,this.modes);
     this.stage.setSeries(this.series);
+    if(this.series.roundNumber===1)track('beta','match_start','event',{mode:'vsai',control:this.modes[0],fighter:this.chars[0]});
 
     addVersionStamp(this);
   }

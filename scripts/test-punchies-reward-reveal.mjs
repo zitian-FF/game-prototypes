@@ -14,6 +14,7 @@ function run(reduced=false){
  const scene={add:{container:make('container'),rectangle:make('rectangle'),text:make('text'),image:make('image'),graphics:make('graphics')},
  textures:{exists:()=>false},time:{delayedCall:(delay,fn)=>{const t={delay,fn,remove(){this.removed=true;}};timers.push(t);return t;}},tweens:{addCounter:()=>({remove(){}}),add:t=>tweens.push(t),killTweensOf:()=>{}},events:{once(){},off(){}}};
  const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('prototypes/punchies/src/ui/rewardReveal.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:function mockedRequire(p){
+ if(p.includes('portal/analytics'))return{track(){}};
  if(p.includes('i18n'))return i18nStub;
  if(p.includes('itemText'))return{itemName:i=>i.name};
  if(p==='phaser')return{default:{GameObjects:{Container:Obj},Display:{Color:{HSVToRGB:()=>({color:0xffffff})}}}};

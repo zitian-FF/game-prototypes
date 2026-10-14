@@ -1,3 +1,5 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {track} from '../portal/analytics';
 import { MenuScene } from './MenuScene';
 import { t } from '../i18n';
 import { applyCameraPixelRatio, PIXEL_RATIO, VIEW } from '../render/pixelRatio';
@@ -12,6 +14,7 @@ export class GameMenuScene extends MenuScene {
   create(data:{message?:string;source?:string;multiplayer?:boolean}):void {
     this.leaving=false;this.scene.bringToTop();
     applyCameraPixelRatio(this);this.source=data.source??'Training';this.multiplayer=!!data.multiplayer;
+    track('beta','pause','event',{mode:this.source==='VsAI'?'vsai':this.source==='LocalVs'?'localvs':this.source==='Match'?'online':this.source==='Tutorial'?'tutorial':'training'});
     if(!this.multiplayer)this.scene.pause(this.source);
     this.scene.get(this.source).input.enabled=false;
     this.events.once('shutdown',()=>{
@@ -33,6 +36,7 @@ export class GameMenuScene extends MenuScene {
       this.add.text(VIEW.cx,VIEW.cy-27,this.multiplayer?t('pause.the_match_keeps_running_returning'):this.source==='Survival'?t('survival.active_exit'):this.source==='Training'?t('pause.your_practice_session_will_end'):t('pause.your_current_round_will_end'),{fontFamily:'Arial',fontSize:15,color:'#fff3da',align:'center',resolution:PIXEL_RATIO}).setOrigin(.5);
       titleButton(this,VIEW.cx-86,VIEW.cy+62,155,38,t('common.cancel'),()=>this.drawMenu(false),false,302,'default','back');
       titleButton(this,VIEW.cx+86,VIEW.cy+62,155,38,t('pause.return'),()=>{
+        if(ITCH_BETA_EDITION&&['VsAI','LocalVs'].includes(this.source))track('match',this.source,'quit');
         this.leaving=true;const source=this.scene.get(this.source);
         if(this.source==='Match'){source.events.emit('menuReturn');this.close();}
         else if(this.source==='FirstFight'){this.close();source.events.emit('menuReturn');}

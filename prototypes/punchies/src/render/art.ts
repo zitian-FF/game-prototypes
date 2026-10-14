@@ -1,3 +1,4 @@
+import {bootBetaAnalytics} from '../analytics/beta';
 import Phaser from 'phaser';
 import {warmStagingTeePortraitMask} from './indexedPortraitMask';
 import { t } from '../i18n';
@@ -246,6 +247,7 @@ export class ArtBootScene extends Phaser.Scene {
       const atlases = index.manifest.filter((f) => /^atlas\/atlas.*\.json$/.test(f.path)).map((f) => textureKey(f.path));
       registerAnimations(this, Object.keys(index.animations), atlases);
     }
+    bootBetaAnalytics();
     const room = roomFromUrl();
     // launch (not start): this scene keeps running as the background loader.
     if (room) this.scene.launch('Lobby', { role: 'guest', code: room, rated:new URLSearchParams(location.search).get('ranked')==='1' });

@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import { portraitScaleFactor } from '../render/portraitScale';
 import Phaser from 'phaser';
 import { t } from '../i18n';
@@ -81,7 +82,7 @@ export class RewardReveal {
       const button=scene.add.container(VIEW.cx,VIEW.bottom-29);
       const g=scene.add.graphics();cartoonButton(g,-105,-19,210,38,0x28af70,8);button.add(g);
       const text=scene.add.text(0,0,t('reveal.awesome'),{fontFamily:'Arial Black, Arial',fontSize:18,fontStyle:'bold',color:'#fff6dc',shadow:{offsetX:0,offsetY:2,color:'#23415a',blur:1,fill:true},resolution:PIXEL_RATIO}).setOrigin(.5);button.add(text);
-      const acknowledge=()=>{if(this.destroyed)return;this.destroy();close();};
+      const acknowledge=()=>{if(this.destroyed)return;track('beta','reveal_ack','event',{kind:item.kind});this.destroy();close();};
       const hit=scene.add.rectangle(0,0,210,38,0,0).setDepth(610).setInteractive({useHandCursor:true});
       bindButtonFeedback(hit,state=>{
         g.clear();cartoonButton(g,-105,-19,210,38,0x28af70,8);

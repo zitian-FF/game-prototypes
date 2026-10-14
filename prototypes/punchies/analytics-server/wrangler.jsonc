@@ -1,0 +1,9 @@
+{
+ "name":"punchies-beta-analytics",
+ "main":"src/index.ts",
+ "compatibility_date":"2026-10-14",
+ "workers_dev":true,
+ "observability":{"enabled":false},
+ "triggers":{"crons":["17 * * * *"]},
+ "d1_databases":[{"binding":"DB","database_name":"punchies-beta-analytics","database_id":"BUILD_MUST_BIND_CREATED_D1_ID","migrations_dir":"migrations"}]
+}

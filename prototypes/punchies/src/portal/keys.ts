@@ -17,8 +17,8 @@ const playerKeys = {
   rating: 'punchies:rating:v1',
 } as const;
 export const MASTER_KEYS=Object.freeze({...playerKeys,resetReceipt:'punchies:save-reset:v1'});
-const betaKeys=EDITION_ID==='itchbeta'?{betaCompletions:'punchies:beta-completions:v1'}:{};
-export const KEYS=Object.fromEntries(Object.entries({...MASTER_KEYS,...betaKeys}).map(([name,key])=>[name,stagingStorageKey(key)])) as {[K in keyof typeof playerKeys|'resetReceipt']:string}&{betaCompletions?:string};
+const betaKeys=EDITION_ID==='itchbeta'?{betaCompletions:'punchies:beta-completions:v1',betaAnalytics:'punchies:beta-analytics:v1'}:{};
+export const KEYS=Object.fromEntries(Object.entries({...MASTER_KEYS,...betaKeys}).map(([name,key])=>[name,stagingStorageKey(key)])) as {[K in keyof typeof playerKeys|'resetReceipt']:string}&{betaCompletions?:string;betaAnalytics?:string};
 export const GAME_SAVE_KEYS=Object.freeze([...Object.keys(playerKeys).map(name=>KEYS[name as keyof typeof playerKeys]),...(KEYS.betaCompletions?[KEYS.betaCompletions]:[])]);
 /** Developer preferences are isolated in staging but are not player-save data. */
 export const DEV_KEYS={debug:stagingStorageKey('punchies:debug:v1'),unlock:stagingStorageKey('punchies:debug:unlock:v1')};

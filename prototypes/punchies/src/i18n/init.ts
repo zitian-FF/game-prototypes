@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import { portal } from '../portal/select';
 import { store } from '../portal/store';
 import { KEYS } from '../portal/keys';
@@ -19,4 +20,5 @@ export async function initLanguage(): Promise<void> {
 export async function chooseLanguage(code: LangCode): Promise<void> {
   store.setItem(KEYS.language, code);
   await setLanguage(code);
+  track('beta','lang_chosen','event',{language:code});
 }

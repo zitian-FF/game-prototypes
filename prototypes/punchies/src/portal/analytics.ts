@@ -1,3 +1,5 @@
+import {ITCH_BETA_EDITION} from '../edition';
+import {betaTrack} from '../analytics/beta';
 import { portal } from './select';
 import type { AnalyticsProps } from './types';
 
@@ -16,8 +18,11 @@ const MAX = 300;
 const log: AnalyticsEvent[] = [];
 
 export function track(category: string, what: string, action: string, props: AnalyticsProps = {}): void {
+  if(category==='beta'&&!ITCH_BETA_EDITION)return;
+  try{betaTrack(category,what,action,props);}catch{/* analytics must never interrupt gameplay */}
   log.push({ t: Math.round(performance.now()), category, what, action, props });
   if (log.length > MAX) log.shift();
+  if(ITCH_BETA_EDITION)return; // Beta has only our own collector, never portal custom-event trackers.
   try { portal.track?.(category, what, action, props); } catch { /* analytics must never break the game */ }
 }
 

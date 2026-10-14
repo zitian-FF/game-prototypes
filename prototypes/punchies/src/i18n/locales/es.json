@@ -510,5 +510,6 @@
   "controls.classic_cons": "Más controles\nGestiona stamina y defensa",
   "controls.modern_note": "Moderno: sin stamina, pero con fatiga. La esquiva automática solo funciona justo al moverte desde parado; su penalización sigue activa.",
   "controls.advantages": "Ventajas",
-  "controls.tradeoffs": "Desventajas"
+  "controls.tradeoffs": "Desventajas",
+  "settings.analytics": "Datos anónimos: {state}"
 }

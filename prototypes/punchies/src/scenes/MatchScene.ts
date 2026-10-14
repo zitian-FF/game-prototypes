@@ -150,6 +150,7 @@ export class MatchScene extends Phaser.Scene {
     this.stage = new FightStage(this, names, data.localIdx,true,data.skins,profiles,
       data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined,data.session.controlModes);
     this.stage.setSeries(this.series);
+    if(this.series.roundNumber===1)track('beta','match_start','event',{mode:'online',control:data.session.controlModes[data.localIdx],fighter:data.chars[data.localIdx]});
 
     const onMenuReturn=()=>this.leave();this.events.on('menuReturn',onMenuReturn);
     this.events.once('shutdown',()=>this.events.off('menuReturn',onMenuReturn));
@@ -400,6 +401,7 @@ export class MatchScene extends Phaser.Scene {
 
   private opponentLeft(forfeited=false): void {
     if(this.departed)return;
+    if(!this.over)track('match','Online','disconnect');
     this.departed=true;this.terminal=true;this.rematchLocal=false;this.rematchRemote=false;this.advancing=true;setGameplay(false);
     this.time.removeAllEvents();
     if(!this.over||this.nextSeries)void this.showRating(forfeited?1:undefined);
@@ -427,7 +429,9 @@ export class MatchScene extends Phaser.Scene {
 
   private async leave(): Promise<void> {
     if(this.leaving)return this.leaving;
-    const forfeit=!this.departed&&(!this.over||!!this.nextSeries);this.terminal=true;setGameplay(false);
+    const forfeit=!this.departed&&(!this.over||!!this.nextSeries);
+    if(forfeit)track('match','Online','quit');
+    this.terminal=true;setGameplay(false);
     this.cancelSplash?.();
     this.cancelSplash = undefined;
     this.leaving=(async()=>{if(forfeit)await this.match.session.forfeit(this.match.round);this.match.session.leave();if(this.match.restoreTune)restoreTune(this.match.restoreTune);startScreen(this, 'Menu');})();

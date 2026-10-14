@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import {ITCH_BETA_EDITION} from '../edition';
 import {betaView} from '../progress/beta';
 import {rosterKey,PAD_ROSTER,type RosterCommand,type KeyboardProfile} from '../input/rosterMenu';
@@ -84,6 +85,7 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   create(data: CharSelectData): void {
+    track('beta','mode_pick','event',{mode:data.mode});
     installInputModality();
     applyCameraPixelRatio(this);
     backdrop(this, 0.14, 'character_select_background');
@@ -263,6 +265,7 @@ export class CharSelectScene extends Phaser.Scene {
     if (!this.editable(s)) return;
     if(!this.available(s)){sfx.denied();this.notice=this.lockedNotice(s);return;}
     sfx.uiConfirm();
+    track('beta','select_confirm','event',{mode:this.data0.mode,fighter:CHARACTER_IDS[side.sel],side:s,...(this.data0.mode==='vsai'?{difficulty:this.level}:{})});
     side.selected=true;this.notice='';
     if (side.locked) {
       // vsai: confirming on a locked side moves on to the other one.
@@ -503,6 +506,3 @@ export class CharSelectScene extends Phaser.Scene {
     });
   }
 }
-
-
-
