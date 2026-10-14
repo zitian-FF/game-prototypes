@@ -1774,8 +1774,13 @@ export class GameScene extends BaseScene {
     const ins = safeInsets();
     const list: { kind: 'attackBoost' | 'defenseBoost' | 'speedBoost'; value: string; color: number; tip: string }[] = [];
     if (b.attack > 0) list.push({ kind: 'attackBoost', value: `+${Math.round(b.attack * 100)}%`, color: 0xf2994a, tip: `Attack +${Math.round(b.attack * 100)}% for your team (Arsenal)` });
-    if (b.defense > 0) list.push({ kind: 'defenseBoost', value: `-${Math.round(b.defense * 100)}%`, color: 0x6ed3c0, tip: `Damage taken -${Math.round(b.defense * 100)}% for your team (Armory)` });
-    if (b.marchCut > 0) list.push({ kind: 'speedBoost', value: `-${b.marchCut}s`, color: 0xe6d44a, tip: `Squads cross the map ${b.marchCut}s faster (Accelerator)` });
+    if (b.defense > 0) list.push({ kind: 'defenseBoost', value: `+${Math.round(b.defense * 100)}%`, color: 0x6ed3c0, tip: `Damage reduction +${Math.round(b.defense * 100)}% for your team (Armory)` });
+    if (b.marchCut > 0) {
+      // Cutting seconds off the edge-to-edge time is a speed-up of edge / (edge - cut): shown as a rounded percentage.
+      const m = this.tune.march;
+      const speedPct = Math.round((m.edgeToEdgeSeconds / Math.max(m.minEdgeToEdgeSeconds, m.edgeToEdgeSeconds - b.marchCut) - 1) * 100);
+      list.push({ kind: 'speedBoost', value: `+${speedPct}%`, color: 0xe6d44a, tip: `Movement speed +${speedPct}% for your squads (Accelerator)` });
+    }
     if (list.length === 0) return;
     const bw = compact ? 40 : 48;
     const bh = compact ? 36 : 42;

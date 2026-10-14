@@ -794,5 +794,5 @@ client.
   - Every squad of yours that is out of base and not defeated shows a Return to HQ button (a small HQ button on a phone chip), not only the picked one. Squads already walking home or defeated do not. Defend stays on the picked squad.
   - While a Hospital is held, Reserve shows next to the troop total with the units recovered per second (+20/s per Hospital tier), green while recovering and grey when full. Reserve also shows when it runs low.
   - While a Tech Centre is held, the Teleport countdown shows tenths of a second and its speed (x2, x3) so it visibly ticks faster, and the label flashes gold when the speed-up begins.
-  - Top left, under the scoreboard: buff icons for team attack (Arsenal), damage reduction (Armory) and march speed (Accelerator) with their values; only active buffs show, and hovering one names its source.
+  - Top left, under the scoreboard: buff icons for team attack (Arsenal, +5%), damage reduction (Armory, +5%) and movement speed (Accelerator, shown as a rounded speed-up percentage: one Accelerator on a 150 s crossing is +25%, two are +67%); only active buffs show, and hovering one names its source.
 - Where this section conflicts with older text above, this section wins.
