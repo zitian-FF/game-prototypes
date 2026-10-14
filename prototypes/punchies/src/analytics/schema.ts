@@ -4,8 +4,9 @@ const modes=['vsai','localvs','online','training','tutorial'] as const;
 const fighters=['marco','mia','bruno','roxy','nadia'] as const;
 const controls=['modern','classic'] as const;
 const languages=['en','ja','ko','zh','es','ar'] as const;
-type Rule=readonly string[]|{min:number;max:number};
+type Rule=readonly string[]|{min:number;max:number}|'uuid'|'boolean';
 export const EVENT_PROPS:Record<string,Record<string,Rule>>={
+ beta_completion:{completion_id:'uuid',completed:{min:1,max:1000000},wins:{min:0,max:1000000},roxy:'boolean',nadia:'boolean',mode:['ai','local','online'],win:'boolean'},
  boot_done:{load:['fast','medium','slow'],input:['touch','desktop'],viewport:['small','medium','large']},
  lang_chosen:{language:languages},firstfight_start:{},firstfight_hit:{punch:['jab','cross','hook','uppercut']},
  firstfight_done:{result:['win','skip']},reveal_ack:{kind:['fighters','skins']},menu_view:{},
@@ -25,7 +26,8 @@ const only=(v:Record<string,unknown>,keys:string[])=>Object.keys(v).every(k=>key
 export function validProps(event:string,value:unknown):value is WireEvent['p']{
  if(!object(value)||!Object.prototype.hasOwnProperty.call(EVENT_PROPS,event))return false;
  const rules=EVENT_PROPS[event];if(!only(value,Object.keys(rules)))return false;
- return Object.entries(value).every(([key,v])=>{const rule=rules[key];return Array.isArray(rule)?typeof v==='string'&&(rule as readonly string[]).includes(v):typeof v==='number'&&Number.isSafeInteger(v)&&v>=(rule as {min:number}).min&&v<=(rule as {max:number}).max;});
+ if(event==='beta_completion'&&(Object.keys(value).length!==7||Number(value.wins)>Number(value.completed)||value.roxy!==(Number(value.completed)>=3)||value.nadia!==(Number(value.completed)>=5)))return false;
+ return Object.entries(value).every(([key,v])=>{const rule=rules[key];if(rule==='uuid')return uuid(v);if(rule==='boolean')return typeof v==='boolean';return Array.isArray(rule)?typeof v==='string'&&(rule as readonly string[]).includes(v):typeof v==='number'&&Number.isSafeInteger(v)&&v>=(rule as {min:number}).min&&v<=(rule as {max:number}).max;});
 }
 export function validBatch(value:unknown):value is Batch{
  if(!object(value)||!only(value,['v','edition','build','sid','pid','events'])||value.v!==1||value.edition!=='itchbeta'||typeof value.build!=='string'||!/^\d{6}r\d{4}$/.test(value.build)||!uuid(value.sid)||!uuid(value.pid)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;

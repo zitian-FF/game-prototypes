@@ -1,3 +1,4 @@
+import {track} from '../portal/analytics';
 import {store} from '../portal/store';
 import {KEYS} from '../portal/keys';
 
@@ -36,5 +37,8 @@ export function recordBetaCompletion(outcome:BetaCompletion):boolean {
   if(!KEYS.betaCompletions||!validId(outcome.id)||!validMode(outcome.mode)||typeof outcome.win!=='boolean'||outcome.completed!==true||outcome.seriesComplete!==true||outcome.forfeit!==false||outcome.disconnected!==false||outcome.qa!==false)return false;
   const ledger=load();if(ledger.ids.includes(outcome.id))return false;
   ledger.ids.push(outcome.id);ledger.records.push({id:outcome.id,mode:outcome.mode,win:outcome.win});
-  try{store.setItem(KEYS.betaCompletions,JSON.stringify(ledger));return true;}catch{return false;}
+  try{const json=JSON.stringify(ledger);store.setItem(KEYS.betaCompletions,json);if(store.getItem(KEYS.betaCompletions)!==json)return false;
+    const completionId=/^(?:series|online):([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.exec(outcome.id)?.[1];
+    if(completionId)try{track('beta','beta_completion','event',{completion_id:completionId,completed:ledger.ids.length,wins:ledger.records.filter(record=>record.win).length,roxy:ledger.ids.length>=3,nadia:ledger.ids.length>=5,mode:outcome.mode,win:outcome.win});}catch{/* telemetry cannot change a saved match outcome */}
+    return true;}catch{return false;}
 }
