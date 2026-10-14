@@ -54,6 +54,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Known issues
 
+- The itch account was renamed from zitian-ff to polsia. Only the Firestorm Arena Butler target (`polsia/firestorm-arena:html5`) is updated here. Other prototypes' workflows and the hub links still say `zitian-ff` and will break until their owners update them.
+
 - 0.16.1 checked on desktop in a real match at 30x speed (Return to HQ, +20/s, x2 countdown with flash, three buff icons) and on emulated touch for the pill and a buff icon; the touch chip HQ button was not seen in action. Buff icon colours and the 'x2' wording are first guesses.
 
 - Onboarding pass checked on desktop 1280 x 720 and emulated 844 x 390 touch with real matches and with a forced danger, alert and good card; a live "about to be attacked" warning was only checked by a scripted unit check of the logic, not seen in a real match. The Next Moves rules (nearest node, one cue per kind) are first guesses to tune from the game logs.
