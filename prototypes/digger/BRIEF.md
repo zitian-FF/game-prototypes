@@ -27,8 +27,8 @@ treasure is tapped to collect, gems buy upgrades.
 - Board has limited total endurance (not built yet, see scope).
 - Look: pseudo-3D. Placeholder shapes only. Rendering goes through a `Skin`
   interface (`src/render/skin.ts`) so the art style can be swapped without
-  touching rules or scene code. Skins today: bevel (2.5D tilt, default),
-  flat, iso. Pick one with `?skin=`.
+  touching rules or scene code. Skins today: pastel (soft rounded beveled
+  blocks, default), bevel (2.5D tilt), flat, iso. Pick one with `?skin=`.
 
 ## Tools
 

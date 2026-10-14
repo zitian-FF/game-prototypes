@@ -59,7 +59,7 @@ interface DieView {
 
 type Phase = 'idle' | 'tumble' | 'resolve';
 
-export const runtime = { skin: new URLSearchParams(location.search).get('skin') ?? 'bevel', newBoard: false };
+export const runtime = { skin: new URLSearchParams(location.search).get('skin') ?? 'pastel', newBoard: false };
 
 export class GameScene extends Phaser.Scene {
   private bus = new IntentBus();
@@ -152,8 +152,8 @@ export class GameScene extends Phaser.Scene {
       .setAlpha(0.28)
       .setDepth(50);
     this.hudTop = this.hudText(WIDTH / 2, 24, 16, '#ffffff');
-    this.hudTool = this.hudText(WIDTH / 2, 48, 13, '#b9aed0');
-    this.summary = this.hudText(WIDTH / 2, 650, 14, '#e7defa');
+    this.hudTool = this.hudText(WIDTH / 2, 48, 13, '#f1e9ff');
+    this.summary = this.hudText(WIDTH / 2, 650, 14, '#ffffff');
     this.banner = this.hudText(WIDTH / 2, 320, 34, '#ffe27a').setDepth(30).setAlpha(0);
 
     const bw = (358 - 16) / 3;
@@ -183,7 +183,7 @@ export class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
         fontSize: `${size}px`,
         color,
-        stroke: '#0d0a14',
+        stroke: '#5b4a86',
         strokeThickness: Math.max(2, size / 6),
         align: 'center',
         resolution: PIXEL_RATIO,

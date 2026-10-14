@@ -22,7 +22,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const errors = [];
 const shots = [];
-for (const skin of ['bevel', 'flat', 'iso']) {
+for (const skin of ['pastel', 'bevel', 'flat', 'iso']) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
   const page = await ctx.newPage();
   page.on('console', (m) => m.type() === 'error' && errors.push(`[${skin}] ${m.text()}`));
@@ -40,7 +40,7 @@ for (const skin of ['bevel', 'flat', 'iso']) {
   await ctx.close();
 }
 
-const sheet = await browser.newPage({ viewport: { width: 390 * 3 + 40, height: 844 + 20 } });
+const sheet = await browser.newPage({ viewport: { width: 390 * 4 + 50, height: 844 + 20 } });
 const imgs = shots.map((f) => `<img src="data:image/png;base64,${fs.readFileSync(f).toString('base64')}" style="width:390px;height:844px;margin:10px 0 0 10px">`);
 await sheet.setContent(`<body style="margin:0;background:#000;display:flex">${imgs.join('')}</body>`);
 await sheet.screenshot({ path: path.join(outDir, 'dice-dig-style-sheet.png') });

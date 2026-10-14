@@ -28,7 +28,7 @@ function addGroup(parent: { addBinding: Function; addFolder: Function }, obj: Ba
 export function mountDebugPanelIfRequested(): void {
   if (new URLSearchParams(location.search).get('debug') !== '1') return;
   const pane = new Pane({ title: 'dice dig tune' });
-  pane.addBinding(runtime, 'skin', { options: { 'Bevel (2.5D)': 'bevel', Flat: 'flat', Isometric: 'iso' } });
+  pane.addBinding(runtime, 'skin', { options: { 'Pastel (soft)': 'pastel', 'Bevel (2.5D)': 'bevel', Flat: 'flat', Isometric: 'iso' } });
   pane.addButton({ title: 'New board' }).on('click', () => {
     runtime.newBoard = true;
   });

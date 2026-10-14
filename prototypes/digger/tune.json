@@ -57,6 +57,7 @@
   "layout": {
     "layerHeightPx": 11,
     "tiltTopDepth": 0.72,
+    "pastelTopDepth": 0.74,
     "tiltBackScale": 0.8,
     "cellGap": 0.07
   }

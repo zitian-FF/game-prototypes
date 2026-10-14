@@ -9,6 +9,7 @@ import {
   shade,
   tileColor,
 } from './skin';
+import type { TileKind } from '../game/types';
 import { tune } from '../tune';
 
 const FLOOR = 0x241c2e;
@@ -35,12 +36,20 @@ function bilerp(q: Pt[], s: number, t: number): Pt {
   return { x: top.x + (bot.x - top.x) * t, y: top.y + (bot.y - top.y) * t };
 }
 
-function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: number): void {
+interface DecorStyle {
+  crack: number;
+  rivet: number;
+  weak: number;
+  weakGlow: number;
+}
+const DARK_DECOR: DecorStyle = { crack: 0x1b1420, rivet: 0x2c2f3a, weak: 0xffb347, weakGlow: 0xff8a1f };
+
+function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: number, st: DecorStyle = DARK_DECOR): void {
   const s = v.surface;
   if (!s) return;
   const dmg = 1 - s.hpFrac;
   if (dmg > 0.01) {
-    g.lineStyle(Math.max(1, 1.6 * scale), 0x1b1420, 0.85);
+    g.lineStyle(Math.max(1, 1.6 * scale), st.crack, 0.85);
     for (const path of crackPaths(v.idx + 1, 1 + Math.ceil(dmg * 4))) {
       g.beginPath();
       path.forEach((p, i) => {
@@ -52,7 +61,7 @@ function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: 
     }
   }
   if (s.kind === 'hardened') {
-    g.fillStyle(0x2c2f3a, 0.9);
+    g.fillStyle(st.rivet, 0.9);
     for (const [a, b] of [[0.17, 0.17], [0.83, 0.17], [0.83, 0.83], [0.17, 0.83]]) {
       const p = bilerp(q, a, b);
       g.fillCircle(p.x, p.y, Math.max(1.2, 2.2 * scale));
@@ -62,9 +71,9 @@ function drawDecor(g: Phaser.GameObjects.Graphics, q: Pt[], v: CellView, scale: 
     const c = bilerp(q, 0.5, 0.5);
     const pulse = 0.65 + 0.35 * Math.sin(v.time * 6 + v.idx);
     const r = 7 * scale;
-    g.fillStyle(0xff8a1f, 0.28 * pulse);
+    g.fillStyle(st.weakGlow, 0.28 * pulse);
     g.fillCircle(c.x, c.y, r * 1.5);
-    g.lineStyle(Math.max(1.5, 2 * scale), 0xffb347, 0.9 * pulse + 0.1);
+    g.lineStyle(Math.max(1.5, 2 * scale), st.weak, 0.9 * pulse + 0.1);
     g.beginPath();
     g.moveTo(c.x - r, c.y - r * 0.6);
     g.lineTo(c.x + r, c.y + r * 0.6);
@@ -276,11 +285,117 @@ export function createFlatSkin(rect: BoardRect, cols: number, rows: number): Ski
   };
 }
 
-export const SKIN_IDS = ['bevel', 'flat', 'iso'] as const;
+// Pastel strata, top layer first: mint, peach, periwinkle.
+const PASTEL_LAYER = [0xaee9c6, 0xffd0a8, 0xb9bdf5];
+function pastelColor(layer: number, kind: TileKind): number {
+  const base = PASTEL_LAYER[Math.min(layer, PASTEL_LAYER.length - 1)];
+  if (kind === 'soft') return mix(base, 0xffffff, 0.35);
+  if (kind === 'hardened') return mix(base, 0xc4cbdc, 0.62);
+  return base;
+}
+const PASTEL_DECOR: DecorStyle = { crack: 0x7a5f86, rivet: 0xffffff, weak: 0xff6f91, weakGlow: 0xff9db4 };
+
+/**
+ * Chunky soft blocks in the spirit of cosy block-building games: rounded
+ * beveled tops, pastel strata on the front, no hard black outlines. Drawn
+ * with rounded rects in a front-oblique view, so it needs no quad maths.
+ */
+export function createPastelSkin(rect: BoardRect, cols: number, rows: number): Skin {
+  const cw = rect.w / cols;
+  const pitch = rect.h / rows;
+  const topH = pitch * tune.layout.pastelTopDepth;
+  const gap = 3;
+  const R = Math.min(cw, topH) * 0.28;
+  const lp = tune.layout.layerHeightPx;
+  const geo = (col: number, row: number) => ({ x: rect.x + col * cw + gap / 2, w: cw - gap, y: rect.y + row * pitch });
+  return {
+    id: 'pastel',
+    label: 'Pastel soft blocks',
+    order: (c, r) => {
+      const out: { col: number; row: number }[] = [];
+      for (let row = 0; row < r; row++) for (let col = 0; col < c; col++) out.push({ col, row });
+      return out;
+    },
+    anchor: (col, row, height) => {
+      const b = geo(col, row);
+      return { x: b.x + b.w / 2, y: b.y - height * lp + topH / 2 };
+    },
+    drawBackdrop(g, w, h) {
+      g.fillGradientStyle(0x9fc7f2, 0x9fc7f2, 0xe2c4f0, 0xe2c4f0, 1);
+      g.fillRect(0, 0, w, h);
+      g.fillStyle(0xffffff, 0.16);
+      for (const [x, y, r] of [[60, 70, 34], [330, 40, 26], [300, 570, 40], [40, 590, 30]]) g.fillCircle(x, y, r);
+    },
+    drawCell(g, v) {
+      const b = geo(v.col, v.row);
+      // Pit floor, rounded, with the treasure gem if one is down there.
+      g.fillStyle(0x8c7cae, 1);
+      g.fillRoundedRect(b.x, b.y, b.w, topH, R);
+      g.fillStyle(0x6f5f92, 0.7);
+      g.fillRoundedRect(b.x + 2, b.y + 2, b.w - 4, topH * 0.4, R * 0.8);
+      if (v.hasTreasure) {
+        const cx = b.x + b.w / 2;
+        const cy = b.y + topH / 2;
+        const r = Math.min(b.w, topH) * 0.3;
+        const gem = [{ x: cx, y: cy - r }, { x: cx + r * 0.85, y: cy }, { x: cx, y: cy + r }, { x: cx - r * 0.85, y: cy }];
+        g.fillStyle(0xffc94d, 1);
+        g.fillPoints(gem, true);
+        g.fillStyle(0xfff0a8, 1);
+        g.fillPoints([gem[0], gem[1], { x: cx, y: cy }], true);
+        g.fillStyle(0xffffff, 0.35 + 0.3 * Math.sin(v.time * 4));
+        g.fillCircle(cx - r * 0.3, cy - r * 0.3, 2.5);
+      }
+      if (v.height < 0.02 || !v.surface) return;
+
+      const n = Math.max(1, v.alive.length);
+      const topY = b.y - v.height * lp + v.offY;
+      const x = b.x + v.offX;
+      const bottom = b.y + topH + v.offY;
+      const bodyTop = topY + topH * 0.5;
+      const bandH = (bottom - bodyTop) / n;
+      for (let i = 0; i < n; i++) {
+        const a = v.alive[i];
+        const y0 = bodyTop + i * bandH;
+        const last = i === n - 1;
+        g.fillStyle(shade(pastelColor(a.layer, a.kind), 0.86 - i * 0.02), 1);
+        if (last) g.fillRoundedRect(x, y0, b.w, bandH, { tl: 0, tr: 0, bl: R, br: R });
+        else g.fillRect(x, y0, b.w, bandH + 0.5);
+        if (i > 0) {
+          g.fillStyle(0xffffff, 0.22);
+          g.fillRect(x + 2, y0, b.w - 4, 1.5);
+        }
+      }
+
+      // Top face: darker rim, lighter inset, glossy highlight = rounded bevel.
+      const base = pastelColor(v.surface.layer, v.surface.kind);
+      const dmg = 1 - v.surface.hpFrac;
+      const top = shade(base, 1 - dmg * 0.1);
+      g.fillStyle(shade(base, 0.8), 1);
+      g.fillRoundedRect(x, topY + 2, b.w, topH, R);
+      g.fillStyle(shade(base, 0.95), 1);
+      g.fillRoundedRect(x, topY, b.w, topH, R);
+      g.fillStyle(top, 1);
+      g.fillRoundedRect(x + 2.5, topY + 2.5, b.w - 5, topH - 6, R * 0.8);
+      g.fillStyle(0xffffff, 0.45);
+      g.fillRoundedRect(x + 6, topY + 5, b.w * 0.42, 4, 2);
+      g.fillStyle(0xffffff, 0.22);
+      g.fillCircle(x + b.w - 9, topY + 9, 2.5);
+      const q: Pt[] = [{ x, y: topY }, { x: x + b.w, y: topY }, { x: x + b.w, y: topY + topH }, { x, y: topY + topH }];
+      drawDecor(g, q, v, b.w / 52, PASTEL_DECOR);
+      if (v.flash > 0.01) {
+        g.fillStyle(0xffffff, Math.min(0.85, v.flash));
+        g.fillRoundedRect(x, topY, b.w, topH, R);
+      }
+    },
+  };
+}
+
+export const SKIN_IDS = ['pastel', 'bevel', 'flat', 'iso'] as const;
 export type SkinId = (typeof SKIN_IDS)[number];
 
 export function createSkin(id: string, rect: BoardRect, cols: number, rows: number): Skin {
+  if (id === 'bevel') return createTiltSkin(rect, cols, rows);
   if (id === 'flat') return createFlatSkin(rect, cols, rows);
   if (id === 'iso') return createIsoSkin(rect, cols, rows);
-  return createTiltSkin(rect, cols, rows);
+  return createPastelSkin(rect, cols, rows);
 }

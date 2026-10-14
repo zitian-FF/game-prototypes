@@ -22,7 +22,7 @@ portrait canvas. Not yet playtested by the user.
   floor once uncovered. They cannot be collected yet.
 - When the board is cleared the ROLL button becomes NEXT BOARD, which only
   generates a fresh board (no progression yet).
-- Three art skins behind a `Skin` interface: bevel (default), flat, iso.
+- Four art skins behind a `Skin` interface: pastel (default, soft rounded beveled blocks with pastel mint/peach/periwinkle strata), bevel, flat, iso.
 - `?debug=1` Tweakpane panel edits `tune.json` values live, switches skin,
   makes a new board, and copies JSON.
 - Version stamp (`version.json`, bumped by the deploy workflow).
@@ -48,7 +48,7 @@ portrait canvas. Not yet playtested by the user.
   C4 about 48. Random targeting scatters damage, so few tiles break per roll
   (0.2 / 1.0 / 3.0). Needs a tuning decision: lower hp, fewer layers or
   tiles, or higher face damage.
-- Which art skin to keep.
+- Which art skin to keep (pastel is the current default).
 - "Board endurance" (from BRIEF.md) is not built; it is needed for the
   flooding variant. Confirm it is a separate meter from tile hp.
 - BRIEF.md was written from the handoff and the confirmed defaults, so it
