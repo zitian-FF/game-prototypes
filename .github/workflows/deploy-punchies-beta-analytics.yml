@@ -46,7 +46,9 @@ jobs:
       - run: npm ci
       - run: node scripts/test-punchies-beta-analytics.mjs
       - run: npm run typecheck
-      - uses: cloudflare/wrangler-action@v4
+      - name: Apply remote migration unless this exact schema was verified in dashboard
+        if: vars.PUNCHIES_ANALYTICS_SCHEMA_APPLIED_SHA != inputs.source_sha
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -62,3 +64,4 @@ jobs:
           secrets: REPORT_TOKEN
         env:
           REPORT_TOKEN: ${{ secrets.PUNCHIES_ANALYTICS_REPORT_TOKEN }}
+
