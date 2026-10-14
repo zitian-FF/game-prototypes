@@ -510,5 +510,6 @@
   "controls.classic_cons": "أزرار أكثر\nإدارة طاقة التحمّل والدفاع يدويًا",
   "controls.modern_note": "الحديث: دون طاقة تحمّل، لكن الإرهاق باقٍ. المراوغة التلقائية متاحة لفترة قصيرة عند التحرك من السكون؛ وعقوبتها ما زالت سارية.",
   "controls.advantages": "المزايا",
-  "controls.tradeoffs": "العيوب"
+  "controls.tradeoffs": "العيوب",
+  "menu.feedback_discord": "ملاحظات · Discord"
 }

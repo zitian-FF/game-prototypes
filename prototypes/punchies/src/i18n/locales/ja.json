@@ -510,5 +510,6 @@
   "controls.classic_cons": "操作が多い\nスタミナと防御を自分で管理",
   "controls.modern_note": "モダン：スタミナはないが疲労は残る。自動回避は静止から動き始めた直後のみ。回避ペナルティも適用される。",
   "controls.advantages": "強み",
-  "controls.tradeoffs": "注意点"
+  "controls.tradeoffs": "注意点",
+  "menu.feedback_discord": "ご意見 · Discord"
 }
