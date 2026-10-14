@@ -7,37 +7,42 @@ portrait, one-thumb play. Reuses the pastel pillow-block look and feel from
 
 ## Core loop
 
-1. Swap two neighbouring blocks to make a line of 3 or more of the same colour.
-2. Matched blocks break. Blocks below rise to fill the gap (upward gravity, as
-   if the player is descending) and new blocks enter from the bottom edge.
-   Chains (cascades) score more.
-3. Breaking blocks chips neighbouring hardened blocks and frees gems.
-4. Freed gems are collected automatically with a flashy effect (gems fly to
-   the gem counter in a trail).
-5. Spend gems on permanent upgrades. Play never ends: there is no fail state.
+1. Swap two neighbouring ore chunks on the ore board to make a line of 3 or more
+   of the same colour.
+2. The match fires bolts into the shaft column with the same colour (the colour
+   chips above each column say which). Each hit adds more cracks to the block at
+   the face of that column.
+3. When the cracks reach the limit the block gives way. It reveals the tunnel
+   behind it and any buried gem, which flies to the gem counter automatically.
+4. Columns are dug on their own, so the tunnel gets jagged. The view scrolls
+   down with the shallowest column. A column may lead the others by at most 3
+   rows; extra hits go to the shallowest column.
+5. Play never ends: there is no fail state. Spend gems on upgrades later.
 
-## Board
+## Screen
 
-- 7 columns by 9 rows (tune.json), 5 block colours to start. Cells stay at
-  least 44 px wide on a 390 px logical canvas.
-- Each block is a pillow. A normal block is one slab. A hardened block is a
-  stack of 2 to 3 grey slabs; the stack height is its health.
-- Hardened blocks cannot be swapped or matched. A match next to one removes a
-  slab. They rise like other blocks. Weak-point blocks give an extra chip to
-  their neighbours when matched.
-- Some blocks hold a gem. Matching the block frees the gem.
-- Endless: new blocks come from the bottom, with the colour band and the share of
-  hardened blocks and gems changing slowly with depth. Depth is the number of
-  rows' worth of blocks cleared. The board always has a valid move; if none is
-  left it reshuffles. New blocks never start as a ready-made match.
+- Top: the shaft, 5 columns wide, showing 5 rows. Blocks are pillows coloured by
+  strata (grass, dirt, clay, sand, stone, slate, crystal, changing every 8 rows).
+  Cleared rows show as a dark tunnel. A gem glint on a block means treasure is
+  buried under it. HUD above: depth in metres and the gem counter.
+- Bottom: the ore board, 7 columns by 6 rows, 5 ore colours. Endless refill,
+  upward gravity (blocks rise to the top row, new ones come in from below),
+  chains, and a reshuffle when no move is left.
 
-## Special pieces
+## Digging rules
 
-- 4 in a line makes a Hammer block: clears its whole row or column when matched
-  or tapped.
-- 5 in a line, or an L or T shape, makes a C4 block: clears a 3x3 area.
-- The old tool names map to match size (3 = Pickaxe, 4 = Hammer, 5 or L/T = C4).
-  Upgrades raise their reach and how often they appear.
+- Ore colour N digs shaft column N.
+- 3-match: 1 hit. 4-match (Hammer): 2 hits on the column and 1 on each neighbour.
+  5 or more (C4): 4 hits on the column, 2 on each neighbour, 1 two columns away.
+- Each chain step after the first adds 1 hit. A weak-point ore (coral X) in a
+  match adds 1 hit.
+- Block hp grows with depth (tune.json). Cracks add up as hp falls.
+- Gems: some blocks hide a gem; its value grows with depth.
+
+## Special pieces (later)
+
+The 4-match and 5-match already act as Hammer and C4 through the hit rules above. A
+special block you can tap later is not built yet.
 
 ## Input
 
@@ -63,15 +68,15 @@ share, gem share, special-piece rules, shake and particles.
 
 ## Scope order
 
-1. Swap-and-match board, falling, refills, cascades, reshuffle, and the feel pass
-   (juice, sounds, screen shake on big chains)
-2. Hardened blocks chipped by neighbours, weak points
-3. Gems, tap to collect, depth counter
-4. Special pieces from 4- and 5-matches
-5. Gem economy and persistent upgrades
-6. Helper and offline progress, gem cap
+1. Swap-and-match ore board with upward gravity, chains, reshuffle, feel (done)
+2. Shaft with layered terrain, cracks that build up, tunnel, buried gems, auto
+   collection with a fly-to-counter effect (done, replaces the old hardened
+   chunks step)
+3. Gem economy and persistent upgrades (hit power, gem value, bigger splash)
+4. Special pieces you can tap or trigger
+5. Helper that digs by itself and offline progress, gem cap
 
-Playtest after steps 1 and 2 before building more.
+Playtest after each step.
 
 ## Out of scope
 
@@ -86,10 +91,13 @@ wants one more swap.
 
 ## Decisions
 
-- Gravity is upward (blocks rise toward the top row), to be novel. Easy to flip
-  later: it is one setting in the board rules and the spawn side.
+- Two boards (shaft on top, ore board below), chosen after the single-board
+  version felt like a generic jewel-swapping game rather than mining.
+- Ore colour picks the shaft column, so targeting is skill, not luck.
+- Gravity on the ore board is upward, to be novel.
 - Gems collect automatically with a fancy effect (no tap-to-collect).
 
 ## Open questions
 
 - Whether upward gravity reads clearly to casual players; judged in playtest.
+- Whether having to match each colour to dig its column feels good or limiting.
