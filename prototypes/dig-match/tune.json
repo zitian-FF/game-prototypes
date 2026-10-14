@@ -1,0 +1,94 @@
+{
+  "grid": {
+    "cols": 7,
+    "rows": 6
+  },
+  "colors": 5,
+  "block": {
+    "cornerRadius": 0.3,
+    "gap": 4
+  },
+  "hardened": {
+    "baseChance": 0,
+    "perMeter": 0,
+    "maxChance": 0,
+    "hpMin": 2,
+    "hpMax": 3,
+    "weakChance": 0.07,
+    "chipPerMatch": 1,
+    "weakBonusChip": 1
+  },
+  "refill": {
+    "freeCascadeChance": 0
+  },
+  "depth": {
+    "blocksPerMeter": 7,
+    "bandMeters": 10
+  },
+  "feel": {
+    "dragThresholdPx": 14,
+    "swapMs": 120,
+    "invalidMs": 110,
+    "popMs": 150,
+    "popScale": 1.28,
+    "riseMs": 210,
+    "riseOvershoot": 1.5,
+    "cascadeDelayMs": 80,
+    "spawnStaggerMs": 22,
+    "chipShakePx": 3,
+    "particlesPerBlock": 6,
+    "particleSpeedMin": 50,
+    "particleSpeedMax": 220,
+    "particleGravity": 500,
+    "particleLifeMs": 480,
+    "bigChainSteps": 3,
+    "bigClearCount": 6,
+    "shakeMs": 160,
+    "shakeIntensity": 0.008,
+    "punchZoom": 1.025,
+    "numberRiseMs": 650,
+    "numberRisePx": 34,
+    "pitchStepPerHit": 0.06,
+    "pitchStepMax": 12,
+    "volume": 0.5,
+    "vibrate": 1,
+    "impactShakePx": 3.5,
+    "impactShakeMs": 160,
+    "impactFlashMs": 110,
+    "dustPerHit": 5,
+    "dustPerBreak": 16,
+    "gemPopMs": 170,
+    "gemHoldMs": 160,
+    "gemFlyMs": 720,
+    "gemArcPx": 90,
+    "gemTrailPerFrame": 1,
+    "cameraFollow": 6
+  },
+  "terrain": {
+    "cols": 5,
+    "rowsVisible": 5,
+    "bandRows": 8,
+    "hpBase": 2,
+    "hpPerRow": 0.35,
+    "treasureChance": 0.16,
+    "gemBase": 1,
+    "gemPerBand": 1,
+    "maxLead": 3,
+    "metersPerRow": 1,
+    "tunnelRows": 1.4
+  },
+  "dig": {
+    "damage": 1,
+    "three": 1,
+    "four": 2,
+    "fourSplash": 1,
+    "five": 4,
+    "fiveSplashNear": 2,
+    "fiveSplashFar": 1,
+    "chainBonus": 1,
+    "weakBonus": 1,
+    "boltMs": 210,
+    "boltStaggerMs": 60,
+    "boltMaxTotalMs": 420
+  }
+}

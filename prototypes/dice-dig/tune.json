@@ -1,0 +1,64 @@
+{
+  "grid": { "cols": 6, "rows": 8, "layers": 3 },
+  "tiles": {
+    "soft": { "hp": 2, "hardness": 1 },
+    "normal": { "hp": 4, "hardness": 1 },
+    "hardened": { "hp": 8, "hardness": 2 }
+  },
+  "mix": {
+    "layer1": { "soft": 30, "normal": 50, "hardened": 20 },
+    "layer2": { "soft": 20, "normal": 50, "hardened": 30 },
+    "layer3": { "soft": 10, "normal": 45, "hardened": 45 }
+  },
+  "layerHpMultiplier": { "layer1": 1, "layer2": 1.5, "layer3": 2 },
+  "layerHardnessBonus": { "layer1": 0, "layer2": 0, "layer3": 1 },
+  "weakPointChance": 0.12,
+  "weakPointMultiplier": 2,
+  "glancingDamage": 1,
+  "treasureCount": 5,
+  "tools": {
+    "pickaxe": { "diceMin": 1, "diceMax": 3, "tier": 1 },
+    "hammer": { "diceMin": 4, "diceMax": 9, "tier": 2 },
+    "c4": { "diceMin": 10, "diceMax": 20, "tier": 3 }
+  },
+  "faceWeights": { "miss": 30, "strike": 38, "critical": 12, "wild": 8, "lucky": 12 },
+  "faceDamage": { "strike": 1, "critical": 3, "wild": 5, "lucky": 5 },
+  "feel": {
+    "tumbleMs": 360,
+    "dieSettleSpreadMs": 140,
+    "hitIntervalMs": 70,
+    "maxResolveMs": 1100,
+    "hitstopCritMs": 70,
+    "hitstopLuckyMs": 110,
+    "tileShakePx": 3.5,
+    "tileShakeMs": 160,
+    "tileFlashMs": 110,
+    "dropStiffness": 320,
+    "dropDamping": 16,
+    "particlesPerHit": 5,
+    "particlesPerBreak": 14,
+    "particleSpeedMin": 60,
+    "particleSpeedMax": 240,
+    "particleGravity": 700,
+    "particleLifeMs": 520,
+    "numberRiseMs": 650,
+    "numberRisePx": 34,
+    "screenShakeCritMs": 150,
+    "screenShakeCritIntensity": 0.008,
+    "screenShakeWildMs": 190,
+    "screenShakeWildIntensity": 0.012,
+    "screenShakeLuckyMs": 240,
+    "screenShakeLuckyIntensity": 0.016,
+    "pitchStepPerHit": 0.045,
+    "pitchStepMax": 14,
+    "volume": 0.5,
+    "vibrate": 1
+  },
+  "layout": {
+    "layerHeightPx": 11,
+    "tiltTopDepth": 0.72,
+    "pastelTopDepth": 0.74,
+    "tiltBackScale": 0.8,
+    "cellGap": 0.07
+  }
+}

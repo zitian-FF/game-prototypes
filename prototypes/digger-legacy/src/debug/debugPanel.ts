@@ -60,7 +60,7 @@ export function mountDebugPanelIfRequested(): void {
   // other module reads from, unlike every scalar top-level key which is
   // already copied by value.
   const values = { ...tune, treasure: { ...tune.treasure } };
-  const pane = new Pane({ title: 'digger tune' });
+  const pane = new Pane({ title: 'digger-legacy tune' });
 
   for (const key of Object.keys(tune) as (keyof typeof tune)[]) {
     if (key === 'treasure') continue;

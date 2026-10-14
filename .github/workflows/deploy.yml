@@ -32,26 +32,27 @@ jobs:
 
       # One block per prototype that has art in R2. Add a block here when a
       # new prototype gains an assets-src (see scripts/fetch-assets.js).
-      - name: Get digger art ETag
-        id: digger-etag
+      - name: Get digger-legacy art ETag
+        id: digger-legacy-etag
         run: |
           etag=$(curl -fsSI "https://pub-415572b047994ab8807f76b8462eda45.r2.dev/digger_assets.zip" \
             | grep -i '^etag:' | sed -E 's/[Ee][Tt][Aa][Gg]: *"?([^"\r]*)"?.*/\1/')
           echo "etag=$etag" >> "$GITHUB_OUTPUT"
 
-      - name: Cache digger art
+      - name: Cache digger-legacy art
         uses: actions/cache@v4
         with:
           path: |
-            .cache/digger.etag
-            prototypes/digger/assets-src
-          key: digger-art-${{ steps.digger-etag.outputs.etag }}
+            .cache/digger-legacy.etag
+            prototypes/digger-legacy/assets-src
+          key: digger-legacy-art-${{ steps.digger-legacy-etag.outputs.etag }}
 
-      - name: Fetch digger assets
-        run: npm run fetch:assets digger
+      # digger-legacy's art still lives in R2 under the old digger name.
+      - name: Fetch digger-legacy assets
+        run: npm run fetch:assets digger-legacy digger_assets.zip
 
-      - name: Pack digger assets
-        run: npm run pack:assets digger
+      - name: Pack digger-legacy assets
+        run: npm run pack:assets digger-legacy
 
       - name: Get suits-mp art ETag
         id: suits-mp-etag
