@@ -1,7 +1,7 @@
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
-export const SIM_RULES_VERSION='sim-eagle-punch-6';
+export const SIM_RULES_VERSION='sim-modern-controls-7';
 export interface RulesStamp {protocol:2;version:string;hash:string}
 // Control lifecycle changes must also reject clients with the old BO3 gate.
 const CONTROL_RULES_VERSION='bo3-ready-2';
@@ -21,8 +21,11 @@ export function sameRules(value:unknown):boolean {const r=value as Partial<Rules
 export const rulesFingerprint=()=>{const r=simulationRules();return r.version+':'+r.hash;};
 /** Host tune is validated/synchronized separately; a different local tune is legal. */
 export function tuneSnapshotHash(json:string):string|null{try{return hash(JSON.parse(json));}catch{return null;}}
+export function validControlModes(value:unknown):value is ['modern'|'classic','modern'|'classic']{return Array.isArray(value)&&value.length===2&&value.every(mode=>mode==='modern'||mode==='classic');}
+export const controlModesHash=(modes:unknown)=>validControlModes(modes)?hash(modes):null;
 
 export function compatibleStart(value:unknown,rated:boolean,validate:(json:string)=>{ok:boolean}):boolean {
- const m=value as {rules?:unknown;tune?:unknown;tuneHash?:unknown;rated?:boolean;round?:unknown;delay?:unknown;chars?:unknown;ratingNonce?:unknown};
+ const m=value as {rules?:unknown;tune?:unknown;tuneHash?:unknown;rated?:boolean;round?:unknown;delay?:unknown;chars?:unknown;ratingNonce?:unknown;controlModes?:unknown;controlHash?:unknown};
+ if(!m||!validControlModes(m.controlModes)||m.controlHash!==controlModesHash(m.controlModes))return false;
  return !!m&&sameRules(m.rules)&&(m.rated===true)===rated&&typeof m.tune==='string'&&typeof m.tuneHash==='string'&&m.tuneHash===tuneSnapshotHash(m.tune)&&validate(m.tune).ok&&Number.isSafeInteger(m.round)&&Number(m.round)>0&&Number.isSafeInteger(m.delay)&&Number(m.delay)>=0&&Number(m.delay)<=60&&Array.isArray(m.chars)&&m.chars.length===2&&m.chars.every(id=>CHARACTER_IDS.includes(id))&&(!rated||(typeof m.ratingNonce==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(m.ratingNonce)));
 }

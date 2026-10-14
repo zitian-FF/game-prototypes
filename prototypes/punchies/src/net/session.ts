@@ -1,4 +1,5 @@
-import {simulationRules,sameRules,tuneSnapshotHash,compatibleStart,type RulesStamp} from './rules';
+import {simulationRules,sameRules,tuneSnapshotHash,compatibleStart,controlModesHash,type RulesStamp} from './rules';
+import type {ControlMode} from '../sim/modernControls';
 import {validateTuneJson} from '../sim/tune';
 import {currentRating,loadRating,createRatingMatch,reportRating,releaseRatingPair} from './rating';
 import { getRelaySockets, joinRoom, type Room } from 'trystero/nostr';
@@ -30,14 +31,15 @@ export function relayStatus(): { open: number; total: number } {
 }
 
 export type CtlMessage =
-  | { k: 'hello'; role: Role; rules?:RulesStamp; rated?:boolean; profile?: WireProfile; rating?:{id:string;points:number} }
+  | { k: 'hello'; role: Role; controlMode?:ControlMode;rules?:RulesStamp; rated?:boolean; profile?: WireProfile; rating?:{id:string;points:number} }
   | { k: 'ratingSet';nonce:string }
-  | { k:'paired';rules?:RulesStamp;rated?:boolean;profile?:WireProfile;rating?:{id:string;points:number} }
+  | {k:'controlMode';round:number;controlMode:ControlMode}
+  | { k:'paired';controlMode?:ControlMode;rules?:RulesStamp;rated?:boolean;profile?:WireProfile;rating?:{id:string;points:number} }
   | { k: 'full' }
   | {k:'incompatible'}
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number }
-  | { k: 'start';rules?:RulesStamp;tuneHash?:string; rated?:boolean; round: number; delay: number; tune: string; chars: [string, string];skins?:[string,string];ratingNonce?:string }
+  | { k: 'start';controlModes?:[ControlMode,ControlMode];controlHash?:string;rules?:RulesStamp;tuneHash?:string; rated?:boolean; round: number; delay: number; tune: string; chars: [string, string];skins?:[string,string];ratingNonce?:string }
   | { k: 'pick'; char: string | null;hover?:string;skin?:string;available?:string[] }
   | { k: 'rematch';rules?:RulesStamp; round: number }
   | { k: 'reselect'; round: number }
@@ -58,6 +60,12 @@ export class NetSession {
   private inp: Channel<InputPacket>;
   private hsh: Channel<HashPacket>;
   peerId: string | null = null;
+  private peerControlMode:ControlMode|null=null;
+  private localControlMode:ControlMode;
+  private pendingPeerMode:{round:number;mode:ControlMode}|null=null;
+  get controlMode():ControlMode{return this.localControlMode;}
+  get controlModes():[ControlMode,ControlMode]{return this.role==='host'?[this.controlMode,this.peerControlMode??'modern']:[this.peerControlMode??'modern',this.controlMode];}
+  private agreedModes(modes:unknown):boolean{return Array.isArray(modes)&&modes.length===2&&modes.every((mode,i)=>mode===this.controlModes[i]);}
   peerRating:{id:string;points:number}|null=null;
   ratingMatch:Promise<string|null>=Promise.resolve(null);
   private candidates=new Map<string,CtlMessage & {k:'hello'}>();
@@ -68,7 +76,12 @@ export class NetSession {
   private receiverReady=false;private queuedInputs=new Map<string,InputPacket>();private queuedHashes=new Map<string,HashPacket>();
   private approvedStart=false;private localReadyRound:number|null=null;private remoteReadyRound:number|null=null;private currentRatingNonce:string|null=null;private validatedStartNonce:string|null=null;private ratingStarted=false;
   markRoundEnded():void{this.gameStarted=false;this.approvedStart=false;}
-  markMatchCompleted():void{this.setActive=false;}
+  markMatchCompleted():void{this.setActive=false;if(this.pendingPeerMode?.round===this.startedRound+1){this.peerControlMode=this.pendingPeerMode.mode;this.pendingPeerMode=null;}}
+  /** Preferences may change only for a new whole set, never its BO3 rounds. */
+  prepareNextMatchMode(mode:ControlMode,round:number):boolean{
+    if(this.setActive||!this.readyForMatch||round!==this.startedRound+1||(mode!=='modern'&&mode!=='classic'))return false;
+    this.localControlMode=mode;this.send({k:'controlMode',round,controlMode:mode});return true;
+  }
   private rematchReady(round:number,local:boolean):boolean{if(!this.initialStartValidated||round!==this.startedRound+1)return false;if(local)this.localReadyRound=round;else this.remoteReadyRound=round;this.validatedStartNonce=null;this.approvedStart=this.localReadyRound===round&&this.remoteReadyRound===round;return true;}
   private pendingRating:{nonce:string;resolve:(id:string|null)=>void}|null=null;
   private commitStart():boolean{
@@ -118,7 +131,9 @@ export class NetSession {
     iceServers: RTCIceServer[] | undefined,
     readonly rated = false,
     readonly assignment?:{opponent:string;nonce:string;pairId:string;baseline?:{local:number;opponent:number}|null},
+    controlMode:ControlMode='modern',
   ) {
+    this.localControlMode=controlMode;
     this.room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAY_URLS }, turnConfig: iceServers }, `${this.rated?'ranked-room':'room'}-${code}`);
     this.ctl = this.room.makeAction('ctl') as unknown as Channel<CtlMessage>;
     this.inp = this.room.makeAction('inp') as unknown as Channel<InputPacket>;
@@ -137,7 +152,7 @@ export class NetSession {
     };
 
     this.room.onPeerJoin = (id: string) => {
-      void (this.rated?loadRating():Promise.resolve(null)).then(me=>{if(this.closed)return;return this.ctl.send({ k:'hello',role:this.role,rules:simulationRules(),rated:this.rated,profile:localWireProfile(),...(me?{rating:{id:me.myId,points:me.rating}}:{})},{target:id});}).catch(()=>{});
+      void (this.rated?loadRating():Promise.resolve(null)).then(me=>{if(this.closed)return;return this.ctl.send({ k:'hello',role:this.role,rules:simulationRules(),controlMode:this.controlMode,rated:this.rated,profile:localWireProfile(),...(me?{rating:{id:me.myId,points:me.rating}}:{})},{target:id});}).catch(()=>{});
     };
     this.room.onPeerLeave = (id: string) => {
       if(this.closed)return;
@@ -156,6 +171,7 @@ export class NetSession {
     if(m.k==='incompatible'){if(from===this.peerId||this.candidates.has(from)||!this.peerId){this.compatiblePeer=false;this.gameStarted=false;this.rejectRules();}return;}
     if (m.k === 'hello') {
       if(m.role!=='host'&&m.role!=='guest')return;
+      if(m.controlMode!=='modern'&&m.controlMode!=='classic'){this.rejectRules();return;}
       if((m.rated===true)!==this.rated)return;
       m={...m,rating:this.rated?peerRating(m.rating)??undefined:undefined};
       if(this.assignment&&m.rating?.id!==this.assignment.opponent)return;
@@ -185,7 +201,7 @@ export class NetSession {
       return;
     }
     if(m.k==='paired'&&this.peerId&&from!==this.peerId)return;
-    if(m.k==='paired'&&!sameRules(m.rules)){this.candidates.delete(from);this.rejectRules();return;}
+    if(m.k==='paired'&&(!sameRules(m.rules)||(m.controlMode!=='modern'&&m.controlMode!=='classic'))){this.candidates.delete(from);this.rejectRules();return;}
     if(m.k==='paired'&&this.assignment&&m.rating?.id!==this.assignment.opponent)return;
     if(m.k==='paired'&&this.role==='guest'&&!this.peerId&&this.candidates.has(from)&&(m.rated===true)===this.rated){this.candidates.clear();this.pair(from,{...m,k:'hello',role:'host'});return;}
     if (m.k === 'full') {
@@ -193,11 +209,17 @@ export class NetSession {
       return;
     }
     if (from === this.peerId&&this.readyForMatch) {
+      if(m.k==='controlMode'){
+        if(m.round!==this.startedRound+1)return;
+        if(m.controlMode!=='modern'&&m.controlMode!=='classic'){this.rejectRules();return;}
+        if(this.setActive)this.pendingPeerMode={round:m.round,mode:m.controlMode};else this.peerControlMode=m.controlMode;
+        return;
+      }
       if(m.k==='rematch'){if(!sameRules(m.rules)||!Number.isSafeInteger(m.round)||m.round<1){this.rejectRules();return;}if(!this.rematchReady(m.round,false))return;}
       if(m.k==='start'){
         if(this.role!=='guest')return;
         if(this.startedRound>0&&m.round<=this.startedRound&&this.gameStarted)return;
-        if(!compatibleStart(m,this.rated,validateTuneJson)){this.gameStarted=false;this.rejectRules();return;}
+        if(!compatibleStart(m,this.rated,validateTuneJson)||!this.agreedModes(m.controlModes)){this.gameStarted=false;this.rejectRules();return;}
         this.initialStartValidated=true;this.startedRound=m.round;this.approvedStart=true;this.validatedStartNonce=m.ratingNonce??null;this.commitStart();
       }
       // Bind rematch rating identity even while scenes are transitioning.
@@ -208,14 +230,14 @@ export class NetSession {
 
   private pair(from:string,m:CtlMessage & {k:'hello'}){
     if(!sameRules(m.rules)){this.rejectRules();return;}
-    this.compatiblePeer=true;this.peerId=from;this.peer=peerProfile(m.profile);
+    this.compatiblePeer=true;this.peerId=from;this.peer=peerProfile(m.profile);this.peerControlMode=m.controlMode!;
     this.peerRating=this.rated?peerRating(m.rating):null;
-    if(this.role==='host')void this.ctl.send({k:'paired',rules:simulationRules(),rated:this.rated,profile:localWireProfile(),...(this.rated&&currentRating()?{rating:{id:currentRating()!.myId,points:currentRating()!.rating}}:{})},{target:from});
+    if(this.role==='host')void this.ctl.send({k:'paired',rules:simulationRules(),controlMode:this.controlMode,rated:this.rated,profile:localWireProfile(),...(this.rated&&currentRating()?{rating:{id:currentRating()!.myId,points:currentRating()!.rating}}:{})},{target:from});
     this.onPaired();
   }
   send(m: CtlMessage): void {
     if(!this.readyForMatch)return;
-    if(m.k==='start'){m={...m,rules:simulationRules(),tuneHash:tuneSnapshotHash(m.tune)!};if(!compatibleStart(m,this.rated,validateTuneJson)){this.rejectRules();return;}if(this.gameStarted&&m.round<=this.startedRound)return;this.initialStartValidated=true;this.startedRound=m.round;this.approvedStart=true;this.validatedStartNonce=m.ratingNonce??null;this.commitStart();}
+    if(m.k==='start'){m={...m,controlModes:m.controlModes??this.controlModes,controlHash:controlModesHash(m.controlModes??this.controlModes)!,rules:simulationRules(),tuneHash:tuneSnapshotHash(m.tune)!};if(!compatibleStart(m,this.rated,validateTuneJson)||!this.agreedModes(m.controlModes)){this.rejectRules();return;}if(this.gameStarted&&m.round<=this.startedRound)return;this.initialStartValidated=true;this.startedRound=m.round;this.approvedStart=true;this.validatedStartNonce=m.ratingNonce??null;this.commitStart();}
     if(m.k==='rematch'){m={...m,rules:simulationRules()};if(!this.rematchReady(m.round,true))return;}
     if (this.peerId) void this.ctl.send(m, { target: this.peerId });
   }

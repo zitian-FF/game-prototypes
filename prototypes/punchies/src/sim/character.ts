@@ -55,7 +55,7 @@ export function uppercutStars(f: Fighter | string): number {
 }
 
 
-export const maxHealth = (f: Fighter) => tune.health.max * ct(f).hp;
+export const maxHealth = (f: Fighter) => tune.health.max * ct(f).hp*(f.healthMultiplier??1);
 export const maxStamina = (f: Fighter) => tune.stamina.max * ct(f).stamina;
 export const regenMult = (f: Fighter) => ct(f).regen;
 export const stunThreshold = (f: Fighter) => tune.stun.threshold * ct(f).stun;

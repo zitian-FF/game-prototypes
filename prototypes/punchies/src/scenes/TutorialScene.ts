@@ -4,6 +4,9 @@ import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
 import Phaser from 'phaser';
+import {loadControlModes} from '../input/controlPreferences';
+import {tutorialControlPath} from '../ui/tutorialControlPath';
+import type {ControlMode} from '../sim/modernControls';
 import { store } from '../portal/store';
 import { KEYS } from '../portal/keys';
 import { titleButton } from '../ui/titleButton';
@@ -226,6 +229,18 @@ const STEPS: Step[] = [
 ];
 
 // Button names for the device the player is using right now.
+const MODERN_STEPS:Step[]=[
+  STEPS[0],
+  {get title(){return t('controls.normal_attack');},text:()=>t('tutorial.modern_attack_text'),adds:['normalAttack','health'],dummy:'idle',goal:3,track:c=>hits(c,()=>true)},
+  STEPS[3],
+  {get title(){return t('common.guard');},text:()=>t('tutorial.modern_guard_text'),adds:[],dummy:'jabber',goal:2,track:c=>c.events.filter(e=>e.kind==='block'&&e.attacker===1).length},
+  {get title(){return t('common.dodge');},text:()=>t('tutorial.modern_dodge_text'),adds:[],dummy:'jabber',goal:1,track:c=>c.events.filter(e=>e.kind==='dodged'&&e.attacker===1).length},
+  STEPS.find(st=>st.adds.includes('fatigue'))!,
+  {...STEPS.find(st=>st.adds.includes('uppercut'))!,text:b=>t('tutorial.modern_super_text',{btn:b('upper')})},
+  STEPS.find(st=>st.adds.includes('stun'))!,
+  STEPS[STEPS.length-1],
+];
+
 function binder(): (a: Action) => string {
   const d = devices.lastDevice;
   const source: Profile = devices.lastSource === 'touch' ? 'kb1' : devices.lastSource;
@@ -241,25 +256,29 @@ function binder(): (a: Action) => string {
   return (a) => names[d][a];
 }
 
-function loadStep(): number {
+function loadStep(mode:ControlMode,limit:number): number {
   try {
-    const v = JSON.parse(store.getItem(SAVE_KEY) ?? '{}') as { step?: number };
-    return typeof v.step === 'number' && v.step >= 0 && v.step < STEPS.length ? v.step : 0;
+    const v = JSON.parse(store.getItem(SAVE_KEY) ?? '{}');
+    const value=v.paths&&Object.prototype.hasOwnProperty.call(v.paths,mode)?v.paths[mode]:(mode==='classic'?v.step:undefined);
+    return typeof value === 'number' && value >= 0 && value < limit ? value : 0;
   } catch {
     return 0;
   }
 }
 
-function saveStep(step: number | null): void {
+function saveStep(mode:ControlMode,step: number | null): void {
   try {
-    if (step === null) store.removeItem(SAVE_KEY);
-    else { store.setItem(SAVE_KEY, JSON.stringify({ step })); track('tutorial', `step_${step + 1}`, 'reached'); }
+    let previous:Record<string,unknown>={};try{const raw=JSON.parse(store.getItem(SAVE_KEY)??'{}');if(raw&&typeof raw==='object'&&!Array.isArray(raw))previous=raw;}catch{}
+    store.setItem(SAVE_KEY,JSON.stringify({...previous,paths:{...(previous.paths as object??{}),[mode]:step}}));
+    if(step!==null)track('tutorial',`${mode}_step_${step+1}`,'reached');
   } catch {
     /* storage unavailable */
   }
 }
 
 export class TutorialScene extends Phaser.Scene {
+  private mode:ControlMode='modern';
+  private get steps():Step[]{return this.mode==='modern'?MODERN_STEPS:STEPS;}
   private sim!: SimState;
   private stage!: FightStage;
   private acc = 0;
@@ -278,7 +297,8 @@ export class TutorialScene extends Phaser.Scene {
     super('Tutorial');
   }
 
-  create(data?: { restart?: boolean }): void {
+  create(data?: { restart?: boolean;mode?:ControlMode }): void {
+    this.mode=data?.mode??loadControlModes()[0];
     applyCameraPixelRatio(this);
     this.built = false;
     // Both fighters are default boxers here, so the second wears the alt look.
@@ -287,13 +307,15 @@ export class TutorialScene extends Phaser.Scene {
 
   private built = false;
 
-  private build(data?: { restart?: boolean }): void {
+  private build(data?: { restart?: boolean;mode?:ControlMode }): void {
     this.built = true;
     this.acc = 0;
     this.finished = false;
-    this.sim = createSimState({ timed: false, fighters: [{}, { infiniteStamina: true }] });
-    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0);
+    this.sim = createSimState({ timed: false, fighters: [{controlMode:this.mode}, {controlMode:'classic', infiniteStamina: true }] });
+    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0,true,undefined,undefined,undefined,[this.mode,'classic']);
     this.stage.hideInfoButton();
+    const selector=tutorialControlPath(this,VIEW.right-130,VIEW.top+98,this.mode,mode=>this.scene.restart({mode}));
+    this.events.once('shutdown',()=>selector.destroy());
     // Dock the lesson at the bottom, between the left stick and the ring stairs, so it never covers the
     // HUD bars or the ring. Skip and Exit stack in a column to its right, before the right buttons.
     this.lessonPanel = this.add.graphics().setDepth(129).setAlpha(.94);
@@ -314,13 +336,13 @@ export class TutorialScene extends Phaser.Scene {
       .setVisible(false);
     addVersionStamp(this);
 
-    this.startStep(data?.restart ? 0 : loadStep());
+    this.startStep(data?.restart ? 0 : loadStep(this.mode,this.steps.length));
   }
 
   private revealed(upTo: number): Set<string> | null {
     const parts = new Set<string>();
-    for (let i = 0; i <= upTo; i++) for (const a of STEPS[i].adds) parts.add(a);
-    return upTo === STEPS.length - 1 ? null : parts;
+    for (let i = 0; i <= upTo; i++) for (const a of this.steps[i].adds) parts.add(a);
+    return upTo === this.steps.length - 1 ? null : parts;
   }
 
   private startStep(i: number): void {
@@ -329,8 +351,8 @@ export class TutorialScene extends Phaser.Scene {
     this.flags.clear();
     this.doneAt = 0;
     this.tick.setVisible(false);
-    saveStep(i);
-    const st = STEPS[i];
+    saveStep(this.mode,i);
+    const st = this.steps[i];
     const [me, dummy] = this.sim.fighters;
     me.health = maxHealth(me);
     me.stamina = maxStamina(me);
@@ -346,14 +368,14 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   private advance(): void {
-    if (this.idx + 1 >= STEPS.length) this.finish();
+    if (this.idx + 1 >= this.steps.length) this.finish();
     else this.startStep(this.idx + 1);
   }
 
   private finish(): void {
     this.finished = true;
     track('tutorial', 'all', 'complete');
-    saveStep(null);
+    saveStep(this.mode,null);
     this.stage.reveal(null);
     getNav(this).engage();
     this.add.rectangle(VIEW.cx, VIEW.cy, VIEW.width, VIEW.height, 0x000000, 0.8).setDepth(290).setInteractive();
@@ -369,7 +391,7 @@ export class TutorialScene extends Phaser.Scene {
 
   // Scripted dummy for the current step.
   private dummyInput(): FrameInput {
-    const st = STEPS[this.idx];
+    const st = this.steps[this.idx];
     const [me, d] = this.sim.fighters;
     const dx = me.x - d.x;
     const dy = me.y - d.y;
@@ -409,8 +431,8 @@ export class TutorialScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (!this.built) return;
     this.stage.pollDevices();
-    const st = STEPS[this.idx];
-    this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: STEPS.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
+    const st = this.steps[this.idx];
+    this.title.setText(t('tutorial.step_progress', { n: this.idx + 1, total: this.steps.length, title: st.title }) + (st.goal > 1 ? `   ${this.progress}/${st.goal}` : ''));
     this.body.setText(st.text(binder()));
     this.lessonPanel.clear();
     const panelH = Math.ceil(this.title.height + this.body.height) + 16;
@@ -431,8 +453,8 @@ export class TutorialScene extends Phaser.Scene {
         // lets the dummy go down.
         const me = this.sim.fighters[0];
         if (me.health < maxHealth(me) * 0.5) me.health = maxHealth(me);
-        if (this.sim.result && this.idx !== STEPS.length - 1) this.sim.result = null;
-        if (d.health <= 0 && this.idx !== STEPS.length - 1) d.health = maxHealth(d);
+        if (this.sim.result && this.idx !== this.steps.length - 1) this.sim.result = null;
+        if (d.health <= 0 && this.idx !== this.steps.length - 1) d.health = maxHealth(d);
         if (!this.doneAt) {
           this.progress = Math.min(st.goal, this.progress + st.track({ events, sim: this.sim, dummyWasRecovering, flags: this.flags }));
           if (this.progress >= st.goal) {

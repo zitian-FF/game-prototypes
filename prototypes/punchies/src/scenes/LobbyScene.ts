@@ -1,3 +1,4 @@
+import {loadControlModes} from '../input/controlPreferences';
 import {rankedQueue,loadRating,onRatingState,type QueueResult} from '../net/rating';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { startScreen } from '../ui/presentation';
@@ -123,7 +124,7 @@ export class LobbyScene extends Phaser.Scene {
     const epoch=this.queueEpoch;const current=()=>epoch===this.queueEpoch&&!this.queueCancelled&&this.scene.isActive();
     this.status.setText(t('ranked.connecting'));
     const ice=await fetchTurnIceServers();if(!current())return;
-    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId,baseline:pair.baseline});this.session=s;
+    const s=new NetSession(pair.room,pair.role,ice,true,{opponent:pair.opponent,nonce:pair.nonce,pairId:pair.pairId,baseline:pair.baseline},loadControlModes()[0]);this.session=s;
     s.onRejected=reason=>this.back(reason==='incompatible'?t('online.rules_mismatch'):t('ranked.search_ended'));
     s.onPeerLeft=()=>this.back(t('ranked.search_ended'));
     s.onCtl=m=>{if(m.k==='ping')s.send({k:'pong',t:m.t});};
@@ -149,7 +150,7 @@ export class LobbyScene extends Phaser.Scene {
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
-    const s = new NetSession(code, 'host', ice,this.rated);
+    const s = new NetSession(code, 'host', ice,this.rated,undefined,loadControlModes()[0]);
     this.session = s;
     s.onRejected = reason => {
       if(reason==='incompatible'){this.back(t('online.rules_mismatch'));return;}
@@ -223,7 +224,7 @@ export class LobbyScene extends Phaser.Scene {
     const ice = await fetchTurnIceServers();
     this.turnServers = ice?.length ?? 0;
     if (!this.scene.isActive()) return;
-    const s = new NetSession(code, 'guest', ice,this.rated);
+    const s = new NetSession(code, 'guest', ice,this.rated,undefined,loadControlModes()[0]);
     this.session = s;
     s.onRejected = () => {
       track('online', 'guest', 'failed', { reason: 'room_full' });

@@ -32,6 +32,7 @@ function validCheckpoint(v: unknown): v is SurvivalRun {
   if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.lastEnemyAttackTick)||r.bossPending!==null))return false;
   if(r.balanceVersion===survivalBalanceVersion()&&(!Number.isSafeInteger(r.waveZombieSpawns)||r.waveZombieSpawns<0||(r.bossChar&&r.waveZombieSpawns>bossZombieQuota(r.wave))))return false;
   const p = r.player;
+  if(p&&p.controlMode!=='modern'&&p.controlMode!=='classic')return false;
   if (!p || p.char !== r.fighter || p.health <= 0 || p.punch || p.dodge || p.guarding || p.buffered) return false;
   // Check complete Fighter shape against a fresh template, including nested counters.
   const template = createRun({ fighter: r.fighter, skin: r.skin, seed: r.seed, runId: r.runId }).player;
@@ -58,6 +59,10 @@ export class SurvivalStore {
     if (!text) return null;
     const s = JSON.parse(text) as SavedRun;
     if (!s || ![1,2].includes(s.schema) || !['active', 'checkpoint', 'ended'].includes(s.phase) || (s.best !== null && !validBest(s.best))) throw new Error('Invalid survival save');
+    const p=s.checkpoint?.player;
+    // Old checkpoints retain Classic behavior; hydrate only the newly added
+    // simulation fields without rewriting or clearing the stored save.
+    if(p&&typeof p==='object')s.checkpoint!.player={...p,controlMode:p.controlMode??'classic',healthMultiplier:p.healthMultiplier??1,modernStick:p.modernStick??{neutral:true,dodgeWindow:0,dx:0,dy:0}};
     if (s.phase === 'checkpoint' ? !validCheckpoint(s.checkpoint) : s.checkpoint !== null) throw new Error('Invalid survival checkpoint');
     return s;
   }

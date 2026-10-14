@@ -28,7 +28,7 @@ import { markFirstRunDone } from '../firstrun/state';
 import cfg from '../firstrun/firstfight.json';
 
 // First launch only: a gentle bout for new players. Marco against Bruno, best of
-// one, jab and cross only, and the player cannot lose. It ends with the
+// one, Modern Normal Attack and automatic guard; the player cannot lose. It ends with the
 // "Welcome to the Ring" gift and then the main menu. Skippable at any time.
 
 const STEP_MS = 1000 / TICK_RATE;
@@ -101,11 +101,11 @@ export class FirstFightScene extends Phaser.Scene {
     this.phase = 'move';
     this.cooldown = 90;
     this.lastPunchAt = this.time.now;
-    this.sim = createSimState({ timed: false, fighters: [{ char: 'marco', infiniteStamina: true }, { char: 'bruno', infiniteStamina: true }] });
-    this.stage = new FightStage(this, [t('common.you'), charName('bruno')], 0);
+    this.sim = createSimState({ timed: false, fighters: [{ char: 'marco',controlMode:'modern' }, { char: 'bruno',controlMode:'classic',healthMultiplier:Math.min(1.5,Math.max(1,cfg.opponentHealthMultiplier)), infiniteStamina: true }] });
+    this.stage = new FightStage(this, [t('common.you'), charName('bruno')], 0,true,undefined,undefined,undefined,['modern','classic']);
     this.stage.hideInfoButton();
-    // Only what a newcomer needs: the stick, jab, cross and the health bars.
-    this.stage.reveal(new Set(['stick', 'jab', 'cross', 'health']));
+    // Only the intro's movement, Normal Attack and health bars.
+    this.stage.reveal(new Set(['stick', 'normalAttack', 'uppercut', 'health']));
     makeButton(this, VIEW.right - 52, VIEW.top + 24, 76, t('firstfight.skip'), () => this.finish('skip'));
 
     const panelY = tune.ring.top + 30;
@@ -141,7 +141,7 @@ export class FirstFightScene extends Phaser.Scene {
   // The player gets move, jab and cross only, from any device.
   private playerInput(): FrameInput {
     const i = this.stage.sampleLocal();
-    return { ...i, hook: false, uppercut: false, dodge: false, guard: false };
+    return { ...i, hook: false, dodge: false, guard: false };
   }
 
   private skipFromMenu(): void {
@@ -151,10 +151,9 @@ export class FirstFightScene extends Phaser.Scene {
 
   private coachText(): string {
     const source = devices.lastSource === 'touch' ? 'kb1' : devices.lastSource;
-    const binding = (action: 'jab' | 'cross') => devices.lastDevice === 'touch' ? action === 'jab' ? t('common.jab') : t('common.cross') : bindingLabel(source, action);
-    if (this.phase === 'jab') return t('layouts.coach_jab', { binding: binding('jab') });
-    if (this.phase === 'cross') return t('layouts.coach_cross', { binding: binding('cross') });
-    if (this.phase === 'mix') return t('firstfight.coach_mix');
+    const binding = devices.lastDevice==='touch'?t('controls.normal_attack'):bindingLabel(source,'jab');
+    if (this.phase === 'jab'||this.phase==='cross') return t('firstfight.modern_attack',{binding});
+    if (this.phase === 'mix') return t('firstfight.modern_mix',{super:devices.lastDevice==='touch'?t('common.super'):bindingLabel(source,'uppercut')});
     return t('layouts.coach_move', { binding: devices.lastDevice === 'touch' ? t('tutorial.the_joystick_left_side') : devices.lastDevice === 'gamepad' ? t('tutorial.the_left_stick') : ['up', 'left', 'down', 'right'].map(a => bindingLabel(source, a as 'up' | 'left' | 'down' | 'right')).join(' / ') });
   }
 
@@ -162,11 +161,9 @@ export class FirstFightScene extends Phaser.Scene {
     this.hits++;
     track('firstrun', punch, 'hit');
     if (this.phase === 'move') this.phase = 'jab';
-    if (this.phase === 'jab' && punch === 'jab' && ++this.stepJabs >= cfg.jabsStep) this.phase = 'cross';
-    else if (this.phase === 'cross' && punch === 'cross' && ++this.stepCrosses >= cfg.crossesStep) this.phase = 'mix';
-    // Each landed hit drains an even share of Bruno's health, so the fight ends after hitsToKo hits.
-    const d = this.sim.fighters[1];
-    d.health = Math.min(d.health, Math.max(0, maxHealth(d) * (1 - this.hits / cfg.hitsToKo)));
+    if (this.phase === 'jab' && ++this.stepJabs >= cfg.jabsStep) this.phase = 'cross';
+    else if (this.phase === 'cross' && ++this.stepCrosses >= cfg.crossesStep) this.phase = 'mix';
+    // Real HP decides KO. The historical six-hit script defeated any HP increase.
   }
 
   update(time: number, delta: number): void {

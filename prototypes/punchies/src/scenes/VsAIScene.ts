@@ -1,3 +1,4 @@
+import {loadControlModes} from '../input/controlPreferences';
 import { awardMatch,progressView } from '../progress/progress';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
@@ -23,6 +24,7 @@ const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
 
 export class VsAIScene extends Phaser.Scene {
+  private modes:readonly ['modern'|'classic','modern'|'classic']=['modern','classic'];
   private sim!: SimState;
   private stage!: FightStage;
   private ai!: Bot;
@@ -40,6 +42,7 @@ export class VsAIScene extends Phaser.Scene {
   private chars: [string, string] = ['marco', 'marco'];
 
   create(data: { chars?: [string, string]; skins?:[string,string]; level?: BotLevel; series?: SeriesState }): void {
+    if(!data?.series)this.modes=[loadControlModes()[0],'classic'];
     this.series = data?.series ?? newSeries(tune.match.bestOf);
 
     this.skins=data?.skins??['default','default'];
@@ -56,9 +59,9 @@ export class VsAIScene extends Phaser.Scene {
     this.built = true;
     this.acc = 0;
     this.over = false;
-    this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: this.chars[0] }, { char: this.chars[1] }] });
+    this.sim = createSimState({ timed: true, showcase: this.series.roundNumber === 1, fighters: [{ char: this.chars[0],controlMode:this.modes[0] }, { char: this.chars[1],controlMode:this.modes[1] }] });
     this.ai = makeBot(this.level, 1);
-    this.stage = new FightStage(this, [t('match.you_name', { name: charName(this.chars[0]) }), t('match.cpu_name', { level: t(`level.${this.level}`), name: charName(this.chars[1]) })], 0,true,this.skins);
+    this.stage = new FightStage(this, [t('match.you_name', { name: charName(this.chars[0]) }), t('match.cpu_name', { level: t(`level.${this.level}`), name: charName(this.chars[1]) })], 0,true,this.skins,undefined,undefined,this.modes);
     this.stage.setSeries(this.series);
 
     addVersionStamp(this);

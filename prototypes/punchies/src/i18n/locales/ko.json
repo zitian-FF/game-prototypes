@@ -490,5 +490,16 @@
   "super.wave_motion_blast": "파동탄",
   "super.wave_motion_blast_description": "짧게 충전 후 파동 발사. 가드 시 피해 절반과 최대 스태미나 40% 소모. 퍼펙트 가드나 회피로 막을 수 있습니다.",
   "super.eagle_punch": "이글 펀치",
-  "super.eagle_punch_description": "길게 충전 후 불꽃 돌진 펀치. 일반 가드를 돌파하며 퍼펙트 가드나 회피로 막을 수 있습니다. 무적 시간 없음."
+  "super.eagle_punch_description": "길게 충전 후 불꽃 돌진 펀치. 일반 가드를 돌파하며 퍼펙트 가드나 회피로 막을 수 있습니다. 무적 시간 없음.",
+  "controls.mode": "조작 모드",
+  "controls.modern": "모던",
+  "controls.classic": "클래식",
+  "controls.normal_attack": "일반 공격",
+  "controls.next_match": "변경 사항은 다음 경기부터 적용됩니다",
+  "firstfight.modern_attack": "{binding}을 길게 누르세요. 가까우면 훅, 잽 사거리 밖에서는 크로스, 그 외에는 잽입니다.",
+  "firstfight.modern_mix": "움직이며 공격하세요. 충전되면 {super}를 사용하세요. 멈추면 자동으로 가드합니다.",
+  "tutorial.modern_attack_text": "일반 공격을 길게 누르면 동작이 끝날 때마다 다시 공격합니다. 가까우면 훅, 잽 밖이면서 크로스 안이면 크로스, 그 외에는 잽입니다. 스태미나는 없지만 피로는 적용됩니다.",
+  "tutorial.modern_guard_text": "스틱을 놓으면 자동으로 하이 가드합니다. 모던에는 퍼펙트 가드가 없습니다. 이동하거나 공격하면 가드가 풀리며 기존 해제 페널티가 적용됩니다.",
+  "tutorial.modern_dodge_text": "멈춘 상태에서 펀치가 닿기 직전에 움직이세요. 12전투 프레임 안에 공격이 실제로 닿으면 가능한 경우 그 방향으로 한 번 회피합니다. 이동만으로는 회피하지 않으며 기존 회피 페널티 중에는 반복할 수 없습니다.",
+  "tutorial.modern_super_text": "정확한 타격으로 슈퍼를 충전한 뒤 {btn}으로 사용하세요. 모던도 같은 슈퍼를 쓰지만 스태미나를 소비하지 않습니다. 후속타를 포함한 모든 피해가 20% 낮으며 피로도 적용됩니다."
 }

@@ -1,3 +1,4 @@
+import {loadControlModes} from '../input/controlPreferences';
 import {qaTrainingPick} from '../debug/debugPanel';
 import { t } from '../i18n';
 import Phaser from 'phaser';
@@ -30,6 +31,7 @@ export class TrainingScene extends Phaser.Scene {
   private dummyStance: DummyStance = 'NORMAL';
   private stanceLabel!: Phaser.GameObjects.Text;
   private skin = 'default';
+  private controlMode:'modern'|'classic'='modern';
   private char: CharId = 'marco';
 
   constructor() {
@@ -37,6 +39,7 @@ export class TrainingScene extends Phaser.Scene {
   }
 
   create(data: {char?:CharId;skin?:string;qaPreview?:boolean} = {}): void {
+    this.controlMode=loadControlModes()[0];
     applyCameraPixelRatio(this);
     this.built = false;
     const preferred=isCharId(data.char)?data.char:loadCharPrefs().p1;
@@ -52,7 +55,7 @@ export class TrainingScene extends Phaser.Scene {
     this.built = true;
     this.acc = 0;
     this.newSim();
-    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0,true,[this.skin,'default']);
+    this.stage = new FightStage(this, [t('common.you'), t('common.dummy')], 0,true,[this.skin,'default'],undefined,undefined,[this.controlMode,'classic']);
     this.stanceLabel = this.stage.button(VIEW.left + 105, VIEW.top + 110, 110, '', () => this.cycleStance());
     this.stage.button(VIEW.left + 105, VIEW.top + 140, 110, t('training.reset'), () => this.newSim());
     this.refreshStance();
@@ -60,9 +63,10 @@ export class TrainingScene extends Phaser.Scene {
   }
 
   private newSim(): void {
+    const mode=this.controlMode;
     this.sim = createSimState({
       timed: false,
-      fighters: [{ char: this.char }, { anchored: true, infiniteStamina: tune.training.dummyInfiniteStamina }],
+      fighters: [{ char: this.char,controlMode:mode }, { anchored: true,controlMode:'classic', infiniteStamina: tune.training.dummyInfiniteStamina }],
     });
     this.sim.fighters[1].x=(tune.ring.left+tune.ring.right)/2;
     this.sim.fighters[1].y=(tune.ring.top+tune.ring.bottom)/2;

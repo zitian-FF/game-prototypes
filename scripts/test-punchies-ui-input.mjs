@@ -205,6 +205,7 @@ const netTune=JSON.parse(fs.readFileSync('prototypes/punchies/tune.json','utf8')
 let debug=false, session, timer, returned;
 class NetSession {constructor(){session=this;} leave(){this.left=true;}}
 const {LobbyScene}=load('prototypes/punchies/src/scenes/LobbyScene.ts', {
+  '../input/controlPreferences':{loadControlModes:()=>['modern','modern']},
   phaser:{default:{Scene:class{}}}, '../i18n':i18nStub, '../sim/tune':{tune:netTune},
   '../net/session':{NetSession,relayStatus:()=>({open:1,total:3})},
   '../net/turn':{fetchTurnIceServers:async()=>undefined},

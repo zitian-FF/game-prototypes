@@ -2,6 +2,7 @@ import {ratingStatus,reportRating,ratingConfigured} from '../net/rating';
 import {rankedPlayers,rankedResultBinding} from '../net/rankedResult';
 import {ratingLabel,ratingStatusText} from '../ui/ratingPresentation';
 import { sideProfiles } from '../progress/profile';
+import {loadControlModes} from '../input/controlPreferences';
 import { startScreen } from '../ui/presentation';
 import { t } from '../i18n';
 import { track } from '../portal/analytics';
@@ -116,7 +117,7 @@ export class MatchScene extends Phaser.Scene {
       (p) => s.sendInputs(p),
       (p) => s.sendHash(p),
       data.chars,
-      { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0, showcase: this.series.roundNumber === 1 },
+      { tapExtra: this.enhanced ? data.delay - this.baseDelay : 0, showcase: this.series.roundNumber === 1,controlModes:data.session.controlModes },
     );
     const rollback=this.ls;
     s.onInputs = inputs = (p) => {if(alive())rollback.receiveInputs(p);};
@@ -142,7 +143,7 @@ export class MatchScene extends Phaser.Scene {
     prefetchGroups(fighterGroups(data.chars));
     const profiles=sideProfiles(data.localIdx,data.session.peer);
     this.stage = new FightStage(this, names, data.localIdx,true,data.skins,profiles,
-      data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined);
+      data.session.rated?rankedPlayers(profiles,data.localIdx,ratingConfigured(),data.session.assignment?.baseline):undefined,data.session.controlModes);
     this.stage.setSeries(this.series);
 
     const onMenuReturn=()=>this.leave();this.events.on('menuReturn',onMenuReturn);
@@ -329,6 +330,7 @@ export class MatchScene extends Phaser.Scene {
     const rem = matchResult(this, text, {
       rematch: () => {
         if (this.rematchLocal||this.terminal||this.departed) return;
+        this.match.session.prepareNextMatchMode(loadControlModes()[0],this.match.round+1);
         this.rematchLocal = true;
         rem.setText(t('match.waiting'));
         this.match.session.send({ k: 'rematch', round: this.match.round + 1 });
@@ -384,6 +386,7 @@ export class MatchScene extends Phaser.Scene {
   private changeBoxer(): void {
     if (this.terminal||this.departed||this.advancing || !this.over || this.nextSeries) return;
     this.advancing = true;this.terminal=true;
+    this.match.session.prepareNextMatchMode(loadControlModes()[0],this.match.round+1);
     startScreen(this, 'CharSelect', { mode: 'online', session: this.match.session,
       localIdx: this.match.localIdx, delay: this.match.delay, restoreTune: this.match.restoreTune,
       nextRound: this.match.round + 1 });
