@@ -5,7 +5,7 @@ export type ControlMode='modern'|'classic';
 export const MODERN_DAMAGE_MULT=.8;
 export const MODERN_DODGE_WINDOW=12;
 /** Selection only: never changes punch geometry. Included in online rules hash. */
-export const MODERN_SELECTION_TOLERANCE=Object.freeze({hookReachFraction:.10,hookHitRadiusFraction:.50,crossJabInsetFraction:.15,crossReachFraction:.10});
+export const MODERN_SELECTION_TOLERANCE=Object.freeze({hookReachFraction:0,hookHitRadiusFraction:0,crossJabInsetFraction:0,crossReachFraction:.20});
 const ENTER_NEUTRAL=.12,LEAVE_NEUTRAL=.20;
 export function controlMode(value:unknown):ControlMode{return value==='classic'?'classic':'modern';}
 export interface ModernStickState {neutral:boolean;dodgeWindow:number;dx:number;dy:number}

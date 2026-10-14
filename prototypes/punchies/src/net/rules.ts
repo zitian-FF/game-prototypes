@@ -3,7 +3,7 @@ import {EDITION_ID,EDITION_POLICY_HASH,ITCH_BETA_EDITION} from '../edition';
 import {CHARACTER_IDS} from '../sim/character';
 import {superBalanceConfig} from '../sim/super';
 /** Bump only for semantic simulation changes, never UI/art-only commits. */
-export const SIM_RULES_VERSION='sim-modern-controls-9';
+export const SIM_RULES_VERSION='sim-modern-controls-10';
 export interface RulesStamp {protocol:2;version:string;hash:string}
 // Control lifecycle changes must also reject clients with the old BO3 gate.
 const EDITION_RULES=EDITION_ID==='master'?[]:[EDITION_ID,EDITION_POLICY_HASH];
