@@ -39,6 +39,8 @@ jobs:
       - run: npm run typecheck
       - name: Verify actual completion and closed-edition contracts
         run: |
+          node scripts/test-punchies-beta-analytics.mjs
+          node scripts/test-punchies-beta-analytics-editions.mjs
           node scripts/test-punchies-beta.mjs
           node scripts/test-punchies-beta-callers.mjs
           node scripts/test-punchies-beta-ui.mjs
@@ -53,12 +55,14 @@ jobs:
       - name: Build actual Beta package
         env:
           VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+          VITE_PUNCHIES_ANALYTICS_URL: ${{ vars.PUNCHIES_ANALYTICS_URL }}
           PUNCHIES_STAGING: 'off'
           PUNCHIES_QA: '0'
           PUNCHIES_STAGING_QA: '0'
           PUNCHIES_SAVE_RESET_ID: punchies-reset-2026-10-12-super-v1
         run: |
           [ -n "$VITE_PUNCHIES_RATING_URL" ] || { echo "Rating URL missing"; exit 1; }
+          [[ "$VITE_PUNCHIES_ANALYTICS_URL" == https://*/v1/events ]] || { echo "Verified analytics URL required"; exit 1; }
           node scripts/build-punchies-profile.mjs compact --edition itchbeta --portal web
           node scripts/test-punchies-beta-package.mjs dist/punchies-itchbeta-compact-web
       - uses: jdno/setup-butler@v1
