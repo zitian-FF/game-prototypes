@@ -503,5 +503,10 @@
   "tutorial.modern_dodge_text": "멈춘 상태에서 펀치가 닿기 직전에 움직이세요. 12전투 프레임 안에 공격이 실제로 닿으면 가능한 경우 그 방향으로 한 번 회피합니다. 이동만으로는 회피하지 않으며 기존 회피 페널티 중에는 반복할 수 없습니다.",
   "tutorial.modern_super_text": "정확한 타격으로 슈퍼를 충전한 뒤 {btn}으로 사용하세요. 모던도 같은 슈퍼를 쓰지만 스태미나를 소비하지 않습니다. 후속타를 포함한 모든 피해가 20% 낮으며 피로도 적용됩니다.",
   "beta.completed_matches": "완료한 경기 {matches}회",
-  "beta.unlock_requirement": "경기 {matches}회를 완료하면 {fighter} 잠금이 해제됩니다."
+  "beta.unlock_requirement": "경기 {matches}회를 완료하면 {fighter} 잠금이 해제됩니다.",
+  "controls.modern_pros": "일반 공격 + 슈퍼로 간단한 조작\n자동 가드·타이밍 자동 회피",
+  "controls.modern_cons": "피해량 20% 감소\n거리에 따라 펀치 선택\n퍼펙트 가드 없음",
+  "controls.classic_pros": "기본 피해량 그대로\n펀치와 방어 직접 조작\n퍼펙트 가드 가능",
+  "controls.classic_cons": "더 많은 입력\n스태미나와 방어 직접 관리",
+  "controls.modern_note": "모던: 스태미나는 없지만 피로는 적용됩니다. 자동 회피는 멈췄다가 움직인 직후에만 가능하며 회피 페널티도 적용됩니다."
 }

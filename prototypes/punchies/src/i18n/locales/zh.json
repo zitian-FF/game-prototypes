@@ -503,5 +503,10 @@
   "tutorial.modern_dodge_text": "静止时，在拳头命中前开始移动。随后12个战斗帧内，实际碰撞会在动作允许时触发一次该方向的闪避。仅移动不会闪避；通常的闪避惩罚期间不能再次闪避。",
   "tutorial.modern_super_text": "用精准命中积攒超级招式，再用{btn}释放。现代模式使用相同的超级招式，不消耗体力；包括后续攻击在内的所有伤害降低20%，仍受疲劳影响。",
   "beta.completed_matches": "已完成 {matches} 场比赛",
-  "beta.unlock_requirement": "完成 {matches} 场比赛后解锁 {fighter}。"
+  "beta.unlock_requirement": "完成 {matches} 场比赛后解锁 {fighter}。",
+  "controls.modern_pros": "普通攻击＋超级招式，操作简单\n自动防御与限时自动闪避",
+  "controls.modern_cons": "伤害降低20%\n按距离自动选择拳种\n没有完美防御",
+  "controls.classic_pros": "完整伤害\n直接控制出拳与防御\n可用完美防御",
+  "controls.classic_cons": "需要更多操作\n手动管理体力与防御",
+  "controls.modern_note": "现代模式没有体力消耗，但仍有疲劳。自动闪避仅在静止后开始移动的短暂窗口内生效，仍受闪避惩罚限制。"
 }

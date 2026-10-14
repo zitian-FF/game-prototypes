@@ -503,5 +503,10 @@
   "tutorial.modern_dodge_text": "From still, move just before a punch arrives. For 12 combat frames, a legal incoming collision triggers one dodge in that direction. Movement alone never dodges. The normal dodge penalty prevents a repeat.",
   "tutorial.modern_super_text": "Land clean hits to charge Super, then use {btn}. Modern uses the same Super without stamina costs. All its outgoing damage is 20% lower, including follow-ups; fatigue still applies.",
   "beta.completed_matches": "{matches} completed matches",
-  "beta.unlock_requirement": "Unlock {fighter} after {matches} completed matches."
+  "beta.unlock_requirement": "Unlock {fighter} after {matches} completed matches.",
+  "controls.modern_pros": "Simple Normal + Super\nAuto guard; timed auto-dodge",
+  "controls.modern_cons": "20% less damage\nSpacing chooses your punch\nNo Perfect Guard",
+  "controls.classic_pros": "Full damage\nDirect punches and defence\nPerfect Guard",
+  "controls.classic_cons": "More inputs\nManage stamina and defence",
+  "controls.modern_note": "Modern: no stamina; fatigue remains. Auto-dodge only works briefly after moving from still; dodge penalties still apply."
 }

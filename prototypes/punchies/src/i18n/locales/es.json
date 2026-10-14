@@ -503,5 +503,10 @@
   "tutorial.modern_dodge_text": "Desde parado, muévete justo antes del golpe. Durante 12 fotogramas de combate, un impacto entrante activa una esquiva legal en esa dirección. Moverse solo no esquiva. La penalización normal impide repetirla.",
   "tutorial.modern_super_text": "Conecta golpes limpios para cargar Super y usa {btn}. Moderno usa el mismo Super sin coste de stamina. Todo su daño baja un 20%, incluidos los golpes posteriores; la fatiga sigue activa.",
   "beta.completed_matches": "{matches} combates completados",
-  "beta.unlock_requirement": "Desbloquea a {fighter} tras completar {matches} combates."
+  "beta.unlock_requirement": "Desbloquea a {fighter} tras completar {matches} combates.",
+  "controls.modern_pros": "Ataque normal + Super: sencillo\nGuardia automática; esquiva con timing",
+  "controls.modern_cons": "20% menos daño\nLa distancia elige el golpe\nSin Perfect Guard",
+  "controls.classic_pros": "Daño completo\nControl directo de golpes y defensa\nPerfect Guard",
+  "controls.classic_cons": "Más controles\nGestiona stamina y defensa",
+  "controls.modern_note": "Moderno: sin stamina, pero con fatiga. La esquiva automática solo funciona justo al moverte desde parado; su penalización sigue activa."
 }

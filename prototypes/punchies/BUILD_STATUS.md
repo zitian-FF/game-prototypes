@@ -1,12 +1,12 @@
 ## Current milestone
-Beta-only UI ready on Art branch `proto/punchies/beta-ui`, based on `4e192cb`; integration and release belong to Build.
+Settings Modern/Classic comparison ready locally for Main/Build's next batch.
 ## What was implemented
-Profile scene and title entry show alias/default-fighter avatar, completed match record and real rating-service states. Roxy and Nadia unlock milestones use the Logic ledger at three/five completed whole matches. Results show only completed match count. Beta menu hides Shop/tokens/chests/Zombies; selection hides skin tray; HUD/VS/ranked results hide level/title labels.
+Passive strengths/tradeoffs for Modern/Classic, existing per-player selectors retained. Five keys in six languages and native Sheet A532:H536. No gameplay, tuning, assets or publication changes.
 ## Key technical decisions
-Three Build compile aliases target `src/editions/beta/ProfileScene.ts`, `titleProfileEntry.ts`, and `resultProgress.ts` with matching exports. Shared scene changes are gated by `ITCH_BETA_EDITION`. No new generated assets, economy writes, XP awards, tuning changes or roster geometry edits. Default avatar crops match their target aspect ratio.
+Copy checked against current Logic .8 damage,12-frame neutral transition dodge, Perfect Guard exclusions and stamina/fatigue rules. Descriptions have no button chrome or hit regions; height/width bounds and wrapping fit mobile.
 ## Open questions
-Build owns final alias/lean profile dependencies, edition flag, ledger/keys, six-language keys, default-skin inbound policy and release packaging.
+None for the implementation; outbound completion handoff needs specific owner messaging approval.
 ## Known issues
-Local UI fixture uses explicitly labelled synthetic match counts with no ledger writes. Real match completion, backend Elo, physical controller, portal and final package are not validated by this UI fixture. Menu review fixture does not load arena layers. Preview dependency copies are deliberately excluded from Art commit.
+All six languages reviewed in Brave640x360; P2 preference reload/restoration checked. Physical Xbox and production artifact not verified by this focused UI fixture.
 ## Next proposed step
-Integrate Art UI into Build's Beta runtime branch once. Verify actual five-fighter roster/default avatars, completed-match milestones and stripped artifact before publication.
+Integrate the exact small Art commit in the next batch. This task adds no deployment trigger.

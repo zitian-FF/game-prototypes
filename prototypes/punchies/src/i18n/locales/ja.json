@@ -503,5 +503,10 @@
   "tutorial.modern_dodge_text": "止まった状態から、パンチが当たる直前に動こう。12戦闘フレーム以内に攻撃が接触すると、可能な場合にその方向へ一度だけ回避する。移動だけでは回避せず、通常の回避ペナルティ中は再回避できない。",
   "tutorial.modern_super_text": "クリーンヒットでスーパーをため、{btn}で使おう。モダンも同じスーパーを使うが、スタミナは消費しない。追撃を含む与ダメージはすべて20%低く、疲労も適用される。",
   "beta.completed_matches": "{matches}試合完了",
-  "beta.unlock_requirement": "{matches}試合を完了すると{fighter}が解放されます。"
+  "beta.unlock_requirement": "{matches}試合を完了すると{fighter}が解放されます。",
+  "controls.modern_pros": "通常攻撃＋スーパーの簡単操作\n自動ガード・タイミング回避",
+  "controls.modern_cons": "与ダメージが20%減少\n距離でパンチが決まる\nパーフェクトガードなし",
+  "controls.classic_pros": "通常のダメージ\n攻撃・防御を直接操作\nパーフェクトガードあり",
+  "controls.classic_cons": "操作が多い\nスタミナと防御を自分で管理",
+  "controls.modern_note": "モダン：スタミナはないが疲労は残る。自動回避は静止から動き始めた直後のみ。回避ペナルティも適用される。"
 }
