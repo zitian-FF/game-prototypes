@@ -1,7 +1,19 @@
 import Phaser from 'phaser';
 import { Button, PIXEL_RATIO, Sfx, mulberry32 } from 'dig-kit';
-import { SAVE_KEY, type Save, UPGRADES, type UpgradeId, gemValue, helperRate, tapDamage, upgradeCost } from '../game/economy';
-import { type HitResult, Terrain, type TerrainSave } from '../game/terrain';
+import {
+  NO_LEVELS,
+  SAVE_KEY,
+  type Save,
+  UPGRADES,
+  type UpgradeId,
+  chainMultiplier,
+  gemValue,
+  helperRate,
+  maxLevel,
+  tapDamage,
+  upgradeCost,
+} from '../game/economy';
+import { type Block, type TapResult, Terrain, type TerrainSave } from '../game/terrain';
 import { type Intent, IntentBus, bindShaftPointer } from '../input/intents';
 import { HEIGHT, WIDTH } from '../pixelRatio';
 import { STRATA, TerrainView, bakeTerrainTextures } from '../render/terrain';
@@ -24,14 +36,13 @@ const BANDS: [number, number][] = [
   [0xe0a31a, 0xffe07a],
 ];
 
-const UP_LABEL: Record<UpgradeId, string> = { power: 'Tap power', value: 'Gem value', helper: 'Auto pickaxe' };
+const UP_LABEL: Record<UpgradeId, string> = { power: 'Power', splash: 'Splash', value: 'Gems', helper: 'Auto' };
 const UP_STYLE: Record<UpgradeId, { fill: number; edge: number }> = {
   power: { fill: 0x3a4a68, edge: 0x6f9cff },
+  splash: { fill: 0x5a2a3a, edge: 0xff6f91 },
   value: { fill: 0x5a3f2e, edge: 0xffa05c },
   helper: { fill: 0x2f6a4a, edge: 0x6dffa8 },
 };
-
-export const runtime = { reset: false };
 
 const lerpColor = (a: number, b: number, t: number): number => {
   const ch = (s: number) => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * t);
@@ -42,11 +53,15 @@ export class GameScene extends Phaser.Scene {
   private bus = new IntentBus<Intent>();
   private sfx!: Sfx;
   private terrain!: Terrain;
-  private levels: Save['levels'] = { power: 0, value: 0, helper: 0 };
+  private levels: Save['levels'] = { ...NO_LEVELS };
   private gems = 0;
   private shownGems = 0;
-  private views = new Map<string, TerrainView>();
+  private views = new Map<number, TerrainView>();
   private layer!: Phaser.GameObjects.Container;
+  private fx!: Phaser.GameObjects.Graphics;
+  private fallLock = 0;
+  private lastThump = 0;
+  private rockHinted = false;
   private shownTop = 0;
   private colW = 0;
   private tw = 0;
@@ -105,7 +120,7 @@ export class GameScene extends Phaser.Scene {
       .setAlpha(0.28)
       .setDepth(250);
     this.hudDepth = this.hudText(WIDTH / 2 - 20, 38, 26, '#ffffff');
-    this.hudSub = this.hudText(WIDTH / 2, 74, 13, '#f1e9ff');
+    this.hudSub = this.hudText(WIDTH / 2, 74, 12, '#f1e9ff');
     this.banner = this.hudText(WIDTH / 2, 330, 28, '#ffe27a').setDepth(230).setAlpha(0);
     this.hudGems = this.hudText(GEM_X + 22, GEM_Y, 22, '#ffffff').setOrigin(0, 0.5);
 
@@ -122,42 +137,54 @@ export class GameScene extends Phaser.Scene {
     shaft.lineStyle(3, 0xffffff, 0.12);
     shaft.strokeRoundedRect(SHAFT_X - 6, SHAFT_Y - 6, SHAFT_W + 12, shaftH + 12, 18);
     this.layer = this.add.container(0, 0).setDepth(8);
+    this.fx = this.add.graphics().setDepth(12);
     const mask = this.make.graphics({ x: 0, y: 0 }, false);
     mask.fillStyle(0xffffff, 1);
     mask.fillRoundedRect(SHAFT_X - 6, SHAFT_Y - 6, SHAFT_W + 12, shaftH + 12, 18);
     this.layer.setMask(mask.createGeometryMask());
 
     this.loadSave();
-    this.shownTop = this.terrain.topOpenRow() - tune.terrain.tunnelRows;
+    this.shownTop = this.terrain.minSurface() - tune.terrain.tunnelRows;
 
     // Upgrade shelf under the shaft.
-    const bw = (WIDTH - 32 - 16) / 3;
+    const bw = (WIDTH - 32 - 8 * (UPGRADES.length - 1)) / UPGRADES.length;
     const by = SHAFT_Y + shaftH + 62;
     UPGRADES.forEach((id, i) => {
-      const b = new Button(this, 16 + bw / 2 + i * (bw + 8), by, bw, 78, UP_LABEL[id], ' ', UP_STYLE[id], () => this.bus.emit({ type: 'buy', id }), 15);
+      const b = new Button(this, 16 + bw / 2 + i * (bw + 8), by, bw, 78, UP_LABEL[id], ' ', UP_STYLE[id], () => this.bus.emit({ type: 'buy', id }), 14);
       this.buttons.set(id, b);
     });
     this.refreshShelf();
 
-    this.bus.on((intent) => (intent.type === 'tapBlock' ? this.tapBlock(intent.row, intent.col, false) : this.buy(intent.id)));
+    this.bus.on((intent) => (intent.type === 'tapBlock' ? this.tapAt(intent.col, intent.row, false) : this.buy(intent.id)));
+    // The pointer binding reports a board position; here "row" is the board row and "col" the column.
     bindShaftPointer(this, this.bus, (x, y) => this.locate(x, y));
     this.game.events.on(Phaser.Core.Events.HIDDEN, () => this.save());
     window.addEventListener('pagehide', () => this.save());
 
     if (new URLSearchParams(location.search).get('test') === '1') {
       (window as unknown as Record<string, unknown>).__digTap = {
-        target: () => {
-          const top = this.terrain.topOpenRow();
-          for (let r = top; r < top + tune.terrain.rowsVisible - 2; r++)
-            for (let c = 0; c < tune.terrain.cols; c++)
-              if (!this.terrain.cell(r, c).broken) return { x: this.colX(c), y: this.rowY(r) };
-          return null;
+        /** Pixel position of the first tappable block of a kind in view (default dirt). */
+        target: (kind = 'dirt') => {
+          let best: { x: number; y: number; d: number } | null = null;
+          for (const v of this.views.values()) {
+            if (v.block.kind !== kind) continue;
+            const y = v.container.y;
+            if (y < SHAFT_Y + 20 || y > SHAFT_Y + ROW_H * (tune.terrain.rowsVisible - 1)) continue;
+            if (!best || y < best.y) best = { x: v.container.x, y, d: 0 };
+          }
+          return best;
         },
         gems: () => this.gems,
         dug: () => this.terrain.blocksDug,
+        levels: () => ({ ...this.levels }),
         grant: (n: number) => {
           this.gems += n;
           this.refreshShelf();
+        },
+        kinds: () => {
+          const out: Record<string, number> = {};
+          for (const v of this.views.values()) out[v.block.kind] = (out[v.block.kind] ?? 0) + 1;
+          return out;
         },
       };
     }
@@ -189,25 +216,32 @@ export class GameScene extends Phaser.Scene {
     } catch {
       saved = null;
     }
-    if (!saved || saved.v !== 1) {
+    if (!saved || saved.v !== 2) {
       this.terrain = new Terrain(Math.floor(mulberry32(Date.now())() * 2 ** 31));
       return;
     }
     this.terrain = Terrain.restore(saved.terrain);
-    this.levels = { power: saved.levels.power ?? 0, value: saved.levels.value ?? 0, helper: saved.levels.helper ?? 0 };
+    this.levels = { ...NO_LEVELS, ...saved.levels };
     this.gems = this.shownGems = saved.gems;
 
     // Offline progress: the auto pickaxe kept digging while the tab was closed.
     const rate = helperRate(this.levels);
     if (rate > 0 && saved.savedAt) {
       const secs = Math.min(tune.offline.capSeconds, Math.max(0, (Date.now() - saved.savedAt) / 1000));
-      const taps = Math.floor(secs * rate * tune.offline.efficiency);
+      const taps = Math.min(20000, Math.floor(secs * rate * tune.offline.efficiency));
       if (taps > 0) {
-        const found = this.terrain.autoDig(taps, tapDamage(this.levels));
-        const earned = Math.round(found.gems * (1 + this.levels.value * tune.upgrades.value.perLevel));
+        const dugBefore = this.terrain.blocksDug;
+        let earned = 0;
+        for (let i = 0; i < taps; i++) {
+          const t = this.terrain.autoTarget();
+          const res = t && this.terrain.tap(t.col, t.drow, tapDamage(this.levels), this.levels.splash);
+          if (!res) break;
+          for (const { block, wave } of res.broken) if (block.gem > 0) earned += Math.round(gemValue(block.gem, this.levels) * chainMultiplier(wave));
+        }
         this.gems += earned;
         this.shownGems = this.gems - earned;
-        this.time.delayedCall(600, () => this.say(`While you were away: ${found.blocks} blocks, +${earned} gems`));
+        const dug = this.terrain.blocksDug - dugBefore;
+        this.time.delayedCall(600, () => this.say(`Away: ${dug} blocks, +${earned} gems`));
         this.dirty = true;
       }
     }
@@ -216,7 +250,7 @@ export class GameScene extends Phaser.Scene {
   private save(): void {
     this.dirty = false;
     this.lastSave = this.time.now;
-    const data: Save & { terrain: TerrainSave } = { v: 1, gems: this.gems, levels: this.levels, savedAt: Date.now(), terrain: this.terrain.serialize() };
+    const data: Save & { terrain: TerrainSave } = { v: 2, gems: this.gems, levels: this.levels, savedAt: Date.now(), terrain: this.terrain.serialize() };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {
@@ -229,17 +263,26 @@ export class GameScene extends Phaser.Scene {
   private colX = (c: number): number => SHAFT_X + c * this.colW + this.colW / 2;
   private rowY = (r: number): number => SHAFT_Y + (r - this.shownTop) * ROW_H + ROW_H / 2;
 
+  /** The block under a point, found from where blocks are drawn (they may still be falling). */
   private locate(x: number, y: number): { row: number; col: number } | null {
-    const col = Math.floor((x - SHAFT_X) / this.colW);
-    const row = Math.floor((y - SHAFT_Y) / ROW_H + this.shownTop);
-    if (col < 0 || col >= tune.terrain.cols || y < SHAFT_Y || y > SHAFT_Y + ROW_H * tune.terrain.rowsVisible || row < 0) return null;
-    return this.terrain.cell(row, col).broken ? null : { row, col };
+    if (y < SHAFT_Y || y > SHAFT_Y + ROW_H * tune.terrain.rowsVisible) return null;
+    let best: TerrainView | null = null;
+    let bestD = Infinity;
+    for (const v of this.views.values()) {
+      const dx = Math.abs(v.container.x - x);
+      const dy = Math.abs(v.container.y - y);
+      if (dx <= this.colW / 2 && dy <= ROW_H / 2 && dx + dy < bestD) {
+        best = v;
+        bestD = dx + dy;
+      }
+    }
+    return best ? { col: best.block.col, row: best.block.drow } : null;
   }
 
   private buy(id: UpgradeId): void {
     const cost = upgradeCost(id, this.levels[id]);
-    if (this.gems < cost) {
-      const b = this.buttons.get(id)!;
+    const b = this.buttons.get(id)!;
+    if (this.levels[id] >= maxLevel(id) || this.gems < cost) {
       this.sfx.miss();
       this.tweens.add({ targets: b.container, x: b.container.x + 4, duration: 45, yoyo: true, repeat: 2 });
       return;
@@ -247,7 +290,7 @@ export class GameScene extends Phaser.Scene {
     this.gems -= cost;
     this.levels[id]++;
     this.sfx.treasure();
-    this.ring(this.buttons.get(id)!.container.x, this.buttons.get(id)!.container.y, 0xffe066, 50);
+    this.ring(b.container.x, b.container.y, 0xffe066, 50);
     this.refreshShelf();
     this.dirty = true;
   }
@@ -255,67 +298,143 @@ export class GameScene extends Phaser.Scene {
   private refreshShelf(): void {
     for (const id of UPGRADES) {
       const lv = this.levels[id];
+      const maxed = lv >= maxLevel(id);
       const cost = upgradeCost(id, lv);
       const b = this.buttons.get(id)!;
-      b.setText(UP_LABEL[id], `Lv ${lv}  ·  ${cost} gems`);
-      b.container.setAlpha(this.gems >= cost ? 1 : 0.55);
+      b.setText(UP_LABEL[id], maxed ? `Lv ${lv}  MAX` : `Lv ${lv}  ${cost}`);
+      b.container.setAlpha(!maxed && this.gems >= cost ? 1 : 0.55);
     }
   }
 
   // ----------------------------------------------------------------- digging
 
-  private tapBlock(row: number, col: number, auto: boolean): void {
-    const dmg = tapDamage(this.levels);
-    const res = this.terrain.hit(row, col, dmg);
-    if (!res) return;
-    const f = tune.feel;
-    const now = this.time.now;
-    if (!auto) {
-      this.combo = now - this.lastTapAt > f.comboResetMs ? 0 : this.combo + 1;
-      this.lastTapAt = now;
-    }
-    this.impact(res, dmg, auto);
+  private viewOf(b: Block): TerrainView | undefined {
+    return this.views.get(b.id);
   }
 
-  private impact(res: HitResult, dmg: number, auto: boolean): void {
+  private tapAt(col: number, drow: number, auto: boolean): void {
+    const block = this.terrain.blockAt(col, drow);
+    if (!block) return;
     const f = tune.feel;
-    const view = this.views.get(`${res.row}:${res.col}`);
-    const x = this.colX(res.col);
-    const y = this.rowY(res.row);
-    this.sfx.hit(auto ? 0 : this.combo, false);
-    this.sparks.particleTint = STRATA[this.terrain.strataOf(res.row)];
-    this.sparks.explode(res.broke ? f.dustPerBreak : f.dustPerTap, x, y);
-    this.floatText(x, y - 10, `-${dmg}`, 16, '#ffffff');
-    if (view) {
-      view.shake = 1;
-      view.flash = 1;
-      view.redrawCracks();
+    if (block.kind === 'rock') {
+      if (auto) return;
+      // Rocks ignore taps: they only break from splash and blasts.
+      const v = this.viewOf(block);
+      this.sfx.tone(170, 0.07, 'square', 0.16, 120);
+      if (v) {
+        const x = v.container.x;
+        this.tweens.add({ targets: v.container, x: x + f.clinkShakePx, duration: 40, yoyo: true, repeat: 2, onComplete: () => (v.container.x = x) });
+        this.floatText(v.container.x, v.container.y - 8, 'SPLASH ONLY', 11, '#cfd6ea');
+      }
+      if (!this.rockHinted) {
+        this.rockHinted = true;
+        this.say('Rocks break from splash');
+      }
+      return;
+    }
+    const res = this.terrain.tap(col, drow, tapDamage(this.levels), this.levels.splash);
+    if (!res) return;
+    if (!auto) {
+      this.combo = this.time.now - this.lastTapAt > f.comboResetMs ? 0 : this.combo + 1;
+      this.lastTapAt = this.time.now;
     }
     this.dirty = true;
-    if (!res.broke) return;
+    void this.playTap(res, auto);
+  }
 
-    this.sfx.strikeBreak(this.combo);
+  /** Animates a tap wave by wave: hits, breaks, TNT blasts and crystal links, then everything above falls. */
+  private async playTap(res: TapResult, auto: boolean): Promise<void> {
+    const f = tune.feel;
+    this.fallLock++;
+    for (let w = 0; w < res.waves.length; w++) {
+      const wave = res.waves[w];
+      let blast = false;
+      let link = false;
+      for (const h of wave.hits) {
+        const v = this.viewOf(h.block);
+        if (!v) continue;
+        const x = v.container.x;
+        const y = v.container.y;
+        v.shake = h.kind === 'tap' ? 1 : 0.7;
+        v.flash = 1;
+        v.redrawCracks();
+        this.sparks.particleTint = h.block.kind === 'dirt' ? STRATA[h.block.strata] : 0xc8d4f0;
+        this.sparks.explode(h.kind === 'tap' ? f.dustPerTap : 3, x, y);
+        if (h.kind === 'tap') this.floatText(x, y - 10, `-${h.dmg}`, 16, '#ffffff');
+        else if (h.kind === 'splash') this.floatText(x, y - 6, `-${h.dmg}`, 11, '#cfe4ff');
+        else if (h.kind === 'blast') {
+          blast = true;
+          this.floatText(x, y - 8, `-${h.dmg}`, 16, '#ffb15c');
+        } else if (h.from) {
+          link = true;
+          this.linkBolt(h.from, v.container.x, v.container.y);
+        }
+      }
+      this.sfx.hit(auto ? 0 : this.combo + w, false);
+      if (blast) {
+        this.sfx.critical();
+        this.cameras.main.shake(f.blastShakeMs, f.blastShake);
+        for (const b of wave.broke) if (b.kind === 'tnt') this.blastRing(b);
+      }
+      if (link) this.sfx.wild();
+
+      for (const b of wave.broke) this.popBlock(b, w + 1, auto);
+
+      if (w < res.waves.length - 1) await this.wait(tune.chain.waveDelayMs);
+    }
+    if (res.waves.length >= tune.chain.bigWaves) {
+      this.sfx.cleared();
+      this.punchZoom(f.punchZoom);
+      this.say(`CHAIN x${res.waves.length}`);
+    }
+    // Everything above what broke now falls into the gaps.
+    await this.wait(120);
+    this.fallLock--;
+  }
+
+  private popBlock(b: Block, wave: number, auto: boolean): void {
+    const f = tune.feel;
+    const v = this.viewOf(b);
+    if (!v) return;
+    this.views.delete(b.id);
+    const x = v.container.x;
+    const y = v.container.y;
+    this.sparks.particleTint = b.kind === 'dirt' ? STRATA[b.strata] : b.kind === 'tnt' ? 0xff8a3d : b.kind === 'crystal' ? 0xd9a8ff : 0xaeb8d6;
+    this.sparks.explode(f.dustPerBreak, x, y);
+    this.sfx.strikeBreak(this.combo + wave);
     this.cameras.main.shake(f.breakShakeMs, f.breakShakeIntensity);
     if (navigator.vibrate && f.vibrate && !auto) navigator.vibrate(10);
-    if (view) {
-      this.views.delete(`${res.row}:${res.col}`);
-      this.tweens.add({
-        targets: view.container,
-        scale: 1.2,
-        alpha: 0,
-        angle: (Math.random() - 0.5) * 18,
-        duration: f.popMs + 40,
-        ease: 'Cubic.Out',
-        onComplete: () => view.destroy(),
-      });
-    }
-    if (res.gem > 0) void this.flyGem(x, y, gemValue(res.gem, this.levels));
-    if (res.rowCleared) {
-      this.sfx.cleared();
-      this.cameras.main.shake(f.rowClearShakeMs, f.rowClearShakeIntensity);
-      this.punchZoom(f.punchZoom);
-      this.say('ROW CLEARED');
-    }
+    this.tweens.add({
+      targets: v.container,
+      scale: 1.2,
+      alpha: 0,
+      angle: (Math.random() - 0.5) * 18,
+      duration: f.popMs + 40,
+      ease: 'Cubic.Out',
+      onComplete: () => v.destroy(),
+    });
+    if (b.gem > 0) void this.flyGem(x, y, Math.round(gemValue(b.gem, this.levels) * chainMultiplier(wave)));
+  }
+
+  private blastRing(b: Block): void {
+    const x = this.colX(b.col);
+    const y = this.rowY(b.drow);
+    this.ring(x, y, 0xff8a3d, 90);
+    this.ring(x, y, 0xffe066, 60);
+    this.sparks.particleTint = 0xff8a3d;
+    this.sparks.explode(24, x, y);
+  }
+
+  /** A short glowing line from a shattered crystal to the next one. */
+  private linkBolt(from: { col: number; drow: number }, tx: number, ty: number): void {
+    const fx = this.colX(from.col);
+    const fy = this.rowY(from.drow);
+    const g = this.fx;
+    g.lineStyle(5, 0xe2c2ff, 1);
+    g.lineBetween(fx, fy, tx, ty);
+    g.lineStyle(2, 0xffffff, 1);
+    g.lineBetween(fx, fy, tx, ty);
+    this.time.delayedCall(tune.feel.linkFlashMs, () => g.clear());
   }
 
   /** A gem pops out of a broken block, hangs for a beat, then arcs to the counter in a sparkling trail. */
@@ -401,58 +520,76 @@ export class GameScene extends Phaser.Scene {
 
   // ----------------------------------------------------------------- update
 
+  /** Creates views for blocks in or near the visible window and moves them (falling under gravity). */
   private syncViews(dt: number): void {
+    const f = tune.fall;
     const first = Math.floor(this.shownTop) - 1;
     const last = Math.ceil(this.shownTop) + tune.terrain.rowsVisible + 1;
-    const wanted = new Set<string>();
-    for (let r = Math.max(0, first); r <= last; r++) {
-      for (let c = 0; c < tune.terrain.cols; c++) {
-        const cell = this.terrain.cell(r, c);
-        if (cell.broken) continue;
-        const key = `${r}:${c}`;
-        wanted.add(key);
-        let v = this.views.get(key);
+    const wanted = new Set<number>();
+    for (let c = 0; c < tune.terrain.cols; c++) {
+      const s = this.terrain.surface(c);
+      this.terrain.ensure(c, last);
+      const list = this.terrain.cols[c];
+      for (let drow = Math.max(s, first); drow <= last; drow++) {
+        const b = list[drow - s];
+        if (!b || b.broken) continue;
+        wanted.add(b.id);
+        let v = this.views.get(b.id);
         if (!v) {
-          v = new TerrainView(this, cell, { bw: this.tw, bh: this.th }, r * 31 + c + 1);
-          this.views.set(key, v);
+          v = new TerrainView(this, b, { bw: this.tw, bh: this.th });
+          this.views.set(b.id, v);
           this.layer.add(v.container);
         }
+        // While a chain is playing, blocks hold still; they fall afterwards.
+        if (!v.placed || this.fallLock === 0) v.targetRow = b.drow;
+        const ty = this.rowY(v.targetRow);
+        if (!v.placed) {
+          v.container.setPosition(this.colX(c), ty);
+          v.placed = true;
+        } else if (v.container.y < ty - 0.5 || v.vy < 0) {
+          v.vy = Math.min(f.maxSpeed, v.vy + f.gravity * dt);
+          v.container.y += v.vy * dt;
+          if (v.container.y >= ty) {
+            v.container.y = ty;
+            if (v.vy > 320 && this.time.now - this.lastThump > 90) {
+              this.lastThump = this.time.now;
+              this.sfx.tone(90, 0.07, 'sine', 0.22, 60);
+            }
+            v.vy = v.vy > 120 ? -v.vy * f.bounce : 0;
+          }
+        } else {
+          v.container.y = ty;
+          v.vy = 0;
+        }
         const jitter = tune.feel.tapShakePx * v.shake;
-        v.container.setPosition(this.colX(c) + (Math.random() - 0.5) * 2 * jitter, this.rowY(r) + (Math.random() - 0.5) * 2 * jitter);
+        v.container.x = this.colX(c) + (Math.random() - 0.5) * 2 * jitter;
         v.update(dt);
       }
     }
-    for (const [key, v] of this.views) {
-      if (!wanted.has(key) && !v.cell.broken) {
+    for (const [id, v] of this.views) {
+      if (!wanted.has(id) && !v.block.broken) {
         v.destroy();
-        this.views.delete(key);
+        this.views.delete(id);
       }
     }
   }
 
   update(time: number, delta: number): void {
-    if (runtime.reset) runtime.reset = false;
     const dt = Math.min(delta, 50) / 1000;
 
-    // Camera: slide down as rows clear, keeping a little tunnel above the open rows.
-    const target = this.terrain.topOpenRow() - tune.terrain.tunnelRows;
+    // Camera: slide down as the wall's surface drops, keeping a little tunnel above it.
+    const target = this.terrain.minSurface() - tune.terrain.tunnelRows;
     this.shownTop += (target - this.shownTop) * (1 - Math.exp(-dt * tune.feel.cameraFollow));
     this.syncViews(dt);
 
-    // Auto pickaxe: taps a random visible block now and then.
+    // Auto pickaxe: taps a block now and then.
     const rate = helperRate(this.levels);
     if (rate > 0) {
       this.helperAcc += dt * rate;
       while (this.helperAcc >= 1) {
         this.helperAcc -= 1;
-        const top = this.terrain.topOpenRow();
-        const options: { row: number; col: number }[] = [];
-        for (let r = top; r < top + tune.terrain.rowsVisible - 2; r++)
-          for (let c = 0; c < tune.terrain.cols; c++) if (!this.terrain.cell(r, c).broken) options.push({ row: r, col: c });
-        if (options.length) {
-          const o = options[Math.floor(Math.random() * options.length)];
-          this.tapBlock(o.row, o.col, true);
-        }
+        const t = this.terrain.autoTarget();
+        if (t) this.tapAt(t.col, t.drow, true);
       }
     }
 
@@ -460,7 +597,7 @@ export class GameScene extends Phaser.Scene {
     this.hudGems.setText(String(Math.round(this.shownGems)));
     this.hudDepth.setText(`DEPTH ${Math.floor(this.terrain.depthMeters())} m`);
     this.hudSub.setText(
-      `Tap ${tapDamage(this.levels)}  |  Gems x${(1 + this.levels.value * tune.upgrades.value.perLevel).toFixed(2)}  |  Auto ${helperRate(this.levels).toFixed(1)}/s  |  Dug ${this.terrain.blocksDug}`,
+      `Dmg ${tapDamage(this.levels)}  |  Splash ${this.levels.splash}  |  Gems x${(1 + this.levels.value * tune.upgrades.value.perLevel).toFixed(2)}  |  Auto ${helperRate(this.levels).toFixed(1)}/s  |  Dug ${this.terrain.blocksDug}`,
     );
 
     if (this.dirty && time - this.lastSave > 300) this.save();

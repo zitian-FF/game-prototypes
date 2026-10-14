@@ -28,9 +28,9 @@ await page.reload();
 await page.waitForTimeout(1000);
 await page.screenshot({ path: path.join(outDir, 'dig-tap-start.png') });
 
-const tap = async (n, wait = 80) => {
+const tap = async (n, wait = 120, kind = 'dirt') => {
   for (let i = 0; i < n; i++) {
-    const t = await page.evaluate(() => window.__digTap.target());
+    const t = await page.evaluate((k) => window.__digTap.target(k), kind);
     if (!t) break;
     await page.mouse.click(t.x, t.y);
     await page.waitForTimeout(wait);
@@ -38,13 +38,22 @@ const tap = async (n, wait = 80) => {
 };
 await tap(3);
 await page.screenshot({ path: path.join(outDir, 'dig-tap-cracking.png') });
-await tap(60);
+await tap(80);
+await page.waitForTimeout(1500);
+const kinds = await page.evaluate(() => window.__digTap.kinds());
+console.log('kinds in view', kinds);
+// Tap a rock (should refuse), then a TNT block if one is in view.
+await tap(2, 150, 'rock');
+await page.screenshot({ path: path.join(outDir, 'dig-tap-rock.png') });
+await tap(2, 90, 'tnt');
+await page.waitForTimeout(160);
+await page.screenshot({ path: path.join(outDir, 'dig-tap-tnt.png') });
 await page.waitForTimeout(1500);
 await page.screenshot({ path: path.join(outDir, 'dig-tap-later.png') });
 const before = await page.evaluate(() => ({ gems: window.__digTap.gems(), dug: window.__digTap.dug() }));
 // Buy the first upgrade with granted gems, then check the save survives a reload.
 await page.evaluate(() => window.__digTap.grant(50));
-await page.mouse.click(75, 757);
+await page.mouse.click(57, 757);
 await page.waitForTimeout(600);
 await page.waitForTimeout(500);
 await page.reload();
