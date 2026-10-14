@@ -30,6 +30,12 @@ export interface CellView {
  * real sprites later) means writing another Skin; scene, rules and fx do not
  * change. `anchor` tells fx where a cell is on screen.
  */
+/** Per-row draw targets. `floor` is drawn first, `top` after every sprite of the row. */
+export interface CellLayers {
+  floor: Phaser.GameObjects.Graphics;
+  top: Phaser.GameObjects.Graphics;
+}
+
 export interface Skin {
   readonly id: string;
   readonly label: string;
@@ -37,8 +43,14 @@ export interface Skin {
   order(cols: number, rows: number): { col: number; row: number }[];
   anchor(col: number, row: number, height: number): Pt;
   drawBackdrop(g: Phaser.GameObjects.Graphics, w: number, h: number): void;
-  drawCell(g: Phaser.GameObjects.Graphics, v: CellView): void;
+  /** Draw one cell. Rows are depth-sorted by the scene (row * ROW_DEPTH). */
+  drawCell(layers: CellLayers, v: CellView): void;
+  /** Release any sprites the skin created. Called when the skin is replaced. */
+  dispose?(): void;
 }
+
+/** Depth step per board row; skins place their sprites inside this band. */
+export const ROW_DEPTH = 10;
 
 export interface BoardRect {
   x: number;

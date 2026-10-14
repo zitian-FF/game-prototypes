@@ -22,7 +22,7 @@ portrait canvas. Not yet playtested by the user.
   floor once uncovered. They cannot be collected yet.
 - When the board is cleared the ROLL button becomes NEXT BOARD, which only
   generates a fresh board (no progression yet).
-- Four art skins behind a `Skin` interface: pastel (default, soft rounded beveled blocks with pastel mint/peach/periwinkle strata), bevel, flat, iso.
+- Four art skins behind a `Skin` interface: pastel (default: saturated soft pillow blocks, each layer a rounded slab, cracks drawn as tapered grooves), bevel, flat, iso.
 - `?debug=1` Tweakpane panel edits `tune.json` values live, switches skin,
   makes a new board, and copies JSON.
 - Version stamp (`version.json`, bumped by the deploy workflow).
@@ -31,8 +31,7 @@ portrait canvas. Not yet playtested by the user.
 
 - Rules (`src/game/`) are pure and separate from the scene, so they can be
   simulated and later tested without Phaser.
-- Rendering is one Phaser Graphics redrawn per frame from `CellView` data via
-  the `Skin` interface. A sprite skin (or a later Godot/Blender pipeline)
+- Rendering is driven by `CellView` data through the `Skin` interface: per-row Graphics for cheap shapes, plus baked pillow textures drawn as sprites in the pastel skin (live-drawn rounded shapes ran about 10x slower). A sprite skin (or a later Godot/Blender pipeline)
   only has to implement `Skin`.
 - `tune` is a live mutable copy of `tune.json` so the debug panel changes
   feel instantly.

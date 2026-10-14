@@ -32,7 +32,7 @@ for (const skin of ['pastel', 'bevel', 'flat', 'iso']) {
   // Roll with the hammer a few times, then pause mid-board.
   for (let i = 0; i < 3; i++) {
     await page.mouse.click(195, 784);
-    await page.waitForTimeout(1700);
+    await page.waitForTimeout(2800);
   }
   const file = path.join(outDir, `dice-dig-${skin}.png`);
   await page.screenshot({ path: file });

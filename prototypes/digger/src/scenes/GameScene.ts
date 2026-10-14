@@ -6,7 +6,7 @@ import { diceCount, resolveFace, rollFaces } from '../game/rules';
 import { type Board, type Face, type Hit, TOOLS, TOOL_LABEL, type ToolId } from '../game/types';
 import { IntentBus, bindKeyboard } from '../input/intents';
 import { HEIGHT, PIXEL_RATIO, WIDTH } from '../pixelRatio';
-import type { CellView, Skin } from '../render/skin';
+import { type CellView, ROW_DEPTH, type Skin } from '../render/skin';
 import { createSkin } from '../render/skins';
 import { tune } from '../tune';
 import { Button } from '../ui/button';
@@ -73,7 +73,8 @@ export class GameScene extends Phaser.Scene {
   private phase: Phase = 'idle';
 
   private gBackdrop!: Phaser.GameObjects.Graphics;
-  private gBoard!: Phaser.GameObjects.Graphics;
+  private gFloor: Phaser.GameObjects.Graphics[] = [];
+  private gTop: Phaser.GameObjects.Graphics[] = [];
   private gDice!: Phaser.GameObjects.Graphics;
   private dieTexts: Phaser.GameObjects.Text[] = [];
   private hudTop!: Phaser.GameObjects.Text;
@@ -110,7 +111,6 @@ export class GameScene extends Phaser.Scene {
 
     this.sfx = new Sfx(this);
     this.gBackdrop = this.add.graphics().setDepth(-10);
-    this.gBoard = this.add.graphics().setDepth(0);
     this.gDice = this.add.graphics().setDepth(2);
 
     const px = this.make.graphics({ x: 0, y: 0 }, false);
@@ -129,7 +129,7 @@ export class GameScene extends Phaser.Scene {
         alpha: { start: 1, end: 0.2 },
         rotate: { min: 0, max: 360 },
       })
-      .setDepth(20);
+      .setDepth(220);
 
     for (let i = 0; i < 20; i++) {
       this.dieTexts.push(
@@ -150,11 +150,11 @@ export class GameScene extends Phaser.Scene {
     this.add
       .text(5, 4, VERSION_STAMP, { fontFamily: 'monospace', fontSize: '8px', color: '#ffffff', resolution: PIXEL_RATIO })
       .setAlpha(0.28)
-      .setDepth(50);
+      .setDepth(250);
     this.hudTop = this.hudText(WIDTH / 2, 24, 16, '#ffffff');
     this.hudTool = this.hudText(WIDTH / 2, 48, 13, '#f1e9ff');
     this.summary = this.hudText(WIDTH / 2, 650, 14, '#ffffff');
-    this.banner = this.hudText(WIDTH / 2, 320, 34, '#ffe27a').setDepth(30).setAlpha(0);
+    this.banner = this.hudText(WIDTH / 2, 320, 34, '#ffe27a').setDepth(230).setAlpha(0);
 
     const bw = (358 - 16) / 3;
     TOOLS.forEach((t, i) => {
@@ -189,7 +189,7 @@ export class GameScene extends Phaser.Scene {
         resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
-      .setDepth(5);
+      .setDepth(240);
   }
 
   // ---------------------------------------------------------------- state
@@ -218,9 +218,19 @@ export class GameScene extends Phaser.Scene {
     const want = runtime.skin;
     if (this.skin && this.skinId === want && this.skin.id === want) return;
     this.skinId = want;
+    this.skin?.dispose?.();
     this.skin = createSkin(want, BOARD_RECT, this.board.cols, this.board.rows);
     this.gBackdrop.clear();
     this.skin.drawBackdrop(this.gBackdrop, WIDTH, HEIGHT);
+    this.ensureRowGraphics();
+  }
+
+  /** One floor and one top Graphics per board row so sprites can sit between them. */
+  private ensureRowGraphics(): void {
+    for (let r = this.gFloor.length; r < this.board.rows; r++) {
+      this.gFloor.push(this.add.graphics().setDepth(r * ROW_DEPTH));
+      this.gTop.push(this.add.graphics().setDepth(r * ROW_DEPTH + 6));
+    }
   }
 
   // ----------------------------------------------------------------- roll
@@ -424,7 +434,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private ring(x: number, y: number, color: number, r: number): void {
-    const g = this.add.graphics({ x, y }).setDepth(19);
+    const g = this.add.graphics({ x, y }).setDepth(219);
     g.lineStyle(4, color, 1);
     g.strokeCircle(0, 0, r * 0.4);
     this.tweens.add({
@@ -451,7 +461,7 @@ export class GameScene extends Phaser.Scene {
         resolution: PIXEL_RATIO,
       })
       .setOrigin(0.5)
-      .setDepth(25)
+      .setDepth(225)
       .setScale(0.5);
     this.tweens.add({ targets: t, scale: 1.15, duration: 110, ease: 'Back.Out' });
     this.tweens.add({
@@ -485,8 +495,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBoard(t: number): void {
-    const g = this.gBoard;
-    g.clear();
+    for (let r = 0; r < this.gFloor.length; r++) {
+      this.gFloor[r].clear();
+      this.gTop[r].clear();
+    }
     for (const { col, row } of this.skin.order(this.board.cols, this.board.rows)) {
       const cell = this.board.cells[row * this.board.cols + col];
       const a = this.anim[cell.idx];
@@ -507,7 +519,7 @@ export class GameScene extends Phaser.Scene {
         flash: a.flash,
         time: t,
       };
-      this.skin.drawCell(g, view);
+      this.skin.drawCell({ floor: this.gFloor[row], top: this.gTop[row] }, view);
     }
   }
 

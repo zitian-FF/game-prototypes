@@ -1,7 +1,9 @@
 import type Phaser from 'phaser';
 import {
   type BoardRect,
+  type CellLayers,
   type CellView,
+  ROW_DEPTH,
   type Pt,
   type Skin,
   crackPaths,
@@ -142,7 +144,8 @@ class PrismSkin implements Skin {
     this.backdrop(g, w, h);
   }
 
-  drawCell(g: Phaser.GameObjects.Graphics, v: CellView): void {
+  drawCell(layers: CellLayers, v: CellView): void {
+    const g = layers.floor;
     const gap = tune.layout.cellGap;
     const u0 = v.col + gap;
     const u1 = v.col + 1 - gap;
@@ -264,7 +267,8 @@ export function createFlatSkin(rect: BoardRect, cols: number, rows: number): Ski
       return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
     },
     drawBackdrop: gradientBackdrop(0x2a2140, 0x15101f),
-    drawCell(g, v) {
+    drawCell(layers, v) {
+      const g = layers.floor;
       const b = box(v.col, v.row, 2.5);
       const x = b.x + v.offX;
       const y = b.y + v.offY;
@@ -319,9 +323,37 @@ function pastelColor(layer: number, kind: TileKind): number {
 const PASTEL_DECOR: DecorStyle = { crack: 0x3a2a55, rivet: 0xffffff, weak: 0xff2f6a, weakGlow: 0xff6f9a };
 
 /**
- * Chunky soft blocks in the spirit of cosy block-building games: rounded
- * beveled tops, pastel strata on the front, no hard black outlines. Drawn
- * with rounded rects in a front-oblique view, so it needs no quad maths.
+ * A soft pillow: concentric rounded rects that lighten toward the centre fake
+ * the smooth shading of a rounded cube. Only used at bake time.
+ */
+function pillow(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, r: number, base: number, glossy: boolean): void {
+  const steps = 10;
+  const inset = Math.min(w, h) * 0.034;
+  for (let j = 0; j <= steps; j++) {
+    const t = j / steps;
+    const i = j * inset;
+    const col = mix(shade(base, 0.62), mix(base, 0xffffff, 0.2), Math.pow(t, 0.8));
+    // Light comes from the top left: the lit core sits up and left of centre.
+    g.fillStyle(col, 1);
+    g.fillRoundedRect(x + i * 0.75, y + i * 0.55, w - i * 1.9, h - i * 1.7, Math.max(1, r - i * 0.8));
+  }
+  if (glossy) {
+    g.fillStyle(0xffffff, 0.42);
+    g.fillRoundedRect(x + w * 0.14, y + h * 0.1, w * 0.36, Math.max(3, h * 0.12), 3);
+    g.fillStyle(0xffffff, 0.2);
+    g.fillCircle(x + w * 0.82, y + h * 0.17, Math.max(2, w * 0.04));
+  }
+}
+
+const KINDS: TileKind[] = ['soft', 'normal', 'hardened'];
+const BAKE_RES = 2;
+
+/**
+ * Soft pillow blocks, each layer a rounded slab. Slabs are baked once into
+ * textures and drawn as sprites, because tessellating dozens of rounded
+ * shapes per cell every frame is far too slow. Only cheap decor (cracks,
+ * rivets, weak points, flash) is drawn live. Replacing this with hand-made
+ * art means swapping the bake step for real frames.
  */
 export function createPastelSkin(rect: BoardRect, cols: number, rows: number): Skin {
   const cw = rect.w / cols;
@@ -330,7 +362,52 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
   const gap = 3;
   const R = Math.min(cw, topH) * 0.28;
   const lp = tune.layout.layerHeightPx;
-  const geo = (col: number, row: number) => ({ x: rect.x + col * cw + gap / 2, w: cw - gap, y: rect.y + row * pitch });
+  const bw = cw - gap;
+  const topNominal = topH + lp;
+  const lowNominal = lp * 2.1;
+  const geo = (col: number, row: number) => ({ x: rect.x + col * cw + gap / 2, y: rect.y + row * pitch });
+  const key = (role: string, layer: number, kind: TileKind) => `pd_${role}_${layer}_${kind}`;
+
+  let scene: Phaser.Scene | null = null;
+  const baked = (sc: Phaser.Scene) => {
+    scene = sc;
+    if (sc.textures.exists('pd_pit')) return;
+    const bake = (k: string, w: number, h: number, draw: (g: Phaser.GameObjects.Graphics) => void) => {
+      const g = sc.make.graphics({ x: 0, y: 0 }, false);
+      draw(g);
+      g.generateTexture(k, Math.ceil(w * BAKE_RES), Math.ceil(h * BAKE_RES));
+      g.destroy();
+    };
+    for (let layer = 0; layer < 3; layer++) {
+      for (const kind of KINDS) {
+        const col = pastelColor(layer, kind);
+        bake(key('top', layer, kind), bw, topNominal, (g) => pillow(g, 0, 0, bw * BAKE_RES, topNominal * BAKE_RES, R * 1.15 * BAKE_RES, col, true));
+        bake(key('low', layer, kind), bw, lowNominal, (g) => pillow(g, 0, 0, bw * BAKE_RES, lowNominal * BAKE_RES, Math.min(R, lowNominal / 2) * BAKE_RES, shade(col, 0.9), false));
+      }
+    }
+    bake('pd_pit', bw, topH, (g) => {
+      g.fillStyle(0x7a4a2e, 1);
+      g.fillRoundedRect(0, 0, bw * BAKE_RES, topH * BAKE_RES, R * BAKE_RES);
+      g.fillStyle(0x4a2a1c, 0.7);
+      g.fillRoundedRect(2 * BAKE_RES, 2 * BAKE_RES, (bw - 4) * BAKE_RES, topH * 0.4 * BAKE_RES, R * 0.8 * BAKE_RES);
+    });
+  };
+
+  interface CellSprites {
+    pit: Phaser.GameObjects.Image;
+    slabs: Phaser.GameObjects.Image[];
+  }
+  const pool = new Map<number, CellSprites>();
+  const spritesFor = (sc: Phaser.Scene, idx: number): CellSprites => {
+    let c = pool.get(idx);
+    if (!c) {
+      const mk = () => sc.add.image(0, 0, 'pd_pit').setOrigin(0, 0).setVisible(false);
+      c = { pit: mk(), slabs: [mk(), mk(), mk()] };
+      pool.set(idx, c);
+    }
+    return c;
+  };
+
   return {
     id: 'pastel',
     label: 'Pastel soft blocks',
@@ -341,7 +418,7 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
     },
     anchor: (col, row, height) => {
       const b = geo(col, row);
-      return { x: b.x + b.w / 2, y: b.y - height * lp + topH / 2 };
+      return { x: b.x + bw / 2, y: b.y - height * lp + topH / 2 };
     },
     drawBackdrop(g, w, h) {
       g.fillGradientStyle(0x2f9bff, 0x2f9bff, 0x8ad8ff, 0x8ad8ff, 1);
@@ -349,17 +426,18 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
       g.fillStyle(0xffffff, 0.16);
       for (const [x, y, r] of [[60, 70, 34], [330, 40, 26], [300, 570, 40], [40, 590, 30]]) g.fillCircle(x, y, r);
     },
-    drawCell(g, v) {
+    drawCell(layers, v) {
+      const sc = layers.floor.scene;
+      baked(sc);
+      const sp = spritesFor(sc, v.idx);
       const b = geo(v.col, v.row);
-      // Pit floor, rounded, with the treasure gem if one is down there.
-      g.fillStyle(0x7a4a2e, 1);
-      g.fillRoundedRect(b.x, b.y, b.w, topH, R);
-      g.fillStyle(0x4a2a1c, 0.7);
-      g.fillRoundedRect(b.x + 2, b.y + 2, b.w - 4, topH * 0.4, R * 0.8);
+      const base = v.row * ROW_DEPTH;
+      sp.pit.setTexture('pd_pit').setPosition(b.x, b.y).setDisplaySize(bw, topH).setDepth(base).setVisible(true);
       if (v.hasTreasure) {
-        const cx = b.x + b.w / 2;
+        const g = layers.floor;
+        const cx = b.x + bw / 2;
         const cy = b.y + topH / 2;
-        const r = Math.min(b.w, topH) * 0.3;
+        const r = Math.min(bw, topH) * 0.3;
         const gem = [{ x: cx, y: cy - r }, { x: cx + r * 0.85, y: cy }, { x: cx, y: cy + r }, { x: cx - r * 0.85, y: cy }];
         g.fillStyle(0xffc94d, 1);
         g.fillPoints(gem, true);
@@ -368,47 +446,40 @@ export function createPastelSkin(rect: BoardRect, cols: number, rows: number): S
         g.fillStyle(0xffffff, 0.35 + 0.3 * Math.sin(v.time * 4));
         g.fillCircle(cx - r * 0.3, cy - r * 0.3, 2.5);
       }
+      const n = v.alive.length;
+      for (let k = 0; k < 3; k++) if (k >= n || v.height < 0.02) sp.slabs[k].setVisible(false);
       if (v.height < 0.02 || !v.surface) return;
 
-      const n = Math.max(1, v.alive.length);
       const topY = b.y - v.height * lp + v.offY;
       const x = b.x + v.offX;
-      const bottom = b.y + topH + v.offY;
-      const bodyTop = topY + topH * 0.5;
-      const bandH = (bottom - bodyTop) / n;
-      for (let i = 0; i < n; i++) {
-        const a = v.alive[i];
-        const y0 = bodyTop + i * bandH;
-        const last = i === n - 1;
-        g.fillStyle(shade(pastelColor(a.layer, a.kind), 0.78 - i * 0.02), 1);
-        if (last) g.fillRoundedRect(x, y0, b.w, bandH, { tl: 0, tr: 0, bl: R, br: R });
-        else g.fillRect(x, y0, b.w, bandH + 0.5);
-        if (i > 0) {
-          g.fillStyle(0xffffff, 0.22);
-          g.fillRect(x + 2, y0, b.w - 4, 1.5);
+      const sliceH = (v.height * lp) / n;
+      // Deepest slab first so each overlaps the one below; its rounded
+      // bottom edge forms the groove between layers.
+      for (let k = n - 1; k >= 0; k--) {
+        const a = v.alive[k];
+        const img = sp.slabs[k];
+        img.setVisible(true).setDepth(base + 1 + (n - k) * 0.1);
+        if (k === 0) img.setTexture(key('top', a.layer, a.kind)).setPosition(x, topY).setDisplaySize(bw, topH + sliceH);
+        else {
+          const h = sliceH * 2.1;
+          img.setTexture(key('low', a.layer, a.kind)).setPosition(x, topY + topH + k * sliceH - h + v.offY * 0).setDisplaySize(bw, h);
         }
       }
-
-      // Top face: darker rim, lighter inset, glossy highlight = rounded bevel.
-      const base = pastelColor(v.surface.layer, v.surface.kind);
-      const dmg = 1 - v.surface.hpFrac;
-      const top = shade(base, 1 - dmg * 0.1);
-      g.fillStyle(shade(base, 0.68), 1);
-      g.fillRoundedRect(x, topY + 2.5, b.w, topH, R);
-      g.fillStyle(shade(base, 0.9), 1);
-      g.fillRoundedRect(x, topY, b.w, topH, R);
-      g.fillStyle(top, 1);
-      g.fillRoundedRect(x + 2.5, topY + 2.5, b.w - 5, topH - 6, R * 0.8);
-      g.fillStyle(0xffffff, 0.5);
-      g.fillRoundedRect(x + 6, topY + 5, b.w * 0.42, 4, 2);
-      g.fillStyle(0xffffff, 0.22);
-      g.fillCircle(x + b.w - 9, topY + 9, 2.5);
-      const q: Pt[] = [{ x, y: topY }, { x: x + b.w, y: topY }, { x: x + b.w, y: topY + topH }, { x, y: topY + topH }];
-      drawDecor(g, q, v, b.w / 52, PASTEL_DECOR);
+      const g = layers.top;
+      const q: Pt[] = [{ x, y: topY }, { x: x + bw, y: topY }, { x: x + bw, y: topY + topH }, { x, y: topY + topH }];
+      drawDecor(g, q, v, bw / 52, PASTEL_DECOR);
       if (v.flash > 0.01) {
         g.fillStyle(0xffffff, Math.min(0.85, v.flash));
-        g.fillRoundedRect(x, topY, b.w, topH, R);
+        g.fillRoundedRect(x, topY, bw, topH, R);
       }
+    },
+    dispose() {
+      for (const c of pool.values()) {
+        c.pit.destroy();
+        c.slabs.forEach((i) => i.destroy());
+      }
+      pool.clear();
+      void scene;
     },
   };
 }
