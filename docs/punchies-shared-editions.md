@@ -1,9 +1,14 @@
-# Shared edition preparation
+# Punchies editions in the shared build pipeline
 
-`prototypes/punchies/editions.json` is the authoritative edition contract. Quality (standard/compact) and portal integration remain independent settings in the existing profile pipeline. The current profile CLI still defaults to CrazyGames; adding the manifest does not change any existing build or save key.
+Build from the same MASTER source and approved prepared art. Quality and portal remain independent from edition policy:
 
-MASTER has all eleven fighters. CrazyGames has the same eleven in rows of five and six. ITCHBETA includes only Marco/Mia/Bruno/Roxy/Nadia default skins, with Roxy after three and Nadia after five actual completed whole matches. The standalone Beta completion API supplies the ledger; it still needs terminal match callers and UI integration.
+    node scripts/build-punchies-profile.mjs compact --edition crazygames --portal crazygames
+    node scripts/build-punchies-profile.mjs standard --edition crazygames --portal crazygames
 
-The helper provides validated policy hashes, distinct edition/quality/portal identities, and a non-mutating precompile tune subset derived from MASTER. Runtime callers, catalog/art selection, online policy/cohorts, namespace binding and the CG layout are not yet connected. The two new editions fail closed until those complete gates are implemented. No new publication is authorized by this preparatory commit.
+The current commands without `--edition` retain MASTER behavior and their CrazyGames portal default. MASTER output paths and save keys stay unchanged. Explicit CG output uses `dist/punchies-crazygames-compact-crazygames` (or standard), with separate edition/quality/portal staging roots and verified shared archive cache. CG retains all eleven approved fighters, cosmetics, progression and rewarded ads. Its top row is Marco/Mia/Bruno/Roxy/Nadia; bottom is Tee/Tyke/Dragon/Longan/Captain/Kai. It removes the unused thirty-slot reserved roster layout, without inventing a fighter omission.
 
-Next: connect edition identity to the existing profile builder, prune indexed art and catalogs before Vite, bind runtime/local/inbound roster and skin policy, isolate storage and matchmaking cohorts, then integrate Beta menu/results and milestone callers. Verify missing/disallowed assets and inbound fighters fail closed. Preserve MASTER keys and the unchanged reset epoch. No asset re-encoding below the owner threshold.
+The manifest drives runtime roster order, precompile tune and art/index selection, distinct saves and online fingerprints/room namespaces. Prepared art is checksum-verified; retained mirror sources and portraits must exist. Identical CG11 art remains byte-identical to MASTER; this is not a new lossy pass or a claim of a smaller fighter payload. Economy/progression/cosmetics are retained. Actual ads require the real CrazyGames SDK/ad availability; Basic Launch may report unavailable. No mock result is a real ad delivery claim.
+
+Normal CG artifacts use ordinary production flags; isolated CG staging uses staging saves/QA and disables the rating endpoint. The Pages workflow can publish `/staging/punchies-crazygames/` from its own source pin and retain the normal artifact as a GitHub Actions download while preserving `/staging/punchies/` MASTER. No CrazyGames portal submission or live itch deployment is implied.
+
+ITCHBETA remains fail-closed until completion callers, UI/economy removal, inbound skin/roster policy and smaller selective bundle are finished. Its contract is Marco/Mia/Bruno initially, Roxy after three and Nadia after five actual whole completed matches, default skins only. Do not flip readiness to enable a partial Beta edition.

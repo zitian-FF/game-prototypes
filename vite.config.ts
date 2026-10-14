@@ -1,3 +1,4 @@
+import { EDITIONS, editionContract, editionTune } from './scripts/punchies-editions.mjs';
 import { defineConfig } from 'vite';
 import { punchiesDebugGate } from './scripts/punchies-debug-gate';
 import react from '@vitejs/plugin-react';
@@ -40,14 +41,16 @@ function getPrototypeEntries(): Record<string, string> {
 
 generateVersionStamps(__dirname);
 const assetProfile = process.env.PUNCHIES_ASSET_PROFILE;
+const edition=editionContract(process.env.PUNCHIES_EDITION??EDITIONS.defaultEdition);
+if(edition.name==='crazygames'&&(process.env.PORTAL??'web')!=='crazygames')throw Error('CrazyGames edition requires CrazyGames portal');
 const stagingBuild=process.env.PUNCHIES_STAGING==='on';
 const qaBuild=process.env.PUNCHIES_QA==='1';
 const saveResetId=process.env.PUNCHIES_SAVE_RESET_ID??'';
-if(saveResetId&&(process.env.PORTAL??'web')!=='web')throw new Error('The save reset is authorized for web/itch and staging builds only');
+if(saveResetId&&!['web',...(edition.name==='crazygames'?['crazygames']:[])].includes(process.env.PORTAL??'web'))throw new Error('The save reset is authorized for web/itch and staging builds only');
 if (assetProfile) {
   if (!['standard', 'compact'].includes(assetProfile) || !process.env.PUNCHIES_PUBLIC_DIR) throw new Error('Use the Punchies profile build scripts to prepare isolated assets');
   const record = JSON.parse(fs.readFileSync(path.join(process.env.PUNCHIES_PUBLIC_DIR, 'prototypes/punchies/asset-profile.json'), 'utf8'));
-  if (record.profile !== assetProfile || record.portal !== (process.env.PORTAL ?? 'web')) throw new Error('Staged assets do not match the requested profile/portal');
+  if (record.profile !== assetProfile || record.portal !== (process.env.PORTAL ?? 'web') || (record.edition??'master') !== edition.name) throw new Error('Staged assets do not match the requested profile/portal');
 }
 
 // Optional packed art index: generated from the R2 source folders by the
@@ -79,7 +82,7 @@ export default defineConfig(({ command }) => ({
       if (assetProfile && file.endsWith('/prototypes/punchies/tune.json')) {
         // Standalone game packages do not include the workshop/editor. Preserve
         // its history in tune.json and the normal hub/tuner build, not in gameplay.
-        const values = JSON.parse(fs.readFileSync(id, 'utf8'));
+        const values = edition.name==='master'?JSON.parse(fs.readFileSync(id, 'utf8')):editionTune(JSON.parse(fs.readFileSync(id, 'utf8')),edition.name);
         delete values.balanceWorkshop;
         return { code: `export default ${JSON.stringify(values)};`, map: null };
       }
@@ -92,6 +95,10 @@ export default defineConfig(({ command }) => ({
   }],
   define: {
     __GIT_SHA__: JSON.stringify(getGitSha()),
+    __PUNCHIES_EDITION__:JSON.stringify(edition.name),
+    __PUNCHIES_EDITION_FIGHTERS__:JSON.stringify(edition.fighters),
+    __PUNCHIES_EDITION_POLICY_HASH__:JSON.stringify(edition.policyHash),
+    __PUNCHIES_EDITION_NAMESPACE__:JSON.stringify(edition.storageNamespace),
     __PUNCHIES_STAGING__:JSON.stringify(stagingBuild),
     __PUNCHIES_SOURCE_SHA__:JSON.stringify(execSync('git rev-parse HEAD').toString().trim()),
     __PUNCHIES_QA__:JSON.stringify(qaBuild),
@@ -100,7 +107,7 @@ export default defineConfig(({ command }) => ({
       __PUNCHIES_ART__: JSON.stringify(punchiesArtIndex()),
     __PUNCHIES_PORTAL__: JSON.stringify(process.env.PORTAL ?? 'web'),
     __PUNCHIES_MUSIC_EXTENSION__: JSON.stringify(process.env.PUNCHIES_ASSET_PROFILE === 'compact' ? 'm4a' : 'mp3'),
-    __PUNCHIES_PORTAL_ADS__: JSON.stringify(process.env.PORTAL_ADS !== 'off'),
+    __PUNCHIES_PORTAL_ADS__: JSON.stringify((process.env.PORTAL??'web')==='crazygames'&&process.env.PORTAL_ADS !== 'off'),
     // PORTAL_FIXED_ALIAS=on: a portal that forbids user-generated text gets generated or platform names only.
     __PUNCHIES_FIXED_ALIAS__: JSON.stringify(process.env.PORTAL_FIXED_ALIAS === 'on'),
     __PUNCHIES_ASSET_BASE__: JSON.stringify(assetProfile ? './' : command === 'serve' ? '/game-prototypes/' : '../../'),

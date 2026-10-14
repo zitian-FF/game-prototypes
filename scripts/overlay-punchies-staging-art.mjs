@@ -12,7 +12,7 @@ export async function overlayStagingArt(assets,cache,baseArtSha256,portal,profil
   if(!stage&&!approved)return null;
   const patchRoot=path.resolve('prototypes/punchies/asset-patches');
   const metadataPath=path.join(patchRoot,'materialmask_tee.json');
-  if(portal!=='web'&&stage)throw Error('Staging preview is web-only');
+  if(!['web','crazygames'].includes(portal)&&stage)throw Error('Unsupported staging portal');
   const includeMask=profile==='compact';
   let metadata,bytes,preparedBase;
   const manifestPath=path.join(assets,'manifest.json');

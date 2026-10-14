@@ -7,7 +7,7 @@ function peers(rated,modes=['modern','modern']){
  const rooms={},queue=[],timers=[],created=[],reports=[],ids={host:crypto.randomUUID(),guest:crypto.randomUUID()};
  const sessions={};
  for(const role of ['host','guest']){const exports={};vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,crypto,setTimeout:fn=>{timers.push(fn);return 1;},clearTimeout(){},require:id=>{
-  if(id==='./rules')return rulesMock;if(id==='../sim/tune')return tuneValidationMock;
+  if(id==='../edition')return {EDITION_ID:'master'};if(id==='./rules')return rulesMock;if(id==='../sim/tune')return tuneValidationMock;
   if(id==='../progress/profile')return {localWireProfile:()=>({alias:role,title:'rookie',level:1}),peerProfile:p=>p??{}};
   if(id==='./rating')return {currentRating:()=>({myId:ids[role],rating:1000}),loadRating:async()=>({myId:ids[role],rating:1000}),createRatingMatch:async(_other,nonce)=>{created.push({role,nonce});return 'match:'+nonce;},reportRating:async(id,score,quit)=>{reports.push({role,id,score,quit});return null;},releaseRatingPair:async()=>{}};
   if(id==='trystero/nostr')return {getRelaySockets:()=>({}),joinRoom:()=>{const room={makeAction:name=>{const channel={send:async(data)=>queue.push({from:role,to:role==='host'?'guest':'host',name,data})};room[name]=channel;return channel;},leave(){room.left=true;}};rooms[role]=room;return room;}};

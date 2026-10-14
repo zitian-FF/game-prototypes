@@ -2,6 +2,7 @@ import {simulationRules,sameRules,tuneSnapshotHash,compatibleStart,controlModesH
 import type {ControlMode} from '../sim/modernControls';
 import {validateTuneJson} from '../sim/tune';
 import {currentRating,loadRating,createRatingMatch,reportRating,releaseRatingPair} from './rating';
+import {EDITION_ID} from '../edition';
 import { getRelaySockets, joinRoom, type Room } from 'trystero/nostr';
 import type { HashPacket, InputPacket } from './rollback';
 import { localWireProfile, peerProfile } from '../progress/profile';
@@ -11,7 +12,7 @@ import type { WireProfile } from '../progress/alias';
 // it prefers the closest rating among simultaneous guests and turns later peers
 // away. Relays are pinned (see "Networking" in root CLAUDE.md).
 
-const APP_ID = 'punchies';
+const APP_ID = EDITION_ID==='master'?'punchies':`punchies-${EDITION_ID}`;
 const RELAY_URLS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.mostr.pub', 'wss://purplerelay.com', 'wss://nostr.data.haus'];
 
 export type Role = 'host' | 'guest';

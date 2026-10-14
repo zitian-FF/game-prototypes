@@ -1,3 +1,4 @@
+import { EDITION_FIGHTERS } from '../edition';
 import { tune } from './tune';
 import { fighterScale } from './geometry';
 import type { Fighter, PunchType } from './types';
@@ -12,7 +13,7 @@ import type { Fighter, PunchType } from './types';
 
 export const ALL_CHARACTER_IDS = ['marco', 'mia', 'bruno', 'tee', 'tyke', 'dragon', 'longan', 'captain', 'roxy', 'nadia', 'kai'] as const;
 export type CharId = (typeof ALL_CHARACTER_IDS)[number];
-export const CHARACTER_IDS:readonly CharId[]=ALL_CHARACTER_IDS;
+export const CHARACTER_IDS:readonly CharId[]=EDITION_FIGHTERS.length?EDITION_FIGHTERS as readonly CharId[]:ALL_CHARACTER_IDS;
 
 export const CHARACTER_INFO: Record<CharId, { name: string; nick: string; style: string }> = {
   kai: {name:'Kai Chen',nick:'Courier',style:'Slow courier: strong hooks, weak Jab and Cross, longer dash.'},

@@ -108,6 +108,45 @@ jobs:
           # Production review output is local QA evidence, not a public stage route.
           rm -rf ../dist/staging/production
 
+      # CG has its own source pin and route; MASTER staging remains intact.
+      - name: Read optional CrazyGames staging commit
+        id: cg-staging
+        run: |
+          if [ -f .github/punchies-crazygames-staging-ref ]; then
+            echo "sha=$(cat .github/punchies-crazygames-staging-ref)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout isolated CrazyGames source
+        if: steps.cg-staging.outputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.cg-staging.outputs.sha }}
+          path: .cg-staging-source
+
+      - name: Build CrazyGames artifact and staging
+        if: steps.cg-staging.outputs.sha != ''
+        working-directory: .cg-staging-source
+        env:
+          VITE_PUNCHIES_RATING_URL: ''
+        run: |
+          npm ci
+          npm run build:packages
+          node scripts/test-punchies-edition-runtime.mjs
+          node scripts/test-punchies-cg-grid.mjs
+          node scripts/build-punchies-staging.mjs ../dist/staging/punchies-crazygames --edition crazygames
+          node scripts/test-punchies-profiles.mjs ../dist/staging/production compact
+
+      - name: Retain normal CrazyGames artifact
+        if: steps.cg-staging.outputs.sha != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: punchies-crazygames-compact
+          path: dist/staging/production
+
+      - name: Exclude normal artifact from public staging routes
+        if: steps.cg-staging.outputs.sha != ''
+        run: rm -rf dist/staging/production
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
