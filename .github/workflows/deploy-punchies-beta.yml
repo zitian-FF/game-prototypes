@@ -1,0 +1,82 @@
+name: Deploy approved Punchies Beta
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact owner-approved Beta source SHA
+        required: true
+        type: string
+      owner_approved_sha:
+        description: Repeat explicitly approved source SHA
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: punchies-beta-release
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.source_sha }}
+      - name: Validate exact Beta approval and destination
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          OWNER_SHA: ${{ inputs.owner_approved_sha }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] && [ "$SOURCE_SHA" = "$OWNER_SHA" ] && [ "$(git rev-parse HEAD)" = "$SOURCE_SHA" ]
+          node --input-type=module -e 'import fs from "node:fs";const e=JSON.parse(fs.readFileSync("prototypes/punchies/editions.json")).editions.itchbeta;if(!e.runtimeReady||e.slug!=="punchies-beta-test"||e.account!=="zitian-ff"||e.skins!=="default"||e.economy||e.progression||e.ads||e.fighters.join()!=="marco,mia,bruno,roxy,nadia")throw Error("Invalid Beta policy");'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Verify actual completion and closed-edition contracts
+        run: |
+          node scripts/test-punchies-beta.mjs
+          node scripts/test-punchies-beta-callers.mjs
+          node scripts/test-punchies-beta-ui.mjs
+          node scripts/test-punchies-online-bo3.mjs
+          node scripts/test-punchies-rules-compatibility.mjs
+          node scripts/test-punchies-i18n.mjs
+      - name: Read current released counter and prepare CI version
+        run: |
+          git fetch origin main
+          git show origin/main:prototypes/punchies/version.json > prototypes/punchies/version.json
+          node scripts/bump-version.js punchies
+      - name: Build actual Beta package
+        env:
+          VITE_PUNCHIES_RATING_URL: ${{ vars.PUNCHIES_RATING_URL }}
+          PUNCHIES_STAGING: 'off'
+          PUNCHIES_QA: '0'
+          PUNCHIES_STAGING_QA: '0'
+          PUNCHIES_SAVE_RESET_ID: punchies-reset-2026-10-12-super-v1
+        run: |
+          [ -n "$VITE_PUNCHIES_RATING_URL" ] || { echo "Rating URL missing"; exit 1; }
+          node scripts/build-punchies-profile.mjs compact --edition itchbeta --portal web
+          node scripts/test-punchies-beta-package.mjs dist/punchies-itchbeta-compact-web
+      - uses: jdno/setup-butler@v1
+      - name: Upload only Beta
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: butler push dist/punchies-itchbeta-compact-web zitian-ff/punchies-beta-test:html5
+      - name: Write successful upload receipt
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          mkdir -p beta-receipt
+          cp prototypes/punchies/version.json beta-receipt/version.json
+          cp dist/punchies-itchbeta-compact-web/prototypes/punchies/asset-profile.json beta-receipt/asset-profile.json
+          node -e 'require("fs").writeFileSync("beta-receipt/release.json",JSON.stringify({source:process.env.SOURCE_SHA,run:process.env.GITHUB_RUN_ID,destination:"zitian-ff/punchies-beta-test:html5",uploaded:true},null,2))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: punchies-beta-release
+          path: |
+            beta-receipt/
+            dist/punchies-itchbeta-compact-web/
