@@ -38,6 +38,8 @@ jobs:
           if(config.name!=='punchies-beta-analytics'||config.d1_databases.length!==1||config.d1_databases[0].binding!=='DB'||config.d1_databases[0].database_name!=='punchies-beta-analytics')throw Error('Unexpected Worker/DB target');
           config.d1_databases[0].database_id=process.env.D1_ID;
           fs.writeFileSync(file,JSON.stringify(config,null,2));
+          const rootConfig={...config,main:'prototypes/punchies/analytics-server/src/index.ts',d1_databases:config.d1_databases.map(db=>({...db,migrations_dir:'prototypes/punchies/analytics-server/migrations'}))};
+          fs.writeFileSync('wrangler.jsonc',JSON.stringify(rootConfig,null,2));
           NODE
       - uses: actions/setup-node@v4
         with:
@@ -60,10 +62,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.143.0'
-          workingDirectory: prototypes/punchies/analytics-server
           command: deploy --config wrangler.jsonc
           secrets: REPORT_TOKEN
         env:
           REPORT_TOKEN: ${{ secrets.PUNCHIES_ANALYTICS_REPORT_TOKEN }}
+
 
 
