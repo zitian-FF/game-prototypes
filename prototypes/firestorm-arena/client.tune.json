@@ -14,7 +14,9 @@
     "focusZoom": 1.4,
     "focusZoomTouch": 1.9,
     "startZoomTouch": 1.7,
-    "labelDetailZoom": 0.7
+    "labelDetailZoom": 0.7,
+    "nodeFixedZoom": 0.6,
+    "nodeMaxScale": 4
   },
   "perf": {
     "staticUnitZoom": 0.6,
@@ -53,6 +55,7 @@
       "idleSeconds": 3
     },
     "troopsFlashSeconds": 1.4,
+    "tpFlashSeconds": 1.6,
     "toastSeconds": 4.5,
     "toastTouchTrimSeconds": 2,
     "logsMax": 30,

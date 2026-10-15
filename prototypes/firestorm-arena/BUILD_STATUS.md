@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.16.0 on the branch (onboarding pass, not merged, no PR open; 0.15.4 to 0.15.6 merged in PR 213): square 41 x 41 map with four Portal Nexus nodes, final cache
+Version 0.16.2 on the branch (0.16.0 merged in PR 379; 0.16.1 and 0.16.2 not merged, no PR open)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.16.2: nodes keep a constant screen size below zoom 0.6 (`camera.nodeFixedZoom`, max 4x), with labels, rings and tap area scaled to match.
+- 0.16.1: Return to HQ on every field squad, Hospital recovery per second beside Reserve, Tech Centre teleport countdown with tenths, speed tag and flash, buff icons top left.
 - 0.16.0: onboarding pass: objective card with danger/alert/good/guide levels and tap-to-look, Next Moves list with pan-and-ring, goal line and points per second, green own base, contextual panels and flashes, plain node panel with More, contiguous minimap fog, retiring hints and Tips toggle, logs limited to your fights. Slot tiles removed from the ground.
 - 0.15.6: capacity line shows percent left and roughly how many 30 minute games (`QuotaStatus.percentLeft`).
 - 0.15.5: Handbook page on the main menu (four tabs, scrollable, numbers from tune.json); node panel text shortened and wrapped by measured width (`Ui.measure`, `Ui.wrap`).
@@ -52,6 +54,12 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- 0.16.2 checked on desktop at start zoom and fully zoomed out (nodes stay about 40 px). Not checked on a phone. The HQ block and units still shrink with the map, and `nodeFixedZoom` 0.6 is a first guess to tune.
+
+- The itch account was renamed from zitian-ff to polsia. Only the Firestorm Arena Butler target (`polsia/firestorm-arena:html5`) is updated here. Other prototypes' workflows and the hub links still say `zitian-ff` and will break until their owners update them.
+
+- 0.16.1 checked on desktop in a real match at 30x speed (Return to HQ, +20/s, x2 countdown with flash, three buff icons) and on emulated touch for the pill and a buff icon; the touch chip HQ button was not seen in action. Buff icon colours and the 'x2' wording are first guesses.
 
 - Onboarding pass checked on desktop 1280 x 720 and emulated 844 x 390 touch with real matches and with a forced danger, alert and good card; a live "about to be attacked" warning was only checked by a scripted unit check of the logic, not seen in a real match. The Next Moves rules (nearest node, one cue per kind) are first guesses to tune from the game logs.
 

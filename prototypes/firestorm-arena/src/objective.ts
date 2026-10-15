@@ -58,7 +58,7 @@ export function incomingThreat(
   const squads = (n: number) => `${n} enemy squad${n === 1 ? '' : 's'}`;
   if (hq && hqHits.length) {
     const eta = Math.min(...hqHits);
-    return { level: 'danger', title: 'Your HQ is about to be attacked', sub: `${squads(hqHits.length)} arrive in ${fmtClock(eta)}`, focus: hq.pos };
+    return { level: 'danger', title: 'Your HQ is about to be attacked', sub: `${squads(hqHits.length)} ${hqHits.length === 1 ? 'arrives' : 'arrive'} in ${fmtClock(eta)}`, focus: hq.pos };
   }
   let best: { id: string; eta: number; count: number } | null = null;
   for (const [id, etas] of nodeHits) {
@@ -68,7 +68,7 @@ export function incomingThreat(
   if (!best) return null;
   const node = view.nodes.find((n) => n.id === best!.id)!;
   const more = nodeHits.size > 1 ? `, +${nodeHits.size - 1} more node${nodeHits.size > 2 ? 's' : ''} threatened` : '';
-  return { level: 'danger', title: `${nodeLabel(best.id)} is about to be attacked`, sub: `${squads(best.count)} arrive in ${fmtClock(best.eta)}${more}`, focus: node.pos };
+  return { level: 'danger', title: `${nodeLabel(best.id)} is about to be attacked`, sub: `${squads(best.count)} ${best.count === 1 ? 'arrives' : 'arrive'} in ${fmtClock(best.eta)}${more}`, focus: node.pos };
 }
 
 /** The plain "what next" line: where your squad is headed, or a nudge to send one. Nodes only: nothing here says tap the ground. */

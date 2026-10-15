@@ -99,6 +99,11 @@ export class GameScene extends BaseScene {
   private mmVision: { key: string; cells: Uint8Array } | null = null;
   private visionCircles: { x: number; y: number; r: number }[] = [];
   private teleportWasReady = false;
+  /** Extra label size while node labels are drawn (they grow with the nodes when zoomed out). */
+  private labelBoost = 1;
+  /** Last Tech Centre teleport rate and when it last went up (seconds), for the countdown flash. */
+  private tpRateSeen = 1;
+  private tpBoostAt = -1e9;
   /** The target of the cue you last tapped: ringed on the map until it times out (wall ms). */
   private cuePing: { pos: Vec; until: number } | null = null;
   /** Squads ordered out in the last moments (wall ms until which they still count as just sent). */
@@ -139,6 +144,8 @@ export class GameScene extends BaseScene {
     this.hover = null;
     this.mmVision = null;
     this.teleportWasReady = false;
+    this.tpRateSeen = 1;
+    this.tpBoostAt = -1e9;
     this.cuePing = null;
     this.justSent = new Map();
     this.lastFrame = this.time.now;
@@ -510,6 +517,12 @@ export class GameScene extends BaseScene {
     this.input.setDefaultCursor(this.hover ? 'pointer' : 'default');
   }
 
+  /** How much bigger than their world size nodes are drawn: 1 until the zoom-out limit, then enough to keep their screen size. */
+  private nodeScale(): number {
+    const fixed = clientTune.camera.nodeFixedZoom;
+    return this.zoom < fixed ? Math.min(clientTune.camera.nodeMaxScale, fixed / this.zoom) : 1;
+  }
+
   private pick(px: number, py: number, view: WireView): Target | null {
     const m = this.screenToMap(px, py);
     let best: { d: number; t: Target } | null = null;
@@ -522,7 +535,8 @@ export class GameScene extends BaseScene {
     }
     for (const n of view.nodes) {
       const p = this.iso.p(n.pos.x, n.pos.y);
-      consider(Math.hypot(m.x - p.x, m.y - (p.y - n.tier * clientTune.iso.cubeHeight * 0.6)), 34, { kind: 'node', id: n.id });
+      const k = this.nodeScale(); // enlarged nodes are enlarged targets too
+      consider(Math.hypot(m.x - p.x, m.y - (p.y - n.tier * clientTune.iso.cubeHeight * 0.6 * k)), 34 * k, { kind: 'node', id: n.id });
     }
     for (const h of view.hqs) {
       const p = this.iso.p(h.pos.x, h.pos.y);
@@ -707,7 +721,7 @@ export class GameScene extends BaseScene {
    */
   private label(text: string, x: number, y: number, color: string, size0 = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     // Labels live in the zoomed world, so up close they would swell: shrink them in steps to keep a steady screen size.
-    const size = Math.max(6, Math.round(size0 * (this.zoom > 1.5 ? 0.62 : this.zoom > 1.2 ? 0.78 : 1)));
+    const size = Math.max(6, Math.round(size0 * (this.zoom > 1.5 ? 0.62 : this.zoom > 1.2 ? 0.78 : 1) * this.labelBoost));
     const key = `${text}|${color}|${size}|${align}`;
     const n = this.labelCount.get(key) ?? 0;
     this.labelCount.set(key, n + 1);
@@ -909,51 +923,65 @@ export class GameScene extends BaseScene {
     const hw = clientTune.iso.artHalfWidth;
     const US = clientTune.iso.unitScale;
 
-    // Nodes
+    // Nodes. Zoomed out past `nodeFixedZoom` they stop shrinking: the art is drawn bigger in the world so it keeps
+    // the same size on screen, which keeps nodes visible and obvious on the big map.
+    const nodeK = this.nodeScale();
+    const kLabel = Math.round(nodeK * 4) / 4; // labels step in quarters so they are not re-rendered on every zoom tick
     for (const n of view.nodes) {
       const p = iso.p(n.pos.x, n.pos.y);
       add(n.pos, () => {
+        const scaled = nodeK > 1.001;
+        const q = scaled ? { x: 0, y: 0 } : p;
+        if (scaled) {
+          g.save();
+          g.translateCanvas(p.x, p.y);
+          g.scaleCanvas(nodeK, nodeK);
+        }
         const col = n.owner === null ? COLORS.neutral : teamColor(n.owner, mine);
         // Out of sight nodes are darkened, never faded: solid colours only.
         const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
-        square(g, p.x, p.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
+        square(g, q.x, q.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
-          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
+          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         } else if (this.hover?.kind === 'node' && this.hover.id === n.id) {
           // Nodes are what you click: they light up under the pointer.
-          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
+          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.4) : dim);
         if (n.kind === 'portal') {
-          drawPortal(g, p.x, p.y, now, hw * 1.05);
+          drawPortal(g, q.x, q.y, now, hw * 1.05);
         } else if (n.kind === 'points' && n.tier >= 4) {
-          drawSilo(g, p.x, p.y, base, hw * 1.1);
+          drawSilo(g, q.x, q.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier >= 2) {
-          drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
+          drawRefinery(g, q.x, q.y, base, hw * 1.1, now);
         } else if (n.kind === 'turret') {
-          drawTurret(g, p.x, p.y, base, hw * 1.05);
+          drawTurret(g, q.x, q.y, base, hw * 1.05);
         } else if (n.kind === 'hospital') {
-          drawHospital(g, p.x, p.y, base, hw * 1.05);
+          drawHospital(g, q.x, q.y, base, hw * 1.05);
         } else {
-          const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
-          drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
+          const lift = drawNodeStack(g, q.x, q.y, n.tier, base, hw);
+          drawNodeIcon(g, n.kind, q.x, q.y - lift - 12, 1);
         }
-        if (locked) {
-          drawLock(g, p.x, p.y - 34, 1);
-          if (detail || selNode === n.id) this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
-        }
+        if (locked) drawLock(g, q.x, q.y - 34, 1);
+        if (scaled) g.restore();
+
+        // Labels sit under the (possibly enlarged) node and are enlarged with it.
+        const below = (iso.tile / 2) * nodeK + 2;
+        this.labelBoost = kLabel;
+        if (locked && (detail || selNode === n.id)) this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + below, '#ffd08a', 11);
         // Zoomed far out the timers are unreadable, so they only show up close or on the selected node.
         if (detail || selNode === n.id) {
-          if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + iso.tile / 2 + 16, '#ffe08a', 11);
-          else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + iso.tile / 2 + 16, '#9fd0ff', 10);
+          if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + below + 14 * nodeK, '#ffe08a', 11);
+          else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + below + 14 * nodeK, '#9fd0ff', 10);
         }
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
           const stale = !own && n.garrisonCountAsOfMs !== undefined ? ` (${Math.round((simMs - n.garrisonCountAsOfMs) / 1000)}s)` : '';
-          this.label(txt + stale, p.x, p.y + iso.tile / 2 + 2, own ? '#cfe9ff' : '#ffd08a', 11);
+          this.label(txt + stale, p.x, p.y + below, own ? '#cfe9ff' : '#ffd08a', 11);
         }
+        this.labelBoost = 1;
       });
     }
 
@@ -973,9 +1001,10 @@ export class GameScene extends BaseScene {
       add(ping.pos, () => {
         const p = iso.p(ping.pos.x, ping.pos.y);
         const k = 0.5 + 0.5 * Math.sin(now * 7);
-        square(g, p.x, p.y, iso.tile / 2 + 6 + 4 * k, undefined, 1, COLORS.accent, 4);
+        const nk = nodeK;
+        square(g, p.x, p.y, (iso.tile / 2 + 6) * nk + 4 * k, undefined, 1, COLORS.accent, 4);
         const bob = Math.sin(now * 6) * 4;
-        g.fillStyle(COLORS.accent, 1).fillTriangle(p.x - 9, p.y - 74 + bob, p.x + 9, p.y - 74 + bob, p.x, p.y - 60 + bob);
+        g.fillStyle(COLORS.accent, 1).fillTriangle(p.x - 9 * nk, p.y - 74 * nk + bob, p.x + 9 * nk, p.y - 74 * nk + bob, p.x, p.y - 60 * nk + bob);
       });
     } else if (this.cuePing) this.cuePing = null;
 
@@ -1430,6 +1459,7 @@ export class GameScene extends BaseScene {
 
     // ---- objective card, then command messages below it
     this.drawObjective(view, simMs, w, belowBar, this.time.now / 1000);
+    this.drawBuffs(view, belowBar + 8);
     const toastTop = Math.max(belowBar + 8, this.objBottom + 6);
     // ---- toasts
     const nowWall = Date.now();
@@ -1549,7 +1579,10 @@ export class GameScene extends BaseScene {
     const bottom = h - 8 - ins.b;
     const listTop = bottom - listH;
     const pillW = 172;
-    const pillH = 36;
+    const buffs = this.teamBuffs(view);
+    const lowReserve = !!hq && hq.pool < hq.poolMax * 0.25;
+    const showReserve = !!hq && (buffs.regen > 0 || lowReserve);
+    const pillH = showReserve ? 50 : 36;
     const pillY = listTop - pillH - 4;
 
     ui.panel(left, pillY, pillW, pillH, 0.92);
@@ -1562,13 +1595,22 @@ export class GameScene extends BaseScene {
         const k = 0.5 + 0.5 * Math.sin(nowS * 5);
         ui.rect(left + 62, pillY + 2, 96, 17, 0x2f9e55, 0.18 + 0.2 * k, 0x5dff8a, 4);
         ui.text('Teleport ready', left + 70, pillY + 4, { size: 11, bold: true, color: this.pulseGreen(nowS) });
-      } else ui.text(`Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, left + 70, pillY + 4, { size: 11, color: COLORS.dim });
-      // Troops total (flashes red when a fight takes some); reserve only when it runs low.
+      } else {
+        const cd = this.teleportCountdown(hq.nextTeleportAtMs - simMs, buffs.tpRate, nowS);
+        if (cd.flash > 0) ui.rect(left + 62, pillY + 2, pillW - 66, 17, 0xffd54a, 0.4 * cd.flash, 0xffd54a, 4);
+        ui.text(cd.text, left + 70, pillY + 4, { size: 11, bold: cd.flash > 0, color: cd.color });
+      }
+      // Troops total (flashes red when a fight takes some); reserve while a Hospital is held or when it runs low.
       const total = squads.reduce((a, q) => a + q.troops, 0);
       const f = this.flashNow;
       if (f > 0) ui.rect(left + 3, pillY + 18, pillW - 6, 15, 0xff4a4a, 0.35 * f, undefined, 4);
       ui.text(f > 0 ? `Troops ${fmtInt(total)}  -${fmtInt(this.troopsLoss.amount)}` : `Troops ${fmtInt(total)}`, left + 8, pillY + 19, { size: 10, bold: f > 0, color: f > 0 ? COLORS.bad : COLORS.dim });
-      if (hq.pool < hq.poolMax * 0.25) ui.text(`Reserve low`, left + pillW - 8, pillY + 4, { size: 10, bold: true, align: 'right', color: COLORS.warn });
+      if (showReserve) {
+        let rx = left + pillW - 8;
+        if (buffs.regen > 0) rx -= ui.text(`+${fmtInt(buffs.regen)}/s`, rx, pillY + 34, { size: 10, bold: true, align: 'right', color: hq.pool >= hq.poolMax ? COLORS.dim : COLORS.good }) + 6;
+        ui.text(`${lowReserve ? 'Reserve low' : 'Reserve'} ${fmtInt(hq.pool)}`, left + 8, pillY + 34, { size: 10, bold: lowReserve, color: lowReserve ? COLORS.warn : COLORS.dim });
+        void rx;
+      }
     }
     ui.text(open ? 'Hide' : `Squads ${squads.length}`, left + pillW - 8, pillY + 19, { size: 10, bold: true, align: 'right', color: cssColor(COLORS.accent) });
     if (!open) return;
@@ -1591,6 +1633,13 @@ export class GameScene extends BaseScene {
       ui.gfx().fillStyle(dot, 1).fillCircle(left + chip - 7, y + 7, 3);
       ui.text(fmtPower(s.power), left + chip / 2, y + 26, { size: 10, bold: true, align: 'center', color: '#ffd54a' });
       ui.bar(left + 5, y + chip - 8, chip - 10, 4, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
+      // A squad in the field that is not defeated gets a one-tap "HQ" button in the corner.
+      if (this.returnable(s)) {
+        ui.rect(left + 2, y + 2, 26, 16, COLORS.danger, 0.95, undefined, 4);
+        ui.gfx().fillStyle(0xffffff, 1).fillTriangle(left + 6, y + 10, left + 11, y + 6, left + 11, y + 14);
+        ui.text('HQ', left + 13, y + 5, { size: 9, bold: true, color: '#ffffff' });
+        ui.region(left, y, 32, 22, () => session.sendCommand({ type: 'cancel', squadId: s.id }));
+      }
     });
 
     // Popover for the selected squad: what it is doing and its one button.
@@ -1638,8 +1687,17 @@ export class GameScene extends BaseScene {
     if (flash > 0) ui.rect(px, py - 30, pw, 26, 0xff4a4a, 0.35 * flash, 0xff6a6a, 6);
     const tw = ui.text(`Troops ${fmtInt(inSquads)}`, px + 10, py - 25, { size: 13, bold: true, color: flash > 0 ? '#ffd0d0' : COLORS.text });
     if (flash > 0) ui.text(`-${fmtInt(this.troopsLoss.amount)}`, px + 18 + tw, py - 25, { size: 13, bold: true, color: COLORS.bad });
+    // Reserve shows while a Hospital is held (with what it recovers every second) or when it runs low.
+    const buffs = this.teamBuffs(view);
     const lowReserve = !!hq && hq.pool < hq.poolMax * 0.25;
-    if (hq && lowReserve) ui.text(`Reserve low ${fmtInt(hq.pool)}`, px + pw - 10, py - 25, { size: 13, align: 'right', bold: true, color: COLORS.warn });
+    if (hq && (buffs.regen > 0 || lowReserve)) {
+      let rx = px + pw - 10;
+      if (buffs.regen > 0) {
+        const full = hq.pool >= hq.poolMax;
+        rx -= ui.text(`+${fmtInt(buffs.regen)}/s`, rx, py - 25, { size: 13, bold: true, align: 'right', color: full ? COLORS.dim : COLORS.good }) + 8;
+      }
+      ui.text(`${lowReserve ? 'Reserve low' : 'Reserve'} ${fmtInt(hq.pool)}/${fmtInt(hq.poolMax)}`, rx, py - 25, { size: 13, align: 'right', bold: lowReserve, color: lowReserve ? COLORS.warn : COLORS.dim });
+    }
 
     ui.panel(px, py, pw, ph);
     if (hq) {
@@ -1653,7 +1711,11 @@ export class GameScene extends BaseScene {
         const tw2 = ui.measure('Teleport ready', 13, true);
         ui.rect(tx - 6, py + 4, tw2 + 12, 22, 0x2f9e55, 0.18 + 0.2 * k, 0x5dff8a, 5);
         ui.text('Teleport ready', tx, py + 8, { size: 13, bold: true, color: this.pulseGreen(nowS) });
-      } else ui.text(`Teleport ${fmtTime(hq.nextTeleportAtMs - simMs)}`, tx, py + 8, { size: 13, color: COLORS.dim });
+      } else {
+        const cd = this.teleportCountdown(hq.nextTeleportAtMs - simMs, buffs.tpRate, nowS);
+        if (cd.flash > 0) ui.rect(tx - 6, py + 4, ui.measure(cd.text, 13) + 12, 22, 0xffd54a, 0.4 * cd.flash, 0xffd54a, 5);
+        ui.text(cd.text, tx, py + 8, { size: 13, bold: cd.flash > 0, color: cd.color });
+      }
       if (session.tipDone('scouted')) {
         const homeScouts = view.scouts.filter((s) => s.owner === info.playerId && s.state === 'home').length;
         const totalScouts = view.scouts.filter((s) => s.owner === info.playerId).length;
@@ -1677,18 +1739,100 @@ export class GameScene extends BaseScene {
       ui.bar(px + 62, y + 20, 100, 8, s.troops / s.maxTroops, s.troops / s.maxTroops < 0.35 ? 0xff6a3d : 0x5dff8a);
       ui.text(`${Math.round(s.troops)}/${s.maxTroops}`, px + 168, y + 15, { size: 11, color: COLORS.dim });
       ui.text(this.squadStatus(s, view), px + 62, y + 32, { size: 11, color: COLORS.dim });
-      // Controls belong to the squad you picked: the others stay quiet.
-      if (!sel) return;
-      if (s.state === 'hq') {
+      // Any squad out in the field that is not defeated gets a quick Return to HQ. Defend belongs to the picked squad.
+      if (this.returnable(s)) {
+        ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
+      } else if (sel && s.state === 'hq') {
         ui.button(px + pw - 94, y + 2, 82, 22, s.defend ? 'Defend: ON' : 'Defend: OFF', {
           onClick: () => session.sendCommand({ type: 'setDefend', squadId: s.id, defend: !s.defend }),
           active: s.defend,
           size: 11,
         });
-      } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
-        ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
       }
     });
+  }
+
+  /** What your team's held buildings give right now: attack and defense fractions, march seconds cut, teleport rate, reserve regen per second. */
+  private teamBuffs(view: WireView): { attack: number; defense: number; marchCut: number; tpRate: number; regen: number; hospitals: number } {
+    const out = { attack: 0, defense: 0, marchCut: 0, tpRate: 1, regen: 0, hospitals: 0 };
+    for (const n of view.nodes) {
+      if (n.owner !== this.mine || n.kind === 'portal') continue;
+      const k = this.tune.nodes[n.kind];
+      out.attack += (k.attackPct ?? 0) * n.tier;
+      out.defense += (k.defensePct ?? 0) * n.tier;
+      out.marchCut += (k.marchEdgeSecondsCut ?? 0) * n.tier;
+      out.tpRate += (k.teleportCooldownRate ?? 0) * n.tier;
+      if (k.poolRegenPerSecond) {
+        out.regen += k.poolRegenPerSecond * n.tier;
+        out.hospitals++;
+      }
+    }
+    return out;
+  }
+
+  /** `m:ss.t`: tenths of a second, so a boosted countdown visibly ticks faster. */
+  private fmtTenths(ms: number): string {
+    const t = Math.max(0, Math.ceil(ms / 100));
+    const s = Math.floor(t / 10);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${t % 10}`;
+  }
+
+  /**
+   * The teleport countdown. With a Tech Centre held it runs faster, so it shows tenths and its speed ("x2"), and
+   * flashes when the speed-up begins. Returns the label, its colour and a 0..1 flash.
+   */
+  private teleportCountdown(remainMs: number, tpRate: number, nowS: number): { text: string; color: string; flash: number } {
+    if (tpRate > this.tpRateSeen + 1e-6) this.tpBoostAt = nowS;
+    this.tpRateSeen = tpRate;
+    const age = nowS - this.tpBoostAt;
+    const flash = age >= 0 && age < clientTune.hud.tpFlashSeconds ? 1 - age / clientTune.hud.tpFlashSeconds : 0;
+    if (tpRate > 1.001) return { text: `Teleport ${this.fmtTenths(remainMs)}  x${tpRate % 1 === 0 ? tpRate : tpRate.toFixed(1)}`, color: '#ffe08a', flash };
+    return { text: `Teleport ${fmtTime(remainMs)}`, color: COLORS.dim, flash };
+  }
+
+  /** Buff icons for the team's attack, defense and march speed, top left under the scoreboard. Only active ones show. */
+  private drawBuffs(view: WireView, top: number): void {
+    const ui = this.ui;
+    const b = this.teamBuffs(view);
+    const compact = this.compact();
+    const ins = safeInsets();
+    const list: { kind: 'attackBoost' | 'defenseBoost' | 'speedBoost'; value: string; color: number; tip: string }[] = [];
+    if (b.attack > 0) list.push({ kind: 'attackBoost', value: `+${Math.round(b.attack * 100)}%`, color: 0xf2994a, tip: `Attack +${Math.round(b.attack * 100)}% for your team (Arsenal)` });
+    if (b.defense > 0) list.push({ kind: 'defenseBoost', value: `+${Math.round(b.defense * 100)}%`, color: 0x6ed3c0, tip: `Damage reduction +${Math.round(b.defense * 100)}% for your team (Armory)` });
+    if (b.marchCut > 0) {
+      // Cutting seconds off the edge-to-edge time is a speed-up of edge / (edge - cut): shown as a rounded percentage.
+      const m = this.tune.march;
+      const speedPct = Math.round((m.edgeToEdgeSeconds / Math.max(m.minEdgeToEdgeSeconds, m.edgeToEdgeSeconds - b.marchCut) - 1) * 100);
+      list.push({ kind: 'speedBoost', value: `+${speedPct}%`, color: 0xe6d44a, tip: `Movement speed +${speedPct}% for your squads (Accelerator)` });
+    }
+    if (list.length === 0) return;
+    const bw = compact ? 40 : 48;
+    const bh = compact ? 36 : 42;
+    const gap = 6;
+    const x0 = 8 + ins.l;
+    let tipText: string | null = null;
+    let tipX = 0;
+    list.forEach((it, i) => {
+      const x = x0 + i * (bw + gap);
+      ui.rect(x, top, bw, bh, 0x10141a, 0.9, it.color, 7);
+      drawNodeIcon(ui.gfx(), it.kind, x + bw / 2, top + bh * 0.36, compact ? 1.05 : 1.2);
+      ui.text(it.value, x + bw / 2, top + bh - (compact ? 13 : 15), { size: compact ? 10 : 11, bold: true, align: 'center', color: cssColor(it.color) });
+      ui.block(x, top, bw, bh);
+      if (ui.isOver(x, top, bw, bh)) {
+        tipText = it.tip;
+        tipX = x;
+      }
+    });
+    if (tipText) {
+      const tw = ui.measure(tipText, 11) + 16;
+      ui.rect(tipX, top + bh + 4, tw, 22, 0x000000, 0.85, COLORS.panelEdge, 5);
+      ui.text(tipText, tipX + 8, top + bh + 8, { size: 11 });
+    }
+  }
+
+  /** A small danger-coloured "HQ" button that sends a squad in the field straight back to base. */
+  private returnable(s: WireSquad): boolean {
+    return s.troops > 0 && !s.burning && (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && !!s.march && s.march.purpose !== 'home'));
   }
 
   /** 0..1 while a drop in total troops is flashing (1 at the moment of the drop, fading out), else 0. */
