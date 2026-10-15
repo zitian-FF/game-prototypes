@@ -795,4 +795,5 @@ client.
   - While a Hospital is held, Reserve shows next to the troop total with the units recovered per second (+20/s per Hospital tier), green while recovering and grey when full. Reserve also shows when it runs low.
   - While a Tech Centre is held, the Teleport countdown shows tenths of a second and its speed (x2, x3) so it visibly ticks faster, and the label flashes gold when the speed-up begins.
   - Top left, under the scoreboard: buff icons for team attack (Arsenal, +5%), damage reduction (Armory, +5%) and movement speed (Accelerator, shown as a rounded speed-up percentage: one Accelerator on a 150 s crossing is +25%, two are +67%); only active buffs show, and hovering one names its source.
+- Nodes on the big map (0.16.2): below `camera.nodeFixedZoom` (0.6) nodes stop shrinking: they are drawn bigger in the world, up to `camera.nodeMaxScale` (4x), so they keep the same size on screen. Their labels and selection, hover and cue rings grow with them, and the tap area grows too. HQs, units and everything else still scale with the map.
 - Where this section conflicts with older text above, this section wins.

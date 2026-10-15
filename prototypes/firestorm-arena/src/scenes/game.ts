@@ -99,6 +99,8 @@ export class GameScene extends BaseScene {
   private mmVision: { key: string; cells: Uint8Array } | null = null;
   private visionCircles: { x: number; y: number; r: number }[] = [];
   private teleportWasReady = false;
+  /** Extra label size while node labels are drawn (they grow with the nodes when zoomed out). */
+  private labelBoost = 1;
   /** Last Tech Centre teleport rate and when it last went up (seconds), for the countdown flash. */
   private tpRateSeen = 1;
   private tpBoostAt = -1e9;
@@ -515,6 +517,12 @@ export class GameScene extends BaseScene {
     this.input.setDefaultCursor(this.hover ? 'pointer' : 'default');
   }
 
+  /** How much bigger than their world size nodes are drawn: 1 until the zoom-out limit, then enough to keep their screen size. */
+  private nodeScale(): number {
+    const fixed = clientTune.camera.nodeFixedZoom;
+    return this.zoom < fixed ? Math.min(clientTune.camera.nodeMaxScale, fixed / this.zoom) : 1;
+  }
+
   private pick(px: number, py: number, view: WireView): Target | null {
     const m = this.screenToMap(px, py);
     let best: { d: number; t: Target } | null = null;
@@ -527,7 +535,8 @@ export class GameScene extends BaseScene {
     }
     for (const n of view.nodes) {
       const p = this.iso.p(n.pos.x, n.pos.y);
-      consider(Math.hypot(m.x - p.x, m.y - (p.y - n.tier * clientTune.iso.cubeHeight * 0.6)), 34, { kind: 'node', id: n.id });
+      const k = this.nodeScale(); // enlarged nodes are enlarged targets too
+      consider(Math.hypot(m.x - p.x, m.y - (p.y - n.tier * clientTune.iso.cubeHeight * 0.6 * k)), 34 * k, { kind: 'node', id: n.id });
     }
     for (const h of view.hqs) {
       const p = this.iso.p(h.pos.x, h.pos.y);
@@ -712,7 +721,7 @@ export class GameScene extends BaseScene {
    */
   private label(text: string, x: number, y: number, color: string, size0 = 11, align: 0 | 0.5 = 0.5, alpha = 1): void {
     // Labels live in the zoomed world, so up close they would swell: shrink them in steps to keep a steady screen size.
-    const size = Math.max(6, Math.round(size0 * (this.zoom > 1.5 ? 0.62 : this.zoom > 1.2 ? 0.78 : 1)));
+    const size = Math.max(6, Math.round(size0 * (this.zoom > 1.5 ? 0.62 : this.zoom > 1.2 ? 0.78 : 1) * this.labelBoost));
     const key = `${text}|${color}|${size}|${align}`;
     const n = this.labelCount.get(key) ?? 0;
     this.labelCount.set(key, n + 1);
@@ -914,51 +923,65 @@ export class GameScene extends BaseScene {
     const hw = clientTune.iso.artHalfWidth;
     const US = clientTune.iso.unitScale;
 
-    // Nodes
+    // Nodes. Zoomed out past `nodeFixedZoom` they stop shrinking: the art is drawn bigger in the world so it keeps
+    // the same size on screen, which keeps nodes visible and obvious on the big map.
+    const nodeK = this.nodeScale();
+    const kLabel = Math.round(nodeK * 4) / 4; // labels step in quarters so they are not re-rendered on every zoom tick
     for (const n of view.nodes) {
       const p = iso.p(n.pos.x, n.pos.y);
       add(n.pos, () => {
+        const scaled = nodeK > 1.001;
+        const q = scaled ? { x: 0, y: 0 } : p;
+        if (scaled) {
+          g.save();
+          g.translateCanvas(p.x, p.y);
+          g.scaleCanvas(nodeK, nodeK);
+        }
         const col = n.owner === null ? COLORS.neutral : teamColor(n.owner, mine);
         // Out of sight nodes are darkened, never faded: solid colours only.
         const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
-        square(g, p.x, p.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
+        square(g, q.x, q.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
         if (selNode === n.id) {
-          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
+          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         } else if (this.hover?.kind === 'node' && this.hover.id === n.id) {
           // Nodes are what you click: they light up under the pointer.
-          square(g, p.x, p.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
+          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.4) : dim);
         if (n.kind === 'portal') {
-          drawPortal(g, p.x, p.y, now, hw * 1.05);
+          drawPortal(g, q.x, q.y, now, hw * 1.05);
         } else if (n.kind === 'points' && n.tier >= 4) {
-          drawSilo(g, p.x, p.y, base, hw * 1.1);
+          drawSilo(g, q.x, q.y, base, hw * 1.1);
         } else if (n.kind === 'points' && n.tier >= 2) {
-          drawRefinery(g, p.x, p.y, base, hw * 1.1, now);
+          drawRefinery(g, q.x, q.y, base, hw * 1.1, now);
         } else if (n.kind === 'turret') {
-          drawTurret(g, p.x, p.y, base, hw * 1.05);
+          drawTurret(g, q.x, q.y, base, hw * 1.05);
         } else if (n.kind === 'hospital') {
-          drawHospital(g, p.x, p.y, base, hw * 1.05);
+          drawHospital(g, q.x, q.y, base, hw * 1.05);
         } else {
-          const lift = drawNodeStack(g, p.x, p.y, n.tier, base, hw);
-          drawNodeIcon(g, n.kind, p.x, p.y - lift - 12, 1);
+          const lift = drawNodeStack(g, q.x, q.y, n.tier, base, hw);
+          drawNodeIcon(g, n.kind, q.x, q.y - lift - 12, 1);
         }
-        if (locked) {
-          drawLock(g, p.x, p.y - 34, 1);
-          if (detail || selNode === n.id) this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + iso.tile / 2 + 2, '#ffd08a', 11);
-        }
+        if (locked) drawLock(g, q.x, q.y - 34, 1);
+        if (scaled) g.restore();
+
+        // Labels sit under the (possibly enlarged) node and are enlarged with it.
+        const below = (iso.tile / 2) * nodeK + 2;
+        this.labelBoost = kLabel;
+        if (locked && (detail || selNode === n.id)) this.label(`Opens in ${fmtTime((n.unlocksAtMs ?? 0) - simMs)}`, p.x, p.y + below, '#ffd08a', 11);
         // Zoomed far out the timers are unreadable, so they only show up close or on the selected node.
         if (detail || selNode === n.id) {
-          if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + iso.tile / 2 + 16, '#ffe08a', 11);
-          else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + iso.tile / 2 + 16, '#9fd0ff', 10);
+          if (n.poolOpen) this.label(`Pool ${fmtInt(n.pool ?? 0)}`, p.x, p.y + below + 14 * nodeK, '#ffe08a', 11);
+          else if (n.settlesAtMs !== undefined) this.label(`Settles in ${fmtTime(n.settlesAtMs - simMs)}`, p.x, p.y + below + 14 * nodeK, '#9fd0ff', 10);
         }
         if (n.garrisonCount !== undefined) {
           const own = n.owner === mine && n.visible;
           const txt = own ? `${n.garrisonCount}/${this.tune.garrison.maxSquads}` : `~${n.garrisonCount}`;
           const stale = !own && n.garrisonCountAsOfMs !== undefined ? ` (${Math.round((simMs - n.garrisonCountAsOfMs) / 1000)}s)` : '';
-          this.label(txt + stale, p.x, p.y + iso.tile / 2 + 2, own ? '#cfe9ff' : '#ffd08a', 11);
+          this.label(txt + stale, p.x, p.y + below, own ? '#cfe9ff' : '#ffd08a', 11);
         }
+        this.labelBoost = 1;
       });
     }
 
@@ -978,9 +1001,10 @@ export class GameScene extends BaseScene {
       add(ping.pos, () => {
         const p = iso.p(ping.pos.x, ping.pos.y);
         const k = 0.5 + 0.5 * Math.sin(now * 7);
-        square(g, p.x, p.y, iso.tile / 2 + 6 + 4 * k, undefined, 1, COLORS.accent, 4);
+        const nk = nodeK;
+        square(g, p.x, p.y, (iso.tile / 2 + 6) * nk + 4 * k, undefined, 1, COLORS.accent, 4);
         const bob = Math.sin(now * 6) * 4;
-        g.fillStyle(COLORS.accent, 1).fillTriangle(p.x - 9, p.y - 74 + bob, p.x + 9, p.y - 74 + bob, p.x, p.y - 60 + bob);
+        g.fillStyle(COLORS.accent, 1).fillTriangle(p.x - 9 * nk, p.y - 74 * nk + bob, p.x + 9 * nk, p.y - 74 * nk + bob, p.x, p.y - 60 * nk + bob);
       });
     } else if (this.cuePing) this.cuePing = null;
 
