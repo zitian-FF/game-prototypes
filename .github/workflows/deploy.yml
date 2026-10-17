@@ -109,6 +109,25 @@ jobs:
           # Production review output is local QA evidence, not a public stage route.
           rm -rf ../dist/staging/production
 
+      - name: Export Myuse Godot demo for the web
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/godot-4.3"
+          mkdir -p "$tools" "$HOME/.local/share/godot/export_templates/4.3.stable" dist/myuse
+          base="https://github.com/godotengine/godot-builds/releases/download/4.3-stable"
+          curl -fL --retry 3 "$base/Godot_v4.3-stable_linux.x86_64.zip" -o "$tools/editor.zip"
+          curl -fL --retry 3 "$base/Godot_v4.3-stable_export_templates.tpz" -o "$tools/templates.tpz"
+          unzip -q "$tools/editor.zip" -d "$tools"
+          unzip -j -q "$tools/templates.tpz" 'templates/web_nothreads_release.zip' -d "$HOME/.local/share/godot/export_templates/4.3.stable"
+          godot="$tools/Godot_v4.3-stable_linux.x86_64"
+          chmod +x "$godot"
+          "$godot" --headless --path godot/myuse --editor --import
+          "$godot" --headless --path godot/myuse --export-release Web ../../dist/myuse/index.html
+          test -s dist/myuse/index.html
+          test -s dist/myuse/index.wasm
+          test -s dist/myuse/index.pck
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
