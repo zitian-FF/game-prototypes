@@ -19,3 +19,5 @@ scripts/simulate-output/
 
 # Local workshop build (never publish backend)
 .local/
+godot/**/.godot/
+godot/**/export_credentials.cfg
