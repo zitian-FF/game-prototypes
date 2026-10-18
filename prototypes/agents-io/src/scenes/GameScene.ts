@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { PIXEL_RATIO, mix } from 'dig-kit';
-import { AGENT_CELLS, BOARD_H, BOARD_W, CELL, COLS, ROWS, anchorAround, anchorNear, clamp } from '../game/board';
+import { AGENT_CELLS, BOARD_H, BOARD_W, CELL, COLS, ROWS, anchorAround, anchorNear, clamp, portCells } from '../game/board';
 import { LEVELS, type Kind, MODEL_INFO, type ModelId, type NodeRef, type WordId } from '../game/content';
 import { Game, type GameEvent } from '../game/game';
-import { type BatchResult, canPlace, estimate, nodeCost, nodeRect, skillOf } from '../game/sim';
+import { type BatchResult, type Edge, canPlace, estimate, inKinds, nodeCost, nodeRect, outKinds, skillOf } from '../game/sim';
 import { type BlueprintApi, type BoardHit, type Feedback, type Intent, IntentBus, bindBlueprintPointer, bindDesktopKeys, bindTap } from '../input/intents';
 import { HEIGHT, WIDTH } from '../pixelRatio';
 import { tune } from '../tune';
@@ -243,14 +243,28 @@ export class GameScene extends Phaser.Scene {
     return { x: r.x * CELL, y: r.y * CELL, w: r.w * CELL, h: r.h * CELL };
   }
 
-  private portOut(ref: NodeRef): V2 {
-    const r = this.rectPx(ref);
-    return new Phaser.Math.Vector2(r.x + r.w / 2, r.y + r.h);
+  private outs(ref: NodeRef): Kind[] {
+    return outKinds(this.game_.layout, this.game_.level, ref);
   }
 
-  private portIn(ref: NodeRef): V2 {
+  private ins(ref: NodeRef): Kind[] {
+    return inKinds(this.game_.layout, this.game_.level, ref);
+  }
+
+  /** Output port of the given type, on the bottom edge. Ports sit on grid lines. */
+  private portOut(ref: NodeRef, kind: Kind): V2 {
     const r = this.rectPx(ref);
-    return new Phaser.Math.Vector2(r.x + r.w / 2, r.y);
+    const kinds = this.outs(ref);
+    const cells = portCells(kinds.length || 1);
+    return new Phaser.Math.Vector2(r.x + cells[Math.max(0, kinds.indexOf(kind))] * CELL, r.y + r.h);
+  }
+
+  /** Input port of the given type, on the top edge. */
+  private portIn(ref: NodeRef, kind: Kind): V2 {
+    const r = this.rectPx(ref);
+    const kinds = this.ins(ref);
+    const cells = portCells(kinds.length || 1);
+    return new Phaser.Math.Vector2(r.x + cells[Math.max(0, kinds.indexOf(kind))] * CELL, r.y);
   }
 
   private modelColor(ref: NodeRef): number {
@@ -258,18 +272,14 @@ export class GameScene extends Phaser.Scene {
     return cfg ? MODEL_INFO[cfg.model].color : C.wire;
   }
 
-  private kindOf(ref: NodeRef): Kind {
-    return ref === 'in' ? this.game_.level.inKind : (this.game_.cfgOf(ref)?.out ?? 'text');
-  }
-
   private nodeName(ref: NodeRef): string {
     return ref === 'in' ? 'INPUT' : ref === 'out' ? 'DELIVER' : MODEL_INFO[this.game_.cfgOf(ref)?.model ?? 'nano'].label;
   }
 
   /** Orthogonal route from an output port to an input port, corners on grid lines, then rounded. */
-  private route(a: NodeRef, b: NodeRef): Path {
-    const p = this.portOut(a);
-    const q = this.portIn(b);
+  private route(a: NodeRef, b: NodeRef, kind: Kind): Path {
+    const p = this.portOut(a, kind);
+    const q = this.portIn(b, kind);
     const V = (x: number, y: number) => new Phaser.Math.Vector2(x, y);
     const s = p.y + CELL;
     const t = q.y - CELL;
@@ -328,8 +338,10 @@ export class GameScene extends Phaser.Scene {
     const R = clamp(12 / z, 10, 24);
     const withPorts: NodeRef[] = ['in', ...Object.keys(layout.nodes)];
     for (const ref of withPorts) {
-      const p = this.portOut(ref);
-      if (Phaser.Math.Distance.Between(bx, by, p.x, p.y) <= R) return { kind: 'port', ref };
+      for (const portKind of this.outs(ref)) {
+        const p = this.portOut(ref, portKind);
+        if (Phaser.Math.Distance.Between(bx, by, p.x, p.y) <= R) return { kind: 'port', ref, portKind };
+      }
     }
     const order = [...Object.keys(layout.nodes).reverse(), 'in', 'out'];
     for (const ref of order) {
@@ -338,7 +350,7 @@ export class GameScene extends Phaser.Scene {
     }
     const thr = clamp(7 / z, 5, 14);
     for (let i = 0; i < layout.edges.length; i++) {
-      const pts = this.route(layout.edges[i][0], layout.edges[i][1]).pts;
+      const pts = this.route(layout.edges[i][0], layout.edges[i][1], layout.edges[i][2]).pts;
       for (let k = 1; k < pts.length; k++) {
         if (this.segDist(bx, by, pts[k - 1], pts[k]) <= thr) return { kind: 'wire', index: i };
       }
@@ -715,12 +727,12 @@ export class GameScene extends Phaser.Scene {
 
     // Wires under the nodes
     const wires = this.gfx();
-    layout.edges.forEach(([a, b], i) => {
+    layout.edges.forEach(([a, b, k], i) => {
       const live = est.active.has(a) && est.active.has(b);
       const sel = g.selectedWire === i;
       const color = this.modelColor(a);
-      const path = this.route(a, b);
-      const dashed = this.kindOf(a) === 'image';
+      const path = this.route(a, b, k);
+      const dashed = k === 'image';
       this.stroke(wires, path.pts, sel ? 0xffffff : color, sel ? 0.25 : live ? 0.16 : 0.05, 11, false);
       this.stroke(wires, path.pts, sel ? 0xffffff : color, live || sel ? 1 : 0.32, sel ? 3.5 : 2.5, dashed);
       const e = path.pts[path.pts.length - 1];
@@ -771,8 +783,8 @@ export class GameScene extends Phaser.Scene {
       gr.strokeRoundedRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, 14);
       this.put(this.txt(b.x + 18, b.y + b.h / 2 - 8, ref === 'in' ? 'INPUT' : 'DELIVER', 13, hex(C.text), true, 1.4, true));
       this.badge(b.x + b.w - 18, b.y + b.h / 2 - 9, kind, C.dim, 1);
-      if (ref === 'in') this.port(this.portOut('in'), 'out', kind, C.wire, 1);
-      else this.port(this.portIn('out'), 'in', kind, C.wire, 1);
+      if (ref === 'in') this.port(this.portOut('in', kind), 'out', kind, C.wire, 1);
+      else this.port(this.portIn('out', kind), 'in', kind, C.wire, 1);
       return;
     }
 
@@ -793,7 +805,8 @@ export class GameScene extends Phaser.Scene {
 
     this.put(this.txt(b.x + 16, b.y + 9, info.label, 15, hex(info.color), true, 0, true)).setAlpha(alpha);
     this.put(this.txt(b.x + 16, b.y + 29, active ? `${nodeCost(cfg)} tok   ${tune.models[cfg.model].latency} s` : 'not on a path', 10, hex(C.dim), false, 0, true)).setAlpha(alpha);
-    this.badge(b.x + b.w - 14, b.y + 12, cfg.out, info.color, alpha);
+    let bxr = b.x + b.w - 14;
+    for (const k of [...info.out].reverse()) bxr -= this.badge(bxr, b.y + 12, k, info.color, alpha) + 6;
 
     let px = b.x + 16;
     let py = b.y + 52;
@@ -812,12 +825,12 @@ export class GameScene extends Phaser.Scene {
       this.put(this.txt(px + 7, py + 3, w, 10, hex(C.text), true, 0.4, true)).setAlpha(alpha);
       px += pw + 5;
     }
-    this.port(this.portIn(ref), 'in', cfg.out, info.color, alpha);
-    this.port(this.portOut(ref), 'out', cfg.out, info.color, alpha);
+    for (const k of info.in) this.port(this.portIn(ref, k), 'in', k, info.color, alpha);
+    for (const k of info.out) this.port(this.portOut(ref, k), 'out', k, info.color, alpha);
   }
 
   /** Outlined type badge, right-aligned at x. */
-  private badge(xRight: number, y: number, kind: Kind, color: number, alpha: number): void {
+  private badge(xRight: number, y: number, kind: Kind, color: number, alpha: number): number {
     const t = this.put(this.txt(0, 0, kind.toUpperCase(), 8.5, hex(color), true, 0.8, true)).setAlpha(alpha);
     const w = Math.ceil(t.width) + 14;
     const g = this.gfx();
@@ -825,6 +838,7 @@ export class GameScene extends Phaser.Scene {
     g.strokeRoundedRect(xRight - w + 0.5, y + 0.5, w - 1, 17, 8.5);
     this.cur.bringToTop(t);
     t.setPosition(xRight - w + 7, y + 4);
+    return w;
   }
 
   /** A connector: output ports are filled (circle for text, diamond for image), input ports are rings. */
@@ -835,7 +849,8 @@ export class GameScene extends Phaser.Scene {
     g.fillCircle(at.x, at.y, 9);
     if (dir === 'in') {
       g.lineStyle(2.5, color, 1);
-      g.strokeCircle(at.x, at.y, 6);
+      if (kind === 'image') g.strokePoints([new Phaser.Math.Vector2(at.x, at.y - 7.5), new Phaser.Math.Vector2(at.x + 7.5, at.y), new Phaser.Math.Vector2(at.x, at.y + 7.5), new Phaser.Math.Vector2(at.x - 7.5, at.y)], true, true);
+      else g.strokeCircle(at.x, at.y, 6);
     } else if (kind === 'image') {
       g.fillStyle(color, 1);
       g.fillPoints([new Phaser.Math.Vector2(at.x, at.y - 7.5), new Phaser.Math.Vector2(at.x + 7.5, at.y), new Phaser.Math.Vector2(at.x, at.y + 7.5), new Phaser.Math.Vector2(at.x - 7.5, at.y)], true);
@@ -870,15 +885,15 @@ export class GameScene extends Phaser.Scene {
       const ok = canPlace(layout, a.x, a.y, f.id);
       box(a.x, a.y, ok ? this.modelColor(f.id) : C.bad, 0.12, 0.9);
     } else {
-      const p = this.portOut(f.from);
+      const p = this.portOut(f.from, f.wireKind);
       g.lineStyle(2.5, 0xffffff, 0.85);
       g.lineBetween(p.x, p.y, f.bx, f.by);
       g.fillStyle(0xffffff, 1);
       g.fillCircle(f.bx, f.by, 5);
       for (const ref of ['out', ...Object.keys(layout.nodes)]) {
-        if (ref === f.from) continue;
-        const q = this.portIn(ref);
-        const ok = this.game_.wireOk(f.from, ref);
+        if (ref === f.from || !this.ins(ref).includes(f.wireKind)) continue;
+        const q = this.portIn(ref, f.wireKind);
+        const ok = this.game_.wireOk(f.from, ref, f.wireKind);
         g.lineStyle(ok ? 3 : 1.5, ok ? C.good : C.bad, ok ? 0.95 : 0.35);
         g.strokeCircle(q.x, q.y, ok ? 13 : 11);
       }
@@ -1050,16 +1065,16 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private drawWireInfo(ix: number, iw: number, edge: [NodeRef, NodeRef]): void {
-    const [a, b] = edge;
+  private drawWireInfo(ix: number, iw: number, edge: Edge): void {
+    const [a, b, k] = edge;
     this.label(ix, BODY_Y + 14, 'Inspector');
     this.put(this.txt(ix, BODY_Y + 34, 'WIRE', 19, hex(C.text), true, 1));
     this.put(this.txt(ix, BODY_Y + 72, this.nodeName(a), 15, hex(this.modelColor(a)), true));
     this.put(this.txt(ix + 110, BODY_Y + 74, '>', 13, hex(C.faint), true));
     this.put(this.txt(ix + 132, BODY_Y + 72, this.nodeName(b), 15, hex(b === 'out' ? C.text : this.modelColor(b)), true));
     this.label(ix, BODY_Y + 112, 'Carries');
-    this.kindBadge(ix, BODY_Y + 128, this.kindOf(a));
-    this.put(this.txt(ix, BODY_Y + 162, `${this.kindOf(a) === 'image' ? 'Image wires are dashed.' : 'Text wires are solid.'}\nPress Delete or the button to remove it.`, 11.5, hex(C.dim))).setWordWrapWidth(iw).setLineSpacing(3);
+    this.kindBadge(ix, BODY_Y + 128, k);
+    this.put(this.txt(ix, BODY_Y + 162, `${k === 'image' ? 'Image wires are dashed.' : 'Text wires are solid.'}\nPress Delete or the button to remove it.`, 11.5, hex(C.dim))).setWordWrapWidth(iw).setLineSpacing(3);
     this.button('removeWire', ix + iw - 110, BODY_Y + 296, 110, 30, 'Remove wire', null, 'danger', true, { type: 'delete' }, 11.5);
   }
 
@@ -1095,20 +1110,9 @@ export class GameScene extends Phaser.Scene {
     let bx = ix;
     for (const k of info.in) bx += this.kindBadge(bx, BODY_Y + 204, k) + 6;
 
-    this.label(ix, BODY_Y + 238, 'Output');
-    info.out.forEach((k, i) => {
-      const w = 92;
-      const x = ix + i * (w + 6);
-      const y = BODY_Y + 254;
-      const on = cfg.out === k;
-      const g = this.gfx();
-      g.fillStyle(on ? mix(C.raised, info.color, 0.3) : C.raised, 1);
-      g.fillRoundedRect(x, y, w, 28, 9);
-      g.lineStyle(on ? 1.5 : 1, on ? info.color : C.line, 1);
-      g.strokeRoundedRect(x + 0.5, y + 0.5, w - 1, 27, 9);
-      this.put(this.txt(x + w / 2, y + 14, k.toUpperCase(), 10.5, hex(on ? C.text : C.dim), true, 1)).setOrigin(0.5);
-      if (!on) this.hot('cycleOut', x, y, w, 28, { type: 'cycleOut' }, 9);
-    });
+    this.label(ix, BODY_Y + 238, 'Writes');
+    let wx = ix;
+    for (const k of info.out) wx += this.kindBadge(wx, BODY_Y + 254, k) + 6;
     this.put(this.txt(ix, BODY_Y + 304, `Costs ${nodeCost(cfg)} tokens per task.`, 11, hex(C.dim)));
     this.put(this.txt(ix, BODY_Y + 322, `Each extra word weakens the rest by ${Math.round(t.dilute * 100)}%.`, 11, hex(C.faint)));
     this.button('remove', ix + iw - 80, BODY_Y + 296, 80, 28, 'Remove', null, 'danger', true, { type: 'remove', id }, 11.5);
@@ -1125,11 +1129,11 @@ export class GameScene extends Phaser.Scene {
     let last = 0;
     const arrive = new Map<number, number>();
     const paths = new Map<string, Path>();
-    for (const [a, b] of res.edges) paths.set(`${a}>${b}`, this.route(a, b));
+    for (const [a, b, k] of res.edges) paths.set(`${a}>${b}>${k}`, this.route(a, b, k));
     res.tasks.forEach((task, ti) => {
-      for (const [a, b] of res.edges) {
+      for (const [a, b, k] of res.edges) {
         const start = ti * tune.anim.taskStaggerSeconds + (res.finish[a] ?? 0) * secs;
-        const path = paths.get(`${a}>${b}`) as Path;
+        const path = paths.get(`${a}>${b}>${k}`) as Path;
         const p0 = path.pts[0];
         const dot = this.add.circle(p0.x, p0.y, tune.anim.dotRadius, this.modelColor(a), 1).setAlpha(0);
         this.fx.add(dot);
@@ -1218,7 +1222,8 @@ export class GameScene extends Phaser.Scene {
     (window as unknown as Record<string, unknown>).__agents = {
       /**
        * Logical position of a named control: 'run', 'word:x', 'model:x', 'fit', ...; a node id
-       * ('in', 'out', 'n1'); 'port:out:n1' or 'port:in:n1'; or 'cell:12,10' (centre of a grid cell).
+       * ('in', 'out', 'n1'); 'port:out:n1' or 'port:in:n1' (add ':image' or ':text' to pick a port of a
+       * multimodal agent); or 'cell:12,10' (centre of a grid cell).
        */
       at: (name: string) => {
         if (name.startsWith('cell:')) {
@@ -1226,8 +1231,10 @@ export class GameScene extends Phaser.Scene {
           return this.toScreen((cx + 0.5) * CELL, (cy + 0.5) * CELL);
         }
         if (name.startsWith('port:')) {
-          const [, dir, ref] = name.split(':');
-          const p = dir === 'out' ? this.portOut(ref) : this.portIn(ref);
+          const [, dir, ref, kindName] = name.split(':');
+          const kinds = dir === 'out' ? this.outs(ref) : this.ins(ref);
+          const kind = (kindName as Kind | undefined) ?? kinds[0];
+          const p = dir === 'out' ? this.portOut(ref, kind) : this.portIn(ref, kind);
           return this.toScreen(p.x, p.y);
         }
         if (name === 'in' || name === 'out' || this.game_.layout.nodes[name]) {

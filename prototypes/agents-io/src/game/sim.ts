@@ -6,20 +6,36 @@ import { type Kind, LEVELS, type Level, MODEL_INFO, type ModelId, type NodeRef, 
 export interface NodeCfg {
   model: ModelId;
   words: WordId[];
-  out: Kind;
   /** Top-left grid cell on the blueprint. */
   x: number;
   y: number;
 }
 
+/** A wire: from node, to node, and the type it carries (the type of the ports at both ends). */
+export type Edge = [NodeRef, NodeRef, Kind];
+
 export interface Layout {
   nodes: Record<string, NodeCfg>;
-  edges: [NodeRef, NodeRef][];
+  edges: Edge[];
   /** Counter for new agent ids ('n1', 'n2', ...). */
   next: number;
 }
 
 export const emptyLayout = (): Layout => ({ nodes: {}, edges: [], next: 1 });
+
+/** Types a node can send out of its output ports, in port order. */
+export function outKinds(layout: Layout, level: Level, ref: NodeRef): Kind[] {
+  if (ref === 'in') return [level.inKind];
+  const n = layout.nodes[ref];
+  return n && ref !== 'out' ? MODEL_INFO[n.model].out : [];
+}
+
+/** Types a node accepts on its input ports, in port order. */
+export function inKinds(layout: Layout, level: Level, ref: NodeRef): Kind[] {
+  if (ref === 'out') return [level.outKind];
+  const n = layout.nodes[ref];
+  return n && ref !== 'in' ? MODEL_INFO[n.model].in : [];
+}
 
 /** Footprint of a node in grid cells. */
 export function nodeRect(layout: Layout, ref: NodeRef): CellRect {
@@ -61,28 +77,16 @@ export const wordChance = (model: ModelId, word: WordId, wordCount: number): num
 export const nodeCost = (cfg: NodeCfg): number =>
   tune.models[cfg.model].price * (tune.run.overheadTokens + cfg.words.reduce((s, w) => s + tune.words[w].cost, 0));
 
-const kindOf = (layout: Layout, level: Level, ref: NodeRef): Kind | null =>
-  ref === 'in' ? level.inKind : ref === 'out' ? null : layout.nodes[ref]?.out ?? null;
-
-export function canConnect(layout: Layout, level: Level, from: NodeRef, to: NodeRef): { ok: boolean; reason: string } {
+export function canConnect(layout: Layout, level: Level, from: NodeRef, to: NodeRef, kind: Kind): { ok: boolean; reason: string } {
   if (from === 'out' || to === 'in' || from === to) return { ok: false, reason: 'Wires run from an output port to an input port' };
   if (from !== 'in' && !layout.nodes[from]) return { ok: false, reason: 'Nothing to wire from' };
   if (to !== 'out' && !layout.nodes[to]) return { ok: false, reason: 'Nothing to wire to' };
-  const kind = kindOf(layout, level, from) as Kind;
-  if (to === 'out') {
-    return kind === level.outKind ? { ok: true, reason: '' } : { ok: false, reason: `DELIVER wants ${level.outKind}, this outputs ${kind}` };
+  if (!outKinds(layout, level, from).includes(kind)) return { ok: false, reason: 'That node has no such output' };
+  if (!inKinds(layout, level, to).includes(kind)) {
+    return to === 'out' ? { ok: false, reason: `DELIVER wants ${level.outKind}, this carries ${kind}` } : { ok: false, reason: `${MODEL_INFO[layout.nodes[to].model].label} cannot take ${kind}` };
   }
-  const cfg = layout.nodes[to] as NodeCfg;
-  if (!MODEL_INFO[cfg.model].in.includes(kind)) return { ok: false, reason: `${MODEL_INFO[cfg.model].label} cannot take ${kind}` };
   if (wouldLoop(layout, from, to)) return { ok: false, reason: 'That wire would make a loop' };
   return { ok: true, reason: '' };
-}
-
-/** Drop wires that no longer type-check or point at removed nodes. Returns how many were dropped. */
-export function pruneEdges(layout: Layout, level: Level): number {
-  const before = layout.edges.length;
-  layout.edges = layout.edges.filter(([a, b]) => canConnect(layout, level, a, b).ok);
-  return before - layout.edges.length;
 }
 
 /** Nodes that sit on a path from INPUT to DELIVER. Only these run and cost tokens. */
@@ -165,7 +169,7 @@ export interface BatchResult {
   /** Fraction of tasks where each needed word made it into the output. */
   wordRates: Partial<Record<WordId, number>>;
   /** Active edges and node finish times, for the run animation. */
-  edges: [NodeRef, NodeRef][];
+  edges: Edge[];
   finish: Partial<Record<NodeRef, number>>;
 }
 

@@ -1,10 +1,10 @@
 import { tune } from '../tune';
 import type { Intent } from '../input/intents';
 import { anchorAround, anchorNear } from './board';
-import { LEVELS, type Level, MODEL_INFO, type NodeRef } from './content';
-import { type BatchResult, type Layout, type NodeCfg, canConnect, canPlace, emptyLayout, estimate, pruneEdges, simulateBatch } from './sim';
+import { type Kind, LEVELS, type Level, MODEL_INFO, type NodeRef } from './content';
+import { type BatchResult, type Layout, type NodeCfg, canConnect, canPlace, emptyLayout, estimate, simulateBatch } from './sim';
 
-export const SAVE_KEY = 'agents-io:save:v3';
+export const SAVE_KEY = 'agents-io:save:v4';
 
 export interface Best {
   stars: number;
@@ -14,7 +14,7 @@ export interface Best {
 }
 
 interface Save {
-  v: 3;
+  v: 4;
   levelIdx: number;
   unlocked: number;
   layouts: Record<string, Layout>;
@@ -120,7 +120,7 @@ export class Game {
       case 'place': {
         if (!this.pending) return;
         const id = `n${layout.next++}`;
-        const cfg: NodeCfg = { model: i.model, words: [], out: MODEL_INFO[i.model].out[0], x: this.pending.x, y: this.pending.y };
+        const cfg: NodeCfg = { model: i.model, words: [], x: this.pending.x, y: this.pending.y };
         layout.nodes[id] = cfg;
         this.clearSelection();
         this.selected = id;
@@ -163,30 +163,20 @@ export class Game {
         } else cfg.words.push(i.word);
         break;
       }
-      case 'cycleOut': {
-        const cfg = this.selectedCfg();
-        if (!cfg) return;
-        const outs = MODEL_INFO[cfg.model].out;
-        cfg.out = outs[(outs.indexOf(cfg.out) + 1) % outs.length];
-        const dropped = pruneEdges(layout, this.level);
-        if (dropped) this.toast(`${dropped} wire${dropped > 1 ? 's' : ''} removed (type mismatch)`);
-        this.selectedWire = null;
-        break;
-      }
       case 'wire': {
-        const { from, to } = i;
-        const has = layout.edges.findIndex(([a, b]) => a === from && b === to);
+        const { from, to, kind } = i;
+        const has = layout.edges.findIndex(([a, b, k]) => a === from && b === to && k === kind);
         if (has >= 0) {
           layout.edges.splice(has, 1);
           this.selectedWire = null;
           break;
         }
-        const ok = canConnect(layout, this.level, from, to);
+        const ok = canConnect(layout, this.level, from, to, kind);
         if (!ok.ok) {
           this.toast(ok.reason);
           return;
         }
-        layout.edges.push([from, to]);
+        layout.edges.push([from, to, kind]);
         this.selectedWire = null;
         break;
       }
@@ -257,8 +247,8 @@ export class Game {
   }
 
   /** Can a wire be drawn from `from` to `to` right now? (Used for drag feedback.) */
-  wireOk(from: NodeRef, to: NodeRef): boolean {
-    return canConnect(this.layout, this.level, from, to).ok;
+  wireOk(from: NodeRef, to: NodeRef, kind: Kind): boolean {
+    return canConnect(this.layout, this.level, from, to, kind).ok;
   }
 
   // ------------------------------------------------------------ save / load
@@ -268,7 +258,7 @@ export class Game {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Save;
-      if (s.v !== 3) return;
+      if (s.v !== 4) return;
       this.levelIdx = Math.min(s.levelIdx, LEVELS.length - 1);
       this.unlocked = Math.min(s.unlocked, LEVELS.length - 1);
       this.layouts = s.layouts ?? {};
@@ -279,7 +269,7 @@ export class Game {
   }
 
   save(): void {
-    const data: Save = { v: 3, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
+    const data: Save = { v: 4, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {

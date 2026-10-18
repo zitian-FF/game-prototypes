@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { IntentBus, bindKeys } from 'dig-kit';
-import type { ModelId, NodeRef, WordId } from '../game/content';
+import type { Kind, ModelId, NodeRef, WordId } from '../game/content';
 
 export type Intent =
   | { type: 'select'; ref: NodeRef | null }
@@ -13,8 +13,8 @@ export type Intent =
   | { type: 'remove'; id: NodeRef }
   | { type: 'delete' }
   | { type: 'word'; word: WordId }
-  | { type: 'cycleOut' }
-  | { type: 'wire'; from: NodeRef; to: NodeRef }
+  /** Wire the `kind` output port of `from` to the `kind` input port of `to`. */
+  | { type: 'wire'; from: NodeRef; to: NodeRef; kind: Kind }
   | { type: 'run' }
   | { type: 'level'; index: number }
   | { type: 'clear' }
@@ -46,14 +46,15 @@ export function bindTap(obj: Phaser.GameObjects.GameObject, bus: IntentBus<Inten
 }
 
 export type BoardHit =
-  | { kind: 'port'; ref: NodeRef }
+  /** An output port of a node, of the given wire type. */
+  | { kind: 'port'; ref: NodeRef; portKind: Kind }
   | { kind: 'node'; ref: NodeRef }
   | { kind: 'wire'; index: number }
   | { kind: 'empty'; inBoard: boolean };
 
 /** Live feedback while a pointer gesture is in progress (null when it ends). */
 export type Feedback =
-  | { kind: 'wire'; from: NodeRef; bx: number; by: number }
+  | { kind: 'wire'; from: NodeRef; wireKind: Kind; bx: number; by: number }
   | { kind: 'move'; id: NodeRef; bx: number; by: number }
   | { kind: 'hover'; bx: number; by: number }
   | null;
@@ -70,7 +71,7 @@ export interface BlueprintApi {
 
 /**
  * Pointer device binding for the blueprint.
- *  - press an output port and drag onto a node: wire
+ *  - press an output port and drag onto a node: wire (the wire carries that port's type)
  *  - press an agent and drag: move it (snaps to the grid on release)
  *  - click an empty cell: choose a spot for a new agent
  *  - click a wire: select it
@@ -84,6 +85,7 @@ export function bindBlueprintPointer(scene: Phaser.Scene, bus: IntentBus<Intent>
   let last = { x: 0, y: 0 };
   let moved = false;
   let from: NodeRef = '';
+  let fromKind: Kind = 'text';
   let grab = { x: 0, y: 0 };
   let inBoard = false;
   let wireIndex = -1;
@@ -105,6 +107,7 @@ export function bindBlueprintPointer(scene: Phaser.Scene, bus: IntentBus<Intent>
     if (h.kind === 'port') {
       mode = 'wire';
       from = h.ref;
+      fromKind = h.portKind;
     } else if (h.kind === 'node') {
       from = h.ref;
       bus.emit({ type: 'select', ref: h.ref });
@@ -138,7 +141,7 @@ export function bindBlueprintPointer(scene: Phaser.Scene, bus: IntentBus<Intent>
     if (mode === 'pan') {
       if (moved || p.button !== 0) bus.emit({ type: 'pan', dx: s.x - last.x, dy: s.y - last.y });
       last = { x: s.x, y: s.y };
-    } else if (mode === 'wire' && moved) api.feedback({ kind: 'wire', from, bx: b.x, by: b.y });
+    } else if (mode === 'wire' && moved) api.feedback({ kind: 'wire', from, wireKind: fromKind, bx: b.x, by: b.y });
     else if (mode === 'move' && moved) api.feedback({ kind: 'move', id: from, bx: b.x - grab.x, by: b.y - grab.y });
   });
 
@@ -148,7 +151,7 @@ export function bindBlueprintPointer(scene: Phaser.Scene, bus: IntentBus<Intent>
     const b = api.toBoard(s.x, s.y);
     if (mode === 'wire' && moved) {
       const h = api.hit(b.x, b.y);
-      if ((h.kind === 'node' || h.kind === 'port') && h.ref !== from) bus.emit({ type: 'wire', from, to: h.ref });
+      if ((h.kind === 'node' || h.kind === 'port') && h.ref !== from) bus.emit({ type: 'wire', from, to: h.ref, kind: fromKind });
     } else if (mode === 'move' && moved) bus.emit({ type: 'move', id: from, bx: b.x - grab.x, by: b.y - grab.y });
     else if (mode === 'wireClick' && !moved) bus.emit({ type: 'selectWire', index: wireIndex });
     else if (mode === 'empty' && !moved) bus.emit(inBoard ? { type: 'cell', bx: b.x, by: b.y } : { type: 'select', ref: null });

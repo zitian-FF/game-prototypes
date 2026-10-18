@@ -173,12 +173,36 @@ console.log('after next level', st.level, 'unlocked', st.unlocked);
 if (st.level !== 1) fail('next level should open level 2');
 await shot('11-level2');
 
+// Multimodal ports (level 2: image in, text out). Sage has a text and an image port on each side.
+const send = (i) => page.evaluate((x) => window.__agents.send(x), i);
+await send({ type: 'cell', bx: 20.5 * 24, by: 12.5 * 24 });
+await send({ type: 'place', model: 'sage' });
+await send({ type: 'cell', bx: 32.5 * 24, by: 12.5 * 24 });
+await send({ type: 'place', model: 'scribe' });
+const [m1, m2] = await nodeIds();
+await page.waitForTimeout(300);
+await shot('11b-sage-ports');
+await drag('port:out:in', m2); // refused: Scribe cannot take image
+await drag('port:out:in', m1); // Sage takes image on its image input port
+await drag(`port:out:${m1}:image`, 'out'); // refused: DELIVER wants text
+await drag(`port:out:${m1}:text`, 'out'); // Sage text output to DELIVER
+await drag(`port:out:${m1}:text`, m2); // Sage text output into Scribe's text input
+st = await state();
+console.log('multimodal edges', JSON.stringify(st.layout.edges));
+const hasE = (a, b, k) => st.layout.edges.some(([x, y, z]) => x === a && y === b && z === k);
+if (!hasE('in', m1, 'image')) fail('INPUT image should wire to the Sage image port');
+if (!hasE(m1, 'out', 'text')) fail('Sage text output should wire to DELIVER');
+if (hasE(m1, 'out', 'image')) fail('an image wire into a text DELIVER must be refused');
+if (hasE('in', m2, 'image')) fail('Scribe cannot take an image');
+if (!hasE(m1, m2, 'text')) fail('Sage text output should wire into the text-only Scribe');
+await shot('11c-multimodal-wired');
+
 // Persistence
 await page.reload();
 await page.waitForTimeout(900);
 const reloaded = await state();
 console.log('after reload: level', reloaded.level, 'best', JSON.stringify(reloaded.best));
-await page.evaluate(() => window.__agents.send({ type: 'level', index: 0 }));
+await send({ type: 'level', index: 0 });
 await page.waitForTimeout(300);
 const l1 = await state();
 console.log('level 1 layout kept:', Object.keys(l1.layout.nodes).length, 'agents,', l1.layout.edges.length, 'wires');

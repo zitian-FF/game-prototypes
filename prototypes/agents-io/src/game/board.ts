@@ -41,3 +41,6 @@ export const anchorNear = (bx: number, by: number): { x: number; y: number } => 
   x: clamp(Math.round(bx / CELL), 0, COLS - AGENT_CELLS.w),
   y: clamp(Math.round(by / CELL), 0, ROWS - AGENT_CELLS.h),
 });
+
+/** Cell offsets (from a node's left edge) for n ports along its 8-cell edge, on grid lines. */
+export const portCells = (n: number): number[] => (n >= 3 ? [2, 4, 6] : n === 2 ? [3, 5] : [4]);

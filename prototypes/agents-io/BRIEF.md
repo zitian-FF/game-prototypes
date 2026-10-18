@@ -23,10 +23,13 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
 3. Give nodes words from the level's word basket. Words are reusable; each placement costs tokens
    on every task the node handles.
 4. Wire INPUT to nodes to DELIVER by dragging from an output port (bottom of a node) onto the next
-   node. Wires are typed: a node can only feed another node whose model accepts the type it
-   outputs. Models with several output types let the player choose. Wires take the colour of their
-   source model; image wires are dashed and come from diamond ports, text wires are solid and come
-   from round ports. Wires are routed in right angles along the grid.
+   node. Every agent has one input port and one output port per type its model handles (top and
+   bottom edges): most models have one of each, multimodal Sage has a text and an image port on
+   both sides. A wire carries the type of the port it leaves from and can only land on an input
+   port of the same type, so a text wire cannot enter an image-only input. All output ports of an
+   agent carry the same words. Wires take the colour of their source model; image wires are dashed
+   and use diamond ports, text wires are solid and use round ports (output ports filled, input
+   ports hollow). Wires are routed in right angles along the grid.
 5. Press Run. A fixed batch of tasks flows through the network. Score: delivered %, tokens per
    task, seconds per task. Stars: 1 delivered goal, 2 plus cost goal, 3 plus time goal.
    Runs are free and instant, so the player can iterate quickly.
@@ -90,5 +93,5 @@ phone layout.
 - Are words consumed when used, or reusable? (Prototype assumes reusable.)
 - Matching (current) or fuzzy axis scoring for quality?
 - What does the long-run progression layer look like beyond unlocking levels?
-- Ports are one input (top) and one output (bottom) per agent; the chosen output type sets the wire
-  type. Do multi-port agents (separate text and image ports) belong in a later level?
+- Multimodal agents have separate text and image ports (decided). Should using several output ports
+  at once cost extra, or stay free as it is now?
