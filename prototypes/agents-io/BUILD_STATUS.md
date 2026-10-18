@@ -75,12 +75,16 @@ goal) or on a real GPU.
 - BRIEF.md may need updating once decided: words reusable versus consumed, matching versus fuzzy
   quality scoring, and the long-run progression layer. These were defaults, not confirmed.
 - Multimodal agents can now use several output ports at once for no extra cost. Should that cost extra?
+- Should the blueprint panel become wider than square now that the flow is left to right? (It was kept
+  square as asked.)
 - Level goals and model numbers are still first guesses balanced only by simulation, not by play.
 - Interpretation to confirm: the top bar holds live resource gauges against the goals, the left column
   the task brief and goal detail.
 
 ## Known issues
 
+- The board is wider than tall (44x30 cells) but the blueprint viewport is square, so Fit lands around 59%
+  zoom and node text is small until you zoom in. A wider blueprint panel would fix it.
 - Wires can pass through agents that sit in their path (no obstacle-aware routing).
 - No minimap; a big board needs Fit or panning.
 - The view (zoom and pan) is not saved.
