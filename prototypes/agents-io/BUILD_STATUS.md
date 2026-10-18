@@ -1,7 +1,8 @@
 ## Current milestone
 
-Third iteration of the agents.io prototype: the blueprint is now a zoomable, pan-able, snap-to-grid board
-with node connectors (ports) and orthogonal wires, replacing the fixed 3x3 slots. Landscape desktop
+Fourth iteration of the agents.io prototype: multimodal agents now have separate typed ports. The
+blueprint is a zoomable, pan-able, snap-to-grid board with node connectors (ports) and orthogonal wires,
+replacing the fixed 3x3 slots. Landscape desktop
 layout, premium black UI and colour-coded models from the previous iteration are kept. Typecheck and
 build pass; played end to end with real mouse input in headless Chromium. Not tried on a phone (not a
 goal) or on a real GPU.
@@ -15,21 +16,29 @@ goal) or on a real GPU.
   model in the inspector. A faint footprint follows the pointer while hovering. Agents keep one empty
   cell clear of each other and of INPUT and DELIVER; crowded clicks are refused with a toast.
 - Moving: drag an agent; a ghost shows the snapped destination (red if blocked) and it commits on release.
-- Connectors: every agent has one input port (ring, top) and one output port (bottom; circle for text,
-  diamond for image). Drag from an output port onto any node to wire it. Valid input ports light up
-  green while dragging. Dragging the same pair again removes the wire.
+- Typed ports: every agent has one input port (hollow, top edge) and one output port (filled, bottom
+  edge) per type its model handles. Most models have one of each; multimodal Sage has a text and an
+  image port on both sides. Circles are text, diamonds are image. A wire carries the type of the port it
+  leaves from and only lands on an input port of the same type (INPUT has an output port of the level's
+  input type, DELIVER an input port of its output type). All output ports of an agent carry the same
+  words. The old "choose output type" switch is gone (the inspector now lists Reads and Writes).
+- Wiring: drag from an output port onto any node; valid input ports of that type light up green while
+  dragging. Dragging the same pair and type again removes the wire.
 - Wires: routed in right angles along the grid with rounded corners, coloured by the source model,
   dashed for image. A wire that would close a loop is refused; side-by-side wires are now allowed.
   Click a wire to select it (inspector shows it, Delete or the button removes it).
 - Delete removes the selected agent or wire, Escape deselects, Space runs.
 - Run animation follows the routed wires. Run order now comes from a topological sort of the wiring.
-- Save key is `agents-io:save:v3` (agent positions, words, wires, best results, unlocked level). View
+- Save key is `agents-io:save:v4` (agent positions, words, wires with their type, best results, unlocked
+  level); v3 saves are ignored. View
   zoom and pan are not saved; the board frames the network on load and on level change.
 - Verification this session: `npm run typecheck` clean, `npm run build` succeeds, and
   `scripts/screenshot-agents-io.mjs` passes at 1280x720: click-to-place two agents, words, four wires,
   a refused wire into INPUT, a refused loop, a side-by-side wire and its removal, wire selection, moving
-  an agent, wheel zoom, drag pan, Fit, run, an immediate second run, next level, and reload with the
-  layout kept; no console errors. A device-pixel-ratio 2 check (real clicks, crisp text) and the
+  an agent, wheel zoom, drag pan, Fit, run, an immediate second run, next level, a multimodal section on
+  level 2 (an image wire onto Sage's image port, a text wire to DELIVER, refused: image into a text-only
+  Scribe and Sage's image output into a text DELIVER, plus Sage's text output into Scribe), and reload with
+  the layout kept; no console errors. A device-pixel-ratio 2 check (real clicks, crisp text) and the
   standalone bundle used for the hosted playable build were checked in one-off scripts that are not
   committed. Headless software WebGL runs only about 7 fps at 1x here, so the script is slow; a real
   GPU is not expected to be.
@@ -57,8 +66,7 @@ goal) or on a real GPU.
 
 - BRIEF.md may need updating once decided: words reusable versus consumed, matching versus fuzzy
   quality scoring, and the long-run progression layer. These were defaults, not confirmed.
-- One input and one output port per agent for now; the agent's chosen output type sets the wire type. Do
-  multi-port agents (separate text and image ports) belong in a later level?
+- Multimodal agents can now use several output ports at once for no extra cost. Should that cost extra?
 - Level goals and model numbers are still first guesses balanced only by simulation, not by play.
 - Interpretation to confirm: the top bar holds live resource gauges against the goals, the left column
   the task brief and goal detail.
