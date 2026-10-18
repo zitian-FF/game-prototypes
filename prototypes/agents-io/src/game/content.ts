@@ -5,27 +5,29 @@ import { tune } from '../tune';
 export type Kind = 'text' | 'image';
 export type WordId = keyof typeof tune.words;
 export type ModelId = keyof typeof tune.models;
-export type SlotId = 's0' | 's1' | 's2' | 's3' | 's4' | 's5';
+export type SlotId = 's0' | 's1' | 's2' | 's3' | 's4' | 's5' | 's6' | 's7' | 's8';
 export type NodeRef = 'in' | 'out' | SlotId;
 
-export const SLOTS: SlotId[] = ['s0', 's1', 's2', 's3', 's4', 's5'];
+export const SLOTS: SlotId[] = ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
+export const SLOT_COLS = 3;
 export const SLOT_ROWS = 3;
-
-export const KIND_COLOR: Record<Kind, number> = { text: 0x6fb1ff, image: 0xffa05c };
 
 export interface ModelInfo {
   label: string;
+  /** One-line role shown in the picker. */
+  role: string;
   in: Kind[];
   out: Kind[];
+  /** The model's colour, used everywhere that model appears. */
   color: number;
 }
 
 export const MODEL_INFO: Record<ModelId, ModelInfo> = {
-  nano: { label: 'Nano', in: ['text'], out: ['text'], color: 0x4b6a8a },
-  scribe: { label: 'Scribe', in: ['text'], out: ['text'], color: 0x5a5f9e },
-  sage: { label: 'Sage', in: ['text', 'image'], out: ['text', 'image'], color: 0x8a5a9e },
-  lens: { label: 'Lens', in: ['text', 'image'], out: ['text'], color: 0x2f7f7a },
-  canvas: { label: 'Canvas', in: ['text'], out: ['image'], color: 0x9e5a4a },
+  nano: { label: 'Nano', role: 'Fast and cheap', in: ['text'], out: ['text'], color: 0x4fe3c1 },
+  scribe: { label: 'Scribe', role: 'Reliable writer', in: ['text'], out: ['text'], color: 0x5b8cff },
+  sage: { label: 'Sage', role: 'Frontier, multimodal', in: ['text', 'image'], out: ['text', 'image'], color: 0xb388ff },
+  lens: { label: 'Lens', role: 'Vision reader', in: ['text', 'image'], out: ['text'], color: 0xffb454 },
+  canvas: { label: 'Canvas', role: 'Image maker', in: ['text'], out: ['image'], color: 0xff6b9d },
 };
 
 export interface Level {
@@ -83,4 +85,4 @@ export const LEVELS: Level[] = [
   },
 ];
 
-export const slotRow = (ref: NodeRef): number => (ref === 'in' ? -1 : ref === 'out' ? SLOT_ROWS : Math.floor(SLOTS.indexOf(ref) / 2));
+export const slotRow = (ref: NodeRef): number => (ref === 'in' ? -1 : ref === 'out' ? SLOT_ROWS : Math.floor(SLOTS.indexOf(ref) / SLOT_COLS));

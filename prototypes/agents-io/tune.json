@@ -4,46 +4,103 @@
     "overheadTokens": 3,
     "unknownSkill": 35
   },
-  "wallet": {
-    "max": 400,
-    "refillPerSec": 4
-  },
   "anim": {
     "secondsPerLatency": 0.42,
     "taskStaggerSeconds": 0.22,
     "edgeSeconds": 0.3,
-    "dotRadius": 4,
+    "dotRadius": 5,
     "resultDelaySeconds": 0.5
   },
   "words": {
-    "formal": { "cost": 2 },
-    "apologize": { "cost": 2 },
-    "short": { "cost": 1 },
-    "summarize": { "cost": 3 },
-    "extract": { "cost": 3 },
-    "visual": { "cost": 3 },
-    "cheerful": { "cost": 2 }
+    "formal": {
+      "cost": 2
+    },
+    "apologize": {
+      "cost": 2
+    },
+    "short": {
+      "cost": 1
+    },
+    "summarize": {
+      "cost": 3
+    },
+    "extract": {
+      "cost": 3
+    },
+    "visual": {
+      "cost": 3
+    },
+    "cheerful": {
+      "cost": 2
+    }
   },
   "models": {
     "nano": {
-      "price": 1, "latency": 1, "slots": 2, "error": 0.1, "dilute": 0.2,
-      "skill": { "short": 85, "summarize": 60, "formal": 45, "apologize": 50, "cheerful": 55 }
+      "price": 1,
+      "latency": 1,
+      "slots": 2,
+      "error": 0.1,
+      "dilute": 0.2,
+      "skill": {
+        "short": 85,
+        "summarize": 60,
+        "formal": 45,
+        "apologize": 50,
+        "cheerful": 55
+      }
     },
     "scribe": {
-      "price": 2, "latency": 2, "slots": 3, "error": 0.05, "dilute": 0.12,
-      "skill": { "formal": 92, "apologize": 88, "short": 90, "summarize": 88, "cheerful": 85, "extract": 50 }
+      "price": 2,
+      "latency": 2,
+      "slots": 3,
+      "error": 0.05,
+      "dilute": 0.12,
+      "skill": {
+        "formal": 92,
+        "apologize": 88,
+        "short": 90,
+        "summarize": 88,
+        "cheerful": 85,
+        "extract": 50
+      }
     },
     "sage": {
-      "price": 5, "latency": 4, "slots": 4, "error": 0.02, "dilute": 0.04,
-      "skill": { "formal": 96, "apologize": 96, "short": 96, "summarize": 96, "extract": 96, "visual": 90, "cheerful": 96 }
+      "price": 5,
+      "latency": 4,
+      "slots": 4,
+      "error": 0.02,
+      "dilute": 0.04,
+      "skill": {
+        "formal": 96,
+        "apologize": 96,
+        "short": 96,
+        "summarize": 96,
+        "extract": 96,
+        "visual": 90,
+        "cheerful": 96
+      }
     },
     "lens": {
-      "price": 3, "latency": 2, "slots": 2, "error": 0.06, "dilute": 0.15,
-      "skill": { "extract": 92, "summarize": 55 }
+      "price": 3,
+      "latency": 2,
+      "slots": 2,
+      "error": 0.06,
+      "dilute": 0.15,
+      "skill": {
+        "extract": 92,
+        "summarize": 55
+      }
     },
     "canvas": {
-      "price": 4, "latency": 3, "slots": 2, "error": 0.05, "dilute": 0.15,
-      "skill": { "visual": 90, "cheerful": 75 }
+      "price": 4,
+      "latency": 3,
+      "slots": 2,
+      "error": 0.05,
+      "dilute": 0.15,
+      "skill": {
+        "visual": 90,
+        "cheerful": 75
+      }
     }
   }
 }

@@ -1,8 +1,9 @@
 // Visual + interaction check for agents.io. Usage:
 //   node scripts/screenshot-agents-io.mjs <baseUrl> <outDir>
 // baseUrl is a running dev/preview server, e.g. http://localhost:5199/game-prototypes/prototypes/agents-io/
-// Plays level 1 with real mouse input (tap a slot, tap a model, tap words, drag to wire),
-// runs the batch, checks the result, reloads to check the save, fails on any console error.
+// Landscape desktop build (1280x720). Plays level 1 with real mouse input (click a slot, click a
+// model, click words, drag to wire), runs the batch twice back to back (no wallet, so retries are
+// instant), checks the result, reloads to check the save, fails on any console error.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -17,7 +18,7 @@ if (!base || !outDir) {
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -85,9 +86,20 @@ await shot('5-running');
 await page.waitForFunction(() => !!window.__agents.state().result, null, { timeout: 15000 });
 await page.waitForTimeout(300);
 st = await state();
-console.log('result', JSON.stringify(st.result), 'wallet', st.wallet);
+console.log('result', JSON.stringify(st.result));
 await shot('6-result');
 if (!st.result || st.result.stars < 1) throw new Error('level 1 should earn a star');
+
+// Retry straight away: close the result and run again with no waiting.
+await tap('tweak');
+await page.waitForTimeout(200);
+st = await state();
+if (st.block) throw new Error('run should be available immediately, got: ' + st.block);
+await tap('run');
+await page.waitForFunction(() => !!window.__agents.state().result, null, { timeout: 15000 });
+await page.waitForTimeout(250);
+console.log('second run ok', JSON.stringify((await state()).result));
+await page.waitForTimeout(100);
 
 await tap('next');
 await page.waitForTimeout(300);
@@ -103,7 +115,7 @@ await shot('8-level2-lens');
 await page.reload();
 await page.waitForTimeout(900);
 const after = await state();
-console.log('after reload: level', after.level, 'best', JSON.stringify(after.best), 'wallet', after.wallet, 'nodes', Object.keys(after.layout.nodes));
+console.log('after reload: level', after.level, 'best', JSON.stringify(after.best), 'nodes', Object.keys(after.layout.nodes));
 await shot('9-reloaded');
 await browser.close();
 if (errors.length) {

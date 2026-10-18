@@ -3,7 +3,7 @@ import type { Intent } from '../input/intents';
 import { LEVELS, type Level, MODEL_INFO, type NodeRef, type SlotId } from './content';
 import { type BatchResult, type Layout, type NodeCfg, canConnect, emptyLayout, estimate, pruneEdges, simulateBatch } from './sim';
 
-export const SAVE_KEY = 'agents-io:save:v1';
+export const SAVE_KEY = 'agents-io:save:v2';
 
 export interface Best {
   stars: number;
@@ -13,13 +13,11 @@ export interface Best {
 }
 
 interface Save {
-  v: 1;
+  v: 2;
   levelIdx: number;
   unlocked: number;
   layouts: Record<string, Layout>;
   best: Record<string, Best>;
-  tokens: number;
-  savedAt: number;
 }
 
 export type GameEvent =
@@ -37,8 +35,8 @@ export class Game {
   running = false;
   /** Result waiting to be shown (set when a run finishes). */
   result: BatchResult | null = null;
-  private tokens = tune.wallet.max;
-  private tokensAt = Date.now();
+  /** Latest result per level, kept for the side panel (not saved). */
+  lastRuns: Record<string, BatchResult> = {};
   private listeners: ((e: GameEvent) => void)[] = [];
 
   constructor() {
@@ -65,28 +63,19 @@ export class Game {
     return (this.layouts[this.level.id] ??= emptyLayout());
   }
 
-  /** Wallet with real-time refill applied. */
-  walletNow(now = Date.now()): number {
-    return Math.min(tune.wallet.max, this.tokens + Math.max(0, (now - this.tokensAt) / 1000) * tune.wallet.refillPerSec);
-  }
-
+  /** Total tokens a batch of the current layout would spend. */
   runCost(): number {
     const est = estimate(this.layout);
     return est.valid ? est.costPerTask * tune.run.batchSize : 0;
   }
 
   /** Why Run is unavailable, or '' when it is ready. */
-  runBlock(now = Date.now()): string {
+  runBlock(): string {
     if (this.running) return 'Running';
-    const est = estimate(this.layout);
-    if (!est.valid) return est.reason;
-    const need = this.runCost();
-    const have = this.walletNow(now);
-    if (have < need) return `Need ${need} tok, refill in ${Math.ceil((need - have) / tune.wallet.refillPerSec)}s`;
-    return '';
+    return estimate(this.layout).reason;
   }
 
-  handle(i: Intent, now = Date.now()): void {
+  handle(i: Intent): void {
     if (this.running) return;
     switch (i.type) {
       case 'select':
@@ -166,22 +155,20 @@ export class Game {
         this.result = null;
         break;
       case 'run':
-        this.startRun(now);
+        this.startRun();
         return;
     }
-    this.save(now);
+    this.save();
     this.emit({ type: 'changed' });
   }
 
-  private startRun(now: number): void {
-    const block = this.runBlock(now);
+  private startRun(): void {
+    const block = this.runBlock();
     if (block) {
       this.toast(block);
       return;
     }
     const result = simulateBatch(this.layout, this.level) as BatchResult;
-    this.tokens = this.walletNow(now) - result.totalCost;
-    this.tokensAt = now;
     this.running = true;
     this.selected = null;
     const prev = this.best[this.level.id];
@@ -189,7 +176,7 @@ export class Game {
       this.best[this.level.id] = { stars: result.stars, successRate: result.successRate, costPerTask: result.costPerTask, time: result.time };
     }
     if (result.stars > 0) this.unlocked = Math.max(this.unlocked, Math.min(LEVELS.length - 1, this.levelIdx + 1));
-    this.save(now);
+    this.save();
     this.emit({ type: 'run', result });
     this.emit({ type: 'changed' });
   }
@@ -198,6 +185,7 @@ export class Game {
   finishRun(result: BatchResult): void {
     this.running = false;
     this.result = result;
+    this.lastRuns[result.levelId] = result;
     this.emit({ type: 'changed' });
   }
 
@@ -222,24 +210,18 @@ export class Game {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Save;
-      if (s.v !== 1) return;
+      if (s.v !== 2) return;
       this.levelIdx = Math.min(s.levelIdx, LEVELS.length - 1);
       this.unlocked = Math.min(s.unlocked, LEVELS.length - 1);
       this.layouts = s.layouts ?? {};
       this.best = s.best ?? {};
-      // Wallet refills in real time, including while the tab was closed.
-      this.tokens = s.tokens;
-      this.tokensAt = s.savedAt;
     } catch {
       /* corrupt or unavailable save: start fresh */
     }
   }
 
-  save(now = Date.now()): void {
-    const tokens = this.walletNow(now);
-    this.tokens = tokens;
-    this.tokensAt = now;
-    const data: Save = { v: 1, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best, tokens, savedAt: now };
+  save(): void {
+    const data: Save = { v: 2, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {

@@ -6,7 +6,7 @@ import { GameScene } from './scenes/GameScene';
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
-  backgroundColor: '#0e1119',
+  backgroundColor: '#07080b',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
