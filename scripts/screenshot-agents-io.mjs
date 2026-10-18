@@ -132,7 +132,7 @@ await page.waitForTimeout(150);
 const z1 = (await view()).zoom;
 await shot('6-zoomed');
 const v1 = await view();
-const a = await pt('cell:3,25');
+const a = await pt('cell:12,26');
 await page.mouse.move(a.x, a.y);
 await page.mouse.down();
 await page.mouse.move(a.x + 90, a.y - 60, { steps: 3 });
