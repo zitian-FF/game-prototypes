@@ -187,8 +187,8 @@ export class GameScene extends Phaser.Scene {
       x1 = Math.max(x1, (r.x + r.w) * CELL);
       y1 = Math.max(y1, (r.y + r.h) * CELL);
     }
-    const m = 2 * CELL;
-    this.view.zoom = clamp(Math.min(BS / (x1 - x0 + 2 * m), BS / (y1 - y0 + 2 * m)), 0.5, 1.3);
+    const m = 1.5 * CELL;
+    this.view.zoom = clamp(Math.min(BS / (x1 - x0 + 2 * m), BS / (y1 - y0 + 2 * m)), 0.4, 1.3);
     this.view.cx = (x0 + x1) / 2;
     this.view.cy = (y0 + y1) / 2;
     this.clampView();
@@ -251,20 +251,20 @@ export class GameScene extends Phaser.Scene {
     return inKinds(this.game_.layout, this.game_.level, ref);
   }
 
-  /** Output port of the given type, on the bottom edge. Ports sit on grid lines. */
+  /** Output port of the given type, on the right edge. Ports sit on grid lines. */
   private portOut(ref: NodeRef, kind: Kind): V2 {
     const r = this.rectPx(ref);
     const kinds = this.outs(ref);
-    const cells = portCells(kinds.length || 1);
-    return new Phaser.Math.Vector2(r.x + cells[Math.max(0, kinds.indexOf(kind))] * CELL, r.y + r.h);
+    const cells = portCells(kinds.length || 1, r.h / CELL);
+    return new Phaser.Math.Vector2(r.x + r.w, r.y + cells[Math.max(0, kinds.indexOf(kind))] * CELL);
   }
 
-  /** Input port of the given type, on the top edge. */
+  /** Input port of the given type, on the left edge. */
   private portIn(ref: NodeRef, kind: Kind): V2 {
     const r = this.rectPx(ref);
     const kinds = this.ins(ref);
-    const cells = portCells(kinds.length || 1);
-    return new Phaser.Math.Vector2(r.x + cells[Math.max(0, kinds.indexOf(kind))] * CELL, r.y);
+    const cells = portCells(kinds.length || 1, r.h / CELL);
+    return new Phaser.Math.Vector2(r.x, r.y + cells[Math.max(0, kinds.indexOf(kind))] * CELL);
   }
 
   private modelColor(ref: NodeRef): number {
@@ -276,23 +276,23 @@ export class GameScene extends Phaser.Scene {
     return ref === 'in' ? 'INPUT' : ref === 'out' ? 'DELIVER' : MODEL_INFO[this.game_.cfgOf(ref)?.model ?? 'nano'].label;
   }
 
-  /** Orthogonal route from an output port to an input port, corners on grid lines, then rounded. */
+  /** Orthogonal route from an output port (right edge) to an input port (left edge), corners on grid lines, then rounded. */
   private route(a: NodeRef, b: NodeRef, kind: Kind): Path {
     const p = this.portOut(a, kind);
     const q = this.portIn(b, kind);
     const V = (x: number, y: number) => new Phaser.Math.Vector2(x, y);
-    const s = p.y + CELL;
-    const t = q.y - CELL;
+    const s = p.x + CELL;
+    const t = q.x - CELL;
     let pts: V2[];
-    if (p.x === q.x && q.y > p.y) pts = [p, q];
+    if (p.y === q.y && q.x > p.x) pts = [p, q];
     else if (t >= s) {
-      const ym = Math.round((s + t) / 2 / CELL) * CELL;
-      pts = [p, V(p.x, ym), V(q.x, ym), q];
+      const xm = Math.round((s + t) / 2 / CELL) * CELL;
+      pts = [p, V(xm, p.y), V(xm, q.y), q];
     } else {
-      // Target is above or too close: leave the source downward, loop round the side, enter from above.
-      const right = Math.max(p.x, q.x) + 6 * CELL;
-      const xm = right <= BOARD_W - CELL ? right : Math.min(p.x, q.x) - 6 * CELL;
-      pts = [p, V(p.x, s), V(xm, s), V(xm, t), V(q.x, t), q];
+      // Target is behind or too close: leave the source rightward, loop round below (or above), enter from the left.
+      const below = Math.max(p.y, q.y) + 6 * CELL;
+      const ym = below <= BOARD_H - CELL ? below : Math.min(p.y, q.y) - 6 * CELL;
+      pts = [p, V(s, p.y), V(s, ym), V(t, ym), V(t, q.y), q];
     }
     return this.smooth(pts, 10);
   }
@@ -737,7 +737,7 @@ export class GameScene extends Phaser.Scene {
       this.stroke(wires, path.pts, sel ? 0xffffff : color, live || sel ? 1 : 0.32, sel ? 3.5 : 2.5, dashed);
       const e = path.pts[path.pts.length - 1];
       wires.fillStyle(sel ? 0xffffff : color, live || sel ? 1 : 0.32);
-      wires.fillTriangle(e.x - 6, e.y - 10, e.x + 6, e.y - 10, e.x, e.y);
+      wires.fillTriangle(e.x - 10, e.y - 6, e.x - 10, e.y + 6, e.x, e.y);
     });
 
     // Chosen spot for a new agent
@@ -772,19 +772,7 @@ export class GameScene extends Phaser.Scene {
     this.targets[ref] = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
 
     if (ref === 'in' || ref === 'out') {
-      const kind = ref === 'in' ? g.level.inKind : g.level.outKind;
-      if (selected) {
-        gr.lineStyle(7, 0xffffff, 0.12);
-        gr.strokeRoundedRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 17);
-      }
-      gr.fillStyle(C.raised, 1);
-      gr.fillRoundedRect(b.x, b.y, b.w, b.h, 14);
-      gr.lineStyle(selected ? 2 : 1, selected ? 0xffffff : 0x3a4152, 1);
-      gr.strokeRoundedRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, 14);
-      this.put(this.txt(b.x + 18, b.y + b.h / 2 - 8, ref === 'in' ? 'INPUT' : 'DELIVER', 13, hex(C.text), true, 1.4, true));
-      this.badge(b.x + b.w - 18, b.y + b.h / 2 - 9, kind, C.dim, 1);
-      if (ref === 'in') this.port(this.portOut('in', kind), 'out', kind, C.wire, 1);
-      else this.port(this.portIn('out', kind), 'in', kind, C.wire, 1);
+      this.drawEndpoint(ref, b, selected);
       return;
     }
 
@@ -827,6 +815,70 @@ export class GameScene extends Phaser.Scene {
     }
     for (const k of info.in) this.port(this.portIn(ref, k), 'in', k, info.color, alpha);
     for (const k of info.out) this.port(this.portOut(ref, k), 'out', k, info.color, alpha);
+  }
+
+  /**
+   * INPUT is a stack of incoming task cards; DELIVER is the goal: a gold card with a target, a flag
+   * and the words the result must carry.
+   */
+  private drawEndpoint(ref: 'in' | 'out', b: { x: number; y: number; w: number; h: number }, selected: boolean): void {
+    const g = this.game_;
+    const lv = g.level;
+    const isOut = ref === 'out';
+    const kind = isOut ? lv.outKind : lv.inKind;
+    const accent = isOut ? C.gold : C.wire;
+    const gr = this.gfx();
+    if (selected) {
+      gr.lineStyle(8, accent, 0.2);
+      gr.strokeRoundedRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 20);
+    }
+    if (isOut) {
+      gr.lineStyle(12, C.gold, 0.07);
+      gr.strokeRoundedRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 19);
+    }
+    gr.fillStyle(isOut ? mix(C.raised, C.gold, 0.07) : C.raised, 1);
+    gr.fillRoundedRect(b.x, b.y, b.w, b.h, 16);
+    gr.lineStyle(isOut ? 1.8 : 1.2, isOut ? C.gold : 0x3a4152, isOut ? 0.9 : 1);
+    gr.strokeRoundedRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, 16);
+    this.put(this.txt(b.x + 14, b.y + 11, isOut ? 'GOAL' : 'SOURCE', 9, hex(isOut ? C.gold : C.faint), true, 1.8, true));
+    this.badge(b.x + b.w - 12, b.y + 9, kind, isOut ? C.gold : C.dim, 1);
+
+    const cx = b.x + b.w / 2;
+    const cy = b.y + 58;
+    if (!isOut) {
+      const card = (dx: number, dy: number, fill: number) => {
+        gr.fillStyle(fill, 1);
+        gr.fillRoundedRect(cx - 32 + dx, cy - 22 + dy, 64, 44, 8);
+        gr.lineStyle(1, 0x4a5266, 1);
+        gr.strokeRoundedRect(cx - 32 + dx + 0.5, cy - 22 + dy + 0.5, 63, 43, 8);
+      };
+      card(-12, 12, 0x161a23);
+      card(-4, 4, 0x1c212d);
+      card(4, -4, 0x252c3c);
+      gr.lineStyle(2.5, 0x6a7590, 1);
+      gr.lineBetween(cx - 22, cy - 14, cx + 18, cy - 14);
+      gr.lineBetween(cx - 22, cy - 5, cx + 8, cy - 5);
+      gr.fillStyle(C.wire, 0.9);
+      gr.fillTriangle(cx + 18, cy + 4, cx + 18, cy + 18, cx + 30, cy + 11);
+    } else {
+      gr.lineStyle(2.5, C.gold, 0.9);
+      gr.strokeCircle(cx, cy + 6, 28);
+      gr.fillStyle(C.gold, 0.12);
+      gr.fillCircle(cx, cy + 6, 19);
+      gr.lineStyle(2, C.gold, 0.95);
+      gr.strokeCircle(cx, cy + 6, 19);
+      gr.fillStyle(C.gold, 1);
+      gr.fillCircle(cx, cy + 6, 8);
+      gr.lineStyle(2, C.text, 1);
+      gr.lineBetween(cx, cy + 6, cx, cy - 26);
+      gr.fillStyle(C.gold, 1);
+      gr.fillTriangle(cx, cy - 26, cx + 20, cy - 19, cx, cy - 12);
+    }
+    this.put(this.txt(b.x + 14, b.y + 94, isOut ? 'DELIVER' : 'INPUT', 13, hex(C.text), true, 1.4, true));
+    const words = isOut ? lv.needs.join(' + ') : `tasks arrive as ${lv.inKind}`;
+    this.put(this.txt(b.x + 14, b.y + 113, words, 10, hex(isOut ? C.gold : C.dim), isOut, 0, true)).setWordWrapWidth(b.w - 24);
+    if (ref === 'in') this.port(this.portOut('in', kind), 'out', kind, C.wire, 1);
+    else this.port(this.portIn('out', kind), 'in', kind, C.gold, 1);
   }
 
   /** Outlined type badge, right-aligned at x. */
@@ -982,7 +1034,7 @@ export class GameScene extends Phaser.Scene {
       const tips: [string, string][] = [
         ['Add an agent', 'Click an empty spot on the blueprint grid.'],
         ['Give it words', 'Select an agent, then click words below.'],
-        ['Wire it up', 'Drag from an output port (bottom) onto the next agent or DELIVER.'],
+        ['Wire it up', 'Drag from an output port (right side) onto the next agent or DELIVER.'],
         ['Move around', 'Drag agents to reposition. Wheel zooms, drag empty space pans.'],
       ];
       tips.forEach(([h, b], i) => {
@@ -999,8 +1051,8 @@ export class GameScene extends Phaser.Scene {
       this.put(this.txt(ix, BODY_Y + 34, sel === 'in' ? 'INPUT' : 'DELIVER', 19, hex(C.text), true, 1));
       const body =
         sel === 'in'
-          ? `Tasks arrive as ${lv.inKind}.\n\nDrag from the port under INPUT to an agent whose model can read ${lv.inKind}.`
-          : `A task counts as delivered when the result is ${lv.outKind} and carries ${lv.needs.join(' and ')}.\n\nDrag from an agent that outputs ${lv.outKind} onto here.`;
+          ? `Tasks arrive as ${lv.inKind}.\n\nDrag from the port on the right of INPUT to an agent whose model can read ${lv.inKind}.`
+          : `A task counts as delivered when the result is ${lv.outKind} and carries ${lv.needs.join(' and ')}.\n\nDrag from an output port that carries ${lv.outKind} onto here.`;
       this.put(this.txt(ix, BODY_Y + 74, body, 12, hex(C.dim))).setWordWrapWidth(iw).setLineSpacing(3);
     } else this.drawAgent(sel, ix, iw);
 

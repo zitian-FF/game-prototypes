@@ -1,6 +1,8 @@
 ## Current milestone
 
-Fourth iteration of the agents.io prototype: multimodal agents now have separate typed ports. The
+Fifth iteration of the agents.io prototype: the flow now runs left to right (inputs on a node's left edge,
+outputs on its right edge) and INPUT and DELIVER are goal-looking endpoint cards. Before that: multimodal
+agents have separate typed ports. The
 blueprint is a zoomable, pan-able, snap-to-grid board with node connectors (ports) and orthogonal wires,
 replacing the fixed 3x3 slots. Landscape desktop
 layout, premium black UI and colour-coded models from the previous iteration are kept. Typecheck and
@@ -16,7 +18,13 @@ goal) or on a real GPU.
   model in the inspector. A faint footprint follows the pointer while hovering. Agents keep one empty
   cell clear of each other and of INPUT and DELIVER; crowded clicks are refused with a toast.
 - Moving: drag an agent; a ghost shows the snapped destination (red if blocked) and it commits on release.
-- Typed ports: every agent has one input port (hollow, top edge) and one output port (filled, bottom
+- Left to right: INPUT sits at the left of the board and DELIVER at the right (board is now 44x30 cells).
+  Wires leave an output port on the right edge and enter an input port on the left edge, routed in right
+  angles; a target behind its source loops round below (or above).
+- Endpoints: INPUT is drawn as a stack of incoming task cards ("SOURCE", type badge, "tasks arrive as
+  ..."). DELIVER is drawn as the goal: a gold-bordered card with a glow, a target with a flag, the type
+  badge and the required words.
+- Typed ports: every agent has one input port (hollow, left edge) and one output port (filled, right
   edge) per type its model handles. Most models have one of each; multimodal Sage has a text and an
   image port on both sides. Circles are text, diamonds are image. A wire carries the type of the port it
   leaves from and only lands on an input port of the same type (INPUT has an output port of the level's
@@ -29,8 +37,8 @@ goal) or on a real GPU.
   Click a wire to select it (inspector shows it, Delete or the button removes it).
 - Delete removes the selected agent or wire, Escape deselects, Space runs.
 - Run animation follows the routed wires. Run order now comes from a topological sort of the wiring.
-- Save key is `agents-io:save:v4` (agent positions, words, wires with their type, best results, unlocked
-  level); v3 saves are ignored. View
+- Save key is `agents-io:save:v5` (agent positions, words, wires with their type, best results, unlocked
+  level); earlier saves are ignored (positions changed meaning when the flow turned sideways). View
   zoom and pan are not saved; the board frames the network on load and on level change.
 - Verification this session: `npm run typecheck` clean, `npm run build` succeeds, and
   `scripts/screenshot-agents-io.mjs` passes at 1280x720: click-to-place two agents, words, four wires,
@@ -49,9 +57,9 @@ goal) or on a real GPU.
   centre set from the view state, so panning and zooming never rebuild anything), and a top camera for
   controls and the result panel drawn over the board. Phaser's `camera.ignore(container)` only flags the
   children present at that moment, so each layer is built first and ignored afterwards.
-- Ports are placed on grid lines (nodes are 8 cells wide, so the centre is on a line), so wire corners
-  and ports always line up. Routing: down from the source, a horizontal run snapped to the grid, down
-  into the target; targets above the source loop round the right side.
+- Ports are placed on grid lines (agents are 8x4 cells, endpoints 6x6), so wire corners and ports always
+  line up. Routing: right out of the source, a vertical run snapped to the grid, right into the target;
+  targets behind the source loop round below.
 - All pointer input goes through intents. `bindBlueprintPointer` turns press, drag, wheel into `select`,
   `cell`, `move`, `wire`, `pan`, `zoom` intents; zoom and pan intents are handled by the scene, the rest
   by the game rules, which know nothing about Phaser or the pointer.

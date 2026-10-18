@@ -22,10 +22,10 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
    used everywhere it appears (picker, node, wires, legend).
 3. Give nodes words from the level's word basket. Words are reusable; each placement costs tokens
    on every task the node handles.
-4. Wire INPUT to nodes to DELIVER by dragging from an output port (bottom of a node) onto the next
-   node. Every agent has one input port and one output port per type its model handles (top and
-   bottom edges): most models have one of each, multimodal Sage has a text and an image port on
-   both sides. A wire carries the type of the port it leaves from and can only land on an input
+4. Wire INPUT to nodes to DELIVER by dragging from an output port (right edge of a node) onto the next
+   node. The flow runs left to right. Every agent has one input port and one output port per type
+   its model handles (left and right edges): most models have one of each, multimodal Sage has a
+   text and an image port on both sides. A wire carries the type of the port it leaves from and can only land on an input
    port of the same type, so a text wire cannot enter an image-only input. All output ports of an
    agent carry the same words. Wires take the colour of their source model; image wires are dashed
    and use diamond ports, text wires are solid and use round ports (output ports filled, input
@@ -53,8 +53,10 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
   time per task), best result.
 - Left column: the task (types, required words, tip), the three star goals with live status,
   last run summary.
-- Centre: a square blueprint viewport onto a 40x40 snap-to-grid board holding INPUT, DELIVER and
-  any number of agents. Mouse wheel zooms around the pointer (35% to 220%), dragging empty space
+- Centre: a square blueprint viewport onto a 44x30 snap-to-grid board holding INPUT (left edge of the
+  board), DELIVER (right edge) and any number of agents between them. INPUT is drawn as a stack of
+  incoming task cards; DELIVER is drawn as the goal, a gold card with a target, a flag and the words
+  the result must carry. Mouse wheel zooms around the pointer (35% to 220%), dragging empty space
   (or the middle or right button) pans, the Fit button or F frames the whole network. Click an
   empty spot to place an agent, drag an agent to move it (it snaps to the grid and keeps clear of
   other nodes), click a wire to select it, Delete removes the selected agent or wire.

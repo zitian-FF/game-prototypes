@@ -4,7 +4,7 @@ import { anchorAround, anchorNear } from './board';
 import { type Kind, LEVELS, type Level, MODEL_INFO, type NodeRef } from './content';
 import { type BatchResult, type Layout, type NodeCfg, canConnect, canPlace, emptyLayout, estimate, simulateBatch } from './sim';
 
-export const SAVE_KEY = 'agents-io:save:v4';
+export const SAVE_KEY = 'agents-io:save:v5';
 
 export interface Best {
   stars: number;
@@ -14,7 +14,7 @@ export interface Best {
 }
 
 interface Save {
-  v: 4;
+  v: 5;
   levelIdx: number;
   unlocked: number;
   layouts: Record<string, Layout>;
@@ -258,7 +258,7 @@ export class Game {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Save;
-      if (s.v !== 4) return;
+      if (s.v !== 5) return;
       this.levelIdx = Math.min(s.levelIdx, LEVELS.length - 1);
       this.unlocked = Math.min(s.unlocked, LEVELS.length - 1);
       this.layouts = s.layouts ?? {};
@@ -269,7 +269,7 @@ export class Game {
   }
 
   save(): void {
-    const data: Save = { v: 4, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
+    const data: Save = { v: 5, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {

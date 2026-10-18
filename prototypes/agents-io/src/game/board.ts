@@ -1,15 +1,17 @@
 // Blueprint geometry. Everything snaps to a grid of CELL logical pixels; nodes and wire
 // corners sit on grid lines, so ports always line up with the wires that reach them.
+// The flow runs left to right: inputs on a node's left edge, outputs on its right edge.
 export const CELL = 24;
-export const COLS = 40;
-export const ROWS = 40;
+export const COLS = 44;
+export const ROWS = 30;
 export const BOARD_W = COLS * CELL;
 export const BOARD_H = ROWS * CELL;
 
 export const AGENT_CELLS = { w: 8, h: 4 };
-export const END_CELLS = { w: 8, h: 2 };
-export const IN_ANCHOR = { x: 16, y: 3 };
-export const OUT_ANCHOR = { x: 16, y: 33 };
+/** INPUT and DELIVER are tall cards at the two ends of the board. */
+export const END_CELLS = { w: 6, h: 6 };
+export const IN_ANCHOR = { x: 1, y: 12 };
+export const OUT_ANCHOR = { x: 37, y: 12 };
 
 /** A rectangle in grid cells. */
 export interface CellRect {
@@ -42,5 +44,8 @@ export const anchorNear = (bx: number, by: number): { x: number; y: number } => 
   y: clamp(Math.round(by / CELL), 0, ROWS - AGENT_CELLS.h),
 });
 
-/** Cell offsets (from a node's left edge) for n ports along its 8-cell edge, on grid lines. */
-export const portCells = (n: number): number[] => (n >= 3 ? [2, 4, 6] : n === 2 ? [3, 5] : [4]);
+/** Cell offsets (from a node's top edge) for n ports down a side that is `len` cells tall, on grid lines. */
+export const portCells = (n: number, len: number): number[] => {
+  const mid = len / 2;
+  return n >= 3 ? [mid - 2, mid, mid + 2] : n === 2 ? [mid - 1, mid + 1] : [mid];
+};

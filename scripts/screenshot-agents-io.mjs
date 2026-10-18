@@ -69,13 +69,13 @@ await shot('1-start');
 console.log('start view', JSON.stringify(await view()));
 
 // Place two agents by clicking empty cells.
-await click('cell:9,10');
+await click('cell:16,8');
 let st = await state();
 if (!st.pending) fail('clicking an empty cell should choose a spot');
 await shot('2-picker');
 await click('model:scribe');
 await click('word:formal');
-await click('cell:29,10');
+await click('cell:30,22');
 await click('model:scribe');
 await click('word:apologize');
 const [n1, n2] = await nodeIds();
@@ -83,7 +83,7 @@ console.log('placed', n1, n2, JSON.stringify((await state()).layout.nodes));
 await shot('3-placed');
 
 // A spot that touches an existing agent is refused.
-await click('cell:17,10');
+await click('cell:22,8');
 st = await state();
 console.log('pending after crowded click:', JSON.stringify(st.pending));
 if (st.pending && Object.keys(st.layout.nodes).length < 2) fail('expected two agents');
@@ -109,7 +109,7 @@ if (has(n1, n2) && st.layout.edges.some(([x, y]) => x === n1 && y === n2)) fail(
 
 // Select a wire by clicking on it.
 const mid = await pt(`port:out:${n1}`);
-await page.mouse.click(mid.x, mid.y + 30);
+await page.mouse.click(mid.x + 34, mid.y);
 await page.waitForTimeout(150);
 console.log('selected wire', (await state()).selectedWire);
 await shot('5-wire-selected');
@@ -117,22 +117,22 @@ await page.keyboard.press('Escape');
 
 // Move an agent: drag its body to a new cell.
 const before = JSON.stringify((await state()).layout.nodes[n2]);
-await drag(n2, 'cell:31,17');
+await drag(n2, 'cell:30,12');
 const after = JSON.stringify((await state()).layout.nodes[n2]);
 console.log('moved', before, '->', after);
 if (before === after) fail('the agent should have moved');
-await drag(n2, 'cell:29,10');
+await drag(n2, 'cell:30,22');
 
 // Zoom with the wheel, pan by dragging empty space, then fit.
 const z0 = (await view()).zoom;
-const centre = await pt('cell:20,20');
+const centre = await pt('cell:20,18');
 await page.mouse.move(centre.x, centre.y);
 await page.mouse.wheel(0, -300);
 await page.waitForTimeout(150);
 const z1 = (await view()).zoom;
 await shot('6-zoomed');
 const v1 = await view();
-const a = await pt('cell:12,26');
+const a = await pt('cell:10,24');
 await page.mouse.move(a.x, a.y);
 await page.mouse.down();
 await page.mouse.move(a.x + 90, a.y - 60, { steps: 3 });
@@ -175,9 +175,9 @@ await shot('11-level2');
 
 // Multimodal ports (level 2: image in, text out). Sage has a text and an image port on each side.
 const send = (i) => page.evaluate((x) => window.__agents.send(x), i);
-await send({ type: 'cell', bx: 20.5 * 24, by: 12.5 * 24 });
+await send({ type: 'cell', bx: 18.5 * 24, by: 9.5 * 24 });
 await send({ type: 'place', model: 'sage' });
-await send({ type: 'cell', bx: 32.5 * 24, by: 12.5 * 24 });
+await send({ type: 'cell', bx: 30.5 * 24, by: 20.5 * 24 });
 await send({ type: 'place', model: 'scribe' });
 const [m1, m2] = await nodeIds();
 await page.waitForTimeout(300);
