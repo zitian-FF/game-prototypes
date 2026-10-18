@@ -1,70 +1,79 @@
 ## Current milestone
 
-Second iteration of the agents.io prototype: landscape desktop layout with a premium black UI,
-colour-coded models, and the real-time token wallet removed. Typecheck and build pass; played end to
-end with real mouse input in headless Chromium at 1280x720. Not tried on a phone (not a goal now).
+Third iteration of the agents.io prototype: the blueprint is now a zoomable, pan-able, snap-to-grid board
+with node connectors (ports) and orthogonal wires, replacing the fixed 3x3 slots. Landscape desktop
+layout, premium black UI and colour-coded models from the previous iteration are kept. Typecheck and
+build pass; played end to end with real mouse input in headless Chromium. Not tried on a phone (not a
+goal) or on a real GPU.
 
 ## What was implemented
 
-- Build-then-run loop. Runs are free and instant; retrying is immediate.
-- Landscape 1280x720 layout. Top bar with level switcher, live gauges for tokens per task and time per
-  task against the level goals, and best result. Left column: task, star goals with live status, last
-  run. Centre: square blueprint with INPUT, nine agent slots (3 rows by 3) and DELIVER. Right column:
-  inspector (agent picker, or selected agent stats and output switch), word basket with per-word skill
-  for the selected agent, Run button.
-- Colour-coded models: Nano mint, Scribe blue, Sage violet, Lens amber, Canvas pink. The colour drives
-  the picker cards, node borders and word pills, the inspector, the legend and the wires (a wire takes
-  its source model's colour). Types are shown without colour: text wires solid, image wires dashed,
-  outlined TEXT or IMAGE badges.
-- Five models with price, latency, word capacity, error rate, per-word skill, prompt dilution, input
-  and output types. Sage can output text or image (player chooses).
-- Words are reusable and cost tokens per task. Delivered means the right output type with every
-  required word landed. Batch of 10 tasks, animated along curved wires. Result panel with delivered %,
-  tokens per task, time per task, per-word hit rates and 1 to 3 stars.
-- Three levels (complaint email, receipt photo, launch poster); a star unlocks the next.
-- Save key is now `agents-io:save:v2` (layouts, best results, unlocked level). The v1 save, which held
-  a wallet and a six-slot layout, is ignored.
-- Tweakpane on `?debug=1` for every number in `tune.json`. Version stamp top-left. Canvas sharpness via
-  dig-kit PIXEL_RATIO.
-- Verification this session: `npm run typecheck` clean, `npm run build` succeeds,
-  `scripts/screenshot-agents-io.mjs` plays level 1 with real mouse input (invalid wire, drag to wire,
-  run, immediate second run, next level, reload and save check) with no console errors. Level 3 was
-  checked in a one-off script (five models, typed-wire refusal, dashed image wire, idle node); that
-  script is not committed.
+- Blueprint: a 40x40 grid board (24 px cells) seen through a square viewport. Wheel zooms around the
+  pointer (35% to 220%), dragging empty space (or middle or right button) pans, a toolbar has -, +, a
+  zoom readout and Fit, and F or the Fit button frames INPUT, DELIVER and every agent.
+- Placing: click an empty spot, a dashed ghost shows the snapped footprint (8x4 cells), then pick a
+  model in the inspector. A faint footprint follows the pointer while hovering. Agents keep one empty
+  cell clear of each other and of INPUT and DELIVER; crowded clicks are refused with a toast.
+- Moving: drag an agent; a ghost shows the snapped destination (red if blocked) and it commits on release.
+- Connectors: every agent has one input port (ring, top) and one output port (bottom; circle for text,
+  diamond for image). Drag from an output port onto any node to wire it. Valid input ports light up
+  green while dragging. Dragging the same pair again removes the wire.
+- Wires: routed in right angles along the grid with rounded corners, coloured by the source model,
+  dashed for image. A wire that would close a loop is refused; side-by-side wires are now allowed.
+  Click a wire to select it (inspector shows it, Delete or the button removes it).
+- Delete removes the selected agent or wire, Escape deselects, Space runs.
+- Run animation follows the routed wires. Run order now comes from a topological sort of the wiring.
+- Save key is `agents-io:save:v3` (agent positions, words, wires, best results, unlocked level). View
+  zoom and pan are not saved; the board frames the network on load and on level change.
+- Verification this session: `npm run typecheck` clean, `npm run build` succeeds, and
+  `scripts/screenshot-agents-io.mjs` passes at 1280x720: click-to-place two agents, words, four wires,
+  a refused wire into INPUT, a refused loop, a side-by-side wire and its removal, wire selection, moving
+  an agent, wheel zoom, drag pan, Fit, run, an immediate second run, next level, and reload with the
+  layout kept; no console errors. A device-pixel-ratio 2 check (real clicks, crisp text) and the
+  standalone bundle used for the hosted playable build were checked in one-off scripts that are not
+  committed. Headless software WebGL runs only about 7 fps at 1x here, so the script is slow; a real
+  GPU is not expected to be.
 
 ## Key technical decisions
 
-- Real-time wallet removed: a refill timer fights a build, run, tweak loop. Token refresh is deferred
-  to a later "subscription models" unlock where it lives inside the simulation as rate limits per time
-  window (see BRIEF.md), versus the current per-call "API" billing.
-- Nine slots instead of six to fill the square blueprint. Wires still only go to a lower row, so there
-  are no loops and no graph check.
-- Stratified dice in the sim (each decision gets a shuffled deck of evenly spaced values across the
-  batch) so results track the odds and the same layout always gives the same result.
-- Opts into `dig-kit` 0.1.0 (pinned) for IntentBus, tune panel, pixel ratio and colour mix. The package
-  name is dig-specific but these parts are generic; worth extracting a neutral shared package.
-- Game logic (`src/game`) knows nothing about input or Phaser; all input goes through intents.
-  Pointer and key bindings are in `src/input/intents.ts` (a drag between nodes emits a wire intent).
-- Numbers live in `tune.json`; names, types and level definitions live in `src/game/content.ts`.
+- Three cameras: main (panels), a board camera whose viewport is the blueprint rectangle (zoom and
+  centre set from the view state, so panning and zooming never rebuild anything), and a top camera for
+  controls and the result panel drawn over the board. Phaser's `camera.ignore(container)` only flags the
+  children present at that moment, so each layer is built first and ignored afterwards.
+- Ports are placed on grid lines (nodes are 8 cells wide, so the centre is on a line), so wire corners
+  and ports always line up. Routing: down from the source, a horizontal run snapped to the grid, down
+  into the target; targets above the source loop round the right side.
+- All pointer input goes through intents. `bindBlueprintPointer` turns press, drag, wheel into `select`,
+  `cell`, `move`, `wire`, `pan`, `zoom` intents; zoom and pan intents are handled by the scene, the rest
+  by the game rules, which know nothing about Phaser or the pointer.
+- Board texts are rendered at 2x the pixel ratio so they stay sharp when zoomed in.
+- Stratified dice in the sim are keyed by node id, so a layout's results depend on its ids; the three
+  levels were rechecked after the move from slots to ids.
+- Opts into `dig-kit` 0.1.0 (pinned) for IntentBus, tune panel, pixel ratio and colour mix.
+- Numbers live in `tune.json`; board geometry (cell size, board size, node sizes) lives in
+  `src/game/board.ts`.
 
 ## Open questions
 
 - BRIEF.md may need updating once decided: words reusable versus consumed, matching versus fuzzy
   quality scoring, and the long-run progression layer. These were defaults, not confirmed.
-- Should wires be allowed between slots in the same row? Currently refused, which limits layouts.
-- Interpretation to confirm: the top bar holds the live resource gauges against the goals, and the left
-  column holds the task brief and goal detail. Shout if "resources menus" meant something else (for
-  example the word basket on top).
+- One input and one output port per agent for now; the agent's chosen output type sets the wire type. Do
+  multi-port agents (separate text and image ports) belong in a later level?
 - Level goals and model numbers are still first guesses balanced only by simulation, not by play.
+- Interpretation to confirm: the top bar holds live resource gauges against the goals, the left column
+  the task brief and goal detail.
 
 ## Known issues
 
-- Wires cross empty slots (drawn over them).
-- Fixed 16:9 canvas; on other window shapes it letterboxes.
-- No sound, no real art (placeholder shapes only), no tutorial beyond one-line tips.
+- Wires can pass through agents that sit in their path (no obstacle-aware routing).
+- No minimap; a big board needs Fit or panning.
+- The view (zoom and pan) is not saved.
+- Fixed 16:9 canvas; other window shapes letterbox.
+- No sound, no real art, no tutorial beyond one-line tips.
 - Not added to the hub page or to any deploy workflow.
 
 ## Next proposed step
 
-Play it on desktop, then decide the open questions. After that, the subscription-model unlock: a
-refreshing token allowance with per-window rate limits and queues inside the sim, so bottlenecks matter.
+Play it and decide the open questions above. After that, the subscription-model unlock (a refreshing token
+allowance with per-window rate limits and queues inside the sim, so bottlenecks matter), which needs the
+larger boards this iteration makes possible.

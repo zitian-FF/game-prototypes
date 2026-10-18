@@ -103,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     this.fx = this.add.container(0, 0);
     this.draft = this.add.graphics();
     this.boardOnly(this.draft);
-    this.toastText = this.txt(BX + BS / 2, BODY_Y + BS - 64, '', 12, hex(C.bad), true).setOrigin(0.5, 0).setAlpha(0);
+    this.toastText = this.txt(BX + BS / 2, BODY_Y + BS - 84, '', 12, hex(C.bad), true).setOrigin(0.5, 0).setAlpha(0).setBackgroundColor(hex(C.panel)).setPadding(12, 7, 12, 7);
     this.deliveredText = this.txt(BX + BS / 2, BODY_Y + BS - 38, '', 12, hex(C.good), true).setOrigin(0.5, 0).setAlpha(0);
     for (const o of [this.toastText, this.deliveredText]) this.topOnly(o);
 
@@ -906,7 +906,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.label(BX + 26, BODY_Y + 24, 'Blueprint');
 
-    // Model colour legend
+    // Model colour legend, on a backing panel so it stays readable over nodes
+    const lb = this.gfx();
+    lb.fillStyle(C.panel, 0.88);
+    lb.fillRoundedRect(BX + 22, BODY_Y + 42, 96, g.level.models.length * 18 + 10, 8);
     g.level.models.forEach((id, i) => {
       const y = BODY_Y + 48 + i * 18;
       const dot = this.gfx();
@@ -935,6 +938,9 @@ export class GameScene extends Phaser.Scene {
     this.button('clear', CLEAR_BTN.x, CLEAR_BTN.y, CLEAR_BTN.w, CLEAR_BTN.h, 'Clear', null, 'ghost', true, { type: 'clear' }, 11.5);
 
     // Key to wire styles and controls
+    const kb = this.gfx();
+    kb.fillStyle(C.panel, 0.88);
+    kb.fillRoundedRect(BX + 22, BODY_Y + BS - 86, 214, 74, 8);
     const lg = this.gfx();
     lg.lineStyle(2, C.dim, 1);
     lg.lineBetween(BX + 32, BODY_Y + BS - 70, BX + 54, BODY_Y + BS - 70);
