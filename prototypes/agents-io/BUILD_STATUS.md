@@ -44,6 +44,9 @@ Chromium. Not yet tried on a real phone.
 
 ## Open questions
 
+- Platform: the user overrode the mobile-required rule for this prototype; desktop is fine (recorded in
+  BRIEF.md). The layout is still a portrait 390x844 canvas, so on a desktop browser it shows as a narrow
+  centred strip. Should it get a wide desktop layout?
 - BRIEF.md may need updating: it assumes words are reusable (not consumed) and quality is matching, not
   fuzzy axis scoring. Both were defaults chosen to get a prototype out, not confirmed by the user.
 - Is a bigger progression layer (unlocking models and words over time) wanted, or is the wallet enough?

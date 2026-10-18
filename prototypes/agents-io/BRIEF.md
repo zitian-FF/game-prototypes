@@ -2,6 +2,12 @@
 
 Status: illustrative first prototype. Written from the design discussion, not a final spec.
 
+## Platform
+
+Desktop is a valid target. Phone play is not required for this prototype (explicit user override of
+the repo-wide mobile rule in CLAUDE.md, which otherwise names only Firestorm Arena as exempt). The
+current build is a portrait 390x844 canvas and still works on a phone, but it is not a goal.
+
 ## Premise
 
 A single-player factory-sim puzzle. Work orders arrive; the player builds a small network of
