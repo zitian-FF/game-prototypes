@@ -1,19 +1,55 @@
 import { mulberry32 } from 'dig-kit';
 import { tune } from '../tune';
-import { type Kind, LEVELS, type Level, MODEL_INFO, type ModelId, type NodeRef, SLOTS, type SlotId, type WordId, slotRow } from './content';
+import { AGENT_CELLS, type CellRect, END_CELLS, IN_ANCHOR, OUT_ANCHOR, inBounds, rectsClash } from './board';
+import { type Kind, LEVELS, type Level, MODEL_INFO, type ModelId, type NodeRef, type WordId } from './content';
 
 export interface NodeCfg {
   model: ModelId;
   words: WordId[];
   out: Kind;
+  /** Top-left grid cell on the blueprint. */
+  x: number;
+  y: number;
 }
 
 export interface Layout {
-  nodes: Partial<Record<SlotId, NodeCfg>>;
+  nodes: Record<string, NodeCfg>;
   edges: [NodeRef, NodeRef][];
+  /** Counter for new agent ids ('n1', 'n2', ...). */
+  next: number;
 }
 
-export const emptyLayout = (): Layout => ({ nodes: {}, edges: [] });
+export const emptyLayout = (): Layout => ({ nodes: {}, edges: [], next: 1 });
+
+/** Footprint of a node in grid cells. */
+export function nodeRect(layout: Layout, ref: NodeRef): CellRect {
+  if (ref === 'in') return { ...IN_ANCHOR, ...END_CELLS };
+  if (ref === 'out') return { ...OUT_ANCHOR, ...END_CELLS };
+  const n = layout.nodes[ref];
+  return { x: n?.x ?? 0, y: n?.y ?? 0, ...AGENT_CELLS };
+}
+
+/** Can an agent footprint at this cell sit on the board without touching another node? */
+export function canPlace(layout: Layout, x: number, y: number, ignore?: NodeRef): boolean {
+  const r: CellRect = { x, y, ...AGENT_CELLS };
+  if (!inBounds(r)) return false;
+  const others: NodeRef[] = ['in', 'out', ...Object.keys(layout.nodes)].filter((id) => id !== ignore);
+  return others.every((id) => !rectsClash(r, nodeRect(layout, id)));
+}
+
+/** Would a wire from `from` to `to` close a loop? (Is `from` already reachable from `to`?) */
+export function wouldLoop(layout: Layout, from: NodeRef, to: NodeRef): boolean {
+  const seen = new Set<NodeRef>();
+  const stack: NodeRef[] = [to];
+  while (stack.length) {
+    const n = stack.pop() as NodeRef;
+    if (n === from) return true;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    for (const [a, b] of layout.edges) if (a === n) stack.push(b);
+  }
+  return false;
+}
 
 export const skillOf = (model: ModelId, word: WordId): number =>
   (tune.models[model].skill as Record<string, number>)[word] ?? tune.run.unknownSkill;
@@ -29,8 +65,7 @@ const kindOf = (layout: Layout, level: Level, ref: NodeRef): Kind | null =>
   ref === 'in' ? level.inKind : ref === 'out' ? null : layout.nodes[ref]?.out ?? null;
 
 export function canConnect(layout: Layout, level: Level, from: NodeRef, to: NodeRef): { ok: boolean; reason: string } {
-  if (from === 'out' || to === 'in' || from === to) return { ok: false, reason: 'Wires run from INPUT down to DELIVER' };
-  if (slotRow(from) >= slotRow(to)) return { ok: false, reason: 'Wires must go to a lower row' };
+  if (from === 'out' || to === 'in' || from === to) return { ok: false, reason: 'Wires run from an output port to an input port' };
   if (from !== 'in' && !layout.nodes[from]) return { ok: false, reason: 'Nothing to wire from' };
   if (to !== 'out' && !layout.nodes[to]) return { ok: false, reason: 'Nothing to wire to' };
   const kind = kindOf(layout, level, from) as Kind;
@@ -39,6 +74,7 @@ export function canConnect(layout: Layout, level: Level, from: NodeRef, to: Node
   }
   const cfg = layout.nodes[to] as NodeCfg;
   if (!MODEL_INFO[cfg.model].in.includes(kind)) return { ok: false, reason: `${MODEL_INFO[cfg.model].label} cannot take ${kind}` };
+  if (wouldLoop(layout, from, to)) return { ok: false, reason: 'That wire would make a loop' };
   return { ok: true, reason: '' };
 }
 
@@ -66,7 +102,21 @@ export function activeNodes(layout: Layout): Set<NodeRef> {
   return both;
 }
 
-const ORDER: NodeRef[] = ['in', ...SLOTS, 'out'];
+/** Active nodes in an order where every node comes after the nodes that feed it. */
+export function runOrder(layout: Layout, active: Set<NodeRef>): NodeRef[] {
+  const left = new Set(active);
+  const order: NodeRef[] = [];
+  while (left.size) {
+    const ready = [...left].filter((n) => layout.edges.every(([a, b]) => b !== n || !left.has(a) || !active.has(a)));
+    if (!ready.length) break; // unreachable: loops are refused when wiring
+    ready.sort();
+    for (const n of ready) {
+      order.push(n);
+      left.delete(n);
+    }
+  }
+  return order;
+}
 
 export interface Estimate {
   valid: boolean;
@@ -82,8 +132,8 @@ export function estimate(layout: Layout): Estimate {
   const active = activeNodes(layout);
   const finish: Partial<Record<NodeRef, number>> = { in: 0 };
   let costPerTask = 0;
-  for (const ref of ORDER) {
-    if (ref === 'in' || !active.has(ref)) continue;
+  for (const ref of runOrder(layout, active)) {
+    if (ref === 'in') continue;
     const preds = layout.edges.filter(([a, b]) => b === ref && active.has(a)).map(([a]) => finish[a] ?? 0);
     const start = preds.length ? Math.max(...preds) : 0;
     if (ref === 'out') {
@@ -152,8 +202,8 @@ class Draws {
 function runTask(layout: Layout, est: Estimate, draws: Draws, task: number): TaskResult {
   const carried = new Map<NodeRef, Set<WordId>>([['in', new Set()]]);
   let delivered = new Set<WordId>();
-  for (const ref of ORDER) {
-    if (ref === 'in' || !est.active.has(ref)) continue;
+  for (const ref of runOrder(layout, est.active)) {
+    if (ref === 'in') continue;
     const inbound = layout.edges.filter(([a, b]) => b === ref && est.active.has(a));
     const inherited = new Set<WordId>();
     for (const [a] of inbound) for (const w of carried.get(a) ?? []) inherited.add(w);

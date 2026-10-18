@@ -1,9 +1,10 @@
 import { tune } from '../tune';
 import type { Intent } from '../input/intents';
-import { LEVELS, type Level, MODEL_INFO, type NodeRef, type SlotId } from './content';
-import { type BatchResult, type Layout, type NodeCfg, canConnect, emptyLayout, estimate, pruneEdges, simulateBatch } from './sim';
+import { anchorAround, anchorNear } from './board';
+import { LEVELS, type Level, MODEL_INFO, type NodeRef } from './content';
+import { type BatchResult, type Layout, type NodeCfg, canConnect, canPlace, emptyLayout, estimate, pruneEdges, simulateBatch } from './sim';
 
-export const SAVE_KEY = 'agents-io:save:v2';
+export const SAVE_KEY = 'agents-io:save:v3';
 
 export interface Best {
   stars: number;
@@ -13,7 +14,7 @@ export interface Best {
 }
 
 interface Save {
-  v: 2;
+  v: 3;
   levelIdx: number;
   unlocked: number;
   layouts: Record<string, Layout>;
@@ -23,7 +24,8 @@ interface Save {
 export type GameEvent =
   | { type: 'changed' }
   | { type: 'toast'; text: string; bad: boolean }
-  | { type: 'run'; result: BatchResult };
+  | { type: 'run'; result: BatchResult }
+  | { type: 'level' };
 
 /** Game state and rules. Reads intents only; knows nothing about pointers, keys or Phaser. */
 export class Game {
@@ -31,7 +33,12 @@ export class Game {
   unlocked = 0;
   layouts: Record<string, Layout> = {};
   best: Record<string, Best> = {};
+  /** Selected node ('in', 'out' or an agent id). */
   selected: NodeRef | null = null;
+  /** Index into layout.edges of the selected wire. */
+  selectedWire: number | null = null;
+  /** Empty spot chosen for a new agent: its top-left cell. */
+  pending: { x: number; y: number } | null = null;
   running = false;
   /** Result waiting to be shown (set when a run finishes). */
   result: BatchResult | null = null;
@@ -75,32 +82,72 @@ export class Game {
     return estimate(this.layout).reason;
   }
 
+  private clearSelection(): void {
+    this.selected = null;
+    this.selectedWire = null;
+    this.pending = null;
+  }
+
   handle(i: Intent): void {
     if (this.running) return;
+    const layout = this.layout;
     switch (i.type) {
       case 'select':
-        this.selected = i.ref === this.selected ? this.selected : i.ref;
+        this.clearSelection();
+        this.selected = i.ref;
+        break;
+      case 'selectWire':
+        this.clearSelection();
+        this.selectedWire = i.index;
         break;
       case 'escape':
-        this.selected = null;
+        this.clearSelection();
         this.result = null;
         break;
       case 'closeResult':
         this.result = null;
         break;
+      case 'cell': {
+        const a = anchorAround(i.bx, i.by);
+        if (!canPlace(layout, a.x, a.y)) {
+          this.toast('No room for an agent there');
+          return;
+        }
+        this.clearSelection();
+        this.pending = a;
+        break;
+      }
       case 'place': {
-        const prev = this.layout.nodes[i.slot];
-        const info = MODEL_INFO[i.model];
-        const cfg: NodeCfg = { model: i.model, words: (prev?.words ?? []).slice(0, tune.models[i.model].slots), out: info.out[0] };
-        this.layout.nodes[i.slot] = cfg;
-        this.selected = i.slot;
-        const dropped = pruneEdges(this.layout, this.level);
-        if (dropped) this.toast(`${dropped} wire${dropped > 1 ? 's' : ''} removed (type mismatch)`);
+        if (!this.pending) return;
+        const id = `n${layout.next++}`;
+        const cfg: NodeCfg = { model: i.model, words: [], out: MODEL_INFO[i.model].out[0], x: this.pending.x, y: this.pending.y };
+        layout.nodes[id] = cfg;
+        this.clearSelection();
+        this.selected = id;
+        break;
+      }
+      case 'move': {
+        const n = layout.nodes[i.id];
+        if (!n) return;
+        const a = anchorNear(i.bx, i.by);
+        if (a.x === n.x && a.y === n.y) return;
+        if (!canPlace(layout, a.x, a.y, i.id)) {
+          this.toast('No room for an agent there');
+          return;
+        }
+        n.x = a.x;
+        n.y = a.y;
         break;
       }
       case 'remove':
-        delete this.layout.nodes[i.slot];
-        this.layout.edges = this.layout.edges.filter(([a, b]) => a !== i.slot && b !== i.slot);
+        this.removeNode(i.id);
+        break;
+      case 'delete':
+        if (this.selectedWire !== null) {
+          layout.edges.splice(this.selectedWire, 1);
+          this.selectedWire = null;
+        } else if (this.selected && this.selected !== 'in' && this.selected !== 'out') this.removeNode(this.selected);
+        else return;
         break;
       case 'word': {
         const cfg = this.selectedCfg();
@@ -121,28 +168,31 @@ export class Game {
         if (!cfg) return;
         const outs = MODEL_INFO[cfg.model].out;
         cfg.out = outs[(outs.indexOf(cfg.out) + 1) % outs.length];
-        const dropped = pruneEdges(this.layout, this.level);
+        const dropped = pruneEdges(layout, this.level);
         if (dropped) this.toast(`${dropped} wire${dropped > 1 ? 's' : ''} removed (type mismatch)`);
+        this.selectedWire = null;
         break;
       }
       case 'wire': {
         const { from, to } = i;
-        const has = this.layout.edges.findIndex(([a, b]) => a === from && b === to);
+        const has = layout.edges.findIndex(([a, b]) => a === from && b === to);
         if (has >= 0) {
-          this.layout.edges.splice(has, 1);
+          layout.edges.splice(has, 1);
+          this.selectedWire = null;
           break;
         }
-        const ok = canConnect(this.layout, this.level, from, to);
+        const ok = canConnect(layout, this.level, from, to);
         if (!ok.ok) {
           this.toast(ok.reason);
           return;
         }
-        this.layout.edges.push([from, to]);
+        layout.edges.push([from, to]);
+        this.selectedWire = null;
         break;
       }
       case 'clear':
         this.layouts[this.level.id] = emptyLayout();
-        this.selected = null;
+        this.clearSelection();
         break;
       case 'level':
         if (i.index < 0 || i.index >= LEVELS.length) return;
@@ -151,15 +201,24 @@ export class Game {
           return;
         }
         this.levelIdx = i.index;
-        this.selected = null;
+        this.clearSelection();
         this.result = null;
+        this.emit({ type: 'level' });
         break;
       case 'run':
         this.startRun();
         return;
+      default:
+        return; // view intents (zoom, pan, fit) belong to the scene
     }
     this.save();
     this.emit({ type: 'changed' });
+  }
+
+  private removeNode(id: NodeRef): void {
+    delete this.layout.nodes[id];
+    this.layout.edges = this.layout.edges.filter(([a, b]) => a !== id && b !== id);
+    this.clearSelection();
   }
 
   private startRun(): void {
@@ -170,7 +229,7 @@ export class Game {
     }
     const result = simulateBatch(this.layout, this.level) as BatchResult;
     this.running = true;
-    this.selected = null;
+    this.clearSelection();
     const prev = this.best[this.level.id];
     if (!prev || result.stars > prev.stars || (result.stars === prev.stars && result.successRate > prev.successRate)) {
       this.best[this.level.id] = { stars: result.stars, successRate: result.successRate, costPerTask: result.costPerTask, time: result.time };
@@ -190,17 +249,16 @@ export class Game {
   }
 
   private selectedCfg(): NodeCfg | null {
-    const s = this.selected;
-    return s && s !== 'in' && s !== 'out' ? this.layout.nodes[s] ?? null : null;
+    return this.cfgOf(this.selected);
   }
 
-  selectedSlot(): SlotId | null {
-    const s = this.selected;
-    return s && s !== 'in' && s !== 'out' ? s : null;
+  cfgOf(ref: NodeRef | null): NodeCfg | null {
+    return ref === null || ref === 'in' || ref === 'out' ? null : (this.layout.nodes[ref] ?? null);
   }
 
-  cfgOf(ref: NodeRef): NodeCfg | null {
-    return ref === 'in' || ref === 'out' ? null : this.layout.nodes[ref] ?? null;
+  /** Can a wire be drawn from `from` to `to` right now? (Used for drag feedback.) */
+  wireOk(from: NodeRef, to: NodeRef): boolean {
+    return canConnect(this.layout, this.level, from, to).ok;
   }
 
   // ------------------------------------------------------------ save / load
@@ -210,7 +268,7 @@ export class Game {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Save;
-      if (s.v !== 2) return;
+      if (s.v !== 3) return;
       this.levelIdx = Math.min(s.levelIdx, LEVELS.length - 1);
       this.unlocked = Math.min(s.unlocked, LEVELS.length - 1);
       this.layouts = s.layouts ?? {};
@@ -221,7 +279,7 @@ export class Game {
   }
 
   save(): void {
-    const data: Save = { v: 2, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
+    const data: Save = { v: 3, levelIdx: this.levelIdx, unlocked: this.unlocked, layouts: this.layouts, best: this.best };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {

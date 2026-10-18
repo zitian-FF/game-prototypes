@@ -17,14 +17,16 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
 ## Core loop (build, then run)
 
 1. Read the task: input type, required output type, required qualities (prompt words), goals.
-2. Place model nodes on the blueprint. Each model has a price, speed, word capacity, error rate,
+2. Place model nodes on the blueprint by clicking an empty spot on the snap grid. Each model has a price, speed, word capacity, error rate,
    per-word skill and the input and output types it can handle. Each model has its own colour,
    used everywhere it appears (picker, node, wires, legend).
 3. Give nodes words from the level's word basket. Words are reusable; each placement costs tokens
    on every task the node handles.
-4. Wire INPUT to nodes to DELIVER. Wires are typed: a node can only feed another node whose model
-   accepts the type it outputs. Models with several output types let the player choose. Wires
-   take the colour of their source model; image wires are dashed, text wires solid.
+4. Wire INPUT to nodes to DELIVER by dragging from an output port (bottom of a node) onto the next
+   node. Wires are typed: a node can only feed another node whose model accepts the type it
+   outputs. Models with several output types let the player choose. Wires take the colour of their
+   source model; image wires are dashed and come from diamond ports, text wires are solid and come
+   from round ports. Wires are routed in right angles along the grid.
 5. Press Run. A fixed batch of tasks flows through the network. Score: delivered %, tokens per
    task, seconds per task. Stars: 1 delivered goal, 2 plus cost goal, 3 plus time goal.
    Runs are free and instant, so the player can iterate quickly.
@@ -38,8 +40,8 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
   overloading one node, but costs more tokens.
 - Words applied upstream can be lost when passed through a node (the node's error rate).
 - Only nodes that connect INPUT to DELIVER run and cost tokens.
-- Wires only go to a lower row of the blueprint (three rows of three slots), which keeps the
-  network free of loops.
+- A wire that would close a loop is refused. Wires can go in any direction otherwise, including
+  between agents side by side.
 - Every model is billed per call (the "API" model): cost is tokens per task.
 
 ## Layout (landscape)
@@ -48,15 +50,20 @@ scored on how many tasks it delivers, what it cost in tokens, and how long it to
   time per task), best result.
 - Left column: the task (types, required words, tip), the three star goals with live status,
   last run summary.
-- Centre: a square blueprint grid holding INPUT, nine agent slots and DELIVER.
+- Centre: a square blueprint viewport onto a 40x40 snap-to-grid board holding INPUT, DELIVER and
+  any number of agents. Mouse wheel zooms around the pointer (35% to 220%), dragging empty space
+  (or the middle or right button) pans, the Fit button or F frames the whole network. Click an
+  empty spot to place an agent, drag an agent to move it (it snaps to the grid and keeps clear of
+  other nodes), click a wire to select it, Delete removes the selected agent or wire.
 - Right column: inspector (agent picker or selected agent stats), word basket, Run button.
 - Premium black UI: near-black panels, hairline borders, one restrained gold accent, colour-coded
   models.
 
 ## Persistence
 
-Layouts, best result per level and the unlocked level are saved (`agents-io:save:v2`). Levels
-unlock in order, one star unlocks the next.
+Layouts (agent positions, words and wires), best result per level and the unlocked level are saved
+(`agents-io:save:v3`). Levels unlock in order, one star unlocks the next. The view (zoom and pan)
+is not saved; it frames the network again on load.
 
 ## Later unlock (not built): subscription models
 
@@ -73,7 +80,7 @@ real-time wallet. Deferred until the base loop is confirmed fun.
 
 ## Out of scope
 
-Real LLM calls, multiplayer, accounts, free-form placement, video or audio types, more than three
+Real LLM calls, multiplayer, accounts, off-grid placement, a minimap, video or audio types, more than three
 levels, sound, art assets (placeholder shapes only), tutorials beyond one-line tips, shops or
 upgrades, a real-time token wallet, subscription models and rate limits (later unlock, above),
 phone layout.
@@ -83,4 +90,5 @@ phone layout.
 - Are words consumed when used, or reusable? (Prototype assumes reusable.)
 - Matching (current) or fuzzy axis scoring for quality?
 - What does the long-run progression layer look like beyond unlocking levels?
-- Should wires be allowed between slots in the same row?
+- Ports are one input (top) and one output (bottom) per agent; the chosen output type sets the wire
+  type. Do multi-port agents (separate text and image ports) belong in a later level?

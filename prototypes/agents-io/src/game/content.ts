@@ -5,12 +5,8 @@ import { tune } from '../tune';
 export type Kind = 'text' | 'image';
 export type WordId = keyof typeof tune.words;
 export type ModelId = keyof typeof tune.models;
-export type SlotId = 's0' | 's1' | 's2' | 's3' | 's4' | 's5' | 's6' | 's7' | 's8';
-export type NodeRef = 'in' | 'out' | SlotId;
-
-export const SLOTS: SlotId[] = ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
-export const SLOT_COLS = 3;
-export const SLOT_ROWS = 3;
+/** 'in', 'out', or the id of a placed agent such as 'n3'. */
+export type NodeRef = string;
 
 export interface ModelInfo {
   label: string;
@@ -85,4 +81,3 @@ export const LEVELS: Level[] = [
   },
 ];
 
-export const slotRow = (ref: NodeRef): number => (ref === 'in' ? -1 : ref === 'out' ? SLOT_ROWS : Math.floor(SLOTS.indexOf(ref) / SLOT_COLS));

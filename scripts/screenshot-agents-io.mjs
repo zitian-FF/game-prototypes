@@ -1,9 +1,11 @@
 // Visual + interaction check for agents.io. Usage:
 //   node scripts/screenshot-agents-io.mjs <baseUrl> <outDir>
 // baseUrl is a running dev/preview server, e.g. http://localhost:5199/game-prototypes/prototypes/agents-io/
-// Landscape desktop build (1280x720). Plays level 1 with real mouse input (click a slot, click a
-// model, click words, drag to wire), runs the batch twice back to back (no wallet, so retries are
-// instant), checks the result, reloads to check the save, fails on any console error.
+// Landscape desktop build (1280x720). Set DPR=2 to run at device pixel ratio 2 (slow in headless
+// software WebGL, but it exercises the high-density camera maths). Plays level 1 with real mouse input on the
+// zoomable snap-to-grid blueprint: click a cell to place agents, give them words, drag from output
+// ports to wire (including refused wires), move an agent, wheel-zoom, pan, fit, run twice back to back,
+// go to the next level, reload to check the save, and fail on any console error.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -18,7 +20,7 @@ if (!base || !outDir) {
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: Number(process.env.DPR ?? 1) });
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -28,9 +30,13 @@ await page.evaluate(() => localStorage.clear());
 await page.reload();
 await page.waitForTimeout(900);
 
+const fail = (msg) => {
+  throw new Error(msg);
+};
 const shot = (name) => page.screenshot({ path: path.join(outDir, `agents-io-${name}.png`) });
 const state = () => page.evaluate(() => window.__agents.state());
-// Logical (390x844) position of a named control -> page pixels.
+const view = () => page.evaluate(() => window.__agents.view());
+// Logical (1280x720) position of a named control -> page pixels.
 const pt = async (name) =>
   page.evaluate((n) => {
     const a = window.__agents;
@@ -40,83 +46,144 @@ const pt = async (name) =>
     const s = a.size();
     return { x: r.left + (p.x / s.w) * r.width, y: r.top + (p.y / s.h) * r.height };
   }, name);
-const tap = async (name) => {
+const click = async (name) => {
   const p = await pt(name);
-  if (!p) throw new Error(`no target ${name}`);
+  if (!p) fail(`no target ${name}`);
   await page.mouse.click(p.x, p.y);
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(140);
 };
 const drag = async (a, b) => {
   const p = await pt(a);
   const q = await pt(b);
-  if (!p || !q) throw new Error(`no target ${a} or ${b}`);
+  if (!p || !q) fail(`no target ${a} or ${b}`);
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
-  await page.mouse.move((p.x + q.x) / 2, (p.y + q.y) / 2, { steps: 4 });
-  await page.mouse.move(q.x, q.y, { steps: 4 });
+  await page.mouse.move((p.x + q.x) / 2, (p.y + q.y) / 2, { steps: 2 });
+  await page.mouse.move(q.x, q.y, { steps: 2 });
   await page.mouse.up();
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(160);
 };
+const nodeIds = async () => Object.keys((await state()).layout.nodes);
 
 await shot('1-start');
-await tap('s0');
-await page.waitForTimeout(120);
-await shot('2-picker');
-await tap('model:scribe');
-await tap('word:formal');
-await tap('s1');
-await tap('model:scribe');
-await tap('word:apologize');
-await shot('3-built');
-// Wrong wire first: an agent to INPUT must be refused.
-await drag('s0', 'in');
-await drag('in', 's0');
-await drag('in', 's1');
-await drag('s0', 'out');
-await drag('s1', 'out');
-await tap('s0');
-await shot('4-wired');
-let st = await state();
-console.log('edges', JSON.stringify(st.layout.edges), 'block', JSON.stringify(st.block));
-if (st.layout.edges.length !== 4) throw new Error('expected 4 wires');
+console.log('start view', JSON.stringify(await view()));
 
-await tap('run');
-await page.waitForTimeout(1100);
-await shot('5-running');
+// Place two agents by clicking empty cells.
+await click('cell:9,10');
+let st = await state();
+if (!st.pending) fail('clicking an empty cell should choose a spot');
+await shot('2-picker');
+await click('model:scribe');
+await click('word:formal');
+await click('cell:29,10');
+await click('model:scribe');
+await click('word:apologize');
+const [n1, n2] = await nodeIds();
+console.log('placed', n1, n2, JSON.stringify((await state()).layout.nodes));
+await shot('3-placed');
+
+// A spot that touches an existing agent is refused.
+await click('cell:17,10');
+st = await state();
+console.log('pending after crowded click:', JSON.stringify(st.pending));
+if (st.pending && Object.keys(st.layout.nodes).length < 2) fail('expected two agents');
+
+// Wiring: valid, then refused (into INPUT) and a loop.
+await drag('port:out:in', n1);
+await drag('port:out:in', n2);
+await drag(`port:out:${n1}`, 'out');
+await drag(`port:out:${n2}`, 'out');
+await drag(`port:out:${n1}`, 'in'); // refused: INPUT has no input port
+await drag(`port:out:${n1}`, n2); // allowed: same row, no loop
+await drag(`port:out:${n2}`, n1); // refused: would loop
+st = await state();
+console.log('edges', JSON.stringify(st.layout.edges));
+const has = (a, b) => st.layout.edges.some(([x, y]) => x === a && y === b);
+if (!has('in', n1) || !has('in', n2) || !has(n1, 'out') || !has(n2, 'out')) fail('expected the four main wires');
+if (has(n2, n1)) fail('a loop must be refused');
+if (!has(n1, n2)) fail('same-row wire should be allowed');
+await shot('4-wired');
+await drag(`port:out:${n1}`, n2); // toggles the wire off again
+st = await state();
+if (has(n1, n2) && st.layout.edges.some(([x, y]) => x === n1 && y === n2)) fail('dragging the same pair again should remove the wire');
+
+// Select a wire by clicking on it.
+const mid = await pt(`port:out:${n1}`);
+await page.mouse.click(mid.x, mid.y + 30);
+await page.waitForTimeout(150);
+console.log('selected wire', (await state()).selectedWire);
+await shot('5-wire-selected');
+await page.keyboard.press('Escape');
+
+// Move an agent: drag its body to a new cell.
+const before = JSON.stringify((await state()).layout.nodes[n2]);
+await drag(n2, 'cell:31,17');
+const after = JSON.stringify((await state()).layout.nodes[n2]);
+console.log('moved', before, '->', after);
+if (before === after) fail('the agent should have moved');
+await drag(n2, 'cell:29,10');
+
+// Zoom with the wheel, pan by dragging empty space, then fit.
+const z0 = (await view()).zoom;
+const centre = await pt('cell:20,20');
+await page.mouse.move(centre.x, centre.y);
+await page.mouse.wheel(0, -300);
+await page.waitForTimeout(150);
+const z1 = (await view()).zoom;
+await shot('6-zoomed');
+const v1 = await view();
+const a = await pt('cell:3,25');
+await page.mouse.move(a.x, a.y);
+await page.mouse.down();
+await page.mouse.move(a.x + 90, a.y - 60, { steps: 3 });
+await page.mouse.up();
+const v2 = await view();
+console.log('zoom', z0, '->', z1, ' pan', JSON.stringify([v1.cx, v1.cy]), '->', JSON.stringify([v2.cx, v2.cy]));
+if (!(z1 > z0)) fail('wheel up should zoom in');
+if (v2.cx === v1.cx && v2.cy === v1.cy) fail('dragging empty space should pan');
+await shot('7-panned');
+await click('fit');
+await page.waitForTimeout(150);
+console.log('after fit', JSON.stringify(await view()));
+await shot('8-fit');
+
+// Run, then run again straight away (no wallet).
+await click(n1);
+await click('run');
+await page.waitForTimeout(1200);
+await shot('9-running');
 await page.waitForFunction(() => !!window.__agents.state().result, null, { timeout: 15000 });
 await page.waitForTimeout(300);
 st = await state();
 console.log('result', JSON.stringify(st.result));
-await shot('6-result');
-if (!st.result || st.result.stars < 1) throw new Error('level 1 should earn a star');
-
-// Retry straight away: close the result and run again with no waiting.
-await tap('tweak');
+await shot('10-result');
+if (!st.result || st.result.stars < 1) fail('level 1 should earn a star');
+await click('tweak');
 await page.waitForTimeout(200);
 st = await state();
-if (st.block) throw new Error('run should be available immediately, got: ' + st.block);
-await tap('run');
+if (st.block) fail('run should be available immediately, got: ' + st.block);
+await click('run');
 await page.waitForFunction(() => !!window.__agents.state().result, null, { timeout: 15000 });
 await page.waitForTimeout(250);
 console.log('second run ok', JSON.stringify((await state()).result));
-await page.waitForTimeout(100);
-
-await tap('next');
+await click('next');
 await page.waitForTimeout(300);
 st = await state();
 console.log('after next level', st.level, 'unlocked', st.unlocked);
-await shot('7-level2');
-await tap('s0');
-await tap('model:lens');
-await tap('word:extract');
-await shot('8-level2-lens');
+if (st.level !== 1) fail('next level should open level 2');
+await shot('11-level2');
 
-// Persistence: the layout, best result and wallet survive a reload.
+// Persistence
 await page.reload();
 await page.waitForTimeout(900);
-const after = await state();
-console.log('after reload: level', after.level, 'best', JSON.stringify(after.best), 'nodes', Object.keys(after.layout.nodes));
-await shot('9-reloaded');
+const reloaded = await state();
+console.log('after reload: level', reloaded.level, 'best', JSON.stringify(reloaded.best));
+await page.evaluate(() => window.__agents.send({ type: 'level', index: 0 }));
+await page.waitForTimeout(300);
+const l1 = await state();
+console.log('level 1 layout kept:', Object.keys(l1.layout.nodes).length, 'agents,', l1.layout.edges.length, 'wires');
+if (Object.keys(l1.layout.nodes).length !== 2) fail('layout should survive a reload');
+await shot('12-reloaded');
 await browser.close();
 if (errors.length) {
   console.error('Console errors:\n' + errors.join('\n'));

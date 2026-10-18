@@ -1,11 +1,17 @@
 import type Phaser from 'phaser';
 import { IntentBus, bindKeys } from 'dig-kit';
-import type { ModelId, NodeRef, SlotId, WordId } from '../game/content';
+import type { ModelId, NodeRef, WordId } from '../game/content';
 
 export type Intent =
   | { type: 'select'; ref: NodeRef | null }
-  | { type: 'place'; slot: SlotId; model: ModelId }
-  | { type: 'remove'; slot: SlotId }
+  | { type: 'selectWire'; index: number }
+  /** A click on an empty cell of the blueprint, in board pixels. */
+  | { type: 'cell'; bx: number; by: number }
+  | { type: 'place'; model: ModelId }
+  /** Drop a dragged agent; bx, by is where its top-left corner ended up, in board pixels. */
+  | { type: 'move'; id: NodeRef; bx: number; by: number }
+  | { type: 'remove'; id: NodeRef }
+  | { type: 'delete' }
   | { type: 'word'; word: WordId }
   | { type: 'cycleOut' }
   | { type: 'wire'; from: NodeRef; to: NodeRef }
@@ -13,60 +19,148 @@ export type Intent =
   | { type: 'level'; index: number }
   | { type: 'clear' }
   | { type: 'closeResult' }
-  | { type: 'escape' };
+  | { type: 'escape' }
+  // View intents: handled by the scene, not by the game rules.
+  | { type: 'zoom'; factor: number; sx: number; sy: number }
+  | { type: 'zoomStep'; dir: 1 | -1 }
+  | { type: 'pan'; dx: number; dy: number }
+  | { type: 'fit' };
 
 export { IntentBus };
 
-/** Keyboard device binding: Space runs, Escape deselects. */
+/** Keyboard device binding: Space runs, Escape deselects, Delete removes, F frames the network. */
 export function bindDesktopKeys(scene: Phaser.Scene, bus: IntentBus<Intent>): void {
-  bindKeys<Intent>(scene, bus, { SPACE: { type: 'run' }, ESC: { type: 'escape' } });
+  bindKeys<Intent>(scene, bus, {
+    SPACE: { type: 'run' },
+    ESC: { type: 'escape' },
+    DELETE: { type: 'delete' },
+    BACKSPACE: { type: 'delete' },
+    F: { type: 'fit' },
+  });
 }
 
-/** Pointer/touch device binding for buttons, chips and cards: a press emits the intent. */
+/** Pointer device binding for buttons, chips and cards: a press emits the intent. */
 export function bindTap(obj: Phaser.GameObjects.GameObject, bus: IntentBus<Intent>, intent: Intent): void {
   obj.setInteractive({ useHandCursor: true });
   obj.on('pointerdown', () => bus.emit(intent));
 }
 
+export type BoardHit =
+  | { kind: 'port'; ref: NodeRef }
+  | { kind: 'node'; ref: NodeRef }
+  | { kind: 'wire'; index: number }
+  | { kind: 'empty'; inBoard: boolean };
+
+/** Live feedback while a pointer gesture is in progress (null when it ends). */
+export type Feedback =
+  | { kind: 'wire'; from: NodeRef; bx: number; by: number }
+  | { kind: 'move'; id: NodeRef; bx: number; by: number }
+  | { kind: 'hover'; bx: number; by: number }
+  | null;
+
+export interface BlueprintApi {
+  /** Is this position (logical screen pixels) over the blueprint, and not over one of its controls? */
+  over(sx: number, sy: number): boolean;
+  toBoard(sx: number, sy: number): { x: number; y: number };
+  hit(bx: number, by: number): BoardHit;
+  /** Top-left of a node in board pixels, to keep the grab point while dragging. */
+  originOf(ref: NodeRef): { x: number; y: number };
+  feedback(f: Feedback): void;
+}
+
 /**
- * Pointer/touch device binding for the network: a tap on a node selects it, a drag from one
- * node to another wires them. `locate` turns a world position into a node, or null.
- * `rubber` receives the drag line so the scene can draw it (null when the drag ends).
+ * Pointer device binding for the blueprint.
+ *  - press an output port and drag onto a node: wire
+ *  - press an agent and drag: move it (snaps to the grid on release)
+ *  - click an empty cell: choose a spot for a new agent
+ *  - click a wire: select it
+ *  - drag empty space, or press the middle or right button and drag: pan
+ *  - wheel: zoom around the pointer
  */
-export function bindNetworkPointer(
-  scene: Phaser.Scene,
-  bus: IntentBus<Intent>,
-  locate: (x: number, y: number) => NodeRef | null,
-  canDrag: (ref: NodeRef) => boolean,
-  inNetwork: (x: number, y: number) => boolean,
-  rubber: (from: NodeRef | null, x: number, y: number) => void,
-): void {
-  let from: NodeRef | null = null;
+export function bindBlueprintPointer(scene: Phaser.Scene, bus: IntentBus<Intent>, api: BlueprintApi): void {
+  type Mode = 'none' | 'wire' | 'node' | 'move' | 'wireClick' | 'empty' | 'pan';
+  let mode: Mode = 'none';
+  let start = { x: 0, y: 0 };
+  let last = { x: 0, y: 0 };
   let moved = false;
-  const world = (p: Phaser.Input.Pointer) => scene.cameras.main.getWorldPoint(p.x, p.y);
+  let from: NodeRef = '';
+  let grab = { x: 0, y: 0 };
+  let inBoard = false;
+  let wireIndex = -1;
+  const screen = (p: Phaser.Input.Pointer) => scene.cameras.main.getWorldPoint(p.x, p.y);
+  scene.input.mouse?.disableContextMenu();
+
   scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-    const w = world(p);
-    const hit = locate(w.x, w.y);
-    from = hit && canDrag(hit) ? hit : null;
+    const s = screen(p);
+    if (!api.over(s.x, s.y)) return;
+    start = { x: s.x, y: s.y };
+    last = start;
     moved = false;
-    if (hit && !from) bus.emit({ type: 'select', ref: hit });
-    else if (!hit && inNetwork(w.x, w.y)) bus.emit({ type: 'select', ref: null });
+    if (p.button === 1 || p.button === 2) {
+      mode = 'pan';
+      return;
+    }
+    const b = api.toBoard(s.x, s.y);
+    const h = api.hit(b.x, b.y);
+    if (h.kind === 'port') {
+      mode = 'wire';
+      from = h.ref;
+    } else if (h.kind === 'node') {
+      from = h.ref;
+      bus.emit({ type: 'select', ref: h.ref });
+      if (h.ref === 'in' || h.ref === 'out') mode = 'node';
+      else {
+        mode = 'move';
+        const o = api.originOf(h.ref);
+        grab = { x: b.x - o.x, y: b.y - o.y };
+      }
+    } else if (h.kind === 'wire') {
+      mode = 'wireClick';
+      wireIndex = h.index;
+    } else {
+      mode = 'empty';
+      inBoard = h.inBoard;
+    }
   });
+
   scene.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-    if (!from || !p.isDown) return;
-    const w = world(p);
-    if (locate(w.x, w.y) !== from) moved = true;
-    if (moved) rubber(from, w.x, w.y);
+    const s = screen(p);
+    if (mode === 'none' || !p.isDown) {
+      if (api.over(s.x, s.y)) {
+        const b = api.toBoard(s.x, s.y);
+        api.feedback({ kind: 'hover', bx: b.x, by: b.y });
+      } else api.feedback(null);
+      return;
+    }
+    if (!moved && Math.hypot(s.x - start.x, s.y - start.y) > 4) moved = true;
+    const b = api.toBoard(s.x, s.y);
+    if (mode === 'empty' && moved) mode = 'pan';
+    if (mode === 'pan') {
+      if (moved || p.button !== 0) bus.emit({ type: 'pan', dx: s.x - last.x, dy: s.y - last.y });
+      last = { x: s.x, y: s.y };
+    } else if (mode === 'wire' && moved) api.feedback({ kind: 'wire', from, bx: b.x, by: b.y });
+    else if (mode === 'move' && moved) api.feedback({ kind: 'move', id: from, bx: b.x - grab.x, by: b.y - grab.y });
   });
+
   const end = (p: Phaser.Input.Pointer) => {
-    if (!from) return;
-    const w = world(p);
-    const to = locate(w.x, w.y);
-    if (to && to !== from) bus.emit({ type: 'wire', from, to });
-    else if (to === from) bus.emit({ type: 'select', ref: from });
-    from = null;
-    rubber(null, 0, 0);
+    if (mode === 'none') return;
+    const s = screen(p);
+    const b = api.toBoard(s.x, s.y);
+    if (mode === 'wire' && moved) {
+      const h = api.hit(b.x, b.y);
+      if ((h.kind === 'node' || h.kind === 'port') && h.ref !== from) bus.emit({ type: 'wire', from, to: h.ref });
+    } else if (mode === 'move' && moved) bus.emit({ type: 'move', id: from, bx: b.x - grab.x, by: b.y - grab.y });
+    else if (mode === 'wireClick' && !moved) bus.emit({ type: 'selectWire', index: wireIndex });
+    else if (mode === 'empty' && !moved) bus.emit(inBoard ? { type: 'cell', bx: b.x, by: b.y } : { type: 'select', ref: null });
+    mode = 'none';
+    api.feedback(null);
   };
   scene.input.on('pointerup', end);
   scene.input.on('pointerupoutside', end);
+
+  scene.input.on('wheel', (p: Phaser.Input.Pointer, _over: unknown, _dx: number, dy: number) => {
+    const s = screen(p);
+    if (!api.over(s.x, s.y)) return;
+    bus.emit({ type: 'zoom', factor: dy > 0 ? 1 / 1.12 : 1.12, sx: s.x, sy: s.y });
+  });
 }
