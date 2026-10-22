@@ -75,8 +75,8 @@ export interface NodeKindTune {
   /** Effect values are per tier: the node applies value * tier. */
   attackPct?: number;
   defensePct?: number;
-  /** Accelerator: seconds cut off the edge-to-edge march time of squads, times tier. */
-  marchEdgeSecondsCut?: number;
+  /** Accelerator: extra speed-booster recharge per second, per tier (1 means charges refill twice as fast). */
+  boostRechargeRate?: number;
   /** Tech Centre: extra teleport-cooldown seconds drained per second, times tier (1 = twice as fast). */
   teleportCooldownRate?: number;
   /** Hospital: troops per second added to each ally's reserve pool, times tier. */
@@ -131,9 +131,15 @@ export interface Tune {
     hp: number;
     teleportCooldownSeconds: number;
     refillSeconds: number;
-    /** Slots are the 8 cells around a node, taken in a fixed order. */
+    /** Slots are the 12 cells around a 2x2 node, taken in a fixed order. */
     slotsPerNode: number;
   };
+  /**
+   * Speed boosters, per commander: `charges` to hold (starting full), each refilling after `rechargeSeconds` while
+   * not full (Accelerators speed this up). One charge on a marching squad sets that march to speedFactors[0] times
+   * the base speed, a second charge on the same march to speedFactors[1].
+   */
+  booster: { charges: number; rechargeSeconds: number; speedFactors: number[] };
   scout: { perHq: number; speedFactor: number; revealSeconds: number };
   /** How many squads one node can hold, and how many of those may be one commander's. */
   garrison: { maxSquads: number; maxPerCommander: number };
@@ -175,6 +181,8 @@ export interface Tune {
     nodeMinSpacingCells: number;
     nodeMinDistFromSafeZoneCells: number;
     edgeMarginCells: number;
+    /** The four Portal Nexus sit up, down, left and right of the centre, this fraction of the map in from the edge. */
+    portals: { fromEdge: number };
     /** Concentric zones, outside in. r is 0 at the map centre and 1 at the edge. */
     rings: RingTune[];
   };
@@ -246,6 +254,8 @@ export interface March {
   hqEpoch?: number;
   /** Bumped whenever the march is replaced, so stale arrival events are ignored. */
   version: number;
+  /** Speed booster charges spent on this march (0, 1 or 2). */
+  boost?: number;
 }
 
 export type SquadState =
@@ -324,6 +334,12 @@ export interface Player {
   squadIds: SquadId[];
   scouts: ScoutState[];
   nextTeleportAtMs: number;
+  /** Speed booster charges ready to use (0 to booster.charges). */
+  boostCharges: number;
+  /** When the next charge is ready, while not full; 0 when full. */
+  nextBoostAtMs: number;
+  /** Bumped whenever the recharge is rescheduled, so stale recharge events are ignored. */
+  boostVersion: number;
   /** Vanity score ingredients. They never touch the team score or the outcome. */
   stats: PlayerStats;
 }
@@ -417,7 +433,9 @@ export type Command =
   | { type: 'cancel'; playerId: string; squadId: SquadId }
   | { type: 'teleport'; playerId: string; nodeId: NodeId }
   | { type: 'scout'; playerId: string; scoutIndex: number; target: ScoutTarget }
-  | { type: 'setDefend'; playerId: string; squadId: SquadId; defend: boolean };
+  | { type: 'setDefend'; playerId: string; squadId: SquadId; defend: boolean }
+  /** Spend one speed booster charge on a marching squad (not one walking home or burning). */
+  | { type: 'boost'; playerId: string; squadId: SquadId };
 
 export type CommandResult = { ok: true; events: GameEvent[] } | { ok: false; error: string };
 

@@ -8,19 +8,19 @@ export interface ArtBox {
   h: number;
   ox: number;
   oy: number;
+  /** Texture pixels per world pixel for this box. */
+  res: number;
 }
 
 /**
- * Nodes and HQs: the pad with its rim glow and shadow (about 42 px below the ground point and either side), and
- * up to about 70 px above it for the tallest building, the padlock or the kind badge. Kept tight: it sets memory.
+ * A 2x2 node: the pad with its rim glow and shadow (about 80 px below the ground point and either side), and up to
+ * about 110 px above it for the tallest building, the padlock or the kind badge. Kept tight: it sets memory. At 2.5
+ * texture pixels per world pixel a look is about 770 KB, with around 15 node looks a match.
  */
-export const NODE_BOX: ArtBox = { w: 92, h: 122, ox: 45, oy: 78 };
+export const NODE_BOX: ArtBox = { w: 160, h: 192, ox: 80, oy: 112, res: 2.5 };
 
-/**
- * Texture pixels per world pixel. 3 keeps a phone at its default zoom on baked art (live vectors there would cost
- * more geometry, and so more draw calls). About 30 looks per match at roughly 400 KB each.
- */
-export const ART_RES = 3;
+/** An HQ: one cell, so a much smaller box, baked a little sharper. About 400 KB a look. */
+export const HQ_BOX: ArtBox = { w: 92, h: 122, ox: 45, oy: 78, res: 3 };
 
 /**
  * Static vector art rendered once per look into a texture. Redrawing every node and HQ as vectors each frame was most
@@ -37,10 +37,10 @@ export class ArtCache {
     if (!this.scene.textures.exists(k)) {
       const g = this.scene.make.graphics({ x: 0, y: 0 }, false);
       g.save();
-      g.scaleCanvas(ART_RES, ART_RES);
+      g.scaleCanvas(box.res, box.res);
       draw(g, box.ox, box.oy);
       g.restore();
-      g.generateTexture(k, box.w * ART_RES, box.h * ART_RES);
+      g.generateTexture(k, Math.ceil(box.w * box.res), Math.ceil(box.h * box.res));
       g.destroy();
     }
     this.made.add(k);

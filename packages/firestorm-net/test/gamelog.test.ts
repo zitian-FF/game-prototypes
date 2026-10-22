@@ -3,7 +3,7 @@ import { test } from './harness';
 import { FakeEnv, flush, makeWorld, restoreFrom } from './helpers';
 import type { ArenaRoom } from '../src/index';
 
-// Start a match with one human (Hana, on a phone) and 39 bots; returns the world and her client.
+// Start a match with one human (Hana, on a phone) and 31 bots; returns the world and her client.
 function start(waitMs = 0) {
   const w = makeWorld();
   const hana = w.client('Hana', 'client-hana-gamelog-0001');
@@ -57,7 +57,7 @@ test('game log: one record per human with the ordered targets, counts, pace, dev
   assert.equal(r.name, 'Hana');
   assert.equal(r.device, 'touch');
   assert.equal(r.humans, 1);
-  assert.equal(r.bots, 39);
+  assert.equal(r.bots, 31);
   assert.equal(r.pid.length, 14);
   assert.ok(!JSON.stringify(r).includes('client-hana'), 'the raw client id never appears');
   assert.equal(r.counts.captureNeutral, 1);
@@ -89,7 +89,7 @@ test('game log: counters survive the room being evicted and rebuilt', () => {
   env2.wall = w.env.wall;
   const revived: ArenaRoom = restoreFrom(w.store, env2, {}, undefined);
   revived.onConnect('c-new');
-  revived.onMessage('c-new', JSON.stringify({ t: 'hello', v: 8, clientId: 'client-hana-gamelog-0001', name: 'Hana', device: 'touch' }));
+  revived.onMessage('c-new', JSON.stringify({ t: 'hello', v: 9, clientId: 'client-hana-gamelog-0001', name: 'Hana', device: 'touch' }));
   // Run the rebuilt room to the end of the match.
   for (let guard = 0; guard < 100000; guard++) {
     const wake = revived.nextWakeAt();
@@ -191,7 +191,7 @@ test('game log: the first order is saved at once, so a restart right after it lo
   env2.wall = w.env.wall;
   const revived: ArenaRoom = restoreFrom(w.store, env2, {}, undefined);
   revived.onConnect('c-new');
-  revived.onMessage('c-new', JSON.stringify({ t: 'hello', v: 8, clientId: 'client-hana-gamelog-0001', name: 'Hana', device: 'touch' }));
+  revived.onMessage('c-new', JSON.stringify({ t: 'hello', v: 9, clientId: 'client-hana-gamelog-0001', name: 'Hana', device: 'touch' }));
   revived.onMessage('c-new', JSON.stringify({ t: 'endRoom' }));
   assert.equal(env2.gameLogs.length, 1);
   assert.equal(env2.gameLogs[0].counts.captureNeutral, 1);

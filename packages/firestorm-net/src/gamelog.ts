@@ -42,6 +42,8 @@ export interface Counts {
   teleports: number;
   defendToggles: number;
   returns: number;
+  /** Speed booster charges spent (absent in logs from before boosters). */
+  boosts?: number;
   /** Orders the sim refused (too early, no free slot, locked node...). */
   rejected: number;
 }
@@ -83,7 +85,7 @@ const MAX_CONN = 60;
 
 export function newLive(): LiveLog {
   return {
-    counts: { marches: 0, captureNeutral: 0, attackNode: 0, garrisonOwn: 0, hqAttack: 0, hqGarrison: 0, scoutNode: 0, scoutHq: 0, scoutCache: 0, teleports: 0, defendToggles: 0, returns: 0, rejected: 0 },
+    counts: { marches: 0, captureNeutral: 0, attackNode: 0, garrisonOwn: 0, hqAttack: 0, hqGarrison: 0, scoutNode: 0, scoutHq: 0, scoutCache: 0, teleports: 0, defendToggles: 0, returns: 0, boosts: 0, rejected: 0 },
     targets: [],
     times: [],
   };
@@ -114,11 +116,12 @@ export function connSummary(conn: ConnEvent[] | undefined, simSeconds: number): 
 }
 
 /** Count one accepted order. `entry` is set for orders that have a target worth keeping in the ordered list. */
-export function recordOrder(live: LiveLog, tSec: number, entry: Omit<TargetEntry, 't'> | null, other?: 'defend' | 'return'): void {
+export function recordOrder(live: LiveLog, tSec: number, entry: Omit<TargetEntry, 't'> | null, other?: 'defend' | 'return' | 'boost'): void {
   const c = live.counts;
   if (live.times.length < MAX_TIMES) live.times.push(tSec);
   if (other === 'defend') c.defendToggles++;
   else if (other === 'return') c.returns++;
+  else if (other === 'boost') c.boosts = (c.boosts ?? 0) + 1;
   if (!entry) return;
   switch (entry.a) {
     case 'capture': c.captureNeutral++; c.marches++; break;

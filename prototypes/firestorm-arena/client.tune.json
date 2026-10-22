@@ -15,14 +15,14 @@
     "focusZoomTouch": 1.9,
     "startZoomTouch": 1.7,
     "labelDetailZoom": 0.7,
-    "nodeFixedZoom": 0.6,
+    "nodeFixedZoom": 0.3,
     "nodeMaxScale": 4
   },
   "perf": {
     "staticUnitZoom": 0.6,
     "staticUnitCount": 14,
     "staticUnitHysteresis": 0.8,
-    "bakedArtMaxDensity": 3.6
+    "bakedArtMaxDensity": 3.0
   },
   "dpr": {
     "max": 2

@@ -117,7 +117,7 @@ function playRoom(opts: { humans: string[]; fillBots: boolean; untilSimMs: numbe
   return { w, clients, startedAt };
 }
 
-test('room: a full 30 minute match with one human and 39 bots runs start to finish', () => {
+test('room: a full 30 minute match with one human and 31 bots runs start to finish', () => {
   const { w, clients } = playRoom({ humans: ['Hana'], fillBots: true, untilSimMs: 1_802_000 });
   const hana = clients[0];
   assert.equal(w.room.currentPhase, 'ended');

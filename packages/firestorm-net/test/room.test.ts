@@ -195,14 +195,14 @@ test('match: humans are split across the two teams, and only teammates are named
   }
 });
 
-test('match: filling with bots makes it 20 v 20 and names stay unique', () => {
+test('match: filling with bots makes it 16 v 16 and names stay unique', () => {
   const { w, clients } = startMatch(['Ann', 'Ann', 'Bot Alpha'], true);
   const g = w.room.sim!;
-  assert.equal(g.players.size, 40);
+  assert.equal(g.players.size, 32);
   const teams = [0, 0];
   for (const p of g.players.values()) teams[p.team]++;
-  assert.deepEqual(teams, [20, 20]);
-  assert.equal(new Set([...g.players.keys()].map((n) => n.toLowerCase())).size, 40);
+  assert.deepEqual(teams, [16, 16]);
+  assert.equal(new Set([...g.players.keys()].map((n) => n.toLowerCase())).size, 32);
   const names = clients.map((c) => c.last('matchStart')!.info.playerId);
   assert.equal(new Set(names).size, 3, 'duplicate human names are made distinct');
 });
@@ -350,18 +350,18 @@ test('teams: joiners are put on the smaller team, and anyone can switch while th
 
 test('teams: a full team refuses more, and a bad team value is rejected', () => {
   const w = makeWorld();
-  const clients = Array.from({ length: 21 }, (_, i) => w.client(`P${i}`, `client-${i}-player`.padEnd(12, '_')));
+  const clients = Array.from({ length: 17 }, (_, i) => w.client(`P${i}`, `client-${i}-player`.padEnd(12, '_')));
   clients.forEach((c, i) => c.hello(i === 0));
-  for (let i = 0; i < 20; i++) clients[i].send({ t: 'setTeam', team: 1 });
-  assert.equal(clients[0].last('lobby')!.players.filter((p) => p.team === 1).length, 20);
-  clients[20].send({ t: 'setTeam', team: 1 });
-  assert.equal(clients[20].last('error')!.code, 'teamFull');
-  assert.equal(clients[20].last('lobby')!.players.find((p) => p.name === 'P20')!.team, 0, 'stays where it was');
-  clients[20].send({ t: 'setTeam', team: 2 } as never);
-  assert.equal(clients[20].last('error')!.code, 'badMessage');
+  for (let i = 0; i < 16; i++) clients[i].send({ t: 'setTeam', team: 1 });
+  assert.equal(clients[0].last('lobby')!.players.filter((p) => p.team === 1).length, 16);
+  clients[16].send({ t: 'setTeam', team: 1 });
+  assert.equal(clients[16].last('error')!.code, 'teamFull');
+  assert.equal(clients[16].last('lobby')!.players.find((p) => p.name === 'P16')!.team, 0, 'stays where it was');
+  clients[16].send({ t: 'setTeam', team: 2 } as never);
+  assert.equal(clients[16].last('error')!.code, 'badMessage');
 });
 
-test('teams: players keep the team they chose, bots fill both teams to 20, squads are dealt at the start', () => {
+test('teams: players keep the team they chose, bots fill both teams to 16, squads are dealt at the start', () => {
   const w = makeWorld();
   const a = w.client('Ann');
   const b = w.client('Ben');
@@ -376,11 +376,11 @@ test('teams: players keep the team they chose, bots fill both teams to 20, squad
   w.advance(3100);
   const info = (x: typeof a) => x.of('matchStart')[0].info;
   for (const x of [a, b, c]) assert.equal(info(x).team, 1);
-  assert.equal(info(a).teammates.length, 19, '3 humans and 17 bots on team 1');
+  assert.equal(info(a).teammates.length, 15, '3 humans and 13 bots on team 1');
   const g = w.room.sim!;
   const per = [0, 0];
   for (const p of g.players.values()) per[p.team]++;
-  assert.deepEqual(per, [20, 20]);
+  assert.deepEqual(per, [16, 16]);
   assert.ok(a.of('state').length > 0);
 });
 

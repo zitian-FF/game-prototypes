@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { RING_OFFSETS, baseSpeed, cellCenter, dist, generateMap, ringSlotPos, safeZoneSlotPos } from '../src/map';
+import { RING_OFFSETS, baseSpeed, dist, generateMap, nodeCenter, ringSlotPos, safeZoneSlotPos } from '../src/map';
 import { Rng } from '../src/rng';
 import { test } from './harness';
 import { loadTune } from './helpers';
@@ -15,7 +15,8 @@ test('map: node counts per ring and kind match tune, tiers match their rings', (
   for (const seed of [1, 2, 3]) {
     const map = generateMap(new Rng(seed), tune);
     // Expected per tier: a ring's kinds sit at the ring's tier unless kindTiers says otherwise.
-    const want: Record<number, Record<string, number>> = {};
+    // The four Portal Nexus are fixed (tier 1), not part of any ring.
+    const want: Record<number, Record<string, number>> = { 1: { portal: 4 } };
     for (const ring of tune.map.rings) {
       for (const [kind, count] of Object.entries(ring.nodes)) {
         const tier = ring.kindTiers?.[kind as keyof typeof ring.kindTiers] ?? ring.tier;
@@ -27,22 +28,22 @@ test('map: node counts per ring and kind match tune, tiers match their rings', (
     }
     assert.equal(new Set(map.nodes.map((n) => n.id)).size, map.nodes.length);
   }
-  const total = tune.map.rings.reduce((a, r) => a + Object.values(r.nodes).reduce((x, y) => x + (y ?? 0), 0), 0);
+  const total = 4 + tune.map.rings.reduce((a, r) => a + Object.values(r.nodes).reduce((x, y) => x + (y ?? 0), 0), 0);
   assert.equal(generateMap(new Rng(1), tune).nodes.length, total);
 });
 
-test('map: everything is on the grid, centre cell holds the single tier 4 node', () => {
+test('map: every node is a 2x2 block on the grid, the single tier 4 node covers the centre', () => {
   const tune = loadTune();
   const map = generateMap(new Rng(4), tune);
   const s = tune.map.cellSize;
   for (const n of map.nodes) {
     assert.ok(Number.isInteger(n.cell.cx) && Number.isInteger(n.cell.cy));
-    assert.deepEqual(n.pos, cellCenter(n.cell, tune));
-    assert.ok(n.cell.cx >= 0 && n.cell.cx < tune.map.widthCells && n.cell.cy >= 0 && n.cell.cy < tune.map.heightCells);
+    assert.deepEqual(n.pos, nodeCenter(n.cell, tune));
+    assert.ok(n.cell.cx >= 0 && n.cell.cx + 1 < tune.map.widthCells && n.cell.cy >= 0 && n.cell.cy + 1 < tune.map.heightCells);
   }
   const t4 = map.nodes.filter((n) => n.tier === 4);
   assert.equal(t4.length, 1);
-  assert.deepEqual(t4[0].cell, { cx: (tune.map.widthCells - 1) / 2, cy: (tune.map.heightCells - 1) / 2 });
+  assert.deepEqual(t4[0].pos, { x: map.width / 2, y: map.height / 2 });
   assert.equal(t4[0].kind, 'points');
   assert.equal(map.width, tune.map.widthCells * s);
 });
@@ -64,7 +65,7 @@ test('map: layout is point-symmetric so both teams are even', () => {
   const tune = loadTune();
   const map = generateMap(new Rng(2), tune);
   for (const n of map.nodes) {
-    const twin = map.nodes.find((m) => m.cell.cx === tune.map.widthCells - 1 - n.cell.cx && m.cell.cy === tune.map.heightCells - 1 - n.cell.cy);
+    const twin = map.nodes.find((m) => m.cell.cx === tune.map.widthCells - 2 - n.cell.cx && m.cell.cy === tune.map.heightCells - 2 - n.cell.cy);
     assert.ok(twin, `${n.id} has no mirror`);
     assert.equal(twin!.kind, n.kind);
     assert.equal(twin!.tier, n.tier);
@@ -73,7 +74,7 @@ test('map: layout is point-symmetric so both teams are even', () => {
   assert.ok(Math.abs(a.center.x + b.center.x - map.width) < 1e-9 && Math.abs(a.center.y + b.center.y - map.height) < 1e-9);
 });
 
-test('map: spacing keeps every node 3x3 slot block free, safe zones clear', () => {
+test('map: spacing keeps every node 4x4 block (node plus slots) free, safe zones clear', () => {
   const tune = loadTune();
   const m = tune.map;
   for (const seed of [1, 2, 3, 4, 5, 6]) {
@@ -86,8 +87,8 @@ test('map: spacing keeps every node 3x3 slot block free, safe zones clear', () =
         assert.ok(cheb >= m.nodeMinSpacingCells, `${a.id}/${b.id} only ${cheb} cells apart`);
       }
       for (const z of map.safeZones) {
-        const dx = Math.max(z.origin.cx - a.cell.cx, 0, a.cell.cx - (z.origin.cx + z.cols - 1));
-        const dy = Math.max(z.origin.cy - a.cell.cy, 0, a.cell.cy - (z.origin.cy + z.rows - 1));
+        const dx = Math.max(z.origin.cx - (a.cell.cx + 1), 0, a.cell.cx - (z.origin.cx + z.cols - 1));
+        const dy = Math.max(z.origin.cy - (a.cell.cy + 1), 0, a.cell.cy - (z.origin.cy + z.rows - 1));
         assert.ok(Math.max(dx, dy) >= m.nodeMinDistFromSafeZoneCells, `${a.id} too near a safe zone`);
       }
     }
@@ -105,24 +106,26 @@ test('map: crossing the whole map takes the tuned edge-to-edge time at base spee
   assert.ok(Math.abs(Math.max(map.width, map.height) / baseSpeed(map, tune) - tune.march.edgeToEdgeSeconds) < 1e-9);
 });
 
-test('map: the 8 HQ slots are exactly the 8 cells around the node', () => {
+test('map: the 12 HQ slots are exactly the 12 cells around the 2x2 node', () => {
   const tune = loadTune();
   const s = tune.map.cellSize;
-  const node = { x: 20 * s + s / 2, y: 10 * s + s / 2 };
+  const node = nodeCenter({ cx: 20, cy: 10 }, tune);
   const seen = new Set<string>();
-  for (let i = 0; i < 8; i++) {
+  assert.equal(tune.hq.slotsPerNode, 12);
+  for (let i = 0; i < 12; i++) {
     const p = ringSlotPos(node, i, tune);
     seen.add(`${p.x},${p.y}`);
-    const dx = Math.round((p.x - node.x) / s);
-    const dy = Math.round((p.y - node.y) / s);
+    // Each slot is a cell centre, in the ring of cells just outside the node's 2x2 block.
+    const dx = (p.x - node.x) / s;
+    const dy = (p.y - node.y) / s;
     assert.deepEqual({ cx: dx, cy: dy }, RING_OFFSETS[i]);
-    assert.ok(Math.max(Math.abs(dx), Math.abs(dy)) === 1);
+    assert.equal(Math.max(Math.abs(dx), Math.abs(dy)), 1.5);
+    assert.ok(Number.isInteger(p.x / s - 0.5) && Number.isInteger(p.y / s - 0.5), 'on a cell centre');
   }
-  assert.equal(seen.size, 8);
-  assert.deepEqual(ringSlotPos(node, 0, tune), { x: node.x + s, y: node.y }, 'slot 0 is straight east');
+  assert.equal(seen.size, 12);
 });
 
-test('map: 20 HQs fit in a safe zone block, one per cell, none overlapping', () => {
+test('map: a team fits in its square safe zone in a corner, one HQ per cell', () => {
   const tune = loadTune();
   const map = generateMap(new Rng(1), tune);
   for (const team of [0, 1] as const) {
@@ -135,6 +138,27 @@ test('map: 20 HQs fit in a safe zone block, one per cell, none overlapping', () 
       assert.ok(p.y >= z.origin.cy * tune.map.cellSize && p.y <= (z.origin.cy + z.rows) * tune.map.cellSize);
     }
     assert.equal(seen.size, tune.match.playersPerTeam);
+    assert.equal(z.cols, z.rows, 'square');
+    assert.equal(z.cols * z.rows, tune.match.playersPerTeam);
+  }
+  // Team 0 starts bottom left, team 1 top right.
+  const [a, b] = map.safeZones;
+  assert.ok(a.center.x < map.width / 4 && a.center.y > (map.height * 3) / 4, 'bottom left');
+  assert.ok(b.center.x > (map.width * 3) / 4 && b.center.y < map.height / 4, 'top right');
+});
+
+test('map: the four Portal Nexus sit up, down, left and right, a quarter of the way in', () => {
+  const tune = loadTune();
+  for (const seed of [1, 2, 3]) {
+    const map = generateMap(new Rng(seed), tune);
+    const portals = map.nodes.filter((n) => n.kind === 'portal').map((n) => n.pos);
+    const W = map.width;
+    const H = map.height;
+    const s = tune.map.cellSize;
+    const near = (p: { x: number; y: number }, x: number, y: number) => Math.abs(p.x - x) <= s && Math.abs(p.y - y) <= s;
+    for (const [x, y] of [[W / 2, H / 4], [W / 2, (H * 3) / 4], [W / 4, H / 2], [(W * 3) / 4, H / 2]]) {
+      assert.ok(portals.some((p) => near(p, x, y)), `seed ${seed}: no portal near ${x},${y}`);
+    }
   }
 });
 
@@ -153,9 +177,9 @@ test('map: the real layout has the silo, 2 refineries (tier 2), 2 turrets (tier 
     assert.equal(count('hospital', 1), 4, 'two hospitals each side');
     // One of each outer building per side of the map.
     const mid = map.width / 2;
-    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown', 'hospital', 'largeVision', 'turret', 'portal']) {
+    for (const kind of ['attackBoost', 'defenseBoost', 'speedBoost', 'teleportCooldown', 'hospital', 'largeVision', 'turret']) {
       const left = map.nodes.filter((n) => n.kind === kind && n.pos.x < mid).length;
-      assert.equal(left, kind === 'hospital' || kind === 'portal' ? 2 : 1, `${kind} per half`);
+      assert.equal(left, kind === 'hospital' ? 2 : 1, `${kind} per half`);
     }
   }
 });
@@ -175,11 +199,11 @@ test('map: radar towers are placed to see the tier 3 and 4 nodes first', () => {
 
 test('map: tier 1 and 2 nodes sit toward their own spawn side so there is early action', () => {
   const tune = loadTune();
-  const hi = (tune.map.widthCells - 1) / 2;
+  const hi = tune.map.widthCells / 2 - 1;
   for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     const map = generateMap(new Rng(seed), tune);
-    for (const n of map.nodes.filter((x) => x.tier <= 2 && x.kind !== 'largeVision')) {
-      const own = Math.min(n.cell.cx, tune.map.widthCells - 1 - n.cell.cx); // columns from its nearest edge
+    for (const n of map.nodes.filter((x) => x.tier <= 2 && x.kind !== 'largeVision' && x.kind !== 'portal')) {
+      const own = Math.min(n.cell.cx, tune.map.widthCells - 2 - n.cell.cx); // columns from its nearest edge
       const ring = tune.map.rings.find((r) => (r.kindTiers?.[n.kind] ?? r.tier) === n.tier && r.nodes[n.kind])!;
       assert.ok(own <= Math.round((hi - 1) * (ring.spawnBand?.[1] ?? 1)) + 1, `seed ${seed}: ${n.kind} at column ${own}`);
     }
@@ -216,14 +240,14 @@ test('map: the map is a square, and the first nodes are within a couple of minut
 
 test('map: over many seeds every kind and tier has the same count on both sides', () => {
   const tune = loadTune();
-  const mid = (tune.map.widthCells - 1) / 2;
   for (let seed = 1; seed <= 400; seed++) {
     const map = generateMap(new Rng(seed), tune);
-    const side = (n: { cell: { cx: number } }) => (n.cell.cx < mid ? 0 : n.cell.cx > mid ? 1 : 2);
+    const mid = map.width / 2;
+    const side = (n: { pos: { x: number } }) => (n.pos.x < mid ? 0 : n.pos.x > mid ? 1 : 2);
     const tally = [new Map<string, number>(), new Map<string, number>()];
     for (const n of map.nodes) {
       const s = side(n);
-      if (s === 2) continue; // the exact centre holds only the silo
+      if (s === 2) continue; // the centre line holds the silo and the up and down portals
       const key = `${n.kind}/${n.tier}`;
       tally[s].set(key, (tally[s].get(key) ?? 0) + 1);
     }

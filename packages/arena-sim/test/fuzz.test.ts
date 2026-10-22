@@ -40,6 +40,7 @@ function playRandomMatch(seed: number): RunStats {
     if (roll < 0.6) return { type: 'cancel', playerId: p.id, squadId };
     if (roll < 0.75) return { type: 'teleport', playerId: p.id, nodeId: r.pick(nodeIds) };
     if (roll < 0.9) return { type: 'scout', playerId: p.id, scoutIndex: r.int(0, 2), target };
+    if (roll < 0.95) return { type: 'boost', playerId: p.id, squadId };
     return { type: 'setDefend', playerId: p.id, squadId, defend: r.chance(0.7) };
   };
 

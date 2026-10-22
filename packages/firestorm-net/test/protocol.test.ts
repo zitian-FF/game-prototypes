@@ -5,9 +5,9 @@ import { test } from './harness';
 const ok = (v: unknown) => parseClientMsg(JSON.stringify(v));
 
 test('protocol: valid messages parse', () => {
-  assert.deepEqual(ok({ t: 'hello', v: 8, clientId: 'abcdefgh1234', name: '  Sam  ', create: true }), {
+  assert.deepEqual(ok({ t: 'hello', v: 9, clientId: 'abcdefgh1234', name: '  Sam  ', create: true }), {
     ok: true,
-    msg: { t: 'hello', v: 8, clientId: 'abcdefgh1234', name: 'Sam', create: true },
+    msg: { t: 'hello', v: 9, clientId: 'abcdefgh1234', name: 'Sam', create: true },
   });
   assert.ok(ok({ t: 'start', fillBots: true, minutes: 30 }).ok);
   assert.ok(ok({ t: 'cancelStart' }).ok);
@@ -16,6 +16,7 @@ test('protocol: valid messages parse', () => {
   assert.ok(ok({ t: 'cmd', id: 1, cmd: { type: 'march', squadId: 's3', target: { kind: 'node', nodeId: 'n7' } } }).ok);
   assert.ok(ok({ t: 'cmd', id: 2, cmd: { type: 'march', squadId: 's3', target: { kind: 'hq', hqId: 'h2' } } }).ok);
   assert.ok(ok({ t: 'cmd', id: 3, cmd: { type: 'cancel', squadId: 's1' } }).ok);
+  assert.ok(ok({ t: 'cmd', id: 4, cmd: { type: 'boost', squadId: 's1' } }).ok, 'speed booster');
   assert.ok(ok({ t: 'cmd', id: 4, cmd: { type: 'teleport', nodeId: 'n1' } }).ok);
   assert.ok(ok({ t: 'cmd', id: 5, cmd: { type: 'scout', scoutIndex: 2, target: { kind: 'node', nodeId: 'n1' } } }).ok);
   assert.ok(ok({ t: 'cmd', id: 6, cmd: { type: 'setDefend', squadId: 's1', defend: false } }).ok);
@@ -29,9 +30,9 @@ test('protocol: junk and hostile input is rejected, never thrown', () => {
     'null',
     '123',
     { t: 'nope' },
-    { t: 'hello', v: 8, clientId: 'short', name: 'x' },
-    { t: 'hello', v: 8, clientId: 'abcdefgh1234', name: '   ' },
-    { t: 'hello', v: 8, clientId: 'bad id with spaces', name: 'x' },
+    { t: 'hello', v: 9, clientId: 'short', name: 'x' },
+    { t: 'hello', v: 9, clientId: 'abcdefgh1234', name: '   ' },
+    { t: 'hello', v: 9, clientId: 'bad id with spaces', name: 'x' },
     { t: 'start' },
     { t: 'start', fillBots: 'yes', minutes: 30 },
     { t: 'start', fillBots: true, minutes: 12 },

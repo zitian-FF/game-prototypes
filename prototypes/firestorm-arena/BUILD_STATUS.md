@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.17.0 on the branch (0.16.5 is merged and deployed; 0.17.0 is the Molten Night art pass)
+Version 0.18.0 on the branch (0.17.0 is merged and deployed; 0.18.0 is the map and speed booster change)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.18.0: 16 v 16 with square corner safe zones (bottom left, top right); 42 x 42 map with 2x2 nodes and 12 HQ slots; Portal Nexus fixed up, down, left and right a quarter in; speed boosters (2 charges, 2 min recharge, [>>] for 200% then 400% on a march, readout under the teleport countdown, bots use them); Accelerators now speed up booster recharge instead of marches; fissure and crater decals removed. arena-sim and firestorm-net 0.15.0, protocol 9.
 - 0.17.0: Molten Night art. Floor grid removed; basalt floor and lava fissure decals; neon-rim node pads with icon badges; top lighting, contact shadows, lit windows and beacons on every building and unit; glowing march lines.
 - 0.16.5: atmosphere. Terrain patches and decals, team territory glow, battle scars and tread marks, drifting embers. All cosmetic, under the fog, using only what this client sees.
 - 0.16.4: rendering performance. Node and HQ art is baked into textures and shown as pooled images in a layer under the live vectors; HUD squad portraits are baked too; dashed march lines are clipped to the view and their dashes scale with the node scale when zoomed out.
@@ -41,6 +42,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Key technical decisions
 
+- 0.18.0: a node's `cell` is its top-left cell and its position the corner where its four cells meet; `RING_OFFSETS` are half-cell offsets from that point. Booster charges are sim state per player (`boostCharges`, `nextBoostAtMs`, a `boostCharge` queue event with a version, retimed like teleports). A boost re-anchors the march at the squad's current position with a new speed, version and arrival. The 2x2 node art bakes in a 160 x 192 box at 2.5 texture pixels per world pixel (HQs keep their own smaller box), and `camera.nodeFixedZoom` went from 0.6 to 0.3 so zoomed-out nodes keep their old screen size.
+
 - 0.17.0: the extra detail lives in the shared `Art` pass (`light()` adds edge highlights and shades) and small helpers (`drawNodePad`, `wallLights`, `glowDot`, `contactShadow`). Baking moved to 3 texture pixels per world pixel in a tighter 92 x 122 box (about 400 KB per look) and `perf.bakedArtMaxDensity` to 3.6, so a phone at its default zoom stays on baked art. Drawing the richer art live there overflowed the vertex batch and added draw calls.
 
 - Atmosphere (0.16.5): terrain is one static quarter-resolution canvas plus decal images; territory is a 1/16-resolution canvas repainted only when held nodes change (a full-size one stalled every ownership change); scars, treads and embers are capped (40, 90, 28) and drawn in one graphics layer. Scars land in a ring around the fight, because node and HQ art would hide a mark right on top.
@@ -55,6 +58,9 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Open questions
 
+- BRIEF.md may need updating to cover what was decided in chat for 0.18.0: which background elements to remove (fissures and craters only), how two booster charges combine (a second press upgrades 200% to 400%), that only nodes (not HQs) became 2x2, and that bots use boosters.
+- Boosted speed is 200% / 400% of the base speed; with no Accelerator speed bonus left this is the only speed modifier. The map size (42), node spacing (5) and portal vision (2.25) were changed to fit the 2x2 nodes, not tuned by play.
+
 - Usage counter now shows percent left (moves smoothly). The games figure still assumes 4,000 writes and 2,500 requests per 30 minute match; measured is about 1,000 writes (request cost at real speed unmeasured), so consider lowering the constants after a real-time measurement.
 - A tester saw an Accelerator on only one side of the map. The generator always makes one per half (tested over 400 seeds), so the likeliest cause is fog hiding the far one; need the room code or a screenshot if it happens again.
 
@@ -65,6 +71,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- 0.18.0 checked with all arena-sim (120) and firestorm-net (70) tests, the end-to-end run twice, and screenshots of a live match on desktop and an 844 x 390 touch view (booster line, [>>] buttons, 2x2 nodes and slots). On phones the squad chip corners are now crowded (HQ button and >> badge). Not checked on a real phone; boosted marches and the new map have not been playtested for balance.
 
 - 0.17.0 checked in headless Chromium (software WebGL, 4x throttle) against 0.16.5: GL draw calls per frame about 5 on both (start and zoomed out, desktop and 844 x 390 DPR 2 touch); render submit equal or lower. Screenshots inspected at zoom 1, 1.9, 2.2, 2.4 and wide; not checked on a real phone. The HQ safe zones still show their cell grid, by request. Units zoomed in are still drawn live (animated rotors), so they cost a little more geometry than before.
 
@@ -93,4 +101,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Merge and deploy 0.17.0, then the next scene in the art and UI upgrade (in-match HUD), with a direction proposal first.
+Merge and deploy 0.18.0, then the UI/UX round (logo and material-feel panels), then fire and explosion effects.

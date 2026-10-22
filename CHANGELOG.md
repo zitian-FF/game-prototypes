@@ -3,6 +3,18 @@
 Base-level (repo-wide) changes that individual prototypes should
 account for the next time they're touched. Newest entries first.
 
+## 2026-10-22 - arena-sim and firestorm-net 0.15.0: 2x2 nodes, speed boosters, protocol 9
+
+**What changed:** arena-sim 0.15.0: nodes are 2x2 cells (`MapNode.cell` is the top-left cell, `pos` the shared
+middle corner, new `nodeCenter`), `RING_OFFSETS` lists the 12 surrounding cells as half-cell offsets, maps must have
+even width and height, safe zones sit in the bottom left and top right corners, and the four Portal Nexus are placed
+at fixed compass points (`map.portals.fromEdge`) instead of from the rings. New `booster` tune block and `boost`
+command; `NodeKindTune.marchEdgeSecondsCut` is replaced by `boostRechargeRate`, and the team view's HQs carry
+`boostCharges` and `nextBoostAtMs`. firestorm-net 0.15.0 depends on arena-sim ^0.15.0, accepts the `boost` command,
+counts boosts in the game log, lets bots use boosters, and bumps the protocol to 9.
+
+**Applies to:** firestorm-arena only (the only user of these packages).
+
 ## 2026-10-14 - Dice Dig replaces digger; shared package dig-kit 0.1.0; manual itch deploy
 
 **What changed:** the previous digger game moved unchanged to `prototypes/digger-legacy`. Dice Dig (a luck-based dice dig

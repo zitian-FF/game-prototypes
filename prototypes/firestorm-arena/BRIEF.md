@@ -815,3 +815,19 @@ client.
   (highlighted top edges, shaded bottom edges, gloss on round parts), with contact shadows, lit windows and small
   beacon or running lights. March lines have a faint glow under the dashes. All of it is baked, so the frame cost and
   draw calls stay as before.
+- Map and teams (0.18.0, supersedes earlier lines on these): 16 v 16 (`match.playersPerTeam`), so each team's safe zone
+  is a 4 x 4 square: team 0 in the bottom left corner, team 1 in the top right (point reflection). Nodes are 2 x 2
+  cells with the 12 cells around them as HQ slots (`hq.slotsPerNode` 12), so the map is 42 x 42 (even, so a 2 x 2 node
+  covers the centre) and nodes keep a 5 cell spacing (one free cell between slot rings, as before). The four Portal
+  Nexus are no longer random: they sit straight up, down, left and right of the centre, a quarter of the way in from
+  the edge (`map.portals.fromEdge`), for the widest teleport coverage; their light now covers the 12 slot cells
+  (`visionRadiusCells` 2.25). HQs stay one cell.
+- Speed boosters (0.18.0): every commander holds 2 charges, full at the start (`booster`). The [>>] button on a
+  marching squad that is not walking home or burning spends one: the rest of that march runs at 200% of the base
+  speed. A second press on the same march makes it 400%. While not full, one charge refills at a time, every 2
+  minutes. The booster line (charge pips and time to the next charge) sits right under the HQ teleport countdown.
+  Bots spend charges on long marches (more than 40 s left), first on HQ assaults, and keep one in reserve otherwise.
+- Accelerators (0.18.0) no longer speed up marches. Each one held (times tier) adds +1 to the booster recharge rate,
+  like the Tech Centre does for teleports: one makes charges refill twice as fast, two three times; a recharge
+  already running is retimed when an Accelerator changes hands.
+- Background (0.18.0): the lava fissure and crater decals are removed; soft ground patches, rocks and ridges stay.
