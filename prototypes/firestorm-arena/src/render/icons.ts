@@ -420,6 +420,11 @@ export function drawNodeStack(g: G, cx: number, cy: number, tier: number, color:
  * The player HQ: deliberately smaller and plainer than a node. A concrete pad, one tower with a team-colour
  * roof and a small cannon, a lower side block and a flag. `hw` is the pad half-width.
  */
+/** The HQ flag's wave, in five steps from -1 to 1, so a baked HQ needs only a handful of frames. */
+export function hqFlagWave(t: number): number {
+  return Math.round(Math.sin(t * 4) * 2) / 2;
+}
+
 export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, _alpha = 1, t = 0): void {
   const s = hw / 26;
   const wall = 0xd9c9a3;
@@ -436,7 +441,7 @@ export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, 
   const fx = cx - 27 * s;
   const fy = cy + 5 * s;
   art.quad(fx - 0.8 * s, fy - 24 * s, fx + 0.8 * s, fy, 0xc9c2b0);
-  const w = Math.sin(t * 4) * 1.2 * s;
+  const w = hqFlagWave(t) * 1.2 * s;
   art.poly([[fx, fy - 24 * s], [fx + 10 * s, fy - 23 * s + w], [fx + 10 * s, fy - 17 * s + w], [fx, fy - 18 * s]], color);
   art.draw();
 }
@@ -613,12 +618,18 @@ export function drawQuestion(g: G, x: number, y: number, color: number, size = 1
  * Oil refinery after the reference art: two big domed storage tanks with glowing green tops and team-colour
  * clamps on a machinery base, a small side tank and glowing vents. The glow pulses by colour, not alpha.
  */
+/** The refinery's pulsing tank glow steps through a few fixed colours; the step doubles as a baked-art frame key. */
+export function refineryFrame(t: number): number {
+  const glow = 0.55 + 0.45 * Math.sin(t * 2.2);
+  return (glow > 0.8 ? 2 : glow > 0.55 ? 1 : 0) + (glow > 0.7 ? 3 : 0);
+}
+
 export function drawRefinery(g: G, cx: number, cy: number, color: number, hw: number, t: number, _alpha = 1): void {
   const s = hw / 27;
   const art = new Art(g, color);
-  const glow = 0.55 + 0.45 * Math.sin(t * 2.2);
-  const glowColor = glow > 0.8 ? 0x9dff7a : glow > 0.55 ? 0x7dff6a : 0x4fcf44;
-  const coreColor = glow > 0.7 ? 0xf0ffe6 : 0xc8f5b8;
+  const f = refineryFrame(t);
+  const glowColor = [0x4fcf44, 0x7dff6a, 0x9dff7a][f % 3];
+  const coreColor = f >= 3 ? 0xf0ffe6 : 0xc8f5b8;
   const pad = 0x464b54;
   art.box(cx, cy, 29 * s, 4 * s, 0, pad, shade(pad, 1.25));
   // Small side tank.
@@ -679,12 +690,17 @@ export function drawCache(g: G, x: number, y: number, t: number, s = 1): void {
  * Portal Nexus: a neutral teleporter. A low slab, two pylons and a ring of light with a swirling core. The core
  * changes colour in steps (no fading), and nothing about it is team coloured because nobody owns it.
  */
+/** The portal core cycles through three colours; the step doubles as a baked-art frame key. */
+export function portalFrame(t: number): number {
+  return Math.floor(t * 3) % 3;
+}
+
 export function drawPortal(g: G, cx: number, cy: number, t: number, hw: number): void {
   const s = hw / 26;
   const art = new Art(g, 0x9a7cff);
   const slab = 0x4f5666;
   art.box(cx, cy, 28 * s, 4 * s, 0, slab, shade(slab, 1.25));
-  const phase = Math.floor(t * 3) % 3;
+  const phase = portalFrame(t);
   const core = [0x7be0ff, 0xa58bff, 0xd7b8ff][phase];
   const glow = [0x3a9bd1, 0x6b52d6, 0x8f6fe0][phase];
   // Pylons either side.

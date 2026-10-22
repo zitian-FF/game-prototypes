@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.16.3 on the branch (0.16.0 to 0.16.2 are merged and deployed; 0.16.3 not merged yet)
+Version 0.16.4 on the branch (0.16.3 is merged and deployed; 0.16.4 is the rendering performance pass)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.16.4: rendering performance. Node and HQ art is baked into textures and shown as pooled images in a layer under the live vectors; HUD squad portraits are baked too; dashed march lines are clipped to the view and their dashes scale with the node scale when zoomed out.
 - 0.16.3: Accelerator reads as a movement speed percent in the node panel and Handbook (shared helper `src/speedPct.ts`). The itch deploy now waits and retries up to 6 times, 90 s apart, only when itch says the previous build is still processing.
 - 0.16.2: nodes keep a constant screen size below zoom 0.6 (`camera.nodeFixedZoom`, max 4x), with labels, rings and tap area scaled to match.
 - 0.16.1: Return to HQ on every field squad, Hospital recovery per second beside Reserve, Tech Centre teleport countdown with tenths, speed tag and flash, buff icons top left.
@@ -38,6 +39,9 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Key technical decisions
 
+- Baked art (0.16.4): `ArtCache` renders a look once at 2 texture pixels per world pixel, keyed by everything that changes it (kind, tier, colours, lock, and the animation step for refineries, portals and the HQ flag). Above `perf.bakedArtMaxDensity` (2.4) device pixels per world pixel the scene switches back to live vectors, with hysteresis; that only happens zoomed in, where few nodes are on screen. Higher bake resolutions were rejected to keep GPU memory low on phones (about 30 textures per match at about 220 KB each, roughly 7 MB).
+- Selection, hover and the own-HQ ring moved from the entity layer to the line layer so they stay under the baked art.
+
 - Touch is detected from `(pointer: coarse)` or the first touch pointer; `UI_SCALE` divides logical size and
   multiplies camera zoom and text resolution, so layout code is unchanged.
 - Caches carry `from` (the losing team); only a swap spawns them, ids are hash based so replay stays deterministic.
@@ -55,6 +59,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- 0.16.4 measured in headless Chromium with software WebGL and 4x CPU throttle, not on a phone. Script plus render-submit time per frame, main vs 0.16.4: desktop start zoom 38 to 23 ms, zoomed out 61 to 30 ms; 844 x 390 DPR 2 touch, start zoom 40 to 32 ms, zoomed out 69 to 35 ms. Frame rate under software WebGL is GPU-bound and not meaningful. Baked tile outlines are a touch thinner than live ones from texture filtering.
 
 - 0.16.2 checked on desktop at start zoom and fully zoomed out (nodes stay about 40 px). Not checked on a phone. The HQ block and units still shrink with the map, and `nodeFixedZoom` 0.6 is a first guess to tune.
 
@@ -77,4 +83,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Merge and deploy 0.16.3, then playtest on a real phone and tune touch sizes and HUD layout.
+Merge and deploy 0.16.4, then the atmosphere pass (territory tint, battle scars, terrain variation, embers), then the in-match world art direction proposal.

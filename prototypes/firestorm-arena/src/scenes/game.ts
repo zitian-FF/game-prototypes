@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { RING_OFFSETS, cardTier } from 'arena-sim';
-import type { CombatLog, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
+import type { CombatLog, NodeKind, PlayerScore, SquadType, TeamId, Tune, Vec } from 'arena-sim';
 import type { ClientEvent, WireEnemyMarch, WireSquad, WireView } from 'firestorm-net';
 import { BaseScene, bufferScale, isTouch, logicalSize, safeInsets } from './base';
 import { Ui } from '../ui/ui';
@@ -9,7 +9,8 @@ import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, unitHeight } from '../render/icons';
+import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, hqFlagWave, portalFrame, refineryFrame, unitHeight } from '../render/icons';
+import { ART_RES, ArtCache, NODE_BOX } from '../render/artCache';
 import { clientTune } from '../clientTune';
 import { LEVEL_RANK, guideLine, incomingThreat, suggestCues } from '../objective';
 import type { Cue, Objective } from '../objective';
@@ -71,6 +72,12 @@ export class GameScene extends BaseScene {
   private staticUnits = false;
   private unitTex = new Set<string>();
   private unitSprites: Phaser.GameObjects.Image[] = [];
+  /** Baked node and HQ art: a pool of images in their own layer under the live vector layer. */
+  private art!: ArtCache;
+  private nodeLayer!: Phaser.GameObjects.Container;
+  private artImgs: Phaser.GameObjects.Image[] = [];
+  private artUsed = 0;
+  private bakedArt = true;
   private unitSpriteUsed = 0;
   private spriteLayer!: Phaser.GameObjects.Container;
   private target: Target | null = null;
@@ -177,7 +184,11 @@ export class GameScene extends BaseScene {
     this.spriteLayer = this.add.container(0, 0);
     this.unitTex = new Set();
     this.unitSprites = [];
-    this.world.add([this.linesG, this.entG, this.spriteLayer, this.fxG]);
+    this.nodeLayer = this.add.container(0, 0);
+    this.art = new ArtCache(this);
+    this.artImgs = [];
+    this.bakedArt = true;
+    this.world.add([this.linesG, this.nodeLayer, this.entG, this.spriteLayer, this.fxG]);
     this.fx = new FxSystem(this.iso);
 
     const hq = session.view!.hqs.find((h) => h.id === info.hqId);
@@ -767,18 +778,35 @@ export class GameScene extends BaseScene {
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
     if (len < 1) return;
-    const { dashLength, gapLength, flowSpeed } = clientTune.lines;
-    const period = dashLength + gapLength;
+    // Zoomed far out the dashes grow with the nodes, so a long march is a few dozen dashes, not hundreds of specks.
+    const k = this.nodeScale();
+    const dashLength = clientTune.lines.dashLength * k;
+    const period = (clientTune.lines.dashLength + clientTune.lines.gapLength) * k;
     const ux = dx / len;
     const uy = dy / len;
+    // Only the part of the line on screen is drawn (Liang-Barsky clip against the view plus a margin).
+    const v = logicalSize();
+    const hw = v.w / 2 / this.zoom + 40;
+    const hh = v.h / 2 / this.zoom + 40;
+    let t0 = 0;
+    let t1 = len;
+    const clip = (p: number, q: number): boolean => {
+      if (Math.abs(p) < 1e-9) return q >= 0;
+      const r = q / p;
+      if (p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+      return t0 <= t1;
+    };
+    if (!clip(-ux, a.x - (this.camX - hw)) || !clip(ux, this.camX + hw - a.x) || !clip(-uy, a.y - (this.camY - hh)) || !clip(uy, this.camY + hh - a.y)) return;
     // Order and march lines are background information: scale them all down so they never drown the map.
     g.lineStyle(width, color, Math.min(1, alpha * clientTune.lines.strength));
-    let s = -((now * flowSpeed) % period) + period;
-    s -= period;
+    // Dashes start at -m + j * period, the same flow as before; begin with the last one starting before t0.
+    const m = (now * clientTune.lines.flowSpeed * k) % period;
+    let s = -m + Math.floor((t0 + m) / period) * period;
     g.beginPath();
-    for (; s < len; s += period) {
-      const s0 = Math.max(0, s);
-      const s1 = Math.min(len, s + dashLength);
+    for (; s < t1; s += period) {
+      const s0 = Math.max(t0, s);
+      const s1 = Math.min(t1, s + dashLength);
       if (s1 <= s0) continue;
       g.moveTo(a.x + ux * s0, a.y + uy * s0);
       g.lineTo(a.x + ux * s1, a.y + uy * s1);
@@ -839,6 +867,22 @@ export class GameScene extends BaseScene {
     return key;
   }
 
+  /** A squad portrait in the HUD: own-team art baked once per type, then drawn as an image. */
+  private hudUnit(type: SquadType, x: number, y: number, scale: number): void {
+    const RES = 3;
+    const key = `hud:${type}`;
+    if (!this.textures.exists(key)) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.save();
+      g.scaleCanvas(RES, RES);
+      drawUnit(g, type, UNIT_TEX.ox, UNIT_TEX.oy, 1, COLORS.mine, 0, 1, { shadow: false, moving: false });
+      g.restore();
+      g.generateTexture(key, UNIT_TEX.w * RES, UNIT_TEX.h * RES);
+      g.destroy();
+    }
+    this.ui.image(key, x, y, scale / RES, UNIT_TEX.ox / UNIT_TEX.w, UNIT_TEX.oy / UNIT_TEX.h);
+  }
+
   /** One unit on the map: live vector art in the depth-sorted layer, or a static sprite when the scene is crowded. */
   private putUnit(g: Phaser.GameObjects.Graphics, type: SquadType | 'scout', x: number, y: number, f: number, color: number, now: number): void {
     if (!this.staticUnits) {
@@ -875,6 +919,60 @@ export class GameScene extends BaseScene {
     } else if (this.zoom < p.staticUnitZoom || n > p.staticUnitCount) {
       this.staticUnits = true;
     }
+  }
+
+  /** One node's art standing on (x, y): its tile, the building for its kind and tier, and a padlock while locked. */
+  private drawNodeArt(g: Phaser.GameObjects.Graphics, kind: NodeKind, tier: number, x: number, y: number, col: number, visible: boolean, base: number, locked: boolean, now: number, hw: number): void {
+    square(g, x, y, this.iso.tile / 2 - 4, shade(col, visible ? 0.4 : 0.22), 1, shade(col, visible ? 1.2 : 0.7), 1);
+    if (kind === 'portal') {
+      drawPortal(g, x, y, now, hw * 1.05);
+    } else if (kind === 'points' && tier >= 4) {
+      drawSilo(g, x, y, base, hw * 1.1);
+    } else if (kind === 'points' && tier >= 2) {
+      drawRefinery(g, x, y, base, hw * 1.1, now);
+    } else if (kind === 'turret') {
+      drawTurret(g, x, y, base, hw * 1.05);
+    } else if (kind === 'hospital') {
+      drawHospital(g, x, y, base, hw * 1.05);
+    } else {
+      const lift = drawNodeStack(g, x, y, tier, base, hw);
+      drawNodeIcon(g, kind, x, y - lift - 12, 1);
+    }
+    if (locked) drawLock(g, x, y - 34, 1);
+  }
+
+  /** One baked art texture on the map, from a pool of images in the node layer (drawn in depth order). */
+  private putArt(key: string, x: number, y: number, scale: number): void {
+    let img = this.artImgs[this.artUsed];
+    if (!img) {
+      img = this.add.image(0, 0, '__DEFAULT');
+      this.nodeLayer.add(img);
+      this.artImgs[this.artUsed] = img;
+    }
+    this.artUsed++;
+    if (img.texture.key !== key) img.setTexture(key).setOrigin(NODE_BOX.ox / NODE_BOX.w, NODE_BOX.oy / NODE_BOX.h);
+    img.setScale(scale / ART_RES).setPosition(x, y).setVisible(true);
+  }
+
+  /** An HQ building, baked (the flag waves in a few steps) or live. */
+  private hqArt(g: Phaser.GameObjects.Graphics, x: number, y: number, color: number, hw: number, now: number, baked: boolean): void {
+    if (!baked) {
+      drawHq(g, x, y, color, hw, 1, now);
+      return;
+    }
+    const wave = hqFlagWave(now);
+    // A time with the same flag step, so the baked frame matches the live one.
+    const t = Math.asin(wave) / 4;
+    this.putArt(this.art.texture(`hq:${color.toString(16)}:${hw}:${wave}`, NODE_BOX, (ag, ax, ay) => drawHq(ag, ax, ay, color, hw, 1, t)), x, y, 1);
+  }
+
+  /** Decide, with hysteresis, whether nodes and HQs are drawn from baked textures (sharp enough) or live vectors. */
+  private updateBakedArt(): boolean {
+    const density = this.zoom * this.nodeScale() * bufferScale();
+    const lim = clientTune.perf.bakedArtMaxDensity;
+    if (this.bakedArt && density > lim) this.bakedArt = false;
+    else if (!this.bakedArt && density < lim * clientTune.perf.staticUnitHysteresis) this.bakedArt = true;
+    return this.bakedArt;
   }
 
   private drawWorld(view: WireView, simMs: number, now: number): void {
@@ -927,45 +1025,38 @@ export class GameScene extends BaseScene {
     // Nodes. Zoomed out past `nodeFixedZoom` they stop shrinking: the art is drawn bigger in the world so it keeps
     // the same size on screen, which keeps nodes visible and obvious on the big map.
     const nodeK = this.nodeScale();
+    const bakedArt = this.updateBakedArt();
+    this.artUsed = 0;
     const kLabel = Math.round(nodeK * 4) / 4; // labels step in quarters so they are not re-rendered on every zoom tick
     for (const n of view.nodes) {
       const p = iso.p(n.pos.x, n.pos.y);
       add(n.pos, () => {
-        const scaled = nodeK > 1.001;
-        const q = scaled ? { x: 0, y: 0 } : p;
-        if (scaled) {
-          g.save();
-          g.translateCanvas(p.x, p.y);
-          g.scaleCanvas(nodeK, nodeK);
-        }
         const col = n.owner === null ? COLORS.neutral : teamColor(n.owner, mine);
         // Out of sight nodes are darkened, never faded: solid colours only.
         const dim = !n.explored ? 0.5 : n.visible ? 1 : clientTune.fog.hiddenNodeAlpha;
-        square(g, q.x, q.y, iso.tile / 2 - 4, shade(col, n.visible ? 0.4 : 0.22), 1, shade(col, n.visible ? 1.2 : 0.7), 1);
+        // The selection and hover outlines sit on the ground under the art.
         if (selNode === n.id) {
-          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
+          square(lines, p.x, p.y, (iso.tile / 2 + 2) * nodeK, undefined, 1, Math.sin(now * 6) > 0 ? 0xffffff : 0xffd54a, OUTLINE);
         } else if (this.hover?.kind === 'node' && this.hover.id === n.id) {
           // Nodes are what you click: they light up under the pointer.
-          square(g, q.x, q.y, iso.tile / 2 + 2, undefined, 1, 0xffffff, OUTLINE);
+          square(lines, p.x, p.y, (iso.tile / 2 + 2) * nodeK, undefined, 1, 0xffffff, OUTLINE);
         }
         const locked = n.unlocksAtMs !== undefined && simMs < n.unlocksAtMs;
         const base = shade(n.explored ? col : COLORS.neutral, locked ? Math.min(dim, 0.4) : dim);
-        if (n.kind === 'portal') {
-          drawPortal(g, q.x, q.y, now, hw * 1.05);
-        } else if (n.kind === 'points' && n.tier >= 4) {
-          drawSilo(g, q.x, q.y, base, hw * 1.1);
-        } else if (n.kind === 'points' && n.tier >= 2) {
-          drawRefinery(g, q.x, q.y, base, hw * 1.1, now);
-        } else if (n.kind === 'turret') {
-          drawTurret(g, q.x, q.y, base, hw * 1.05);
-        } else if (n.kind === 'hospital') {
-          drawHospital(g, q.x, q.y, base, hw * 1.05);
+        const art = (ag: Phaser.GameObjects.Graphics, x: number, y: number, t: number) => this.drawNodeArt(ag, n.kind, n.tier, x, y, col, n.visible, base, locked, t, hw);
+        if (bakedArt) {
+          const frame = n.kind === 'portal' ? portalFrame(now) : n.kind === 'points' && n.tier >= 2 && n.tier < 4 ? refineryFrame(now) : 0;
+          const key = `n:${n.kind}:${n.tier}:${col.toString(16)}:${n.visible ? 1 : 0}:${base.toString(16)}:${locked ? 1 : 0}:${frame}`;
+          this.putArt(this.art.texture(key, NODE_BOX, (ag, x, y) => art(ag, x, y, now)), p.x, p.y, nodeK);
+        } else if (nodeK > 1.001) {
+          g.save();
+          g.translateCanvas(p.x, p.y);
+          g.scaleCanvas(nodeK, nodeK);
+          art(g, 0, 0, now);
+          g.restore();
         } else {
-          const lift = drawNodeStack(g, q.x, q.y, n.tier, base, hw);
-          drawNodeIcon(g, n.kind, q.x, q.y - lift - 12, 1);
+          art(g, p.x, p.y, now);
         }
-        if (locked) drawLock(g, q.x, q.y - 34, 1);
-        if (scaled) g.restore();
 
         // Labels sit under the (possibly enlarged) node and are enlarged with it.
         const below = (iso.tile / 2) * nodeK + 2;
@@ -1014,13 +1105,13 @@ export class GameScene extends BaseScene {
       const p = iso.p(h.pos.x, h.pos.y);
       const isMe = h.id === info.hqId;
       add(h.pos, () => {
-        if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
+        if (selHq === h.id) square(lines, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
         if (isMe) {
           const k = 0.5 + 0.5 * Math.sin(now * 3);
-          g.lineStyle(3, COLORS.self, 0.35 + 0.5 * k).strokeEllipse(p.x, p.y + 6, 74 + 6 * k, 42 + 3 * k);
-          g.fillStyle(COLORS.self, 0.08 + 0.08 * k).fillEllipse(p.x, p.y + 6, 74, 42);
+          lines.lineStyle(3, COLORS.self, 0.35 + 0.5 * k).strokeEllipse(p.x, p.y + 6, 74 + 6 * k, 42 + 3 * k);
+          lines.fillStyle(COLORS.self, 0.08 + 0.08 * k).fillEllipse(p.x, p.y + 6, 74, 42);
         }
-        drawHq(g, p.x, p.y, isMe ? COLORS.self : shade(COLORS.mine, 0.8), isMe ? 19 : 16, 1, now);
+        this.hqArt(g, p.x, p.y, isMe ? COLORS.self : shade(COLORS.mine, 0.8), isMe ? 19 : 16, now, bakedArt);
         for (let i = 0; i < h.maxHp; i++) g.fillStyle(i < h.hp ? 0x7dff9b : 0x3a2a2a, 1).fillRect(p.x - h.maxHp * 4 + i * 8, p.y - 40, 6, 4);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 3);
         if (isMe) {
@@ -1035,8 +1126,8 @@ export class GameScene extends BaseScene {
     for (const h of view.enemyHqs) {
       const p = iso.p(h.pos.x, h.pos.y);
       add(h.pos, () => {
-        if (selHq === h.id) square(g, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
-        drawHq(g, p.x, p.y, COLORS.enemy, 17, 1, now);
+        if (selHq === h.id) square(lines, p.x, p.y, iso.tile / 2 - 6, undefined, 1, 0xffffff, OUTLINE);
+        this.hqArt(g, p.x, p.y, COLORS.enemy, 17, now, bakedArt);
         if (this.zoom >= 1.0 || selHq === h.id) this.label(h.owner, p.x, p.y + 8, '#ff9a7a', 10);
         if (h.burning) drawFlames(g, p.x, p.y - 8, now, 1.6, 5);
       });
@@ -1103,6 +1194,7 @@ export class GameScene extends BaseScene {
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.draw();
     for (let i = this.unitSpriteUsed; i < this.unitSprites.length; i++) this.unitSprites[i].setVisible(false);
+    for (let i = this.artUsed; i < this.artImgs.length; i++) this.artImgs[i].setVisible(false);
     this.drawMissiles(simMs, now);
     this.fx.draw(this.fxG, now);
     this.drawFloaters(now);
@@ -1629,7 +1721,7 @@ export class GameScene extends BaseScene {
         if (on) this.focusSquad(s, view, simMs);
         else this.selectedSquad = s.id;
       });
-      drawUnit(ui.gfx(), s.type, left + chip / 2, y + 26, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false, scale: 0.6 });
+      this.hudUnit(s.type, left + chip / 2, y + 26, 0.6);
       const dot = s.state === 'hq' ? 0x5dff8a : s.state === 'march' ? 0xffd54a : 0xc9d2dd;
       ui.gfx().fillStyle(dot, 1).fillCircle(left + chip - 7, y + 7, 3);
       ui.text(fmtPower(s.power), left + chip / 2, y + 26, { size: 10, bold: true, align: 'center', color: '#ffd54a' });
@@ -1732,7 +1824,7 @@ export class GameScene extends BaseScene {
         if (sel) this.focusSquad(s, view, simMs);
         else this.selectedSquad = s.id;
       });
-      drawUnit(ui.gfx(), s.type, px + 32, y + 38, 1, COLORS.mine, this.time.now / 1000, 1, { shadow: false, moving: false });
+      this.hudUnit(s.type, px + 32, y + 38, 1);
       // "Tank  Power [sword] 62.5M  #12"
       const w1 = ui.text(`${SQUAD_LABEL[s.type]}  Power`, px + 62, y, { size: 13, bold: true });
       drawPowerSword(ui.gfx(), px + 62 + w1 + 8, y + 8);
