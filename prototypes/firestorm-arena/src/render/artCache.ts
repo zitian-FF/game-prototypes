@@ -10,11 +10,17 @@ export interface ArtBox {
   oy: number;
 }
 
-/** Nodes and HQs: a 72 px tile wide, tall enough for the silo and the padlock above a node. */
-export const NODE_BOX: ArtBox = { w: 100, h: 136, ox: 50, oy: 100 };
+/**
+ * Nodes and HQs: the pad with its rim glow and shadow (about 42 px below the ground point and either side), and
+ * up to about 70 px above it for the tallest building, the padlock or the kind badge. Kept tight: it sets memory.
+ */
+export const NODE_BOX: ArtBox = { w: 92, h: 122, ox: 45, oy: 78 };
 
-/** Texture pixels per world pixel. Above this many device pixels per world pixel the scene draws live vectors instead. */
-export const ART_RES = 2;
+/**
+ * Texture pixels per world pixel. 3 keeps a phone at its default zoom on baked art (live vectors there would cost
+ * more geometry, and so more draw calls). About 30 looks per match at roughly 400 KB each.
+ */
+export const ART_RES = 3;
 
 /**
  * Static vector art rendered once per look into a texture. Redrawing every node and HQ as vectors each frame was most

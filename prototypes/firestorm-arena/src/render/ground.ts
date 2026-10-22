@@ -20,7 +20,7 @@ const FOG_SCALE = 0.5;
 /** The repeating block is this many tiles square. */
 const BLOCK_TILES = 12;
 
-/** Bake one repeating block of basalt tiles with faint grid lines and the odd hairline crack. */
+/** Bake one repeating block of grid-free basalt: near-even tone, ash grains and soft lighter crusts. */
 export function bakeGround(scene: Phaser.Scene, iso: Iso): Ground {
   const n = ++bakes;
   const T = iso.tile;
@@ -34,20 +34,34 @@ export function bakeGround(scene: Phaser.Scene, iso: Iso): Ground {
     for (let cx = 0; cx < BLOCK_TILES; cx++) {
       const x = cx * T;
       const y = cy * T;
+      // Dark basalt, no grid lines: cells are not places you can go. Tiles differ only very slightly in tone, with
+      // grains of light and dark ash, so neither the cells nor the repeat stand out.
       const h = hash2(cx, cy, 7);
-      const v = 26 + Math.floor(h * 16);
-      ctx.fillStyle = `rgb(${v + 6},${v},${v - 2})`;
+      const v = 21 + Math.floor(h * 3);
+      ctx.fillStyle = `rgb(${v + 7},${v + 1},${v - 2})`;
       ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = 'rgba(0,0,0,0.16)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
-      if (hash2(cx, cy, 13) > 0.8) {
-        ctx.strokeStyle = 'rgba(255,110,40,0.22)';
-        ctx.beginPath();
-        ctx.moveTo(x + T * 0.2, y + T * 0.45);
-        ctx.lineTo(x + T * 0.5, y + T * 0.58);
-        ctx.lineTo(x + T * 0.8, y + T * 0.42);
-        ctx.stroke();
+      for (let k = 0; k < 14; k++) {
+        const r = hash2(cx * 31 + k, cy, 23);
+        ctx.fillStyle = r > 0.5 ? 'rgba(150,125,100,0.16)' : 'rgba(0,0,0,0.22)';
+        ctx.fillRect(x + T * hash2(cx, cy * 37 + k, 29), y + T * hash2(cx * 41 + k, cy, 31), 1 + r * 1.5, 1 + r * 1.5);
+      }
+    }
+  }
+  // Soft lighter crusts that ignore tile edges (wrapped around the block so the repeat has no seams).
+  for (let k = 0; k < 18; k++) {
+    const gx = hash2(k, 1, 17) * size;
+    const gy = hash2(k, 2, 17) * size;
+    const r = T * (0.6 + hash2(k, 3, 17) * 1.2);
+    for (const ox of [-size, 0, size]) {
+      for (const oy of [-size, 0, size]) {
+        const px = gx + ox;
+        const py = gy + oy;
+        if (px + r < 0 || py + r < 0 || px - r > size || py - r > size) continue;
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
+        grad.addColorStop(0, 'rgba(120,95,75,0.10)');
+        grad.addColorStop(1, 'rgba(120,95,75,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px - r, py - r, r * 2, r * 2);
       }
     }
   }

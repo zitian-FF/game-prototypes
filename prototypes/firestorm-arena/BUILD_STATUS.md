@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.16.5 on the branch (0.16.4, the rendering performance pass, is merged; 0.16.5 is the atmosphere pass)
+Version 0.17.0 on the branch (0.16.5 is merged and deployed; 0.17.0 is the Molten Night art pass)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.17.0: Molten Night art. Floor grid removed; basalt floor and lava fissure decals; neon-rim node pads with icon badges; top lighting, contact shadows, lit windows and beacons on every building and unit; glowing march lines.
 - 0.16.5: atmosphere. Terrain patches and decals, team territory glow, battle scars and tread marks, drifting embers. All cosmetic, under the fog, using only what this client sees.
 - 0.16.4: rendering performance. Node and HQ art is baked into textures and shown as pooled images in a layer under the live vectors; HUD squad portraits are baked too; dashed march lines are clipped to the view and their dashes scale with the node scale when zoomed out.
 - 0.16.3: Accelerator reads as a movement speed percent in the node panel and Handbook (shared helper `src/speedPct.ts`). The itch deploy now waits and retries up to 6 times, 90 s apart, only when itch says the previous build is still processing.
@@ -40,6 +41,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Key technical decisions
 
+- 0.17.0: the extra detail lives in the shared `Art` pass (`light()` adds edge highlights and shades) and small helpers (`drawNodePad`, `wallLights`, `glowDot`, `contactShadow`). Baking moved to 3 texture pixels per world pixel in a tighter 92 x 122 box (about 400 KB per look) and `perf.bakedArtMaxDensity` to 3.6, so a phone at its default zoom stays on baked art. Drawing the richer art live there overflowed the vertex batch and added draw calls.
+
 - Atmosphere (0.16.5): terrain is one static quarter-resolution canvas plus decal images; territory is a 1/16-resolution canvas repainted only when held nodes change (a full-size one stalled every ownership change); scars, treads and embers are capped (40, 90, 28) and drawn in one graphics layer. Scars land in a ring around the fight, because node and HQ art would hide a mark right on top.
 
 - Baked art (0.16.4): `ArtCache` renders a look once at 2 texture pixels per world pixel, keyed by everything that changes it (kind, tier, colours, lock, and the animation step for refineries, portals and the HQ flag). Above `perf.bakedArtMaxDensity` (2.4) device pixels per world pixel the scene switches back to live vectors, with hysteresis; that only happens zoomed in, where few nodes are on screen. Higher bake resolutions were rejected to keep GPU memory low on phones (about 30 textures per match at about 220 KB each, roughly 7 MB).
@@ -62,6 +65,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- 0.17.0 checked in headless Chromium (software WebGL, 4x throttle) against 0.16.5: GL draw calls per frame about 5 on both (start and zoomed out, desktop and 844 x 390 DPR 2 touch); render submit equal or lower. Screenshots inspected at zoom 1, 1.9, 2.2, 2.4 and wide; not checked on a real phone. The HQ safe zones still show their cell grid, by request. Units zoomed in are still drawn live (animated rotors), so they cost a little more geometry than before.
 
 - 0.16.5 checked on desktop in a real match at 15x speed: screenshots at zoom 1, 0.45 and fully out. Cost against the 0.16.4 numbers, 4x throttle: about +5 ms render submit at start zoom, +9 ms zoomed out; still well under 0.16.3. Not checked on a phone. All atmosphere strengths are first guesses in client.tune.json `atmosphere`.
 
@@ -88,4 +93,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Merge and deploy 0.16.5, then the in-match world art direction proposal (two mockup options).
+Merge and deploy 0.17.0, then the next scene in the art and UI upgrade (in-match HUD), with a direction proposal first.

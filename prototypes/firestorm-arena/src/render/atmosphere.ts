@@ -142,6 +142,18 @@ const DECALS: DecalDef[] = [
     },
   },
   {
+    key: 'fissure',
+    w: 170,
+    h: 60,
+    draw: (g, cx, cy) => fissure(g, cx, cy, [[-75, 4], [-50, -6], [-28, 2], [-6, -10], [18, -2], [40, -12], [62, -4], [78, -10]]),
+  },
+  {
+    key: 'fissureShort',
+    w: 110,
+    h: 50,
+    draw: (g, cx, cy) => fissure(g, cx, cy, [[-46, -6], [-24, 4], [-4, -2], [16, 8], [44, 2]]),
+  },
+  {
     key: 'ridge',
     w: 110,
     h: 40,
@@ -153,6 +165,16 @@ const DECALS: DecalDef[] = [
     },
   },
 ];
+
+/** A glowing lava fissure through the basalt: a wide soft glow, a hot core and a few bright spots. */
+function fissure(g: G, cx: number, cy: number, path: [number, number][]): void {
+  const pts = path.map(([x, y]) => ({ x: cx + x, y: cy + y }));
+  g.lineStyle(14, 0xff4a10, 0.06).strokePoints(pts);
+  g.lineStyle(8, 0xff5a1a, 0.14).strokePoints(pts);
+  g.lineStyle(3.5, 0x1a0805, 0.9).strokePoints(pts);
+  g.lineStyle(2, 0xff6a20, 1).strokePoints(pts);
+  g.lineStyle(1, 0xffc46a, 0.9).strokePoints(pts.filter((_, i) => i % 2 === 1));
+}
 
 const DECAL_RES = 2;
 

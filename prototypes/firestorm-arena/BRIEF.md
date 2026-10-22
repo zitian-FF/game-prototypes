@@ -808,3 +808,10 @@ client.
   now; scorch marks in a ring around each fight you see, glowing at first and fading over 60 s; tread marks behind your
   own marching squads, fading over 25 s; a few embers drifting up across the view. Nothing new is clickable, and no
   lava patches came back.
+- Art direction (0.17.0): "Molten Night", chosen by the designer over a lighter "Ash Daylight" option. The floor has
+  no grid lines (cells are not places you can go; the HQ safe zones keep theirs). Dark basalt with ash grains and
+  glowing lava fissure decals. Nodes stand on dark bevelled pads with a neon rim in the owner's colour, a soft glow
+  while in sight and corner brackets; kind glyphs sit on a dark badge. Every building and unit is lit from above
+  (highlighted top edges, shaded bottom edges, gloss on round parts), with contact shadows, lit windows and small
+  beacon or running lights. March lines have a faint glow under the dashes. All of it is baked, so the frame cost and
+  draw calls stay as before.
