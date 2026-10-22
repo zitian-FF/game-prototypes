@@ -9,7 +9,7 @@ import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, hqFlagWave, portalFrame, refineryFrame, unitHeight } from '../render/icons';
+import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, contactShadow, drawNodePad, hqFlagWave, lighten, portalFrame, refineryFrame, unitHeight } from '../render/icons';
 import { ART_RES, ArtCache, NODE_BOX } from '../render/artCache';
 import { DECAL_SCALE, Embers, Scars, Territory, bakeTerrain } from '../render/atmosphere';
 import { clientTune } from '../clientTune';
@@ -822,8 +822,11 @@ export class GameScene extends BaseScene {
       return t0 <= t1;
     };
     if (!clip(-ux, a.x - (this.camX - hw)) || !clip(ux, this.camX + hw - a.x) || !clip(-uy, a.y - (this.camY - hh)) || !clip(uy, this.camY + hh - a.y)) return;
+    // A faint glow along the visible part of the line, under the dashes.
+    const a0 = Math.min(1, alpha * clientTune.lines.strength);
+    g.lineStyle(width * 4, color, a0 * 0.12).lineBetween(a.x + ux * t0, a.y + uy * t0, a.x + ux * t1, a.y + uy * t1);
     // Order and march lines are background information: scale them all down so they never drown the map.
-    g.lineStyle(width, color, Math.min(1, alpha * clientTune.lines.strength));
+    g.lineStyle(width, color, a0);
     // Dashes start at -m + j * period, the same flow as before; begin with the last one starting before t0.
     const m = (now * clientTune.lines.flowSpeed * k) % period;
     let s = -m + Math.floor((t0 + m) / period) * period;
@@ -947,7 +950,8 @@ export class GameScene extends BaseScene {
 
   /** One node's art standing on (x, y): its tile, the building for its kind and tier, and a padlock while locked. */
   private drawNodeArt(g: Phaser.GameObjects.Graphics, kind: NodeKind, tier: number, x: number, y: number, col: number, visible: boolean, base: number, locked: boolean, now: number, hw: number): void {
-    square(g, x, y, this.iso.tile / 2 - 4, shade(col, visible ? 0.4 : 0.22), 1, shade(col, visible ? 1.2 : 0.7), 1);
+    drawNodePad(g, x, y, this.iso.tile / 2 - 4, col, visible);
+    contactShadow(g, x + 3, y + 4, hw * 1.05, hw * 0.5);
     if (kind === 'portal') {
       drawPortal(g, x, y, now, hw * 1.05);
     } else if (kind === 'points' && tier >= 4) {
@@ -960,7 +964,12 @@ export class GameScene extends BaseScene {
       drawHospital(g, x, y, base, hw * 1.05);
     } else {
       const lift = drawNodeStack(g, x, y, tier, base, hw);
-      drawNodeIcon(g, kind, x, y - lift - 12, 1);
+      // The kind glyph floats on a dark badge with a rim in the node's colour, so it reads on any background.
+      const iy = y - lift - 12;
+      g.fillStyle(0x000000, 0.25).fillCircle(x + 1.5, iy + 2, 12);
+      g.fillStyle(0x10141a, 0.92).fillCircle(x, iy, 11.5);
+      g.lineStyle(2, visible ? lighten(col, 0.25) : shade(col, 0.7), 1).strokeCircle(x, iy, 11.5);
+      drawNodeIcon(g, kind, x, iy, 0.85);
     }
     if (locked) drawLock(g, x, y - 34, 1);
   }

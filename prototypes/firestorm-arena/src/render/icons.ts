@@ -7,8 +7,10 @@ type G = Phaser.GameObjects.Graphics;
 type Pt = number[];
 
 /**
- * Every piece of art uses exactly two stroke widths: a thick OUTLINE around the whole silhouette and a thin
- * DETAIL line between the parts inside it. Solid colours only, no transparency.
+ * Every piece of art uses two main stroke widths: a thick OUTLINE around the whole silhouette and a thin DETAIL
+ * line between the parts inside it. On top of that each part is lit from above (Molten Night style): its upward
+ * edges catch a highlight, its downward edges fall into shade, and round parts get a gloss. The art is baked into
+ * textures, so this detail costs nothing per frame.
  */
 export const OUTLINE = 2.5;
 export const DETAIL = 1;
@@ -79,6 +81,50 @@ class Art {
       g.lineStyle(DETAIL * lineK, shade(p.fill, 0.5), 1);
       this.path(p, false);
       this.path(p, true);
+      this.light(p);
+    }
+  }
+
+  /** Top light: highlight on edges that face up, shade on edges that face down, a gloss on round parts. */
+  private light(p: Part): void {
+    const g = this.g;
+    if (p.ell) {
+      const [x, y, w, h] = p.ell;
+      if (w < 3 || h < 2) return;
+      g.fillStyle(lighten(p.fill, 0.45), 0.3).fillEllipse(x - w * 0.08, y - h * 0.16, w * 0.62, h * 0.42);
+      return;
+    }
+    const pts = p.poly!;
+    if (pts.length < 3) return;
+    let cx = 0;
+    let cy = 0;
+    for (const q of pts) {
+      cx += q[0];
+      cy += q[1];
+    }
+    cx /= pts.length;
+    cy /= pts.length;
+    const lw = DETAIL * lineK;
+    const inset = 0.9 * lineK;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const len = Math.hypot(dx, dy);
+      if (len < 2.5) continue;
+      let nx = dy / len;
+      let ny = -dx / len;
+      // Point the normal away from the middle of the part.
+      if (nx * ((a[0] + b[0]) / 2 - cx) + ny * ((a[1] + b[1]) / 2 - cy) < 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+      if (ny < -0.35) g.lineStyle(lw * 1.2, lighten(p.fill, 0.32), 0.85);
+      else if (ny > 0.35) g.lineStyle(lw * 1.4, shade(p.fill, 0.55), 0.7);
+      else continue;
+      // Just inside the edge, so the outline stays clean.
+      g.lineBetween(a[0] - nx * inset, a[1] - ny * inset, b[0] - nx * inset, b[1] - ny * inset);
     }
   }
 
@@ -102,6 +148,83 @@ class Art {
 
 const DARK = 0x0c1016;
 void DARK;
+
+/** Mix a colour toward white by `t` (0 to 1): highlights that also work on dark colours. */
+export function lighten(color: number, t: number): number {
+  const m = (v: number) => Math.round(v + (255 - v) * t);
+  return (m((color >> 16) & 255) << 16) | (m((color >> 8) & 255) << 8) | m(color & 255);
+}
+
+/**
+ * A node's pad, seen from above: a dark bevelled plate with a team-tinted inset, a neon rim in the owner's colour
+ * (with a soft glow while the node is in sight) and bright corner brackets.
+ */
+export function drawNodePad(g: G, x: number, y: number, half: number, color: number, visible: boolean): void {
+  const h = half;
+  g.fillStyle(0x000000, 0.35).fillRect(x - h + 3, y - h + 5, h * 2, h * 2);
+  if (visible) {
+    g.lineStyle(10, color, 0.07).strokeRect(x - h, y - h, h * 2, h * 2);
+    g.lineStyle(6, color, 0.14).strokeRect(x - h, y - h, h * 2, h * 2);
+  }
+  g.fillStyle(visible ? 0x1b2028 : 0x14171c, 1).fillRect(x - h, y - h, h * 2, h * 2);
+  // Bevel: lit top and left, shaded bottom and right.
+  g.lineStyle(2, 0x3c444f, 1).lineBetween(x - h + 1, y - h + 1, x + h - 1, y - h + 1).lineBetween(x - h + 1, y - h + 1, x - h + 1, y + h - 1);
+  g.lineStyle(2, 0x090b0e, 1).lineBetween(x - h + 1, y + h - 1, x + h - 1, y + h - 1).lineBetween(x + h - 1, y - h + 1, x + h - 1, y + h - 1);
+  const i = 6;
+  g.fillStyle(shade(color, visible ? 0.3 : 0.18), 1).fillRect(x - h + i, y - h + i, (h - i) * 2, (h - i) * 2);
+  g.lineStyle(1, shade(color, visible ? 0.6 : 0.35), 1).strokeRect(x - h + i, y - h + i, (h - i) * 2, (h - i) * 2);
+  // Panel seams on the plate.
+  g.lineStyle(1, 0x0d1014, 0.9).lineBetween(x - h + i, y, x - h + 2, y).lineBetween(x + h - i, y, x + h - 2, y).lineBetween(x, y - h + i, x, y - h + 2).lineBetween(x, y + h - i, x, y + h - 2);
+  // Neon rim and corner brackets.
+  g.lineStyle(2, visible ? color : shade(color, 0.6), 1).strokeRect(x - h, y - h, h * 2, h * 2);
+  const b = 9;
+  const bc = visible ? lighten(color, 0.45) : shade(color, 0.75);
+  g.lineStyle(2.5, bc, 1);
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    const cx = x + sx * (h - 1);
+    const cy = y + sy * (h - 1);
+    g.lineBetween(cx, cy, cx - sx * b, cy).lineBetween(cx, cy, cx, cy - sy * b);
+  }
+}
+
+/** Lit windows along the left wall of an isometric box drawn with Art.box (same arguments). */
+export function wallLights(g: G, cx: number, cy: number, hw: number, h: number, lift: number, color: number, n = 2): void {
+  const by = cy - lift;
+  const ty = by - h;
+  const hh = hw / 2;
+  // The left wall runs from (cx - hw, by/ty) to (cx, by + hh / ty + hh): windows sit at mid height.
+  for (let k = 0; k < n; k++) {
+    const f0 = (k + 0.3) / n;
+    const f1 = (k + 0.75) / n;
+    const x0 = cx - hw + hw * f0;
+    const x1 = cx - hw + hw * f1;
+    const yMid = (by + ty) / 2;
+    const y0 = yMid + hh * f0;
+    const y1 = yMid + hh * f1;
+    const wh = Math.max(2, h * 0.28);
+    g.fillStyle(color, 0.18).fillRect(Math.min(x0, x1) - 1.5, Math.min(y0, y1) - wh / 2 - 1.5, Math.abs(x1 - x0) + 3, Math.abs(y1 - y0) + wh + 3);
+    g.fillStyle(color, 1);
+    g.beginPath();
+    g.moveTo(x0, y0 - wh / 2);
+    g.lineTo(x1, y1 - wh / 2);
+    g.lineTo(x1, y1 + wh / 2);
+    g.lineTo(x0, y0 + wh / 2);
+    g.closePath();
+    g.fillPath();
+  }
+}
+
+/** A soft contact shadow under a building or unit: three stacked ellipses, darkest in the middle. */
+export function contactShadow(g: G, cx: number, cy: number, rx: number, ry: number): void {
+  for (const [k, a] of [[1.25, 0.16], [1, 0.2], [0.7, 0.24]] as const) g.fillStyle(0x000000, a).fillEllipse(cx, cy, rx * 2 * k, ry * 2 * k);
+}
+
+/** A small light source: a soft halo and a bright core (windows, beacons, headlights). */
+export function glowDot(g: G, x: number, y: number, r: number, color: number): void {
+  g.fillStyle(color, 0.12).fillCircle(x, y, r * 3);
+  g.fillStyle(color, 0.25).fillCircle(x, y, r * 1.8);
+  g.fillStyle(shade(color, 1.3), 1).fillCircle(x, y, r);
+}
 
 export interface UnitOpts {
   /** Ground shadow under the unit (off for UI icons). */
@@ -160,7 +283,7 @@ export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, 
 
   if (o.shadow !== false) {
     const sw = type === 'scout' ? 26 : type === 'aircraft' ? 32 : 40;
-    g.fillStyle(0x120f0d, 1).fillEllipse(x, y + 1, sw, lift ? 6 : 9);
+    contactShadow(g, x, y + 1, sw / 2, lift ? 3 : 4.5);
   }
   const yy = y - lift;
 
@@ -292,6 +415,22 @@ export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, 
     }
   }
   art.draw();
+  // Running lights: they make units pop against the dark ground.
+  switch (type) {
+    case 'tank':
+      glowDot(g, X(0), yy - 28, 1.1, 0xff4a3a);
+      break;
+    case 'missile':
+      glowDot(g, X(25), yy - 14.4, 1.3, 0xffd27a);
+      break;
+    case 'aircraft':
+      glowDot(g, X(-13.5), yy - 3, 1.2, 0xffb04a);
+      glowDot(g, X(-31), yy - 17, 0.9, 0xff4a3a);
+      break;
+    case 'scout':
+      glowDot(g, X(-12), yy + 9, 0.9, 0x6effa0);
+      break;
+  }
 }
 
 /** Flickering flames rising from (x, y). `size` ~ 1 for a unit, 2 for an HQ. Solid colours. */
@@ -413,6 +552,12 @@ export function drawNodeStack(g: G, cx: number, cy: number, tier: number, color:
     lift += ch;
   }
   art.draw();
+  // Lit windows on every level, warm against the cool team colour.
+  let l = 0;
+  for (let i = 0; i < tier; i++) {
+    wallLights(g, cx, cy, hw * (1 - i * 0.16), ch, l, 0xffc96a, 2);
+    l += ch;
+  }
   return lift;
 }
 
@@ -429,6 +574,7 @@ export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, 
   const s = hw / 26;
   const wall = 0xd9c9a3;
   const concrete = 0x8c8a86;
+  contactShadow(g, cx + 2 * s, cy + 3 * s, 30 * s, 15 * s);
   const art = new Art(g, color);
   art.box(cx, cy, 28 * s, 4 * s, 0, concrete, shade(concrete, 1.15));
   art.box(cx + 3 * s, cy - 2 * s, 13 * s, 20 * s, 4 * s, wall, color);
@@ -444,6 +590,10 @@ export function drawHq(g: G, cx: number, cy: number, color: number, hw: number, 
   const w = hqFlagWave(t) * 1.2 * s;
   art.poly([[fx, fy - 24 * s], [fx + 10 * s, fy - 23 * s + w], [fx + 10 * s, fy - 17 * s + w], [fx, fy - 18 * s]], color);
   art.draw();
+  // Lit windows on the tower and the side block, and a red beacon on the roof.
+  wallLights(g, cx + 3 * s, cy - 2 * s, 13 * s, 20 * s, 4 * s, 0xffd27a, 2);
+  wallLights(g, cx - 14 * s, cy + 4 * s, 9 * s, 10 * s, 4 * s, 0xffd27a, 1);
+  glowDot(g, cx + 3 * s, roofY - 4 * s, 1.4 * s, 0xff4a3a);
 }
 
 /** Hospital icon: a red cross on white. */
@@ -515,6 +665,7 @@ export function drawSilo(g: G, cx: number, cy: number, color: number, hw: number
   tower(24 * s, 0);
   tower(0, 12 * s);
   art.draw();
+  for (const [dx, dy] of [[-24, 0], [0, -12], [24, 0], [0, 12]] as const) glowDot(g, cx + dx * s + 9.5 * s, cy + dy * s - 16 * s, 1.1 * s, 0xff4a3a);
 }
 
 /**
@@ -547,6 +698,7 @@ export function drawTurret(g: G, cx: number, cy: number, color: number, hw: numb
   art.circ(cx + 8 * s, cy - 16 * s, 1.8 * s, 0xd8352f, true);
   pod(0, 13 * s);
   art.draw();
+  for (const [dx, dy] of [[-8, -23], [-8, -17], [8, -22], [8, -16]] as const) glowDot(g, cx + dx * s, cy + dy * s, 1.5 * s, 0xff3a2a);
 }
 
 /** Hospital after the reference art: a tent with a cream canvas roof, team-colour walls, a red cross panel and a supply crate. */

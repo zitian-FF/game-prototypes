@@ -22,7 +22,7 @@
     "staticUnitZoom": 0.6,
     "staticUnitCount": 14,
     "staticUnitHysteresis": 0.8,
-    "bakedArtMaxDensity": 2.4
+    "bakedArtMaxDensity": 3.6
   },
   "dpr": {
     "max": 2
