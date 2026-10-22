@@ -802,3 +802,9 @@ client.
   `perf.bakedArtMaxDensity` device pixels per world pixel, where few nodes are on screen. HUD squad portraits are baked
   the same way (`Ui.image`). Dashed march lines are clipped to the screen and their dashes grow with the node scale
   when zoomed out. Looks are unchanged.
+- Atmosphere (0.16.5), cosmetic only and drawn under the fog (`src/render/atmosphere.ts`, values in client.tune.json
+  `atmosphere`): soft ash and basalt patches plus baked crater, rock and ridge decals, mirrored through the map centre
+  and kept off nodes and safe zones; a soft team-colour glow around nodes your team holds and enemy nodes you can see
+  now; scorch marks in a ring around each fight you see, glowing at first and fading over 60 s; tread marks behind your
+  own marching squads, fading over 25 s; a few embers drifting up across the view. Nothing new is clickable, and no
+  lava patches came back.

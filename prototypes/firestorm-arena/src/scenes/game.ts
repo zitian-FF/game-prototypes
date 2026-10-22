@@ -11,6 +11,7 @@ import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
 import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, hqFlagWave, portalFrame, refineryFrame, unitHeight } from '../render/icons';
 import { ART_RES, ArtCache, NODE_BOX } from '../render/artCache';
+import { DECAL_SCALE, Embers, Scars, Territory, bakeTerrain } from '../render/atmosphere';
 import { clientTune } from '../clientTune';
 import { LEVEL_RANK, guideLine, incomingThreat, suggestCues } from '../objective';
 import type { Cue, Objective } from '../objective';
@@ -78,6 +79,11 @@ export class GameScene extends BaseScene {
   private artImgs: Phaser.GameObjects.Image[] = [];
   private artUsed = 0;
   private bakedArt = true;
+  /** Atmosphere: team territory, battle scars and tread marks, drifting embers (cosmetic). */
+  private territory!: Territory;
+  private scars!: Scars;
+  private scarG!: Phaser.GameObjects.Graphics;
+  private embers!: Embers;
   private unitSpriteUsed = 0;
   private spriteLayer!: Phaser.GameObjects.Container;
   private target: Target | null = null;
@@ -174,9 +180,19 @@ export class GameScene extends BaseScene {
     const floor = this.add.tileSprite(0, 0, this.iso.pxW, this.iso.pxH, this.ground.tileKey).setOrigin(0, 0);
     floor.setTileScale(1 / this.ground.tileScale);
     this.world.add(floor);
+    // Terrain variation, team territory and battle scars sit on the floor, under the fog like everything on the ground.
+    const terrain = bakeTerrain(this, this.iso, info.map);
+    this.world.add(this.add.image(0, 0, terrain.key).setOrigin(0, 0).setScale(1 / terrain.scale));
+    for (const d of terrain.decals) this.world.add(this.add.image(d.x, d.y, d.key).setScale(d.flip ? -DECAL_SCALE : DECAL_SCALE, DECAL_SCALE));
+    this.territory = new Territory(this, this.iso, this.mine);
+    this.world.add(this.add.image(0, 0, this.territory.key).setOrigin(0, 0).setScale(1 / this.territory.scale));
     const decor = this.add.graphics();
     drawDecor(decor, this.iso, info.map, this.mine);
     this.world.add(decor);
+    this.scars = new Scars();
+    this.scarG = this.add.graphics();
+    this.world.add(this.scarG);
+    this.embers = new Embers();
     this.world.add(this.add.image(0, 0, this.ground.fogKey).setOrigin(0, 0).setScale(1 / this.ground.fogScale));
     this.linesG = this.add.graphics();
     this.entG = this.add.graphics();
@@ -644,6 +660,12 @@ export class GameScene extends BaseScene {
     }
   }
 
+  /** Leave battle scars around a fight at world position `pos`. */
+  private scorch(pos: Vec, now: number): void {
+    const p = this.iso.p(pos.x, pos.y);
+    this.scars.fight(p.x, p.y, this.iso.tile, now);
+  }
+
   private handleEvents(view: WireView, now: number): void {
     const events = session.pendingEvents;
     if (events.length === 0) return;
@@ -654,6 +676,7 @@ export class GameScene extends BaseScene {
         case 'combat': {
           const pos = this.subjectPos(view, e.log);
           if (pos) this.fx.combat(pos.x, pos.y, now);
+          if (pos) this.scorch(pos, now);
           const where = e.log.subject.kind === 'node' ? this.nodeLabel(view, e.log.subject.nodeId) : 'an HQ';
           if (pos) this.combatFloaters(e.log, pos, now);
           const mineAttack = e.log.attacker.team === mine;
@@ -670,6 +693,7 @@ export class GameScene extends BaseScene {
         }
         case 'combatFx':
           this.fx.combat(e.pos.x, e.pos.y, now);
+          this.scorch(e.pos, now);
           break;
         case 'nodeCaptured': {
           const n = view.nodes.find((x) => x.id === e.nodeId);
@@ -992,6 +1016,9 @@ export class GameScene extends BaseScene {
       this.fogKey = key;
       paintFog(this.ground, iso, circles);
     }
+    // Territory only uses nodes we hold or can see right now.
+    this.territory.update(view.nodes.filter((n) => n.owner !== null && n.kind !== 'portal' && (n.owner === mine || n.visible)).map((n) => ({ x: n.pos.x, y: n.pos.y, owner: n.owner as TeamId })));
+    this.scars.draw(this.scarG, now);
 
     this.frameNo++;
     this.labelCount.clear();
@@ -1142,6 +1169,11 @@ export class GameScene extends BaseScene {
       const to = iso.p(s.march.to.x, s.march.to.y);
       const mineSquad = s.owner === info.playerId;
       if (s.march.purpose !== 'home') this.dashed(lines, p, to, mineSquad ? COLORS.self : COLORS.ally, now, mineSquad ? 0.95 : 0.3);
+      if (mineSquad) {
+        const from = iso.p(s.march.from.x, s.march.from.y);
+        const d = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+        this.scars.tread(s.id, p.x, p.y, (to.x - from.x) / d, (to.y - from.y) / d, now);
+      }
       add(pos, () => {
         const f = this.face(s.id, p.x, to.x);
         const hgt = unitHeight(s.type) * US;
@@ -1197,6 +1229,7 @@ export class GameScene extends BaseScene {
     for (let i = this.artUsed; i < this.artImgs.length; i++) this.artImgs[i].setVisible(false);
     this.drawMissiles(simMs, now);
     this.fx.draw(this.fxG, now);
+    this.embers.draw(this.fxG, now, this.camX, this.camY, view2.w / 2 / this.zoom, view2.h / 2 / this.zoom, this.zoom);
     this.drawFloaters(now);
     this.finishLabels();
     void ch;
