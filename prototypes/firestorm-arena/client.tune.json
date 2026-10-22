@@ -38,6 +38,19 @@
     "width": 1.5,
     "strength": 0.4
   },
+  "atmosphere": {
+    "terrainPatchCount": 26,
+    "decalCount": 22,
+    "territoryRadiusCells": 3,
+    "territoryAlpha": 0.16,
+    "scarSeconds": 60,
+    "scarMax": 40,
+    "treadEverySeconds": 1.2,
+    "treadSeconds": 25,
+    "treadMax": 90,
+    "emberCount": 28,
+    "emberRise": 16
+  },
   "fx": {
     "combatSeconds": 2.5,
     "floatSeconds": 2.6,
