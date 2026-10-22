@@ -13,6 +13,7 @@ import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock,
 import { clientTune } from '../clientTune';
 import { LEVEL_RANK, guideLine, incomingThreat, suggestCues } from '../objective';
 import type { Cue, Objective } from '../objective';
+import { speedBoostPct } from '../speedPct';
 import { COLORS, FONT, SQUAD_LABEL, cssColor, fmtPower, nodeName, shade, teamColor } from '../theme';
 
 type Target = { kind: 'node'; id: string } | { kind: 'hq'; id: string; own: boolean } | { kind: 'cache'; id: string };
@@ -1362,7 +1363,7 @@ export class GameScene extends BaseScene {
     const k = tune.nodes[n.kind];
     if (k.attackPct) lines.push([`Team attack +${Math.round(k.attackPct * n.tier * 100)}%`, COLORS.text]);
     if (k.defensePct) lines.push([`Team defense +${Math.round(k.defensePct * n.tier * 100)}%`, COLORS.text]);
-    if (k.marchEdgeSecondsCut) lines.push([`Squad march -${k.marchEdgeSecondsCut * n.tier}s edge to edge (stacks)`, COLORS.text]);
+    if (k.marchEdgeSecondsCut) lines.push([`Movement speed +${speedBoostPct(tune.march, k.marchEdgeSecondsCut * n.tier)}% (stacks)`, COLORS.text]);
     if (k.teleportCooldownRate) lines.push([`Teleport cooldown x${1 + k.teleportCooldownRate * n.tier} faster (stacks)`, COLORS.text]);
     if (k.poolRegenPerSecond) lines.push([`Allies +${k.poolRegenPerSecond * n.tier} reserve troops/s`, COLORS.text]);
     if (n.kind === 'largeVision') lines.push([`Vision ${k.visionRadiusCells} cells`, COLORS.text]);
@@ -1800,9 +1801,7 @@ export class GameScene extends BaseScene {
     if (b.attack > 0) list.push({ kind: 'attackBoost', value: `+${Math.round(b.attack * 100)}%`, color: 0xf2994a, tip: `Attack +${Math.round(b.attack * 100)}% for your team (Arsenal)` });
     if (b.defense > 0) list.push({ kind: 'defenseBoost', value: `+${Math.round(b.defense * 100)}%`, color: 0x6ed3c0, tip: `Damage reduction +${Math.round(b.defense * 100)}% for your team (Armory)` });
     if (b.marchCut > 0) {
-      // Cutting seconds off the edge-to-edge time is a speed-up of edge / (edge - cut): shown as a rounded percentage.
-      const m = this.tune.march;
-      const speedPct = Math.round((m.edgeToEdgeSeconds / Math.max(m.minEdgeToEdgeSeconds, m.edgeToEdgeSeconds - b.marchCut) - 1) * 100);
+      const speedPct = speedBoostPct(this.tune.march, b.marchCut);
       list.push({ kind: 'speedBoost', value: `+${speedPct}%`, color: 0xe6d44a, tip: `Movement speed +${speedPct}% for your squads (Accelerator)` });
     }
     if (list.length === 0) return;

@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.16.2 on the branch (0.16.0 merged in PR 379; 0.16.1 and 0.16.2 not merged, no PR open)
+Version 0.16.3 on the branch (0.16.0 to 0.16.2 are merged and deployed; 0.16.3 not merged yet)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.16.3: Accelerator reads as a movement speed percent in the node panel and Handbook (shared helper `src/speedPct.ts`). The itch deploy now waits and retries up to 6 times, 90 s apart, only when itch says the previous build is still processing.
 - 0.16.2: nodes keep a constant screen size below zoom 0.6 (`camera.nodeFixedZoom`, max 4x), with labels, rings and tap area scaled to match.
 - 0.16.1: Return to HQ on every field squad, Hospital recovery per second beside Reserve, Tech Centre teleport countdown with tenths, speed tag and flash, buff icons top left.
 - 0.16.0: onboarding pass: objective card with danger/alert/good/guide levels and tap-to-look, Next Moves list with pan-and-ring, goal line and points per second, green own base, contextual panels and flashes, plain node panel with More, contiguous minimap fog, retiring hints and Tips toggle, logs limited to your fights. Slot tiles removed from the ground.
@@ -76,4 +77,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Open a PR and merge after approval, then playtest on a real phone and tune touch sizes and HUD layout.
+Merge and deploy 0.16.3, then playtest on a real phone and tune touch sizes and HUD layout.
