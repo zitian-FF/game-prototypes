@@ -797,3 +797,8 @@ client.
   - Top left, under the scoreboard: buff icons for team attack (Arsenal, +5%), damage reduction (Armory, +5%) and movement speed (Accelerator, shown as a rounded speed-up percentage: one Accelerator on a 150 s crossing is +25%, two are +67%); only active buffs show, and hovering one names its source. The Accelerator node panel line and the Handbook use the same percentage (`Movement speed +25% (stacks)`), not seconds, through one shared helper (`src/speedPct.ts`).
 - Nodes on the big map (0.16.2): below `camera.nodeFixedZoom` (0.6) nodes stop shrinking: they are drawn bigger in the world, up to `camera.nodeMaxScale` (4x), so they keep the same size on screen. Their labels and selection, hover and cue rings grow with them, and the tap area grows too. HQs, units and everything else still scale with the map.
 - Where this section conflicts with older text above, this section wins.
+- Rendering performance (0.16.4): node and HQ art is rendered once per look into textures (`src/render/artCache.ts`,
+  keyed by kind, tier, colours and animation step) and shown as images; live vectors are used only when zoomed in past
+  `perf.bakedArtMaxDensity` device pixels per world pixel, where few nodes are on screen. HUD squad portraits are baked
+  the same way (`Ui.image`). Dashed march lines are clipped to the screen and their dashes grow with the node scale
+  when zoomed out. Looks are unchanged.

@@ -21,7 +21,8 @@
   "perf": {
     "staticUnitZoom": 0.6,
     "staticUnitCount": 14,
-    "staticUnitHysteresis": 0.8
+    "staticUnitHysteresis": 0.8,
+    "bakedArtMaxDensity": 2.4
   },
   "dpr": {
     "max": 2

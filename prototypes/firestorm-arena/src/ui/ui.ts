@@ -25,6 +25,9 @@ interface Layer {
   texts: Phaser.GameObjects.Text[];
   keys: string[];
   used: number;
+  /** Pooled images (baked art), between the layer's graphics and its texts. */
+  imgs: Phaser.GameObjects.Image[];
+  imgUsed: number;
 }
 
 /**
@@ -55,7 +58,7 @@ export class Ui {
     let l = this.layers[this.cur];
     if (!l) {
       const g = this.scene.add.graphics().setDepth(this.baseDepth + this.cur * 2);
-      l = { g, texts: [], keys: [], used: 0 };
+      l = { g, texts: [], keys: [], used: 0, imgs: [], imgUsed: 0 };
       this.layers[this.cur] = l;
     }
     return l;
@@ -74,6 +77,7 @@ export class Ui {
       if (!l) continue;
       l.g.clear();
       l.used = 0;
+      l.imgUsed = 0;
     }
   }
 
@@ -81,6 +85,7 @@ export class Ui {
     for (const l of this.layers) {
       if (!l) continue;
       for (let i = l.used; i < l.texts.length; i++) l.texts[i].setVisible(false);
+      for (let i = l.imgUsed; i < l.imgs.length; i++) l.imgs[i].setVisible(false);
     }
   }
 
@@ -96,6 +101,22 @@ export class Ui {
       if (radius > 0) g.strokeRoundedRect(x, y, w, h, radius);
       else g.strokeRect(x, y, w, h);
     }
+  }
+
+  /**
+   * A texture (usually pre-rendered vector art) drawn above this layer's shapes and below its texts. Much cheaper
+   * than redrawing detailed vector art into the layer's graphics every frame.
+   */
+  image(key: string, x: number, y: number, scale: number, originX = 0.5, originY = 0.5): void {
+    const l = this.layer();
+    let img = l.imgs[l.imgUsed];
+    if (!img) {
+      img = this.scene.add.image(0, 0, key).setDepth(this.baseDepth + this.cur * 2 + 0.5);
+      l.imgs[l.imgUsed] = img;
+    }
+    l.imgUsed++;
+    if (img.texture.key !== key) img.setTexture(key);
+    img.setOrigin(originX, originY).setScale(scale).setPosition(x, y).setVisible(true);
   }
 
   /** The raw graphics of the current layer, for custom shapes. */
