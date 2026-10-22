@@ -92,7 +92,24 @@ jobs:
         if: steps.ready.outputs.run == 'true'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: butler push dist polsia/firestorm-arena:html5
+        # itch rejects a push while the channel's previous build is still processing. Wait and retry only for that
+        # error (bounded); any other failure stops at once. The version stamp is bumped before this step, so a
+        # retry never bumps it twice.
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if butler push dist polsia/firestorm-arena:html5 > push.log 2>&1; then
+              cat push.log
+              exit 0
+            fi
+            cat push.log
+            if ! grep -qi "still processing" push.log; then
+              exit 1
+            fi
+            echo "Previous build is still processing (attempt $attempt of 6); waiting 90s..."
+            sleep 90
+          done
+          echo "itch was still processing the previous build after 6 attempts" >&2
+          exit 1
 
       - name: Commit version stamp bump
         if: steps.ready.outputs.run == 'true'

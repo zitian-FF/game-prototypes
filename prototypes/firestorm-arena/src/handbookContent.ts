@@ -1,5 +1,6 @@
 import tuneJson from '../tune.json';
 import { COLORS } from './theme';
+import { speedBoostPct } from './speedPct';
 
 /** One block of handbook text. `tri` is the counter triangle drawing. */
 export type Item = { k: 'h' | 'p' | 'b' | 'tri'; t?: string; color?: string };
@@ -53,7 +54,7 @@ export function handbook(): Record<Tab, Item[]> {
       { k: 'h', t: `Armory  T1  ${tp(1)}` },
       { k: 'p', t: `Team damage taken -${pct(tune.nodes.defenseBoost.defensePct)}.` },
       { k: 'h', t: `Accelerator  T1  ${tp(1)}` },
-      { k: 'p', t: `Squads cross the map ${tune.nodes.speedBoost.marchEdgeSecondsCut}s faster edge to edge (${tune.march.edgeToEdgeSeconds}s base). Scouts and missiles are not affected.` },
+      { k: 'p', t: `Squad movement speed +${speedBoostPct(tune.march, tune.nodes.speedBoost.marchEdgeSecondsCut)}% (+${speedBoostPct(tune.march, 2 * tune.nodes.speedBoost.marchEdgeSecondsCut)}% with two). Scouts and missiles are not affected.` },
       { k: 'h', t: `Tech Centre  T1  ${tp(1)}` },
       { k: 'p', t: `Teleport cooldown runs ${1 + tune.nodes.teleportCooldown.teleportCooldownRate}x as fast (${1 + 2 * tune.nodes.teleportCooldown.teleportCooldownRate}x with two).` },
       { k: 'h', t: `Hospital  T1  ${tp(1)}` },
