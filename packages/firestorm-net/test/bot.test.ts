@@ -226,3 +226,26 @@ test('bots: they creep the front forward from nodes they hold, and about one dec
   const raids = (picked['far'] ?? 0) / total;
   assert.ok(raids > 0.03 && raids < 0.3, `roughly one in ten reaches for the distant node (${(raids * 100).toFixed(0)}%)`);
 });
+
+test('bots: spend a speed booster on a long march, first call for an HQ assault, never on one walking home', () => {
+  const tune = { ...TUNE, booster: { charges: 2, rechargeSeconds: 120, speedFactors: [2, 4] } } as unknown as Tune;
+  const march = (purpose: string, arriveMs: number, boost = 0) => ({ from: { x: 0, y: 0 }, to: { x: 2000, y: 0 }, startMs: 90_000, arriveMs, speed: 10, purpose, version: 1, boost });
+  const sq = (id: string, m: ReturnType<typeof march>, burning = false) => ({ id, owner: 'bot', type: 'tank', rank: 5, power: 70, troops: 3000, maxTroops: 3000, defend: true, state: 'march', pos: { x: 0, y: 0 }, march: m, burning });
+  const run = (squads: unknown[], charges: number) => {
+    const v = base({ squads, hqs: [{ id: 'h0', owner: 'bot', pos: { x: 100, y: 100 }, pool: 100, nextTeleportAtMs: 0, boostCharges: charges, nextBoostAtMs: 0, location: { kind: 'node', nodeId: 'own', slot: 0 }, garrisonCount: 0 }] });
+    const out: string[] = [];
+    for (let seed = 1; seed <= 30; seed++) {
+      const brain = new BotBrain('bot', new Rng(seed));
+      const input = { playerId: 'bot', team: 0 as const, view: v, tune, speed: 120, nowMs: 100_000 };
+      brain.think(input);
+      for (const c of brain.think({ ...input, nowMs: 160_000 })) if (c.type === 'boost') out.push(c.squadId);
+    }
+    return out;
+  };
+  const assault = run([sq('a', march('hq', 260_000)), sq('n', march('node', 260_000))], 1);
+  assert.ok(assault.length === 30 && assault.every((id) => id === 'a'), 'an HQ assault gets the last charge every time');
+  assert.equal(run([sq('n', march('node', 260_000))], 1).length, 0, 'an ordinary march keeps the last charge in reserve');
+  assert.ok(run([sq('n', march('node', 260_000))], 2).length > 0, 'with both charges, ordinary long marches get boosted');
+  assert.equal(run([sq('h', march('home', 260_000)), sq('b', march('node', 260_000), true), sq('s', march('node', 170_000))], 2).length, 0, 'not home, burning or short marches');
+  assert.equal(run([sq('m', march('hq', 260_000, 2))], 2).length, 0, 'not past the top speed');
+});

@@ -68,7 +68,7 @@ export class TestClient {
   }
 
   hello(create = false, device?: 'touch' | 'desktop'): void {
-    this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create, ...(device ? { device } : {}) });
+    this.send({ t: 'hello', v: 9, clientId: this.clientId, name: this.name, create, ...(device ? { device } : {}) });
   }
 
   cmd(cmd: Record<string, unknown>): number {

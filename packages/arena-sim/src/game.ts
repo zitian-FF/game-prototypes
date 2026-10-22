@@ -38,7 +38,7 @@ export interface GameOptions {
   players: PlayerSpec[];
 }
 
-type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'unlock' | 'poolOpen' | 'end';
+type QueueKind = 'squadArrive' | 'refill' | 'scoutArrive' | 'scoutHome' | 'turretPulse' | 'missileHit' | 'unlock' | 'poolOpen' | 'boostCharge' | 'end';
 
 interface Queued {
   t: number;
@@ -51,8 +51,8 @@ interface Queued {
 interface TeamBonus {
   attack: number;
   defense: number;
-  /** Seconds cut off the squads' edge-to-edge march time (Accelerators held, times tier). */
-  marchCutSeconds: number;
+  /** Extra speed-booster recharge per second (Accelerators held, times tier): 1 means charges refill twice as fast. */
+  boostRate: number;
   /** Extra teleport-cooldown seconds drained per second: 1 means the cooldown runs twice as fast. */
   teleportRate: number;
 }
@@ -154,6 +154,9 @@ export class ArenaGame {
         squadIds: [],
         scouts: Array.from({ length: opts.tune.scout.perHq }, () => ({ kind: 'home' as const })),
         nextTeleportAtMs: 0,
+        boostCharges: opts.tune.booster.charges,
+        nextBoostAtMs: 0,
+        boostVersion: 0,
         stats: { troopsDefeated: 0, nodesCaptured: 0, garrisonSeconds: 0, hqsDowned: 0, cachePoints: 0 },
       };
       this.players.set(spec.id, player);
@@ -239,14 +242,14 @@ export class ArenaGame {
   }
 
   teamBonus(team: TeamId): TeamBonus {
-    const out: TeamBonus = { attack: 0, defense: 0, marchCutSeconds: 0, teleportRate: 0 };
+    const out: TeamBonus = { attack: 0, defense: 0, boostRate: 0, teleportRate: 0 };
     for (const n of this.nodes.values()) {
       if (n.owner !== team) continue;
       // A power node's strength is its base value times its tier.
       const k = this.tune.nodes[n.kind];
       out.attack += (k.attackPct ?? 0) * n.tier;
       out.defense += (k.defensePct ?? 0) * n.tier;
-      out.marchCutSeconds += (k.marchEdgeSecondsCut ?? 0) * n.tier;
+      out.boostRate += (k.boostRechargeRate ?? 0) * n.tier;
       out.teleportRate += (k.teleportCooldownRate ?? 0) * n.tier;
     }
     return out;
@@ -464,6 +467,9 @@ export class ArenaGame {
       case 'setDefend':
         error = this.cmdSetDefend(player, cmd.squadId, cmd.defend);
         break;
+      case 'boost':
+        error = this.cmdBoost(player, cmd.squadId);
+        break;
     }
     if (error) return { ok: false, error };
     this.run(this.nowMs);
@@ -523,6 +529,50 @@ export class ArenaGame {
       this.startMarch(sq, from, to, 'hq', { hqId: hq.id, hqEpoch: hq.epoch }, false);
     }
     return null;
+  }
+
+  /**
+   * Spend a speed booster charge: the squad keeps going from where it is, at booster.speedFactors[n] times the base
+   * march speed for the rest of this march (n = charges spent on it so far). Not on a squad walking home or burning.
+   */
+  private cmdBoost(player: Player, squadId: SquadId): string | null {
+    const sq = this.ownSquad(player, squadId);
+    if (!sq) return 'unknownSquad';
+    if (sq.state.kind !== 'march') return 'notMarching';
+    const m = sq.state.march;
+    if (m.purpose === 'home') return 'returning';
+    if (sq.troops <= 0) return 'burning';
+    const level = m.boost ?? 0;
+    const factors = this.tune.booster.speedFactors;
+    if (level >= factors.length) return 'maxBoost';
+    if (player.boostCharges <= 0) return 'noCharge';
+    const wasFull = player.boostCharges >= this.tune.booster.charges;
+    player.boostCharges--;
+    if (wasFull) this.scheduleBoostCharge(player);
+    const from = this.squadPos(sq);
+    const speed = this.speed * factors[level];
+    const arriveMs = this.nowMs + (dist(from, m.to) / speed) * 1000;
+    const march: March = { ...m, from, startMs: this.nowMs, arriveMs, speed, version: ++this.versionSeq, boost: level + 1 };
+    sq.state = { kind: 'march', march };
+    this.schedule(arriveMs, 'squadArrive', sq.id, march.version);
+    this.emit({ type: 'marchStarted', timeMs: this.nowMs, squadId: sq.id, march });
+    return null;
+  }
+
+  /** Start the clock on the next booster charge, at the team's current recharge rate. */
+  private scheduleBoostCharge(player: Player): void {
+    const rate = 1 + this.teamBonus(player.team).boostRate;
+    player.nextBoostAtMs = this.nowMs + Math.round((this.tune.booster.rechargeSeconds * 1000) / rate);
+    player.boostVersion++;
+    this.schedule(player.nextBoostAtMs, 'boostCharge', player.id, player.boostVersion);
+  }
+
+  private onBoostCharge(ev: Queued): void {
+    const player = this.players.get(ev.ref);
+    if (!player || player.boostVersion !== ev.version) return;
+    player.boostCharges = Math.min(this.tune.booster.charges, player.boostCharges + 1);
+    player.nextBoostAtMs = 0;
+    if (player.boostCharges < this.tune.booster.charges) this.scheduleBoostCharge(player);
   }
 
   private cmdCancel(player: Player, squadId: SquadId): string | null {
@@ -628,8 +678,33 @@ export class ArenaGame {
     }
   }
 
+  /** An Accelerator changing hands speeds up or slows down the booster recharges already running. */
+  private retimeBoosts(node: NodeState, previous: TeamId | null): void {
+    const k = this.tune.nodes[node.kind].boostRechargeRate;
+    if (!k) return;
+    const delta = k * node.tier;
+    const retime = (team: TeamId, oldRate: number, newRate: number): void => {
+      for (const p of this.players.values()) {
+        if (p.team !== team || p.nextBoostAtMs <= this.nowMs) continue;
+        const left = p.nextBoostAtMs - this.nowMs;
+        p.nextBoostAtMs = this.nowMs + Math.round((left * (1 + oldRate)) / (1 + newRate));
+        p.boostVersion++;
+        this.schedule(p.nextBoostAtMs, 'boostCharge', p.id, p.boostVersion);
+      }
+    };
+    if (node.owner !== null) {
+      const now = this.teamBonus(node.owner).boostRate;
+      retime(node.owner, now - delta, now);
+    }
+    if (previous !== null) {
+      const now = this.teamBonus(previous).boostRate;
+      retime(previous, now + delta, now);
+    }
+  }
+
   private ownerChanged(node: NodeState, previous: TeamId | null): void {
     this.retimeTeleports(node, previous);
+    this.retimeBoosts(node, previous);
     if (previous !== null && node.poolOpen) {
       const lost = node.pool;
       this.pointTotals[previous] = Math.max(0, this.pointTotals[previous] - lost);
@@ -711,11 +786,9 @@ export class ArenaGame {
     extra: { nodeId?: NodeId; hqId?: HqId; hqEpoch?: number },
     defeated: boolean,
   ): void {
-    const bonus = this.teamBonus(sq.team);
-    // Squads: edge-to-edge time is the base minus what held Accelerators cut (floored); scouts and missiles ignore it.
+    // Every march starts at the base speed (half that when defeated); only a speed booster makes one faster.
     const m = this.tune.march;
-    const squadSpeed = (this.speed * m.edgeToEdgeSeconds) / Math.max(m.minEdgeToEdgeSeconds, m.edgeToEdgeSeconds - bonus.marchCutSeconds);
-    const speed = squadSpeed * (defeated ? m.defeatedSpeedFactor : 1);
+    const speed = this.speed * (defeated ? m.defeatedSpeedFactor : 1);
     const arriveMs = this.nowMs + (dist(from, to) / speed) * 1000;
     const march: March = {
       from,
@@ -850,6 +923,8 @@ export class ArenaGame {
         return;
       case 'missileHit':
         return this.onMissileHit(ev.ref);
+      case 'boostCharge':
+        return this.onBoostCharge(ev);
       case 'end':
         return this.finish();
     }

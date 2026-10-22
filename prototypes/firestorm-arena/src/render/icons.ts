@@ -542,7 +542,8 @@ export function drawNodeIcon(g: G, kind: NodeKind, x: number, y: number, s = 1):
 
 /** A node: a stack of `tier` cubes, each a step smaller than the last, with one thick outline around it all. */
 export function drawNodeStack(g: G, cx: number, cy: number, tier: number, color: number, hw: number, _alpha = 1): number {
-  const ch = clientTune.iso.cubeHeight;
+  // Cube height grows with the footprint, so a bigger node keeps its proportions.
+  const ch = clientTune.iso.cubeHeight * (hw / clientTune.iso.artHalfWidth);
   const art = new Art(g, shade(color, 1.35));
   let lift = 0;
   for (let i = 0; i < tier; i++) {

@@ -1,6 +1,5 @@
 import tuneJson from '../tune.json';
 import { COLORS } from './theme';
-import { speedBoostPct } from './speedPct';
 
 /** One block of handbook text. `tri` is the counter triangle drawing. */
 export type Item = { k: 'h' | 'p' | 'b' | 'tri'; t?: string; color?: string };
@@ -54,7 +53,7 @@ export function handbook(): Record<Tab, Item[]> {
       { k: 'h', t: `Armory  T1  ${tp(1)}` },
       { k: 'p', t: `Team damage taken -${pct(tune.nodes.defenseBoost.defensePct)}.` },
       { k: 'h', t: `Accelerator  T1  ${tp(1)}` },
-      { k: 'p', t: `Squad movement speed +${speedBoostPct(tune.march, tune.nodes.speedBoost.marchEdgeSecondsCut)}% (+${speedBoostPct(tune.march, 2 * tune.nodes.speedBoost.marchEdgeSecondsCut)}% with two). Scouts and missiles are not affected.` },
+      { k: 'p', t: `Speed booster charges refill ${1 + tune.nodes.speedBoost.boostRechargeRate}x as fast (${1 + 2 * tune.nodes.speedBoost.boostRechargeRate}x with two).` },
       { k: 'h', t: `Tech Centre  T1  ${tp(1)}` },
       { k: 'p', t: `Teleport cooldown runs ${1 + tune.nodes.teleportCooldown.teleportCooldownRate}x as fast (${1 + 2 * tune.nodes.teleportCooldown.teleportCooldownRate}x with two).` },
       { k: 'h', t: `Hospital  T1  ${tp(1)}` },
@@ -80,6 +79,9 @@ export function handbook(): Record<Tab, Item[]> {
       { k: 'b', t: `A squad at 0 troops is defeated: it walks home at half speed. Troops lost are gone for good. Refill from your reserve pool at your HQ.` },
       { k: 'h', t: 'Marching' },
       { k: 'p', t: `Edge to edge in ${tune.march.edgeToEdgeSeconds}s at base speed. Scouts and missiles fly ${tune.scout.speedFactor}x faster. Squads in the field cannot fight until they arrive.` },
+      { k: 'h', t: 'Speed boosters' },
+      { k: 'b', t: `You hold ${tune.booster.charges} charges, full at the start. Press >> on a marching squad to spend one: the rest of that march goes ${tune.booster.speedFactors[0]}x as fast. Press again on the same march for ${tune.booster.speedFactors[1]}x.` },
+      { k: 'b', t: `Not on a squad walking home or burning. A spent charge comes back after ${tune.booster.rechargeSeconds / 60} minutes, one at a time. Accelerators make it faster.` },
     ],
     Teleport: [
       { k: 'h', t: 'The rules' },

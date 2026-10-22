@@ -20,22 +20,36 @@ export function baseSpeed(map: MapDef, tune: Tune): number {
   return Math.max(map.width, map.height) / tune.march.edgeToEdgeSeconds;
 }
 
+/** Every node is a 2x2 block of cells; its `cell` is the top-left one and its position the shared middle corner. */
+export const NODE_CELLS = 2;
+
+/** World position of a node whose top-left cell is `cell`: the corner where its four cells meet. */
+export function nodeCenter(cell: Cell, tune: Tune): Vec {
+  const s = tune.map.cellSize;
+  return { x: (cell.cx + 1) * s, y: (cell.cy + 1) * s };
+}
+
 /**
- * The 8 cells around a node, in slot order: E, SE, S, SW, W, NW, N, NE.
- * Slot 0 is straight east, so a node's HQ ring is its 3x3 block.
+ * The 12 cells around a 2x2 node, as offsets in cells from the node's centre to each cell's centre, in slot order
+ * clockwise from east: E (2), SE corner, S (2), SW corner, W (2), NW corner, N (2), NE corner. The ring and the node
+ * make a 4x4 block.
  */
 export const RING_OFFSETS: readonly Cell[] = [
-  { cx: 1, cy: 0 },
-  { cx: 1, cy: 1 },
-  { cx: 0, cy: 1 },
-  { cx: -1, cy: 1 },
-  { cx: -1, cy: 0 },
-  { cx: -1, cy: -1 },
-  { cx: 0, cy: -1 },
-  { cx: 1, cy: -1 },
+  { cx: 1.5, cy: -0.5 },
+  { cx: 1.5, cy: 0.5 },
+  { cx: 1.5, cy: 1.5 },
+  { cx: 0.5, cy: 1.5 },
+  { cx: -0.5, cy: 1.5 },
+  { cx: -1.5, cy: 1.5 },
+  { cx: -1.5, cy: 0.5 },
+  { cx: -1.5, cy: -0.5 },
+  { cx: -1.5, cy: -1.5 },
+  { cx: -0.5, cy: -1.5 },
+  { cx: 0.5, cy: -1.5 },
+  { cx: 1.5, cy: -1.5 },
 ];
 
-/** Position of an HQ slot: the centre of one of the node's 8 neighbouring cells. */
+/** Position of an HQ slot: the centre of one of the node's 12 surrounding cells. */
 export function ringSlotPos(nodePos: Vec, slot: number, tune: Tune): Vec {
   const o = RING_OFFSETS[slot];
   const s = tune.map.cellSize;
@@ -50,12 +64,11 @@ export function safeZoneSlotPos(map: MapDef, team: TeamId, index: number, tune: 
   return cellCenter({ cx: zone.origin.cx + col, cy: zone.origin.cy + row }, tune);
 }
 
+/** The two square spawn zones: bottom left for team 0, and its point reflection (top right) for team 1. */
 function safeZoneBlocks(tune: Tune): [SafeZone, SafeZone] {
   const m = tune.map;
   const z = m.safeZone;
-  const rowStart = Math.floor((m.heightCells - z.rows) / 2);
-  const left: Cell = { cx: z.insetCells, cy: rowStart };
-  // Point reflection of the left block, so the two zones mirror exactly.
+  const left: Cell = { cx: z.insetCells, cy: m.heightCells - z.insetCells - z.rows };
   const right: Cell = {
     cx: m.widthCells - 1 - (left.cx + z.cols - 1),
     cy: m.heightCells - 1 - (left.cy + z.rows - 1),
@@ -69,35 +82,38 @@ function safeZoneBlocks(tune: Tune): [SafeZone, SafeZone] {
   return [make(left), make(right)];
 }
 
-/** Cells (Chebyshev) between a cell and a safe zone block; 0 if inside it. */
+/** Cells (Chebyshev) between a 2x2 node block (top-left `cell`) and a safe zone block; 0 if they overlap. */
 function cellsFromZone(cell: Cell, zone: SafeZone): number {
-  const dx = Math.max(zone.origin.cx - cell.cx, 0, cell.cx - (zone.origin.cx + zone.cols - 1));
-  const dy = Math.max(zone.origin.cy - cell.cy, 0, cell.cy - (zone.origin.cy + zone.rows - 1));
+  const dx = Math.max(zone.origin.cx - (cell.cx + 1), 0, cell.cx - (zone.origin.cx + zone.cols - 1));
+  const dy = Math.max(zone.origin.cy - (cell.cy + 1), 0, cell.cy - (zone.origin.cy + zone.rows - 1));
   return Math.max(dx, dy);
 }
 
-/** 0 at the centre of the map, 1 at the middle of an edge. */
+/** 0 at the centre of the map, 1 at the middle of an edge, measured at the node's centre. */
 function ringRadius(cell: Cell, tune: Tune): number {
   const m = tune.map;
-  const mx = (m.widthCells - 1) / 2;
-  const my = (m.heightCells - 1) / 2;
-  return Math.hypot((cell.cx - mx) / (mx + 0.5), (cell.cy - my) / (my + 0.5));
+  const mx = m.widthCells / 2;
+  const my = m.heightCells / 2;
+  return Math.hypot((cell.cx + 1 - mx) / mx, (cell.cy + 1 - my) / my);
 }
 
 /**
- * Generate a point-symmetric, grid-aligned map. Nodes sit on cell centres in
+ * Generate a point-symmetric, grid-aligned map. Nodes are 2x2 blocks in
  * concentric rings (tier 1 outside, tier 4 in the middle), each ring's nodes
  * placed in the left half and mirrored through the centre so both teams get
- * an identical layout. Each node keeps a 3x3 block free for its HQ slots.
+ * an identical layout. Each node keeps a 4x4 block (itself plus its 12 HQ
+ * slots) free. The four Portal Nexus sit at fixed spots: straight up, down,
+ * left and right of the centre, `portals.fromEdge` of the way in from the edge.
  */
 export function generateMap(rng: Rng, tune: Tune): MapDef {
   const m = tune.map;
-  if (m.widthCells % 2 === 0 || m.heightCells % 2 === 0) {
-    throw new Error('map width and height in cells must be odd so there is a centre cell');
+  if (m.widthCells % 2 !== 0 || m.heightCells % 2 !== 0) {
+    throw new Error('map width and height in cells must be even so a 2x2 node sits on the centre');
   }
   const zones = safeZoneBlocks(tune);
-  const mirror = (c: Cell): Cell => ({ cx: m.widthCells - 1 - c.cx, cy: m.heightCells - 1 - c.cy });
-  const centerCell: Cell = { cx: (m.widthCells - 1) / 2, cy: (m.heightCells - 1) / 2 };
+  // Point reflection of a 2x2 block's top-left cell.
+  const mirror = (c: Cell): Cell => ({ cx: m.widthCells - 2 - c.cx, cy: m.heightCells - 2 - c.cy });
+  const centerCell: Cell = { cx: m.widthCells / 2 - 1, cy: m.heightCells / 2 - 1 };
   const placed: Cell[] = [];
   const nodes: MapNode[] = [];
   let id = 0;
@@ -105,6 +121,7 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
   /** Column range allowed by a ring's spawnBand, in the left (spawn) half. */
   const bandCols = (ring: { spawnBand?: [number, number] }): [number, number] => {
     const lo = m.edgeMarginCells;
+    // The whole block stays left of the centre line.
     const hi = centerCell.cx - 1;
     if (!ring.spawnBand) return [lo, hi];
     const [a, b] = ring.spawnBand;
@@ -119,8 +136,15 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
 
   const add = (kind: NodeKind, tier: number, cell: Cell) => {
     placed.push(cell);
-    nodes.push({ id: `n${id++}`, kind, tier, cell, pos: cellCenter(cell, tune) });
+    nodes.push({ id: `n${id++}`, kind, tier, cell, pos: nodeCenter(cell, tune) });
   };
+
+  // Portal Nexus: fixed at the four compass points, for the widest teleport coverage. Up and down mirror each other,
+  // as do left and right.
+  const f = m.portals.fromEdge;
+  const north: Cell = { cx: m.widthCells / 2 - 1, cy: Math.round(m.heightCells * f) - 1 };
+  const west: Cell = { cx: Math.round(m.widthCells * f) - 1, cy: m.heightCells / 2 - 1 };
+  for (const c of [north, mirror(north), west, mirror(west)]) add('portal', 1, c);
 
   // Vision towers are placed after everything else, where they see the most nodes.
   const deferred: { kind: NodeKind; tier: number }[] = [];
@@ -149,7 +173,7 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
           const [c0, c1] = bandCols(ring);
           const cell: Cell = {
             cx: rng.int(c0, c1),
-            cy: rng.int(m.edgeMarginCells, m.heightCells - 1 - m.edgeMarginCells),
+            cy: rng.int(m.edgeMarginCells, m.heightCells - 2 - m.edgeMarginCells),
           };
           const r = ringRadius(cell, tune);
           if (r < ring.minR || r > ring.maxR) continue;
@@ -182,7 +206,7 @@ export function generateMap(rng: Rng, tune: Tune): MapDef {
       const [c0, c1] = bandCols(ring);
       const cell: Cell = {
         cx: rng.int(c0, c1),
-        cy: rng.int(m.edgeMarginCells, m.heightCells - 1 - m.edgeMarginCells),
+        cy: rng.int(m.edgeMarginCells, m.heightCells - 2 - m.edgeMarginCells),
       };
       const r = ringRadius(cell, tune);
       if (r < ring.minR || r > ring.maxR) continue;

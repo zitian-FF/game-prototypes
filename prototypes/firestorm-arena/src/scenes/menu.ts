@@ -9,6 +9,7 @@ import { QuotaWatcher } from '../net/quota';
 import { VERSION_STAMP } from '../version.generated';
 import { cleanName } from 'firestorm-net';
 import { HandbookView } from './handbookView';
+import tuneJson from '../../tune.json';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
 
@@ -131,7 +132,7 @@ export class MenuScene extends BaseScene {
     const top = compact ? 14 : touch ? 36 : Math.max(40, h / 2 - 230);
     const titleSize = compact ? 28 : 44;
     ui.text('FIRESTORM ARENA', cx, top, { size: Math.min(titleSize, (w - 24) / 10.5), align: 'center', bold: true, color: '#ff8a3d' });
-    ui.text('20 v 20 node capture under fog of war', cx, top + (compact ? 36 : 58), { size: compact ? 12 : 15, align: 'center', color: COLORS.dim });
+    ui.text(`${tuneJson.match.playersPerTeam} v ${tuneJson.match.playersPerTeam} node capture under fog of war`, cx, top + (compact ? 36 : 58), { size: compact ? 12 : 15, align: 'center', color: COLORS.dim });
 
     const pw = Math.min(360, w - 24);
     const px = cx - pw / 2;

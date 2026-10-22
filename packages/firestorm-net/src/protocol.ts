@@ -6,7 +6,7 @@ import type { Command, MapDef, MarchTarget, ScoutTarget, TeamId, Tune } from 'ar
 import type { ClientEvent } from './events';
 import type { ViewPatch, WireView } from './wire';
 
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 9;
 
 /** Match lengths a host can choose in the lobby. */
 export const MATCH_MINUTES = [10, 15, 20, 30] as const;
@@ -19,7 +19,8 @@ export type CommandBody =
   | { type: 'cancel'; squadId: string }
   | { type: 'teleport'; nodeId: string }
   | { type: 'scout'; scoutIndex: number; target: ScoutTarget }
-  | { type: 'setDefend'; squadId: string; defend: boolean };
+  | { type: 'setDefend'; squadId: string; defend: boolean }
+  | { type: 'boost'; squadId: string };
 
 // ------------------------------------------------------------- client -> server
 
@@ -144,6 +145,8 @@ function parseCommand(v: unknown): CommandBody | null {
     }
     case 'setDefend':
       return ref(v.squadId) && typeof v.defend === 'boolean' ? { type: 'setDefend', squadId: v.squadId, defend: v.defend } : null;
+    case 'boost':
+      return ref(v.squadId) ? { type: 'boost', squadId: v.squadId } : null;
     default:
       return null;
   }

@@ -1,7 +1,7 @@
 {
   "match": {
     "durationSeconds": 1800,
-    "playersPerTeam": 20,
+    "playersPerTeam": 16,
     "startCancelSeconds": 3,
     "introSeconds": 7
   },
@@ -50,7 +50,12 @@
     "hp": 4,
     "teleportCooldownSeconds": 120,
     "refillSeconds": 0,
-    "slotsPerNode": 8
+    "slotsPerNode": 12
+  },
+  "booster": {
+    "charges": 2,
+    "rechargeSeconds": 120,
+    "speedFactors": [2, 4]
   },
   "scout": {
     "perHq": 3,
@@ -98,16 +103,19 @@
   },
   "map": {
     "cellSize": 40,
-    "widthCells": 41,
-    "heightCells": 41,
+    "widthCells": 42,
+    "heightCells": 42,
     "safeZone": {
-      "cols": 5,
+      "cols": 4,
       "rows": 4,
       "insetCells": 3
     },
-    "nodeMinSpacingCells": 4,
+    "nodeMinSpacingCells": 5,
     "nodeMinDistFromSafeZoneCells": 4,
     "edgeMarginCells": 2,
+    "portals": {
+      "fromEdge": 0.25
+    },
     "rings": [
       {
         "tier": 4,
@@ -124,14 +132,6 @@
         "maxR": 0.4,
         "nodes": {
           "turret": 2
-        }
-      },
-      {
-        "tier": 1,
-        "minR": 0.15,
-        "maxR": 0.65,
-        "nodes": {
-          "portal": 4
         }
       },
       {
@@ -182,7 +182,7 @@
     },
     "speedBoost": {
       "visionRadiusCells": 6,
-      "marchEdgeSecondsCut": 30
+      "boostRechargeRate": 1
     },
     "teleportCooldown": {
       "visionRadiusCells": 6,
@@ -199,7 +199,7 @@
       "poolRegenPerSecond": 20
     },
     "portal": {
-      "visionRadiusCells": 1.5
+      "visionRadiusCells": 2.25
     }
   }
 }

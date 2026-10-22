@@ -61,6 +61,9 @@ const LOYALTY_MAX = 0.95;
 const FIT = 0.7;
 /** With no scout report, a squad this strong (effective power) is confident about an enemy HQ. */
 const CONFIDENT_POWER = 66;
+/** Only a march with at least this long still to go is worth a speed booster charge. */
+const BOOST_MIN_LEFT_MS = 40_000;
+
 /** Each bot has its own appetite for stealing caches: from rarely to most of the time. */
 const STEAL_MIN = 0.1;
 const STEAL_MAX = 0.85;
@@ -93,6 +96,10 @@ export class BotBrain {
     if (nowMs < this.nextActMs) return [];
     this.nextActMs = nowMs + this.wait();
 
+    // A long march under way: spend a speed booster charge on it (rescues and HQ assaults first).
+    const boost = this.boost(input);
+    if (boost) return [boost];
+
     // An ally's HQ under attack that we can reach in time: go and garrison it.
     if (this.rng.next() < this.loyalty) {
       const rescue = this.defendAlly(input);
@@ -118,6 +125,24 @@ export class BotBrain {
     if (!action) return [];
     const cmd = action === 'attack' ? this.attack(input) : action === 'teleport' ? this.teleport(input) : this.scout(input);
     return cmd ? [cmd] : [];
+  }
+
+  /**
+   * Boost one of our own long marches that is not walking home or burning. Rescues and HQ assaults (racing an
+   * enemy) get first call and may take the last charge; ordinary marches keep one charge in reserve.
+   */
+  private boost(input: BotInput): CommandBody | null {
+    const hq = input.view.hqs.find((h) => h.owner === input.playerId);
+    const charges = hq?.boostCharges ?? 0;
+    if (charges <= 0) return null;
+    const max = input.tune.booster?.speedFactors.length ?? 0;
+    const long = input.view.squads.filter(
+      (s) => s.owner === input.playerId && s.state === 'march' && s.march && s.march.purpose !== 'home' && !s.burning && (s.march.boost ?? 0) < max && s.march.arriveMs - input.nowMs >= BOOST_MIN_LEFT_MS,
+    );
+    const urgent = long.find((s) => s.march!.purpose === 'hq');
+    if (urgent) return { type: 'boost', squadId: urgent.id };
+    if (charges < 2 || long.length === 0) return null;
+    return this.rng.next() < 0.5 ? { type: 'boost', squadId: long[0].id } : null;
   }
 
   private wait(): number {

@@ -4,7 +4,7 @@
 //   node packages/firestorm-net/scripts/e2e.mjs
 //
 // It plays a whole match at 60x speed through real sockets, with two humans and
-// 38 bots, and in the middle kills the runtime and starts it again with the same
+// 30 bots, and in the middle kills the runtime and starts it again with the same
 // storage, to prove the room rebuilds exactly from its replay log.
 
 import { spawn } from 'node:child_process';
@@ -115,7 +115,7 @@ class Client {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/${this.code}`);
       this.ws = ws;
       ws.onopen = () => {
-        this.send({ t: 'hello', v: 8, clientId: this.clientId, name: this.name, create });
+        this.send({ t: 'hello', v: 9, clientId: this.clientId, name: this.name, create });
         resolve();
       };
       ws.onerror = () => reject(new Error(`${this.name}: socket error`));
@@ -209,12 +209,16 @@ try {
   const iInfo = ivo.last('matchStart').info;
   check(hInfo.map.nodes.length === 23, 'matchStart carries the 23 node map');
   check(hInfo.team !== iInfo.team, 'the two humans are on opposite teams');
-  check(hana.view.hqs.length === 20, 'the host sees all 20 HQs of their team');
+  check(hana.view.hqs.length === 16, 'the host sees all 16 HQs of their team');
 
   // --- play: send a real order -----------------------------------------------------------------
   await hana.waitFor((m) => m.t === 'state', 5000, 'a state');
   const squad = hana.view.squads.find((s) => s.owner === 'Hana');
-  const node = hana.view.nodes.find((n) => n.owner === null && n.unlocksAtMs === undefined && n.kind !== 'portal');
+  // The farthest open node, so the march is still under way when we look (the clock runs at 60x).
+  const myHq = hana.view.hqs.find((h) => h.owner === 'Hana');
+  const node = hana.view.nodes
+    .filter((n) => n.owner === null && n.unlocksAtMs === undefined && n.kind !== 'portal')
+    .sort((a, b) => Math.hypot(b.pos.x - myHq.pos.x, b.pos.y - myHq.pos.y) - Math.hypot(a.pos.x - myHq.pos.x, a.pos.y - myHq.pos.y))[0];
   hana.send({ t: 'cmd', id: 1, cmd: { type: 'march', squadId: squad.id, target: { kind: 'node', nodeId: node.id } } });
   const res = await hana.waitFor((m) => m.t === 'cmdResult' && m.id === 1, 5000, 'cmdResult');
   check(res.ok === true, `a human march order is accepted${res.ok ? '' : ` (${res.error})`}`);
@@ -277,7 +281,7 @@ try {
     check(!!rec && rec.counts.captureNeutral === 1 && rec.counts.marches === 1, 'Hana\'s record has the node she captured');
     check(rec.targets[0].a === 'capture' && rec.targets[0].id === node.id, 'the first target in her record is the node she went for');
     check(logs.records.every((r) => r.pid.length === 14 && !JSON.stringify(r).includes('client-')), 'records carry a hashed id, never the client id');
-    check(logs.records.every((r) => r.humans === 2 && r.bots === 38), 'each record knows the match had 2 humans and 38 bots');
+    check(logs.records.every((r) => r.humans === 2 && r.bots === 30), 'each record knows the match had 2 humans and 30 bots');
   }
   const nd = await fetch(`${base}?format=ndjson&since=2000-01-01`, { headers: { authorization: 'Bearer e2e-log-token' } });
   check((await nd.text()).trim().split('\n').length === 2, 'the ndjson export has one line per record');

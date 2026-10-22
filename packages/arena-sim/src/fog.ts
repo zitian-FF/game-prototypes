@@ -116,6 +116,9 @@ export interface OwnHqView {
   burning: boolean;
   location: HqLocation;
   nextTeleportAtMs: number;
+  /** Speed booster charges ready, and when the next one is ready (0 when full). */
+  boostCharges: number;
+  nextBoostAtMs: number;
   /** Allied squads garrisoned here. */
   garrisonCount: number;
 }
@@ -265,6 +268,8 @@ export function viewFor(game: ArenaGame, team: TeamId): TeamView {
         burning: p.hq.hp < maxHp,
         location: p.hq.location,
         nextTeleportAtMs: p.nextTeleportAtMs,
+        boostCharges: p.boostCharges,
+        nextBoostAtMs: p.nextBoostAtMs,
         garrisonCount: p.hq.garrison.length,
       });
       p.scouts.forEach((sc, index) => {

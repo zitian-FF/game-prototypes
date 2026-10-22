@@ -299,7 +299,7 @@ test('teleport: only to controlled nodes, instant, 2 minute cooldown', () => {
   assert.equal(ofType(events, 'teleported')[0].forced, false);
   const hq = g.players.get('a')!.hq;
   assert.equal(hq.location.kind, 'node');
-  assert.ok(Math.abs(dist(hq.pos, { x: 300, y: 300 }) - 40) < 1e-9, 'sits on the slot ring');
+  assert.deepEqual(hq.pos, { x: 360, y: 280 }, 'slot 0: the cell just east of the 2x2 node, upper half');
   assert.equal(err(g, { type: 'teleport', playerId: 'a', nodeId: 'n1' }), 'onCooldown');
   g.advanceTo(t + 119_000);
   assert.equal(err(g, { type: 'teleport', playerId: 'a', nodeId: 'n1' }), 'onCooldown');
@@ -618,44 +618,96 @@ test('hospital: refills every ally pool by 20 a second times tier while held, ne
 
 // ---------------------------------------------------------------- boosts
 
-test('boost nodes: edge to edge is 150s, 120s with one Accelerator, 90s with two, for squads only', () => {
+test('boosters: every march goes at base speed, Accelerators or not; scouts at 5x', () => {
   const sp1: NodeDef = { id: 'sp1', kind: 'speedBoost', x: 300, y: 100 };
-  const sp2: NodeDef = { id: 'sp2', kind: 'speedBoost', x: 200, y: 100 };
   const far: NodeDef = { id: 'far', kind: 'points', x: 500, y: 300 };
   const g = makeGame({
-    nodes: [sp1, sp2, far],
-    players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
+    nodes: [sp1, far],
+    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
   });
-  const edge = g.tune.march.edgeToEdgeSeconds;
-  const secondsPerEdge = (sq: string) => {
-    const st = g.squads.get(sq)!.state;
-    return st.kind === 'march' ? 1000 / st.march.speed : NaN; // the test map is 1000 units on its long side
-  };
-  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'sp1' } });
-  assert.ok(Math.abs(secondsPerEdge('s0') - edge) < 1e-6, 'no Accelerator: base');
-  g.advanceTo(arrival(g, 's0'));
-  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'sp2' } });
-  assert.ok(Math.abs(secondsPerEdge('s1') - (edge - 30)) < 1e-6, 'one Accelerator: 30s off');
-  g.advanceTo(arrival(g, 's1'));
-  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'far' } });
-  assert.ok(Math.abs(secondsPerEdge('s2') - (edge - 60)) < 1e-6, 'two Accelerators: 60s off');
-  // Scouts ignore the Accelerators: five times the base speed.
+  marchAndArrive(g, 'a', 's0', 'sp1');
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'far' } });
+  const st = g.squads.get('s1')!.state;
+  assert.ok(st.kind === 'march' && Math.abs(st.march.speed - g.marchSpeed) < 1e-9, 'an Accelerator no longer speeds marches up');
   must(g, { type: 'scout', playerId: 'a', scoutIndex: 0, target: { kind: 'node', nodeId: 'far' } });
   const sc = g.players.get('a')!.scouts[0];
-  assert.equal(sc.kind, 'out');
   if (sc.kind === 'out') assert.ok(Math.abs(dist(sc.from, sc.to) / ((sc.arriveMs - sc.startMs) / 1000) - 5 * g.marchSpeed) < 1e-6, 'scout at 5x base speed');
 });
 
-test('boost nodes: speed boost makes marches faster', () => {
+test('boosters: one charge doubles this march, a second makes it 4x, then no more', () => {
+  const far: NodeDef = { id: 'far', kind: 'points', x: 900, y: 500 };
+  const g = makeGame({ nodes: [far], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  const a = g.players.get('a')!;
+  assert.equal(a.boostCharges, 2, 'starts full');
+  assert.equal(err(g, { type: 'boost', playerId: 'a', squadId: 's0' }), 'notMarching');
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'far' } });
+  const plain = arrival(g, 's0');
+  g.advanceTo(g.now + 10_000);
+  const posBefore = g.squadPos(g.squads.get('s0')!);
+  must(g, { type: 'boost', playerId: 'a', squadId: 's0' });
+  const st = g.squads.get('s0')!.state;
+  assert.ok(st.kind === 'march' && Math.abs(st.march.speed - 2 * g.marchSpeed) < 1e-9 && st.march.boost === 1, '200%');
+  assert.deepEqual(g.squadPos(g.squads.get('s0')!), posBefore, 'it keeps going from where it was');
+  const left = plain - g.now;
+  assert.ok(Math.abs(arrival(g, 's0') - g.now - left / 2) < 2, 'the rest of the march takes half as long');
+  assert.equal(a.boostCharges, 1);
+  must(g, { type: 'boost', playerId: 'a', squadId: 's0' });
+  const st2 = g.squads.get('s0')!.state;
+  assert.ok(st2.kind === 'march' && Math.abs(st2.march.speed - 4 * g.marchSpeed) < 1e-9 && st2.march.boost === 2, '400%');
+  assert.equal(a.boostCharges, 0);
+  assert.equal(err(g, { type: 'boost', playerId: 'a', squadId: 's0' }), 'maxBoost');
+  g.advanceTo(arrival(g, 's0'));
+  assert.equal(g.squads.get('s0')!.state.kind, 'garrison', 'arrives as usual');
+});
+
+test('boosters: not on a squad walking home or burning, and not without a charge', () => {
+  const far: NodeDef = { id: 'far', kind: 'points', x: 900, y: 500 };
+  const g = makeGame({ nodes: [far], players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'far' } });
+  g.advanceTo(g.now + 5000);
+  must(g, { type: 'cancel', playerId: 'a', squadId: 's0' });
+  assert.equal(err(g, { type: 'boost', playerId: 'a', squadId: 's0' }), 'returning');
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'far' } });
+  g.squads.get('s1')!.troops = 0;
+  assert.equal(err(g, { type: 'boost', playerId: 'a', squadId: 's1' }), 'burning');
+  g.squads.get('s1')!.troops = 100;
+  g.players.get('a')!.boostCharges = 0;
+  assert.equal(err(g, { type: 'boost', playerId: 'a', squadId: 's1' }), 'noCharge');
+  assert.equal(err(g, { type: 'boost', playerId: 'b', squadId: 's1' }), 'unknownSquad', 'only your own squads');
+});
+
+test('boosters: a spent charge comes back after 2 minutes, one at a time, faster with Accelerators', () => {
   const sp: NodeDef = { id: 'sp', kind: 'speedBoost', x: 300, y: 100 };
-  const g = makeGame({
-    nodes: [N0, sp],
-    players: [player('a', 0, [{ power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])],
-  });
-  marchAndArrive(g, 'a', 's0', 'sp');
-  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'n0' } });
-  const m = g.squads.get('s1')!.state;
-  assert.ok(m.kind === 'march' && Math.abs(m.march.speed - g.marchSpeed * (g.tune.march.edgeToEdgeSeconds / (g.tune.march.edgeToEdgeSeconds - 30))) < 1e-9, 'one Accelerator cuts 30s off the edge-to-edge time');
+  const far: NodeDef = { id: 'far', kind: 'points', x: 900, y: 500 };
+  const far2: NodeDef = { id: 'far2', kind: 'points', x: 900, y: 100 };
+  const g = makeGame({ nodes: [sp, far, far2], players: [player('a', 0, [{ power: 60 }, { power: 60 }, { power: 60 }]), player('b', 1, [{ power: 60 }])] });
+  const a = g.players.get('a')!;
+  must(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'far' } });
+  must(g, { type: 'boost', playerId: 'a', squadId: 's0' });
+  must(g, { type: 'boost', playerId: 'a', squadId: 's0' });
+  const t0 = g.now;
+  assert.equal(a.nextBoostAtMs, t0 + 120_000, 'one charge at a time, 2 minutes each');
+  g.advanceTo(t0 + 119_000);
+  assert.equal(a.boostCharges, 0);
+  g.advanceTo(t0 + 120_000);
+  assert.equal(a.boostCharges, 1);
+  assert.equal(a.nextBoostAtMs, t0 + 240_000, 'the next one starts at once');
+  // Capture an Accelerator half way through the second charge: the rest runs twice as fast.
+  must(g, { type: 'march', playerId: 'a', squadId: 's1', target: { kind: 'node', nodeId: 'sp' } });
+  const capturedAt = arrival(g, 's1');
+  assert.ok(capturedAt < t0 + 240_000, 'captured while the second charge is still recharging');
+  g.advanceTo(capturedAt);
+  assert.equal(g.nodes.get('sp')!.owner, 0);
+  const leftBefore = t0 + 240_000 - capturedAt;
+  assert.ok(Math.abs(a.nextBoostAtMs - capturedAt - leftBefore / 2) <= 1, 'retimed to half the time left');
+  g.advanceTo(a.nextBoostAtMs);
+  assert.equal(a.boostCharges, 2, 'full again');
+  assert.equal(a.nextBoostAtMs, 0, 'nothing recharging when full');
+  // With the Accelerator held, a fresh charge takes 60 seconds.
+  must(g, { type: 'march', playerId: 'a', squadId: 's2', target: { kind: 'node', nodeId: 'far2' } });
+  must(g, { type: 'boost', playerId: 'a', squadId: 's2' });
+  assert.equal(a.nextBoostAtMs - g.now, 60_000);
+  assert.deepEqual(g.checkInvariants(), []);
 });
 
 // ----------------------------------------------------------------- match
@@ -715,7 +767,7 @@ test('match: equal points go to the team that reached the total first', () => {
 
 test('match: withTune helper really overrides nested values', () => {
   assert.equal(withTune({ hq: { hp: 9 } }).hq.hp, 9);
-  assert.equal(withTune({ hq: { hp: 9 } }).hq.slotsPerNode, 8);
+  assert.equal(withTune({ hq: { hp: 9 } }).hq.slotsPerNode, 12);
 });
 
 // ------------------------------------------------- HQ garrison + vanity score
@@ -1057,7 +1109,7 @@ test('fog: an enemy scout is listed only while it is inside your vision, with it
 
 // ----------------------------------------------------------------- portal nexus
 
-test('portal: both teams may teleport onto it, it cannot be captured, and it lights its 8 cells for both', () => {
+test('portal: both teams may teleport onto it, it cannot be captured, and it lights its 12 cells for both', () => {
   const P: NodeDef = { id: 'P', kind: 'portal', x: 300, y: 300 };
   const g = makeGame({ nodes: [P, N1], players: [player('a', 0, [{ power: 60 }]), player('b', 1, [{ power: 60 }])] });
   assert.equal(err(g, { type: 'march', playerId: 'a', squadId: 's0', target: { kind: 'node', nodeId: 'P' } }), 'notCapturable');
@@ -1071,7 +1123,7 @@ test('portal: both teams may teleport onto it, it cannot be captured, and it lig
   assert.equal(g.nodes.get('P')!.owner, null, 'still neutral');
 
   // Everyone sees the cells right around it (and so the HQs that landed), nothing further out.
-  assert.ok(g.isVisibleTo(0, { x: 340, y: 340 }) && g.isVisibleTo(1, { x: 340, y: 340 }), 'the 8 cells around it are visible to both');
+  assert.ok(g.isVisibleTo(0, { x: 340, y: 340 }) && g.isVisibleTo(1, { x: 340, y: 340 }), 'the 12 cells around it are visible to both');
   assert.ok(!g.isVisibleTo(0, { x: 300 + 40 * 4, y: 300 }) && !g.isVisibleTo(1, { x: 300 + 40 * 4, y: 300 }), 'but not further out');
   assert.equal(viewFor(g, 0).enemyHqs.length, 1, 'a sees b HQ at the portal');
   assert.equal(viewFor(g, 1).enemyHqs.length, 1, 'b sees a HQ at the portal');

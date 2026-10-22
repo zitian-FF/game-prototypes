@@ -757,7 +757,7 @@ export class ArenaRoom {
   // ------------------------------------------------------------ behaviour log
 
   /** What an order is aimed at, worked out before it is applied (ownership may change because of it). */
-  private describeOrder(body: CommandBody, playerId: string): { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' } {
+  private describeOrder(body: CommandBody, playerId: string): { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' | 'boost' } {
     const g = this.game;
     const team = this.teamOfPlayer.get(playerId);
     if (!g || team === undefined) return { entry: null };
@@ -792,6 +792,8 @@ export class ArenaRoom {
         return { entry: null, other: 'defend' };
       case 'cancel':
         return { entry: null, other: 'return' };
+      case 'boost':
+        return { entry: null, other: 'boost' };
     }
   }
 
@@ -823,7 +825,7 @@ export class ArenaRoom {
     this.saveHlog(true);
   }
 
-  private recordHumanOrder(playerId: string, body: CommandBody, d: { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' }, ok: boolean): void {
+  private recordHumanOrder(playerId: string, body: CommandBody, d: { entry: Omit<TargetEntry, 't'> | null; other?: 'defend' | 'return' | 'boost' }, ok: boolean): void {
     const g = this.game;
     if (!g) return;
     let live = this.hlog.get(playerId);
