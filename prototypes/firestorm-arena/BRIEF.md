@@ -837,3 +837,11 @@ client.
   logo is a steel shield with a flame over a fire-gradient FIRESTORM wordmark and a steel ARENA strip. Panels and the
   logo are baked textures (panels as a nine-slice), so the draw calls do not go up. The interface accent stays violet
   because orange and blue belong to the teams.
+- Gem boosts (0.19.1): speed boosters are a parody of paying gems to go faster. Everything about them is ruby red with
+  a cut gem: the booster readout (gem, "Boost", one gem per charge, a charging bar for the next charge, the time),
+  the [>>] buttons and the buff icon. A boosted march spills small red gems from the back of the squad like exhaust
+  dust: they start small and grow, spin either way and fan out in a cone, faster at 400%
+  (`client.tune.json fx.boostGems`). Only your team's marches show them, because the enemy march view carries no
+  boost level.
+- Main menu (0.19.1): on a short window the logo shrinks first, then the footer drops the version and change log,
+  then the whole footer, so nothing overlaps the form.

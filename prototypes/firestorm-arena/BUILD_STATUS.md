@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.19.0 on the branch (0.18.0 is merged and deployed; 0.19.0 is the Forged Steel interface and new logo)
+Version 0.19.1 on the branch (0.19.0 Forged Steel is merged and deployed; 0.19.1 is gem boosts and the short-screen menu)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.19.1: gem boosts. Red gem trail from boosted marches (grow from small, random spin direction, cone out of the back; `fx.boostGems`), booster readout in gem red with a gem, gem charges and a charging bar, red [>>] buttons with a gem, red booster buff icon. Main menu fits short windows (logo shrinks, then the footer slims, then goes) and short desktop windows use the compact form spacing.
 - 0.19.0: Forged Steel interface. Baked brushed-steel nine-slice panels (chamfer, bevel, amber corner edge, rivets, very faint brushing), chamfered steel buttons with amber primaries, inset input fields, a new baked logo (steel shield with a flame, fire-gradient FIRESTORM, steel ARENA strip). New `Ui.backdrop` (under everything) and `Ui.shade` (per layer, under that layer's panels) for screen backgrounds and dims. Lobby team size now read from tune (it still said 20).
 - 0.18.0: 16 v 16 with square corner safe zones (bottom left, top right); 42 x 42 map with 2x2 nodes and 12 HQ slots; Portal Nexus fixed up, down, left and right a quarter in; speed boosters (2 charges, 2 min recharge, [>>] for 200% then 400% on a march, readout under the teleport countdown, bots use them); Accelerators now speed up booster recharge instead of marches; fissure and crater decals removed. arena-sim and firestorm-net 0.15.0, protocol 9.
 - 0.17.0: Molten Night art. Floor grid removed; basalt floor and lava fissure decals; neon-rim node pads with icon badges; top lighting, contact shadows, lit windows and beacons on every building and unit; glowing march lines.
@@ -43,6 +44,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Key technical decisions
 
+- 0.19.1: gems are drawn into the existing effects graphics (no new objects or textures), capped at `fx.boostGems.max` (160), spawned per squad on a timer so a squad back on screen does not spill a burst. `drawGem` takes a rotation so trail gems can spin. Primary button text picks dark or white from the tint's brightness, so the red buttons get white text.
+
 - 0.19.0: panels are pooled NineSlice objects using one baked steel texture per pixel ratio (`src/ui/material.ts`), drawn just under their layer's graphics, so everything a screen draws in the same layer sits on top whatever the call order. Full-screen backgrounds and dims must go through `Ui.backdrop` or `Ui.shade`, not `Ui.rect`, or they cover the panels. A panel still blocks clicks under it, so it must be called before the widgets on it. Buttons stay in the graphics (gradient plates) so they keep their order with other shapes.
 
 - 0.18.0: a node's `cell` is its top-left cell and its position the corner where its four cells meet; `RING_OFFSETS` are half-cell offsets from that point. Booster charges are sim state per player (`boostCharges`, `nextBoostAtMs`, a `boostCharge` queue event with a version, retimed like teleports). A boost re-anchors the march at the squad's current position with a new speed, version and arrival. The 2x2 node art bakes in a 160 x 192 box at 2.5 texture pixels per world pixel (HQs keep their own smaller box), and `camera.nodeFixedZoom` went from 0.6 to 0.3 so zoomed-out nodes keep their old screen size.
@@ -61,6 +64,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Open questions
 
+- Should enemy boosted marches also spill gems? That needs the boost level in the enemy march view (a protocol change). BRIEF.md may need a line on it.
+
 - BRIEF.md may need updating to cover what was decided in chat for 0.18.0: which background elements to remove (fissures and craters only), how two booster charges combine (a second press upgrades 200% to 400%), that only nodes (not HQs) became 2x2, and that bots use boosters.
 - Boosted speed is 200% / 400% of the base speed; with no Accelerator speed bonus left this is the only speed modifier. The map size (42), node spacing (5) and portal vision (2.25) were changed to fit the 2x2 nodes, not tuned by play.
 
@@ -74,6 +79,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Should a match be playable in portrait on a phone, or is landscape only fine?
 
 ## Known issues
+
+- 0.19.1 checked with screenshots: a live match with boosted marches at 200% and 400% on desktop and an 844 x 390 touch view, the booster readout close up, and the main menu at 1048 x 458 (the reported case), 900 x 380, 1280 x 720, 1366 x 600, 844 x 390 touch and 390 x 844 touch; Create a room clicked through at 1048 x 458. Draw calls about 3 to 4 per frame. Enemy boosted marches show no gems (no boost level in the enemy view). Gem sizes and rates are first guesses. Not checked on a real phone.
 
 - 0.19.0 checked with screenshots of the menu, Handbook, lobby and a live match on desktop 1280 x 720 and an 844 x 390 DPR 2 touch view, no console errors. Draw calls per frame against 0.18.0 in a live match: 5.1 to 4.2 at start zoom, 6.0 to 5.0 zoomed out. The end-of-match screen and the in-match Handbook were not seen. Not checked on a real phone. On the phone the HQ pill is tight (Teleport ready badge and Hide near the edge).
 
@@ -106,4 +113,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Merge and deploy 0.19.0, then better fire and combat explosion effects (layered fireballs, smoke, sparks, shockwave) at the same draw-call budget.
+Merge and deploy 0.19.1, then better fire and combat explosion effects (layered fireballs, smoke, sparks, shockwave) at the same draw-call budget.

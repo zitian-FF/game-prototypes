@@ -14,6 +14,10 @@ import tuneJson from '../../tune.json';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
 
+/** Heights of the menu footer: capacity, version and change log, reset and privacy; or capacity, reset and privacy. */
+const FOOT_FULL = 150;
+const FOOT_SLIM = 80;
+
 export class MenuScene extends BaseScene {
   private nameField = new TextField('', 20, (s) => s.replace(/[<>]/g, ''));
   private quota = new QuotaWatcher();
@@ -124,14 +128,28 @@ export class MenuScene extends BaseScene {
     const wide = w >= 760;
     const kbW = touch ? (wide ? Math.min(430, w * 0.48) : Math.min(430, w - 24)) : 0;
     const cx = touch && wide ? w * 0.27 : w / 2;
-    const compact = touch && h < 560;
-    ui.backdrop(0, 0, w, h, 0x0b0709, 1);
-    // A glow of lava on the horizon (its bright edge would cut through the footer text on a short screen).
-    ui.backdrop(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
-    if (!compact) ui.backdrop(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    // Short windows (phones in landscape, small laptop windows) use the tighter form spacing.
+    const compact = h < 560;
     const top = compact ? 6 : touch ? 14 : Math.max(16, h / 2 - 330);
+    // The footer shares the screen with the keyboard, so a tall touch layout drops it.
+    const footer = !touch || wide;
+    // Height from the logo's bottom to the bottom of the form plate and its status line.
+    const formH = (compact ? 14 + 24 : 19 + 40) + (compact ? 68 + 50 + 18 + 40 + 10 : 78 + 70 + 22 + 40 + 16) + (compact ? 22 : 30);
+    // Fit the logo and the footer to the height: the full footer, then a slim one (capacity and reset), then none.
+    // The logo shrinks first, down to a floor, before the footer gives way.
+    const maxLs = Math.min(touch ? 0.46 : 0.6, ((touch && wide ? w * 0.5 : w) - 24) / LOGO_W);
+    const lsFor = (f: number): number => Math.min(maxLs, (h - f - top - formH) / LOGO_H);
+    const foot = !footer ? 'none' : lsFor(FOOT_FULL) >= 0.3 ? 'full' : lsFor(FOOT_SLIM) >= 0.22 ? 'slim' : 'none';
+    const ls = Math.max(0.16, lsFor(foot === 'full' ? FOOT_FULL : foot === 'slim' ? FOOT_SLIM : 0));
+    const footTop = foot === 'full' ? h - FOOT_FULL : foot === 'slim' ? h - FOOT_SLIM : h;
+    ui.backdrop(0, 0, w, h, 0x0b0709, 1);
+    // A glow of lava on the horizon: low on the screen, above the footer and, where there is room, below the form.
+    const formEnd = top + LOGO_H * ls + formH - (compact ? 22 : 30);
+    let horizon = Math.min(h * 0.72, footTop - 6);
+    if (horizon < formEnd + 4) horizon = Math.min(footTop - 2, formEnd + 4);
+    ui.backdrop(0, horizon, w, h - horizon, 0x2a0d05, 0.7);
+    if (foot !== 'none') ui.backdrop(0, horizon, w, 3, 0xff6a2a, 0.8);
     // The logo: baked once at the screen's pixel ratio, scaled to fit.
-    const ls = Math.min(compact ? 0.3 : touch ? 0.46 : 0.6, ((touch && wide ? w * 0.5 : w) - 24) / LOGO_W);
     ui.image(bakeLogo(this, bufferScale()), cx, top, ls / bufferScale(), 0.5, 0);
     const subY = top + LOGO_H * ls + (compact ? 0 : 4);
     ui.text(`${tuneJson.match.playersPerTeam} v ${tuneJson.match.playersPerTeam} node capture under fog of war`, cx, subY, { size: compact ? 12 : 15, align: 'center', color: COLORS.dim });
@@ -171,9 +189,7 @@ export class MenuScene extends BaseScene {
         else this.joinRoom();
       });
     }
-    // The footer shares the screen with the keyboard, so a tall touch layout drops it.
-    const footer = !touch || wide;
-    if (footer) ui.button(cx - 80, h - 46, 160, 26, 'Reset saved session', {
+    if (foot !== 'none') ui.button(cx - 80, h - 46, 160, 26, 'Reset saved session', {
       onClick: () => {
         session.resetSaved();
         this.nameField.value = '';
@@ -183,25 +199,25 @@ export class MenuScene extends BaseScene {
       size: 11,
     });
     // Daily server capacity: an estimate of how many more games today's free limits allow.
-    if (q && footer) {
+    if (q && foot !== 'none') {
       const left = q.matchesLeft;
       const pctLeft = typeof q.percentLeft === 'number' ? q.percentLeft : Math.round((left / 22) * 100); // an older server has no percent
       const reset = Math.max(0, q.resetsAtMs - Date.now());
       const hh = Math.floor(reset / 3_600_000);
       const mm = Math.floor((reset % 3_600_000) / 60_000);
       const text = q.canStart ? `Server capacity today: ${pctLeft}% left, room for about ${left} more 30 min ${left === 1 ? 'game' : 'games'}` : `Server daily limit reached, new games open in ${hh}h ${mm}m`;
-      ui.text(text, cx, h - 142, { size: 12, align: 'center', bold: true, color: !q.canStart ? COLORS.bad : pctLeft <= 15 ? COLORS.warn : COLORS.dim });
-    } else if (this.quota.failed && footer) {
-      ui.text('Server capacity: unknown (server not reachable)', cx, h - 142, { size: 12, align: 'center', color: COLORS.dim });
+      ui.text(text, cx, footTop + 8, { size: 12, align: 'center', bold: true, color: !q.canStart ? COLORS.bad : pctLeft <= 15 ? COLORS.warn : COLORS.dim });
+    } else if (this.quota.failed && foot !== 'none') {
+      ui.text('Server capacity: unknown (server not reachable)', cx, footTop + 8, { size: 12, align: 'center', color: COLORS.dim });
     }
-    if (footer) {
+    if (foot === 'full') {
       ui.text(`Version ${GAME_VERSION} (${VERSION_STAMP})`, cx, h - 114, { size: 11, align: 'center', color: COLORS.dim, bold: true });
       // The change log wraps to the space available, ending just above the version line.
       const lines = this.wrapLog(VERSION_LOG, Math.min(w - 24, touch ? w * 0.5 : 900));
       lines.forEach((l, i) => ui.text(l, cx, h - 98 + i * 14, { size: 11, align: 'center', color: COLORS.dim }));
     }
     // Players are told, in one line, that anonymous play stats are kept.
-    if (footer) ui.text('Anonymous play stats (what you order and score) are recorded to improve the game.', cx, h - 15, { size: 10, align: 'center', color: COLORS.dim, alpha: 0.8 });
+    if (foot !== 'none') ui.text('Anonymous play stats (what you order and score) are recorded to improve the game.', cx, h - 15, { size: 10, align: 'center', color: COLORS.dim, alpha: 0.8 });
     ui.button(12, 20, 104, 30, 'Handbook', { onClick: () => (this.handbookOpen = true), size: 13 });
     ui.button(12, 56, 104, 26, session.tipsOn ? 'Tips: on' : 'Tips: off', { onClick: () => session.setTipsOn(!session.tipsOn), size: 11, active: session.tipsOn });
     if (DEBUG) ui.text(`server ${serverBase()}`, cx, 22, { size: 10, align: 'center', color: COLORS.dim });
