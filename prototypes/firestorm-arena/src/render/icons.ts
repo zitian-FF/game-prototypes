@@ -433,6 +433,33 @@ export function drawUnit(g: G, type: SquadType | 'scout', x: number, y: number, 
   }
 }
 
+/** Speed boosters are paid for in gems: one ruby red for the boost readout, buttons and exhaust trail. */
+export const GEM = 0xe8203f;
+
+/**
+ * A cut gem centred on (x, y), `r` wide from the centre: a flat crown over a pointed pavilion, with a light top facet.
+ * `rot` turns it (radians). Unfilled draws just the outline (an empty charge).
+ */
+export function drawGem(g: G, x: number, y: number, r: number, color = GEM, alpha = 1, filled = true, rot = 0): void {
+  const c = Math.cos(rot);
+  const sn = Math.sin(rot);
+  const at = (px: number, py: number): { x: number; y: number } => ({ x: x + (px * c - py * sn) * r, y: y + (px * sn + py * c) * r });
+  const pts = [at(-1, -0.3), at(-0.5, -0.8), at(0.5, -0.8), at(1, -0.3), at(0, 1)];
+  if (!filled) {
+    g.lineStyle(Math.max(1, r * 0.28), color, alpha).strokePoints(pts, true);
+    return;
+  }
+  g.fillStyle(color, alpha).fillPoints(pts, true);
+  // The crown catches the light, the left side of the pavilion a little less.
+  g.fillStyle(lighten(color, 0.45), alpha).fillPoints([pts[0], pts[1], pts[2], pts[3]], true);
+  const m = at(0, -0.3);
+  g.fillStyle(lighten(color, 0.15), alpha).fillTriangle(pts[0].x, pts[0].y, m.x, m.y, pts[4].x, pts[4].y);
+  const h1 = at(-0.45, -0.72);
+  const h2 = at(-0.1, -0.72);
+  const h3 = at(-0.42, -0.42);
+  g.fillStyle(0xffffff, 0.8 * alpha).fillTriangle(h1.x, h1.y, h2.x, h2.y, h3.x, h3.y);
+}
+
 /** Flickering flames rising from (x, y). `size` ~ 1 for a unit, 2 for an HQ. Solid colours. */
 export function drawFlames(g: G, x: number, y: number, t: number, size = 1, seed = 0): void {
   for (let i = 0; i < 4; i++) {

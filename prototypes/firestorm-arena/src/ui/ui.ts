@@ -289,7 +289,8 @@ export class Ui {
     this.text(label, x + w / 2, y + h / 2 - size * 0.62, {
       size,
       align: 'center',
-      color: enabled ? (primary ? '#1c1004' : COLORS.text) : COLORS.dim,
+      // Dark text on a light plate (amber), white on a deep one (gem red).
+      color: enabled ? (primary ? (luma(tint ?? 0) > 0.55 ? '#1c1004' : '#ffffff') : COLORS.text) : COLORS.dim,
       bold: true,
     });
     if (enabled && o.onClick) this.hits.push({ x, y, w, h, onClick: o.onClick });
@@ -344,4 +345,9 @@ export function drawField(ui: Ui, f: TextField, x: number, y: number, w: number,
   if (f.value || focused) ui.text(f.value + caret, x + 10, y + h / 2 - 9, { size: 16 });
   else ui.text(placeholder, x + 10, y + h / 2 - 9, { size: 16, color: COLORS.dim });
   ui.region(x, y, w, h, onFocus);
+}
+
+/** Relative brightness of a 0xRRGGBB colour, 0..1. */
+function luma(c: number): number {
+  return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
 }

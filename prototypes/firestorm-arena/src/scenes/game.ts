@@ -9,7 +9,7 @@ import { session } from '../net/session';
 import { Iso, square } from '../render/iso';
 import { bakeGround, drawDecor, paintFog, type Ground } from '../render/ground';
 import { FxSystem } from '../render/fx';
-import { DETAIL, OUTLINE, drawCache, drawFlames, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, contactShadow, drawNodePad, hqFlagWave, lighten, portalFrame, refineryFrame, unitHeight } from '../render/icons';
+import { DETAIL, OUTLINE, drawCache, drawFlames, drawGem, GEM, drawHospital, drawHq, drawLock, drawMissile, drawPortal, drawNodeIcon, drawNodeStack, drawPowerSword, drawQuestion, drawRefinery, drawSilo, drawTurret, drawUnit, contactShadow, drawNodePad, hqFlagWave, lighten, portalFrame, refineryFrame, unitHeight } from '../render/icons';
 import { ArtCache, HQ_BOX, NODE_BOX, type ArtBox } from '../render/artCache';
 import { DECAL_SCALE, Embers, Scars, Territory, bakeTerrain } from '../render/atmosphere';
 import { clientTune } from '../clientTune';
@@ -23,6 +23,8 @@ type Panel = 'none' | 'logs' | 'scouts';
 /** Size and ground point of a pre-rendered unit sprite, in unscaled art pixels. */
 const UNIT_TEX = { w: 120, h: 110, ox: 60, oy: 84 };
 
+/** Gem red text, a little lighter than the gem so it reads on the steel panels. */
+const GEM_TEXT = '#ff5c74';
 const fmtTime = (ms: number): string => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -1194,6 +1196,12 @@ export class GameScene extends BaseScene {
         this.putUnit(g, s.type, p.x, p.y, f, mineSquad ? COLORS.mine : shade(COLORS.mine, 0.8), now);
         if (!mineSquad) this.label(s.owner, p.x, p.y - hgt - 18, '#9fd0ff', 11);
         if (s.burning) drawFlames(g, p.x, p.y - hgt * 0.4, now, 1, s.id.length);
+        // A boosted march sheds gems from its exhaust (the boost is "paid" for).
+        const boost = s.march?.boost ?? 0;
+        if (boost > 0 && !s.burning && s.march) {
+          const d = Math.hypot(to.x - p.x, to.y - p.y);
+          if (d > 1) this.fx.boostTrail(s.id, p.x - f * 6, p.y - hgt * 0.3, (to.x - p.x) / d, (to.y - p.y) / d, boost, now);
+        }
         if (mineSquad) g.fillStyle(0x000000, 0.6).fillRect(p.x - 12, p.y - hgt - 8, 24, 3).fillStyle(COLORS.self, 1).fillRect(p.x - 12, p.y - hgt - 8, 24 * (s.troops / s.maxTroops), 3);
       });
     }
@@ -1740,7 +1748,7 @@ export class GameScene extends BaseScene {
         ui.text(cd.text, left + 70, pillY + 4, { size: 11, bold: cd.flash > 0, color: cd.color });
       }
       // Speed boosters, right below the teleport countdown.
-      this.drawBooster(left + 8, pillY + 19, 10, hq, simMs, buffs.boostRate);
+      this.drawBooster(left + 8, pillY + 19, 10, hq, simMs, buffs.boostRate, true);
       // Troops total (flashes red when a fight takes some); reserve while a Hospital is held or when it runs low.
       const total = squads.reduce((a, q) => a + q.troops, 0);
       const f = this.flashNow;
@@ -1784,8 +1792,9 @@ export class GameScene extends BaseScene {
       // A marching squad gets a one-tap [>>] speed booster in the other corner.
       if (this.boostable(s)) {
         const have = !!hq && hq.boostCharges > 0;
-        ui.rect(left + chip - 22, y + 2, 20, 16, 0xffd54a, have ? 0.95 : 0.3, undefined, 4);
-        ui.text(this.boostLabel(s), left + chip - 12, y + 4, { size: 9, bold: true, align: 'center', color: have ? '#1a1206' : COLORS.dim });
+        ui.rect(left + chip - 24, y + 2, 22, 16, GEM, have ? 0.95 : 0.3, undefined, 4);
+        drawGem(ui.gfx(), left + chip - 19, y + 10, 3.2, 0xffe0e6, have ? 1 : 0.5);
+        ui.text(this.boostLabel(s), left + chip - 10, y + 4, { size: 9, bold: true, align: 'center', color: have ? '#ffffff' : COLORS.dim });
         if (have) ui.region(left + chip - 24, y, 24, 22, () => this.sendBoost(s));
       }
     });
@@ -1810,7 +1819,7 @@ export class GameScene extends BaseScene {
         });
       } else if (s.state === 'garrison' || s.state === 'hqGarrison' || (s.state === 'march' && s.march && s.march.purpose !== 'home')) {
         ui.button(px + pw - 92, y + 9, 84, 30, 'Return', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
-        if (this.boostable(s)) ui.button(px + pw - 136, y + 9, 40, 30, this.boostLabel(s), { onClick: () => this.sendBoost(s), enabled: !!hq && hq.boostCharges > 0, size: 11, accent: 0xffd54a });
+        if (this.boostable(s)) this.boostButton(px + pw - 136, y + 9, 40, 30, s, 11, hq);
       }
     }
   }
@@ -1892,8 +1901,7 @@ export class GameScene extends BaseScene {
       ui.text(this.squadStatus(s, view), px + 62, y + 32, { size: 11, color: COLORS.dim });
       // Any squad out in the field that is not defeated gets a quick Return to HQ. Defend belongs to the picked squad.
       if (this.boostable(s)) {
-        const have = !!hq && hq.boostCharges > 0;
-        ui.button(px + pw - 104, y + 26, 92, 20, this.boostLabel(s), { onClick: () => this.sendBoost(s), enabled: have, size: 11, accent: 0xffd54a });
+        this.boostButton(px + pw - 104, y + 26, 92, 20, s, 11, hq);
       }
       if (this.returnable(s)) {
         ui.button(px + pw - 104, y + 2, 92, 22, 'Return to HQ', { onClick: () => session.sendCommand({ type: 'cancel', squadId: s.id }), size: 11, accent: COLORS.danger });
@@ -1954,7 +1962,7 @@ export class GameScene extends BaseScene {
     const list: { kind: 'attackBoost' | 'defenseBoost' | 'speedBoost'; value: string; color: number; tip: string }[] = [];
     if (b.attack > 0) list.push({ kind: 'attackBoost', value: `+${Math.round(b.attack * 100)}%`, color: 0xf2994a, tip: `Attack +${Math.round(b.attack * 100)}% for your team (Arsenal)` });
     if (b.defense > 0) list.push({ kind: 'defenseBoost', value: `+${Math.round(b.defense * 100)}%`, color: 0x6ed3c0, tip: `Damage reduction +${Math.round(b.defense * 100)}% for your team (Armory)` });
-    if (b.boostRate > 1.001) list.push({ kind: 'speedBoost', value: `x${b.boostRate}`, color: 0xe6d44a, tip: `Speed booster recharge x${b.boostRate} for you and your team (Accelerator)` });
+    if (b.boostRate > 1.001) list.push({ kind: 'speedBoost', value: `x${b.boostRate}`, color: GEM, tip: `Speed booster recharge x${b.boostRate} for you and your team (Accelerator)` });
     if (list.length === 0) return;
     const bw = compact ? 40 : 48;
     const bh = compact ? 36 : 42;
@@ -1998,28 +2006,49 @@ export class GameScene extends BaseScene {
    * The speed booster line under the teleport countdown: charges as pips, then the time to the next charge (with
    * tenths and the speed while Accelerators make it run faster). Returns the text after the pips.
    */
-  private boosterStatus(hq: { boostCharges: number; nextBoostAtMs: number }, simMs: number, rate: number): { charges: number; max: number; text: string; color: string } {
+  private boosterStatus(hq: { boostCharges: number; nextBoostAtMs: number }, simMs: number, rate: number, compact = false): { charges: number; max: number; frac: number; text: string; color: string } {
     const max = this.tune.booster.charges;
-    if (hq.boostCharges >= max || hq.nextBoostAtMs <= 0) return { charges: hq.boostCharges, max, text: 'ready', color: COLORS.good };
+    if (hq.boostCharges >= max || hq.nextBoostAtMs <= 0) return { charges: hq.boostCharges, max, frac: 1, text: 'ready', color: GEM_TEXT };
     const left = hq.nextBoostAtMs - simMs;
+    const period = (this.tune.booster.rechargeSeconds * 1000) / Math.max(1, rate);
+    const frac = Math.max(0, Math.min(1, 1 - left / period));
     const t = rate > 1.001 ? `${this.fmtTenths(left)}  x${rate % 1 === 0 ? rate : rate.toFixed(1)}` : fmtTime(left);
-    return { charges: hq.boostCharges, max, text: `next ${t}`, color: rate > 1.001 ? '#ffe08a' : COLORS.dim };
+    return { charges: hq.boostCharges, max, frac, text: compact ? t : `next ${t}`, color: rate > 1.001 ? '#ff9aaa' : COLORS.dim };
   }
 
-  /** "Boost" with charge pips and the recharge text, at (x, y), in the given font size. */
-  private drawBooster(x: number, y: number, size: number, hq: { boostCharges: number; nextBoostAtMs: number }, simMs: number, rate: number): void {
+  /** A gem, "Boost", the charges as gems, a charging bar and the recharge text, all in gem red, at (x, y). */
+  private drawBooster(x: number, y: number, size: number, hq: { boostCharges: number; nextBoostAtMs: number }, simMs: number, rate: number, compact = false): void {
     const ui = this.ui;
-    const st = this.boosterStatus(hq, simMs, rate);
-    const w = ui.text('Boost', x, y, { size, bold: true, color: st.charges > 0 ? '#ffd54a' : COLORS.dim });
-    const r = size * 0.32;
     const g = ui.gfx();
+    const st = this.boosterStatus(hq, simMs, rate, compact);
+    const cy = y + size * 0.62;
+    const r = size * 0.55;
+    drawGem(g, x + r, cy, r, GEM, st.charges > 0 ? 1 : 0.5);
+    let cx = x + r * 2 + 4;
+    cx += ui.text('Boost', cx, y, { size, bold: true, color: st.charges > 0 ? GEM_TEXT : COLORS.dim }) + 6;
+    const pr = size * 0.4;
     for (let i = 0; i < st.max; i++) {
-      const cx = x + w + 8 + r + i * (r * 2 + 4);
-      const cy = y + size * 0.62;
-      if (i < st.charges) g.fillStyle(0xffd54a, 1).fillCircle(cx, cy, r);
-      else g.lineStyle(1.5, 0xffd54a, 0.6).strokeCircle(cx, cy, r);
+      drawGem(ui.gfx(), cx + pr, cy, pr, GEM, i < st.charges ? 1 : 0.6, i < st.charges);
+      cx += pr * 2 + 3;
     }
-    ui.text(st.text, x + w + 8 + st.max * (r * 2 + 4) + 6, y, { size, color: st.color });
+    cx += 3;
+    const bw = compact ? 24 : 40;
+    const bh = Math.max(3, Math.round(size * 0.36));
+    ui.rect(cx, cy - bh / 2, bw, bh, 0x14060a, 0.9, 0x5a1622);
+    if (st.frac > 0) ui.rect(cx, cy - bh / 2, bw * st.frac, bh, st.frac >= 1 ? GEM : lighten(GEM, 0.1), st.frac >= 1 ? 1 : 0.85);
+    cx += bw + 6;
+    ui.text(st.text, cx, y, { size, bold: st.frac >= 1, color: st.color });
+  }
+
+  /** The [>>] booster button: gem red, with a gem beside the chevrons, greyed when no charge is left. */
+  private boostButton(x: number, y: number, w: number, h: number, s: WireSquad, size: number, hq: { boostCharges: number } | null | undefined): void {
+    const ui = this.ui;
+    const have = !!hq && hq.boostCharges > 0;
+    const label = this.boostLabel(s);
+    ui.button(x, y, w, h, label, { onClick: () => this.sendBoost(s), enabled: have, active: have, accent: GEM, size });
+    const tw = ui.measure(label, size, true);
+    const gr = Math.min(h * 0.28, size * 0.5);
+    drawGem(ui.gfx(), x + w / 2 - tw / 2 - gr - 3, y + h / 2, gr, have ? 0xffe0e6 : GEM, have ? 1 : 0.6);
   }
 
   /** A small danger-coloured "HQ" button that sends a squad in the field straight back to base. */

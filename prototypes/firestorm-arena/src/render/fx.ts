@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { Iso, hash2 } from './iso';
-import { drawFlames } from './icons';
+import { drawFlames, drawGem } from './icons';
 import { clientTune } from '../clientTune';
 
 type G = Phaser.GameObjects.Graphics;
@@ -13,13 +13,85 @@ type Fx =
   | { kind: 'fireball'; x: number; y: number; start: number }
   | { kind: 'firePatch'; x: number; y: number; start: number; seed: number };
 
+/** One gem shed by a boosted squad: it puffs out backwards like dust, turning and fading. */
+interface Gem {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  start: number;
+  dur: number;
+  r: number;
+  rot: number;
+  /** Turn rate in radians per second, either way round. */
+  spin: number;
+}
+
 /** Short-lived effects at map-pixel positions: fights, teleports, flashes, eruptions. */
 export class FxSystem {
   private list: Fx[] = [];
   private nextEruption = 0;
   private seed = 1;
+  private gems: Gem[] = [];
+  /** When each boosted squad sheds its next gem. */
+  private gemNext = new Map<string, number>();
 
   constructor(private iso: Iso) {}
+
+  /**
+   * A boosted squad pays its way in gems: they spill from its exhaust at (x, y) in map pixels, behind the direction of
+   * travel (dx, dy), faster at the higher boost level.
+   */
+  boostTrail(id: string, x: number, y: number, dx: number, dy: number, level: number, now: number): void {
+    const t = clientTune.fx.boostGems;
+    const every = 1 / t.perSecond[Math.max(0, Math.min(level, t.perSecond.length) - 1)];
+    let next = this.gemNext.get(id) ?? now;
+    // Back on screen after a while: carry on from now rather than spilling the whole gap at once.
+    if (next < now - 0.25) next = now;
+    while (next <= now && this.gems.length < t.max) {
+      const a = hash2(this.seed++, 7, 3);
+      const b = hash2(this.seed, 8, 3);
+      const c = hash2(this.seed, 9, 3);
+      // Out of the back in a cone around the opposite of the direction of travel.
+      const ang = Math.atan2(-dy, -dx) + (a - 0.5) * ((t.coneDegrees * Math.PI) / 180);
+      const sp = t.drift * (0.7 + b * 0.6);
+      this.gems.push({
+        x: x - dx * 8,
+        y: y - dy * 4,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp * 0.6 - t.rise * (0.5 + c),
+        start: next,
+        dur: t.seconds * (0.7 + b * 0.6),
+        r: t.size * (0.7 + c * 0.6),
+        rot: a * Math.PI * 2,
+        spin: (c < 0.5 ? -1 : 1) * t.spin * (0.5 + b),
+      });
+      next += every;
+    }
+    this.gemNext.set(id, Math.max(next, now));
+  }
+
+  private drawGems(g: G, now: number): void {
+    const keep: Gem[] = [];
+    for (const m of this.gems) {
+      const age = now - m.start;
+      const k = age / m.dur;
+      if (k >= 1) continue;
+      keep.push(m);
+      if (age < 0) continue;
+      // Like dust: a quick puff that slows down, then hangs and fades.
+      const ease = (1 - Math.exp(-age * 3)) / 3;
+      const x = m.x + m.vx * ease;
+      const y = m.y + m.vy * ease;
+      const alpha = 1 - k * k;
+      // Born small, growing to full size over the first half of its life.
+      const grow = clientTune.fx.boostGems.startScale + (1 - clientTune.fx.boostGems.startScale) * Math.min(1, k * 2);
+      g.fillStyle(0x3a1418, 0.18 * alpha).fillCircle(x, y + 2, m.r * (0.6 + k * 2));
+      drawGem(g, x, y, m.r * grow, undefined, alpha, true, m.rot + m.spin * age);
+    }
+    this.gems = keep;
+    if (this.gemNext.size > 64) for (const [id, t] of this.gemNext) if (t < now - 2) this.gemNext.delete(id);
+  }
 
   combat(wx: number, wy: number, now: number): void {
     const p = this.iso.p(wx, wy);
@@ -57,6 +129,7 @@ export class FxSystem {
   }
 
   draw(g: G, now: number): void {
+    this.drawGems(g, now);
     const next: Fx[] = [];
     for (const fx of this.list) {
       const age = now - fx.start;

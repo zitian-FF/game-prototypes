@@ -58,7 +58,18 @@
     "sprayCount": 14,
     "eruptionEverySeconds": 3.5,
     "fireSeconds": 6,
-    "teleportSeconds": 1.6
+    "teleportSeconds": 1.6,
+    "boostGems": {
+      "perSecond": [14, 28],
+      "seconds": 0.9,
+      "size": 4.6,
+      "drift": 34,
+      "rise": 22,
+      "coneDegrees": 70,
+      "startScale": 0.25,
+      "spin": 7,
+      "max": 160
+    }
   },
   "hud": {
     "objective": {
