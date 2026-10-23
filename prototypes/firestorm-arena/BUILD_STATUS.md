@@ -1,6 +1,6 @@
 ## Current milestone
 
-Version 0.18.0 on the branch (0.17.0 is merged and deployed; 0.18.0 is the map and speed booster change)
+Version 0.19.0 on the branch (0.18.0 is merged and deployed; 0.19.0 is the Forged Steel interface and new logo)
 model, commander cache score, mobile touch controls, 16 letter room codes, orders panel beside every selected target.
 
 ## What was implemented
@@ -15,6 +15,7 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Mobile: touch intents (tap, drag, pinch, long press), `touch-action: none`, responsive UI scale for touch windows,
   canvas on-screen keyboard (name qwerty, room code 4 x 4 pad), touch hint line.
 - arena-sim and firestorm-net 0.11.0.
+- 0.19.0: Forged Steel interface. Baked brushed-steel nine-slice panels (chamfer, bevel, amber corner edge, rivets, very faint brushing), chamfered steel buttons with amber primaries, inset input fields, a new baked logo (steel shield with a flame, fire-gradient FIRESTORM, steel ARENA strip). New `Ui.backdrop` (under everything) and `Ui.shade` (per layer, under that layer's panels) for screen backgrounds and dims. Lobby team size now read from tune (it still said 20).
 - 0.18.0: 16 v 16 with square corner safe zones (bottom left, top right); 42 x 42 map with 2x2 nodes and 12 HQ slots; Portal Nexus fixed up, down, left and right a quarter in; speed boosters (2 charges, 2 min recharge, [>>] for 200% then 400% on a march, readout under the teleport countdown, bots use them); Accelerators now speed up booster recharge instead of marches; fissure and crater decals removed. arena-sim and firestorm-net 0.15.0, protocol 9.
 - 0.17.0: Molten Night art. Floor grid removed; basalt floor and lava fissure decals; neon-rim node pads with icon badges; top lighting, contact shadows, lit windows and beacons on every building and unit; glowing march lines.
 - 0.16.5: atmosphere. Terrain patches and decals, team territory glow, battle scars and tread marks, drifting embers. All cosmetic, under the fog, using only what this client sees.
@@ -41,6 +42,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 - Follow-up: fullscreen plus landscape lock on first tap or click (not iOS); tapping a selected squad card focuses the camera on it.
 
 ## Key technical decisions
+
+- 0.19.0: panels are pooled NineSlice objects using one baked steel texture per pixel ratio (`src/ui/material.ts`), drawn just under their layer's graphics, so everything a screen draws in the same layer sits on top whatever the call order. Full-screen backgrounds and dims must go through `Ui.backdrop` or `Ui.shade`, not `Ui.rect`, or they cover the panels. A panel still blocks clicks under it, so it must be called before the widgets on it. Buttons stay in the graphics (gradient plates) so they keep their order with other shapes.
 
 - 0.18.0: a node's `cell` is its top-left cell and its position the corner where its four cells meet; `RING_OFFSETS` are half-cell offsets from that point. Booster charges are sim state per player (`boostCharges`, `nextBoostAtMs`, a `boostCharge` queue event with a version, retimed like teleports). A boost re-anchors the march at the squad's current position with a new speed, version and arrival. The 2x2 node art bakes in a 160 x 192 box at 2.5 texture pixels per world pixel (HQs keep their own smaller box), and `camera.nodeFixedZoom` went from 0.6 to 0.3 so zoomed-out nodes keep their old screen size.
 
@@ -72,6 +75,8 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Known issues
 
+- 0.19.0 checked with screenshots of the menu, Handbook, lobby and a live match on desktop 1280 x 720 and an 844 x 390 DPR 2 touch view, no console errors. Draw calls per frame against 0.18.0 in a live match: 5.1 to 4.2 at start zoom, 6.0 to 5.0 zoomed out. The end-of-match screen and the in-match Handbook were not seen. Not checked on a real phone. On the phone the HQ pill is tight (Teleport ready badge and Hide near the edge).
+
 - 0.18.0 checked with all arena-sim (120) and firestorm-net (70) tests, the end-to-end run twice, and screenshots of a live match on desktop and an 844 x 390 touch view (booster line, [>>] buttons, 2x2 nodes and slots). On phones the squad chip corners are now crowded (HQ button and >> badge). Not checked on a real phone; boosted marches and the new map have not been playtested for balance.
 
 - 0.17.0 checked in headless Chromium (software WebGL, 4x throttle) against 0.16.5: GL draw calls per frame about 5 on both (start and zoomed out, desktop and 844 x 390 DPR 2 touch); render submit equal or lower. Screenshots inspected at zoom 1, 1.9, 2.2, 2.4 and wide; not checked on a real phone. The HQ safe zones still show their cell grid, by request. Units zoomed in are still drawn live (animated rotors), so they cost a little more geometry than before.
@@ -101,4 +106,4 @@ model, commander cache score, mobile touch controls, 16 letter room codes, order
 
 ## Next proposed step
 
-Merge and deploy 0.18.0, then the UI/UX round (logo and material-feel panels), then fire and explosion effects.
+Merge and deploy 0.19.0, then better fire and combat explosion effects (layered fireballs, smoke, sparks, shockwave) at the same draw-call budget.

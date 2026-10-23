@@ -831,3 +831,9 @@ client.
   like the Tech Centre does for teleports: one makes charges refill twice as fast, two three times; a recharge
   already running is retimed when an Accelerator changes hands.
 - Background (0.18.0): the lava fissure and crater decals are removed; soft ground patches, rocks and ridges stay.
+- Interface look (0.19.0): "Forged Steel", chosen by the designer. Panels are dark brushed steel plates with chamfered
+  corners, a bevel, a short amber edge in the top left corner and four rivets; the brushing is kept very faint.
+  Buttons are small chamfered steel plates; the primary action is amber. Input fields are inset dark wells. The menu
+  logo is a steel shield with a flame over a fire-gradient FIRESTORM wordmark and a steel ARENA strip. Panels and the
+  logo are baked textures (panels as a nine-slice), so the draw calls do not go up. The interface accent stays violet
+  because orange and blue belong to the teams.

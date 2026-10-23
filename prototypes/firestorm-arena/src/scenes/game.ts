@@ -264,9 +264,9 @@ export class GameScene extends BaseScene {
 
   private loadingPanel(w: number, h: number, progress: number, label: string): void {
     const ui = this.ui;
-    ui.rect(0, 0, w, h, 0x0b0709, 1);
-    ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
-    ui.rect(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    ui.shade(0, 0, w, h, 0x0b0709, 1);
+    ui.shade(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
+    ui.shade(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
     ui.block(0, 0, w, h);
     const cx = w / 2;
     const dots = '.'.repeat(1 + (Math.floor(Date.now() / 400) % 3));
@@ -323,9 +323,9 @@ export class GameScene extends BaseScene {
       .sort((a, b) => Number(a.id.replace(/\D/g, '')) - Number(b.id.replace(/\D/g, '')));
     const n = squads.length;
     ui.setLayer(3);
-    ui.rect(0, 0, w, h, 0x0b0709, 1);
-    ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
-    ui.rect(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    ui.shade(0, 0, w, h, 0x0b0709, 1);
+    ui.shade(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
+    ui.shade(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
     ui.block(0, 0, w, h);
     ui.region(0, 0, w, h, () => (this.introSkip = true));
     const cx = w / 2;
@@ -1632,7 +1632,7 @@ export class GameScene extends BaseScene {
     // ---- end of match
     if (session.result) {
       ui.setLayer(2);
-      ui.rect(0, 0, w, h, 0x000000, 0.8);
+      ui.shade(0, 0, w, h, 0x000000, 0.8);
       ui.block(0, 0, w, h);
       const r = session.result;
       const won = r.winner === mine;

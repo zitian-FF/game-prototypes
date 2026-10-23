@@ -3,6 +3,7 @@ import { Ui } from '../ui/ui';
 import { intents } from '../input/intents';
 import { session } from '../net/session';
 import { COLORS, cssColor } from '../theme';
+import tuneJson from '../../tune.json';
 
 const AUTOPLAY = DEBUG && new URLSearchParams(location.search).get('autoplay') === '1';
 
@@ -44,7 +45,7 @@ export class LobbyScene extends BaseScene {
     const { w, h } = logicalSize();
     const ui: Ui = this.ui;
     ui.begin();
-    ui.rect(0, 0, w, h, 0x0b0709, 1);
+    ui.shade(0, 0, w, h, 0x0b0709, 1);
     const cx = w / 2;
     const top = Math.max(30, h / 2 - 280);
     ui.text('ROOM CODE', cx, top, { size: 12, align: 'center', color: COLORS.dim });
@@ -57,7 +58,7 @@ export class LobbyScene extends BaseScene {
       const py = top + 118;
       const ph = Math.min(300, h - py - 200);
       const me = lobby.players.find((p) => p.clientId === session.save.clientId);
-      const per = 20;
+      const per = tuneJson.match.playersPerTeam;
       const gap = 12;
       const tw = (pw - gap) / 2;
       const rowH = 20;

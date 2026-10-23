@@ -1,4 +1,5 @@
-import { BaseScene, DEBUG, isTouch, logicalSize } from './base';
+import { BaseScene, DEBUG, bufferScale, isTouch, logicalSize } from './base';
+import { LOGO_H, LOGO_W, bakeLogo } from '../ui/material';
 import { drawKeyboard } from '../ui/keyboard';
 import { Ui, TextField, drawField } from '../ui/ui';
 import { intents } from '../input/intents';
@@ -118,25 +119,30 @@ export class MenuScene extends BaseScene {
       ui.end();
       return;
     }
-    ui.rect(0, 0, w, h, 0x0b0709, 1);
-    // A glow of lava on the horizon.
-    ui.rect(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
-    ui.rect(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
-
     // Touch devices get an on-screen keyboard: beside the form when the window is wide, below it when tall.
     const touch = isTouch();
     const wide = w >= 760;
     const kbW = touch ? (wide ? Math.min(430, w * 0.48) : Math.min(430, w - 24)) : 0;
     const cx = touch && wide ? w * 0.27 : w / 2;
     const compact = touch && h < 560;
-    const top = compact ? 14 : touch ? 36 : Math.max(40, h / 2 - 230);
-    const titleSize = compact ? 28 : 44;
-    ui.text('FIRESTORM ARENA', cx, top, { size: Math.min(titleSize, (w - 24) / 10.5), align: 'center', bold: true, color: '#ff8a3d' });
-    ui.text(`${tuneJson.match.playersPerTeam} v ${tuneJson.match.playersPerTeam} node capture under fog of war`, cx, top + (compact ? 36 : 58), { size: compact ? 12 : 15, align: 'center', color: COLORS.dim });
+    ui.backdrop(0, 0, w, h, 0x0b0709, 1);
+    // A glow of lava on the horizon (its bright edge would cut through the footer text on a short screen).
+    ui.backdrop(0, h * 0.72, w, h * 0.28, 0x2a0d05, 0.7);
+    if (!compact) ui.backdrop(0, h * 0.72, w, 3, 0xff6a2a, 0.8);
+    const top = compact ? 6 : touch ? 14 : Math.max(16, h / 2 - 330);
+    // The logo: baked once at the screen's pixel ratio, scaled to fit.
+    const ls = Math.min(compact ? 0.3 : touch ? 0.46 : 0.6, ((touch && wide ? w * 0.5 : w) - 24) / LOGO_W);
+    ui.image(bakeLogo(this, bufferScale()), cx, top, ls / bufferScale(), 0.5, 0);
+    const subY = top + LOGO_H * ls + (compact ? 0 : 4);
+    ui.text(`${tuneJson.match.playersPerTeam} v ${tuneJson.match.playersPerTeam} node capture under fog of war`, cx, subY, { size: compact ? 12 : 15, align: 'center', color: COLORS.dim });
 
-    const pw = Math.min(360, w - 24);
+    const pw = Math.min(360, w - 60);
     const px = cx - pw / 2;
-    let y = top + (compact ? 60 : 110);
+    let y = subY + (compact ? 24 : 40);
+    const formTop = y - (compact ? 10 : 16);
+    // The form sits on one steel plate, drawn first so the widgets on it take the clicks.
+    const formBottom = y + (compact ? 68 + 50 + 18 : 78 + 70 + 22) + 40 + (compact ? 10 : 16);
+    ui.panel(px - (compact ? 12 : 20), formTop, pw + (compact ? 24 : 40), formBottom - formTop);
     ui.text('Your name', px, y, { size: 12, color: COLORS.dim });
     drawField(ui, this.nameField, px, y + 18, pw, 40, this.focus === 'name', 'Commander name', () => (this.focus = 'name'));
     y += compact ? 68 : 78;
