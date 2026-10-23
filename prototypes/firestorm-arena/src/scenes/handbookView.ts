@@ -77,7 +77,7 @@ export class HandbookView {
     const px = (w - pw) / 2;
     const py = m;
     const ph = h - 2 * m;
-    ui.rect(0, 0, w, h, 0x0b0709, 0.96);
+    ui.shade(0, 0, w, h, 0x0b0709, 0.96);
     ui.block(0, 0, w, h);
     ui.panel(px, py, pw, ph, 0.96);
     ui.text('Handbook', px + 14, py + 10, { size: small ? 15 : 18, bold: true, color: '#ff8a3d' });

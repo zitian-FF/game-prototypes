@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, FONT } from '../theme';
 import { intents } from '../input/intents';
+import { AMBER, STEEL_PAD, STEEL_SLICE, bakeSteel, chamferPoints, gradientPlate, mix, steelKey } from './material';
 
 interface Hit {
   x: number;
@@ -28,6 +29,11 @@ interface Layer {
   /** Pooled images (baked art), between the layer's graphics and its texts. */
   imgs: Phaser.GameObjects.Image[];
   imgUsed: number;
+  /** Pooled steel panels (nine-slice), under the layer's graphics. */
+  slices: Phaser.GameObjects.NineSlice[];
+  sliceUsed: number;
+  /** Screen shades and backgrounds for this layer, under its steel panels. */
+  under: Phaser.GameObjects.Graphics | null;
 }
 
 /**
@@ -38,6 +44,8 @@ interface Layer {
  */
 export class Ui {
   private layers: Layer[] = [];
+  /** Full-screen backgrounds, below every layer (and so below the steel panels). */
+  private back: Phaser.GameObjects.Graphics | null = null;
   private cur = 0;
   private hits: Hit[] = [];
   private lastHits: Hit[] = [];
@@ -58,7 +66,7 @@ export class Ui {
     let l = this.layers[this.cur];
     if (!l) {
       const g = this.scene.add.graphics().setDepth(this.baseDepth + this.cur * 2);
-      l = { g, texts: [], keys: [], used: 0, imgs: [], imgUsed: 0 };
+      l = { g, texts: [], keys: [], used: 0, imgs: [], imgUsed: 0, slices: [], sliceUsed: 0, under: null };
       this.layers[this.cur] = l;
     }
     return l;
@@ -71,13 +79,16 @@ export class Ui {
 
   begin(): void {
     this.cur = 0;
+    this.back?.clear();
     this.lastHits = this.hits;
     this.hits = [];
     for (const l of this.layers) {
       if (!l) continue;
       l.g.clear();
+      l.under?.clear();
       l.used = 0;
       l.imgUsed = 0;
+      l.sliceUsed = 0;
     }
   }
 
@@ -86,6 +97,7 @@ export class Ui {
       if (!l) continue;
       for (let i = l.used; i < l.texts.length; i++) l.texts[i].setVisible(false);
       for (let i = l.imgUsed; i < l.imgs.length; i++) l.imgs[i].setVisible(false);
+      for (let i = l.sliceUsed; i < l.slices.length; i++) l.slices[i].setVisible(false);
     }
   }
 
@@ -119,14 +131,60 @@ export class Ui {
     img.setOrigin(originX, originY).setScale(scale).setPosition(x, y).setVisible(true);
   }
 
+  /** A screen background rectangle, drawn under everything this Ui draws (panels included). */
+  backdrop(x: number, y: number, w: number, h: number, fill: number, alpha = 1): void {
+    this.back ??= this.scene.add.graphics().setDepth(this.baseDepth - 1);
+    this.back.fillStyle(fill, alpha).fillRect(x, y, w, h);
+  }
+
+  /** A background or dimming rectangle for the current layer: above lower layers, under this layer's panels. */
+  shade(x: number, y: number, w: number, h: number, fill: number, alpha = 1): void {
+    const l = this.layer();
+    l.under ??= this.scene.add.graphics().setDepth(this.baseDepth + this.cur * 2 - 0.75);
+    l.under.fillStyle(fill, alpha).fillRect(x, y, w, h);
+  }
+
   /** The raw graphics of the current layer, for custom shapes. */
   gfx(): Phaser.GameObjects.Graphics {
     return this.layer().g;
   }
 
+  /**
+   * A forged-steel panel: the baked plate as a nine-slice, under everything else drawn in this layer (panels are
+   * backgrounds). Swallows clicks like any panel.
+   */
   panel(x: number, y: number, w: number, h: number, alpha = 0.88): void {
-    this.rect(x, y, w, h, COLORS.panel, alpha, COLORS.panelEdge, 6);
+    const l = this.layer();
+    const res = this.dpr;
+    bakeSteel(this.scene, res);
+    const key = steelKey(res);
+    let sl = l.slices[l.sliceUsed];
+    const slice = STEEL_SLICE * res;
+    if (!sl) {
+      sl = this.scene.add.nineslice(0, 0, key, undefined, 64, 64, slice, slice, slice, slice).setOrigin(0, 0).setDepth(this.baseDepth + this.cur * 2 - 0.5);
+      l.slices[l.sliceUsed] = sl;
+    }
+    l.sliceUsed++;
+    if (sl.texture.key !== key) sl.setTexture(key).setSlices(64, 64, slice, slice, slice, slice);
+    const pw = Math.max(STEEL_SLICE * 2, w + STEEL_PAD * 2);
+    const ph = Math.max(STEEL_SLICE * 2, h + STEEL_PAD * 2);
+    sl.setSize(pw * res, ph * res)
+      .setScale(1 / res)
+      .setPosition(x - STEEL_PAD, y - STEEL_PAD)
+      .setAlpha(Math.min(1, alpha + 0.1))
+      .setVisible(true);
     this.block(x, y, w, h);
+  }
+
+  /** A chamfered steel plate drawn into the layer's graphics: for buttons and small tiles that must keep their order. */
+  plate(x: number, y: number, w: number, h: number, top: number, bottom: number, opts: { edge?: number; shadow?: boolean; k?: number; alpha?: number } = {}): void {
+    const g = this.layer().g;
+    const k = Math.min(opts.k ?? 7, w / 3, h / 3);
+    const a = opts.alpha ?? 1;
+    if (opts.shadow !== false) g.fillStyle(0x000000, 0.45 * a).fillPoints(chamferPoints(x + 1, y + 3, w, h, k), true);
+    gradientPlate(g, x, y, w, h, k, top, bottom, a);
+    g.lineStyle(1, 0xffffff, 0.16 * a).strokePoints(chamferPoints(x + 1.5, y + 1.5, w - 3, h - 3, Math.max(1, k - 1)), true);
+    g.lineStyle(1.5, opts.edge ?? 0x08090b, a).strokePoints(chamferPoints(x, y, w, h, k), true);
   }
 
   bar(x: number, y: number, w: number, h: number, frac: number, color: number): void {
@@ -215,13 +273,23 @@ export class Ui {
   ): void {
     const enabled = o.enabled !== false;
     const hover = enabled && this.isOver(x, y, w, h);
-    const accent = o.accent ?? COLORS.accent;
-    const fill = o.active ? accent : hover ? 0x26303d : 0x1a212b;
-    this.rect(x, y, w, h, fill, enabled ? 1 : 0.5, hover || o.active ? accent : COLORS.panelEdge, 5);
-    this.text(label, x + w / 2, y + h / 2 - (o.size ?? 13) * 0.62, {
-      size: o.size ?? 13,
+    // Forged steel: a primary (active) button is amber, an accented one (danger, boost) gets a coloured lip, the
+    // rest are plain steel. Hover lifts the whole plate a little.
+    const primary = !!o.active;
+    const tint = primary ? (o.accent !== undefined && o.accent !== COLORS.accent ? o.accent : AMBER) : null;
+    const lift = hover ? 0.14 : 0;
+    const top = tint !== null ? mix(tint, 0xffffff, 0.35 + lift) : mix(0x4a4f57, 0xffffff, lift);
+    const bottom = tint !== null ? mix(tint, 0x000000, 0.32) : mix(0x24272c, 0xffffff, lift * 0.5);
+    this.plate(x, y, w, h, top, bottom, { edge: tint !== null ? mix(tint, 0x000000, 0.65) : hover && o.accent !== undefined ? o.accent : 0x08090b, alpha: enabled ? 1 : 0.5 });
+    if (!primary && o.accent !== undefined && enabled) {
+      const g = this.layer().g;
+      g.lineStyle(2, o.accent, hover ? 1 : 0.75).lineBetween(x + 6, y + h - 2, x + w - 6, y + h - 2);
+    }
+    const size = o.size ?? 13;
+    this.text(label, x + w / 2, y + h / 2 - size * 0.62, {
+      size,
       align: 'center',
-      color: enabled ? (o.active ? '#08111a' : COLORS.text) : COLORS.dim,
+      color: enabled ? (primary ? '#1c1004' : COLORS.text) : COLORS.dim,
       bold: true,
     });
     if (enabled && o.onClick) this.hits.push({ x, y, w, h, onClick: o.onClick });
@@ -269,7 +337,9 @@ export class TextField {
 }
 
 export function drawField(ui: Ui, f: TextField, x: number, y: number, w: number, h: number, focused: boolean, placeholder: string, onFocus: () => void): void {
-  ui.rect(x, y, w, h, 0x0b0f14, 1, focused ? COLORS.accent : COLORS.panelEdge, 5);
+  // An inset steel well: dark, with a shadow along the top inside edge.
+  ui.plate(x, y, w, h, 0x07080a, 0x101216, { edge: focused ? COLORS.accent : 0x3a3e45, shadow: false, k: 6 });
+  ui.rect(x + 6, y + 2, w - 12, 2, 0x000000, 0.5);
   const caret = focused && Math.floor(Date.now() / 500) % 2 === 0 ? '|' : '';
   if (f.value || focused) ui.text(f.value + caret, x + 10, y + h / 2 - 9, { size: 16 });
   else ui.text(placeholder, x + 10, y + h / 2 - 9, { size: 16, color: COLORS.dim });
