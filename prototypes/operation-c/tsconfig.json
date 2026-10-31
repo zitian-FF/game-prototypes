@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "allowJs": true },
+  "include": ["src", "tests", "vite.config.ts"],
+  "exclude": ["dist"]
+}

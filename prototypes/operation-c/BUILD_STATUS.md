@@ -1,0 +1,29 @@
+## Current milestone
+
+First playable core-loop sandbox: local human versus bot, two HQs. Owner authorized implementation and prototypes-page shortcut on 2026-10-31. Full six-player Eurasia game remains a later milestone.
+
+## What was implemented
+
+Deterministic 271-hex sandbox, exclusive occupancy and movement reservations, queues/six-position surrounding, range-based combat, building-priority attack orders, independent capture, connected resource reservations, global commitment debt, production cooldowns/replacements, surviving orphan units, burnt ground, HQ elimination and restart. Responsive touch/mouse canvas controls, placement confirmation/footprint preview, scripted vector art, cached terrain, capture/cooldown/health feedback, debug tuning and an Operation C shortcut on the hub.
+
+Added game-path-filtered validation CI with rule tests, focused typecheck/build and actual-build browser checks. The existing hub Pages workflow discovers the game entry; its Operation C-only counter steps stamp builds and persist the counter after successful deployment. A scope guard prevents Operation C-only changes from publishing the unrelated Current WIP game. Dedicated Firestorm itch/Worker targets and other games' source remain untouched.
+
+## Key technical decisions
+
+Phaser 3 + TypeScript follows the lightweight-browser recommendation and the authorized first-slice scope. Rules are pure TypeScript, input is an intent adapter, procedural art is separate from presentation, terrain redraws on state change, text objects are reused, and Tweakpane loads only with ?debug=1. Normal play needs no backend or runtime asset fetch. Future netcode is not represented as implemented.
+
+## Open questions
+
+BRIEF.md must be updated as final decisions arrive: exact 200-cap meaning, HQ centre capacity and automatic recapture exceptions, full race/tier/loadout model, swarm members and reinforcement targeting, six-player match duration/topology, elimination treatment for remaining buildings, and final balance. Current tune values are provisional.
+
+## Known issues
+
+No multiplayer, final Eurasia map, full races/tiers or swarm reinforcements yet. Test map is a plain hexagon. All three example ground units capture; no ranged line-of-sight blocking. HQ pressure retakes unoccupied enemy land. Elimination removes remaining structures without burning them. These are explicit first-slice assumptions. Own-HQ defense expands and attacks within range, without a broader threat-response planner.
+
+Browser checks use actual Brave with touch emulation; physical phones, iOS fullscreen/orientation, long-session balance and large armies are not verified. Three limited ten-minute virtual-budget probes ended in bot victory after 73.6–107.3s with peaks of 10–13 units; these establish progression, not balanced matches. The legacy hub publishing workflow still builds its existing multi-game output; the new Operation C validation workflow is game-scoped.
+
+## Next proposed step
+
+Complete GitHub publication and verify the live hub shortcut, then owner playtest the first building/expansion/attack loop before choosing the next system milestone.
+
+Verification so far: 15 behavior tests pass, scoped and full repository typecheck pass, root hub build and standalone build pass. Brave desktop 1440×900, touch portrait 390×844 and landscape 844×390 flows pass placement, production, orders, 45 seconds simulated play, exclusive occupancy and reset with no console errors, including minified production output. Additional 667×375 touch landscape check passes after review identified and corrected a layout overlap. Screenshots inspected. GitHub publication and live deployment verification follow before delivery.
