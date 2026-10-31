@@ -1,6 +1,10 @@
 ## Current milestone
 
-First playable core-loop sandbox: local human versus bot, two HQs. Owner authorized implementation and prototypes-page shortcut on 2026-10-31. Full six-player Eurasia game remains a later milestone.
+First playable core-loop sandbox is live: local human versus bot, two HQs. Owner authorized implementation and prototypes-page shortcut on 2026-10-31. Full six-player Eurasia game remains a later milestone.
+
+Play: https://zitian-ff.github.io/game-prototypes/prototypes/operation-c/
+Hub: https://zitian-ff.github.io/game-prototypes/
+Game PR #406 merged as 2420b0c; successful Pages run 41189123411 published build 311026r0001 and persisted counter 1 in ac4a578. Operation C validation run 41188958621 passed. Current WIP deployment was correctly skipped by the scope guard.
 
 ## What was implemented
 
@@ -24,6 +28,6 @@ Browser checks use actual Brave with touch emulation; physical phones, iOS fulls
 
 ## Next proposed step
 
-Complete GitHub publication and verify the live hub shortcut, then owner playtest the first building/expansion/attack loop before choosing the next system milestone.
+Owner playtest the first building/expansion/attack loop from the hub shortcut before choosing the next system milestone.
 
-Verification so far: 15 behavior tests pass, scoped and full repository typecheck pass, root hub build and standalone build pass. Brave desktop 1440×900, touch portrait 390×844 and landscape 844×390 flows pass placement, production, orders, 45 seconds simulated play, exclusive occupancy and reset with no console errors, including minified production output. Additional 667×375 touch landscape check passes after review identified and corrected a layout overlap. Screenshots inspected. GitHub publication and live deployment verification follow before delivery.
+Verification: 15 behavior tests pass, scoped and full repository typecheck pass, root hub build and standalone build pass. Brave desktop 1440×900, touch portrait 390×844 and landscape 844×390/667×375 flows pass placement, production, orders, 45 seconds simulated play, exclusive occupancy and reset with no game-page console errors, including minified production and actual live Pages output. Screenshots inspected. Hub shortcut opens the correct live game. Existing hub /favicon.ico responds 404; Operation C supplies its own inline favicon and has no such error. Final deployment evidence is recorded on the task branch after the game PR merge.
