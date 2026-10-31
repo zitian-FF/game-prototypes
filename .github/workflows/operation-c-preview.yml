@@ -1,0 +1,62 @@
+name: Operation C core-loop validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prototypes/operation-c/**'
+      - 'scripts/screenshot-operation-c.mjs'
+      - 'scripts/generate-versions.js'
+      - '.github/workflows/operation-c-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operation-c-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Test deterministic core rules
+        run: node prototypes/operation-c/tests/run.mjs
+      - name: Typecheck and build only Operation C
+        run: |
+          node scripts/generate-versions.js
+          npx tsc --noEmit -p prototypes/operation-c/tsconfig.json
+          npx vite build --config prototypes/operation-c/vite.config.ts
+      - name: Prepare isolated browser test tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/operation-c-browser" --no-save --ignore-scripts playwright@1.62.1
+          "$RUNNER_TEMP/operation-c-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Exercise actual Web build on desktop and touch
+        env:
+          OPERATION_C_BROWSER_PACKAGE: ${{ runner.temp }}/operation-c-browser/package.json
+        run: |
+          python3 -m http.server 4187 --directory prototypes/operation-c/dist > "$RUNNER_TEMP/operation-c-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4187/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/screenshot-operation-c.mjs http://127.0.0.1:4187/ "$RUNNER_TEMP/operation-c-captures"
+      - name: Retain tested game and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operation-c-core-loop-${{ github.run_id }}
+          path: |
+            prototypes/operation-c/dist/
+            ${{ runner.temp }}/operation-c-captures/
+          retention-days: 7

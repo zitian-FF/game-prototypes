@@ -37,7 +37,32 @@ permissions:
   actions: read
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.changed.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Keep Operation C changes out of the Current WIP deployment
+        id: changed
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          should_deploy=true
+          if [ "$EVENT_NAME" = push ] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/wip-changes.txt"
+            if grep -q '^prototypes/operation-c/' "$RUNNER_TEMP/wip-changes.txt" && ! grep -Ev '^(prototypes/operation-c/|scripts/screenshot-operation-c\.mjs$|\.github/workflows/operation-c-preview\.yml$|index\.html$|\.github/workflows/deploy\.yml$|\.github/workflows/deploy-wip-itch\.yml$)' "$RUNNER_TEMP/wip-changes.txt"; then
+              should_deploy=false
+            fi
+          fi
+          echo "deploy=$should_deploy" >> "$GITHUB_OUTPUT"
+          echo "Current WIP deployment eligible: $should_deploy" >> "$GITHUB_STEP_SUMMARY"
   deploy:
+    needs: scope
+    if: needs.scope.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
